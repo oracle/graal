@@ -87,4 +87,83 @@ public final class JSSymbol extends JSValue {
     public int hashCode() {
         return javaString().hashCode();
     }
+
+    @JS(value = "return Symbol.for(key);")
+    public static native JSSymbol forKey(String key);
+
+    @JS.Coerce
+    @JS(value = "return Symbol.keyFor(sym);")
+    public static native JSValue keyFor(JSSymbol sym);
+
+    @JS.Coerce
+    @JS(value = "return Symbol.asyncDispose;")
+    public static native JSSymbol asyncDispose();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.asyncIterator;")
+    public static native JSSymbol asyncIterator();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.dispose;")
+    public static native JSSymbol dispose();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.hasInstance;")
+    public static native JSSymbol hasInstance();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.isConcatSpreadable;")
+    public static native JSSymbol isConcatSpreadable();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.iterator;")
+    public static native JSSymbol iterator();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.match;")
+    public static native JSSymbol match();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.matchAll;")
+    public static native JSSymbol matchAll();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.replace;")
+    public static native JSSymbol replace();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.search;")
+    public static native JSSymbol search();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.species;")
+    public static native JSSymbol species();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.split;")
+    public static native JSSymbol split();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.toPrimitive;")
+    public static native JSSymbol toPrimitive();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.toStringTag;")
+    public static native JSSymbol toStringTag();
+
+    @JS.Coerce
+    @JS(value = "return Symbol.unscopables;")
+    public static native JSSymbol unscopables();
+
+    @JS.Coerce
+    @JS(value = "return sym.valueOf();")
+    public static native JSSymbol valueOf(Object sym);
+
+    @JS.Coerce
+    @JS(value = "return Symbol.for(a) === Symbol.for(b);")
+    public static native boolean isSameSymbol(String a, String b);
+
+    @JS.Coerce
+    @JS(value = "return sym.description;")
+    public static native String description(Object sym);
 }

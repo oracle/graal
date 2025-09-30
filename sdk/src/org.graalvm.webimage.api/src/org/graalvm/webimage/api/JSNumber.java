@@ -119,4 +119,137 @@ public final class JSNumber extends JSValue {
     public int hashCode() {
         return javaDouble().hashCode();
     }
+
+    @JS.Coerce
+    @JS(value = "return isFinite(number);")
+    public native static boolean isFinite(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return isFinite(number);")
+    public native static boolean isFinite(Number number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isInteger(number);")
+    public native static boolean isInteger(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isInteger(number);")
+    public native static boolean isInteger(Number number);
+
+    @JS.Coerce
+    @JS(value = "return isNaN(number);")
+    public native static boolean isNaN(JSValue number);
+
+    @JS.Coerce
+    @JS(value = "return isNaN(number);")
+    public native static boolean isNaN(Number number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isSafeInteger(number);")
+    public native static boolean isSafeInteger(JSValue number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isSafeInteger(number);")
+    public native static boolean isSafeInteger(Number number);
+
+    @JS.Coerce
+    @JS(value = "return parseFloat(number);")
+    public native static float parseFloat(Number number);
+
+    @JS.Coerce
+    @JS(value = "return parseFloat(number);")
+    public native static float parseFloat(String number);
+
+    @JS.Coerce
+    @JS(value = "return parseInt(number);")
+    public native static int parseInt(Number number);
+
+    @JS.Coerce
+    @JS(value = "return parseInt(number);")
+    public native static int parseInt(String number);
+
+    @JS.Coerce
+    @JS(value = "return parseInt(number, radix);")
+    public native static int parseInt(String number, int radix);
+
+    @JS.Coerce
+    @JS(value = "return Number.EPSILON;")
+    public native static double EPSILON();
+
+    @JS.Coerce
+    @JS(value = "return Number.MAX_SAFE_INTEGER;")
+    public native static double MAX_SAFE_INTEGER();
+
+    @JS.Coerce
+    @JS(value = "return Number.MAX_VALUE;")
+    public native static double MAX_VALUE();
+
+    @JS.Coerce
+    @JS(value = "return Number.MIN_SAFE_INTEGER;")
+    public native static double MIN_SAFE_INTEGER();
+
+    @JS.Coerce
+    @JS(value = "return Number.MIN_VALUE;")
+    public native static double MIN_VALUE();
+
+    @JS.Coerce
+    @JS(value = "return Number.NaN;")
+    public native static double NaN();
+
+    @JS.Coerce
+    @JS(value = "return Number.NEGATIVE_INFINITY;")
+    public native static double NEGATIVE_INFINITY();
+
+    @JS.Coerce
+    @JS(value = "return Number.POSITIVE_INFINITY;")
+    public native static double POSITIVE_INFINITY();
+
+    @JS.Coerce
+    @JS(value = "return this.toExponential();")
+    public native String toExponential();
+
+    @JS.Coerce
+    @JS(value = "return this.toExponential(fractionDigits);")
+    public native String toExponential(int fractionDigits);
+
+    @JS.Coerce
+    @JS(value = "return this.toFixed();")
+    public native String toFixed();
+
+    @JS.Coerce
+    @JS(value = "return this.toFixed(digits);")
+    public native String toFixed(int digits);
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString();")
+    public native String toLocaleString();
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString(locales);")
+    public native String toLocaleString(String locales);
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString(locales, options);")
+    public native String toLocaleString(String locales, JSObject options);
+
+    @JS.Coerce
+    @JS(value = "return this.toPrecision();")
+    public native String toPrecision();
+
+    @JS.Coerce
+    @JS(value = "return this.toPrecision(precision);")
+    public native String toPrecision(int precision);
+
+    @Override
+    @JS.Coerce
+    @JS(value = "return this.toString();")
+    public native String toString();
+
+    @JS.Coerce
+    @JS(value = "return this.toString(radix);")
+    public native String toString(int radix);
+
+    @JS.Coerce
+    @JS(value = "return this.valueOf();")
+    public native double valueOf();
 }
