@@ -33,8 +33,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.PathUtilities;
 
 class LibGraalSubstitutions {
 
@@ -143,7 +143,7 @@ class LibGraalSubstitutions {
          */
         @Substitute
         public static DateFormatSymbols getInstance(Locale unused) {
-            return DebugOptions.getSharedDateFormatSymbols();
+            return PathUtilities.getSharedDateFormatSymbols();
         }
     }
 }
