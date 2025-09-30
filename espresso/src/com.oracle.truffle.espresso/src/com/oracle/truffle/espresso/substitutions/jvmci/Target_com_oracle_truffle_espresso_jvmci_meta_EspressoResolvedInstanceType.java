@@ -84,6 +84,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         }
     }
 
+    @Substitution
+    public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
+        return context.getVM().JVM_GetPermittedSubclasses(self);
+    }
+
     private static StaticObject toJVMCIFields(Field[] fields, StaticObject holder, DirectCallNode fieldConstructor, EspressoContext context, Meta meta) {
         int count = 0;
         for (Field f : fields) {
