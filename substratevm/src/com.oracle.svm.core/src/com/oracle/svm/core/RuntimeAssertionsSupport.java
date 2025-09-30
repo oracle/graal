@@ -229,14 +229,13 @@ public final class RuntimeAssertionsSupport {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+            var action = new SingletonLayeredCallbacks<RuntimeAssertionsSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    RuntimeAssertionsSupport runtimeAssertionsSupport = (RuntimeAssertionsSupport) singleton;
-                    persistAssertionStatus(writer, PACKAGE, runtimeAssertionsSupport.packageAssertionStatus);
-                    persistAssertionStatus(writer, CLASS, runtimeAssertionsSupport.classAssertionStatus);
-                    writer.writeInt(DEFAULT_ASSERTION_STATUS, runtimeAssertionsSupport.defaultAssertionStatus ? 1 : 0);
-                    writer.writeInt(SYSTEM_ASSERTION_STATUS, runtimeAssertionsSupport.systemAssertionStatus ? 1 : 0);
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, RuntimeAssertionsSupport singleton) {
+                    persistAssertionStatus(writer, PACKAGE, singleton.packageAssertionStatus);
+                    persistAssertionStatus(writer, CLASS, singleton.classAssertionStatus);
+                    writer.writeInt(DEFAULT_ASSERTION_STATUS, singleton.defaultAssertionStatus ? 1 : 0);
+                    writer.writeInt(SYSTEM_ASSERTION_STATUS, singleton.systemAssertionStatus ? 1 : 0);
                     return PersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
@@ -252,12 +251,11 @@ public final class RuntimeAssertionsSupport {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    RuntimeAssertionsSupport runtimeAssertionsSupport = (RuntimeAssertionsSupport) singleton;
-                    checkMaps(loadAssertionStatus(loader, PACKAGE), runtimeAssertionsSupport.packageAssertionStatus);
-                    checkMaps(loadAssertionStatus(loader, CLASS), runtimeAssertionsSupport.classAssertionStatus);
-                    checkBoolean(runtimeAssertionsSupport.defaultAssertionStatus, loader, DEFAULT_ASSERTION_STATUS);
-                    checkBoolean(runtimeAssertionsSupport.systemAssertionStatus, loader, SYSTEM_ASSERTION_STATUS);
+                public void onSingletonRegistration(ImageSingletonLoader loader, RuntimeAssertionsSupport singleton) {
+                    checkMaps(loadAssertionStatus(loader, PACKAGE), singleton.packageAssertionStatus);
+                    checkMaps(loadAssertionStatus(loader, CLASS), singleton.classAssertionStatus);
+                    checkBoolean(singleton.defaultAssertionStatus, loader, DEFAULT_ASSERTION_STATUS);
+                    checkBoolean(singleton.systemAssertionStatus, loader, SYSTEM_ASSERTION_STATUS);
                 }
 
                 private void checkBoolean(boolean currentLayerAssertionStatus, ImageSingletonLoader loader, String assertionStatusKey) {

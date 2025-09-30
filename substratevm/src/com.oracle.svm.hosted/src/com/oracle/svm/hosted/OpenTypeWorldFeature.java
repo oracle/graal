@@ -297,7 +297,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
                 @Override
                 public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
                     writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
@@ -307,16 +307,16 @@ public class OpenTypeWorldFeature implements InternalFeature {
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayerTypeCheckInfo> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public LayerTypeCheckInfo createFromLoader(ImageSingletonLoader loader) {
             return new LayerTypeCheckInfo(loader.readInt("maxTypeID"), loader.readInt("maxInterfaceID"));
         }
     }

@@ -274,14 +274,14 @@ class HostedJavaThreadsMetadata {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+            SingletonLayeredCallbacks<HostedJavaThreadsMetadata> action = new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    return ((HostedJavaThreadsMetadata) singleton).preparePersist(writer);
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedJavaThreadsMetadata singleton) {
+                    return singleton.preparePersist(writer);
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             };
@@ -289,9 +289,9 @@ class HostedJavaThreadsMetadata {
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<HostedJavaThreadsMetadata> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public HostedJavaThreadsMetadata createFromLoader(ImageSingletonLoader loader) {
             long maxThreadId = loader.readLong("maxThreadId");
             int maxAutonumber = loader.readInt("maxAutonumber");
 

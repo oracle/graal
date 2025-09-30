@@ -675,31 +675,30 @@ public class IsolateArgumentParser {
 
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredOptionInfo>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredOptionInfo singleton) {
                     if (ImageLayerBuildingSupport.firstImageBuild()) {
                         writer.writeInt("numOptions", IsolateArgumentParser.getOptionCount());
                         writer.writeStringList("optionNames", IsolateArgumentParser.getOptions().stream().map(OptionKey::getName).toList());
                     } else {
-                        var metadata = (LayeredOptionInfo) singleton;
-                        writer.writeInt("numOptions", metadata.getNumOptions());
-                        writer.writeStringList("optionNames", metadata.optionNames);
+                        writer.writeInt("numOptions", singleton.getNumOptions());
+                        writer.writeStringList("optionNames", singleton.optionNames);
                     }
                     return LayeredImageSingleton.PersistFlags.CREATE;
                 }
 
                 @Override
-                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredOptionInfo> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public LayeredOptionInfo createFromLoader(ImageSingletonLoader loader) {
             int numOptions = loader.readInt("numOptions");
             var optionNames = Collections.unmodifiableList(loader.readStringList("optionNames"));
             return new LayeredOptionInfo(numOptions, optionNames);

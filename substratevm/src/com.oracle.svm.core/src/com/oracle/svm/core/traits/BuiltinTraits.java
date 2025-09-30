@@ -77,7 +77,7 @@ public class BuiltinTraits {
     /**
      * Trait indicating this singleton has no special callbacks needed during layered builds.
      */
-    public static final SingletonTrait NO_LAYERED_CALLBACKS = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+    public static final SingletonTrait NO_LAYERED_CALLBACKS = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
         @Override
         public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
             return LayeredImageSingleton.PersistFlags.NOTHING;
@@ -96,7 +96,7 @@ public class BuiltinTraits {
      * be linked to this key in a subsequent image layer. This limits the singleton to being
      * installed in a single layer.
      */
-    public static final SingletonTrait SINGLE_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+    public static final SingletonTrait SINGLE_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
         @Override
         public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
             return LayeredImageSingleton.PersistFlags.FORBIDDEN;
