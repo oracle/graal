@@ -77,7 +77,7 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
-    private <T> void writeBuildEntries(Path path, List<T> buildEntries, String buildEntryTypeDescription) {
+    private static <T> void writeBuildEntries(Path path, List<T> buildEntries, String buildEntryTypeDescription) {
         try {
             Files.write(path, buildEntries.stream().map(T::toString).toList());
         } catch (IOException e) {

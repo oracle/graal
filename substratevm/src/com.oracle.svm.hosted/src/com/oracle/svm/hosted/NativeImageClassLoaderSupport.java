@@ -82,7 +82,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipFile;
 
-import jdk.internal.module.Resources;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -117,6 +116,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
+import jdk.internal.module.Resources;
 
 public final class NativeImageClassLoaderSupport {
 
@@ -350,7 +350,7 @@ public final class NativeImageClassLoaderSupport {
         pathDigests = new PathDigests(filterIgnoredPathEntries(imagecp, digestIgnorePaths), filterIgnoredPathEntries(imagemp, digestIgnorePaths));
     }
 
-    private List<Path> filterIgnoredPathEntries(List<Path> pathEntries, List<Path> digestIgnorePaths) {
+    private static List<Path> filterIgnoredPathEntries(List<Path> pathEntries, List<Path> digestIgnorePaths) {
         return pathEntries.stream().filter(pathEntry -> {
             for (Path p : digestIgnorePaths) {
                 if (p.startsWith(pathEntry)) {
