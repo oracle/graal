@@ -25,7 +25,6 @@
 package jdk.graal.compiler.libgraal;
 
 import java.text.DateFormatSymbols;
-import java.util.Collections;
 import java.util.Locale;
 import java.util.Set;
 
@@ -35,6 +34,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.GraalError;
 
 class LibGraalSubstitutions {
 
@@ -124,9 +124,12 @@ class LibGraalSubstitutions {
      */
     @TargetClass(value = java.lang.Module.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_java_lang_Module {
+        @Alias
+        public native String getName();
+
         @Substitute
         public Set<String> getPackages() {
-            return Collections.emptySet();
+            throw GraalError.unimplemented("Module.getPackages() for module " + getName() + " (class loading not supported in libgraal)");
         }
     }
 
