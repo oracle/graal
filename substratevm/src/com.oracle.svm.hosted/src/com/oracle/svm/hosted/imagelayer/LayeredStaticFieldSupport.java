@@ -390,7 +390,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     public FloatingNode getAppLayerStaticFieldsBaseReplacement(boolean primitive, LoweringTool tool, StructuredGraph graph) {
         ImageHeapRelocatableConstant constant = primitive ? appLayerPrimitiveStaticFieldsBase : appLayerObjectStaticFieldsBase;
         assert constant != null;
-        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool.getMetaAccess(), constant);
+        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool, constant);
     }
 
     public JavaConstant getAppLayerStaticFieldBaseConstant(boolean primitive) {
