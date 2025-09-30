@@ -100,7 +100,7 @@ public class SVMImageLayerSingletonLoader {
                 String recreateClass = obj.getRecreateClass().toString();
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, recreateClass);
                 if (SingletonLayeredCallbacks.LayeredSingletonInstantiator.class.isAssignableFrom(clazz)) {
-                    SingletonLayeredCallbacks.LayeredSingletonInstantiator instance = (SingletonLayeredCallbacks.LayeredSingletonInstantiator) ReflectionUtil.newInstance(clazz);
+                    var instance = (SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>) ReflectionUtil.newInstance(clazz);
                     result = instance.createFromLoader(imageSingletonLoader);
                 } else {
                     // GR-66792 remove once no custom persist actions exist

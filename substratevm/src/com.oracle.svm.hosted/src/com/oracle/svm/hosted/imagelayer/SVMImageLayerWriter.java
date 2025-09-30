@@ -97,6 +97,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
@@ -1126,7 +1127,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     record RecreateInfo(String clazz, String method) {
     }
 
-    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks action) {
+    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks<?> action) {
         if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
             // GR-66792 remove once no custom persist actions exist
             Class<?> singletonClass = injectAction.getSingletonClass();
@@ -1142,6 +1143,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
         /*
          * First write the image singleton keys
@@ -1158,8 +1160,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
             if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
-                var flags = action.doPersist(writer, singleton);
+                var action = (SingletonLayeredCallbacks<?>) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
+                var flags = SubstrateUtil.cast(action, SingletonLayeredCallbacks.class).doPersist(writer, singleton);
                 if (initialLayerOnly) {
                     VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
                                     singleton);

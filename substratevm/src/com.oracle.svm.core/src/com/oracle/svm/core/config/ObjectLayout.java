@@ -340,20 +340,17 @@ public final class ObjectLayout {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+            var action = new SingletonLayeredCallbacks<ObjectLayout>() {
                 @Override
-                public PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    ObjectLayout objectLayout = (ObjectLayout) singleton;
-                    List<Integer> currentValues = objectLayout.getCurrentValues();
+                public PersistFlags doPersist(ImageSingletonWriter writer, ObjectLayout singleton) {
+                    List<Integer> currentValues = singleton.getCurrentValues();
                     writer.writeIntList("priorValues", currentValues);
                     return PersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    ObjectLayout objectLayout = (ObjectLayout) singleton;
-
-                    List<Integer> currentValues = objectLayout.getCurrentValues();
+                public void onSingletonRegistration(ImageSingletonLoader loader, ObjectLayout singleton) {
+                    List<Integer> currentValues = singleton.getCurrentValues();
                     List<Integer> priorValues = loader.readIntList("priorValues");
 
                     var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();

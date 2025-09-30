@@ -120,22 +120,21 @@ public class LayeredReflectionMetadataSingleton {
 
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredReflectionMetadataSingleton>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    LayeredReflectionMetadataSingleton metadata = (LayeredReflectionMetadataSingleton) singleton;
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionMetadataSingleton singleton) {
                     List<Integer> hubs = new ArrayList<>();
                     List<Integer> classFlagsList = new ArrayList<>();
 
-                    var cursor = metadata.reflectionMetadataMap.getEntries();
+                    var cursor = singleton.reflectionMetadataMap.getEntries();
                     while (cursor.advance()) {
                         int hub = cursor.getKey();
                         hubs.add(hub);
-                        classFlagsList.add(getCombinedClassFlags(cursor.getValue(), metadata.previousLayerClassFlags.getOrDefault(hub, 0)));
+                        classFlagsList.add(getCombinedClassFlags(cursor.getValue(), singleton.previousLayerClassFlags.getOrDefault(hub, 0)));
                     }
 
-                    for (var entry : metadata.previousLayerClassFlags.entrySet()) {
+                    for (var entry : singleton.previousLayerClassFlags.entrySet()) {
                         if (!hubs.contains(entry.getKey())) {
                             /*
                              * If new class flags were written in this layer, the class flags from
@@ -153,16 +152,16 @@ public class LayeredReflectionMetadataSingleton {
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionMetadataSingleton> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public LayeredReflectionMetadataSingleton createFromLoader(ImageSingletonLoader loader) {
             List<Integer> hubs = loader.readIntList(LAYERED_REFLECTION_METADATA_HUBS);
             List<Integer> previousLayerClassFlags = loader.readIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS);
 

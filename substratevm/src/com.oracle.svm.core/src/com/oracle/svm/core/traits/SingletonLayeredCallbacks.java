@@ -37,7 +37,7 @@ import com.oracle.svm.core.util.VMError;
  * This class contains actions which can be called on singletons during a layered image build.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public abstract class SingletonLayeredCallbacks {
+public abstract class SingletonLayeredCallbacks<T> {
 
     /**
      * Used to recreate a singleton across layers.
@@ -54,8 +54,8 @@ public abstract class SingletonLayeredCallbacks {
      * will initialize LI and will then call {@link #createFromLoader} to attain the S to be used in
      * layer A.
      */
-    public interface LayeredSingletonInstantiator {
-        Object createFromLoader(ImageSingletonLoader loader);
+    public interface LayeredSingletonInstantiator<T> {
+        T createFromLoader(ImageSingletonLoader loader);
     }
 
     /**
@@ -63,13 +63,13 @@ public abstract class SingletonLayeredCallbacks {
      * at the end of native image generation to perform any needed final actions. The method's
      * return value also specifies what actions should be taken at the startup of the next layer.
      */
-    public abstract PersistFlags doPersist(ImageSingletonWriter writer, Object singleton);
+    public abstract PersistFlags doPersist(ImageSingletonWriter writer, T singleton);
 
     /**
      * If {@link #doPersist} returns {@link PersistFlags#CREATE}, then this method is called to
      * determine how to instantiate the singleton in the next layer.
      */
-    public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+    public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
         throw VMError.shouldNotReachHere("getSingletonInstantiator is not implemented. This method must be implemented if doPersist returns PersistFlag.CREATE");
     }
 
@@ -78,7 +78,7 @@ public abstract class SingletonLayeredCallbacks {
      * method will be called at most once for each registered singleton object.
      */
     @SuppressWarnings("unused")
-    public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
+    public void onSingletonRegistration(ImageSingletonLoader loader, T singleton) {
         throw VMError.shouldNotReachHere("onSingletonRegistration is not implemented. This method must be implemented if doPersist returns PersistFlag.CALLBACK_ON_REGISTRATION");
     }
 
