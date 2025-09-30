@@ -275,6 +275,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return annotated.getDeclaredTypes();
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         return annotated.getEnclosingType();
     }
