@@ -588,7 +588,7 @@ public class SubstrateOptions {
 
     @Option(help = "Please use '--gc=*' instead. Possible values are listed with '--help'.")//
     public static final HostedOptionKey<ReplacingLocatableMultiOptionValue.DelimitedString> SupportedGCs = new HostedOptionKey<>(
-                    ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue())) {
+                    ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Serial.getValue())) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, ReplacingLocatableMultiOptionValue.DelimitedString oldValue,
                         ReplacingLocatableMultiOptionValue.DelimitedString newValue) {
@@ -602,17 +602,16 @@ public class SubstrateOptions {
 
             super.onValueUpdate(values, oldValue, newValue);
         }
-
     };
 
     @Fold
     public static boolean useSerialGC() {
-        return !SubstrateOptions.SupportedGCs.hasBeenSet() || SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.SERIAL.getValue());
+        return !SubstrateOptions.SupportedGCs.hasBeenSet() || SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.Serial.getValue());
     }
 
     @Fold
     public static boolean useEpsilonGC() {
-        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.EPSILON.getValue());
+        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.Epsilon.getValue());
     }
 
     @Fold
@@ -629,9 +628,9 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.SERIAL.getValue()));
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Serial.getValue()));
                 } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
-                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.SERIAL.getValue())) {
+                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Serial.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
@@ -644,8 +643,8 @@ public class SubstrateOptions {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
-                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.EPSILON.getValue()));
-                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.EPSILON.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Epsilon.getValue()));
+                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Epsilon.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }
