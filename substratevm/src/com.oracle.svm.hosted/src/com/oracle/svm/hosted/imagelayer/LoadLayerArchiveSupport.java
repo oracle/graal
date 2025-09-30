@@ -67,7 +67,7 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         layerProperties.loadAndVerify(current);
     }
 
-    private <T> List<T> loadBuildEntries(Path path, Function<String, T> stringParser, String buildEntryTypeDescription) {
+    private static <T> List<T> loadBuildEntries(Path path, Function<String, T> stringParser, String buildEntryTypeDescription) {
         try (Stream<String> lines = Files.lines(path)) {
             return lines.map(stringParser).toList();
         } catch (IOException e) {
