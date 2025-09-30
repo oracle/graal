@@ -2745,6 +2745,8 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
         vmArgs, mainClass, mainClassArgs = config
 
         vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED'])
+        # need to access jdk.graal.compiler.phases.util.Providers
+        vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED'])
 
         # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
         # for the junit harness which uses reflection to find @Test methods. In addition, the

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,9 +44,9 @@ public final class StandaloneReplacementsImpl extends ReplacementsImpl {
     protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
         return new GraphMaker(this, substitute, original) {
             @Override
-            protected GraphBuilderPhase.Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+            protected GraphBuilderPhase.Instance createGraphBuilder(Providers graphProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                             IntrinsicContext initialIntrinsicContext) {
-                return new StandaloneGraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+                return new StandaloneGraphBuilderPhase.Instance(graphProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
             }
         };
     }

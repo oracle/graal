@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -48,8 +48,8 @@ public class StandaloneHost extends HostVM {
     private final ConcurrentHashMap<Class<?>, AnalysisType> classToType = new ConcurrentHashMap<>();
     private String imageName;
 
-    public StandaloneHost(OptionValues options, ClassLoader classLoader) {
-        super(options, classLoader);
+    public StandaloneHost(OptionValues options) {
+        super(options, /*- ClassLoader not supported. */ null);
     }
 
     @Override
@@ -66,6 +66,7 @@ public class StandaloneHost extends HostVM {
         registerType(analysisType);
     }
 
+    @Deprecated
     public AnalysisType lookupType(Class<?> clazz) {
         assert clazz != null : "Class must not be null";
         return classToType.get(clazz);
