@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+#ifndef SVM_SHARED_GC_STRUCTS_HPP
+#define SVM_SHARED_GC_STRUCTS_HPP
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+#include <sys/types.h>
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+#ifdef __cplusplus
+namespace svm_gc {
+#endif
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
+// forward declarations
+typedef struct CodeInfo CodeInfo;
 
-    /** Human-readable name. */
-    String getName();
+// data structures for frames that are currently on the stack
+struct StackFrame {
+  u_char *stack_pointer;
+  u_char *encoded_reference_map;
+  size_t reference_map_index;
+};
 
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
-}
+struct StackFrames {
+  size_t count;
+  struct StackFrame frames[0]; // variable-sized array
+};
+
+struct StackFramesPerThread {
+  size_t count;
+  struct StackFrames *threads[0]; // variable-sized array
+};
+
+// data structures for JIT-compiled code that is currently on the stack
+struct CodeInfos {
+  size_t count;
+  struct CodeInfo *code_infos[0]; // variable-sized array
+};
+
+struct CodeInfosPerThread {
+  size_t count;
+  struct CodeInfos *threads[0]; // variable-sized array
+};
+
+#ifdef __cplusplus
+} // namespace svm_gc
+#endif
+
+#endif // SVM_SHARED_GC_STRUCTS_HPP

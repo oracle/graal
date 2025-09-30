@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.gc.shared;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.IsolateThread;
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions.Prologue;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
-
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
-
-    /** Human-readable name. */
-    String getName();
-
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
+/**
+ * Prologue that only initializes the base registers so that a thread can execute SVM code.
+ * Unattached threads need to pass null as the {@link IsolateThread}, so that this prologue behaves
+ * the same as {@link InitializeReservedRegistersForUnattachedThread}.
+ */
+public class InitializeReservedRegistersForPossiblyUnattachedThread implements Prologue {
+    @Uninterruptible(reason = "prologue")
+    @SuppressWarnings("unused")
+    public static void enter(Isolate heapBase, IsolateThread thread) {
+        CEntryPointSnippets.initBaseRegisters(heapBase);
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+    }
 }

@@ -115,8 +115,10 @@ public class HostedConfiguration {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
-            ImageSingletons.add(ObjectLayout.class, objectLayout);
+            if (!ImageSingletons.contains(ObjectLayout.class)) {
+                ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
+                ImageSingletons.add(ObjectLayout.class, objectLayout);
+            }
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
