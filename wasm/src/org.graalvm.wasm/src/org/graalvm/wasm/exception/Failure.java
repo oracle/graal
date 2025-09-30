@@ -107,6 +107,7 @@ public enum Failure {
     UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
     UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
     UNKNOWN_TAG(Type.INVALID, "unknown tag"),
+    UNINITIALIZED_TABLE(Type.INVALID, "uninitialized table of non-nullable element type"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),

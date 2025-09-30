@@ -154,6 +154,10 @@ public class WasmInstantiator {
                     final WasmTable wasmTable = new WasmTable(tableMinSize, tableMaxSize, maxAllowedSize, tableElemType);
                     final int address = store.tables().register(wasmTable);
                     instance.setTableAddress(tableIndex, address);
+
+                    final byte[] initBytecode = module.tableInitializerBytecode(tableIndex);
+                    final Object initValue =  module.tableInitialValue(tableIndex);
+                    store.linker().resolveTableInitialization(instance, tableIndex, initBytecode, initValue);
                 });
             }
         }

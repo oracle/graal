@@ -121,9 +121,11 @@ public abstract class BuiltinModule {
             throw WasmException.create(Failure.MALFORMED_REFERENCE_TYPE, "Only reference types supported in tables.");
         } else if (!referenceTypes && type != WasmType.FUNCREF_TYPE) {
             throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Only function types are currently supported in tables.");
+        } else if (!WasmType.isNullable(type)) {
+            throw WasmException.create(Failure.UNINITIALIZED_TABLE, "Tables of built-in modules must be nullable.");
         }
         int index = module.symbolTable().tableCount();
-        module.symbolTable().allocateTable(index, initSize, maxSize, type, referenceTypes);
+        module.symbolTable().declareTable(index, initSize, maxSize, type, null, null, referenceTypes);
         module.symbolTable().exportTable(index, tableName);
         return index;
     }

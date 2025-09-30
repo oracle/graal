@@ -213,9 +213,9 @@ public abstract class SymbolTable {
         @Override
         public boolean matches(ClosedHeapType heapSubType) {
             return switch (this.value) {
-                case WasmType.FUNC_HEAPTYPE -> this == FUNC || heapSubType instanceof ClosedFunctionType;
-                case WasmType.EXTERN_HEAPTYPE -> this == EXTERN;
-                case WasmType.EXN_HEAPTYPE -> this == EXN;
+                case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedFunctionType;
+                case WasmType.EXTERN_HEAPTYPE -> heapSubType == EXTERN;
+                case WasmType.EXN_HEAPTYPE -> heapSubType == EXN;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -296,8 +296,10 @@ public abstract class SymbolTable {
      *            <em>Note:</em> this is the upper bound defined by the module. A table instance
      *            might have a lower internal max allowed size in practice.
      * @param elemType The element type of the table.
+     * @param initValue The initial value of the table's elements, can be {@code null} if no initializer present
+     * @param initBytecode The bytecode of the table's initializer expression, can be {@code null} if no initializer present
      */
-    public record TableInfo(int initialSize, int maximumSize, int elemType) {
+    public record TableInfo(int initialSize, int maximumSize, int elemType, Object initValue, byte[] initBytecode) {
     }
 
     /**
@@ -1106,9 +1108,9 @@ public abstract class SymbolTable {
         }
     }
 
-    public void allocateTable(int index, int declaredMinSize, int declaredMaxSize, int elemType, boolean referenceTypes) {
+    public void declareTable(int index, int declaredMinSize, int declaredMaxSize, int elemType, byte[] initBytecode, Object initValue, boolean referenceTypes) {
         checkNotParsed();
-        addTable(index, declaredMinSize, declaredMaxSize, elemType, referenceTypes);
+        addTable(index, declaredMinSize, declaredMaxSize, elemType, initValue, initBytecode, referenceTypes);
         module().addLinkAction((context, store, instance, imports) -> {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             module().limits().checkTableInstanceSize(declaredMinSize);
@@ -1121,12 +1123,14 @@ public abstract class SymbolTable {
             }
             final int address = store.tables().register(wasmTable);
             instance.setTableAddress(index, address);
+
+            store.linker().resolveTableInitialization(instance, index, initBytecode, initValue);
         });
     }
 
     void importTable(String moduleName, String tableName, int index, int initSize, int maxSize, int elemType, boolean referenceTypes) {
         checkNotParsed();
-        addTable(index, initSize, maxSize, elemType, referenceTypes);
+        addTable(index, initSize, maxSize, elemType, null, null, referenceTypes);
         final ImportDescriptor importedTable = new ImportDescriptor(moduleName, tableName, ImportIdentifier.TABLE, index, numImportedSymbols());
         importedTables.put(index, importedTable);
         importSymbol(importedTable);
@@ -1136,13 +1140,13 @@ public abstract class SymbolTable {
         });
     }
 
-    void addTable(int index, int minSize, int maxSize, int elemType, boolean referenceTypes) {
+    void addTable(int index, int minSize, int maxSize, int elemType, Object initValue, byte[] initBytecode, boolean referenceTypes) {
         if (!referenceTypes) {
             assertTrue(importedTables.isEmpty(), "A table has already been imported in the module.", Failure.MULTIPLE_TABLES);
             assertTrue(tableCount == 0, "A table has already been declared in the module.", Failure.MULTIPLE_TABLES);
         }
         ensureTableCapacity(index);
-        final TableInfo table = new TableInfo(minSize, maxSize, elemType);
+        final TableInfo table = new TableInfo(minSize, maxSize, elemType, initValue, initBytecode);
         tables[index] = table;
         tableCount++;
     }
@@ -1200,6 +1204,18 @@ public abstract class SymbolTable {
         final TableInfo table = tables[index];
         assert table != null;
         return table.elemType;
+    }
+
+    public Object tableInitialValue(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initValue;
+    }
+
+    public byte[] tableInitializerBytecode(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initBytecode;
     }
 
     private void ensureMemoryCapacity(int index) {

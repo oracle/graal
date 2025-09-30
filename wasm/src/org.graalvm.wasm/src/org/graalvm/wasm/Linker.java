@@ -84,6 +84,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportTagSym;
 import org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
+import org.graalvm.wasm.Linker.ResolutionDag.InitializeTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
@@ -790,6 +791,29 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
+    private static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {
+        int tableAddress = instance.tableAddress(tableIndex);
+        WasmTable table = instance.store().tables().table(tableAddress);
+        table.fill(0, table.size(), initValue);
+    }
+
+    void resolveTableInitialization(WasmInstance instance, int tableIndex, byte[] initBytecode, Object initValue) {
+        final Runnable resolveAction;
+        final Sym[] dependencies;
+        if (initValue != null) {
+            initializeTable(instance, tableIndex, initValue);
+            resolveAction = NO_RESOLVE_ACTION;
+            dependencies = ResolutionDag.NO_DEPENDENCIES;
+        } else if (initBytecode != null) {
+            resolveAction = () -> initializeTable(instance, tableIndex, evalConstantExpression(instance, initBytecode));
+            dependencies = dependenciesOfConstantExpression(instance, initBytecode).toArray(ResolutionDag.NO_DEPENDENCIES);
+        } else {
+            resolveAction = NO_RESOLVE_ACTION;
+            dependencies = ResolutionDag.NO_DEPENDENCIES;
+        }
+        resolutionDag.resolveLater(new InitializeTableSym(instance.name(), tableIndex), dependencies, resolveAction);
+    }
+
     void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, int elemType,
                     ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
@@ -829,13 +853,14 @@ public class Linker {
             assertIntEqual(elemType, importedTable.elemType(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
+        final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);
         Sym[] dependencies = new Sym[]{new ExportTableSym(importDescriptor.moduleName(), importDescriptor.memberName())};
-        resolutionDag.resolveLater(new ImportTableSym(instance.name(), importDescriptor), dependencies, resolveAction);
+        resolutionDag.resolveLater(importTableSym, dependencies, resolveAction);
+        resolutionDag.resolveLater(new InitializeTableSym(instance.name(), tableIndex), new Sym[]{importTableSym}, NO_RESOLVE_ACTION);
     }
 
     void resolveTableExport(WasmModule module, int tableIndex, String exportedTableName) {
-        final ImportDescriptor importDescriptor = module.symbolTable().importedTable(tableIndex);
-        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportTableSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
+        final Sym[] dependencies = new Sym[]{new InitializeTableSym(module.name(), tableIndex)};
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
@@ -933,9 +958,7 @@ public class Linker {
     void resolveElemSegment(WasmStore store, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, byte[] offsetBytecode, int bytecodeOffset, int elementCount) {
         final Runnable resolveAction = () -> immediatelyResolveElemSegment(store, instance, tableIndex, offsetAddress, offsetBytecode, bytecodeOffset, elementCount);
         final ArrayList<Sym> dependencies = new ArrayList<>();
-        if (instance.symbolTable().importedTable(tableIndex) != null) {
-            dependencies.add(new ImportTableSym(instance.name(), instance.symbolTable().importedTable(tableIndex)));
-        }
+        dependencies.add(new InitializeTableSym(instance.name(), tableIndex));
         if (elemSegmentId > 0) {
             dependencies.add(new ElemSym(instance.name(), elemSegmentId - 1));
         }
@@ -977,7 +1000,6 @@ public class Linker {
         }
         addElemItemDependencies(instance, bytecodeOffset, elementCount, dependencies);
         resolutionDag.resolveLater(new ElemSym(instance.name(), elemSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
-
     }
 
     public void immediatelyResolvePassiveElementSegment(WasmStore store, WasmInstance instance, int elemSegmentId, int bytecodeOffset, int elementCount) {
@@ -1351,6 +1373,30 @@ public class Linker {
                     return false;
                 }
                 return this.moduleName.equals(that.moduleName) && this.tableName.equals(that.tableName);
+            }
+        }
+
+        static class InitializeTableSym extends Sym {
+            final int tableIndex;
+
+            InitializeTableSym(String moduleName, int tableIndex) {
+                super(moduleName);
+                this.tableIndex = tableIndex;
+            }
+
+            @Override
+            public String toString() {
+                return String.format(Locale.ROOT, "(init table %d in %s)", tableIndex, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return Integer.hashCode(tableIndex) ^ moduleName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                return object instanceof InitializeTableSym that && this.tableIndex == that.tableIndex && this.moduleName.equals(that.moduleName);
             }
         }
 

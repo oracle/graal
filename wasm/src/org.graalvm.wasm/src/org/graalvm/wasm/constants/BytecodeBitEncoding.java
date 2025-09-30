@@ -146,6 +146,10 @@ public class BytecodeBitEncoding {
 
     // Elem items
 
+    public static final int ELEM_ITEM_REF_NULL_ENTRY_PREFIX = 0;
+    public static final int ELEM_ITEM_REF_FUNC_ENTRY_PREFIX = 1;
+    public static final int ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX = 2;
+
     public static final int ELEM_ITEM_TYPE_MASK = 0b1000_0000;
     public static final int ELEM_ITEM_TYPE_FUNCTION_INDEX = 0b0000_0000;
     public static final int ELEM_ITEM_TYPE_GLOBAL_INDEX = 0b1000_0000;

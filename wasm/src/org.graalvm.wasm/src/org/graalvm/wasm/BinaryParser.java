@@ -59,12 +59,14 @@ import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.FUNC_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
-import static org.graalvm.wasm.WasmType.NULL_TYPE;
 import static org.graalvm.wasm.WasmType.REF_NULL_TYPE_HEADER;
 import static org.graalvm.wasm.WasmType.REF_TYPE_HEADER;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_BLOCK_TYPE;
 import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
+import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_REF_FUNC_ENTRY_PREFIX;
+import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX;
+import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_REF_NULL_ENTRY_PREFIX;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
@@ -492,9 +494,25 @@ public class BinaryParser extends BinaryStreamParser {
         module.limits().checkTableCount(startingTableIndex + tableCount);
         for (int tableIndex = startingTableIndex; tableIndex != startingTableIndex + tableCount; tableIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final int elemType = readRefType(exceptions);
-            readTableLimits(multiResult);
-            module.symbolTable().allocateTable(tableIndex, multiResult[0], multiResult[1], elemType, bulkMemoryAndRefTypes);
+            final int elemType;
+            final Object initValue;
+            final byte[] initBytecode;
+            if (peek1(data, offset) == 0x40 && peek1(data, offset + 1) == 0x00) {
+                offset += 2;
+                elemType = readRefType(exceptions);
+                readTableLimits(multiResult);
+                Pair<Object, byte[]> initExpression = readConstantExpression(elemType);
+                initValue = initExpression.getLeft();
+                // Drop the initializer bytecode if we can eval the initializer during parsing
+                initBytecode = initValue == null ? initExpression.getRight() : null;
+            } else {
+                elemType = readRefType(exceptions);
+                readTableLimits(multiResult);
+                initValue = null;
+                initBytecode = null;
+                Assert.assertTrue(WasmType.isNullable(elemType), Failure.UNINITIALIZED_TABLE);
+            }
+            module.symbolTable().declareTable(tableIndex, multiResult[0], multiResult[1], elemType, initBytecode, initValue, bulkMemoryAndRefTypes);
         }
     }
 
@@ -2628,7 +2646,7 @@ public class BinaryParser extends BinaryStreamParser {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, true);
+        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE);
         if (result.getRight() == null) {
             return Pair.create((int) result.getLeft(), null);
         } else {
@@ -2637,7 +2655,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private Pair<Long, byte[]> readLongOffsetExpression() {
-        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, true);
+        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE);
         if (result.getRight() == null) {
             return Pair.create((long) result.getLeft(), null);
         } else {
@@ -2645,7 +2663,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private Pair<Object, byte[]> readConstantExpression(int resultType, boolean onlyImportedGlobals) {
+    private Pair<Object, byte[]> readConstantExpression(int resultType) {
         // Read the constant expression.
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
@@ -2717,12 +2735,6 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.GLOBAL_GET: {
                     final int index = readGlobalIndex();
-                    if (onlyImportedGlobals) {
-                        // The current WebAssembly spec says constant expressions can only refer to
-                        // imported globals. We can easily remove this restriction in the future.
-                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL,
-                                        "Constant expression in module '%s' refers to non-imported global %d.", module.name(), index);
-                    }
                     assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     state.push(module.symbolTable().globalValueType(index));
                     state.addUnsignedInstruction(Bytecode.GLOBAL_GET_U8, index);
@@ -2804,14 +2816,16 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private long[] readFunctionIndices() {
+    private long[] readFunctionIndices(int elemType) {
         final int functionIndexCount = readLength();
         final long[] functionIndices = new long[functionIndexCount];
         for (int index = 0; index != functionIndexCount; index++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int functionIndex = readDeclaredFunctionIndex();
             module.addFunctionReference(functionIndex);
-            functionIndices[index] = ((long) FUNCREF_TYPE << 32) | functionIndex;
+            final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
+            Assert.assertTrue(module.matches(elemType, functionReferenceType), Failure.TYPE_MISMATCH);
+            functionIndices[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
         }
         return functionIndices;
     }
@@ -2825,7 +2839,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private long[] readElemExpressions(int elemType) {
         final int expressionCount = readLength();
-        final long[] functionIndices = new long[expressionCount];
+        final long[] elements = new long[expressionCount];
         for (int index = 0; index != expressionCount; index++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             int opcode = read1() & 0xFF;
@@ -2850,21 +2864,21 @@ public class BinaryParser extends BinaryStreamParser {
                     final int heapType = readHeapType(exceptions);
                     final int nullableReferenceType = WasmType.withNullable(true, heapType);
                     Assert.assertTrue(module.matches(elemType, nullableReferenceType), "Invalid ref.null type: 0x%02X", Failure.TYPE_MISMATCH);
-                    functionIndices[index] = ((long) NULL_TYPE << 32);
+                    elements[index] = ((long) ELEM_ITEM_REF_NULL_ENTRY_PREFIX << 32);
                     break;
                 case Instructions.REF_FUNC:
                     final int functionIndex = readDeclaredFunctionIndex();
                     module.addFunctionReference(functionIndex);
                     final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
                     Assert.assertTrue(module.matches(elemType, functionReferenceType), "Invalid element type: 0x%02X", Failure.TYPE_MISMATCH);
-                    functionIndices[index] = ((long) FUNCREF_TYPE << 32) | functionIndex;
+                    elements[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
                     break;
                 case Instructions.GLOBAL_GET:
                     final int globalIndex = readGlobalIndex();
                     assertIntEqual(module.globalMutability(globalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     final int valueType = module.globalValueType(globalIndex);
                     Assert.assertTrue(module.matches(elemType, valueType), Failure.TYPE_MISMATCH);
-                    functionIndices[index] = ((long) I32_TYPE << 32) | globalIndex;
+                    elements[index] = ((long) ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX << 32) | globalIndex;
                     break;
                 case Instructions.VECTOR:
                     checkSIMDSupport();
@@ -2880,7 +2894,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
             readEnd();
         }
-        return functionIndices;
+        return elements;
     }
 
     private void readElementSection(RuntimeBytecodeGen bytecode) {
@@ -2925,9 +2939,11 @@ public class BinaryParser extends BinaryStreamParser {
                 } else {
                     if (useType) {
                         checkElemKind();
+                        elemType = FUNCREF_TYPE;
+                    } else {
+                        elemType = WasmType.withNullable(false, FUNC_HEAPTYPE);
                     }
-                    elemType = FUNCREF_TYPE;
-                    elements = readFunctionIndices();
+                    elements = readFunctionIndices(elemType);
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
@@ -2935,8 +2951,8 @@ public class BinaryParser extends BinaryStreamParser {
                 Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
                 currentOffsetAddress = offsetExpression.getLeft();
                 currentOffsetBytecode = offsetExpression.getRight();
-                elements = readFunctionIndices();
                 elemType = FUNCREF_TYPE;
+                elements = readFunctionIndices(elemType);
             }
 
             // Copy the contents, or schedule a linker task for this.
@@ -2960,14 +2976,14 @@ public class BinaryParser extends BinaryStreamParser {
             for (long element : elements) {
                 final int initType = (int) (element >> 32);
                 switch (initType) {
-                    case NULL_TYPE:
+                    case ELEM_ITEM_REF_NULL_ENTRY_PREFIX:
                         bytecode.addElemNull();
                         break;
-                    case FUNCREF_TYPE:
+                    case ELEM_ITEM_REF_FUNC_ENTRY_PREFIX:
                         final int functionIndex = (int) element;
                         bytecode.addElemFunctionIndex(functionIndex);
                         break;
-                    case I32_TYPE:
+                    case ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX:
                         final int globalIndex = (int) element;
                         bytecode.addElemGlobalIndex(globalIndex);
                         break;
@@ -3056,7 +3072,7 @@ public class BinaryParser extends BinaryStreamParser {
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            Pair<Object, byte[]> initExpression = readConstantExpression(type, true);
+            Pair<Object, byte[]> initExpression = readConstantExpression(type);
             final Object initValue = initExpression.getLeft();
             final byte[] initBytecode = initExpression.getRight();
             final boolean isInitialized = initBytecode == null;
