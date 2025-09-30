@@ -361,7 +361,8 @@
       "title": "Type descriptors used by GraalVM Native Image metadata files",
       "oneOf": [
         {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
         },
         {
           "type": "object",
@@ -372,7 +373,8 @@
               "default": [],
               "items": {
                 "title": "Fully-qualified name of the interface defining the proxy class",
-                "type": "string"
+                "type": "string",
+                "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
               }
             },
             "lambda": {
