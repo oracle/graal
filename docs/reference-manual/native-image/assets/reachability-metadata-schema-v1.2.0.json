@@ -282,7 +282,7 @@
                 "$ref": "#/$defs/condition"
               },
               "class": {
-                "type": "string",
+                "$ref": "#/$defs/className",
                 "title": "Fully-qualified class name (e.g., `org.package.OuterClass$InnerClass`)"
               },
               "method": {
@@ -328,6 +328,14 @@
   "additionalProperties": false,
 
   "$defs": {
+    "className": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*$"
+    },
+    "typeName": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
+    },
     "reason": {
       "title": "A reason(s) for including this element (e.g., needed for establishing connections, or needed by method X#Y for task Z)",
       "oneOf": [
@@ -361,8 +369,7 @@
       "title": "Type descriptors used by GraalVM Native Image metadata files",
       "oneOf": [
         {
-          "type": "string",
-          "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
+          "$ref": "#/$defs/typeName"
         },
         {
           "type": "object",
@@ -373,8 +380,7 @@
               "default": [],
               "items": {
                 "title": "Fully-qualified name of the interface defining the proxy class",
-                "type": "string",
-                "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
+                "$ref": "#/$defs/className"
               }
             },
             "lambda": {
@@ -383,7 +389,7 @@
               "properties": {
                 "declaringClass": {
                   "title": "The class in which the lambda class is defined",
-                  "$ref": "#/$defs/type"
+                  "$ref": "#/$defs/className"
                 },
                 "declaringMethod": {
                   "title": "The method in which the lambda class is defined",
@@ -395,7 +401,8 @@
                   "type": "array",
                   "items": {
                     "title": "Fully-qualified name of the interface implemented by the lambda class",
-                    "type": "string"
+                    "type": "string",
+                    "$ref": "#/$defs/className"
                   },
                   "minItems": 1
                 }
@@ -435,7 +442,7 @@
           "default": [],
           "items": {
             "title": "List of the method's parameter types",
-            "type": "string"
+            "$ref": "#/$defs/typeName"
           },
           "type": "array"
         }
