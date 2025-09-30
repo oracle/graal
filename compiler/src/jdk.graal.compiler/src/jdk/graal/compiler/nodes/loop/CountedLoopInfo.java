@@ -636,8 +636,8 @@ public class CountedLoopInfo {
             if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
                 try {
                     final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
-                    long tripCountMinus1 = LoopUtility.subtractExact(bits, LoopUtility.tripCountSignedExact(this), 1);
-                    long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), tripCountMinus1);
+                    final long signedTripCount = LoopUtility.tripCountSignedExact(this);
+                    final long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), signedTripCount);
                     @SuppressWarnings("unused")
                     long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
                     return true;
