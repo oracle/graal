@@ -47,6 +47,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -82,6 +83,15 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getArrayClass() {
         return (HotSpotResolvedObjectType) handle(getArrayClassMethod, getArrayClassInvokable);
+    }
+
+    private static final SymbolicMethod getPermittedSubclassesMethod = method("getPermittedSubclasses");
+    private static final InvokableMethod getPermittedSubclassesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getPermittedSubclasses();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<JavaType> getPermittedSubclasses() {
+        return (List<JavaType>) handle(getPermittedSubclassesMethod, getPermittedSubclassesInvokable);
     }
 
     @Override
