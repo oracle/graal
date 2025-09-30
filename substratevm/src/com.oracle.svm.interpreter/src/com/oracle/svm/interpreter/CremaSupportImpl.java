@@ -727,7 +727,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Object newInstance(ResolvedJavaMethod targetMethod, Object[] args) {
-        return Interpreter.newInstance((InterpreterResolvedJavaMethod) targetMethod, args);
+    public Object rawNewInstance(ResolvedJavaType type) {
+        return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
     }
 }

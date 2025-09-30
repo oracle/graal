@@ -61,7 +61,11 @@ public interface CremaSupport {
 
     void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
 
-    Object newInstance(ResolvedJavaMethod targetMethod, Object[] args);
+    /**
+     * Creates a new instance of {@code type} without running any constructor yet. The caller should
+     * make sure to run a constructor before publishing the result.
+     */
+    Object rawNewInstance(ResolvedJavaType type);
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args);
 

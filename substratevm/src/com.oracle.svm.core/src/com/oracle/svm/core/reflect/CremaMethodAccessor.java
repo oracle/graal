@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.lang.reflect.InvocationTargetException;
 
 @InternalVMMethod
 public final class CremaMethodAccessor extends AbstractCremaAccessor implements MethodAccessor {
@@ -54,7 +53,11 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
         Object[] finalArgs = new Object[args.length + 1];
         finalArgs[0] = obj;
         System.arraycopy(args, 0, finalArgs, 1, args.length);
-        return CremaSupport.singleton().execute(targetMethod, finalArgs);
+        try {
+            return CremaSupport.singleton().execute(targetMethod, finalArgs);
+        } catch (Throwable t) {
+            throw new InvocationTargetException(t);
+        }
     }
 
     @Override
