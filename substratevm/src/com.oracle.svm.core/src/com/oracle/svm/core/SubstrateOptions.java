@@ -1370,10 +1370,10 @@ public class SubstrateOptions {
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
 
-    @Option(help = "Name of a csv file into which heap metadata should be dumped. " +
+    @Option(help = "Name of a csv file into which image heap metadata should be dumped. " +
                     "This csv file will be located in the same directory as the image. " +
                     "If this option is an empty string, the metadata will not be dumped.") //
-    public static final HostedOptionKey<String> HeapMetadataDumpFileName = new HostedOptionKey<>("");
+    public static final HostedOptionKey<String> ImageHeapMetadataDumpFileName = new HostedOptionKey<>("");
 
     @Option(help = "Print some VM information and exit.")//
     public static final RuntimeOptionKey<Boolean> PrintVMInfoAndExit = new RuntimeOptionKey<>(false, Immutable);
