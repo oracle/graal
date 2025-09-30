@@ -799,10 +799,10 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     /**
-     * Dumps metadata for every object in the heap.
+     * Dumps metadata for every object in the image heap.
      */
     public void dumpMetadata() {
-        String metadataFileName = SubstrateOptions.HeapMetadataDumpFileName.getValue();
+        String metadataFileName = SubstrateOptions.ImageHeapMetadataDumpFileName.getValue();
         if (metadataFileName == null || metadataFileName.isEmpty()) {
             // Do not dump metadata if the file name isn't set
             return;
@@ -812,7 +812,7 @@ public final class NativeImageHeap implements ImageHeap {
         File metadataFile = metadataFilePath.toFile();
         String metadataDir = metadataFile.getParent();
         if (!new File(metadataDir).exists()) {
-            throw VMError.shouldNotReachHere("Heap metadata directory does not exist: " + metadataDir);
+            throw VMError.shouldNotReachHere("Image heap metadata directory does not exist: " + metadataDir);
         }
 
         try (FileWriter metadataOut = new FileWriter(metadataFile);
@@ -823,7 +823,7 @@ public final class NativeImageHeap implements ImageHeap {
                 metadataBw.write(csvLine);
             }
         } catch (IOException ex) {
-            throw new RuntimeException("Failed to dump heap metadata to " + metadataFile, ex);
+            throw new RuntimeException("Failed to dump image heap metadata to " + metadataFile, ex);
         }
     }
 
