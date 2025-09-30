@@ -1693,7 +1693,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    private native Class<?>[] getPermittedSubclasses();
+    public native Class<?>[] getPermittedSubclasses();
 
     @Substitute
     private static ReflectionFactory getReflectionFactory() {
