@@ -326,9 +326,10 @@ public class DebugOptions {
     }
 
     /**
-     * This circumvents instantiating SimpleDateFormat at libgraal runtime. This is needed to avoid
-     * String-based class-lookup (to find resource bundle sun.text.resources.cldr.FormatData as part
-     * of SimpleDateFormat construction) and allows us to avoid class-lookup support in the image.
+     * This circumvents instantiating {@link SimpleDateFormat} at libgraal runtime. This is needed
+     * to avoid String-based class-lookup (to find resource bundle
+     * {@code sun.text.resources.cldr.FormatData} as part of {@link SimpleDateFormat} construction)
+     * and allows us to avoid class-lookup support in the image.
      */
     private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
 
@@ -348,8 +349,8 @@ public class DebugOptions {
             dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
-            // SimpleDateFormat is not thread-safe
             String dateString;
+            // SimpleDateFormat is not thread-safe
             synchronized (SIMPLE_DATE_FORMAT) {
                 dateString = SIMPLE_DATE_FORMAT.format(date);
             }
