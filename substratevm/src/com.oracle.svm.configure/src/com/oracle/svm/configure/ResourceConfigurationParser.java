@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.LocaleUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -42,9 +42,9 @@ import jdk.graal.compiler.util.json.JsonParserException;
 public abstract class ResourceConfigurationParser<C> extends ConditionalConfigurationParser {
     protected final ResourcesRegistry<C> registry;
 
-    protected final ConfigurationConditionResolver<C> conditionResolver;
+    protected final AccessConditionResolver<C> conditionResolver;
 
-    public static <C> ResourceConfigurationParser<C> create(boolean combinedFileSchema, ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry,
+    public static <C> ResourceConfigurationParser<C> create(boolean combinedFileSchema, AccessConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         if (combinedFileSchema) {
             return new ResourceMetadataParser<>(conditionResolver, registry, parserOptions);
@@ -53,7 +53,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         }
     }
 
-    protected ResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
+    protected ResourceConfigurationParser(AccessConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, EnumSet<ConfigurationParserOption> parserOptions) {
         super(parserOptions);
         this.registry = registry;
         this.conditionResolver = conditionResolver;
@@ -66,15 +66,15 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         }
     }
 
-    protected abstract UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> condition);
+    protected abstract UnresolvedAccessCondition parseCondition(EconomicMap<String, Object> condition);
 
     protected void parseBundle(Object bundle, boolean inResourcesSection) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         String bundleNameAttribute = inResourcesSection ? BUNDLE_KEY : NAME_KEY;
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList(MODULE_KEY, "locales", "classNames", "condition"));
         String basename = asString(resource.get(bundleNameAttribute));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
-        if (!resolvedConfigurationCondition.isPresent()) {
+        TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        if (!resolvedAccessCondition.isPresent()) {
             return;
         }
         // TODO GR-67556 - Add full support for MODULE_KEY in ResourceBundle configurations
@@ -85,7 +85,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
             if (!asList.isEmpty()) {
-                registry.addResourceBundles(resolvedConfigurationCondition.get(), basename, asList);
+                registry.addResourceBundles(resolvedAccessCondition.get(), basename, asList);
             }
 
         }
@@ -94,12 +94,12 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
             for (Object o : asList) {
                 String className = asString(o);
-                registry.addClassBasedResourceBundle(resolvedConfigurationCondition.get(), basename, className);
+                registry.addClassBasedResourceBundle(resolvedAccessCondition.get(), basename, className);
             }
         }
         if (locales == null && classNames == null) {
             /* If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundles(resolvedConfigurationCondition.get(), basename);
+            registry.addResourceBundles(resolvedAccessCondition.get(), basename);
         }
     }
 
@@ -127,8 +127,8 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
         checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY),
                         List.of(CONDITIONAL_KEY, MODULE_KEY));
-        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(globObject));
-        if (!resolvedConfigurationCondition.isPresent()) {
+        TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(globObject));
+        if (!resolvedAccessCondition.isPresent()) {
             return;
         }
 
@@ -137,6 +137,6 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
 
         Object valueObject = globObject.get(GLOB_KEY);
         String value = asString(valueObject, GLOB_KEY);
-        resourceRegistry.accept(resolvedConfigurationCondition.get(), module, value);
+        resourceRegistry.accept(resolvedAccessCondition.get(), module, value);
     }
 }

@@ -34,7 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
@@ -54,7 +54,7 @@ class JniProcessor extends AbstractProcessor {
     @Override
     @SuppressWarnings("fallthrough")
     void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
-        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
+        UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -180,7 +180,7 @@ class JniProcessor extends AbstractProcessor {
         }
     }
 
-    private static ConfigurationType getOrCreateJniAccessibleType(TypeConfiguration config, UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeName) {
+    private static ConfigurationType getOrCreateJniAccessibleType(TypeConfiguration config, UnresolvedAccessCondition condition, ConfigurationTypeDescriptor typeName) {
         ConfigurationType type = config.getOrCreateType(condition, typeName);
         type.setJniAccessible();
         return type;

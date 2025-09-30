@@ -28,7 +28,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.util.VMError;
@@ -40,108 +40,108 @@ public class JNIRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerPublicClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPublicClasses(AccessCondition condition, Class<?> type) {
         registry.register(condition, type.getClasses());
     }
 
     @Override
-    public void registerDeclaredClasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerDeclaredClasses(AccessCondition condition, Class<?> type) {
         registry.register(condition, type.getDeclaredClasses());
     }
 
     @Override
-    public void registerRecordComponents(ConfigurationCondition condition, Class<?> type) {
+    public void registerRecordComponents(AccessCondition condition, Class<?> type) {
         VMError.shouldNotReachHere("Record components cannot be accessed through JNI registrations");
     }
 
     @Override
-    public void registerPermittedSubclasses(ConfigurationCondition condition, Class<?> type) {
+    public void registerPermittedSubclasses(AccessCondition condition, Class<?> type) {
         VMError.shouldNotReachHere("Permitted subclasses cannot be accessed through JNI registrations");
     }
 
     @Override
-    public void registerNestMembers(ConfigurationCondition condition, Class<?> type) {
+    public void registerNestMembers(AccessCondition condition, Class<?> type) {
         VMError.shouldNotReachHere("Nest members cannot be accessed through JNI registrations");
     }
 
     @Override
-    public void registerSigners(ConfigurationCondition condition, Class<?> type) {
+    public void registerSigners(AccessCondition condition, Class<?> type) {
         VMError.shouldNotReachHere("Signers cannot be accessed through JNI registrations");
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerPublicFields(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerPublicFields(condition, queriedOnly, false, type);
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerDeclaredFields(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerDeclaredFields(condition, queriedOnly, false, type);
     }
 
     @Override
-    public void registerPublicMethods(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerPublicMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerPublicMethods(condition, queriedOnly, false, type);
     }
 
     @Override
-    public void registerDeclaredMethods(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerDeclaredMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerDeclaredMethods(condition, queriedOnly, false, type);
     }
 
     @Override
-    public void registerPublicConstructors(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerPublicConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerPublicConstructors(condition, queriedOnly, false, type);
     }
 
     @Override
-    public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
+    public void registerDeclaredConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         ensureJniAccessible(jniAccessible);
         super.registerDeclaredConstructors(condition, queriedOnly, false, type);
     }
 
     @Override
-    protected void registerField(ConfigurationCondition condition, boolean allowWrite, boolean jniAccessible, Field field) {
+    protected void registerField(AccessCondition condition, boolean allowWrite, boolean jniAccessible, Field field) {
         ensureJniAccessible(jniAccessible);
         super.registerField(condition, allowWrite, true, field);
     }
 
     @Override
-    protected void registerFieldNegativeQuery(ConfigurationCondition condition, boolean jniAccessible, Class<?> type, String fieldName) {
+    protected void registerFieldNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String fieldName) {
         ensureJniAccessible(jniAccessible);
         super.registerFieldNegativeQuery(condition, true, type, fieldName);
     }
 
     @Override
-    protected void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
+    protected void registerExecutable(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
         ensureJniAccessible(jniAccessible);
         super.registerExecutable(condition, queriedOnly, true, executable);
     }
 
     @Override
-    protected void registerMethodNegativeQuery(ConfigurationCondition condition, boolean jniAccessible, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) {
+    protected void registerMethodNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) {
         ensureJniAccessible(jniAccessible);
         super.registerMethodNegativeQuery(condition, true, type, methodName, methodParameterTypes);
     }
 
     @Override
-    protected void registerConstructorNegativeQuery(ConfigurationCondition condition, boolean jniAccessible, Class<?> type, List<Class<?>> constructorParameterTypes) {
+    protected void registerConstructorNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, List<Class<?>> constructorParameterTypes) {
         ensureJniAccessible(jniAccessible);
         super.registerConstructorNegativeQuery(condition, true, type, constructorParameterTypes);
     }
 
     @Override
-    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAsSerializable(AccessCondition condition, Class<?> clazz) {
         VMError.shouldNotReachHere("serializable cannot be set on JNI registrations");
     }
 
     @Override
-    public void registerAsJniAccessed(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAsJniAccessed(AccessCondition condition, Class<?> clazz) {
         VMError.shouldNotReachHere("jniAccessible cannot be set on JNI registrations");
     }
 

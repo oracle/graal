@@ -28,16 +28,16 @@ import java.io.IOException;
 import java.util.Objects;
 
 import com.oracle.svm.configure.SerializationConfigurationParser;
-import com.oracle.svm.configure.UnresolvedConfigurationCondition;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class SerializationConfigurationLambdaCapturingType implements JsonPrintable, Comparable<SerializationConfigurationLambdaCapturingType> {
-    private final UnresolvedConfigurationCondition condition;
+    private final UnresolvedAccessCondition condition;
     private final String qualifiedJavaName;
 
-    public SerializationConfigurationLambdaCapturingType(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
+    public SerializationConfigurationLambdaCapturingType(UnresolvedAccessCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         Objects.requireNonNull(condition);
         this.condition = condition;
@@ -45,7 +45,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
-    public UnresolvedConfigurationCondition getCondition() {
+    public UnresolvedAccessCondition getCondition() {
         return condition;
     }
 
@@ -56,7 +56,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(condition, writer, false);
+        AccessConditionPrintable.printConditionAttribute(condition, writer, false);
 
         writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(qualifiedJavaName);
         writer.unindent().newline().append('}');

@@ -48,7 +48,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 //Checkstyle: allow reflection
@@ -69,7 +69,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), classes);
     }
 
     /**
@@ -80,7 +80,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerClassLookup(String className) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), className);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(AccessCondition.unconditional(), className);
     }
 
     /**
@@ -91,7 +91,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, methods);
     }
 
     /**
@@ -103,7 +103,7 @@ public final class RuntimeReflection {
      * @since 21.3
      */
     public static void registerAsQueried(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), true, methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), true, methods);
     }
 
     /**
@@ -116,7 +116,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), declaringClass, methodName, parameterTypes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), declaringClass, methodName, parameterTypes);
     }
 
     /**
@@ -130,7 +130,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(ConfigurationCondition.alwaysTrue(), declaringClass, parameterTypes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(AccessCondition.unconditional(), declaringClass, parameterTypes);
     }
 
     /**
@@ -141,7 +141,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, fields);
     }
 
     /**
@@ -153,7 +153,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(ConfigurationCondition.alwaysTrue(), declaringClass, fieldName);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(AccessCondition.unconditional(), declaringClass, fieldName);
     }
 
     /**
@@ -162,7 +162,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllClasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -171,7 +171,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredClasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -181,7 +181,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllMethods(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(AccessCondition.unconditional(), true, declaringClass);
     }
 
     /**
@@ -191,7 +191,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredMethods(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(AccessCondition.unconditional(), true, declaringClass);
     }
 
     /**
@@ -201,7 +201,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllConstructors(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(AccessCondition.unconditional(), true, declaringClass);
     }
 
     /**
@@ -211,7 +211,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, declaringClass);
     }
 
     /**
@@ -221,7 +221,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFields(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFields(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -231,7 +231,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -240,7 +240,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllNestMembers(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -249,7 +249,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -258,7 +258,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllRecordComponents(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
@@ -267,7 +267,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllSigners(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**

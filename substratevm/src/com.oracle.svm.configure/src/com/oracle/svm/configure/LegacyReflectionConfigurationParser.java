@@ -33,7 +33,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.TypeResult;
 
 final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigurationParser<C, T> {
@@ -44,7 +44,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated", "serializable");
 
-    LegacyReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
+    LegacyReflectionConfigurationParser(AccessConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, delegate, parserOptions);
     }
 
@@ -76,7 +76,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          */
         boolean isType = type.get().definedAsType();
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, false);
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;

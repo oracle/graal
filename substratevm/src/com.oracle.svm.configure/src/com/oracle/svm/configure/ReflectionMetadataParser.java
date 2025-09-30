@@ -33,7 +33,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.TypeResult;
 
 class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
@@ -41,7 +41,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
                     "allDeclaredConstructors", "allPublicConstructors", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "methods", "fields", "unsafeAllocated", "serializable", "jniAccessible");
 
-    ReflectionMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
+    ReflectionMetadataParser(AccessConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate,
                     EnumSet<ConfigurationParserOption> parserOptions) {
         super(conditionResolver, delegate, parserOptions);
     }
@@ -64,7 +64,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        UnresolvedAccessCondition unresolvedCondition = parseCondition(data, true);
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;
