@@ -7,6 +7,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-43070) Add a new API flag `-Werror` to treat warnings as errors.
 * (GR-69280) Allow use of the `graal.` prefix for options without issuing a warning.
 * (GR-2092) Add jitdump support for recording run-time compilation metadata for perf (see PerfProfiling.md). Can be enabled with `-g -H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump`.
+* (GR-69572) Deprecates the `native-image-inspect` tool. To extract embedded SBOMs, use `native-image-configure extract-sbom --image-path=<path_to_binary>`.
 
 ## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
