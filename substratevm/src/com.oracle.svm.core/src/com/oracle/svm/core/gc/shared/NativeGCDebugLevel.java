@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.gc.shared;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+/** Defines which debug-levels are supported for GCs such as G1. */
+public enum NativeGCDebugLevel {
+    Product("", 0),
+    FastDebug("-fastdebug", 1),
+    Debug("-debug", 2);
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+    private final String libSuffix;
+    private final int index;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+    NativeGCDebugLevel(String libSuffix, int index) {
+        this.libSuffix = libSuffix;
+        this.index = index;
+    }
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
+    public String getLibSuffix() {
+        return libSuffix;
+    }
 
-    /** Human-readable name. */
-    String getName();
+    public int getIndex() {
+        return index;
+    }
 
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
+    public static NativeGCDebugLevel fromString(String value) {
+        return switch (value) {
+            case "product" -> Product;
+            case "fastdebug" -> FastDebug;
+            case "debug" -> Debug;
+            default -> null;
+        };
+    }
 }

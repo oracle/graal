@@ -2103,6 +2103,7 @@ suite = {
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
                             "file:debug/include",
+                            "file:src/com.oracle.svm.core/src/com/oracle/svm/core/gc/shared/include",
                         ],
                     },
                 },
