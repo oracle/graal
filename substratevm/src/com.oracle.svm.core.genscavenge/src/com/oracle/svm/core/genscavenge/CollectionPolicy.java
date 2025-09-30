@@ -31,6 +31,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -216,5 +217,13 @@ public interface CollectionPolicy {
     /** Can be overridden to recover from OOM. */
     default boolean isOutOfMemory(UnsignedWord usedBytes) {
         return usedBytes.aboveThan(getMaximumHeapSize());
+    }
+
+    /**
+     * Invoked after a garbage collection when the maximum heap size has been exceeded. Can be
+     * overridden to recover from OOM.
+     */
+    default void onMaximumHeapSizeExceeded() {
+        throw OutOfMemoryUtil.heapSizeExceeded();
     }
 }
