@@ -8,9 +8,9 @@ redirect_from: /reference-manual/native-image/inspect/
 
 # Native Image Inspect Tool
 
-> The Native Image Inspect Tool is deprecated and will be removed in a future release. To extract embedded SBOMs, use: 
+> **The Native Image Inspect Tool is deprecated and will be removed in a future release**. To extract embedded SBOMs, use: 
 > ```bash
-> $JAVA_HOME/bin/native-image-configure extract-sbom --image-path=<path>
+> $JAVA_HOME/bin/native-image-configure extract-sbom --image-path=<path_to_binary>
 > ```
 
 The Native Image Inspect Tool extracts embedded Software Bill of Materials (SBOM) from native executables. The functionality for extracting class-level metadata is no longer supported.
