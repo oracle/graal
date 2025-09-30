@@ -40,10 +40,10 @@ class LibGraalSubstitutions {
 
     @TargetClass(className = "jdk.vm.ci.services.Services", onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_vm_ci_services_Services {
-        /*
-         * Static final boolean field Services.IS_IN_NATIVE_IMAGE is used in many places in the
-         * JVMCI codebase to switch between the different implementations needed for regular use (a
-         * built-in module jdk.graal.compiler in the JVM) or as part of libgraal.
+        /**
+         * Static final boolean field {@code Services.IS_IN_NATIVE_IMAGE} is used in many places in
+         * the JVMCI codebase to switch between the different implementations needed for regular use
+         * (a built-in module {@code jdk.graal.compiler} in the JVM) or as part of libgraal.
          */
         // Checkstyle: stop
         @Alias //
@@ -55,15 +55,15 @@ class LibGraalSubstitutions {
     @TargetClass(className = "jdk.vm.ci.hotspot.Cleaner", onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_vm_ci_hotspot_Cleaner {
 
-        /*
-         * Make package-private clean() accessible so that it can be called from
-         * LibGraalEntryPoints.doReferenceHandling().
+        /**
+         * Make package-private {@code clean()} accessible so that it can be called from
+         * {@link LibGraalSupportImpl#doReferenceHandling()}.
          */
         @Alias
         public static native void clean();
     }
 
-    /*
+    /**
      * There are no String-based class-lookups happening at libgraal runtime. Thus, we can safely
      * prune all classloading-logic out of the image.
      */
@@ -87,14 +87,6 @@ class LibGraalSubstitutions {
         }
     }
 
-    @TargetClass(value = java.lang.Module.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_java_lang_Module {
-        @Substitute
-        public Set<String> getPackages() {
-            return Collections.emptySet();
-        }
-    }
-
     @TargetClass(value = java.lang.ClassLoader.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_java_lang_ClassLoader {
         @Substitute
@@ -108,13 +100,43 @@ class LibGraalSubstitutions {
         }
     }
 
+    /**
+     * Method {@link Module#getPackages()} is reachable via {@link java.util.Formatter}:
+     *
+     * <pre>
+     * java.lang.Module.getPackages(Module.java:1166)
+     *    at java.lang.Module.getResourceAsStream(Module.java:1687)
+     *    at sun.util.resources.BreakIteratorResourceBundle.handleGetObject(BreakIteratorResourceBundle.java:72)
+     *    at java.util.ResourceBundle.getObject(ResourceBundle.java:549)
+     *    at java.util.ResourceBundle.getStringArray(ResourceBundle.java:532)
+     *    at sun.util.locale.provider.LocaleResources.getNumberStrings(LocaleResources.java:244)
+     *    at sun.util.locale.provider.LocaleResources.getNumberPatterns(LocaleResources.java:544)
+     *    at java.util.Formatter$FormatSpecifier.localizedMagnitude(Formatter.java:4719)
+     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3511)
+     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3496)
+     *    at java.util.Formatter$FormatSpecifier.printInteger(Formatter.java:3194)
+     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3155)
+     *    at java.util.Formatter.format(Formatter.java:2754)
+     * </pre>
+     *
+     * It makes use of classloading-logic that we do not want to have in libgraal. Since this
+     * code-path is not needed at runtime we can replace the implementation with a simple stub.
+     */
+    @TargetClass(value = java.lang.Module.class, onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_lang_Module {
+        @Substitute
+        public Set<String> getPackages() {
+            return Collections.emptySet();
+        }
+    }
+
     @TargetClass(value = java.text.DateFormatSymbols.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_java_text_DateFormatSymbols {
-        /*
-         * DateFormatSymbols.getInstance(Locale) relies on String-based class-lookup (to find
-         * resource bundle sun.text.resources.cldr.FormatData) which we do not want to rely on at
-         * libgraal runtime because it increases image size too much. Instead, we return the
-         * DateFormatSymbols instance that we already have in the image heap.
+        /**
+         * {@link DateFormatSymbols#getInstance(Locale)} relies on String-based class-lookup (to
+         * find resource bundle {@code sun.text.resources.cldr.FormatData}) which we do not want to
+         * rely on at libgraal runtime because it increases image size too much. Instead, we return
+         * the DateFormatSymbols instance that we already have in the image heap.
          */
         @Substitute
         public static DateFormatSymbols getInstance(Locale unused) {
