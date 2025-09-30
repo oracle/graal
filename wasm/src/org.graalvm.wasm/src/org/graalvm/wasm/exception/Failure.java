@@ -147,7 +147,7 @@ public enum Failure {
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
 
-    NULL_REFERENCE(Type.TRAP, "defined element is ref.null"),
+    NULL_REFERENCE(Type.TRAP, "null reference"),
     NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     // GraalWasm-specific:

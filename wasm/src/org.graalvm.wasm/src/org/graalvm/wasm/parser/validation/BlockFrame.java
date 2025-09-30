@@ -54,8 +54,6 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  * Representation of a wasm block during module validation.
  */
 class BlockFrame extends ControlFrame {
-    private static final int[] EMPTY_ARRAY = new int[0];
-
     private final IntArrayList branches;
     private final ArrayList<ExceptionHandler> exceptionHandlers;
 
@@ -69,14 +67,14 @@ class BlockFrame extends ControlFrame {
         this(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
     }
 
-    static BlockFrame createFunctionFrame(int[] resultTypes, int[] locals) {
+    static BlockFrame createFunctionFrame(int[] paramTypes, int[] resultTypes, int[] locals) {
         BitSet initializedLocals = new BitSet(locals.length);
         for (int localIndex = 0; localIndex < locals.length; localIndex++) {
-            if (WasmType.hasDefaultValue(locals[localIndex])) {
+            if (localIndex < paramTypes.length || WasmType.hasDefaultValue(locals[localIndex])) {
                 initializedLocals.set(localIndex);
             }
         }
-        return new BlockFrame(EMPTY_ARRAY, resultTypes, 0, initializedLocals);
+        return new BlockFrame(paramTypes, resultTypes, 0, initializedLocals);
     }
 
     @Override
