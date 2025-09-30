@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -37,6 +38,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -90,6 +92,11 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
 
     @Override
     public ResolvedJavaType getComponentType() {
+        return null;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
         return null;
     }
 

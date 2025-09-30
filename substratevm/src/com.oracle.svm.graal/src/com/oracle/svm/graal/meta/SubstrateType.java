@@ -26,6 +26,8 @@ package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,6 +45,7 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -63,6 +66,9 @@ public class SubstrateType implements SharedType {
 
     @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
     protected DynamicHub uniqueConcreteImplementation;
+
+    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
+    protected SubstrateType[] permittedSubclasses;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;
@@ -299,6 +305,21 @@ public class SubstrateType implements SharedType {
             return null;
         }
         return SubstrateMetaAccess.singleton().lookupJavaTypeFromHub(hub.getArrayHub());
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
+        if (hubPermittedSubclasses == null) {
+            return null;
+        }
+        if (permittedSubclasses == null) {
+            permittedSubclasses = new SubstrateType[hubPermittedSubclasses.length];
+            for (int i = 0; i < hubPermittedSubclasses.length; i++) {
+                permittedSubclasses[i] = SubstrateMetaAccess.singleton().lookupJavaType(hubPermittedSubclasses[i]);
+            }
+        }
+        return Collections.unmodifiableList(Arrays.asList(permittedSubclasses));
     }
 
     @Override

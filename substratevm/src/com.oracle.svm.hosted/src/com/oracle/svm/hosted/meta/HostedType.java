@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -40,6 +44,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -60,6 +65,8 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final HostedInterface[] interfaces;
 
     protected HostedArrayClass arrayType;
+    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
+    private List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
@@ -402,6 +409,18 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public final HostedArrayClass getArrayClass() {
         return arrayType;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        if (isPrimitive() || isArray()) {
+            return null;
+        }
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
+            List<JavaType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
+            permittedSubclasses = aPermittedSubclasses == null ? null : aPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
+        }
+        return permittedSubclasses;
     }
 
     public HostedType getArrayClass(int dimension) {
