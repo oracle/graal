@@ -549,8 +549,7 @@ public class Linker {
             final WasmTag importedTag;
             final WasmTag externalTag = lookupImportObject(instance, importDescriptor, imports, WasmTag.class);
             if (externalTag != null) {
-                final int contextTagIndex = store.tags().register(externalTag);
-                importedTag = store.tags().tag(contextTagIndex);
+                importedTag = externalTag;
                 assert tagIndex == importDescriptor.targetIndex();
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);

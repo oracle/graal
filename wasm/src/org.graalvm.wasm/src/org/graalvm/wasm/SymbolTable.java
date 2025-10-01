@@ -1165,9 +1165,7 @@ public abstract class SymbolTable {
         addTag(index, attribute, typeIndex);
         module().addLinkAction((context, store, instance, imports) -> {
             final WasmTag tag = new WasmTag(typeAt(typeIndex));
-            final int tagAddress = store.tags().register(tag);
-            final WasmTag allocatedTag = store.tags().tag(tagAddress);
-            instance.setTag(index, allocatedTag);
+            instance.setTag(index, tag);
         });
     }
 
