@@ -147,7 +147,9 @@ public class CremaSupportImpl implements CremaSupport {
             return;
         }
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);
-        method.setNativeEntryPoint(new MethodPointer(analysisMethod));
+        if (!method.isAbstract()) {
+            method.setNativeEntryPoint(new MethodPointer(analysisMethod));
+        }
         methods.add(method);
     }
 
