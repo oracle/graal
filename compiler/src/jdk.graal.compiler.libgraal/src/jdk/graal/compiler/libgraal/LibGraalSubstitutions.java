@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import java.io.IOException;
 import java.text.DateFormatSymbols;
+import java.time.temporal.TemporalAccessor;
+import java.util.Formatter;
 import java.util.Locale;
-import java.util.Set;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -100,37 +102,132 @@ class LibGraalSubstitutions {
         }
     }
 
-    /**
-     * Method {@link Module#getPackages()} is reachable via {@link java.util.Formatter}:
-     *
-     * <pre>
-     * java.lang.Module.getPackages(Module.java:1166)
-     *    at java.lang.Module.getResourceAsStream(Module.java:1687)
-     *    at sun.util.resources.BreakIteratorResourceBundle.handleGetObject(BreakIteratorResourceBundle.java:72)
-     *    at java.util.ResourceBundle.getObject(ResourceBundle.java:549)
-     *    at java.util.ResourceBundle.getStringArray(ResourceBundle.java:532)
-     *    at sun.util.locale.provider.LocaleResources.getNumberStrings(LocaleResources.java:244)
-     *    at sun.util.locale.provider.LocaleResources.getNumberPatterns(LocaleResources.java:544)
-     *    at java.util.Formatter$FormatSpecifier.localizedMagnitude(Formatter.java:4719)
-     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3511)
-     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3496)
-     *    at java.util.Formatter$FormatSpecifier.printInteger(Formatter.java:3194)
-     *    at java.util.Formatter$FormatSpecifier.print(Formatter.java:3155)
-     *    at java.util.Formatter.format(Formatter.java:2754)
-     * </pre>
-     *
-     * It makes use of classloading-logic that we do not want to have in libgraal. Since this
-     * code-path is not needed at runtime we can replace the implementation with a simple stub.
-     */
-    @TargetClass(value = java.lang.Module.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_java_lang_Module {
-        @Alias
-        public native String getName();
+    @TargetClass(className = "java.util.Formatter$FormatSpecifier", onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_util_Formatter_FormatSpecifier {
 
+        /**
+         * Custom version of
+         * {@code java.util.Formatter.FormatSpecifier#localizedMagnitude(java.util.Formatter, java.lang.StringBuilder, java.lang.CharSequence, int, int, int, java.util.Locale)}
+         * where the given locale is unconditionally replaced with {@code null}). Since the original
+         * method was already able to accept `null` as locale, the substitution is straightforward.
+         * The substitution does not contain any code path that requires dynamic class or resource
+         * lookup.
+         */
         @Substitute
-        public Set<String> getPackages() {
-            throw GraalError.unimplemented("Module.getPackages() for module " + getName() + " (class loading not supported in libgraal)");
+        StringBuilder localizedMagnitude(Formatter fmt, StringBuilder sb,
+                        CharSequence value, final int offset, int f, int width,
+                        Locale unused) {
+            if (sb == null) {
+                sb = new StringBuilder();
+            }
+            int begin = sb.length();
+
+            char zero = '0'; // getZero(l);
+
+            // determine localized grouping separator and size
+            char grpSep = '\0';
+            int grpSize = -1;
+            char decSep = '\0';
+
+            int len = value.length();
+            int dot = len;
+            for (int j = offset; j < len; j++) {
+                if (value.charAt(j) == '.') {
+                    dot = j;
+                    break;
+                }
+            }
+
+            if (dot < len) {
+                decSep = '.'; // getDecimalSeparator(l);
+            }
+
+            if (Target_java_util_Formatter_Flags.contains(f, Target_java_util_Formatter_Flags.GROUP)) {
+                grpSep = ','; // getGroupingSeparator(l);
+
+                Locale l = null;
+                if (l == null || l.equals(Locale.US)) {
+                    grpSize = 3;
+                } else {
+                    throw GraalError.shouldNotReachHere("localizedMagnitude with l != null");
+                }
+            }
+
+            // localize the digits inserting group separators as necessary
+            for (int j = offset; j < len; j++) {
+                if (j == dot) {
+                    sb.append(decSep);
+                    // no more group separators after the decimal separator
+                    grpSep = '\0';
+                    continue;
+                }
+
+                char c = value.charAt(j);
+                sb.append((char) ((c - '0') + zero));
+                if (grpSep != '\0' && j != dot - 1 && ((dot - j) % grpSize == 1)) {
+                    sb.append(grpSep);
+                }
+            }
+
+            // apply zero padding
+            if (width > sb.length() && Target_java_util_Formatter_Flags.contains(f, Target_java_util_Formatter_Flags.ZERO_PAD)) {
+                String zeros = String.valueOf(zero).repeat(width - sb.length());
+                sb.insert(begin, zeros);
+            }
+
+            return sb;
         }
+
+        /**
+         * Custom version of
+         * {@code java.util.Formatter.FormatSpecifier#print(java.util.Formatter, java.time.temporal.TemporalAccessor, char, java.util.Locale)}
+         * where the given locale is unconditionally replaced with {@code null}). Since the original
+         * method was already able to accept `null` as locale, the substitution is straightforward.
+         * The substitution does not contain any code path that requires dynamic class or resource
+         * lookup.
+         */
+        @Substitute
+        void print(Target_java_util_Formatter fmt, TemporalAccessor t, char c, Locale unused) throws IOException {
+            StringBuilder sb = new StringBuilder();
+            print(fmt, sb, t, c, null);
+            // justify based on width
+            if (Target_java_util_Formatter_Flags.contains(flags, Target_java_util_Formatter_Flags.UPPERCASE)) {
+                appendJustified(fmt.a, sb.toString().toUpperCase(Locale.ROOT));
+            } else {
+                appendJustified(fmt.a, sb);
+            }
+        }
+
+        @Alias
+        native Appendable print(Target_java_util_Formatter fmt, StringBuilder sb, TemporalAccessor t, char c,
+                        Locale l) throws IOException;
+
+        @Alias
+        native void appendJustified(Appendable a, CharSequence cs) throws IOException;
+
+        @Alias //
+        int flags;
+    }
+
+    @TargetClass(className = "java.util.Formatter", onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_util_Formatter {
+        @Alias //
+        Appendable a;
+    }
+
+    @TargetClass(className = "java.util.Formatter$Flags", onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_java_util_Formatter_Flags {
+        // Checkstyle: stop
+        @Alias //
+        static int ZERO_PAD;
+        @Alias //
+        static int GROUP;
+        @Alias //
+        static int UPPERCASE;
+        // Checkstyle: resume
+
+        @Alias
+        static native boolean contains(int flags, int f);
     }
 
     @TargetClass(value = java.text.DateFormatSymbols.class, onlyWith = LibGraalFeature.IsEnabled.class)
