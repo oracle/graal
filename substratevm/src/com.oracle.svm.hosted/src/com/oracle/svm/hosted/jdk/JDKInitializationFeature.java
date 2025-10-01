@@ -233,7 +233,10 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
-        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+            rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl", JDK_CLASS_REASON);
+            rci.initializeAtRunTime("sun.security.ssl.SSLAlgorithmConstraints", JDK_CLASS_REASON);
+        } else {
             rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
