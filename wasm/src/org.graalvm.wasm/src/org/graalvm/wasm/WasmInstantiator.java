@@ -210,9 +210,7 @@ public class WasmInstantiator {
             } else {
                 linkActions.add((context, store, instance, imports) -> {
                     final WasmTag tag = new WasmTag(type);
-                    final int address = store.tags().register(tag);
-                    final WasmTag allocatedTag = store.tags().tag(address);
-                    instance.setTag(tagIndex, allocatedTag);
+                    instance.setTag(tagIndex, tag);
                 });
             }
         }

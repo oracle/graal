@@ -70,7 +70,6 @@ public final class WasmStore implements TruffleObject {
     private final WasmLanguage language;
     private final MemoryRegistry memoryRegistry;
     private final TableRegistry tableRegistry;
-    private final TagRegistry tagRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
     private final FdManager filesManager;
@@ -82,7 +81,6 @@ public final class WasmStore implements TruffleObject {
         this.contextOptions = context.getContextOptions();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
-        this.tagRegistry = new TagRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.filesManager = context.fdManager();
@@ -106,10 +104,6 @@ public final class WasmStore implements TruffleObject {
 
     public TableRegistry tables() {
         return tableRegistry;
-    }
-
-    public TagRegistry tags() {
-        return tagRegistry;
     }
 
     public Linker linker() {
