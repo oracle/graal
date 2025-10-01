@@ -56,6 +56,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.InterpreterTier;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
@@ -163,10 +164,12 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int specializationIndex) {
         int operandIndex = specializationIndex;
         if (operandIndex < instruction.signature.constantOperandsBeforeCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(operandIndex).type();
-            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(operandIndex);
-            b.tree(readConstFastPath(imm, constantOperandType));
+            ConstantOperandModel constantOperand = instruction.operation.constantOperands.before().get(operandIndex);
+            InstructionImmediate imm = instruction.constantOperandImmediates.get(constantOperand);
+            if (imm == null) {
+                throw new AssertionError("Could not find an immediate for constant operand " + constantOperand + " on instruction " + instruction);
+            }
+            b.tree(rootNode.readConstantImmediate("$bc", "$bci", "$bytecode", imm, constantOperand.type()));
             return false;
         }
         operandIndex -= instruction.signature.constantOperandsBeforeCount;
@@ -236,18 +239,16 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         int constantOperandAfterCount = instruction.signature.constantOperandsAfterCount;
         if (operandIndex < constantOperandAfterCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(operandIndex).type();
-            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + operandIndex);
-            b.tree(rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
+            ConstantOperandModel constantOperand = instruction.operation.constantOperands.after().get(operandIndex);
+            InstructionImmediate imm = instruction.constantOperandImmediates.get(constantOperand);
+            if (imm == null) {
+                throw new AssertionError("Could not find an immediate for constant operand " + constantOperand + " on instruction " + instruction);
+            }
+            b.tree(rootNode.readConstantImmediate("$bc", "$bci", "$bytecode", imm, constantOperand.type()));
             return false;
         }
 
         throw new AssertionError("index=" + specializationIndex + ", signature=" + instruction.signature);
-    }
-
-    private CodeTree readConstFastPath(InstructionImmediate imm, TypeMirror immediateType) {
-        return rootNode.readConstFastPath(readImmediate("$bc", "$bci", imm), "$bytecode.constants", immediateType);
     }
 
     public CodeExecutableElement getQuickenMethod() {
@@ -307,7 +308,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 return CodeTreeBuilder.singleString("$bci");
             case BytecodeDSLParser.SYMBOL_CONTINUATION_ROOT:
                 InstructionImmediate continuationIndex = instruction.getImmediates(ImmediateKind.CONSTANT).getLast();
-                return CodeTreeBuilder.createBuilder().tree(readConstFastPath(continuationIndex, rootNode.getContinuationRootNodeImpl().asType())).build();
+                return CodeTreeBuilder.createBuilder().tree(rootNode.readConstantImmediate("$bc", "$bci", "$bytecode", continuationIndex, rootNode.getContinuationRootNodeImpl().asType())).build();
             default:
                 return NodeGeneratorPlugs.super.bindExpressionValue(frameState, variable);
 

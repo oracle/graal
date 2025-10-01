@@ -208,7 +208,7 @@ public class BytecodeDSLBuiltins {
         m.loadConstantOperation = m.operation(OperationKind.LOAD_CONSTANT, "LoadConstant", """
                         LoadConstant produces {@code constant}. The constant should be immutable, since it may be shared across multiple LoadConstant operations.
                         """) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.CONSTANT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
 
         m.loadNullOperation = m.operation(OperationKind.LOAD_NULL, "LoadNull", """
@@ -290,7 +290,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setTransparent(true) //
                         .setVariadic(true, 0) //
-                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.OBJECT, "source", "the source object to associate with the enclosed operations")) //
+                        .setOperationBeginArguments(new OperationArgument(types.Source, Encoding.CONSTANT, "source", "the source object to associate with the enclosed operations")) //
                         .setDynamicOperands(transparentOperationChild());
 
         String sourceDoc = """

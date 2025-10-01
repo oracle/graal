@@ -470,6 +470,16 @@ public @interface GenerateBytecode {
     Class<?>[] boxingEliminationTypes() default {};
 
     /**
+     * Whether constant operands of primitive type should be encoded directly in the bytecode.
+     * Inlining can reduce the number of memory reads required to access constants.
+     * <p>
+     * Currently, inlining is only supported for {@link ConstantOperand}s.
+     *
+     * @since 25.1
+     */
+    boolean inlinePrimitiveConstants() default true;
+
+    /**
      * Whether to generate introspection data for specializations. The data is accessible using
      * {@link com.oracle.truffle.api.bytecode.Instruction.Argument#getSpecializationInfo()}.
      *
