@@ -58,8 +58,8 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  * Example for using introspection in unit testing:
  *
- * {@snippet file="com/oracle/truffle/api/dsl/Introspection.java"
- * region="com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode"}
+ * {@snippet file = "com/oracle/truffle/api/dsl/Introspection.java" region =
+ * "com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode"}
  *
  * @since 0.22
  * @see Introspectable
@@ -137,6 +137,27 @@ public final class Introspection {
     }
 
     /**
+     * Like {@link #getSpecialization(Node, String)} but must be used for nodes that were used as
+     * part of a bytecode interpreter.
+     *
+     * @param bytecodeNode the bytecode node
+     * @param bytecodeIndex the bytecode index
+     * @param node a introspectable DSL node with at least one specialization
+     * @param methodName the Java method name of the specialization to introspect
+     * @since 25.1
+     */
+    public static SpecializationInfo getSpecialization(Node bytecodeNode, int bytecodeIndex, Node node, String methodName) {
+        try {
+            return getIntrospectionData(bytecodeNode, bytecodeIndex, node).getSpecialization(methodName);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + ", bytecode node " + bytecodeNode.getClass().getName() + ", bytecode index " + bytecodeIndex +
+                                            " and method " + methodName + ".",
+                            e);
+        }
+    }
+
+    /**
      * Returns introspection information for all declared specializations as unmodifiable list. A
      * given node must declare at least one specialization and must be annotated with
      * {@link Introspectable} otherwise an {@link IllegalArgumentException} is thrown. The returned
@@ -177,6 +198,27 @@ public final class Introspection {
         }
     }
 
+    /**
+     * Like {@link #getSpecializations(Node)} but must be used for nodes that were used as part of a
+     * bytecode interpreter.
+     *
+     * @param bytecodeNode the bytecode node
+     * @param bytecodeIndex the bytecode index
+     * @param node a introspectable DSL node with at least one specialization
+     * @since 25.1
+     */
+    public static List<SpecializationInfo> getSpecializations(Node bytecodeNode, int bytecodeIndex, Node node) {
+        try {
+            return getIntrospectionData(bytecodeNode, bytecodeIndex, node).getSpecializations();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + ", bytecode node " + bytecodeNode.getClass().getName() + " and bytecode index " +
+                                            bytecodeIndex +
+                                            ".",
+                            e);
+        }
+    }
+
     private static Introspection getIntrospectionData(Node node) {
         Objects.requireNonNull(node);
         if (!(node instanceof Provider)) {
@@ -192,6 +234,15 @@ public final class Introspection {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
         return ((Provider) node).getIntrospectionData(inlineParent);
+    }
+
+    private static Introspection getIntrospectionData(Node bytecodeNode, int bytecodeIndex, Node node) {
+        Objects.requireNonNull(bytecodeNode);
+        Objects.requireNonNull(node);
+        if (!(node instanceof Provider)) {
+            throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
+        }
+        return ((Provider) node).getIntrospectionData(bytecodeNode, bytecodeIndex);
     }
 
     /**
@@ -311,7 +362,7 @@ public final class Introspection {
          */
         default Introspection getIntrospectionData() {
             throw new UnsupportedOperationException(
-                            "Introspection provider for regular nodes is not implemented. Use Introspection.getSpecializations(Node, Node) with inlinedParent parameter instead.");
+                            "Introspection provider for regular nodes is not implemented.");
         }
 
         /**
@@ -322,6 +373,18 @@ public final class Introspection {
          */
         default Introspection getIntrospectionData(@SuppressWarnings("unused") Node inlinedParent) {
             return getIntrospectionData();
+        }
+
+        /**
+         * Returns internal reflection data in undefined format. A DSL user must not call this
+         * method.
+         *
+         * @since 26.0
+         */
+        @SuppressWarnings("unused")
+        default Introspection getIntrospectionData(Node bytecodeNode, int bytecodeIndex) {
+            throw new UnsupportedOperationException(
+                            "Introspection provider for bytecode interpreter nodes is not implemented.");
         }
 
         /**

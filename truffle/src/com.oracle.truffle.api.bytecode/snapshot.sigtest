@@ -366,6 +366,7 @@ CLSS public abstract static com.oracle.truffle.api.bytecode.Instruction$Argument
 cons protected init(java.lang.Object)
 innr public final static !enum Kind
 innr public final static BranchProfile
+meth protected java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializationInfoInternal()
 meth public abstract com.oracle.truffle.api.bytecode.Instruction$Argument$Kind getKind()
 meth public abstract java.lang.String getName()
 meth public com.oracle.truffle.api.bytecode.Instruction$Argument$BranchProfile asBranchProfile()

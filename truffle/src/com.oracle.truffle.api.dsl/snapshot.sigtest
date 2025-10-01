@@ -328,9 +328,11 @@ innr public abstract interface static Provider
 innr public final static SpecializationInfo
 meth public static boolean isIntrospectable(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
+meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node,int,com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
 hfds EMPTY_CACHED,NO_CACHED,data
 
@@ -339,6 +341,7 @@ CLSS public abstract interface static com.oracle.truffle.api.dsl.Introspection$P
 meth public !varargs static com.oracle.truffle.api.dsl.Introspection create(java.lang.Object[])
 meth public com.oracle.truffle.api.dsl.Introspection getIntrospectionData()
 meth public com.oracle.truffle.api.dsl.Introspection getIntrospectionData(com.oracle.truffle.api.nodes.Node)
+meth public com.oracle.truffle.api.dsl.Introspection getIntrospectionData(com.oracle.truffle.api.nodes.Node,int)
 
 CLSS public final static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo
  outer com.oracle.truffle.api.dsl.Introspection

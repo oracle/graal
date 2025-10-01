@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.generator;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
+import static javax.lang.model.element.Modifier.PRIVATE;
 
 import java.util.List;
 
@@ -53,8 +54,10 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecut
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -73,6 +76,9 @@ public interface NodeGeneratorPlugs {
 
     default List<? extends VariableElement> additionalArguments() {
         return List.of();
+    }
+
+    default void modifyIntrospectionMethod(@SuppressWarnings("unused") CodeExecutableElement m) {
     }
 
     default ChildExecutionResult createExecuteChild(FlatNodeGenFactory factory, CodeTreeBuilder builder, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution,
@@ -110,6 +116,24 @@ public interface NodeGeneratorPlugs {
             }
             default -> null;
         };
+    }
+
+    default CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {
+        return factory.createInlinedAccess(frameState, null, CodeTreeBuilder.singleString("this." + bitSet.getName() + "_"), null);
+    }
+
+    default CodeTree createStatePersist(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet, CodeTree valueTree) {
+        return factory.createInlinedAccess(frameState, null, CodeTreeBuilder.singleString("this." + bitSet.getName() + "_"), valueTree);
+    }
+
+    @SuppressWarnings("unused")
+    default CodeVariableElement createStateField(FlatNodeGenFactory factory, BitSet bitSet) {
+        return FlatNodeGenFactory.createNodeField(PRIVATE, bitSet.getType(), bitSet.getName() + "_",
+                        ProcessorContext.types().CompilerDirectives_CompilationFinal);
+    }
+
+    default int getMaxStateBitWidth() {
+        return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
     }
 
 }

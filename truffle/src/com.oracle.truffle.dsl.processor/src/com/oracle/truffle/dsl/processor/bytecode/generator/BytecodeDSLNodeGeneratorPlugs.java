@@ -53,6 +53,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.InterpreterTier;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
@@ -61,6 +62,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
+import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
@@ -82,6 +84,7 @@ import com.oracle.truffle.dsl.processor.parser.NodeParser;
 public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     private final ProcessorContext context;
+    private final TruffleTypes types;
     private final TypeMirror nodeType;
     private final BytecodeDSLModel model;
     private final BytecodeRootNodeElement rootNode;
@@ -93,6 +96,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         this.rootNode = rootNode;
         this.model = rootNode.getModel();
         this.context = rootNode.getContext();
+        this.types = context.getTypes();
         this.nodeType = rootNode.getAbstractBytecodeNode().asType();
         this.instruction = instr;
     }
@@ -112,6 +116,21 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         result.add(new CodeVariableElement(context.getType(int.class), "$bci"));
         result.add(new CodeVariableElement(context.getType(int.class), "$sp"));
         return result;
+    }
+
+    public void modifyIntrospectionMethod(CodeExecutableElement m) {
+        m.addParameter(new CodeVariableElement(types.Node, "$bytecode"));
+        m.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
+
+        CodeTree body = m.getBodyTree();
+        CodeTreeBuilder b = m.createBuilder();
+
+        b.startDeclaration(context.getType(byte[].class), "$bc");
+        b.maybeCast(types.Node, nodeType, "$bytecode").string(".bytecodes");
+        b.end();
+
+        b.tree(body);
+
     }
 
     @Override
@@ -262,7 +281,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         switch (variable.getName()) {
             case NodeParser.SYMBOL_THIS:
             case NodeParser.SYMBOL_NODE:
+
                 if (frameState.getMode().isUncached()) {
+                    return CodeTreeBuilder.singleString("$bytecode");
+                } else if (instruction.canUseNodeSingleton()) {
+                    /*
+                     * When node singletons are used we must never bind the singleton node.
+                     *
+                     * It is safe to do so because the instruction does not bind any node if
+                     * canUseNodeSingleton() is true, or the bytecode index is already stored in the
+                     * frame. The bytecode index is always stored in the frame for uncached or when
+                     * GenerateBytecode.storeBytecodeIndexInFrame() is enabled in the cached
+                     * interpreter.
+                     */
                     return CodeTreeBuilder.singleString("$bytecode");
                 } else {
                     // use default handling (which could resolve to the specialization class)
@@ -477,6 +508,51 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     @Override
     public String createNodeChildReferenceForException(FlatNodeGenFactory flatNodeGenFactory, FrameState frameState, NodeExecutionData execution, NodeChildData child) {
         return "null";
+    }
+
+    public CodeVariableElement createStateField(FlatNodeGenFactory factory, BitSet bitSet) {
+        if (instruction.canInlineState()) {
+            return null;
+        }
+        return NodeGeneratorPlugs.super.createStateField(factory, bitSet);
+    }
+
+    public CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {
+        if (instruction.canInlineState()) {
+            InstructionImmediate imm = instruction.findImmediate(ImmediateKind.STATE_PROFILE, bitSet.getName());
+            if (imm == null) {
+                throw new AssertionError("Immediate not found " + bitSet.getName());
+            }
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.startStaticCall(context.getType(Short.class), "toUnsignedInt");
+            b.tree(BytecodeRootNodeElement.readImmediate("$bc", "$bci", imm));
+            b.end();
+            return b.build();
+        }
+        return NodeGeneratorPlugs.super.createStateLoad(factory, frameState, bitSet);
+    }
+
+    public CodeTree createStatePersist(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet, CodeTree valueTree) {
+        if (instruction.canInlineState()) {
+            InstructionImmediate imm = instruction.findImmediate(ImmediateKind.STATE_PROFILE, bitSet.getName());
+            if (imm == null) {
+                return CodeTreeBuilder.singleString("/* " + bitSet.getName() + " not found " + instruction.getImmediates() + " */");
+            }
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.string("(short) (");
+            b.tree(valueTree);
+            b.string(" & 0xFFFF)");
+            return BytecodeRootNodeElement.writeImmediate("$bc", "$bci", b.build(), imm.encoding());
+        }
+
+        return NodeGeneratorPlugs.super.createStatePersist(factory, frameState, bitSet, valueTree);
+    }
+
+    public int getMaxStateBitWidth() {
+        if (instruction.canInlineState()) {
+            return Short.SIZE;
+        }
+        return NodeGeneratorPlugs.super.getMaxStateBitWidth();
     }
 
     private String stackFrame() {

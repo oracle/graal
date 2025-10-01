@@ -56,7 +56,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.BitSet.BitRange;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -68,11 +67,13 @@ import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 final class BitStateList {
 
+    private final FlatNodeGenFactory factory;
     private final List<BitRangedState> entries;
     private final LinkedHashMap<Object, List<BitRangedState>> byKey = new LinkedHashMap<>();
     private final int bitCount;
 
-    BitStateList(List<State<?>> stateObjects) {
+    BitStateList(FlatNodeGenFactory factory, List<State<?>> stateObjects) {
+        this.factory = factory;
         int bitOffset = 0;
         List<BitRangedState> newStates = new ArrayList<>();
         for (State<?> state : stateObjects) {
@@ -235,7 +236,7 @@ final class BitStateList {
         List<BitSet> activeBitSets = new ArrayList<>();
         int index = 0;
         for (BitStateList list : stateLists) {
-            BitSet bitSet = new BitSet(namePrefix + "state_" + index, list);
+            BitSet bitSet = new BitSet(factory, namePrefix + "state_" + index, list);
             if (list.isRelevantFor(activeNode)) {
                 if (list.getBitCount() == 0) {
                     continue;
@@ -256,7 +257,7 @@ final class BitStateList {
         return bits;
     }
 
-    private static List<BitStateList> splitByWidth(List<StateGroup> groups, int maxBitWidth) {
+    private List<BitStateList> splitByWidth(List<StateGroup> groups, int maxBitWidth) {
         List<List<StateGroup>> split = new ArrayList<>();
         List<StateGroup> currentStates = new ArrayList<>();
         int currentWidth = 0;
@@ -343,7 +344,7 @@ final class BitStateList {
             for (StateGroup group : pack) {
                 flattendGroup.addAll(group.states);
             }
-            BitStateList list = new BitStateList(flattendGroup);
+            BitStateList list = new BitStateList(factory, flattendGroup);
             if (maxBitWidth == 32 && list.getBitCount() > maxBitWidth) {
                 /*
                  * Note we only check this here for 32 bits, because its possible the processor runs
