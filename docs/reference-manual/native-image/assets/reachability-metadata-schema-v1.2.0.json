@@ -441,7 +441,6 @@
           "type": "string"
         },
         "parameterTypes": {
-          "default": [],
           "items": {
             "title": "List of the method's parameter types",
             "$ref": "#/$defs/typeName"
@@ -450,7 +449,7 @@
         }
       },
       "required": [
-        "name"
+        "name", "parameterTypes"
       ],
       "additionalProperties": false
     }
