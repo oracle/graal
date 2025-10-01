@@ -41,7 +41,10 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -131,7 +134,8 @@ public final class InstructionModel implements PrettyPrintable {
     public enum ImmediateWidth {
         BYTE(1),
         SHORT(2),
-        INT(4);
+        INT(4),
+        LONG(8);
 
         public final int byteSize;
 
@@ -144,6 +148,19 @@ public final class InstructionModel implements PrettyPrintable {
                 case BYTE -> context.getType(byte.class);
                 case SHORT -> context.getType(short.class);
                 case INT -> context.getType(int.class);
+                case LONG -> context.getType(long.class);
+            };
+        }
+
+        /**
+         * Short name to use in fields/methods.
+         */
+        public String toEncodedName() {
+            return switch (this) {
+                case BYTE -> "B";
+                case SHORT -> "S";
+                case INT -> "I";
+                case LONG -> "L";
             };
         }
 
@@ -177,6 +194,14 @@ public final class InstructionModel implements PrettyPrintable {
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
         STACK_POINTER("sp", ImmediateWidth.SHORT),
         CONSTANT("const", ImmediateWidth.INT),
+        CONSTANT_LONG("const_long", ImmediateWidth.LONG),
+        CONSTANT_DOUBLE("const_double", ImmediateWidth.LONG),
+        CONSTANT_INT("const_int", ImmediateWidth.INT),
+        CONSTANT_FLOAT("const_float", ImmediateWidth.INT),
+        CONSTANT_SHORT("const_short", ImmediateWidth.SHORT),
+        CONSTANT_CHAR("const_char", ImmediateWidth.SHORT),
+        CONSTANT_BYTE("const_byte", ImmediateWidth.SHORT),
+        CONSTANT_BOOL("const_bool", ImmediateWidth.SHORT),
         NODE_PROFILE("node", ImmediateWidth.INT),
         TAG_NODE("tag", ImmediateWidth.INT),
         BRANCH_PROFILE("branch_profile", ImmediateWidth.INT);
@@ -194,7 +219,11 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding) {
+    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, Optional<ConstantOperandModel> constantOperand) {
+
+        public InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding) {
+            this(kind, name, encoding, Optional.empty());
+        }
 
         public boolean explicit() {
             return encoding.explicit();
@@ -214,6 +243,10 @@ public final class InstructionModel implements PrettyPrintable {
 
         @Override
         public int compareTo(InstructionEncoding other) {
+            if (this.equals(other)) {
+                return 0;
+            }
+
             // First, order by byte length.
             int diff = length - other.length;
             if (diff != 0) {
@@ -234,7 +267,7 @@ public final class InstructionModel implements PrettyPrintable {
                 }
             }
 
-            return 0;
+            throw new AssertionError("compareTo cannot determine that non-equal instruction encodings are not equal.");
         }
 
         public List<InstructionImmediateEncoding> getExplicitImmediateEncodings() {
@@ -273,6 +306,12 @@ public final class InstructionModel implements PrettyPrintable {
     // Immediate values that get encoded in the bytecode.
     public final List<InstructionImmediate> immediates = new ArrayList<>();
 
+    /*
+     * Defines a mapping from constant operand to immediate. Useful for loading constant operands
+     * from bytecode.
+     */
+    public Map<ConstantOperandModel, InstructionImmediate> constantOperandImmediates = new HashMap<>();
+
     public List<InstructionModel> subInstructions;
     public final List<InstructionModel> quickenedInstructions = new ArrayList<>();
 
@@ -304,11 +343,34 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
 
-    public InstructionModel(InstructionKind kind, String name, Signature signature, String quickeningName) {
+    /*
+     * Main constructor for instructions.
+     */
+    public InstructionModel(InstructionKind kind, String name, Signature signature) {
         this.kind = kind;
         this.name = name;
         this.signature = signature;
+        this.quickeningName = null;
+    }
+
+    /*
+     * Quickening constructor.
+     */
+    public InstructionModel(InstructionModel base, String quickeningName, Signature signature) {
+        this.kind = base.kind;
+        this.name = base.name + "$" + quickeningName;
+        this.signature = signature;
         this.quickeningName = quickeningName;
+        this.filteredSpecializations = base.filteredSpecializations;
+        this.nodeData = base.nodeData;
+        this.nodeType = base.nodeType;
+        this.quickeningBase = base;
+        this.operation = base.operation;
+        this.shortCircuitModel = base.shortCircuitModel;
+        for (InstructionImmediate imm : base.immediates) {
+            addImmediate(imm);
+        }
+        base.quickenedInstructions.add(this);
     }
 
     public List<InstructionImmediate> getExplicitImmediates() {
@@ -426,6 +488,7 @@ public final class InstructionModel implements PrettyPrintable {
     public void pp(PrettyPrinter printer) {
         printer.print("Instruction %s", name);
         printer.field("kind", kind);
+        printer.field("byteLength", byteLength);
         printer.field("encoding", prettyPrintEncoding());
         if (nodeType != null) {
             printer.field("nodeType", nodeType.getSimpleName());
@@ -510,9 +573,24 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean explicit) {
-        immediates.add(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width, explicit)));
-        byteLength += immediateKind.width.byteSize;
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width, explicit)));
         return this;
+    }
+
+    public InstructionModel addConstantOperandImmediate(ConstantOperandModel constantOperand, String immediateName) {
+        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width, true), Optional.of(constantOperand)));
+        return this;
+    }
+
+    private void addImmediate(InstructionImmediate immediate) {
+        if (immediate.offset() != byteLength) {
+            throw new AssertionError("Immediate has offset " + immediate.offset() + " but the instruction is currently only " + byteLength + " bytes long.");
+        }
+        immediates.add(immediate);
+        if (immediate.constantOperand.isPresent()) {
+            constantOperandImmediates.put(immediate.constantOperand.get(), immediate);
+        }
+        byteLength += immediate.kind.width.byteSize;
     }
 
     public InstructionImmediate findImmediate(ImmediateKind immediateKind, String immediateName) {
