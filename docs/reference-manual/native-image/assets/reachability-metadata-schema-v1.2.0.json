@@ -28,6 +28,7 @@
       "items": {
         "title": "Elements that should be registered for reflection for a specified type",
         "type": "object",
+        "required": ["type"],
         "properties": {
           "reason": {
             "$ref": "#/$defs/reason"
@@ -227,6 +228,7 @@
               }
             },
             "additionalProperties": false,
+            "required": ["returnType", "parameterTypes"],
             "type": "object",
             "title": "Function descriptor to be registered for a downcall"
           },
@@ -265,6 +267,7 @@
               }
             },
             "additionalProperties": false,
+            "required": ["returnType", "parameterTypes"],
             "type": "object",
             "title": "Function descriptor to be registered for an upcall"
           },
@@ -300,7 +303,7 @@
                   "title": "Memory layout definition (allows canonical layouts; see `java.lang.foreign.Linker`)"
                 },
                 "type": "array",
-                "title": "List of the function descriptor's parameter types "
+                "title": "List of the function descriptor's parameter types"
               },
               "options": {
                 "type": "object",
@@ -311,6 +314,7 @@
               }
             },
             "additionalProperties": false,
+            "required": ["class", "method", "returnType", "parameterTypes"],
             "type": "object",
             "title": "Java method and function descriptor to be registered for a direct upcall"
           },
@@ -393,15 +397,13 @@
                 },
                 "declaringMethod": {
                   "title": "The method in which the lambda class is defined",
-                  "$ref": "#/$defs/method",
-                  "default": {}
+                  "$ref": "#/$defs/method"
                 },
                 "interfaces": {
                   "title": "Non-empty list of interfaces implemented by the lambda class",
                   "type": "array",
                   "items": {
                     "title": "Fully-qualified name of the interface implemented by the lambda class",
-                    "type": "string",
                     "$ref": "#/$defs/className"
                   },
                   "minItems": 1
