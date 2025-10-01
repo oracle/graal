@@ -100,6 +100,15 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      * {@link #initialize}.
      */
     private final Function<Class<?>, SingletonTrait[]> singletonTraitInjector;
+    /**
+     * Optional suboption of the {@link SubstrateOptions#LayerCreate} option. If the `LayerCreate`
+     * option is specified inside a `native-image.properties` file and this suboption is enabled,
+     * the classpath/modulepath entry containing the `native-image.properties` file will be excluded
+     * from the classpath/modulepath layered compatibility check. This suboption has no effect if
+     * it's specified from the command line. See
+     * {@link #processLayerOptions(EconomicMap, NativeImageClassLoaderSupport)} for more details.
+     */
+    private static final String DIGEST_IGNORE = "digest-ignore";
 
     private HostedImageLayerBuildingSupport(ImageClassLoader imageClassLoader,
                     Reader snapshot, List<FileChannel> graphsChannels,
@@ -187,6 +196,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      */
     public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values, NativeImageClassLoaderSupport classLoaderSupport) {
         OptionValues hostedOptions = new OptionValues(values);
+        Path digestIgnorePath = null;
 
         if (isLayerCreateOptionEnabled(hostedOptions)) {
             ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(hostedOptions);
@@ -205,7 +215,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             classLoaderSupport.setLayerFile(layerFile);
 
             NativeImageClassLoaderSupport.IncludeSelectors layerSelectors = classLoaderSupport.getLayerSelectors();
+            IncludeOptionsSupport.ExtendedOption digestIgnoreExtendedOption = new IncludeOptionsSupport.ExtendedOption(DIGEST_IGNORE, null);
             for (IncludeOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
+                if (option.equals(digestIgnoreExtendedOption)) {
+                    digestIgnorePath = valueWithOrigin.origin().location();
+                    continue;
+                }
                 IncludeOptionsSupport.parseIncludeSelector(layerCreateArg, valueWithOrigin, layerSelectors, option, layerCreatePossibleOptions());
             }
 
@@ -237,6 +252,10 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             enableConservativeUnsafeAccess(values);
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
             setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
+        }
+
+        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
+            classLoaderSupport.initializePathDigests(digestIgnorePath);
         }
     }
 

@@ -115,6 +115,8 @@ Args = --layer-create=@layer-create.args
 The `layer-create.args` file-path is relative to the directory that contains the `native-image.properties` file and might look like this:
 ```
 base-layer.nil
+# ignore this classpath/modulepath entry during layer compatibility checks
+digest-ignore
 module=java.base
 # micronaut and dependencies
 package=io.micronaut.*
@@ -128,6 +130,13 @@ package=org.reactivestreams.*
 ```
 Each line corresponds to one entry in the list of comma-separated entries that can usually be found in a regular `--layer-create` argument.
 Lines starting with `#` are ignored and can therefore be used to provide comments in such an option argument file.
+
+Note the use of the `digest-ignore` suboption in the `layer-create.args` example file above.
+This suboption _only takes effect_ when the `--layer-create` option is specified _within a file_, and is ignored if provided via the command line.
+When defining `--layer-create` in a file, always include this suboption (see [compatibility rules](#compatibility-rules)).
+
+Avoid placing other class or resource files in the same classpath/modulepath entry as the file(s) defining `--layer-create`.
+These files would be excluded from compatibility checks, potentially leading to subtle, difficult-to-debug issues.
 
 ### Option `--layer-use` consumes a shared layer, and can extend it or create a final executable:
 
@@ -195,7 +204,11 @@ native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
 
 ### Compatibility rules
 
-Currently, layer build compatibility checking is very limited and is only performed for the image builder arguments.
+Layer build compatibility checks are performed to ensure the consistency of _image builder arguments_ and _classpath/modulepath entries_.
+These will be covered in the following subsections.
+
+#### Image builder arguments compatibility
+
 The list below gives a few examples of checks that are already implemented.
 
 - Module system options `--add-exports`, `--add-opens`, `--add-reads` that were passed in the previous image build also need to be passed in the current image build.
@@ -203,8 +216,19 @@ The list below gives a few examples of checks that are already implemented.
 - Builder options of the form `-H:NeverInline=<pattern>` follow the same logic as the module system options above.
 - If debug option `-g` was passed in the previous image build it must also be passed in the current image build at the same position.
 - Other options like `-H:EntryPointNamePrefix=...`, `-H:APIFunctionPrefix=...`, ... follow the same logic as the `-g` option.
+- Environment variables provided using `-E` to the previous image build must be passed to the current image build, with their values remaining unchanged. Additional environment variables may be supplied to the current build if needed.
 
-The number of checks is subject to change and will be further improved in the future.
+#### Classpath & modulepath compatibility
+
+The classpath/modulepath entries used in the previous image layer build must also be included in the current image layer build.
+These entries must retain the same content. If any of the shared entries are modified (.e.g, updated jar files), the previous image layer must be rebuilt with the updated versions.
+
+For example, assume the previous layer build used the classpath: `/path/to/foo.jar:/path/to/bar.jar`.
+Then the current layer build must include both `/path/to/foo.jar` and `/path/to/bar.jar`, possibly alongside additional entries: `path/to/foo.jar:/path/to/bar.jar:/path/to/extra.jar`.
+Additionally, the contents of `foo.jar` and `bar.jar` should remain unchanged between the two builds.
+
+**Exception**: Classpath or modulepath entries that include a `native-image.properties` file specifying the `--layer-create` option with the `digest-ignore` suboption are exempt from this rule.
+These entries should be _excluded_ from subsequent layer builds.
 
 ### Limitations
 
