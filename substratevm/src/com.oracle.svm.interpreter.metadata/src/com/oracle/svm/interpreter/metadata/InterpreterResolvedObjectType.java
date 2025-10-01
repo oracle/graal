@@ -26,6 +26,8 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 
+import java.util.List;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -45,6 +47,7 @@ import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
@@ -200,6 +203,11 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     @Override
     public final InterpreterResolvedJavaType getComponentType() {
         return componentType;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        throw VMError.unimplemented("getPermittedSubclasses");
     }
 
     @Override

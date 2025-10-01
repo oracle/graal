@@ -550,8 +550,7 @@
   local style_builds = [self.make_build(self.jdk_latest, "linux-amd64", "style").build + {
       environment+: {
         # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
-        # temporarily disable until labsjdk-ce|ee-25 is gone from common.json
-        # JVMCI_VERSION_CHECK: "strict",
+        JVMCI_VERSION_CHECK: "strict",
       },
   }],
 

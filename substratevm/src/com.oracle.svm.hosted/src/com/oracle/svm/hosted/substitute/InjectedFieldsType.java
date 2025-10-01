@@ -37,6 +37,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -189,6 +190,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public ResolvedJavaType getArrayClass() {
         return original.getArrayClass();
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return original.getPermittedSubclasses();
     }
 
     @Override

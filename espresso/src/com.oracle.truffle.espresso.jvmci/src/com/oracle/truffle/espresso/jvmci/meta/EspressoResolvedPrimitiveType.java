@@ -33,6 +33,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -180,6 +181,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
 
     @Override
     public ResolvedJavaType getComponentType() {
+        return null;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
         return null;
     }
 

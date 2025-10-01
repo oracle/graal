@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -218,6 +219,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public ResolvedJavaType getArrayClass() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 

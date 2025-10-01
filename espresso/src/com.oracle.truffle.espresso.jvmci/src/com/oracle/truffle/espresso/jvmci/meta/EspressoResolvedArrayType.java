@@ -33,6 +33,7 @@ import java.util.Objects;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -214,6 +215,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
             arrayType = new EspressoResolvedArrayType(elementalType, dimensions + 1, this, findArrayClass(mirror, 1));
         }
         return arrayType;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return null;
     }
 
     @Override

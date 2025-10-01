@@ -36,6 +36,7 @@ import static java.util.Objects.requireNonNull;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -269,6 +270,22 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     public ResolvedJavaType getComponentType() {
         return null;
     }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        Class<?>[] permittedSubclass = getPermittedSubclasses0(getMirror());
+        if (permittedSubclass == null) {
+            return null;
+        }
+        ResolvedJavaType[] permittedSubtypes = new ResolvedJavaType[permittedSubclass.length];
+        MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
+        for (int i = 0; i != permittedSubtypes.length; i++) {
+            permittedSubtypes[i] = metaAccess.lookupJavaType(permittedSubclass[i]);
+        }
+        return Collections.unmodifiableList(Arrays.asList(permittedSubtypes));
+    }
+
+    private static native Class<?>[] getPermittedSubclasses0(Class<?> mirror);
 
     @Override
     public boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass) {
