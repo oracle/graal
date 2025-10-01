@@ -40,7 +40,6 @@ import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,10 +51,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
@@ -104,15 +101,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    private static final Set<String> neverInlineTrivialMethods = Set.of(
-                    "java.lang.invoke.MethodHandles$Lookup.unreflectGetter",
-                    "java.lang.invoke.MethodHandles$Lookup.unreflectSetter",
-                    "java.io.ObjectInputStream.readObject",
-                    "java.io.ObjectStreamClass.lookup",
-                    "java.lang.reflect.Array.newInstance",
-                    "java.lang.ClassLoader.loadClass",
-                    "java.lang.foreign.Linker.nativeLinker");
-
     public static final String TRACK_ALL = "all";
 
     private static final String OUTPUT_DIR_NAME = "dynamic-access";
@@ -123,7 +111,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private EconomicSet<String> sourceEntries; // Class path entries and module or
     // package names
     private final Map<String, MethodsByAccessKind> callsBySourceEntry;
-    private final Set<FoldEntry> foldEntries = ConcurrentHashMap.newKeySet();
     private final BuildArtifacts buildArtifacts = BuildArtifacts.singleton();
     private final OptionValues hostedOptionValues = HostedOptionValues.singleton();
 
@@ -242,54 +229,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    /**
-     * Support data structure used to keep track of calls which don't require metadata, but can't be
-     * folded.
-     */
-    public static class FoldEntry {
-        private final int bci;
-        private final ResolvedJavaMethod method;
-
-        public FoldEntry(int bci, ResolvedJavaMethod method) {
-            this.bci = bci;
-            this.method = method;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null || getClass() != obj.getClass()) {
-                return false;
-            }
-            FoldEntry other = (FoldEntry) obj;
-            return bci == other.bci && Objects.equals(method, other.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(bci, method);
-        }
-    }
-
-    /**
-     * We only add fold entries for methods registered by
-     * {@link com.oracle.svm.hosted.snippets.ReflectionPlugins#registerBulkInvocationPlugin}, as
-     * these represent methods that cannot be folded but also do not require metadata.
-     */
-    public void addFoldEntry(int bci, ResolvedJavaMethod method) {
-        foldEntries.add(new FoldEntry(bci, method));
-    }
-
-    /**
-     * If a fold entry exists for the given method, the method should be ignored by the analysis
-     * phase.
-     */
-    public boolean containsFoldEntry(int bci, ResolvedJavaMethod method) {
-        return foldEntries.contains(new FoldEntry(bci, method));
-    }
-
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageClassLoader imageClassLoader = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader();
@@ -333,7 +272,6 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess access) {
         DynamicAccessDetectionFeature.instance().reportDynamicAccess();
         DynamicAccessDetectionSupport.instance().clear();
-        foldEntries.clear();
     }
 
     @Override
@@ -374,10 +312,5 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                 }
             }
         });
-        if (!classLoaderSupport.dynamicAccessSelectorsEmpty()) {
-            for (String method : neverInlineTrivialMethods) {
-                SubstrateOptions.NeverInlineTrivial.update(hostedValues, method);
-            }
-        }
     }
 }
