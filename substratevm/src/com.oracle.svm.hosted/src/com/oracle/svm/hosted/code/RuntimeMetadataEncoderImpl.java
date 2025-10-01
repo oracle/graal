@@ -211,7 +211,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return;
         }
         addType(declaringType);
-        FieldMetadata oldData = fieldData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(field, metadata);
+        FieldMetadata oldData = fieldData.computeIfAbsent(declaringType, _ -> new HashMap<>()).put(field, metadata);
         assert oldData == null;
     }
 
@@ -227,7 +227,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return;
         }
         addType(declaringType);
-        MethodMetadata oldData = methodData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(method, metadata);
+        MethodMetadata oldData = methodData.computeIfAbsent(declaringType, _ -> new HashMap<>()).put(method, metadata);
         assert oldData == null;
     }
 
@@ -243,7 +243,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return;
         }
         addType(declaringType);
-        ConstructorMetadata oldData = constructorData.computeIfAbsent(declaringType, t -> new HashMap<>()).put(constructor, metadata);
+        ConstructorMetadata oldData = constructorData.computeIfAbsent(declaringType, _ -> new HashMap<>()).put(constructor, metadata);
         assert oldData == null;
     }
 

@@ -34,6 +34,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -160,6 +161,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return original.getDeclaredTypes();
+    }
+
+    @Override
     public ResolvedJavaType getSingleImplementor() {
         return original.getSingleImplementor();
     }
@@ -187,6 +193,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     @Override
     public ResolvedJavaType getArrayClass() {
         return original.getArrayClass();
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return original.getPermittedSubclasses();
     }
 
     @Override

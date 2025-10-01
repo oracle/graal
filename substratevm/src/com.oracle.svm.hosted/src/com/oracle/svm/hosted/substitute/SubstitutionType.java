@@ -38,6 +38,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -219,6 +220,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return annotated.getPermittedSubclasses();
+    }
+
+    @Override
     public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         /* First check the annotated class. @Substitute methods are found there. */
         ResolvedJavaMethod result = annotated.resolveConcreteMethod(method, callerType);
@@ -272,6 +278,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean isMember() {
         return annotated.isMember();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return annotated.getDeclaredTypes();
     }
 
     @Override

@@ -52,7 +52,7 @@ import com.oracle.truffle.espresso.substitutions.Substitution;
  * 11+, 'needDict' and 'finished' are encoded in the native inflate method's return value, and the
  * fields are subsequently updated in the guest code
  */
-@EspressoSubstitutions(value = Inflater.class, group = LibZip.class)
+@EspressoSubstitutions(group = LibZip.class)
 public final class Target_java_util_zip_Inflater {
     @Substitution
     public static void initIDs() {

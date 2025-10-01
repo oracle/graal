@@ -35,7 +35,9 @@ import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 public class LayerOptionsSupport extends IncludeOptionsSupport {
 
     public record LayerOption(Path fileName, ExtendedOption[] extendedOptions) {
-        /** Split a layer option into its components. */
+        /**
+         * Split a layer option into its components.
+         */
         public static LayerOption parse(String layerOptionValue) {
             VMError.guarantee(!layerOptionValue.isEmpty());
             // Given an argument of form layer-file.nil,module=m1,package=p1

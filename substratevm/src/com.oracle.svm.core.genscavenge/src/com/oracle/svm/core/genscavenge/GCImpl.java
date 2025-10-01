@@ -140,7 +140,7 @@ public final class GCImpl implements GC {
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
         this.policy = CollectionPolicy.getInitialPolicy();
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(isFirstIsolate -> printGCSummary());
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(_ -> printGCSummary());
     }
 
     @Override
@@ -190,11 +190,7 @@ public final class GCImpl implements GC {
         if (!hasNeverCollectPolicy()) {
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                if (getPolicy().isOutOfMemory(HeapImpl.getAccounting().getUsedBytes())) {
-                    throw OutOfMemoryUtil.heapSizeExceeded();
-                } else {
-                    GCImpl.getPolicy().updateSizeParameters();
-                }
+                getPolicy().onMaximumHeapSizeExceeded();
             }
         }
     }

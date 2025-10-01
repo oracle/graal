@@ -42,36 +42,43 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
         return new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
     }
 
+    @Override
     public JavaType[] getDeclaredExceptions() {
         // (GR-69097)
         throw VMError.unimplemented("getCheckedExceptions");
     }
 
+    @Override
     public byte[] getRawAnnotations() {
         // (GR-69096)
         throw VMError.unimplemented("getRawAnnotations");
     }
 
+    @Override
     public byte[] getRawParameterAnnotations() {
         // (GR-69096)
         throw VMError.unimplemented("getRawParameterAnnotations");
     }
 
+    @Override
     public byte[] getRawAnnotationDefault() {
         // (GR-69096)
         throw VMError.unimplemented("getRawAnnotationDefault");
     }
 
+    @Override
     public byte[] getRawParameters() {
         // (GR-69096)
         throw VMError.unimplemented("getRawParameters");
     }
 
+    @Override
     public byte[] getRawTypeAnnotations() {
         // (GR-69096)
         throw VMError.unimplemented("getRawTypeAnnotations");
     }
 
+    @Override
     public Object getAccessor(Class<?> declaringClass, Class<?>[] parameterTypes) {
         if (isConstructor()) {
             return new CremaConstructorAccessor(this, declaringClass, parameterTypes);

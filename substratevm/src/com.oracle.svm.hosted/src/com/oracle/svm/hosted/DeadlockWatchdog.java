@@ -29,6 +29,7 @@ import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -132,7 +133,10 @@ public class DeadlockWatchdog implements Closeable {
     }
 
     private static void threadDump() {
-        for (ThreadInfo ti : ManagementFactory.getThreadMXBean().dumpAllThreads(true, true)) {
+        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        boolean lockedMonitors = threadMXBean.isObjectMonitorUsageSupported();
+        boolean lockedSynchronizers = threadMXBean.isSynchronizerUsageSupported();
+        for (ThreadInfo ti : threadMXBean.dumpAllThreads(lockedMonitors, lockedSynchronizers)) {
             printThreadInfo(ti);
             printLockInfo(ti.getLockedSynchronizers());
         }

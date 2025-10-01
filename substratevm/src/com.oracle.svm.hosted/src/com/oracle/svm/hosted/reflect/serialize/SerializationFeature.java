@@ -53,9 +53,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -63,7 +63,7 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ConfigurationParserOption;
 import com.oracle.svm.configure.SerializationConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -130,17 +130,17 @@ public class SerializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
+        AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         EnumSet<ConfigurationParserOption> parserOptions = ConfigurationFiles.Options.getConfigurationParserOptions();
-        SerializationConfigurationParser<ConfigurationCondition> parser = SerializationConfigurationParser.create(true, conditionResolver, serializationBuilder, parserOptions);
+        SerializationConfigurationParser<AccessCondition> parser = SerializationConfigurationParser.create(true, conditionResolver, serializationBuilder, parserOptions);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "serialization");
 
-        SerializationConfigurationParser<ConfigurationCondition> denyCollectorParser = SerializationConfigurationParser.create(false, conditionResolver, serializationDenyRegistry, parserOptions);
+        SerializationConfigurationParser<AccessCondition> denyCollectorParser = SerializationConfigurationParser.create(false, conditionResolver, serializationDenyRegistry, parserOptions);
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
-        SerializationConfigurationParser<ConfigurationCondition> legacyParser = SerializationConfigurationParser.create(false, conditionResolver, serializationBuilder, parserOptions);
+        SerializationConfigurationParser<AccessCondition> legacyParser = SerializationConfigurationParser.create(false, conditionResolver, serializationBuilder, parserOptions);
         loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
                         ConfigurationFile.SERIALIZATION.getFileName());
@@ -156,12 +156,11 @@ public class SerializationFeature implements InternalFeature {
             if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaClass, "writeReplace"));
                 SerializationBuilder.registerSerializationUIDElements(lambdaClass, false);
-                serializationBuilder.serializationSupport.registerSerializationTargetClass(ConfigurationCondition.alwaysTrue(), serializationBuilder.getHostVM().dynamicHub(lambdaClass));
+                serializationBuilder.serializationSupport.registerSerializationTargetClass(AccessCondition.unconditional(), serializationBuilder.getHostVM().dynamicHub(lambdaClass));
             }
         }
     }
 
-    @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
         StructuredGraph graph = createMethodGraph(method, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
@@ -214,7 +213,7 @@ public class SerializationFeature implements InternalFeature {
     }
 }
 
-final class SerializationDenyRegistry implements RuntimeSerializationSupport<ConfigurationCondition> {
+final class SerializationDenyRegistry implements RuntimeSerializationSupport<AccessCondition> {
 
     private final Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
     private final ConfigurationTypeResolver typeResolver;
@@ -228,24 +227,24 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Con
      * denied.
      */
     @Override
-    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
         register(condition, clazz);
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Class<?> clazz) {
+    public void register(AccessCondition condition, Class<?> clazz) {
         if (clazz != null) {
             deniedClasses.put(clazz, true);
         }
     }
 
     @Override
-    public void register(ConfigurationCondition condition, String className) {
+    public void register(AccessCondition condition, String className) {
         this.register(condition, typeResolver.resolveType(className));
     }
 
     @Override
-    public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+    public void registerLambdaCapturingClass(AccessCondition condition, String lambdaCapturingClassName) {
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
         if (lambdaCapturingClass != null) {
             deniedClasses.put(lambdaCapturingClass, true);
@@ -253,7 +252,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Con
     }
 
     @Override
-    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+    public void registerProxyClass(AccessCondition condition, List<String> implementedInterfaces) {
     }
 
     public boolean isAllowed(Class<?> clazz) {
@@ -266,7 +265,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Con
     }
 }
 
-final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport<ConfigurationCondition> {
+final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport<AccessCondition> {
 
     private static final Method getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
     private static final Method getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
@@ -304,13 +303,13 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
         registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
     }
 
-    private void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz, Set<Class<?>> alreadyVisited) {
+    private void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz, Set<Class<?>> alreadyVisited) {
         if (alreadyVisited.contains(clazz)) {
             return;
         }
@@ -360,7 +359,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+    public void registerLambdaCapturingClass(AccessCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
         Objects.requireNonNull(lambdaCapturingClassName, () -> nullErrorMessage("lambda capturing class", "serialization"));
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
@@ -382,7 +381,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
+    public void registerProxyClass(AccessCondition condition, List<String> implementedInterfaces) {
         abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
             try {
@@ -395,7 +394,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void register(ConfigurationCondition condition, String targetClassName) {
+    public void register(AccessCondition condition, String targetClassName) {
         abortIfSealed();
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
         /* With invalid streams we have to register the class for lookup */
@@ -407,7 +406,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Class<?> serializationTargetClass) {
+    public void register(AccessCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
         Objects.requireNonNull(serializationTargetClass, () -> nullErrorMessage("class", "serialization"));
         registerConditionalConfiguration(condition, (cnd) -> {
@@ -431,9 +430,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, superclass);
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), superclass, "writeReplace");
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), superclass, "readResolve");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, superclass);
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "writeReplace");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), superclass, "readResolve");
                 }
 
                 registerForSerialization(cnd, serializationTargetClass);
@@ -443,7 +442,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         });
     }
 
-    private void addOrQueueConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
+    private void addOrQueueConstructorAccessors(AccessCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
         if (pendingConstructorRegistrations != null) {
             // cannot yet create constructor accessor -> add to pending
             pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass, hub));
@@ -453,7 +452,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private void registerConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
+    private void registerConstructorAccessors(AccessCondition cnd, Class<?> serializationTargetClass, DynamicHub hub) {
         serializationSupport.registerSerializationTargetClass(cnd, hub);
         registerConstructorAccessor(cnd, serializationTargetClass, null);
         for (Class<?> superclass = serializationTargetClass; superclass != null; superclass = superclass.getSuperclass()) {
@@ -461,7 +460,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private void registerConstructorAccessor(ConfigurationCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
+    private void registerConstructorAccessor(AccessCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
         Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass))
                         .map(ReflectionUtil::lookupConstructor)
                         .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, methods));
@@ -488,7 +487,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private static void registerMethod(ConfigurationCondition cnd, Class<?> clazz, String methodName, Class<?>... args) {
+    private static void registerMethod(AccessCondition cnd, Class<?> clazz, String methodName, Class<?>... args) {
         Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, args);
         if (method != null) {
             ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, method);
@@ -497,7 +496,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private void registerForSerialization(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+    private void registerForSerialization(AccessCondition cnd, Class<?> serializationTargetClass) {
 
         if (Serializable.class.isAssignableFrom(serializationTargetClass)) {
             /*
@@ -572,7 +571,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         sealed();
     }
 
-    private static void registerForDeserialization(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+    private static void registerForDeserialization(AccessCondition cnd, Class<?> serializationTargetClass) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, serializationTargetClass);
 
         if (serializationTargetClass.isRecord()) {

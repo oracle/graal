@@ -473,9 +473,8 @@ public final class CompilationResultFrameTree {
             this.debug = debug;
         }
 
-        @SuppressWarnings("try")
         public CallNode build(CompilationResult compilationResult) {
-            try (DebugContext.Scope s = debug.scope("FrameTree.Builder", compilationResult)) {
+            try (DebugContext.Scope _ = debug.scope("FrameTree.Builder", compilationResult)) {
                 if (debug.isLogEnabled()) {
                     debug.log(DebugContext.VERBOSE_LEVEL, "Building FrameTree for %s", compilationResult);
                 }

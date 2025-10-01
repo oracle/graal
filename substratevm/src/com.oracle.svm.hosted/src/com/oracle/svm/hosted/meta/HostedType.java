@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -40,6 +44,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -60,12 +65,13 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final HostedInterface[] interfaces;
 
     protected HostedArrayClass arrayType;
+    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
+    private List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
     boolean loadedFromPriorLayer;
     protected int typeID;
-    protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
 
     // region closed-world only fields
@@ -140,13 +146,27 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     // endregion open-world only fields
 
     /**
-     * A more precise subtype that can replace this type as the declared type of values. Null if
-     * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
-     * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
-     * cannot be strengthened.
-     * 
-     * For open world the strengthen stamp type is equal to this type itself if the type is not a
-     * leaf type, i.e., it cannot be extended.
+     * The unique implementor of this type that can replace it in stamps as an exact type.
+     * <p>
+     * A {@code null} value means there is no unique implementor that can replace this type. The
+     * field is set to this type itself if it has no instantiated subtypes to enable its usage as an
+     * exact type, e.g., in places where the original stamp was non-exact.
+     * <p>
+     * In open-world analysis the field is set to {@code null} for non-leaf types since we have to
+     * assume that there may be some instantiated subtypes that we haven't seen yet.
+     */
+    protected HostedType uniqueConcreteImplementation;
+
+    /**
+     * A more precise subtype that can replace this type as the declared type of values.
+     * <p>
+     * A {@code null} value means that this type is never instantiated and does not have any
+     * instantiated subtype, i.e., no value of this type can ever exist and the code using this type
+     * is unreachable. It is set to this type if this type is itself instantiated or has more than
+     * one instantiated direct subtype, i.e, this type cannot be strengthened.
+     * <p>
+     * In open-world analysis the field is set to this type itself for non-leaf types since we have
+     * to assume that there may be some instantiated subtypes that we haven't seen yet.
      */
     protected HostedType strengthenStampType;
 
@@ -391,6 +411,18 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return arrayType;
     }
 
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        if (isPrimitive() || isArray()) {
+            return null;
+        }
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
+            List<JavaType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
+            permittedSubclasses = aPermittedSubclasses == null ? null : aPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
+        }
+        return permittedSubclasses;
+    }
+
     public HostedType getArrayClass(int dimension) {
         HostedType result = this;
         for (int i = 0; i < dimension; i++) {
@@ -513,6 +545,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public HostedType getEnclosingType() {
         return universe.lookup(wrapped.getEnclosingType());
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
+        for (int i = 0; i < declaredTypes.length; i++) {
+            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+        }
+        return declaredTypes;
     }
 
     @Override

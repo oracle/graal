@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -144,5 +145,10 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }
+    }
+
+    @Override
+    public String toString() {
+        return ClassUtil.getUnqualifiedName(getClass()) + "{annotation=" + annotation + '}';
     }
 }

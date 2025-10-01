@@ -174,7 +174,7 @@ public final class HostCompilerDirectives {
      * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">
      * Truffle host compilation documentation</a>.
      *
-     * @since 26.0
+     * @since 25.1
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})

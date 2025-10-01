@@ -386,7 +386,6 @@ public class NativeImageGeneratorRunner {
         return OS.LINUX.isCurrent() || OS.DARWIN.isCurrent() || OS.WINDOWS.isCurrent();
     }
 
-    @SuppressWarnings("try")
     private int buildImage(ImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return ExitStatus.BUILDER_ERROR.getValue();
@@ -407,9 +406,9 @@ public class NativeImageGeneratorRunner {
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         Throwable unhandledThrowable = null;
         BuildOutcome buildOutcome = BuildOutcome.FAILED;
-        try (StopTimer ignored = totalTimer.start()) {
+        try (StopTimer _ = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
-            try (StopTimer ignored1 = classlistTimer.start()) {
+            try (StopTimer _ = classlistTimer.start()) {
                 classLoader.loadAllClasses();
             }
             if (imageName.length() == 0) {

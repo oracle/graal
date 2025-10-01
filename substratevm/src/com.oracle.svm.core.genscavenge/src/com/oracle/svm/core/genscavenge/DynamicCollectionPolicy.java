@@ -58,4 +58,14 @@ class DynamicCollectionPolicy extends AdaptiveCollectionPolicy {
 
         return super.isOutOfMemory(usedBytes);
     }
+
+    @Override
+    public void onMaximumHeapSizeExceeded() {
+        if (isOutOfMemory(HeapImpl.getAccounting().getUsedBytes())) {
+            super.onMaximumHeapSizeExceeded();
+        } else {
+            /* No longer out-of-memory - update the heap size parameters to reflect that. */
+            GCImpl.getPolicy().updateSizeParameters();
+        }
+    }
 }

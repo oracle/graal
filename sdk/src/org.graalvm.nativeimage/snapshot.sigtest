@@ -1099,6 +1099,10 @@ CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransfor
 meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
 meth public boolean isAvailable()
 
+CLSS public abstract interface org.graalvm.nativeimage.dynamicaccess.AccessCondition
+meth public static org.graalvm.nativeimage.dynamicaccess.AccessCondition unconditional()
+meth public static org.graalvm.nativeimage.dynamicaccess.AccessCondition typeReached(java.lang.Class<?>)
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])
 meth public !varargs static void initializeAtBuildTime(java.lang.String[])

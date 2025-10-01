@@ -44,7 +44,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
@@ -177,11 +177,11 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerClass(Class<?> clazz, ClassLoader runtimeClassLoader) {
-        registerClass(ConfigurationCondition.alwaysTrue(), clazz, runtimeClassLoader);
+        registerClass(AccessCondition.unconditional(), clazz, runtimeClassLoader);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerClass(ConfigurationCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader) {
+    public void registerClass(AccessCondition condition, Class<?> clazz, ClassLoader runtimeClassLoader) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
@@ -257,7 +257,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
-                    ConfigurationCondition additionalCondition) {
+                    AccessCondition additionalCondition) {
         if (existingConditionalValue == null) {
             return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition), newValue);
         } else {
@@ -268,7 +268,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerExceptionForClass(ConfigurationCondition condition, String className, Throwable t) {
+    public void registerExceptionForClass(AccessCondition condition, String className, Throwable t) {
         if (RuntimeClassLoading.isSupported()) {
             return;
         }
@@ -283,7 +283,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerNegativeQuery(ConfigurationCondition condition, String className) {
+    public void registerNegativeQuery(AccessCondition condition, String className) {
         if (respectClassLoader()) {
             registerKnownClassName(condition, className);
         } else {
@@ -296,7 +296,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         }
     }
 
-    private void registerKnownClassName(ConfigurationCondition condition, String className) {
+    private void registerKnownClassName(AccessCondition condition, String className) {
         assert respectClassLoader();
         synchronized (knownClassNames) {
             RuntimeConditionSet existingConditions = knownClassNames.get(className);
@@ -309,7 +309,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerUnsafeAllocated(AccessCondition condition, Class<?> clazz) {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
             if (!previousLayerUnsafe.contains(clazz.getName())) {
@@ -321,7 +321,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
         }
     }
 
-    private void updateCondition(ConfigurationCondition condition, String className, Object value) {
+    private void updateCondition(AccessCondition condition, String className, Object value) {
         synchronized (knownClasses) {
             var cond = new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value);
             addKnownClass(className, (map) -> {
@@ -510,9 +510,6 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton {
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        if (MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceUnsafeAllocatedType(clazz);
-        }
         RuntimeConditionSet conditionSet = null;
         for (var singleton : layeredSingletons()) {
             conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);

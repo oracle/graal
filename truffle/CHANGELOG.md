@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 26.0
+## Version 25.1
 * GR-65048: Introduced `InternalResource.OS.UNSUPPORTED` and `InternalResource.CPUArchitecture.UNSUPPORTED` to represent unsupported platforms. Execution on unsupported platforms must be explicitly enabled using the system property `-Dpolyglot.engine.allowUnsupportedPlatform=true`. If this property is not set, calls to `OS.getCurrent()` or `CPUArchitecture.getCurrent()` will throw an `IllegalStateException` when running on an unsupported platform. `InternalResource` implementations should handle the unsupported platform and describe possible steps in the error message on how to proceed.
 * GR-66839: Deprecate `Location#isFinal()` as it always returns false.
 * GR-67702: Specialization DSL: For nodes annotated with `@GenerateInline`, inlining warnings emitted for `@Cached SomeNode helper` expressions are now suppressed if the helper node class is explicitly annotated with `@GenerateInline(false)`, or is not a DSL node. This avoids unnecessary warnings if inlining for a node was explicitly disabled, and makes it possible to remove `@Cached(inline = false)` in most cases.
@@ -19,6 +19,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-68916: Added `TruffleString.MaterializeLazySubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
 * GR-68916: Added `TruffleString.MaterializeSubstringNode`. Use this node to free any unnecessary memory held by lazy substrings.
+* GR-8251: Added `DebuggerSession.disposeStepping(Thread)` to the debugger API to allow disposal of any pending step on a thread.
+* GR-8251: Pending steps are no longer removed when no debugging action is prepared on a `SuspendedEvent`. In practice, this means that the lifecycle of steps is now independent of breakpoint hits.
+* GR-8251: `DebuggerSession.resumeThread(Thread)` no longer cancels ongoing step operations. Stepping is now independent of other debugger actions to enhance flexibility.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

@@ -93,7 +93,7 @@ public class CInterfaceEnumTool {
         MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, AnalysisMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci);
 
         static CallTargetFactory from(BytecodeParser p) {
-            return (invokeKind, targetMethod, args, returnStamp, bci) -> p.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, null);
+            return (invokeKind, targetMethod, args, returnStamp, _) -> p.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, null);
         }
 
         static CallTargetFactory from(HostedGraphKit kit) {

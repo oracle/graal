@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.ArchiveSupport;
+import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.driver.BundleOptions.BundleOption;
 import com.oracle.svm.driver.BundleOptions.ExtendedOption;
 import com.oracle.svm.driver.launcher.BundleLauncher;
@@ -112,11 +113,26 @@ final class BundleSupport {
     private static final String DRY_RUN_OPTION = "dry-run";
     private static final String CONTAINER_OPTION = "container";
     private static final String DOCKERFILE_OPTION = "dockerfile";
+    private static final String SIZE_WARNING_FILE_LIMIT_OPTION = "size-warning-file-limit";
+    private static final String SIZE_WARNING_TOTAL_LIMIT_OPTION = "size-warning-total-limit";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
     static final String BUNDLE_ALIAS = "<BUNDLE>";
 
     ContainerSupport containerSupport;
     boolean useContainer;
+
+    private long fileSizeWarningFileLimit = 1024 * 1024 * 50; // 50 MB
+    private long fileSizeWarningTotalLimit = 1024 * 1024 * 500; // 500 MB
+
+    /**
+     * Counter for all the files addd to a bundle (except .nil), to print warnings.
+     */
+    private long cumulativeFileSize = 0;
+
+    /**
+     * Tracks whether a layers file (.nil) is part of the bundle.
+     */
+    private boolean nilFileSeen = false;
 
     private static final String DEFAULT_DOCKERFILE = getDockerfile("Dockerfile");
 
@@ -249,8 +265,29 @@ final class BundleSupport {
                     throw NativeImage.showError(String.format("native-image option %s requires a dockerfile argument. E.g. %s=path/to/Dockerfile.", option.key(), option.key()));
                 }
             }
+            case SIZE_WARNING_FILE_LIMIT_OPTION -> {
+                fileSizeWarningFileLimit = readSizeLimit(option.key(), option.value());
+            }
+            case SIZE_WARNING_TOTAL_LIMIT_OPTION -> {
+                fileSizeWarningTotalLimit = readSizeLimit(option.key(), option.value());
+            }
             default -> throw NativeImage.showError(String.format("Unknown option %s. Use --help-extra for usage instructions.", option.key()));
         }
+    }
+
+    private static long readSizeLimit(String optionKey, String optionValue) {
+        if (optionValue != null) {
+            try {
+                long limit = Long.parseLong(optionValue);
+                if (limit >= 0) {
+                    return limit * 1024 * 1024;
+                } else if (limit == -1) {
+                    return -1; // no limit
+                }
+            } catch (NumberFormatException ex) {
+            }
+        }
+        throw NativeImage.showError(String.format("native-image option %s requires a size in MiB, or -1 to deactivate.", optionKey));
     }
 
     private BundleSupport(NativeImage nativeImage) {
@@ -436,7 +473,6 @@ final class BundleSupport {
         }
     }
 
-    @SuppressWarnings("try")
     private Path substitutePath(Path origPath, Path destinationDir) {
         assert destinationDir.startsWith(rootDir);
 
@@ -556,10 +592,48 @@ final class BundleSupport {
                 return;
             }
             CopyOption[] options = overwrite ? new CopyOption[]{StandardCopyOption.REPLACE_EXISTING} : new CopyOption[0];
+            if (warnSize()) {
+                trackFileSize(sourceFile);
+            }
             Files.copy(sourceFile, target, options);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to copy " + sourceFile + " to " + target, e);
         }
+    }
+
+    /**
+     * Tracks the size of a file added to a bundle. Prints a log warning if the individual size
+     * exceeds a certain limit. Also prints a warning when the cumulative size of all files added so
+     * far exceed a limit, and repeats that at every multiple of that limit (maximum once per file).
+     *
+     * Layers files (.nil) are ignored for individual warnings and don't contribute to the
+     * cumulative limit.
+     *
+     * @param file the file to track the size of
+     * @throws IOException
+     */
+    private void trackFileSize(Path file) throws IOException {
+        if (!warnSize()) {
+            return;
+        }
+        if (file.getFileName().endsWith(".nil")) {
+            nilFileSeen = true;
+        }
+        long fileSize = Files.size(file);
+        if (fileSizeWarningFileLimit >= 0 && fileSize > fileSizeWarningFileLimit) {
+            LogUtils.warning(file + " adds " + ByteFormattingUtil.bytesToHuman(fileSize) + " to the Native Image bundle.");
+        }
+        if (fileSizeWarningTotalLimit >= 0) {
+            long nextLimitMultiple = cumulativeFileSize + fileSizeWarningTotalLimit - (cumulativeFileSize % fileSizeWarningTotalLimit);
+            cumulativeFileSize += fileSize;
+            if (cumulativeFileSize > nextLimitMultiple) {
+                LogUtils.warning("Native Image bundle has grown to " + ByteFormattingUtil.bytesToHuman(cumulativeFileSize) + (nilFileSeen ? " (excluding .nil files)." : "."));
+            }
+        }
+    }
+
+    private boolean warnSize() {
+        return fileSizeWarningFileLimit >= 0 || fileSizeWarningTotalLimit >= 0;
     }
 
     void complete() {

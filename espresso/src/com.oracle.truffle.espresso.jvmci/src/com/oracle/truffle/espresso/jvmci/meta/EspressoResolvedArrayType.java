@@ -33,6 +33,7 @@ import java.util.Objects;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -217,6 +218,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return null;
+    }
+
+    @Override
     public EspressoResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         EspressoResolvedJavaType resolvedElementalType = getElementalType().resolve(accessingClass);
         if (resolvedElementalType.equals(elementalType)) {
@@ -270,6 +276,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     @Override
     public boolean isMember() {
         return false;
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return new ResolvedJavaType[0];
     }
 
     @Override

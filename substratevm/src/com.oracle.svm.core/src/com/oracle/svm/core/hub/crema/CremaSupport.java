@@ -26,11 +26,11 @@ package com.oracle.svm.core.hub.crema;
 
 import java.util.List;
 
-import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 
 import jdk.vm.ci.meta.JavaType;
@@ -47,6 +47,10 @@ public interface CremaSupport {
         int vtableLength();
 
         int itableLength(Class<?> iface);
+
+        int afterFieldsOffset(int superAfterFieldsOffset);
+
+        int[] getDeclaredInstanceReferenceFieldOffsets();
     }
 
     CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
@@ -62,6 +66,8 @@ public interface CremaSupport {
     Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
 
     Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+
+    Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);

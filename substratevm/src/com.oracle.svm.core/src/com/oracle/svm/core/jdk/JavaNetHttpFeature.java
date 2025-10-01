@@ -27,8 +27,8 @@ package com.oracle.svm.core.jdk;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.configure.ResourcesRegistry;
@@ -93,8 +93,8 @@ class SimpleWebServerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(a -> {
-            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "sun.net.httpserver.simpleserver.resources.simpleserver");
+        access.registerReachabilityHandler(_ -> {
+            ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), "sun.net.httpserver.simpleserver.resources.simpleserver");
         }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }

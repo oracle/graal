@@ -1515,7 +1515,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
                 BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
-                                key -> new BootstrapMethodInfo());
+                                _ -> new BootstrapMethodInfo());
                 ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 
                 /*

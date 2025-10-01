@@ -25,8 +25,8 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.image.DisallowedImageHeapObjects.CANCELLABLE_CLASS;
+import static com.oracle.svm.core.image.DisallowedImageHeapObjects.LEGACY_CLEANER_CLASS;
 import static com.oracle.svm.core.image.DisallowedImageHeapObjects.MEMORY_SEGMENT_CLASS;
-import static com.oracle.svm.core.image.DisallowedImageHeapObjects.NIO_CLEANER_CLASS;
 import static com.oracle.svm.core.image.DisallowedImageHeapObjects.SCOPE_CLASS;
 
 import java.io.File;
@@ -75,25 +75,25 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitialization = access.getHostVM().getClassInitializationSupport();
-        access.registerObjectReachableCallback(MBeanServerConnection.class, (a1, obj, reason) -> onMBeanServerConnectionReachable(obj, this::error));
-        access.registerObjectReachableCallback(PlatformManagedObject.class, (a1, obj, reason) -> onPlatformManagedObjectReachable(obj, this::error));
-        access.registerObjectReachableCallback(Random.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onRandomReachable(obj, this::error));
-        access.registerObjectReachableCallback(SplittableRandom.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onSplittableRandomReachable(obj, this::error));
-        access.registerObjectReachableCallback(Thread.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onThreadReachable(obj, this::error));
+        access.registerObjectReachableCallback(MBeanServerConnection.class, (_, obj, _) -> onMBeanServerConnectionReachable(obj, this::error));
+        access.registerObjectReachableCallback(PlatformManagedObject.class, (_, obj, _) -> onPlatformManagedObjectReachable(obj, this::error));
+        access.registerObjectReachableCallback(Random.class, (_, obj, _) -> DisallowedImageHeapObjects.onRandomReachable(obj, this::error));
+        access.registerObjectReachableCallback(SplittableRandom.class, (_, obj, _) -> DisallowedImageHeapObjects.onSplittableRandomReachable(obj, this::error));
+        access.registerObjectReachableCallback(Thread.class, (_, obj, _) -> DisallowedImageHeapObjects.onThreadReachable(obj, this::error));
         access.registerObjectReachableCallback(DisallowedImageHeapObjects.CONTINUATION_CLASS,
-                        (a1, obj, reason) -> DisallowedImageHeapObjects.onContinuationReachable(obj, this::error));
-        access.registerObjectReachableCallback(FileDescriptor.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onFileDescriptorReachable(obj, this::error));
-        access.registerObjectReachableCallback(Buffer.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onBufferReachable(obj, this::error));
-        access.registerObjectReachableCallback(Cleaner.Cleanable.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
-        access.registerObjectReachableCallback(NIO_CLEANER_CLASS, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
-        access.registerObjectReachableCallback(Cleaner.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onCleanerReachable(obj, this::error));
-        access.registerObjectReachableCallback(ZipFile.class, (a1, obj, reason) -> DisallowedImageHeapObjects.onZipFileReachable(obj, this::error));
-        access.registerObjectReachableCallback(CANCELLABLE_CLASS, (a1, obj, reason) -> DisallowedImageHeapObjects.onCancellableReachable(obj, this::error));
+                        (_, obj, _) -> DisallowedImageHeapObjects.onContinuationReachable(obj, this::error));
+        access.registerObjectReachableCallback(FileDescriptor.class, (_, obj, _) -> DisallowedImageHeapObjects.onFileDescriptorReachable(obj, this::error));
+        access.registerObjectReachableCallback(Buffer.class, (_, obj, _) -> DisallowedImageHeapObjects.onBufferReachable(obj, this::error));
+        access.registerObjectReachableCallback(Cleaner.Cleanable.class, (_, obj, _) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
+        access.registerObjectReachableCallback(LEGACY_CLEANER_CLASS, (_, obj, _) -> DisallowedImageHeapObjects.onCleanableReachable(obj, this::error));
+        access.registerObjectReachableCallback(Cleaner.class, (_, obj, _) -> DisallowedImageHeapObjects.onCleanerReachable(obj, this::error));
+        access.registerObjectReachableCallback(ZipFile.class, (_, obj, _) -> DisallowedImageHeapObjects.onZipFileReachable(obj, this::error));
+        access.registerObjectReachableCallback(CANCELLABLE_CLASS, (_, obj, _) -> DisallowedImageHeapObjects.onCancellableReachable(obj, this::error));
 
         if (ForeignSupport.isAvailable()) {
             ForeignSupport foreignSupport = ForeignSupport.singleton();
-            access.registerObjectReachableCallback(MEMORY_SEGMENT_CLASS, (a1, obj, reason) -> foreignSupport.onMemorySegmentReachable(obj, this::error));
-            access.registerObjectReachableCallback(SCOPE_CLASS, (a1, obj, reason) -> foreignSupport.onScopeReachable(obj, this::error));
+            access.registerObjectReachableCallback(MEMORY_SEGMENT_CLASS, (_, obj, _) -> foreignSupport.onMemorySegmentReachable(obj, this::error));
+            access.registerObjectReachableCallback(SCOPE_CLASS, (_, obj, _) -> foreignSupport.onScopeReachable(obj, this::error));
         }
 
         if (SubstrateOptions.DetectUserDirectoriesInImageHeap.getValue()) {
@@ -189,7 +189,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     }
 
     private RuntimeException error(String msg, Object obj, String initializerAction) {
-        throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, "", action -> initializerAction) +
+        throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, "", _ -> initializerAction) +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image runtime by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +

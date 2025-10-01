@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.62.0",
   "name" : "truffle",
-  "version" : "26.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],

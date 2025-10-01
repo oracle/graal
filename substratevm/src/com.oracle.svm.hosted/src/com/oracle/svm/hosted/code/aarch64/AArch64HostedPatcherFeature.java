@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -109,6 +110,11 @@ class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation im
     public boolean equals(Object obj) {
         return obj == this;
     }
+
+    @Override
+    public String toString() {
+        return ClassUtil.getUnqualifiedName(getClass()) + "{annotation=" + annotation + '}';
+    }
 }
 
 class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
@@ -160,6 +166,10 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
         return this == obj;
     }
 
+    @Override
+    public String toString() {
+        return ClassUtil.getUnqualifiedName(getClass()) + "{macroInstruction=" + macroInstruction + '}';
+    }
 }
 
 class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
@@ -203,6 +213,11 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     @Override
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    @Override
+    public String toString() {
+        return ClassUtil.getUnqualifiedName(getClass()) + "{macroInstruction=" + macroInstruction + '}';
     }
 }
 
@@ -273,5 +288,10 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
     @Override
     public boolean equals(Object obj) {
         return obj == this;
+    }
+
+    @Override
+    public String toString() {
+        return ClassUtil.getUnqualifiedName(getClass()) + "{annotation=" + annotation + '}';
     }
 }

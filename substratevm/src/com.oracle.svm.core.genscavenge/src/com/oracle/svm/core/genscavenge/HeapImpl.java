@@ -49,6 +49,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -104,6 +106,7 @@ public final class HeapImpl extends Heap {
     private final GCImpl gcImpl;
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapAccounting accounting = new HeapAccounting();
+    private final ImageHeapChunkLogger imageHeapChunkLogger = new ImageHeapChunkLogger();
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
@@ -283,6 +286,13 @@ public final class HeapImpl extends Heap {
     void logChunks(Log log, boolean allowUnsafe) {
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logChunks(log);
+        }
+        imageHeapChunkLogger.initialize(log);
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
+            ImageHeapWalker.walkImageHeapChunks(info, imageHeapChunkLogger);
+        }
+        if (AuxiliaryImageHeap.isPresent()) {
+            AuxiliaryImageHeap.singleton().walkHeapChunks(imageHeapChunkLogger);
         }
         getYoungGeneration().logChunks(log, allowUnsafe);
         getOldGeneration().logChunks(log);
@@ -953,6 +963,31 @@ public final class HeapImpl extends Heap {
             boolean allowUnsafe = invocationCount == 1 && SubstrateDiagnostics.DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel);
             HeapImpl.getHeapImpl().logChunks(log, allowUnsafe);
             log.indent(false);
+        }
+    }
+
+    private static final class ImageHeapChunkLogger implements HeapChunkVisitor {
+        private Log log;
+
+        @SuppressWarnings("hiding")
+        void initialize(Log log) {
+            this.log = log;
+        }
+
+        @Override
+        public void visitAlignedChunk(AlignedHeader chunk) {
+            Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
+            HeapChunkLogging.logChunk(log, chunk, bottom, top, end, true, "I", false);
+        }
+
+        @Override
+        public void visitUnalignedChunk(UnalignedHeader chunk) {
+            Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
+            HeapChunkLogging.logChunk(log, chunk, bottom, top, end, false, "I", false);
         }
     }
 }

@@ -26,8 +26,6 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
-
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -56,6 +54,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.plugins.PointstoGraphBuilderPlugins;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
@@ -97,7 +96,6 @@ public final class PointsToAnalyzer {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
     }
 
     private final OptionValues options;
@@ -212,7 +210,9 @@ public final class PointsToAnalyzer {
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
             plugins.setClassInitializationPlugin(classInitializationPlugin);
             aProviders.setGraphBuilderPlugins(plugins);
-            registerInvocationPlugins(originalProviders.getSnippetReflection(), plugins.getInvocationPlugins(), false, true, false);
+            PointstoGraphBuilderPlugins.registerArrayPlugins(plugins.getInvocationPlugins());
+            PointstoGraphBuilderPlugins.registerSystemPlugins(plugins.getInvocationPlugins());
+            PointstoGraphBuilderPlugins.registerObjectPlugins(plugins.getInvocationPlugins());
         }
     }
 
@@ -286,6 +286,7 @@ public final class PointsToAnalyzer {
         try (Timer t = new Timer("analysis", analysisName)) {
             StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang,
                             debugContext);
+            bigbang.getUniverse().setConcurrentAnalysisAccess(config);
             bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
                 bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
                 standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.duringAnalysis(config));

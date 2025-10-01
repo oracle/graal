@@ -191,7 +191,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     private void addShimExports(String shimName, String... exports) {
         assert exports != null && exports.length > 0;
-        shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(List.of(exports));
+        shimExports.computeIfAbsent(shimName, _ -> new TreeSet<>()).addAll(List.of(exports));
     }
 
     /** Returns symbols that are re-exported by shim libraries. */
@@ -234,14 +234,13 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     private AfterImageWriteAccessImpl accessImpl;
 
     @Override
-    @SuppressWarnings("try")
     public void afterImageWrite(AfterImageWriteAccess access) {
         if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
             return; /* Not supported. */
         }
 
         accessImpl = (AfterImageWriteAccessImpl) access;
-        try (Scope s = accessImpl.getDebugContext().scope("JDKLibs")) {
+        try (Scope _ = accessImpl.getDebugContext().scope("JDKLibs")) {
             Path jdkLibDir = JDKLibDirectoryProvider.singleton().getJDKLibDirectory();
             /* Copy JDK libraries needed to run the native image. */
             copyJDKLibraries(jdkLibDir);
@@ -256,11 +255,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     /** Copies registered dynamic libraries from the JDK next to the image. */
-    @SuppressWarnings("try")
     private void copyJDKLibraries(Path jdkLibDir) {
         DebugContext debug = accessImpl.getDebugContext();
-        try (Scope s = debug.scope("copy");
-                        Indent i = debug.logAndIndent("from: %s", jdkLibDir)) {
+        try (Scope _ = debug.scope("copy");
+                        Indent _ = debug.logAndIndent("from: %s", jdkLibDir)) {
             for (String libname : new TreeSet<>(jniRegistrationSupportSingleton.currentLayerRegisteredLibraries)) {
                 if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
                     /* Skip libraries copied in the base layer. */
@@ -301,11 +299,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     /** Makes shim libraries that are necessary to satisfy dependencies of JDK libraries. */
-    @SuppressWarnings("try")
     private void makeShimLibraries() {
         for (String shimName : shimExports.keySet()) {
             DebugContext debug = accessImpl.getDebugContext();
-            try (Scope s = debug.scope(shimName + "Shim")) {
+            try (Scope _ = debug.scope(shimName + "Shim")) {
                 if (debug.isLogEnabled(DebugContext.INFO_LEVEL)) {
                     debug.log("exports: %s", String.join(", ", shimExports.get(shimName)));
                 }
@@ -315,7 +312,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     /** Makes a shim library that re-exports functions from the native image. */
-    @SuppressWarnings("try")
     private void makeShimLibrary(String shimName) {
         assert ImageSingletons.contains(CCompilerInvoker.class);
 
@@ -347,8 +343,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
 
         DebugContext debug = accessImpl.getDebugContext();
-        try (Scope s = debug.scope("link");
-                        Activation a = debug.activate()) {
+        try (Scope _ = debug.scope("link");
+                        Activation _ = debug.activate()) {
             int cmdResult = FileUtils.executeCommand(linkerCommand);
             if (cmdResult != 0) {
                 VMError.shouldNotReachHereUnexpectedInput(cmdResult); // ExcludeFromJacocoGeneratedReport

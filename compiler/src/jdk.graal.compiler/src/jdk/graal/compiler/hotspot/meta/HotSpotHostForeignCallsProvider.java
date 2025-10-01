@@ -111,7 +111,6 @@ import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.Unary
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
-import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SINH;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TANH;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
@@ -597,6 +596,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
 
         linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD);
+        linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALLER_OF_CALLER, c.testDeoptimizeCallerOfCaller, PREPEND_THREAD);
 
         registerArrayCopy(JavaKind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
         registerArrayCopy(JavaKind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
@@ -741,9 +741,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(createDescriptor(LOG.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLogAddress, NativeCall);
         registerForeignCall(createDescriptor(LOG10.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLog10Address, NativeCall);
         registerForeignCall(createDescriptor(POW.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticPowAddress, NativeCall);
-        if (hotSpotVMConfig.arithmeticSinhAddress != 0L) {
-            registerForeignCall(createDescriptor(SINH.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticSinhAddress, NativeCall);
-        }
         if (hotSpotVMConfig.arithmeticTanhAddress != 0L) {
             registerForeignCall(createDescriptor(TANH.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticTanhAddress, NativeCall);
         }

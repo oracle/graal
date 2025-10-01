@@ -122,7 +122,7 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "latest"
-              GATE_TAGS: "build,helloworld,native_unittests"
+              GATE_TAGS: "build,helloworld,native_unittests,standalone_pointsto_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - os: ubuntu-24.04

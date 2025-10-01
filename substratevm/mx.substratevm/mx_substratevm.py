@@ -208,6 +208,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'debuginfotest',
+    'standalone_pointsto_unittests',
     'native_unittests',
     'build',
     'benchmarktest',
@@ -439,6 +440,16 @@ def svm_gate_body(args, tasks):
             else:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     gdbdebughelperstest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
+    with Task('standalone pointsto unittests', tasks, tags=[GraalTags.standalone_pointsto_unittests]) as t:
+        if t:
+            if '--static' in args.extra_image_builder_arguments:
+                mx.warn('Skipping standalone pointsto unittests if --static.')
+            elif mx.is_windows():
+                mx.warn('Skipping standalone pointsto unittests on Windows.')
+            else:
+                jvm_unittest(['--record-results', '--print-failed', 'failed.txt',
+                            '--use-graalvm'] + args.extra_image_builder_arguments + ['com.oracle.graal.pointsto.standalone.test'])
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
@@ -782,9 +793,10 @@ def jvm_unittest(args):
     return mx_unittest.unittest(['--suite', 'substratevm'] + args)
 
 
-def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
+def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None, pre_args=None):
     bin_args = bin_args if bin_args is not None else []
-    jsruncmd = [get_js_launcher(jslib)] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
+    pre_args = pre_args if pre_args is not None else []
+    jsruncmd = pre_args + [get_js_launcher(jslib)] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
                                       '--', '--warmup-time=' + str(15_000),
                                       '--warmup-iterations=' + str(warmup_iterations),
                                       '--iterations=' + str(iterations)]
@@ -822,10 +834,10 @@ def build_js_lib(native_image):
 def get_js_launcher(jslib):
     return os.path.join(os.path.dirname(jslib), "..", "bin", "js")
 
-def test_js(js, benchmarks, bin_args=None):
+def test_js(js, benchmarks, bin_args=None, pre_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
     for benchmark_name, warmup_iterations, iterations, timeout in benchmarks:
-        js_image_test(js, bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
+        js_image_test(js, bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args, pre_args=pre_args)
 
 def test_run(cmds, expected_stdout, timeout=10, env=None):
     stdoutdata = []
@@ -1285,6 +1297,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         '-H:DebugInfoSourceSearchPath=' + test_source_path,
         '-H:+SourceLevelDebug',
         '-H:+RuntimeDebugInfo',
+        # We rely on '-H:RuntimeDebugInfoFormat' to default to 'objfile', which is required for this test
     ]) + args
 
     mx.log(f"native-image {' '.join(build_args)}")
@@ -1305,6 +1318,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
                 '-H:+SourceLevelDebug',
                 '-H:+RuntimeDebugInfo',
                 '-H:-LazyDeoptimization' if eager else '-H:+LazyDeoptimization',
+                # We rely on '-H:RuntimeDebugInfoFormat' to default to 'objfile', which is required for this test
             ]) +
             ['-g', '--macro:jsvm-library']
         ))
@@ -2726,3 +2740,25 @@ import org.graalvm.nativeimage.Platforms;
             shaded = line.replace("org.capnproto", "com.oracle.svm.shaded.org.capnproto")
             f.write(shaded)
         f.write('}\n')
+
+class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
+
+    def __init__(self):
+        super(StandalonePointstoUnittestsConfig, self).__init__('standalone-pointsto-unittest')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+
+        vmArgs.extend(['--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED'])
+
+        # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+        # for the junit harness which uses reflection to find @Test methods. In addition, the
+        # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+        # ALL-UNNAMED.
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.graal.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
+
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(StandalonePointstoUnittestsConfig())

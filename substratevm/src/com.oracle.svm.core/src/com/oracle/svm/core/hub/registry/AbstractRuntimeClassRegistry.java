@@ -43,11 +43,11 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
@@ -55,7 +55,6 @@ import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.ParserException;
-import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -289,7 +288,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
-        int classFileAccessFlags = parsed.getFlags();
 
         /*
          * The TypeCheckBuilder considers interface arrays as interfaces. Since we are dealing with
@@ -395,15 +393,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             afterFieldsOffset = 0;
         } else {
             int superAfterFieldsOffset = CremaSupport.singleton().getAfterFieldsOffset(superHub);
-            // GR-60069: field layout
-            int numDeclaredInstanceFields = 0;
-            for (ParserField field : parsed.getFields()) {
-                if (!field.isStatic()) {
-                    numDeclaredInstanceFields += 1;
-                }
-            }
-            assert numDeclaredInstanceFields == 0;
-            afterFieldsOffset = Math.toIntExact(superAfterFieldsOffset);
+            afterFieldsOffset = dispatchTable.afterFieldsOffset(superAfterFieldsOffset);
         }
         boolean isValueBased = (parsed.getFlags() & ACC_VALUE_BASED) != 0;
 
@@ -413,9 +403,10 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, classFileAccessFlags, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
                         typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
-                        dispatchTableLength, afterFieldsOffset, isValueBased);
+                        dispatchTableLength,
+                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 
@@ -545,7 +536,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         return sourceFile;
     }
 
-    @SuppressWarnings("try")
     public final Class<?> loadSuperType(Symbol<Type> name, Symbol<Type> superName) {
         Placeholder placeholder = new Placeholder();
         var prev = runtimeClasses.putIfAbsent(name, placeholder);
@@ -556,7 +546,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             otherPlaceHolder.addSuperProbingThread();
         }
         assert prev == null : prev;
-        try (var scope = ClassLoading.allowArbitraryClassLoading()) {
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
             return loadClass(superName);
         } catch (ClassNotFoundException e) {
             NoClassDefFoundError error = new NoClassDefFoundError(superName.toString());

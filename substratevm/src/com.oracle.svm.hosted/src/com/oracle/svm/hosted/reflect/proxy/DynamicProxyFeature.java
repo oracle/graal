@@ -25,12 +25,12 @@
 package com.oracle.svm.hosted.reflect.proxy;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ProxyConfigurationParser;
-import com.oracle.svm.configure.config.conditional.ConfigurationConditionResolver;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -70,9 +70,9 @@ public final class DynamicProxyFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
+        AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
 
-        ProxyConfigurationParser<ConfigurationCondition> parser = new ProxyConfigurationParser<>(conditionResolver, ConfigurationFiles.Options.getConfigurationParserOptions(), proxyRegistry);
+        ProxyConfigurationParser<AccessCondition> parser = new ProxyConfigurationParser<>(conditionResolver, ConfigurationFiles.Options.getConfigurationParserOptions(), proxyRegistry);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFile.DYNAMIC_PROXY.getFileName());

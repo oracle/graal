@@ -148,6 +148,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
+    @CompilationFinal private boolean enableNetworking;
     @CompilationFinal private boolean continuum;
     @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;

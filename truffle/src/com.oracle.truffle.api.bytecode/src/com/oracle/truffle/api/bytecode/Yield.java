@@ -97,7 +97,7 @@ import com.oracle.truffle.api.dsl.Bind;
  * }
  * </pre>
  *
- * @since 26.0
+ * @since 25.1
  * @see GenerateBytecode#enableYield()
  */
 @Retention(RetentionPolicy.SOURCE)
@@ -108,7 +108,7 @@ public @interface Yield {
      * Whether executing this operation should force the uncached interpreter (if enabled) to
      * transition to cached.
      *
-     * @since 26.0
+     * @since 25.1
      * @see Operation#forceCached()
      */
     boolean forceCached() default false;
@@ -116,7 +116,7 @@ public @interface Yield {
     /**
      * The instrumentation tags that should be implicitly associated with this operation.
      *
-     * @since 26.0
+     * @since 25.1
      * @see GenerateBytecode#enableTagInstrumentation()
      */
     Class<? extends Tag>[] tags() default {};
@@ -125,7 +125,7 @@ public @interface Yield {
      * Optional documentation for the instrumentation. This documentation is included in the javadoc
      * for the generated interpreter.
      *
-     * @since 26.0
+     * @since 25.1
      */
     String javadoc() default "";
 

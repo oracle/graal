@@ -1732,11 +1732,7 @@ public class NativeImage {
             arguments.addAll(strings);
         }
 
-        if (useBundle()) {
-            LogUtils.warning("Native Image Bundles are an experimental feature.");
-        }
-
-        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
+        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, _) -> a;
         Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
         List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
 
@@ -1978,7 +1974,7 @@ public class NativeImage {
         Path jdkRoot = config.rootDir;
         try {
             var reader = ImageReader.open(jdkRoot.resolve("lib/modules"));
-            return new LinkedHashSet<>(reader.findNode("/modules").getChildNames().map(s -> s.substring("/modules/".length())).toList());
+            return new LinkedHashSet<>(List.of(reader.getModuleNames()));
         } catch (IOException e) {
             throw showError("Unable to determine builtin modules of JDK in " + jdkRoot, e);
         }
@@ -2542,7 +2538,7 @@ public class NativeImage {
 
     void showOutOfMemoryWarning() {
         String xmxFlag = "-Xmx";
-        String lastMaxHeapValue = imageBuilderArgs.stream().filter(arg -> arg.startsWith(xmxFlag)).reduce((first, second) -> second).orElse(null);
+        String lastMaxHeapValue = imageBuilderArgs.stream().filter(arg -> arg.startsWith(xmxFlag)).reduce((_, second) -> second).orElse(null);
         String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set with '" + lastMaxHeapValue + "'.)";
         String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + xmxFlag + "' option";
         showMessage("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.", maxHeapText, additionalAction);

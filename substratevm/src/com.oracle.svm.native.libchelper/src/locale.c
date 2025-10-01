@@ -206,7 +206,6 @@ static int ParseLocale(int cat, char ** std_language, char ** std_script,
         if (language != NULL && mapLookup(language_names, language, std_language) == 0) {
             *std_language = malloc(strlen(language)+1);
             if (*std_language == NULL) {
-                free(temp);
                 free(encoding_variant);
                 return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
             }
@@ -219,7 +218,6 @@ static int ParseLocale(int cat, char ** std_language, char ** std_script,
         if (mapLookup(country_names, country, std_country) == 0) {
             *std_country = malloc(strlen(country)+1);
             if (*std_country == NULL) {
-                free(temp);
                 free(encoding_variant);
                 return SVM_LOCALE_INITIALIZATION_OUT_OF_MEMORY;
             }

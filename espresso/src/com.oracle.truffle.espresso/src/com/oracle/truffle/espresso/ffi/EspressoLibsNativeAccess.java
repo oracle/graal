@@ -114,8 +114,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
             getLogger().fine(() -> "Failed to locate symbol '" + symbolName + "' in espresso lib " + lib.name());
         } else {
             // Delegate library
-            getLogger().fine(() -> "Espresso libs delegating for: " + symbolName);
-            return delegate.lookupSymbol(library, symbolName);
+            TruffleObject ret = delegate.lookupSymbol(library, symbolName);
+            if (ret != null) {
+                getLogger().fine(() -> "Found: " + symbolName + " through delegate library");
+            }
+            return ret;
         }
         return null;
     }

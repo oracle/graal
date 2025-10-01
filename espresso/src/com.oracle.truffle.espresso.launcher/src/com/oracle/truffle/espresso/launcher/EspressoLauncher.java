@@ -535,7 +535,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     "MaxRAMPercentage",
                     "UseParallelGC",
                     "GCTimeRatio",
-                    "ExitOnOutOfMemoryError");
+                    "ExitOnOutOfMemoryError",
+                    "UseCompressedOops");
 
     private static final Set<String> ignoredXXOptions = Set.of(
                     "UseJVMCICompiler",

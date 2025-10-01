@@ -135,6 +135,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
 
+    // There are 3 available locking modes:
+    // LM_MONITOR uses only heavy monitors for locking;
+    // LM_LEGACY uses stack-locking, with monitors as 2nd tier;
+    // LM_LIGHTWEIGHT uses thread-local space for storing locked objects. This avoids the overload
+    // of the mark word.
+    public final int lockingMode = getFlag("LockingMode", Integer.class);
+
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class);
+
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
@@ -195,9 +205,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Compressed Oops related values.
     public final boolean useCompressedOops = getFlag("UseCompressedOops", Boolean.class);
     public final boolean useCompressedClassPointers = getFlag("UseCompressedClassPointers", Boolean.class);
-
-    public final boolean useClassMetaspaceForAllClasses = getFlag("UseClassMetaspaceForAllClasses", Boolean.class);
-
     // JDK-8305895 allows storing the compressed class pointer in the upper 22 bits of the mark
     // word. This runtime optimization is guarded by the flag UseCompactObjectHeaders. It depends
     // on compressed class pointers, meaning that if useCompactObjectHeaders is true,
@@ -464,7 +471,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
-    public final long crcTableAddress = getFieldValue("CompilerToVM::Data::crc_table_addr", Long.class, "address");
+    public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
@@ -694,6 +701,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");
+    public final long testDeoptimizeCallerOfCaller = getAddress("JVMCIRuntime::test_deoptimize_caller_of_caller");
 
     public final long registerFinalizerAddress = getAddress("SharedRuntime::register_finalizer");
     public final long exceptionHandlerForReturnAddressAddress = getAddress("SharedRuntime::exception_handler_for_return_address");
@@ -703,7 +711,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
     public final long arithmeticSinAddress = getFieldValue("CompilerToVM::Data::dsin", Long.class, "address");
-    public final long arithmeticSinhAddress = getFieldValue("CompilerToVM::Data::dsinh", Long.class, "address");
     public final long arithmeticCosAddress = getFieldValue("CompilerToVM::Data::dcos", Long.class, "address");
     public final long arithmeticTanAddress = getFieldValue("CompilerToVM::Data::dtan", Long.class, "address");
     public final long arithmeticTanhAddress = getFieldValue("CompilerToVM::Data::dtanh", Long.class, "address");

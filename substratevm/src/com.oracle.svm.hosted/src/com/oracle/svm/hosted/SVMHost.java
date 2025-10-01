@@ -43,7 +43,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -82,6 +81,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
+import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -133,6 +133,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.DynamicAccessMarkingPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
@@ -164,7 +165,6 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.internal.loader.NativeLibraries;
-import jdk.internal.reflect.Reflection;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
@@ -243,6 +243,9 @@ public class SVMHost extends HostVM {
 
     private final ConstantExpressionRegistry constantExpressionRegistry;
 
+    private final boolean trackDynamicAccess;
+    private DynamicAccessDetectionSupport dynamicAccessDetectionSupport = null;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
                     MissingRegistrationSupport missingRegistrationSupport) {
@@ -284,6 +287,8 @@ public class SVMHost extends HostVM {
         verifyNamingConventions = SubstrateOptions.VerifyNamingConventions.getValue();
 
         constantExpressionRegistry = StrictDynamicAccessInferenceFeature.isActive() ? ConstantExpressionRegistry.singleton() : null;
+
+        trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
     }
 
     /**
@@ -558,7 +563,6 @@ public class SVMHost extends HostVM {
             componentHub = dynamicHub(hybrid.componentType());
         }
         int modifiers = javaClass.getModifiers();
-        int classFileAccessFlags = Reflection.getClassAccessFlags(javaClass);
 
         /*
          * If the class is an application class then it was loaded by NativeImageClassLoader. The
@@ -604,7 +608,7 @@ public class SVMHost extends HostVM {
                         isLambdaFormHidden, isLinked, isProxyClass);
 
         return new DynamicHub(javaClass, className, computeHubType(type), ReferenceType.computeReferenceType(javaClass),
-                        superHub, componentHub, sourceFileName, modifiers, classFileAccessFlags, flags, hubClassLoader, nestHost,
+                        superHub, componentHub, sourceFileName, modifiers, flags, hubClassLoader, nestHost,
                         simpleBinaryName, getDeclaringClass(javaClass), getSignature(javaClass), layerId);
     }
 
@@ -777,6 +781,15 @@ public class SVMHost extends HostVM {
                 analysisTrivialMethods.put(method, true);
             }
 
+            if (trackDynamicAccess) {
+                if (dynamicAccessDetectionSupport == null) {
+                    dynamicAccessDetectionSupport = DynamicAccessDetectionSupport.instance();
+                }
+                if (dynamicAccessDetectionSupport.lookupDynamicAccessMethod(graph.method()) != null) {
+                    new DynamicAccessMarkingPhase().apply(graph, bb.getProviders(method));
+                }
+            }
+
             super.methodAfterParsingHook(bb, method, graph);
         }
     }
@@ -836,8 +849,8 @@ public class SVMHost extends HostVM {
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
-            } else if (n instanceof ReachabilityRegistrationNode node) {
-                bb.postTask(debug -> node.getRegistrationTask().ensureDone());
+            } else if (n instanceof ReachabilityCallbackNode node) {
+                bb.postTask(_ -> node.getRegistrationTask().ensureDone());
             }
         }
     }
@@ -1434,14 +1447,14 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key) {
+    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
-            var result = parsingSupport.getStrengthenGraphsToTargetFunction(key);
+            var result = parsingSupport.getStrengthenGraphsTypePredicate(key);
             if (result != null) {
                 return result;
             }
         }
-        return super.getStrengthenGraphsToTargetFunction(key);
+        return super.getStrengthenGraphsTypePredicate(key);
     }
 
     @Override

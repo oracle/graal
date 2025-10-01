@@ -283,6 +283,12 @@ final class LinkedKlassFieldLayout {
                         entry(Types.sun_nio_fs_TrufflePath, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_TRUFFLE_FILE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
                         }),
+                        entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_HOST_REFERENCE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        }),
+                        entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_HOST_REFERENCE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        }),
                         entry(Types.java_util_zip_CRC32, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_CRC32, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
                         })

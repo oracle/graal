@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.vm.VM;
 
-@EspressoSubstitutions(value = Class.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_lang_Class {
 
     // Already in regular substitutions:
@@ -186,7 +186,6 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    // Method no longer exists in 26.
     public static int getClassAccessFlagsRaw0(@JavaType(Class.class) StaticObject self, @Inject EspressoContext ctx) {
         return ctx.getVM().JVM_GetClassAccessFlags(self);
     }

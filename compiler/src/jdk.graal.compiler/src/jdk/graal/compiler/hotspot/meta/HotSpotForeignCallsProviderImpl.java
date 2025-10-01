@@ -82,6 +82,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                     Word.class);
 
     public static final HotSpotForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "test_deoptimize_call_int", int.class, int.class);
+    public static final HotSpotForeignCallDescriptor TEST_DEOPTIMIZE_CALLER_OF_CALLER = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "test_deoptimize_caller_of_caller",
+                    int.class, int.class);
 
     protected final HotSpotJVMCIRuntime jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;

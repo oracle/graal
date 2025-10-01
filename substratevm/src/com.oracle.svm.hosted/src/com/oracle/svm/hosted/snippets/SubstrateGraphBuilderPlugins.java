@@ -96,9 +96,10 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
@@ -246,7 +247,7 @@ public class SubstrateGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
                     String pattern = asConstantObject(b, String.class, patternNode);
                     if (pattern != null) {
-                        b.add(ReachabilityRegistrationNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
+                        b.add(ReachabilityCallbackNode.create(() -> parsePatternAndRegister(loader, pattern), reason));
                         return true;
                     }
                     return false;
@@ -265,7 +266,7 @@ public class SubstrateGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode) {
                         Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
                         if (clazz != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+                            b.add(ReachabilityCallbackNode.create(() -> RuntimeSerialization.register(clazz), reason));
                             return true;
                         }
                         return false;
@@ -283,7 +284,7 @@ public class SubstrateGraphBuilderPlugins {
                         var clazz = asConstantObject(b, Class.class, clazzNode);
                         var constructor = asConstantObject(b, Constructor.class, constructorNode);
                         if (clazz != null && constructor != null) {
-                            b.add(ReachabilityRegistrationNode.create(() -> RuntimeSerialization.register(clazz), reason));
+                            b.add(ReachabilityCallbackNode.create(() -> RuntimeSerialization.register(clazz), reason));
                             return true;
                         }
                         return false;
@@ -472,7 +473,7 @@ public class SubstrateGraphBuilderPlugins {
                     Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
                     boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
                     if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
-                        b.add(ReachabilityRegistrationNode.create(proxyRegistrationRunnable, reason));
+                        b.add(ReachabilityCallbackNode.create(proxyRegistrationRunnable, reason));
                         if (inferenceLog != null) {
                             Object ignore = DynamicAccessInferenceLog.ignoreArgument();
                             Class<?>[] interfaces = extractClassArray(b, annotationSubstitutions, args[1]);
@@ -663,7 +664,7 @@ public class SubstrateGraphBuilderPlugins {
      */
     private static FixedNode skipNonInterferingNodes(FixedNode node) {
         FixedNode cur = node;
-        while (cur instanceof AbstractBeginNode || cur instanceof FullInfopointNode) {
+        while (cur instanceof AbstractBeginNode || cur instanceof FullInfopointNode || cur instanceof AbstractAnalysisMetadataTrackingNode) {
             cur = ((FixedWithNextNode) cur).next();
         }
         return cur;
@@ -694,8 +695,8 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
                 successor = ((AbstractBeginNode) successor).next();
-            } else if (successor instanceof ReachabilityRegistrationNode) {
-                successor = ((ReachabilityRegistrationNode) successor).next();
+            } else if (successor instanceof AbstractAnalysisMetadataTrackingNode) {
+                successor = ((AbstractAnalysisMetadataTrackingNode) successor).next();
             } else {
                 return successor;
             }

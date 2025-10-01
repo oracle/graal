@@ -494,7 +494,7 @@ public interface InternalResource {
          * property is not set and the platform is unsupported, the {@link #getCurrent()} method
          * will throw an {@link IllegalStateException}.
          *
-         * @since 26.0
+         * @since 25.1
          */
         UNSUPPORTED("unsupported");
 
@@ -592,7 +592,7 @@ public interface InternalResource {
          * property is not set and the platform is unsupported, the {@link #getCurrent()} method
          * will throw an {@link IllegalStateException}.
          *
-         * @since 26.0
+         * @since 25.1
          */
         UNSUPPORTED("unsupported");
 

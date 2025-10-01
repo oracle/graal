@@ -601,8 +601,11 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                 expectSuspended((SuspendedEvent event) -> {
                     checkState(event, 2, true, "STATEMENT").prepareStepOver(1);
                 });
-                // resume events are ignored by stepping
                 session.resume(getEvalThread());
+                // Step was prepared, resume has no effect on stepping
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 3, true, "STATEMENT").prepareContinue();
+                });
                 expectDone();
             }
         }
@@ -625,6 +628,10 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                     checkState(event, 2, true, "STATEMENT").prepareStepOver(1);
                 });
                 session.resume(getEvalThread());
+                // Step was prepared, resume has no effect on stepping
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 3, true, "STATEMENT").prepareContinue();
+                });
                 expectDone();
             }
         }

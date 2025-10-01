@@ -63,7 +63,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -180,7 +180,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
         if (field == null) {
             return;
         }
-        access.registerReachabilityHandler(a -> RuntimeReflection.register(field), clazz);
+        access.registerReachabilityHandler(_ -> RuntimeReflection.register(field), clazz);
     }
 
     @Override
@@ -512,7 +512,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
             if (clazz == null) {
                 return false;
             }
-            b.add(ReachabilityRegistrationNode.create(() -> {
+            b.add(ReachabilityCallbackNode.create(() -> {
                 try {
                     registrationCallback.accept(clazz);
                 } catch (LinkageError e) {
@@ -575,7 +575,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
             if (interfaces == null) {
                 return false;
             }
-            b.add(ReachabilityRegistrationNode.create(() -> RuntimeProxyCreation.register(interfaces), reason));
+            b.add(ReachabilityCallbackNode.create(() -> RuntimeProxyCreation.register(interfaces), reason));
             if (inferenceLog != null) {
                 Object[] args = targetMethod.getParameters().length == 2
                                 ? new Object[]{DynamicAccessInferenceLog.ignoreArgument(), interfaces}
@@ -618,7 +618,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
             if (clazz == null || resource == null) {
                 return false;
             }
-            b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resolveResourceName(clazz, resource)), reason));
+            b.add(ReachabilityCallbackNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resolveResourceName(clazz, resource)), reason));
             if (inferenceLog != null) {
                 inferenceLog.logRegistration(b, reason, targetMethod, clazz, new String[]{resource});
             }

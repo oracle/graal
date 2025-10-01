@@ -90,7 +90,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Simplify graphs based on reachability information tracked by the static analysis. Additionally,
@@ -640,9 +639,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             assert exactType.equals(strengthenGraphs.getStrengthenStampType(exactType)) : exactType;
 
             if (!oldStamp.isExactType() || !exactType.equals(oldType)) {
-                ResolvedJavaType targetType = toTargetFunction.apply(exactType);
-                if (targetType != null) {
-                    TypeReference typeRef = TypeReference.createExactTrusted(targetType);
+                if (typePredicate.test(exactType)) {
+                    TypeReference typeRef = TypeReference.createExactTrusted(exactType);
                     return StampFactory.object(typeRef, nonNull);
                 }
             }
@@ -678,9 +676,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             assert typeStateTypes.stream().map(newType::isAssignableFrom).reduce(Boolean::logicalAnd).get() : typeStateTypes;
 
             if (!newType.equals(oldType) && (oldType != null || !newType.isJavaLangObject())) {
-                ResolvedJavaType targetType = toTargetFunction.apply(newType);
-                if (targetType != null) {
-                    TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(targetType);
+                if (typePredicate.test(newType)) {
+                    TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(newType);
                     return StampFactory.object(typeRef, nonNull);
                 }
             }

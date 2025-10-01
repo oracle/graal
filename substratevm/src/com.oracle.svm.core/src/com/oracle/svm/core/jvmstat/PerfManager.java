@@ -146,7 +146,7 @@ public class PerfManager {
     }
 
     public RuntimeSupport.Hook initializationHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             if (usePerfData()) {
                 startTime = System.nanoTime();
                 perfDataThread.start();
@@ -155,7 +155,7 @@ public class PerfManager {
     }
 
     public RuntimeSupport.Hook teardownHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             if (usePerfData()) {
                 perfDataThread.shutdown();
 

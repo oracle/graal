@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -37,6 +38,8 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJavaType {
@@ -93,6 +96,11 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return null;
+    }
+
+    @Override
     public JavaKind getJavaKind() {
         return kind;
     }
@@ -119,7 +127,22 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
 
     @Override
     public InterpreterResolvedJavaMethod[] getDeclaredMethods(boolean link) {
-        return NO_METHODS;
+        return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
+    }
+
+    @Override
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return InterpreterResolvedJavaField.EMPTY_ARRAY;
+    }
+
+    @Override
+    public ResolvedJavaField[] getStaticFields() {
+        return InterpreterResolvedJavaField.EMPTY_ARRAY;
+    }
+
+    @Override
+    public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
+        return null;
     }
 
     @Override

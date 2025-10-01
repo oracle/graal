@@ -126,8 +126,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     private final int layerNumber;
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
-                    RuntimeConfiguration runtimeConfiguration) {
-        super(debug, runtimeConfiguration, metaAccess);
+                    RuntimeConfiguration runtimeConfig) {
+        super(debug, runtimeConfig, metaAccess);
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
@@ -211,11 +211,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * @param data the data info to process
      */
     @Override
-    @SuppressWarnings("try")
     protected void installDataInfo(Object data) {
         // log ObjectInfo data
         if (debug.isLogEnabled(DebugContext.INFO_LEVEL) && data instanceof NativeImageHeap.ObjectInfo objectInfo) {
-            try (DebugContext.Scope s = debug.scope("DebugDataInfo")) {
+            try (DebugContext.Scope _ = debug.scope("DebugDataInfo")) {
                 long offset = objectInfo.getOffset();
                 long size = objectInfo.getSize();
                 String typeName = objectInfo.getClazz().toJavaName();
@@ -1005,10 +1004,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * @return the {@code FileEntry} for the type
      */
     @Override
-    @SuppressWarnings("try")
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);
-        try (DebugContext.Scope s = debug.scope("DebugFileInfo", type)) {
+        try (DebugContext.Scope _ = debug.scope("DebugFileInfo", type)) {
             Path filePath = debugInfoSourceManager.findAndCacheSource(type, clazz, debug);
             if (filePath != null) {
                 return lookupFileEntry(filePath);
@@ -1048,7 +1046,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 /* Use the size of header common to all arrays of this type. */
                 return getObjectLayout().getArrayBaseOffset(hostedArrayClass.getComponentType().getStorageKind());
             }
-            case HostedInterface hostedInterface -> {
+            case HostedInterface _ -> {
                 /* Use the size of the header common to all implementors. */
                 return getObjectLayout().getFirstFieldOffset();
             }

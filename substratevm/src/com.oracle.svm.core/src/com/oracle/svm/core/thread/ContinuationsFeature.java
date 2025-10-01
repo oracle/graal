@@ -88,10 +88,10 @@ public class ContinuationsFeature implements InternalFeature {
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             access.registerAsAccessed(ipField);
 
-            access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
+            access.registerReachabilityHandler(_ -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {
-            access.registerReachabilityHandler(a -> VMError.shouldNotReachHere("Virtual threads internals are reachable but support is not available or active."), StoredContinuationAccess.class);
+            access.registerReachabilityHandler(_ -> VMError.shouldNotReachHere("Virtual threads internals are reachable but support is not available or active."), StoredContinuationAccess.class);
         }
     }
 

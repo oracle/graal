@@ -950,24 +950,22 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public static class SSERMIOp extends AMD64RMIOp {
         // @formatter:off
-        public static final SSERMIOp ROUNDSS       = new SSERMIOp("ROUNDSS",       true, P_0F3A,       0x0A, PreferredNDS.SRC,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
-        public static final SSERMIOp ROUNDSD       = new SSERMIOp("ROUNDSD",       true, P_0F3A,       0x0B, PreferredNDS.SRC,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
+        public static final SSERMIOp ROUNDSS       = new SSERMIOp("ROUNDSS",       true, P_0F3A,       0x0A, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp ROUNDSD       = new SSERMIOp("ROUNDSD",       true, P_0F3A,       0x0B, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
 
-        public static final SSERMIOp PCMPESTRI     = new SSERMIOp("PCMPESTRI",     true, P_0F3A,       0x61, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_2);
-        public static final SSERMIOp PCLMULQDQ     = new SSERMIOp("PCLMULQDQ",     true, P_0F3A,       0x44, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.CLMUL);
-        public static final SSERMIOp GF2P8AFFINEQB = new SSERMIOp("GF2P8AFFINEQB", true, P_0F3A, true, 0xCE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.GFNI);
+        public static final SSERMIOp PCMPESTRI     = new SSERMIOp("PCMPESTRI",     true, P_0F3A,       0x61, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_2);
+        public static final SSERMIOp PCLMULQDQ     = new SSERMIOp("PCLMULQDQ",     true, P_0F3A,       0x44, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.CLMUL);
+        public static final SSERMIOp GF2P8AFFINEQB = new SSERMIOp("GF2P8AFFINEQB", true, P_0F3A, true, 0xCE, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.GFNI);
 
         public static final SSERMIOp PINSRB        = new SSERMIOp("PINSRB",        true, P_0F3A,       0x20, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
         public static final SSERMIOp PINSRW        = new SSERMIOp("PINSRW",        true,   P_0F,       0xC4, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE2);
         public static final SSERMIOp PINSRD        = new SSERMIOp("PINSRD",        true, P_0F3A,       0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
         public static final SSERMIOp PINSRQ        = new SSERMIOp("PINSRQ",        true, P_0F3A, true, 0x22, PreferredNDS.DST,  OpAssertion.PackedDoubleIntToFloatAssertion, CPUFeature.SSE4_1);
 
-        public static final SSERMIOp PALIGNR       = new SSERMIOp("PALIGNR",       true, P_0F3A,       0x0F, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSSE3);
-        public static final SSERMIOp PBLENDW       = new SSERMIOp("PBLENDW",       true, P_0F3A,       0x0E, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE4_1);
-        public static final SSERMIOp PSHUFD        = new SSERMIOp("PSHUFD",        true, P_0F,         0x70, PreferredNDS.NONE, OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE2);
-        public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE, OpAssertion.DoubleAssertion,                 CPUFeature.SSE2);
-
-        public static final SSERMIOp SHUFPD        = new SSERMIOp("SHUFPD",        true, P_0F,         0xC6, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,           CPUFeature.SSE2);
+        public static final SSERMIOp PALIGNR       = new SSERMIOp("PALIGNR",       true, P_0F3A,       0x0F, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
+        public static final SSERMIOp PBLENDW       = new SSERMIOp("PBLENDW",       true, P_0F3A,       0x0E, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSERMIOp PSHUFD        = new SSERMIOp("PSHUFD",        true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE2);
+        public static final SSERMIOp PSHUFLW       = new SSERMIOp("PSHUFLW",       true, P_0F,         0x70, PreferredNDS.NONE,  OpAssertion.DoubleAssertion, CPUFeature.SSE2);
         // @formatter:on
 
         private final PreferredNDS preferredNDS;
@@ -5691,10 +5689,6 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
         SSEOp.PSUBUSW.emit(this, OperandSize.PD, dst, src);
     }
 
-    public final void psubw(Register dst, Register src) {
-        SSEOp.PSUBW.emit(this, OperandSize.PD, dst, src);
-    }
-
     public final void ptest(Register dst, Register src) {
         SSEOp.PTEST.emit(this, OperandSize.PD, dst, src);
     }
@@ -5863,10 +5857,6 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     public final void shrq(Register dst) {
         // Unsigned divide dst by 2, CL times.
         AMD64MOp.SHR.emit(this, OperandSize.QWORD, dst);
-    }
-
-    public final void shufpd(Register dst, Register src, int imm8) {
-        SSERMIOp.SHUFPD.emit(this, OperandSize.PD, dst, src, imm8);
     }
 
     public final void sqrtsd(Register dst, Register src) {

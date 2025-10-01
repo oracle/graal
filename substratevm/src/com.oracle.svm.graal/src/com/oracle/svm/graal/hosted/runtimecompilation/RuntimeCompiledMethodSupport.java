@@ -210,7 +210,6 @@ public class RuntimeCompiledMethodSupport {
             compileRuntimeCompiledMethod(debug);
         }
 
-        @SuppressWarnings("try")
         private void compileRuntimeCompiledMethod(DebugContext debug) {
             assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
@@ -243,7 +242,7 @@ public class RuntimeCompiledMethodSupport {
                 }
             }
 
-            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
+            try (DebugContext.Scope _ = debug.scope("RuntimeOptimize", graph, method, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, compilationState.runtimeCompilationProviders);
 
@@ -299,7 +298,6 @@ public class RuntimeCompiledMethodSupport {
         return true;
     }
 
-    @SuppressWarnings("try")
     private static void encodeRuntimeCompiledMethods(HostedUniverse hUniverse, CompilationState compilationState) {
         compilationState.graphEncoder.finishPrepare();
 
@@ -311,8 +309,8 @@ public class RuntimeCompiledMethodSupport {
             var method = runtimeInfo.getKey();
             DebugContext debug = new DebugContext.Builder(graph.getOptions(), new GraalDebugHandlersFactory(compilationState.runtimeCompilationProviders.getSnippetReflection())).build();
             graph.resetDebug(debug);
-            try (DebugContext.Scope s = debug.scope("Graph Encoding", graph);
-                            DebugContext.Activation a = debug.activate()) {
+            try (DebugContext.Scope _ = debug.scope("Graph Encoding", graph);
+                            DebugContext.Activation _ = debug.activate()) {
                 long startOffset = compilationState.graphEncoder.encode(graph);
                 compilationState.objectReplacer.createMethod(method).setEncodedGraphStartOffset(startOffset);
             } catch (Throwable ex) {

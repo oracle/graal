@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -55,13 +54,12 @@ public class LayerArchiveSupport {
     private static final String ENV_VARIABLES_FILE_NAME = "env-variables.txt";
     private static final String SNAPSHOT_FILE_NAME = "layer-snapshot.lsb";
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
+    private static final String BUILD_PATH_DIGESTS_FILE_NAME = "build-path-digests.txt";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
     protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
     protected static final String SHARED_LIB_NAME_PREFIX = "lib";
 
     public static final String LAYER_FILE_EXTENSION = ".nil";
-
-    protected final List<String> builderArguments;
 
     protected final LayerProperties layerProperties;
     protected final Path layerFile;
@@ -85,7 +83,6 @@ public class LayerArchiveSupport {
         }
 
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
-        this.builderArguments = new ArrayList<>();
     }
 
     protected void validateLayerFile() {
@@ -127,6 +124,10 @@ public class LayerArchiveSupport {
 
     protected Path getEnvVariablesFilePath() {
         return layerDir.resolve(ENV_VARIABLES_FILE_NAME);
+    }
+
+    protected Path getBuildPathDigestsFilePath() {
+        return layerDir.resolve(BUILD_PATH_DIGESTS_FILE_NAME);
     }
 
     protected List<EnvironmentVariable> parseEnvVariables() {

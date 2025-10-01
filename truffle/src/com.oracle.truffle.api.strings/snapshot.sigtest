@@ -164,7 +164,7 @@ meth public final void copyToNativeMemoryNodeUncached(int,java.lang.Object,int,i
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.3")
 meth public final void copyToNativeMemoryUncached(int,java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public void materializeUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="26.0")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public void materializeUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
 hfds DEBUG_ALWAYS_CREATE_JAVA_STRING,DEBUG_NON_ZERO_OFFSET,DEBUG_STRICT_ENCODING_CHECKS,MASKED_ZERO_HASH_CODE,codePointLength,codeRange,data,encoding,flags,hashCode,length,offset,stride

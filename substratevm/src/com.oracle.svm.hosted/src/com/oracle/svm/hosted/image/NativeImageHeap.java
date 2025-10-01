@@ -26,8 +26,13 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -41,6 +46,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -226,7 +232,6 @@ public final class NativeImageHeap implements ImageHeap {
         return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
     }
 
-    @SuppressWarnings("try")
     public void addInitialObjects() {
         addObjectsPhase.allow();
         internStringsPhase.allow();
@@ -791,6 +796,35 @@ public final class NativeImageHeap implements ImageHeap {
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
         return addToImageHeap(object, (HostedClass) type, getSize(object, type), System.identityHashCode(object), reason);
+    }
+
+    /**
+     * Dumps metadata for every object in the image heap.
+     */
+    public void dumpMetadata() {
+        String metadataFileName = SubstrateOptions.ImageHeapMetadataDumpFileName.getValue();
+        if (metadataFileName == null || metadataFileName.isEmpty()) {
+            // Do not dump metadata if the file name isn't set
+            return;
+        }
+
+        Path metadataFilePath = SubstrateOptions.getImagePath(HostedOptionValues.singleton()).resolve(metadataFileName);
+        File metadataFile = metadataFilePath.toFile();
+        String metadataDir = metadataFile.getParent();
+        if (!new File(metadataDir).exists()) {
+            throw VMError.shouldNotReachHere("Image heap metadata directory does not exist: " + metadataDir);
+        }
+
+        try (FileWriter metadataOut = new FileWriter(metadataFile);
+                        BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
+            metadataBw.write("class-name,partition,offset-in-heap,size\n");
+            for (ObjectInfo info : getObjects()) {
+                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + info.getOffset() + "," + info.getSize() + System.lineSeparator();
+                metadataBw.write(csvLine);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to dump image heap metadata to " + metadataFile, ex);
+        }
     }
 
     private long getSize(Object object, HostedType type) {

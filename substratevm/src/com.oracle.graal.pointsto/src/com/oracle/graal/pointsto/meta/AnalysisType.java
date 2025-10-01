@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
@@ -67,6 +68,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -218,6 +220,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * class file and therefore not in the list of declared methods.
      */
     @SuppressWarnings("unused") private volatile Object overrideableMethods;
+
+    private volatile AnalysisType arrayClass = null;
+
+    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
+    private volatile List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -949,14 +956,21 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    private volatile AnalysisType arrayClass = null;
-
     @Override
     public final AnalysisType getArrayClass() {
         if (arrayClass == null) {
             arrayClass = universe.lookup(wrapped.getArrayClass());
         }
         return arrayClass;
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
+            List<JavaType> wrappedPermittedSubclasses = wrapped.getPermittedSubclasses();
+            permittedSubclasses = wrappedPermittedSubclasses == null ? null : wrappedPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
+        }
+        return permittedSubclasses;
     }
 
     @Override
@@ -1294,6 +1308,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public AnalysisType getEnclosingType() {
         return universe.lookup(wrapped.getEnclosingType());
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
+        for (int i = 0; i < declaredTypes.length; i++) {
+            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+        }
+        return declaredTypes;
     }
 
     @Override

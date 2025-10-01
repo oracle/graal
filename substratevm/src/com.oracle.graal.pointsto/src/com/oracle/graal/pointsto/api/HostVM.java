@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
@@ -550,8 +550,8 @@ public abstract class HostVM {
     /**
      * Returns the function Strengthen Graphs should use to improve types based on analysis results.
      */
-    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
-        return (t) -> t;
+    public Predicate<AnalysisType> getStrengthenGraphsTypePredicate(@SuppressWarnings("unused") MultiMethod.MultiMethodKey key) {
+        return (t) -> true;
     }
 
     public boolean allowConstantFolding(AnalysisMethod method) {

@@ -2606,7 +2606,7 @@ public final class TruffleString extends AbstractTruffleString {
      * structure known to be long-lived, e.g. during string interning.
      *
      * @see SubstringNode#execute
-     * @since 26.0
+     * @since 25.1
      */
     public abstract static class MaterializeSubstringNode extends AbstractPublicNode {
 
@@ -2629,7 +2629,7 @@ public final class TruffleString extends AbstractTruffleString {
          * data structure known to be long-lived, e.g. during string interning.
          *
          * @see SubstringNode#execute
-         * @since 26.0
+         * @since 25.1
          */
         public abstract TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding);
 
@@ -2671,7 +2671,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Create a new {@link MaterializeSubstringNode}.
          *
-         * @since 26.0
+         * @since 25.1
          */
         @NeverDefault
         public static MaterializeSubstringNode create() {
@@ -2681,7 +2681,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Get the uncached version of {@link MaterializeSubstringNode}.
          *
-         * @since 26.0
+         * @since 25.1
          */
         public static MaterializeSubstringNode getUncached() {
             return TruffleStringFactory.MaterializeSubstringNodeGen.getUncached();

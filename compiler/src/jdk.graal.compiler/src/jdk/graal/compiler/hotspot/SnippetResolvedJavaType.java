@@ -31,10 +31,10 @@ import java.util.Objects;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -241,6 +241,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public JavaKind getJavaKind() {
         return JavaKind.Object;
     }
@@ -292,6 +297,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public boolean isMember() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
         throw new UnsupportedOperationException();
     }
 

@@ -43,8 +43,6 @@ import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -53,8 +51,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
 public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, CremaTypeAccess {
-    public static final InterpreterResolvedJavaMethod[] NO_METHODS = new InterpreterResolvedJavaMethod[0];
-
     private final Symbol<Type> type;
     protected final Class<?> clazz;
     private final JavaConstant clazzConstant;
@@ -273,21 +269,6 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
-    public final ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public ResolvedJavaField[] getStaticFields() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
     public final InterpreterResolvedObjectType getArrayClass() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -344,6 +325,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
 
     @Override
     public final Annotation[] getDeclaredAnnotations() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
         throw VMError.intentionallyUnimplemented();
     }
 

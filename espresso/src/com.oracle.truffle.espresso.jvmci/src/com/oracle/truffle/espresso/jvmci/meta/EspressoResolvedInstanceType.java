@@ -36,6 +36,7 @@ import static java.util.Objects.requireNonNull;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -44,6 +45,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -270,6 +272,22 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        Class<?>[] permittedSubclass = getPermittedSubclasses0(getMirror());
+        if (permittedSubclass == null) {
+            return null;
+        }
+        ResolvedJavaType[] permittedSubtypes = new ResolvedJavaType[permittedSubclass.length];
+        MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
+        for (int i = 0; i != permittedSubtypes.length; i++) {
+            permittedSubtypes[i] = metaAccess.lookupJavaType(permittedSubclass[i]);
+        }
+        return Collections.unmodifiableList(Arrays.asList(permittedSubtypes));
+    }
+
+    private static native Class<?>[] getPermittedSubclasses0(Class<?> mirror);
+
+    @Override
     public boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass) {
         assert accessingClass != null;
         ResolvedJavaType elementType = getElementalType();
@@ -449,6 +467,18 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     @Override
     public boolean isMember() {
         return getMirror().isMemberClass();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        Class<?>[] declaredClasses = getMirror().getDeclaredClasses();
+        ResolvedJavaType[] declaredTypes = new ResolvedJavaType[declaredClasses.length];
+        MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
+        for (int i = 0; i != declaredTypes.length; i++) {
+            declaredTypes[i] = metaAccess.lookupJavaType(declaredClasses[i]);
+        }
+        return declaredTypes;
+
     }
 
     @Override

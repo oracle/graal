@@ -37,6 +37,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -192,6 +193,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
+    public List<JavaType> getPermittedSubclasses() {
+        return original.getPermittedSubclasses();
+    }
+
+    @Override
     public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         return original.resolveConcreteMethod(method, callerType);
     }
@@ -234,6 +240,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public boolean isMember() {
         return original.isMember();
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return original.getDeclaredTypes();
     }
 
     @Override
