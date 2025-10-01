@@ -205,7 +205,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends JavaType> getPermittedSubclasses() {
         return original.getPermittedSubclasses();
     }
 

@@ -29,7 +29,6 @@ import java.util.List;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 
 public class HostedArrayClass extends HostedClass {
 
@@ -73,7 +72,7 @@ public class HostedArrayClass extends HostedClass {
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends HostedType> getPermittedSubclasses() {
         return null;
     }
 

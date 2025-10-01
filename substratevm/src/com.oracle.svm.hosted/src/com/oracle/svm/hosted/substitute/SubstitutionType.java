@@ -232,7 +232,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends JavaType> getPermittedSubclasses() {
         return annotated.getPermittedSubclasses();
     }
 

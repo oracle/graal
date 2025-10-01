@@ -45,7 +45,6 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -320,7 +319,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {
             return null;
