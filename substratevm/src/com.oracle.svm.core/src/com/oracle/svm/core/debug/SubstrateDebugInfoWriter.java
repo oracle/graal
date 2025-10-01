@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +23,20 @@
  * questions.
  */
 
-#ifndef SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
-#define SVM_NATIVE_GDBJITCOMPILATIONINTERFACE_H
+package com.oracle.svm.core.debug;
 
-// This header specifies the types used by the GDB JIT compilation interface (see https://sourceware.org/gdb/current/onlinedocs/gdb.html/Declarations.html#Declarations)
-// The implementation of the JIT compilation interface is located in com.oracle.svm.core.debug.gdb.GdbJitInterface.
+import com.oracle.svm.core.code.InstalledCodeObserver;
 
-#ifdef __linux__
+import jdk.graal.compiler.debug.DebugContext;
 
-#include <stdint.h>
-
-typedef enum
-{
-  JIT_NOACTION = 0,
-  JIT_REGISTER,
-  JIT_UNREGISTER
-} jit_actions_t;
-
-struct jit_code_entry
-{
-  struct jit_code_entry *next_entry;
-  struct jit_code_entry *prev_entry;
-  const char *symfile_addr;
-  uint64_t symfile_size;
-};
-
-struct jit_descriptor
-{
-  uint32_t version;
-  /* This type should be jit_actions_t, but we use uint32_t
-     to be explicit about the bitwidth.  */
-  uint32_t action_flag;
-  struct jit_code_entry *relevant_entry;
-  struct jit_code_entry *first_entry;
-};
-
-#endif /* __linux__ */
-
-#endif
+/**
+ * A substrate debug info writer writes run-time debug info for a run-time and wraps it in a
+ * {@code InstalledCodeObserver.InstalledCodeObserverHandle}. This handle is responsible for
+ * tracking memory allocated for the run-time debug info, and cleaning it up after deoptimization.
+ * <p>
+ * If a {@code Word#nullPointer} is returned no in-memory debug info that needs to be tracked is
+ * produced. In this case the run-time debug info is written as a side effect (e.g. to a file).
+ */
+public interface SubstrateDebugInfoWriter {
+    InstalledCodeObserver.InstalledCodeObserverHandle writeDebugInfo(DebugContext debug, SubstrateDebugInfoProvider debugInfoProvider);
+}
