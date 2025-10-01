@@ -38,6 +38,14 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
+/**
+ * For annotations that are materialized at image run time, all necessary methods are registered for
+ * reflection in {@link ReflectionDataBuilder#registerTypesForAnnotation}. But if an annotation type
+ * is only used by an annotation that is already in the image heap, then we need to also register
+ * its methods for reflection. This is done here by registering a callback which notifies us for
+ * every reachable {@link Annotation} object in the heap and then checking if it is an annotation
+ * that was materialized by the JDK, i.e., it is a {@link Proxy}.
+ */
 @AutomaticallyRegisteredFeature
 public class AnnotationFeature implements InternalFeature {
 
@@ -49,14 +57,6 @@ public class AnnotationFeature implements InternalFeature {
         access.registerObjectReachableCallback(Annotation.class, this::registerDeclaredMethods);
     }
 
-    /**
-     * For annotations that are materialized at image run time, all necessary methods are registered
-     * for reflection in {@link ReflectionDataBuilder#registerTypesForAnnotation}. But if an
-     * annotation type is only used by an annotation that is already in the image heap, then we need
-     * to also register its methods for reflection. This is done here by registering a callback
-     * which notifies us for every reachable {@link Annotation} object in the heap and then checking
-     * if it is an annotation that was materialized by the JDK, i.e., it is a {@link Proxy}.
-     */
     @SuppressWarnings("unused")
     private void registerDeclaredMethods(DuringAnalysisAccess access, Annotation annotation, ObjectScanner.ScanReason reason) {
         if (Proxy.isProxyClass(annotation.getClass())) {
