@@ -44,7 +44,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
@@ -67,8 +66,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final HostedInterface[] interfaces;
 
     protected HostedArrayClass arrayType;
-    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
-    private List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<? extends HostedType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private List<? extends HostedType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
@@ -419,12 +425,12 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends HostedType> getPermittedSubclasses() {
         if (isPrimitive() || isArray()) {
             return null;
         }
-        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
-            List<JavaType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            List<? extends AnalysisType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
             permittedSubclasses = aPermittedSubclasses == null ? null : aPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
         }
         return permittedSubclasses;

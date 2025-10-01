@@ -29,7 +29,6 @@ import java.util.List;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 
 public class HostedPrimitiveType extends HostedType {
 
@@ -73,7 +72,7 @@ public class HostedPrimitiveType extends HostedType {
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public List<? extends HostedType> getPermittedSubclasses() {
         return null;
     }
 
