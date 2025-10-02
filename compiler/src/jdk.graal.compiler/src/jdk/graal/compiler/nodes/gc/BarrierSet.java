@@ -29,10 +29,14 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaKind;
@@ -96,5 +100,36 @@ public interface BarrierSet {
          * (e.g. Shenandoah GC).
          */
         return stage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
+    }
+
+    /**
+     * For initializing writes, the last allocation executed by the JVM is guaranteed to be
+     * automatically card marked so it's safe to skip the card mark in the emitted code.
+     */
+    default boolean isWriteToNewObject(FixedAccessNode node) {
+        if (!node.getLocationIdentity().isInit()) {
+            return false;
+        }
+        // This is only allowed for the last allocation in sequence
+        return isWriteToNewObject(node, node.getAddress().getBase());
+    }
+
+    default boolean isWriteToNewObject(FixedWithNextNode node, ValueNode base) {
+        if (base instanceof AbstractNewObjectNode) {
+            Node pred = node.predecessor();
+            while (pred != null) {
+                if (pred == base) {
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Deferred barrier for %s with base %s", node, base);
+                    return true;
+                }
+                if (pred instanceof AbstractNewObjectNode) {
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Disallowed deferred barrier for %s because %s was last allocation instead of %s", node, pred, base);
+                    return false;
+                }
+                pred = pred.predecessor();
+            }
+        }
+        node.getDebug().log(DebugContext.INFO_LEVEL, "Unable to find allocation for deferred barrier for %s with base %s", node, base);
+        return false;
     }
 }

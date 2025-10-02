@@ -32,8 +32,6 @@ import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotIdentityHashCodeProvider;
@@ -48,7 +46,6 @@ import jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider;
 import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
@@ -58,7 +55,6 @@ import jdk.graal.compiler.nodes.gc.G1BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
@@ -297,80 +293,69 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Epsilon) {
             return new NoBarrierSet();
         } else if (config.useG1GC()) {
-            return new G1BarrierSet(objectArrayType, referentField) {
-                @Override
-                protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
-                    if (!super.writeRequiresPostBarrier(node, writtenValue)) {
-                        return false;
-                    }
-                    return !useDeferredInitBarriers || !isWriteToNewObject(node);
-                }
-
-                @Override
-                protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
-                    if (!super.arrayRangeWriteRequiresPostBarrier(write)) {
-                        return false;
-                    }
-                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
-                }
-
-                @Override
-                protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
-                    if (value != null && (value.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
-                        return HotSpotCompressionNode.uncompress(value.graph(), value, config.getOopEncoding());
-                    }
-                    return value;
-                }
-            };
+            return new HotSpotG1BarrierSet(objectArrayType, referentField, useDeferredInitBarriers, config);
         } else {
-            return new CardTableBarrierSet(objectArrayType) {
-                @Override
-                protected boolean writeRequiresBarrier(FixedAccessNode node, ValueNode writtenValue) {
-                    if (!super.writeRequiresBarrier(node, writtenValue)) {
-                        return false;
-                    }
-                    return !useDeferredInitBarriers || !isWriteToNewObject(node);
-                }
-
-                @Override
-                protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
-                    if (!super.arrayRangeWriteRequiresBarrier(write)) {
-                        return false;
-                    }
-                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
-                }
-            };
+            return new HotSpotCardTableBarrierSet(objectArrayType, useDeferredInitBarriers);
         }
     }
 
-    /**
-     * For initializing writes, the last allocation executed by the JVM is guaranteed to be
-     * automatically card marked so it's safe to skip the card mark in the emitted code.
-     */
-    protected boolean isWriteToNewObject(FixedAccessNode node) {
-        if (!node.getLocationIdentity().isInit()) {
-            return false;
-        }
-        // This is only allowed for the last allocation in sequence
-        return isWriteToNewObject(node, node.getAddress().getBase());
-    }
+    private static class HotSpotG1BarrierSet extends G1BarrierSet {
+        private final boolean useDeferredInitBarriers;
+        private final GraalHotSpotVMConfig config;
 
-    protected boolean isWriteToNewObject(FixedWithNextNode node, ValueNode base) {
-        if (base instanceof AbstractNewObjectNode) {
-            Node pred = node.predecessor();
-            while (pred != null) {
-                if (pred == base) {
-                    node.getDebug().log(DebugContext.INFO_LEVEL, "Deferred barrier for %s with base %s", node, base);
-                    return true;
-                }
-                if (pred instanceof AbstractNewObjectNode) {
-                    node.getDebug().log(DebugContext.INFO_LEVEL, "Disallowed deferred barrier for %s because %s was last allocation instead of %s", node, pred, base);
-                    return false;
-                }
-                pred = pred.predecessor();
+        public HotSpotG1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers, GraalHotSpotVMConfig config) {
+            super(objectArrayType, referentField);
+            this.useDeferredInitBarriers = useDeferredInitBarriers;
+            this.config = config;
+        }
+
+        @Override
+        protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
+            if (!super.writeRequiresPostBarrier(node, writtenValue)) {
+                return false;
             }
+            return !useDeferredInitBarriers || !isWriteToNewObject(node);
         }
-        node.getDebug().log(DebugContext.INFO_LEVEL, "Unable to find allocation for deferred barrier for %s with base %s", node, base);
-        return false;
+
+        @Override
+        protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
+            if (!super.arrayRangeWriteRequiresPostBarrier(write)) {
+                return false;
+            }
+            return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+        }
+
+        @Override
+        protected ValueNode maybeUncompressExpectedValue(ValueNode value) {
+            if (value != null && (value.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
+                return HotSpotCompressionNode.uncompress(value.graph(), value, config.getOopEncoding());
+            }
+            return value;
+        }
+    }
+
+    private static class HotSpotCardTableBarrierSet extends CardTableBarrierSet {
+        private final boolean useDeferredInitBarriers;
+
+        public HotSpotCardTableBarrierSet(ResolvedJavaType objectArrayType, boolean useDeferredInitBarriers) {
+            super(objectArrayType);
+            this.useDeferredInitBarriers = useDeferredInitBarriers;
+        }
+
+        @Override
+        protected boolean writeRequiresBarrier(FixedAccessNode node, ValueNode writtenValue) {
+            if (!super.writeRequiresBarrier(node, writtenValue)) {
+                return false;
+            }
+            return !useDeferredInitBarriers || !isWriteToNewObject(node);
+        }
+
+        @Override
+        protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
+            if (!super.arrayRangeWriteRequiresBarrier(write)) {
+                return false;
+            }
+            return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+        }
     }
 }
