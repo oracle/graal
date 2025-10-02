@@ -830,11 +830,7 @@ final class TStringOps {
                 attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs) + 1, TSCodeRange.getBrokenMultiByte());
             }
         }
-        // TODO: remove this
-        if (TSCodeRange.isUpTo16Bit(StringAttributes.getCodeRange(attrs))) {
-            return StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.getValidMultiByte());
-        }
-        return attrs;
+        return StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.markForeignEndian(StringAttributes.getCodeRange(attrs)));
     }
 
     static int calcStringAttributesUTF32I(Node location, int[] array, long offset, int length) {
@@ -853,12 +849,7 @@ final class TStringOps {
         final boolean isNative = array == null;
         assert validateRegionWithBaseOffset(array, offset, length, 2);
         int codeRange = runCalcStringAttributesUTF32FE(location, array, offset, length, isNative);
-        // TODO: remove this
-        if (TSCodeRange.isBroken(codeRange)) {
-            return TSCodeRange.getBrokenMultiByte();
-        } else {
-            return TSCodeRange.getValidMultiByte();
-        }
+        return TSCodeRange.markForeignEndian(codeRange);
     }
 
     static int codePointIndexToByteIndexUTF8Valid(Node location, byte[] array, long offset, int length, int index) {

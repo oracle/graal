@@ -136,6 +136,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         assert isByte(flags);
         assert validateCodeRange(encoding, codeRange);
         assert isSupportedEncoding(encoding) || length == 0 || JCodings.JCODINGS_ENABLED;
+        assert !encoding.isForeignEndian() || stride == encoding.naturalStride;
         this.data = data;
         this.encoding = encoding.id;
         this.offset = offset;
@@ -176,7 +177,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     private static boolean validateCodeRange(Encoding encoding, int codeRange) {
-        assert isByte(codeRange);
+        assert (codeRange & 0xff) == codeRange;
         assert TSCodeRange.isCodeRange(codeRange);
         assert !isAscii(encoding) || is7Bit(codeRange) || isBrokenFixedWidth(codeRange);
         assert !isLatin1(encoding) || is7Bit(codeRange) || is8Bit(codeRange);
@@ -286,7 +287,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final boolean isCodeRangeCompatibleTo(int codeRangeA, int maxCompatibleCodeRange) {
-        return (!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && TSCodeRange.isMoreRestrictiveThan(codeRangeA, maxCompatibleCodeRange));
+        return (!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && TSCodeRange.isMoreRestrictiveAndNativeEndian(codeRangeA, maxCompatibleCodeRange));
     }
 
     /**
@@ -357,7 +358,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final int codeRange() {
-        return codeRange;
+        return Byte.toUnsignedInt(codeRange);
     }
 
     final int codePointLength() {
@@ -450,13 +451,13 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     final boolean isLooselyCompatibleTo(int expectedEncoding, int maxCompatibleCodeRange, int codeRangeA) {
-        return encoding() == expectedEncoding || TSCodeRange.isMoreRestrictiveThan(codeRangeA, maxCompatibleCodeRange);
+        return encoding() == expectedEncoding || TSCodeRange.isMoreRestrictiveAndNativeEndian(codeRangeA, maxCompatibleCodeRange);
     }
 
     static int rawIndex(int byteIndex, TruffleString.Encoding expectedEncoding) {
-        if (isUTF16(expectedEncoding) && (byteIndex & 1) != 0) {
+        if (expectedEncoding.naturalStride == 1 && (byteIndex & 1) != 0) {
             throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-16 string", byteIndex);
-        } else if (isUTF32(expectedEncoding) && (byteIndex & 3) != 0) {
+        } else if (expectedEncoding.naturalStride == 2 && (byteIndex & 3) != 0) {
             throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-32 string", byteIndex);
         }
         return byteIndex >> expectedEncoding.naturalStride;
@@ -494,9 +495,8 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    static void boundsCheckByteIndexS0(int lengthA, int strideA, int byteIndex) {
-        assert strideA == 0;
-        boundsCheckI(byteIndex, lengthA);
+    static void boundsCheckByteIndex(int lengthA, int strideA, int byteIndex) {
+        boundsCheckI(byteIndex, lengthA << strideA);
     }
 
     static void boundsCheckByteIndexUTF16(int lengthA, int byteIndex) {

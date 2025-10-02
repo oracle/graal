@@ -53,6 +53,5 @@ final class TruffleStringBuilderGeneric extends TruffleStringBuilder {
         assert encoding != TruffleString.Encoding.UTF_8;
         assert encoding != TruffleString.Encoding.UTF_16;
         assert encoding != TruffleString.Encoding.UTF_32;
-        assert encoding.naturalStride == 0;
     }
 }
