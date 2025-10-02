@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public final class RuntimeDynamicHubMetadata implements DynamicHubMetadata {
 
@@ -118,8 +118,7 @@ public final class RuntimeDynamicHubMetadata implements DynamicHubMetadata {
         }
     }
 
-    public static Class<?> getNestHost(DynamicHub declaringClass) {
-        /* (GR-69095) type.getNestHost() */
-        return DynamicHub.toClass(declaringClass);
+    public Class<?> getNestHost() {
+        return CremaSupport.singleton().toClass(type.getNestHost());
     }
 }
