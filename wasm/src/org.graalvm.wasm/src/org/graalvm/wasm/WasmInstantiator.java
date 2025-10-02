@@ -198,6 +198,31 @@ public class WasmInstantiator {
             });
         }
 
+        for (int i = 0; i < module.tagCount(); i++) {
+            final int tagIndex = i;
+            final int typeIndex = module.tagTypeIndex(tagIndex);
+            final SymbolTable.FunctionType type = module.typeAt(typeIndex);
+            final ImportDescriptor tagDescriptor = module.importedTag(tagIndex);
+            if (tagDescriptor != null) {
+                linkActions.add((context, store, instance, imports) -> {
+                    store.linker().resolveTagImport(store, instance, tagDescriptor, tagIndex, type, imports);
+                });
+            } else {
+                linkActions.add((context, store, instance, imports) -> {
+                    final WasmTag tag = new WasmTag(type);
+                    instance.setTag(tagIndex, tag);
+                });
+            }
+        }
+        final MapCursor<String, Integer> exportedTags = module.exportedTags().getEntries();
+        while (exportedTags.advance()) {
+            final String tagName = exportedTags.getKey();
+            final int tagIndex = exportedTags.getValue();
+            linkActions.add((context, store, instance, imports) -> {
+                store.linker().resolveTagExport(instance, tagIndex, tagName);
+            });
+        }
+
         final byte[] bytecode = module.bytecode();
 
         for (int i = 0; i < module.dataInstanceCount(); i++) {
@@ -503,7 +528,8 @@ public class WasmInstantiator {
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final Node[] callNodes = setupCallNodes(module, codeEntry);
-        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(), callNodes);
+        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(),
+                        codeEntry.exceptionTableOffset(), callNodes);
         final WasmFunctionRootNode rootNode;
         if (store.getContextOptions().memoryOverheadMode()) {
             rootNode = new WasmMemoryOverheadModeFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);

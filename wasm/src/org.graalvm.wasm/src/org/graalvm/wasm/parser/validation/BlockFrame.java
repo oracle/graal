@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.ArrayList;
+
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -51,10 +53,12 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  */
 class BlockFrame extends ControlFrame {
     private final IntArrayList branches;
+    private final ArrayList<ExceptionHandler> exceptionHandlers;
 
     BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         branches = new IntArrayList();
+        exceptionHandlers = new ArrayList<>();
     }
 
     @Override
@@ -69,12 +73,15 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(RuntimeBytecodeGen bytecode) {
-        if (branches.size() == 0) {
+        if (branches.size() == 0 && exceptionHandlers.isEmpty()) {
             return;
         }
         final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
         for (int branchLocation : branches.toArray()) {
             bytecode.patchLocation(branchLocation, location);
+        }
+        for (ExceptionHandler catchEntry : exceptionHandlers) {
+            catchEntry.setTarget(location);
         }
     }
 
@@ -91,5 +98,10 @@ class BlockFrame extends ControlFrame {
     @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchTableItemLocation());
+    }
+
+    @Override
+    void addExceptionHandler(ExceptionHandler handler) {
+        exceptionHandlers.add(handler);
     }
 }

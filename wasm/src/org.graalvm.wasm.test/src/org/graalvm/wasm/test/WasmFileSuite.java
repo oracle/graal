@@ -399,12 +399,16 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             EnumSet<WasmBinaryTools.WabtOption> options = EnumSet.noneOf(WasmBinaryTools.WabtOption.class);
             String threadsOption = testCase.options().getProperty("wasm.Threads");
-            if (threadsOption != null && threadsOption.equals("true")) {
+            if ("true".equals(threadsOption)) {
                 options.add(WasmBinaryTools.WabtOption.THREADS);
             }
             String multiMemoryOption = testCase.options().getProperty("wasm.MultiMemory");
-            if (multiMemoryOption != null && multiMemoryOption.equals("true")) {
+            if ("true".equals(multiMemoryOption)) {
                 options.add(WasmBinaryTools.WabtOption.MULTI_MEMORY);
+            }
+            String exceptionsOption = testCase.options().getProperty("wasm.Exceptions");
+            if ("true".equals(exceptionsOption)) {
+                options.add(WasmBinaryTools.WabtOption.EXCEPTIONS);
             }
             ArrayList<Source> sources = testCase.getSources(options);
 
