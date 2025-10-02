@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.strings.TStringGuards.bigEndian;
 import static com.oracle.truffle.api.strings.TStringGuards.indexOfCannotMatch;
 import static com.oracle.truffle.api.strings.TStringGuards.is7BitCompatible;
-import static com.oracle.truffle.api.strings.TStringGuards.is7Or8Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is8BitCompatible;
 import static com.oracle.truffle.api.strings.TStringGuards.isAscii;
 import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
@@ -378,25 +376,25 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        UTF_32LE(littleEndian() ? 0 : 99, "UTF-32LE", littleEndian() ? 2 : 0, littleEndian()),
+        UTF_32LE(littleEndian() ? 0 : 99, "UTF-32LE", 2, true),
         /**
          * UTF-32BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_32BE(littleEndian() ? 99 : 0, "UTF-32BE", littleEndian() ? 0 : 2, bigEndian()),
+        UTF_32BE(littleEndian() ? 99 : 0, "UTF-32BE", 2, true),
         /**
          * UTF-16LE. Directly supported if the current system is little-endian.
          *
          * @since 22.1
          */
-        UTF_16LE(littleEndian() ? 1 : 100, "UTF-16LE", littleEndian() ? 1 : 0, false),
+        UTF_16LE(littleEndian() ? 1 : 100, "UTF-16LE", 1, false),
         /**
          * UTF-16BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_16BE(littleEndian() ? 100 : 1, "UTF-16BE", littleEndian() ? 0 : 1, false),
+        UTF_16BE(littleEndian() ? 100 : 1, "UTF-16BE", 1, false),
         /**
          * ISO-8859-1, also known as LATIN-1, which is equivalent to US-ASCII + the LATIN-1
          * Supplement Unicode block.
@@ -1074,7 +1072,7 @@ public final class TruffleString extends AbstractTruffleString {
             if (encoding.is7BitCompatible() && !AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS || encoding == Encoding.US_ASCII) {
                 return EMPTY_STRINGS[US_ASCII.id];
             }
-            TruffleString ret = createConstant(EMPTY_BYTES, 0, 0, encoding, 0, TSCodeRange.getAsciiCodeRange(encoding), false);
+            TruffleString ret = createConstant(EMPTY_BYTES, 0, encoding.isForeignEndian() ? encoding.naturalStride : 0, encoding, 0, TSCodeRange.getAsciiCodeRange(encoding), false);
             EMPTY_STRINGS[US_ASCII.id].cacheInsert(ret);
             return ret;
         }
@@ -1159,6 +1157,14 @@ public final class TruffleString extends AbstractTruffleString {
 
         boolean isFixedWidth() {
             return fixedWidth;
+        }
+
+        boolean isForeignEndian() {
+            return this == UTF_16_FOREIGN_ENDIAN || this == UTF_32_FOREIGN_ENDIAN;
+        }
+
+        static boolean isForeignEndian(int encoding) {
+            return encoding == UTF_16_FOREIGN_ENDIAN.id || encoding == UTF_32_FOREIGN_ENDIAN.id;
         }
 
         static boolean isFixedWidth(int encoding) {
@@ -1276,7 +1282,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         static CodeRange getByteCodeRange(int codeRange, Encoding encoding) {
-            return TSCodeRange.is7Bit(codeRange) && isUTF16Or32(encoding) ? CodeRange.VALID : BYTE_CODE_RANGES[TSCodeRange.ordinal(codeRange)];
+            if (isUTF16Or32(encoding) || TSCodeRange.isForeignEndian(codeRange)) {
+                return TSCodeRange.isBroken(codeRange) ? CodeRange.BROKEN : CodeRange.VALID;
+            }
+            return BYTE_CODE_RANGES[TSCodeRange.ordinal(codeRange)];
         }
 
         static boolean equals(int codeRange, CodeRange codeRangeEnum) {
@@ -1706,23 +1715,23 @@ public final class TruffleString extends AbstractTruffleString {
                     return null;
                 }
                 bytes = new byte[c <= 0xffff ? 2 : 4];
-                stride = 0;
+                stride = 1;
                 if (bmpProfile.profile(this, c <= 0xffff)) {
-                    length = 2;
+                    length = 1;
                     if (Encodings.isUTF16Surrogate(c)) {
                         if (allowUTF16Surrogates) {
-                            codeRange = TSCodeRange.getBrokenMultiByte();
+                            codeRange = TSCodeRange.markForeignEndian(TSCodeRange.getBrokenMultiByte());
                         } else {
                             invalidCodePoint.enter(this);
                             return null;
                         }
                     } else {
-                        codeRange = TSCodeRange.getValidMultiByte();
+                        codeRange = TSCodeRange.markForeignEndian(TSCodeRange.fromBMPCodePoint(c));
                     }
                     TStringOps.writeToByteArrayS1(bytes, 0, Character.reverseBytes((char) c));
                 } else {
-                    length = 4;
-                    codeRange = TSCodeRange.getValidMultiByte();
+                    length = 2;
+                    codeRange = TSCodeRange.markForeignEndian(TSCodeRange.getValidMultiByte());
                     Encodings.utf16FEEncodeSurrogatePair(c, bytes, 0);
                 }
             } else if (utf32FEProfile.profile(this, isUTF32FE(enc))) {
@@ -1732,17 +1741,17 @@ public final class TruffleString extends AbstractTruffleString {
                 }
                 if (Encodings.isUTF16Surrogate(c)) {
                     if (allowUTF16Surrogates) {
-                        codeRange = TSCodeRange.getBrokenMultiByte();
+                        codeRange = TSCodeRange.markForeignEndian(TSCodeRange.getBrokenMultiByte());
                     } else {
                         invalidCodePoint.enter(this);
                         return null;
                     }
                 } else {
-                    codeRange = TSCodeRange.getValidMultiByte();
+                    codeRange = TSCodeRange.markForeignEndian(TSCodeRange.fromValidCodePoint(c, true));
                 }
                 bytes = new byte[4];
-                length = 4;
-                stride = 0;
+                length = 1;
+                stride = 2;
                 TStringOps.writeToByteArrayS2(bytes, 0, Integer.reverseBytes(c));
             } else if (exoticProfile.profile(this, isUnsupportedEncoding(enc))) {
                 assert !isBytes(enc);
@@ -3350,7 +3359,7 @@ public final class TruffleString extends AbstractTruffleString {
                     addOffsetA = byteArrayBaseOffset();
                 }
                 final long offsetA = a.offset() + addOffsetA;
-                final int lengthA = nativeEndian ? a.length() : a.length() >> 1;
+                final int lengthA = a.length();
                 final int strideA = a.stride();
 
                 boundsCheckRawIndex(lengthA, i);
@@ -3848,7 +3857,7 @@ public final class TruffleString extends AbstractTruffleString {
         int indexOfRaw(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, byte[] values, Encoding expectedEncoding,
                         @Cached InlinedConditionProfile managedProfileA,
                         @Cached InlinedConditionProfile nativeProfileA) {
-            if (isUTF16Or32(expectedEncoding)) {
+            if (expectedEncoding.naturalStride > 0) {
                 throw InternalErrors.illegalArgument("UTF-16 and UTF-32 not supported!");
             }
             a.checkEncoding(expectedEncoding);
@@ -4287,23 +4296,7 @@ public final class TruffleString extends AbstractTruffleString {
                     return -1;
                 }
                 int codeRangeA = usePreciseCodeRange ? getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, encoding) : a.codeRange();
-
-                final int scaleForeign;
-                final int strideAIntl;
-                if (encoding == Encoding.UTF_16_FOREIGN_ENDIAN) {
-                    scaleForeign = 1;
-                    strideAIntl = 1;
-                } else if (encoding == Encoding.UTF_32_FOREIGN_ENDIAN) {
-                    scaleForeign = 2;
-                    strideAIntl = 2;
-                } else {
-                    scaleForeign = 0;
-                    strideAIntl = strideA;
-                }
-                final int lengthAIntl = lengthA >> scaleForeign;
-                final int fromIndexIntl = fromIndex >> scaleForeign;
-                final int toIndexIntl = toIndex >> scaleForeign;
-                return byteIndex(internalNode.execute(arrayA, offsetA, lengthAIntl, strideAIntl, codeRangeA, fromIndexIntl, toIndexIntl) << scaleForeign, encoding);
+                return byteIndex(internalNode.execute(arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex), encoding);
             } finally {
                 Reference.reachabilityFence(dataA);
             }
@@ -5764,8 +5757,6 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(lazy);
             final int codeRangeA = getCodeRangeANode.execute(node, a, encoding);
             final int codeRangeB = getCodeRangeBNode.execute(node, b, encoding);
-            a.looseCheckEncoding(encoding, codeRangeA);
-            b.looseCheckEncoding(encoding, codeRangeB);
 
             final int lengthA = a.length();
             final int lengthB = b.length();
@@ -5792,6 +5783,8 @@ public final class TruffleString extends AbstractTruffleString {
                     return asTruffleStringANode.execute(a, encoding);
                 }
             }
+            a.looseCheckEncoding(encoding, codeRangeA);
+            b.looseCheckEncoding(encoding, codeRangeB);
 
             int commonCodeRange = TSCodeRange.commonCodeRange(codeRangeA, codeRangeB);
             assert !(isBrokenMultiByte(codeRangeA) || isBrokenMultiByte(codeRangeB)) || isBrokenMultiByte(commonCodeRange);
@@ -7274,7 +7267,8 @@ public final class TruffleString extends AbstractTruffleString {
             // current, possibly imprecise code range is already in compaction range. Otherwise, we
             // _must_ calculate the precise code range, to make sure the string is compacted if
             // possible.
-            return is7Or8Bit(a.codeRange()) || TSCodeRange.isMoreRestrictiveThan(getPreciseCodeRangeNode.execute(node, a, encodingA), Encoding.UTF_16.maxCompatibleCodeRange) ||
+            return TSCodeRange.isMoreRestrictiveOrEqualAndNativeEndian(a.codeRange(), TSCodeRange.get8Bit()) ||
+                            TSCodeRange.isMoreRestrictiveAndNativeEndian(getPreciseCodeRangeNode.execute(node, a, encodingA), Encoding.UTF_16.maxCompatibleCodeRange) ||
                             isUTF16(a.encoding());
         }
 
@@ -7736,7 +7730,7 @@ public final class TruffleString extends AbstractTruffleString {
                 }
                 final int codePointLengthA = getCodePointLengthNode.execute(node, a, arrayA, offsetA, encodingA);
                 final int codeRangeA = getPreciseCodeRangeNode.execute(node, a, arrayA, offsetA, encodingA);
-                if (isCompatibleProfile.profile(node, TSCodeRange.isMoreRestrictiveThan(codeRangeA, targetEncoding.maxCompatibleCodeRange))) {
+                if (isCompatibleProfile.profile(node, TSCodeRange.isMoreRestrictiveAndNativeEndian(codeRangeA, targetEncoding.maxCompatibleCodeRange))) {
                     int strideDst = Stride.fromCodeRange(codeRangeA, targetEncoding);
                     byte[] arrayDst = new byte[lengthA << strideDst];
                     TStringOps.arraycopyWithStride(node,

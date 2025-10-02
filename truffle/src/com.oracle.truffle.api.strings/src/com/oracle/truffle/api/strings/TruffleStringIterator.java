@@ -316,7 +316,23 @@ public final class TruffleStringIterator {
                         @Cached @Exclusive InlinedIntValueProfile encodingProfile) {
             int enc = encodingProfile.profile(node, encoding.id);
             byte codeRange = it.codeRangeA;
-            if (isUpToValidFixedWidth(codeRange)) {
+            if (isUTF16FE(enc)) {
+                if (isUpTo16Bit(codeRange)) {
+                    return (char) it.readAndIncS1(true);
+                } else if (isValid(codeRange)) {
+                    return utf16ValidIntl(it, true);
+                } else {
+                    assert isBroken(codeRange);
+                    return utf16BrokenIntl(it, true, errorHandler);
+                }
+            } else if (isUTF32FE(enc)) {
+                if (isDefaultVariant(errorHandler) || isUpToValid(codeRange)) {
+                    return it.readAndIncS2UTF32FE();
+                } else {
+                    assert isBroken(codeRange);
+                    return utf32BrokenIntl(it, errorHandler, it.readAndIncS2UTF32FE(), 4);
+                }
+            } else if (isUpToValidFixedWidth(codeRange)) {
                 return it.readAndIncS0();
             } else if (isAscii(enc)) {
                 assert isBroken(codeRange);
@@ -325,20 +341,6 @@ public final class TruffleStringIterator {
                     return codepoint;
                 } else {
                     return it.applyErrorHandler(errorHandler, it.rawIndex - 1);
-                }
-            } else if (isUTF32FE(enc)) {
-                if (isDefaultVariant(errorHandler) || isValid(codeRange)) {
-                    return it.readAndIncS2UTF32FE();
-                } else {
-                    assert isBroken(codeRange);
-                    return utf32BrokenIntl(it, errorHandler, it.readAndIncS2UTF32FE(), 4);
-                }
-            } else if (isUTF16FE(enc)) {
-                if (isValid(codeRange)) {
-                    return utf16ValidIntl(it, true);
-                } else {
-                    assert isBroken(codeRange);
-                    return utf16BrokenIntl(it, true, errorHandler);
                 }
             } else {
                 assert isUnsupportedEncoding(enc);
@@ -692,7 +694,23 @@ public final class TruffleStringIterator {
                         @Cached @Exclusive InlinedIntValueProfile encodingProfile) {
             int enc = encodingProfile.profile(node, encoding.id);
             byte codeRange = it.codeRangeA;
-            if (isUpToValidFixedWidth(codeRange)) {
+            if (isUTF16FE(enc)) {
+                if (isUpTo16Bit(codeRange)) {
+                    return it.readAndDecS1(true);
+                } else if (isValid(codeRange)) {
+                    return utf16ValidIntl(it, true);
+                } else {
+                    assert isBroken(codeRange);
+                    return utf16BrokenIntl(it, true, errorHandler);
+                }
+            } else if (isUTF32FE(enc)) {
+                if (isDefaultVariant(errorHandler) || isUpToValid(codeRange)) {
+                    return it.readAndDecS2UTF32FE();
+                } else {
+                    assert isBroken(codeRange);
+                    return utf32BrokenIntl(it, errorHandler, it.readAndDecS2UTF32FE(), 4);
+                }
+            } else if (isUpToValidFixedWidth(codeRange)) {
                 return it.readAndDecS0();
             } else if (isAscii(enc)) {
                 assert isBroken(codeRange);
@@ -701,20 +719,6 @@ public final class TruffleStringIterator {
                     return codepoint;
                 } else {
                     return it.applyErrorHandlerReverse(errorHandler, it.rawIndex + 1);
-                }
-            } else if (isUTF32FE(enc)) {
-                if (isDefaultVariant(errorHandler) || isValid(codeRange)) {
-                    return it.readAndDecS2UTF32FE();
-                } else {
-                    assert isBroken(codeRange);
-                    return utf32BrokenIntl(it, errorHandler, it.readAndDecS2UTF32FE(), 4);
-                }
-            } else if (isUTF16FE(enc)) {
-                if (isValid(codeRange)) {
-                    return utf16ValidIntl(it, true);
-                } else {
-                    assert isBroken(codeRange);
-                    return utf16BrokenIntl(it, true, errorHandler);
                 }
             } else {
                 assert isUnsupportedEncoding(enc);
@@ -875,26 +879,17 @@ public final class TruffleStringIterator {
     private int readFwdS1(boolean foreignEndian) {
         CompilerAsserts.partialEvaluationConstant(foreignEndian);
         assert hasNext();
-        if (foreignEndian) {
-            assert strideA == 0;
-            char c = TStringOps.readS1(arrayA, offsetA, lengthA >> 1, rawIndex >> 1);
-            return Character.reverseBytes(c);
-        } else {
-            assert strideA == 1;
-            return TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex);
-        }
+        assert strideA == 1;
+        char c = TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex);
+        return foreignEndian ? Character.reverseBytes(c) : c;
     }
 
     private int readBckS1(boolean foreignEndian) {
         CompilerAsserts.partialEvaluationConstant(foreignEndian);
         assert hasPrevious();
-        if (foreignEndian) {
-            assert strideA == 0;
-            return Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, lengthA >> 1, (rawIndex - 2) >> 1));
-        } else {
-            assert strideA == 1;
-            return TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex - 1);
-        }
+        assert strideA == 1;
+        char c = TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex - 1);
+        return foreignEndian ? Character.reverseBytes(c) : c;
     }
 
     private int readAndIncS0() {
@@ -906,15 +901,9 @@ public final class TruffleStringIterator {
     private int readAndIncS1(boolean foreignEndian) {
         CompilerAsserts.partialEvaluationConstant(foreignEndian);
         assert hasNext();
-        if (foreignEndian) {
-            assert strideA == 0;
-            char c = TStringOps.readS1(arrayA, offsetA, lengthA >> 1, rawIndex >> 1);
-            rawIndex += 2;
-            return Character.reverseBytes(c);
-        } else {
-            assert strideA == 1;
-            return TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex++);
-        }
+        assert strideA == 1;
+        char c = TStringOps.readS1(arrayA, offsetA, lengthA, rawIndex++);
+        return foreignEndian ? Character.reverseBytes(c) : c;
     }
 
     private int readAndIncS2() {
@@ -926,30 +915,21 @@ public final class TruffleStringIterator {
     private int readAndDecS1(boolean foreignEndian) {
         CompilerAsserts.partialEvaluationConstant(foreignEndian);
         assert hasPrevious();
-        if (foreignEndian) {
-            assert strideA == 0;
-            rawIndex -= 2;
-            return Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, lengthA >> 1, rawIndex >> 1));
-
-        } else {
-            assert strideA == 1;
-            return TStringOps.readS1(arrayA, offsetA, lengthA, --rawIndex);
-        }
+        assert strideA == 1;
+        char c = TStringOps.readS1(arrayA, offsetA, lengthA, --rawIndex);
+        return foreignEndian ? Character.reverseBytes(c) : c;
     }
 
     private int readAndIncS2UTF32FE() {
-        assert strideA == 0;
+        assert strideA == 2;
         assert hasNext();
-        int value = Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA >> 2, rawIndex >> 2));
-        rawIndex += 4;
-        return value;
+        return Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA, rawIndex++));
     }
 
     private int readAndDecS2UTF32FE() {
-        assert strideA == 0;
+        assert strideA == 2;
         assert hasPrevious();
-        rawIndex -= 4;
-        return Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA >> 2, rawIndex >> 2));
+        return Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, lengthA, --rawIndex));
     }
 
     private int readAndDecS0() {

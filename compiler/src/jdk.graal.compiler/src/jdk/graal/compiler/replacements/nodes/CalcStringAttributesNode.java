@@ -262,7 +262,7 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
                         for (int i = 0; i < lengthConstant; i++) {
                             int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, offsetConstant + i);
                             if (encoding == UTF_16_FOREIGN_ENDIAN) {
-                                assert stride == Stride.S2;
+                                assert stride == Stride.S2 : stride;
                                 value = Character.reverseBytes((char) value);
                             }
                             if (assumeValid) {
