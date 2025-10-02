@@ -314,7 +314,7 @@
               }
             },
             "additionalProperties": false,
-            "required": ["class", "method", "returnType", "parameterTypes"],
+            "required": ["class", "method"],
             "type": "object",
             "title": "Java method and function descriptor to be registered for a direct upcall"
           },
@@ -334,11 +334,11 @@
   "$defs": {
     "className": {
       "type": "string",
-      "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*$"
+      "pattern": "^[^.;\\[/]+(\\.[^.;\\[/]+)*$"
     },
     "typeName": {
       "type": "string",
-      "pattern": "^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(\\[\\])*$"
+      "pattern": "^[^.;\\[/]+(\\.[^.;\\[/]+)*(\\[])*$"
     },
     "reason": {
       "title": "A reason(s) for including this element (e.g., needed for establishing connections, or needed by method X#Y for task Z)",
@@ -381,7 +381,7 @@
             "proxy": {
               "title": "Non-empty list of interfaces defining the proxy class",
               "type": "array",
-              "default": [],
+              "minItems": 1,
               "items": {
                 "title": "Fully-qualified name of the interface defining the proxy class",
                 "$ref": "#/$defs/className"
