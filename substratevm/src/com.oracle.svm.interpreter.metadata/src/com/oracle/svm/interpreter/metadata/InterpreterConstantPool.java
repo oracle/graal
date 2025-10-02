@@ -26,24 +26,34 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.util.List;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaField;
@@ -270,6 +280,18 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return (String) resolvedEntry;
     }
 
+    public MethodHandle resolvedMethodHandleAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Object resolvedEntry = resolvedAt(cpi, accessingClass);
+        assert resolvedEntry != null;
+        return (MethodHandle) resolvedEntry;
+    }
+
+    public MethodType resolvedMethodTypeAt(char cpi, InterpreterResolvedObjectType accessingClass) {
+        Object resolvedEntry = resolvedAt(cpi, accessingClass);
+        assert resolvedEntry != null;
+        return (MethodType) resolvedEntry;
+    }
+
     @Override
     public int intAt(int index) {
         checkTag(index, CONSTANT_Integer);
@@ -316,5 +338,23 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             return primitiveConstant.asLong();
         }
         return super.longAt(index);
+    }
+
+    public JavaType findClassAt(int cpi) {
+        if (peekCachedEntry(cpi) instanceof InterpreterResolvedObjectType type) {
+            return type;
+        }
+        Symbol<Name> nameSymbol = className(cpi);
+        ByteSequence typeBytes = TypeSymbols.nameToType(nameSymbol);
+        Symbol<Type> typeSymbol = SymbolsSupport.getTypes().lookupValidType(typeBytes);
+        if (typeSymbol == null) {
+            return null;
+        }
+        Class<?> cls = CremaSupport.singleton().findLoadedClass(typeSymbol, getHolder());
+        if (cls == null) {
+            return UnresolvedJavaType.create(typeBytes.toString());
+        } else {
+            return DynamicHub.fromClass(cls).getInterpreterType();
+        }
     }
 }

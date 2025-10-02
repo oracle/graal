@@ -68,6 +68,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
     public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
+    public static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
 
     public static final int UNKNOWN_METHOD_ID = 0;
 
@@ -89,7 +90,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     private final LineNumberTable lineNumberTable;
 
-    private ExceptionHandler[] exceptionHandlers;
+    protected ExceptionHandler[] exceptionHandlers;
 
     private LocalVariableTable localVariableTable;
 
@@ -340,7 +341,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     }
 
     @Override
-    public final ExceptionHandler[] getExceptionHandlers() {
+    public ExceptionHandler[] getExceptionHandlers() {
         ExceptionHandler[] result = exceptionHandlers;
         VMError.guarantee(result != null);
         return result;
