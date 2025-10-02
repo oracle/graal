@@ -267,6 +267,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return original.getEnclosingMethod();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }

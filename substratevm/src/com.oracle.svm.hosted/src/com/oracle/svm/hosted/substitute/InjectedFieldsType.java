@@ -270,6 +270,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return original.getEnclosingMethod();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }

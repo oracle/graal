@@ -265,6 +265,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return null;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
         return NO_METHODS;
     }

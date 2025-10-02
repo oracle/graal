@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -456,6 +458,17 @@ public class SubstrateType implements SharedType {
             return null;
         }
         return SubstrateMetaAccess.singleton().lookupJavaType(enclosingClass);
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        Class<?> cls = DynamicHub.toClass(hub);
+        Method enclosingMethod = cls.getEnclosingMethod();
+        Executable enclosingExecutable = enclosingMethod != null ? enclosingMethod : cls.getEnclosingConstructor();
+        if (enclosingExecutable != null) {
+            return SubstrateMetaAccess.singleton().lookupJavaMethod(enclosingExecutable);
+        }
+        return null;
     }
 
     @Override

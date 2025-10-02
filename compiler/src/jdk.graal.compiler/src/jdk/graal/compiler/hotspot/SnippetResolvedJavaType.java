@@ -318,6 +318,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }

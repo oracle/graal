@@ -295,6 +295,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return null;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
         return NO_METHODS;
     }
