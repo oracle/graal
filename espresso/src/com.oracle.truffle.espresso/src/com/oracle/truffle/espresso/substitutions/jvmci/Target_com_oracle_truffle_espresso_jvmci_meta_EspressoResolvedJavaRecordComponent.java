@@ -53,7 +53,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRe
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             ObjectKlass holderKlass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(holder);
-            RecordAttribute record = (RecordAttribute) holderKlass.getAttribute(RecordAttribute.NAME);
+            RecordAttribute record = holderKlass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
             if (record == null) {
                 throw meta.throwIllegalArgumentExceptionBoundary();
             }
