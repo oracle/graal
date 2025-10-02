@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata.serialization;
 
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -552,7 +554,8 @@ public final class Serializers {
                         int offset = LEB128.readUnsignedInt(in);
                         JavaConstant constant = context.readReference(in);
                         boolean isWordStorage = in.readBoolean();
-                        return InterpreterResolvedJavaField.createForInterpreter(name, modifiers, type, declaringClass, offset, constant, isWordStorage);
+                        int layerNum = Modifier.isStatic(modifiers) ? in.readByte() : MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
+                        return InterpreterResolvedJavaField.createForInterpreter(name, modifiers, type, declaringClass, offset, constant, isWordStorage, layerNum);
                     },
                     (context, out, value) -> {
                         context.writeReference(out, value.getName());
@@ -567,6 +570,10 @@ public final class Serializers {
                             context.writeReference(out, null);
                         }
                         out.writeBoolean(value.isWordStorage());
+                        if (value.isStatic()) {
+                            out.writeByte(value.getInstalledLayerNum());
+                        }
+
                     });
 
     static final ValueSerializer<InterpreterResolvedObjectType> OBJECT_TYPE = createSerializer(

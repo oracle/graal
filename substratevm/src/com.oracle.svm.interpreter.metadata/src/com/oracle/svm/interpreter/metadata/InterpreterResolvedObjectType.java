@@ -32,9 +32,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -153,8 +155,9 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     public static CremaResolvedObjectType createForCrema(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass) {
-        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, false);
+                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass,
+                    int staticReferenceFields, int staticPrimitiveFieldsSize) {
+        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, false, staticReferenceFields, staticPrimitiveFieldsSize);
     }
 
     @VisibleForSerialization
@@ -231,6 +234,15 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
             return isSubTypeOf(this, o);
         }
         return false;
+    }
+
+    public Object getStaticStorage(boolean primitives, int layerNum) {
+        assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER : "Requesting static storage for a non-static field: " + layerNum;
+        if (primitives) {
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNum);
+        } else {
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNum);
+        }
     }
 
     private static boolean isSubTypeOf(InterpreterResolvedObjectType superType, InterpreterResolvedObjectType subType) {

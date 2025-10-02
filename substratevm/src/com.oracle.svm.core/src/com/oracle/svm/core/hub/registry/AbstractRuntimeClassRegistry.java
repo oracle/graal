@@ -404,7 +404,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
-                        typeID, interfaceID, numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
+                        typeID, interfaceID,
+                        hasClassInitializer(parsed), numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength,
                         dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
 
@@ -428,6 +429,15 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             }
         }
 
+    }
+
+    private static boolean hasClassInitializer(ParserKlass parsed) {
+        for (ParserMethod method : parsed.getMethods()) {
+            if (method.getName() == ParserNames._clinit_) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean declaresDefaultMethods(ParserKlass parsed) {
