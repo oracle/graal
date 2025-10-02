@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
@@ -36,9 +34,11 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -49,7 +49,8 @@ import jdk.vm.ci.meta.JavaKind;
  * Note we now store this separately from {@link CIsolateData} so that it can be stored in a
  * multi-layered image singleton.
  */
-public class ImageCodeInfoStorage implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public class ImageCodeInfoStorage {
 
     private final byte[] data;
 
@@ -76,11 +77,6 @@ public class ImageCodeInfoStorage implements MultiLayeredImageSingleton, Unsaved
     public CodeInfoImpl getCodeInfo() {
         Pointer base = Word.objectToUntrackedPointer(data).add(Word.unsigned(getAlignedOffsetInArray()));
         return (CodeInfoImpl) base;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
     }
 }
 
