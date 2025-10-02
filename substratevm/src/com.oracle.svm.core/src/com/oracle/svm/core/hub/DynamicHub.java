@@ -2064,14 +2064,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public Class<?> getNestHost() {
         if (companion.nestHost != null) {
             return companion.nestHost;
-        } else {
+        } else if (RuntimeClassLoading.isSupported()) {
             /*
              * The nest host is only ever initially null for runtime loaded dynamic hubs, since for
              * hosted Dynamic hubs, the nest host is determined during creation. Hence, we know that
              * in this branch, we're dealing with a Crema dynamic hub.
              */
             assert hubMetadata() instanceof RuntimeDynamicHubMetadata;
-            return companion.nestHost = RuntimeDynamicHubMetadata.getNestHost(this);
+            return companion.nestHost = ((RuntimeDynamicHubMetadata) hubMetadata()).getNestHost();
+        } else {
+            throw VMError.shouldNotReachHere("Nest host should only be uninitialized for runtime loaded classes.");
         }
     }
 
