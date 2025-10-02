@@ -557,7 +557,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
             assert context.getLanguage().isInternalJVMCIEnabled();
             Meta meta = context.getMeta();
             ObjectKlass klass = (ObjectKlass) meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(self);
-            RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
+            RecordAttribute record = klass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
             if (record == null) {
                 return StaticObject.NULL;
             }

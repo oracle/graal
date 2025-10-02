@@ -122,6 +122,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         return !holder.getAssumption().isValid();
     }
 
+    @Override
     public final Attribute[] getAttributes() {
         return linkedField.getParserField().getAttributes();
     }
@@ -129,7 +130,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     @SuppressWarnings("unchecked")
     public final Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
@@ -202,11 +203,6 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
                 typeKlassCache = tk;
             }
         }
-    }
-
-    @Override
-    public final Attribute getAttribute(Symbol<Name> attrName) {
-        return linkedField.getAttribute(attrName);
     }
 
     public static Field getReflectiveFieldRoot(StaticObject seed, Meta meta) {
@@ -1038,7 +1034,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     }
 
     public int getConstantValueIndex() {
-        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Names.ConstantValue);
+        ConstantValueAttribute a = getAttribute(ConstantValueAttribute.NAME, ConstantValueAttribute.class);
         if (a == null) {
             return 0;
         }
