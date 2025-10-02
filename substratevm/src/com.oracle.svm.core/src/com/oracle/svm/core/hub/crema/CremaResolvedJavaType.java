@@ -82,16 +82,6 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
     byte[] getRawTypeAnnotations();
 
     /**
-     * If this object represents a local or anonymous class within a method, returns a
-     * {@link CremaEnclosingMethodInfo} object representing the immediately enclosing method of the
-     * underlying class. Returns {@code null} otherwise.
-     *
-     * @return the immediately enclosing method of the underlying class, if that class is a local or
-     *         anonymous class; otherwise {@code null}.
-     */
-    CremaEnclosingMethodInfo getEnclosingMethod();
-
-    /**
      * Returns an array of {@code JavaType} objects reflecting all the classes and interfaces
      * declared as members of the class represented by this object. This includes public, protected,
      * default (package) access, and private classes and interfaces declared by the this object, but
@@ -128,7 +118,4 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return a JavaType representing the nest host
      */
     ResolvedJavaType getNestHost();
-
-    record CremaEnclosingMethodInfo(JavaType enclosingType, String name, String description) {
-    }
 }

@@ -566,6 +566,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public HostedMethod getEnclosingMethod() {
+        return universe.lookup(wrapped.getEnclosingMethod());
+    }
+
+    @Override
     public ResolvedJavaType[] getDeclaredTypes() {
         ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
         for (int i = 0; i < declaredTypes.length; i++) {

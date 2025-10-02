@@ -306,6 +306,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         throw VMError.intentionallyUnimplemented();
     }

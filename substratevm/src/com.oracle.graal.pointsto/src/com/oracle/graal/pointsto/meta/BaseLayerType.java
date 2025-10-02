@@ -327,6 +327,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
