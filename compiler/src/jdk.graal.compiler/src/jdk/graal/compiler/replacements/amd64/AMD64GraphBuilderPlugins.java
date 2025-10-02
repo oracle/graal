@@ -316,7 +316,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 @Override
                 public boolean isApplicable(Architecture arch) {
-                    return MaxNode.isSupported(arch);
+                    return MaxNode.floatingPointSupportAvailable(arch);
                 }
             });
             r.register(new ConditionalInvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
@@ -328,7 +328,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 @Override
                 public boolean isApplicable(Architecture arch) {
-                    return MinNode.isSupported(arch);
+                    return MinNode.floatingPointSupportAvailable(arch);
                 }
             });
         }
