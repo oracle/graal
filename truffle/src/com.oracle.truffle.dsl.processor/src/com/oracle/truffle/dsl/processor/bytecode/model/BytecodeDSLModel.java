@@ -63,7 +63,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -125,6 +124,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean storeBciInFrame;
     public boolean bytecodeDebugListener;
     public boolean additionalAssertions;
+    public boolean inlinePrimitiveConstants;
     public boolean enableSpecializationIntrospection;
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
@@ -374,21 +374,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return customRegularOperations.get(typeElement);
     }
 
-    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
-        InstructionModel model = instruction(base.kind, base.name + "$" + specializationName, signature, specializationName);
-        for (InstructionImmediate imm : base.getImmediates()) {
-            model.addImmediate(imm.kind(), imm.name());
-        }
-        model.filteredSpecializations = base.filteredSpecializations;
-        model.nodeData = base.nodeData;
-        model.nodeType = base.nodeType;
-        model.quickeningBase = base;
-        model.operation = base.operation;
-        model.shortCircuitModel = base.shortCircuitModel;
-        base.quickenedInstructions.add(model);
-        return model;
-    }
-
     public boolean overridesBytecodeDebugListenerMethod(String methodName) {
         if (!bytecodeDebugListener) {
             return false;
@@ -401,17 +386,20 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return ElementUtils.findOverride(e, getTemplateType()) != null;
     }
 
-    private InstructionModel instruction(InstructionKind kind, String name, Signature signature, String quickeningName) {
-        if (instructions.containsKey(name)) {
-            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
+    private InstructionModel instruction(InstructionModel instr) {
+        if (instructions.containsKey(instr.name)) {
+            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", instr.name));
         }
-        InstructionModel instr = new InstructionModel(kind, name, signature, quickeningName);
-        instructions.put(name, instr);
+        instructions.put(instr.name, instr);
         return instr;
     }
 
     public InstructionModel instruction(InstructionKind kind, String name, Signature signature) {
-        return instruction(kind, name, signature, null);
+        return instruction(new InstructionModel(kind, name, signature));
+    }
+
+    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
+        return instruction(new InstructionModel(base, specializationName, signature));
     }
 
     public InstructionModel shortCircuitInstruction(String name, ShortCircuitInstructionModel shortCircuitModel) {
