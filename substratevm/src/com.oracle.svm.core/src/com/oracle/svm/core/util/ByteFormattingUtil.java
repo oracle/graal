@@ -44,7 +44,7 @@ public class ByteFormattingUtil {
     // We want to respect MAX_WIDTH and keep it concise,
     // so we prefer to show 0.99MiB than 1010.00KiB (length 10).
     public static String bytesToHuman(long bytes) {
-        assert bytes >= 0;
+        assert bytes >= 0 : bytes;
         if (bytes < 1_000) {
             return bytes + "B";
         } else if (bytes < 1_000 * Unit.KiB.value) {
@@ -61,8 +61,9 @@ public class ByteFormattingUtil {
     }
 
     private static String toHuman(long value, Unit unit) {
-        String string = "%.2f%s".formatted((double) value / unit.value, unit);
-        assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value;
+        long scaled = value / unit.value;
+        String string = "%.2f%s".formatted((double) scaled, unit.toString());
+        assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value : value;
         return string;
     }
 }
