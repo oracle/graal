@@ -217,7 +217,7 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static void flushToGlobalMemoryAndRetireBuffer(JfrBuffer buffer) {
         assert VMOperation.isInProgressAtSafepoint();
-        if (buffer.isNull()) {
+        if (buffer.isNull() || JfrBufferAccess.isRetired(buffer)) {
             return;
         }
 
