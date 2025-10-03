@@ -51,6 +51,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -149,10 +150,25 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            BlockingQueue<Runnable> queue = createQueue(callTarget, threads);
+            BlockingQueue<Runnable> queue;
+            if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraversingCompilationQueue)) {
+                queue = new TraversingBlockingQueue(new IdlingLinkedBlockingDeque<>());
+            } else {
+                queue = new IdlingPriorityBlockingQueue<>();
+            }
+
+            DynamicCompilationThresholds dynamicCompilationThresholds = null;
+            if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraversingCompilationQueue)) {
+                if (callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholds) && callTarget.getOptionValue(OptimizedRuntimeOptions.BackgroundCompilation)) {
+                    double minScale = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinScale);
+                    int minNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinNormalLoad);
+                    int maxNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMaxNormalLoad);
+                    dynamicCompilationThresholds = new DynamicCompilationThresholds(threads, minScale, minNormalLoad, maxNormalLoad);
+                }
+            }
             TruffleThreadPoolExecutor threadPoolExecutor = new TruffleThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
-                            queue, factory);
+                            queue, factory, dynamicCompilationThresholds);
 
             if (compilerIdleDelay > 0) {
                 // There are two mechanisms to signal idleness: if core threads can timeout, then
@@ -162,21 +178,6 @@ public class BackgroundCompileQueue {
             }
 
             return executor = threadPoolExecutor;
-        }
-    }
-
-    private BlockingQueue<Runnable> createQueue(OptimizedCallTarget callTarget, int threads) {
-        if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraversingCompilationQueue)) {
-            if (callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholds) && callTarget.getOptionValue(OptimizedRuntimeOptions.BackgroundCompilation)) {
-                double minScale = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinScale);
-                int minNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMinNormalLoad);
-                int maxNormalLoad = callTarget.getOptionValue(OptimizedRuntimeOptions.DynamicCompilationThresholdsMaxNormalLoad);
-                return new DynamicThresholdsQueue(threads, minScale, minNormalLoad, maxNormalLoad, new IdlingLinkedBlockingDeque<>());
-            } else {
-                return new TraversingBlockingQueue(new IdlingLinkedBlockingDeque<>());
-            }
-        } else {
-            return new IdlingPriorityBlockingQueue<>();
         }
     }
 
@@ -326,9 +327,12 @@ public class BackgroundCompileQueue {
          * queued and active compilations without duplicates and misses.
          */
         private final Set<CompilationTask.ExecutorServiceWrapper> allTargets = ConcurrentHashMap.newKeySet();
+        private final DynamicCompilationThresholds dynamicCompilationThresholds;
 
-        private TruffleThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory) {
+        private TruffleThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory,
+                        DynamicCompilationThresholds dynamicCompilationThresholds) {
             super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
+            this.dynamicCompilationThresholds = dynamicCompilationThresholds;
         }
 
         void flush(EngineData engine) {
@@ -368,6 +372,24 @@ public class BackgroundCompileQueue {
         public boolean remove(Runnable task) {
             allTargets.remove(task);
             return super.remove(task);
+        }
+
+        @Override
+        public <T> Future<T> submit(Callable<T> task) {
+            Future<T> future = super.submit(task);
+            scaleThresholds();
+            return future;
+        }
+
+        private void scaleThresholds() {
+            if (dynamicCompilationThresholds != null) {
+                dynamicCompilationThresholds.scaleThresholds();
+            }
+        }
+
+        @Override
+        protected void beforeExecute(Thread t, Runnable r) {
+            scaleThresholds();
         }
 
         @Override
@@ -529,6 +551,41 @@ public class BackgroundCompileQueue {
                 timeoutMillis -= delayMillis;
             }
             return super.pollFirst(timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private final class DynamicCompilationThresholds {
+        private final int threads;
+        private final double minScale;
+        private final int minNormalLoad;
+        private final int maxNormalLoad;
+        private final double slope;
+
+        DynamicCompilationThresholds(int threads, double minScale, int minNormalLoad, int maxNormalLoad) {
+            this.threads = threads;
+            this.minScale = minScale;
+            this.minNormalLoad = minNormalLoad;
+            this.maxNormalLoad = maxNormalLoad;
+            this.slope = (1 - minScale) / minNormalLoad;
+        }
+
+        private double load() {
+            return (double) getQueueSize() / threads;
+        }
+
+        private double scale() {
+            double x = load();
+            if (minNormalLoad <= x && x <= maxNormalLoad) {
+                return 1;
+            }
+            if (x < minNormalLoad) {
+                return slope * x + minScale;
+            }
+            return slope * x + (1 - slope * maxNormalLoad);
+        }
+
+        private void scaleThresholds() {
+            OptimizedTruffleRuntime.getRuntime().setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
         }
     }
 }
