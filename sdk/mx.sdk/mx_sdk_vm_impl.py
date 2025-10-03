@@ -909,10 +909,9 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             # GraalVM_community_openjdk_17.0.7+4.1
             # GraalVM_jdk_17.0.7+4.1
             # GraalVM_jit_jdk_17.0.7+4.1
-            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
+            base_dir = '{base_name}{vm_dist_name}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
-                jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
                 version=graalvm_version(version_type='base-dir')
             )
             name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
@@ -2985,38 +2984,45 @@ def graalvm_version(version_type):
         raise mx.abort(f'VM info extraction failed. Exit code: {code}\nOutput: {out.data}')
 
     if version_type == 'graalvm':
-        return _suite.release_version()
+        return _suite.release_version(snapshotSuffix='dev')
     else:
+        graalvm_version = _suite.release_version(snapshotSuffix='dev')
         if _base_jdk_version_info is None:
             _base_jdk_version_info = base_jdk_version_info()
 
-        java_vnum, java_pre, java_build, _ = _base_jdk_version_info
+        _, java_pre, java_build, _ = _base_jdk_version_info
         if version_type == 'vendor':
-            graalvm_pre = '' if _suite.is_release() else '-dev'
+            graalvm_suffix = ''
             if java_pre:
-                graalvm_pre += '.' if graalvm_pre else '-'
-                graalvm_pre += java_pre
+                graalvm_suffix += '.' if graalvm_version.endsWith('dev') else '-'
+                graalvm_suffix += java_pre
         else:
             assert version_type == 'base-dir', version_type
-            graalvm_pre = ''
+            graalvm_suffix = ''
         # Ignores `java_opt` (`Runtime.version().optional()`)
         #
         # Examples:
         #
+        # GraalVM version: 25.1.0
         # ```
-        # openjdk version "17.0.7" 2023-04-18
-        # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
+        # $ java -version
+        # openjdk 25 2025-09-16
+        # OpenJDK Runtime Environment (build 25+36-3489)
+        # OpenJDK 64-Bit Server VM (build 25+36-3489, mixed mode, sharing)
         # ```
-        # -> `17.0.7-dev+4.1`
+        # -> `25.1.0+36.1`
         #
+        # GraalVM version: 25.1.0-dev
         # ```
-        # openjdk version "21-ea" 2023-09-19
-        # OpenJDK Runtime Environment (build 21-ea+16-1326)
+        # $ java -version
+        # openjdk 25 2025-09-16
+        # OpenJDK Runtime Environment (build 25+36-3489)
+        # OpenJDK 64-Bit Server VM (build 25+36-3489, mixed mode, sharing)
         # ```
-        # -> `21-dev.ea+16.1`
-        return '{java_vnum}{graalvm_pre}{java_build}.{release_build}'.format(
-            java_vnum=java_vnum,
-            graalvm_pre=graalvm_pre,
+        # -> `25.1.0-dev+36.1`
+        return '{graalvm_version}{graalvm_suffix}{java_build}.{release_build}'.format(
+            graalvm_version=graalvm_version,
+            graalvm_suffix=graalvm_suffix,
             java_build=java_build,
             release_build=mx_sdk_vm.release_build
         )
