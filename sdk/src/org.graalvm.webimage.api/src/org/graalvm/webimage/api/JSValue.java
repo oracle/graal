@@ -45,7 +45,7 @@ import java.math.BigInteger;
 
 /**
  * Java representation of a JavaScript value.
- *
+ * <p>
  * The subclasses of this class represent JavaScript's six primitive data types and the object data
  * type. The JavaScript {@code Null} data type does not have a special representation -- the
  * JavaScript {@code null} value is directly mapped to the Java {@code null} value.
@@ -53,6 +53,12 @@ import java.math.BigInteger;
 public abstract class JSValue {
 
     JSValue() {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <R> R checkedCoerce(Object value, Class<R> cls) {
+        if (value instanceof JSValue jsResult) return jsResult.as(cls);
+        return (R) value;
     }
 
     public static JSUndefined undefined() {
