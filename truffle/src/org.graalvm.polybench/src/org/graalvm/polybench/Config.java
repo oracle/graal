@@ -104,6 +104,7 @@ public class Config {
     private void parseBenchSpecificSummary(Value benchmark) throws InvalidObjectException {
         if (!benchmark.hasMember("summary")) {
             // No 'summary' member provided in the benchmark
+            summary = parseFallbackBenchSpecificSummary(benchmark);
             return;
         }
         Value summaryMember = benchmark.getMember("summary");
@@ -129,6 +130,17 @@ public class Config {
         } else {
             throw new InvalidObjectException("Failed at parsing the 'summary' benchmark member due to unrecognized name of '" + summaryClassName + "'!");
         }
+    }
+
+    private Summary parseFallbackBenchSpecificSummary(Value benchmark) {
+        if (benchmark.hasMember(OutlierRemovalAverageSummary.class.getSimpleName())) {
+            double lowerThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "LowerThreshold").execute().asDouble();
+            double upperThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "UpperThreshold").execute().asDouble();
+            return new OutlierRemovalAverageSummary(lowerThreshold, upperThreshold);
+        } else if (benchmark.hasMember(AverageSummary.class.getSimpleName())) {
+            return new AverageSummary();
+        }
+        return null;
     }
 
     @Override
