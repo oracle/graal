@@ -906,9 +906,9 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
 
         if vm_dist_name is not None:
             # Examples (later we call `.lower().replace('_', '-')`):
-            # GraalVM_community_openjdk_17.0.7+4.1
-            # GraalVM_jdk_17.0.7+4.1
-            # GraalVM_jit_jdk_17.0.7+4.1
+            # GraalVM_community_openjdk_17.0.7+4
+            # GraalVM_jdk_17.0.7+4
+            # GraalVM_jit_jdk_17.0.7+4
             base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
@@ -3007,19 +3007,14 @@ def graalvm_version(version_type):
         # openjdk version "17.0.7" 2023-04-18
         # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
         # ```
-        # -> `17.0.7-dev+4.1`
+        # -> `17.0.7-dev+4`
         #
         # ```
         # openjdk version "21-ea" 2023-09-19
         # OpenJDK Runtime Environment (build 21-ea+16-1326)
         # ```
-        # -> `21-dev.ea+16.1`
-        return '{java_vnum}{graalvm_pre}{java_build}.{release_build}'.format(
-            java_vnum=java_vnum,
-            graalvm_pre=graalvm_pre,
-            java_build=java_build,
-            release_build=mx_sdk_vm.release_build
-        )
+        # -> `21-dev.ea+16`
+        return f'{java_vnum}{graalvm_pre}{java_build}'
 
 
 def graalvm_home(stage1=False, fatalIfMissing=False):
