@@ -43,7 +43,6 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -99,12 +98,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         } else {
             assert refTag == Tag.FIELD_REF;
             InterpreterResolvedJavaField field = this.resolvedFieldAt(accessingClass, memberIndex);
-            JavaType fieldType = field.getType();
-            if (fieldType instanceof InterpreterResolvedJavaType resolvedJavaType) {
-                mtype = resolvedJavaType.getJavaClass();
-            } else {
-                mtype = resolveSymbolAndAccessCheck(field.getDeclaringClass(), (UnresolvedJavaType) fieldType);
-            }
+            mtype = field.getResolvedType().getJavaClass();
             mklass = field.getDeclaringClass();
             refName = field.getSymbolicName();
         }
@@ -294,12 +288,6 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     }
 
     private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
-        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-        // GR-62339 check access
-        return clazz;
-    }
-
-    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, UnresolvedJavaType type) {
         Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
         // GR-62339 check access
         return clazz;
