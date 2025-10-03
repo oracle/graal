@@ -344,17 +344,35 @@ public abstract class DynamicObject implements TruffleObject {
 
     static final int SHAPE_CACHE_LIMIT = 5;
 
+    /**
+     * Gets the value of a property or returns a default value if no such property exists.
+     * <p>
+     * Specialized return type variants are available for when a primitive result is expected.
+     *
+     * @see #getOrNull(DynamicObject, Object)
+     * @see #getOrDefault(DynamicObject, Object, Object)
+     * @see #getIntOrDefault(DynamicObject, Object, Object)
+     * @see #getLongOrDefault(DynamicObject, Object, Object)
+     * @see #getDoubleOrDefault(DynamicObject, Object, Object)
+     * @since 25.1
+     */
     @GenerateCached(true)
     @GenerateInline(false)
     @GenerateUncached
     @ImportStatic(DynamicObject.class)
     public abstract static class GetNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetNode create() {
             return GetNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetNode getUncached() {
             return GetNodeGen.getUncached();
@@ -555,6 +573,25 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Sets the value of an existing property or adds a new property if no such property exists.
+     * Additional variants allow setting property flags, only setting the property if it's either
+     * absent or present, and setting constant properties stored in the shape.
+     *
+     * @see #put(DynamicObject, Object, Object)
+     * @see #putIfAbsent(DynamicObject, Object, Object)
+     * @see #putIfPresent(DynamicObject, Object, Object)
+     * @see #putWithFlags(DynamicObject, Object, Object, int)
+     * @see #putWithFlagsIfAbsent(DynamicObject, Object, Object, int)
+     * @see #putWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @see #putConstant(DynamicObject, Object, Object)
+     * @see #putConstantIfAbsent(DynamicObject, Object, Object)
+     * @see #putConstantIfPresent(DynamicObject, Object, Object)
+     * @see #putConstantWithFlags(DynamicObject, Object, Object, int)
+     * @see #putConstantWithFlagsIfAbsent(DynamicObject, Object, Object, int)
+     * @see #putConstantWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @since 25.1
+     */
     @GeneratePackagePrivate
     @ImportStatic(DynamicObject.class)
     @GenerateUncached
@@ -562,11 +599,17 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class PutNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static PutNode create() {
             return PutNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static PutNode getUncached() {
             return PutNodeGen.getUncached();
@@ -854,17 +897,30 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Copies all properties of a DynamicObject to another, preserving property flags. Does not copy
+     * hidden properties.
+     *
+     * @see #execute(DynamicObject, DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class CopyPropertiesNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static CopyPropertiesNode create() {
             return DynamicObjectFactory.CopyPropertiesNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static CopyPropertiesNode getUncached() {
             return DynamicObjectFactory.CopyPropertiesNodeGen.getUncached();
@@ -873,6 +929,8 @@ public abstract class DynamicObject implements TruffleObject {
         /**
          * Copies all properties of a DynamicObject to another, preserving property flags. Does not
          * copy hidden properties.
+         *
+         * @since 25.1
          */
         public abstract void execute(DynamicObject from, DynamicObject to);
 
@@ -917,17 +975,29 @@ public abstract class DynamicObject implements TruffleObject {
         return ObsolescenceStrategy.updateShape(object);
     }
 
+    /**
+     * Checks if this object contains a property with the given key.
+     *
+     * @see #execute(DynamicObject, Object)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class ContainsKeyNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static ContainsKeyNode create() {
             return DynamicObjectFactory.ContainsKeyNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static ContainsKeyNode getUncached() {
             return DynamicObjectFactory.ContainsKeyNodeGen.getUncached();
@@ -969,17 +1039,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Removes the property with the given key from the object.
+     *
+     * @see #execute(DynamicObject, Object)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class RemoveKeyNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static RemoveKeyNode create() {
             return DynamicObjectFactory.RemoveKeyNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static RemoveKeyNode getUncached() {
             return DynamicObjectFactory.RemoveKeyNodeGen.getUncached();
@@ -1077,17 +1159,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets the language-specific object shape flags.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetShapeFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetShapeFlagsNode create() {
             return DynamicObjectFactory.GetShapeFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetShapeFlagsNode getUncached() {
             return DynamicObjectFactory.GetShapeFlagsNodeGen.getUncached();
@@ -1144,17 +1238,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Checks if the language-specific object shape flags include the given flags.
+     *
+     * @see #execute(DynamicObject, int)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class HasShapeFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static HasShapeFlagsNode create() {
             return DynamicObjectFactory.HasShapeFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static HasShapeFlagsNode getUncached() {
             return DynamicObjectFactory.HasShapeFlagsNodeGen.getUncached();
@@ -1162,7 +1268,7 @@ public abstract class DynamicObject implements TruffleObject {
 
         // @formatter:off
         /**
-         * Checks if the language-specific object shape flags constains the given flags, previously set using
+         * Checks if the language-specific object shape flags contains the given flags, previously set using
          * {@link SetShapeFlagsNode} or
          * {@link Shape.Builder#shapeFlags(int)}. If no shape flags were explicitly set, the default of
          * false is returned.
@@ -1175,7 +1281,7 @@ public abstract class DynamicObject implements TruffleObject {
          * {@snippet :
          * @ExportMessage
          * Object writeMember(String member, Object value,
-         *                 @Cached DynamicObject.hasShapeFlagsNode hasShapeFlagsNode,
+         *                 @Cached DynamicObject.HasShapeFlagsNode hasShapeFlagsNode,
          *                 @Cached DynamicObject.PutNode putNode)
          *                 throws UnsupportedMessageException {
          *     if (hasShapeFlagsNode.execute(receiver, FROZEN)) {
@@ -1209,17 +1315,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Sets language-specific object shape flags.
+     *
+     * @see #execute(DynamicObject, int)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetShapeFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetShapeFlagsNode create() {
             return DynamicObjectFactory.SetShapeFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetShapeFlagsNode getUncached() {
             return DynamicObjectFactory.SetShapeFlagsNodeGen.getUncached();
@@ -1291,17 +1409,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Adds language-specific object shape flags.
+     *
+     * @see #execute(DynamicObject, int)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class AddShapeFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static AddShapeFlagsNode create() {
             return DynamicObjectFactory.AddShapeFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static AddShapeFlagsNode getUncached() {
             return DynamicObjectFactory.AddShapeFlagsNodeGen.getUncached();
@@ -1313,10 +1443,10 @@ public abstract class DynamicObject implements TruffleObject {
          *
          * These flags may be used to tag objects that possess characteristics that need to be queried
          * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
-         *
+         * <p>
          * Only the lowest 16 bits (i.e. values in the range 0 to 65535) are allowed, the remaining bits
          * are currently reserved.
-         *
+         * <p>
          * Equivalent to:
          * {@snippet :
          * @Specialization
@@ -1380,17 +1510,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Checks whether this object is marked as shared.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class IsSharedNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static IsSharedNode create() {
             return DynamicObjectFactory.IsSharedNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static IsSharedNode getUncached() {
             return DynamicObjectFactory.IsSharedNodeGen.getUncached();
@@ -1420,17 +1562,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Marks this object as shared.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class MarkSharedNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static MarkSharedNode create() {
             return DynamicObjectFactory.MarkSharedNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static MarkSharedNode getUncached() {
             return DynamicObjectFactory.MarkSharedNodeGen.getUncached();
@@ -1438,7 +1592,7 @@ public abstract class DynamicObject implements TruffleObject {
 
         /**
          * Marks this object as shared.
-         *
+         * <p>
          * Makes the object use a shared variant of the {@link Shape}, to allow safe usage of this
          * object between threads. Objects with a shared {@link Shape} will not reuse storage
          * locations for other fields. In combination with careful synchronization on writes, this
@@ -1478,17 +1632,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets the language-specific dynamic type identifier currently associated with this object.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetDynamicTypeNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetDynamicTypeNode create() {
             return DynamicObjectFactory.GetDynamicTypeNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetDynamicTypeNode getUncached() {
             return DynamicObjectFactory.GetDynamicTypeNodeGen.getUncached();
@@ -1519,17 +1685,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Sets the language-specific dynamic type identifier.
+     *
+     * @see #execute(DynamicObject, Object)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetDynamicTypeNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetDynamicTypeNode create() {
             return DynamicObjectFactory.SetDynamicTypeNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetDynamicTypeNode getUncached() {
             return DynamicObjectFactory.SetDynamicTypeNodeGen.getUncached();
@@ -1582,17 +1760,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets the property flags associated with the requested property key.
+     *
+     * @see #execute(DynamicObject, Object, int)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetPropertyFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyFlagsNode create() {
             return DynamicObjectFactory.GetPropertyFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyFlagsNode getUncached() {
             return DynamicObjectFactory.GetPropertyFlagsNodeGen.getUncached();
@@ -1641,17 +1831,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Sets the property flags associated with the requested property key.
+     *
+     * @see #execute(DynamicObject, Object, int)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetPropertyFlagsNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetPropertyFlagsNode create() {
             return DynamicObjectFactory.SetPropertyFlagsNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static SetPropertyFlagsNode getUncached() {
             return DynamicObjectFactory.SetPropertyFlagsNodeGen.getUncached();
@@ -1746,17 +1948,29 @@ public abstract class DynamicObject implements TruffleObject {
         }
     }
 
+    /**
+     * Ensures the object's shape is up-to-date.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class UpdateShapeNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static UpdateShapeNode create() {
             return DynamicObjectFactory.UpdateShapeNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static UpdateShapeNode getUncached() {
             return DynamicObjectFactory.UpdateShapeNodeGen.getUncached();
@@ -1798,17 +2012,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Empties and resets the object to the given root shape.
+     *
+     * @see #execute(DynamicObject, Shape)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class ResetShapeNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static ResetShapeNode create() {
             return DynamicObjectFactory.ResetShapeNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static ResetShapeNode getUncached() {
             return DynamicObjectFactory.ResetShapeNodeGen.getUncached();
@@ -1857,17 +2083,30 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets a {@linkplain Property property descriptor} for the requested property key or
+     * {@code null} if no such property exists.
+     *
+     * @see #execute(DynamicObject, Object)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetPropertyNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyNode create() {
             return DynamicObjectFactory.GetPropertyNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyNode getUncached() {
             return DynamicObjectFactory.GetPropertyNodeGen.getUncached();
@@ -1897,17 +2136,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets a snapshot of the object's property keys, in insertion order.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetKeyArrayNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetKeyArrayNode create() {
             return DynamicObjectFactory.GetKeyArrayNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetKeyArrayNode getUncached() {
             return DynamicObjectFactory.GetKeyArrayNodeGen.getUncached();
@@ -1990,17 +2241,29 @@ public abstract class DynamicObject implements TruffleObject {
 
     }
 
+    /**
+     * Gets a snapshot of the object's {@linkplain Property properties}, in insertion order.
+     *
+     * @see #execute(DynamicObject)
+     * @since 25.1
+     */
     @ImportStatic(DynamicObject.class)
     @GeneratePackagePrivate
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetPropertyArrayNode extends Node {
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyArrayNode create() {
             return DynamicObjectFactory.GetPropertyArrayNodeGen.create();
         }
 
+        /**
+         * @since 25.1
+         */
         @NeverDefault
         public static GetPropertyArrayNode getUncached() {
             return DynamicObjectFactory.GetPropertyArrayNodeGen.getUncached();
