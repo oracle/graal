@@ -424,6 +424,17 @@ int richards()
     return 0;
 }
 
+void OutlierRemovalAverageSummary() {
+}
+
+double OutlierRemovalAverageSummaryLowerThreshold() {
+  return 0.0;
+}
+
+double OutlierRemovalAverageSummaryUpperThreshold() {
+  return 0.5;
+}
+
 int run()
 {
   return richards();;
