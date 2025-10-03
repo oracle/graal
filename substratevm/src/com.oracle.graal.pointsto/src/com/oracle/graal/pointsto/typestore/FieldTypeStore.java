@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.typestore;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 
 /**
  * Store for instance field access type flows.
@@ -36,9 +36,9 @@ public abstract class FieldTypeStore {
 
     /** The holder of the field flow. */
     protected final AnalysisObject object;
-    protected final AnalysisField field;
+    protected final PointsToAnalysisField field;
 
-    protected FieldTypeStore(AnalysisField field, AnalysisObject object) {
+    protected FieldTypeStore(PointsToAnalysisField field, AnalysisObject object) {
         this.field = field;
         this.object = object;
     }
@@ -47,7 +47,7 @@ public abstract class FieldTypeStore {
         return object;
     }
 
-    public AnalysisField field() {
+    public PointsToAnalysisField field() {
         return field;
     }
 

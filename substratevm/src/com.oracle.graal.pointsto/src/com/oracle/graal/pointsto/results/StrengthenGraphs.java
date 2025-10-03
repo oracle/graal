@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -170,9 +171,9 @@ public abstract class StrengthenGraphs {
         int neverNull = 0;
         int canBeNull = 0;
         for (var field : bb.getUniverse().getFields()) {
-            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object && field instanceof PointsToAnalysisField ptaField) {
                 /* If the field flow is saturated we must assume it can be null. */
-                if (field.getSinkFlow().isSaturated() || field.getSinkFlow().getState().canBeNull()) {
+                if (ptaField.getSinkFlow().isSaturated() || ptaField.getSinkFlow().getState().canBeNull()) {
                     canBeNull++;
                 } else {
                     neverNull++;

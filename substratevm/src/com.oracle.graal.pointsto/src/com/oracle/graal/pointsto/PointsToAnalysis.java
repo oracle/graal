@@ -91,7 +91,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
-    /** The type of {@link java.lang.Object}. */
+    /** The type of {@link Object}. */
     private final AnalysisType objectType;
     /**
      * Enables propagating primitive values interproceduraly using the typeflow graph. Only simple
@@ -103,7 +103,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      * Unsafe loads and stores are NOT modeled, because it would lead to merging of primitive and
      * objects states (all unsafe fields are merged into a single flow). Instead, all unsafe
      * accessed primitive fields are assigned the PrimitiveTypeState state and any unsafe read is
-     * immediately represented as {@link com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow}.
+     * immediately represented as {@link AnyPrimitiveSourceTypeFlow}.
      */
     private final boolean trackPrimitiveValues;
     private final AnalysisType longType;
@@ -513,7 +513,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
         for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
-            AnalysisField field = (AnalysisField) javaField;
+            var field = (PointsToAnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
@@ -533,7 +533,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
         for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
-            AnalysisField field = (AnalysisField) javaField;
+            var field = (PointsToAnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
                 return addRootField(type, field);
             }
@@ -542,7 +542,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisType addRootField(AnalysisField field) {
+    public AnalysisType addRootField(AnalysisField f) {
+        var field = (PointsToAnalysisField) f;
         if (field.isStatic()) {
             return addRootStaticField(field);
         } else {
@@ -550,13 +551,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
     }
 
-    private AnalysisType addRootField(AnalysisType type, AnalysisField field) {
+    private AnalysisType addRootField(AnalysisType type, PointsToAnalysisField field) {
         field.registerAsAccessed("root field");
         processRootField(type, field);
         return field.getType();
     }
 
-    private void processRootField(AnalysisType type, AnalysisField field) {
+    private void processRootField(AnalysisType type, PointsToAnalysisField field) {
         JavaKind storageKind = field.getStorageKind();
         if (isSupportedJavaKind(storageKind)) {
             var fieldFlow = type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true);
@@ -579,7 +580,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         Field reflectField;
         try {
             reflectField = clazz.getField(fieldName);
-            AnalysisField field = metaAccess.lookupJavaField(reflectField);
+            var field = (PointsToAnalysisField) metaAccess.lookupJavaField(reflectField);
             return addRootStaticField(field);
 
         } catch (NoSuchFieldException e) {
@@ -587,7 +588,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
     }
 
-    private AnalysisType addRootStaticField(AnalysisField field) {
+    private AnalysisType addRootStaticField(PointsToAnalysisField field) {
         field.registerAsAccessed("static root field");
         JavaKind storageKind = field.getStorageKind();
         if (isSupportedJavaKind(storageKind)) {
