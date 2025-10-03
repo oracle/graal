@@ -27,6 +27,16 @@ package jdk.graal.compiler.truffle.test;
 import java.util.concurrent.Semaphore;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.ResourceLimits;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
@@ -37,15 +47,6 @@ import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.ResourceLimits;
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 
@@ -64,8 +65,8 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
             /*
              * Verify that the statements fold to a single read/write.
              */
-            Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-            Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+            Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+            Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
         }
     }
 
@@ -125,9 +126,9 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                 if (!TruffleOptions.AOT) {
                     Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
                 }
-                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementLimit")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
             }
         }
     }
@@ -145,9 +146,9 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
         if (!TruffleOptions.AOT) {
             Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
         }
-        Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
+        Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+        Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementLimit")));
     }
 
     @Test
@@ -170,8 +171,8 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  * Verify that the statements fold to a single read for the context and a single
                  * read/write for the statement counts.
                  */
-                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("com.oracle.truffle.polyglot.PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }

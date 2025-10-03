@@ -29,6 +29,7 @@ import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formattable;
@@ -1715,6 +1716,14 @@ public abstract class Node implements Cloneable, Formattable {
                 // Convert a char to an int as chars are not guaranteed to printable/viewable
                 char ch = (char) value;
                 value = Integer.valueOf(ch);
+            } else if (properties.getType(i) == byte[].class) {
+                String encoded = Base64.getEncoder().encodeToString((byte[]) value);
+                /*
+                 * BGV Replay for truffle: in order to be able to reconstruct most of the truffle
+                 * graphs after partial evaluation we have to dump some properties in a parseable
+                 * form. Byte arrays are used throughout truffle, thus make them re-parseable.
+                 */
+                value = "base64:" + encoded;
             }
             map.put(properties.getName(i), value);
         }
