@@ -973,6 +973,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
     public List<? extends AnalysisType> getPermittedSubclasses() {
         if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
             List<? extends JavaType> wrappedPermittedSubclasses = wrapped.getPermittedSubclasses();

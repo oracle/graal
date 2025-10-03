@@ -126,6 +126,12 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
+    public boolean isHidden() {
+        // (GR-69095)
+        throw VMError.unimplemented("isHidden");
+    }
+
+    @Override
     public JavaType[] getPermittedSubClasses() {
         // (GR-69095)
         throw VMError.unimplemented("getPermittedSubClasses");
