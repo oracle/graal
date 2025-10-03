@@ -1386,7 +1386,9 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     @Override
     protected Value emitIntegerMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, NumUtil.Signedness signedness) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
-        GraalError.guarantee(kind.getVectorLength() > 1, "scalar integer min/max not supported");
+        if (kind.getVectorLength() == 1) {
+            return super.emitIntegerMinMax(cmpKind, a, b, minmaxop, signedness);
+        }
         GraalError.guarantee(kind.getScalar().isInteger(), "expected integer vector for integer min/max");
         LIRKind resultKind = LIRKind.combine(a, b);
         boolean min = (minmaxop == AMD64MathMinMaxFloatOp.Min);
