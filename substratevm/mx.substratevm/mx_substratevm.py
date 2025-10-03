@@ -2494,6 +2494,48 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
         return graal_compiler_flags_map
 
+def get_jsonschema_validator(schema_path):
+    """Create and return a jsonschema Validator for the schema at the given file path. Abort on missing jsonschema or invalid schema."""
+    import json
+    try:
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+    except json.JSONDecodeError as e:
+        mx.abort(f'Failed to parse JSON in schema file "{schema_path}" at line {e.lineno}, column {e.colno}: {e.msg}')
+    except OSError as e:
+        mx.abort(f'I/O error when opening schema file "{schema_path}": {e}')
+
+    try:
+        import jsonschema  # type: ignore
+    except ImportError as e:
+        mx.abort(
+            'Python module "jsonschema" is required to validate reachability metadata but was not found. '
+            'Install it with: "python3 -m pip install --user jsonschema" (or "pip3 install jsonschema"). '
+            f'Original error: {e}')
+    try:
+        if hasattr(jsonschema, 'Draft202012Validator'):
+            return jsonschema.Draft202012Validator(schema)  # type: ignore[attr-defined]
+        else:
+            return jsonschema.Draft7Validator(schema)  # type: ignore
+    except (jsonschema.exceptions.SchemaError, TypeError) as e:
+        mx.abort(f'Invalid reachability metadata schema: {e}')
+
+def validate_json_file_against_schema(validator, file_path):
+    """Validates a JSON file against the provided Validator. Returns a list of error strings; empty if valid."""
+    import json
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        mx.abort(f'Invalid JSON syntax at line {e.lineno}, column {e.colno}: {e.msg}')
+    except OSError as e:
+        mx.abort(f'I/O error: {e}')
+
+    errors = []
+    for err in validator.iter_errors(data):
+        path = '/'.join([str(p) for p in err.path]) if err.path else '#'
+        errors.append(f'{path}: {err.message}')
+    return errors
 
 class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
     def __init__(self, subject, args):
