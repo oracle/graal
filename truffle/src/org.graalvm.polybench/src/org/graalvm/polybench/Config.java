@@ -140,7 +140,8 @@ public class Config {
         } else if (benchmark.hasMember(AverageSummary.class.getSimpleName())) {
             return new AverageSummary();
         }
-        return null;
+        // defaulting to averaging if the aggregation strategy is not specified
+        return new AverageSummary();
     }
 
     @Override
