@@ -49,7 +49,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.regex.flavor.python.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.test.generated.PythonGeneratedTests;
 
 public class PythonTests extends RegexTestBase {
@@ -63,8 +63,8 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_32;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_32;
     }
 
     @Test
@@ -392,7 +392,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?a)(?u)", "", "ASCII and UNICODE flags are incompatible");
 
         expectSyntaxError("", "L", "cannot use LOCALE flag with a str pattern");
-        expectSyntaxError("", "u", Encodings.LATIN_1, "cannot use UNICODE flag with a bytes pattern", Integer.MIN_VALUE);
+        expectSyntaxError("", "u", Encoding.LATIN_1, "cannot use UNICODE flag with a bytes pattern", Integer.MIN_VALUE);
 
         Assert.assertTrue("expected str pattern to default to UNICODE flag",
                         compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());

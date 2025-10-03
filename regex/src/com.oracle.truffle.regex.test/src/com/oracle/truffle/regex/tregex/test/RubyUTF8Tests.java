@@ -44,7 +44,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.test.generated.RubyGeneratedTests;
 
 public class RubyUTF8Tests extends RegexTestBase {
@@ -57,8 +57,8 @@ public class RubyUTF8Tests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_8;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_8;
     }
 
     @Test

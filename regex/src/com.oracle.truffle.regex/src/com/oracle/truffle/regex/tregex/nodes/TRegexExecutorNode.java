@@ -51,8 +51,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
 
@@ -147,7 +146,8 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
     @ExplodeLoop
     public int inputReadAndDecode(TRegexExecutorLocals locals, int index, TruffleString.CodeRange codeRange) {
         CompilerAsserts.partialEvaluationConstant(codeRange);
-        if (getEncoding() == Encodings.UTF_16) {
+        Encoding enc = getEncoding();
+        if (enc.isUTF16()) {
             locals.setNextIndex(inputIncRaw(index));
             int c = inputReadRaw(locals, index);
             if (codeRange == TruffleString.CodeRange.VALID || codeRange == TruffleString.CodeRange.BROKEN) {
@@ -160,7 +160,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
                 }
             }
             return c;
-        } else if (getEncoding() == Encodings.UTF_8) {
+        } else if (enc == Encoding.UTF_8) {
             int c = inputReadRaw(locals, index);
             if (codeRange == TruffleString.CodeRange.ASCII) {
                 locals.setNextIndex(inputIncRaw(index));
@@ -206,19 +206,18 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
                 return codepoint | (c & (0xff >>> nBytes)) << (6 * (nBytes - 1));
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.BYTES ||
-                            getEncoding() == Encodings.ASCII;
+            assert enc == Encoding.UTF_16_RAW || enc.isUTF32() || enc == Encoding.LATIN_1 || enc == Encoding.BYTES || enc == Encoding.ASCII;
             locals.setNextIndex(inputIncRaw(index));
             return inputReadRaw(locals, index);
         }
     }
 
     public boolean inputUTF16IsHighSurrogate(int c) {
-        return UTF16.isHighSurrogate(c, isForward());
+        return Encoding.isHighSurrogate(c, isForward());
     }
 
     public boolean inputUTF16IsLowSurrogate(int c) {
-        return UTF16.isLowSurrogate(c, isForward());
+        return Encoding.isLowSurrogate(c, isForward());
     }
 
     public int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
@@ -274,10 +273,10 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
         CompilerAsserts.partialEvaluationConstant(codeRange);
         if (isUTF16()) {
             if (codeRange == TruffleString.CodeRange.VALID) {
-                return UTF16.isHighSurrogate(inputReadRaw(locals, forward), forward) ? 2 : 1;
+                return Encoding.isHighSurrogate(inputReadRaw(locals, forward), forward) ? 2 : 1;
             } else if (codeRange == TruffleString.CodeRange.BROKEN) {
-                if (UTF16.isHighSurrogate(inputReadRaw(locals, forward), forward) && inputHasNext(locals, inputIncRaw(locals.getIndex(), 1, forward), forward) &&
-                                UTF16.isLowSurrogate(inputReadRaw(locals, inputIncRaw(locals.getIndex(), 1, forward), forward), forward)) {
+                if (Encoding.isHighSurrogate(inputReadRaw(locals, forward), forward) && inputHasNext(locals, inputIncRaw(locals.getIndex(), 1, forward), forward) &&
+                                Encoding.isLowSurrogate(inputReadRaw(locals, inputIncRaw(locals.getIndex(), 1, forward), forward), forward)) {
                     return 2;
                 }
                 return 1;
@@ -307,8 +306,8 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
                 }
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.BYTES ||
-                            getEncoding() == Encodings.ASCII;
+            assert getEncoding() == Encoding.UTF_16_RAW || getEncoding() == Encoding.UTF_32 || getEncoding() == Encoding.LATIN_1 || getEncoding() == Encoding.BYTES ||
+                            getEncoding() == Encoding.ASCII;
             return 1;
         }
     }

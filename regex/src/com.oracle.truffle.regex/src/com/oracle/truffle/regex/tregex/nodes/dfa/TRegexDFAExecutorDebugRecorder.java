@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -72,7 +72,7 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     private static final class Recording implements JsonConvertible {
 
         private final TruffleString input;
-        private final Encodings.Encoding encoding;
+        private final Encoding encoding;
         private final int fromIndex;
         private int initialIndex;
         private final int maxIndex;
@@ -80,7 +80,7 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         private final int[] transitions;
         private final int[] cgPartialTransitions;
 
-        private Recording(TruffleString input, Encodings.Encoding encoding, int fromIndex, int initialIndex, int maxIndex, boolean forward) {
+        private Recording(TruffleString input, Encoding encoding, int fromIndex, int initialIndex, int maxIndex, boolean forward) {
             this.input = input;
             this.encoding = encoding;
             this.fromIndex = fromIndex;

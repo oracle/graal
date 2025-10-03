@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser;
+package com.oracle.truffle.regex.flavor.js;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

@@ -61,7 +61,7 @@ import com.oracle.truffle.regex.flavor.python.PythonFlavor;
 import com.oracle.truffle.regex.flavor.ruby.RubyFlavor;
 import com.oracle.truffle.regex.test.dummylang.TRegexTestDummyLanguage;
 import com.oracle.truffle.regex.tregex.parser.MatchingMode;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class RegexOptionsTest extends RegexTestBase {
 
@@ -96,8 +96,8 @@ public class RegexOptionsTest extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16_RAW;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_16_RAW;
     }
 
     private static String setBool(String... name) {

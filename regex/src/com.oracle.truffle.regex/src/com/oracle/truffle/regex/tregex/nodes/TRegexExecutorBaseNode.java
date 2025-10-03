@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 @GenerateWrapper
 public abstract class TRegexExecutorBaseNode extends Node implements InstrumentableNode {
@@ -74,20 +74,20 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
 
     public abstract RegexSource getSource();
 
-    public final Encodings.Encoding getEncoding() {
+    public final Encoding getEncoding() {
         return getSource().getEncoding();
     }
 
     public final boolean isUTF8() {
-        return getEncoding() == Encodings.UTF_8;
+        return getEncoding() == Encoding.UTF_8;
     }
 
     public final boolean isUTF16() {
-        return getEncoding() == Encodings.UTF_16;
+        return getEncoding() == Encoding.UTF_16 || getEncoding() == Encoding.UTF_16FE;
     }
 
     public final boolean isUTF32() {
-        return getEncoding() == Encodings.UTF_32;
+        return getEncoding() == Encoding.UTF_32 || getEncoding() == Encoding.UTF_32FE;
     }
 
     public final boolean isBooleanMatch() {

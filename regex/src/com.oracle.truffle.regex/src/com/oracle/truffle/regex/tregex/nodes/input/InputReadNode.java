@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import static com.oracle.truffle.regex.tregex.string.Encoding.UTF_16;
+import static com.oracle.truffle.regex.tregex.string.Encoding.UTF_16FE;
+import static com.oracle.truffle.regex.tregex.string.Encoding.UTF_16_RAW;
+
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -48,36 +53,39 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 @GenerateUncached
 @GenerateInline
-@ImportStatic(Encodings.class)
+@ImportStatic(Encoding.class)
 public abstract class InputReadNode extends Node {
 
     public abstract int execute(Node node, TruffleString input, int index, Encoding encoding);
 
-    @Specialization(guards = {"encoding != UTF_16", "encoding != UTF_32", "encoding != UTF_16_RAW"})
-    static int doTStringUTF8(TruffleString input, int index, Encoding encoding,
-                    @Cached(inline = false) TruffleString.ReadByteNode readRawNode) {
+    @Specialization(guards = "isUTF16(encoding)")
+    static int doTStringUTF16(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
+                    @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+        return encoding == UTF_16FE ? readRawNode.executeBE(input, index) : readRawNode.execute(input, index);
+    }
+
+    @Specialization(guards = "encoding == UTF_32 || encoding == UTF_32FE")
+    static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
+                    @Cached TruffleString.CodePointAtIndexNode readRawNode) {
         return readRawNode.execute(input, index, encoding.getTStringEncoding());
     }
 
-    @Specialization(guards = "encoding == UTF_16 || encoding == UTF_16_RAW")
-    static int doTStringUTF16(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached(inline = false) TruffleString.ReadCharUTF16Node readRawNode) {
-        return readRawNode.execute(input, index);
-    }
-
-    @Specialization(guards = "encoding == UTF_32")
-    static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached(inline = false) TruffleString.CodePointAtIndexNode readRawNode) {
-        return readRawNode.execute(input, index, TruffleString.Encoding.UTF_32);
+    @Fallback
+    static int doByte(TruffleString input, int index, Encoding encoding,
+                    @Cached TruffleString.ReadByteNode readRawNode) {
+        return readRawNode.execute(input, index, encoding.getTStringEncoding());
     }
 
     @NeverDefault
     public static InputReadNode create() {
         return InputReadNodeGen.create();
+    }
+
+    static boolean isUTF16(Encoding encoding) {
+        return encoding == UTF_16 || encoding == UTF_16_RAW || encoding == UTF_16FE;
     }
 }

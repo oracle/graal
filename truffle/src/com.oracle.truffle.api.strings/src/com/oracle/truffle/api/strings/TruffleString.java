@@ -1373,8 +1373,9 @@ public final class TruffleString extends AbstractTruffleString {
                     throw InternalErrors.illegalArgument("use a CreateUTF16Node for UTF-16, and CreateUTF32Node for UTF-32");
                 }
                 a.checkEncoding(expectedEncoding);
-                checkMaskLength(a, mask.length);
-                assert a.stride() == 0;
+                if (mask.length != a.length() << a.stride()) {
+                    throw InternalErrors.illegalArgument("mask length does not match string length!");
+                }
                 return new WithMask(a, Arrays.copyOf(mask, mask.length));
             }
 

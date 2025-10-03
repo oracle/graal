@@ -44,7 +44,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.test.generated.OracleDBGeneratedTests;
 
 public class OracleDBTests extends RegexTestBase {
@@ -57,8 +57,8 @@ public class OracleDBTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_8;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_8;
     }
 
     @Test
@@ -90,10 +90,10 @@ public class OracleDBTests extends RegexTestBase {
         test("[[:alpha:]]", "", "\uD839", 0, false);
         test("[[:alpha:]]", "", "\uDDF2", 0, false);
         test("[[:alpha:]]", "", "\uD839\uDDF2", 0, false);
-        test("[[:alpha:]]", "", Encodings.UTF_16, "\ufffd", 0, true, 0, 1);
-        test("[[:alpha:]]", "", Encodings.UTF_16, "\uD839", 0, false);
-        test("[[:alpha:]]", "", Encodings.UTF_16, "\uDDF2", 0, false);
-        test("[[:alpha:]]", "", Encodings.UTF_16, "\uD839\uDDF2", 0, false);
+        test("[[:alpha:]]", "", Encoding.UTF_16, "\ufffd", 0, true, 0, 1);
+        test("[[:alpha:]]", "", Encoding.UTF_16, "\uD839", 0, false);
+        test("[[:alpha:]]", "", Encoding.UTF_16, "\uDDF2", 0, false);
+        test("[[:alpha:]]", "", Encoding.UTF_16, "\uD839\uDDF2", 0, false);
     }
 
     @Test
