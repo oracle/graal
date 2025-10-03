@@ -207,6 +207,11 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
+    public boolean isHidden() {
+        return original.isHidden();
+    }
+
+    @Override
     public List<? extends JavaType> getPermittedSubclasses() {
         return original.getPermittedSubclasses();
     }

@@ -319,6 +319,11 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    public boolean isHidden() {
+        return hub.isHidden();
+    }
+
+    @Override
     public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {

@@ -86,6 +86,14 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (HotSpotResolvedObjectType) handle(getArrayClassMethod, getArrayClassInvokable);
     }
 
+    private static final SymbolicMethod isHiddenMethod = method("isHidden");
+    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isHidden();
+
+    @Override
+    public boolean isHidden() {
+        return (boolean) handle(isHiddenMethod, isHiddenInvokable);
+    }
+
     private static final SymbolicMethod getPermittedSubclassesMethod = method("getPermittedSubclasses");
     private static final InvokableMethod getPermittedSubclassesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getPermittedSubclasses();
 

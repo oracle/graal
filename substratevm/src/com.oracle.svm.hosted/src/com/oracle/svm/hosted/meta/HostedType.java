@@ -425,6 +425,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
     public List<? extends HostedType> getPermittedSubclasses() {
         if (isPrimitive() || isArray()) {
             return null;

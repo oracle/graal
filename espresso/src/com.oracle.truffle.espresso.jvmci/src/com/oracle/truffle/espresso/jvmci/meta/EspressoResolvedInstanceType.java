@@ -274,6 +274,9 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     }
 
     @Override
+    public native boolean isHidden();
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         Class<?>[] permittedSubclass = getPermittedSubclasses0(getMirror());
         if (permittedSubclass == null) {

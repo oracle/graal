@@ -243,6 +243,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public boolean isHidden() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         throw new UnsupportedOperationException();
     }

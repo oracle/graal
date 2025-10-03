@@ -232,6 +232,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public boolean isHidden() {
+        return annotated.isHidden();
+    }
+
+    @Override
     public List<? extends JavaType> getPermittedSubclasses() {
         return annotated.getPermittedSubclasses();
     }
