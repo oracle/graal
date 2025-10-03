@@ -904,7 +904,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.startDeclaration(types.BytecodeNode, "bc").startStaticCall(types.BytecodeNode, "get").string("callNode").end().end();
         b.startIf().string("bc == null || !(bc instanceof AbstractBytecodeNode bytecodeNode)").end().startBlock();
-        b.startReturn().string("super.findInstrumentableCallNode(callNode, frame, bytecodeIndex)").end();
+        ExecutableElement superImpl = ElementUtils.findMethodInClassHierarchy(ElementUtils.findMethod(types.RootNode, "findInstrumentableCallNode"), model.templateType);
+        if (superImpl.getModifiers().contains(ABSTRACT)) {
+            // edge case: root node could redeclare findInstrumentableCallNode as abstract.
+            b.startReturn().string("null").end();
+        } else {
+            b.startReturn().string("super.findInstrumentableCallNode(callNode, frame, bytecodeIndex)").end();
+        }
         b.end();
         b.statement("return bytecodeNode.findInstrumentableCallNode(bytecodeIndex)");
         return ex;
@@ -1705,8 +1711,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         // Disable compilation for the uncached interpreter.
         b.string("bytecode.getTier() != ").staticReference(types.BytecodeTier, "UNCACHED");
 
-        ExecutableElement parentImpl = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "prepareForCompilation", 3), model.templateType);
-        if (parentImpl != null) {
+        ExecutableElement parentImpl = ElementUtils.findMethodInClassHierarchy(ElementUtils.findMethod(types.RootNode, "prepareForCompilation", 3), model.templateType);
+        if (parentImpl != null && !parentImpl.getModifiers().contains(ABSTRACT)) {
             // Delegate to the parent impl.
             b.string(" && ").startCall("super.prepareForCompilation").variables(ex.getParameters()).end();
         }
