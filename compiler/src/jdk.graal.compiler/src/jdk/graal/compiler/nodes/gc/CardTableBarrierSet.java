@@ -25,11 +25,8 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import org.graalvm.word.LocationIdentity;
-
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.NodeView;
@@ -47,19 +44,15 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class CardTableBarrierSet implements BarrierSet {
+public class CardTableBarrierSet extends BarrierSet {
     private final ResolvedJavaType objectArrayType;
+    private final boolean useDeferredInitBarriers;
 
-    public CardTableBarrierSet(ResolvedJavaType objectArrayType) {
+    public CardTableBarrierSet(ResolvedJavaType objectArrayType, boolean useDeferredInitBarriers) {
         this.objectArrayType = objectArrayType;
-    }
-
-    @Override
-    public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
-        return BarrierType.NONE;
+        this.useDeferredInitBarriers = useDeferredInitBarriers;
     }
 
     @Override
@@ -68,21 +61,6 @@ public class CardTableBarrierSet implements BarrierSet {
             return BarrierType.NONE;
         }
         return store.needsBarrier() ? readWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     @Override
@@ -98,16 +76,6 @@ public class CardTableBarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
-    }
-
-    @Override
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
-        return false;
     }
 
     @Override
@@ -209,12 +177,20 @@ public class CardTableBarrierSet implements BarrierSet {
 
     @SuppressWarnings("unused")
     protected boolean writeRequiresBarrier(FixedAccessNode node, ValueNode writtenValue) {
-        // Null writes can skip the card mark.
-        return isNonNullObjectValue(writtenValue);
+        if (!(writtenValue.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp)) {
+            return false;
+        }
+        if (StampTool.isPointerAlwaysNull(writtenValue)) {
+            return false;
+        }
+        return !useDeferredInitBarriers || !isWriteToNewObject(node);
     }
 
     protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
-        return write.writesObjectArray();
+        if (!write.writesObjectArray()) {
+            return false;
+        }
+        return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedAccessNode());
     }
 
     private static boolean hasWriteBarrier(FixedAccessNode node) {
@@ -246,14 +222,10 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     /**
-     * Decide if a precise barrier is needed for an access.
+     * Decide if a precise barrier is needed for a memory access.
      */
     protected boolean barrierPrecise(FixedAccessNode node, @SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") CoreProviders context) {
         return node.getBarrierType() != BarrierType.FIELD && node.getBarrierType() != BarrierType.AS_NO_KEEPALIVE_WRITE;
-    }
-
-    private static boolean isNonNullObjectValue(ValueNode value) {
-        return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp && !StampTool.isPointerAlwaysNull(value);
     }
 
     private static boolean matches(FixedAccessNode node, SerialWriteBarrierNode barrier) {
@@ -267,10 +239,5 @@ public class CardTableBarrierSet implements BarrierSet {
 
     private static boolean matches(ArrayRangeWrite node, SerialArrayRangeWriteBarrierNode barrier) {
         return barrier.getAddress() == node.getAddress() && node.getLength() == barrier.getLength() && node.getElementStride() == barrier.getElementStride();
-    }
-
-    @Override
-    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return false;
     }
 }

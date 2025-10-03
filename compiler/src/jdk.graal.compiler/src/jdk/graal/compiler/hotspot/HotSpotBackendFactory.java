@@ -48,7 +48,6 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.CardTableBarrierSet;
 import jdk.graal.compiler.nodes.gc.G1BarrierSet;
@@ -56,7 +55,6 @@ import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
-import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -282,7 +280,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
     protected abstract HotSpotHostForeignCallsProvider createForeignCalls(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, MetaAccessProvider metaAccess,
                     HotSpotCodeCacheProvider codeCache, HotSpotWordTypes wordTypes, Value[] nativeABICallerSaveRegisters);
 
-    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    private static BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
         ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
@@ -295,34 +293,16 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         } else if (config.useG1GC()) {
             return new HotSpotG1BarrierSet(objectArrayType, referentField, useDeferredInitBarriers, config);
         } else {
-            return new HotSpotCardTableBarrierSet(objectArrayType, useDeferredInitBarriers);
+            return new CardTableBarrierSet(objectArrayType, useDeferredInitBarriers);
         }
     }
 
     private static class HotSpotG1BarrierSet extends G1BarrierSet {
-        private final boolean useDeferredInitBarriers;
         private final GraalHotSpotVMConfig config;
 
-        public HotSpotG1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers, GraalHotSpotVMConfig config) {
-            super(objectArrayType, referentField);
-            this.useDeferredInitBarriers = useDeferredInitBarriers;
+        HotSpotG1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers, GraalHotSpotVMConfig config) {
+            super(objectArrayType, referentField, useDeferredInitBarriers);
             this.config = config;
-        }
-
-        @Override
-        protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
-            if (!super.writeRequiresPostBarrier(node, writtenValue)) {
-                return false;
-            }
-            return !useDeferredInitBarriers || !isWriteToNewObject(node);
-        }
-
-        @Override
-        protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
-            if (!super.arrayRangeWriteRequiresPostBarrier(write)) {
-                return false;
-            }
-            return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
         }
 
         @Override
@@ -331,31 +311,6 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
                 return HotSpotCompressionNode.uncompress(value.graph(), value, config.getOopEncoding());
             }
             return value;
-        }
-    }
-
-    private static class HotSpotCardTableBarrierSet extends CardTableBarrierSet {
-        private final boolean useDeferredInitBarriers;
-
-        public HotSpotCardTableBarrierSet(ResolvedJavaType objectArrayType, boolean useDeferredInitBarriers) {
-            super(objectArrayType);
-            this.useDeferredInitBarriers = useDeferredInitBarriers;
-        }
-
-        @Override
-        protected boolean writeRequiresBarrier(FixedAccessNode node, ValueNode writtenValue) {
-            if (!super.writeRequiresBarrier(node, writtenValue)) {
-                return false;
-            }
-            return !useDeferredInitBarriers || !isWriteToNewObject(node);
-        }
-
-        @Override
-        protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
-            if (!super.arrayRangeWriteRequiresBarrier(write)) {
-                return false;
-            }
-            return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
         }
     }
 }

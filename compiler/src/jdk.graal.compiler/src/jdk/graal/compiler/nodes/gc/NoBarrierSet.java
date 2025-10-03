@@ -24,10 +24,7 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import org.graalvm.word.LocationIdentity;
-
 import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
@@ -38,14 +35,9 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * A {@link BarrierSet} that does not emit any read or write barriers.
  */
-public class NoBarrierSet implements BarrierSet {
+public class NoBarrierSet extends BarrierSet {
     @Override
     public boolean hasWriteBarrier() {
-        return false;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
         return false;
     }
 
@@ -55,17 +47,7 @@ public class NoBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return BarrierType.NONE;
-    }
-
-    @Override
     public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
         return BarrierType.NONE;
     }
 
@@ -84,8 +66,4 @@ public class NoBarrierSet implements BarrierSet {
         return BarrierType.NONE;
     }
 
-    @Override
-    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return false;
-    }
 }

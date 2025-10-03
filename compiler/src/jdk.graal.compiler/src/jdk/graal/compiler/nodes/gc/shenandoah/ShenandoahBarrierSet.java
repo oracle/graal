@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodes.gc.shenandoah;
 
+import static jdk.graal.compiler.nodes.GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
+import static jdk.graal.compiler.nodes.GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
 import org.graalvm.word.LocationIdentity;
@@ -77,7 +79,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * reference-writes and dirty cards. Similar to their counterparts in Serial and Parallel GC.</li>
  * </ul>
  */
-public class ShenandoahBarrierSet implements BarrierSet {
+public class ShenandoahBarrierSet extends BarrierSet {
 
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
@@ -150,16 +152,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
-    }
-
-    @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.stamp(NodeView.DEFAULT).isObjectStamp()) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
@@ -172,16 +164,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
-    }
-
-    @Override
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
-        return true;
     }
 
     @Override
@@ -306,11 +288,6 @@ public class ShenandoahBarrierSet implements BarrierSet {
     }
 
     @Override
-    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return false;
-    }
-
-    @Override
     public void verifyBarriers(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (node instanceof WriteNode write) {
@@ -366,6 +343,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
 
     @Override
     public boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
+        assert stage == MID_TIER_BARRIER_ADDITION || stage == LOW_TIER_BARRIER_ADDITION : stage;
         return stage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
     }
 }
