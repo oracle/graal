@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.nodes.extended;
 
+import jdk.graal.compiler.nodes.FixedAccessNodeInterface;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.FixedWithNextNodeInterface;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
-public interface ArrayRangeWrite extends FixedWithNextNodeInterface {
+public interface ArrayRangeWrite extends FixedAccessNodeInterface {
     AddressNode getAddress();
 
     /**
