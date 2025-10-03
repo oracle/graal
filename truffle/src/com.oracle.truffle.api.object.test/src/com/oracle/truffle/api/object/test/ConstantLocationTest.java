@@ -43,10 +43,6 @@ package com.oracle.truffle.api.object.test;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
@@ -54,6 +50,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -80,7 +80,7 @@ public class ConstantLocationTest extends ParametrizedDynamicObjectTest {
     public void testConstantLocation() {
         DynamicObject object = newInstanceWithConstant();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
 
@@ -111,7 +111,7 @@ public class ConstantLocationTest extends ParametrizedDynamicObjectTest {
     public void testMigrateConstantLocation() {
         DynamicObject object = newInstanceWithConstant();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
@@ -129,7 +129,7 @@ public class ConstantLocationTest extends ParametrizedDynamicObjectTest {
 
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         property.getLocation().set(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
@@ -156,7 +156,7 @@ public class ConstantLocationTest extends ParametrizedDynamicObjectTest {
 
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
         library.put(object, "other", "otherValue");
 
         Property otherProperty = object.getShape().getProperty("other");

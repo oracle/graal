@@ -56,9 +56,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.Test;
@@ -68,6 +65,8 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -115,7 +114,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject a = newInstance(emptyShape);
         DynamicObject b = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.put(a, "r", 1);
         library.put(a, "x", 2);
@@ -147,7 +146,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject a = newInstance(emptyShape);
         DynamicObject b = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.put(a, "x", 1);
         library.put(b, "x", 1);
@@ -168,7 +167,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject a = newInstance(emptyShape);
         DynamicObject b = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.put(a, "x", "");
         library.put(b, "x", "");
@@ -190,7 +189,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.putConstant(a, "a", null, 0);
 
@@ -208,7 +207,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.putConstant(a, "a", null, 0);
 
@@ -227,7 +226,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         for (int i = 0; i < 26; i++) {
             library.putConstant(a, Character.toString((char) ('a' + i)), null, 0);
@@ -258,7 +257,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.putWithFlags(a, "s", 42, 0);
         library.putIfPresent(a, "s", 43);
@@ -283,7 +282,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject y = newInstance(emptyShape);
         DynamicObject z = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.putWithFlags(a, "s", 42, 0);
         library.putIfPresent(a, "s", 43);
@@ -309,7 +308,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.putWithFlags(a, "s", 13.37, 0);
         library.putWithFlags(a, "x", 42, 0);
@@ -328,7 +327,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = newEmptyShape();
         DynamicObject a = newInstance(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         for (int i = 0; i < 26; i++) {
             library.put(a, Character.toString((char) ('a' + i)), 0);
@@ -356,7 +355,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject temp = new TestDynamicObject(emptyShape);
         createLibrary(temp).putWithFlags(temp, "a", a, 8);
 
-        DynamicObjectLibrary library = createLibrary(obj);
+        var library = createLibrary(obj);
 
         library.put(obj, "a", 42);
         library.put(obj, "b", b);
@@ -388,7 +387,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject temp = new TestDynamicObject(emptyShape);
         createLibrary(temp).putWithFlags(temp, "a", a, 8);
 
-        DynamicObjectLibrary library = createLibrary(obj);
+        var library = createLibrary(obj);
 
         library.putConstant(obj, "a", a, 3);
         library.put(obj, "b", b);
@@ -419,7 +418,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject b = new TestDynamicObject(emptyShape);
         DynamicObject c = new TestDynamicObject(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.setShapeFlags(a, 1);
         library.put(a, "a", 1);
@@ -468,7 +467,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         DynamicObject a = new TestDynamicObject(emptyShape);
         DynamicObject b = new TestDynamicObject(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.put(a, "a", 1);
         Shape notObsoletedParent = a.getShape();
@@ -501,7 +500,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
 
         DynamicObject obj = new TestDynamicObject(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(obj);
+        var library = createLibrary(obj);
 
         library.put(obj, "b1", true);
         library.put(obj, "b2", true);
@@ -521,7 +520,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
 
         DynamicObject a = new TestDynamicObject(emptyShape);
 
-        DynamicObjectLibrary library = createLibrary(a);
+        var library = createLibrary(a);
 
         library.put(a, "a", 1);
         library.put(a, "b", 2);
@@ -557,8 +556,8 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         DynamicObject h1 = new TestDynamicObject(emptyShape);
-        DynamicObjectLibrary on = createLibrary(h1);
-        DynamicObjectLibrary off = createLibrary(h1);
+        var on = createLibrary(h1);
+        var off = createLibrary(h1);
 
         // initialize caches
         on.put(h1, "name", h1);
@@ -588,8 +587,8 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
 
         int flag = 2;
         DynamicObject h1 = new TestDynamicObject(emptyShape);
-        DynamicObjectLibrary on = createLibrary(h1);
-        DynamicObjectLibrary off = createLibrary(h1);
+        var on = createLibrary(h1);
+        var off = createLibrary(h1);
 
         // initialize caches
         on.put(h1, "name", h1);
@@ -622,8 +621,8 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
 
         int flag = 2;
         DynamicObject h1 = new TestDynamicObject(emptyShape);
-        DynamicObjectLibrary on = createLibrary(h1);
-        DynamicObjectLibrary off = createLibrary(h1);
+        var on = createLibrary(h1);
+        var off = createLibrary(h1);
 
         // initialize caches
         on.put(h1, "name", h1);
@@ -655,7 +654,7 @@ public class ObjectModelRegressionTest extends ParametrizedDynamicObjectTest {
         Shape emptyShape = Shape.newBuilder().propertyAssumptions(true).build();
 
         DynamicObject h1 = new TestDynamicObject(emptyShape);
-        DynamicObjectLibrary lib = createLibrary(h1);
+        var lib = createLibrary(h1);
 
         // initialize caches
         lib.put(h1, "name", 42);
