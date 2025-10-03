@@ -300,8 +300,9 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
      */
     protected static ValueNode maybeExtendForCompare(ValueNode value, LoweringProvider lowerer, Signedness signedness) {
         Stamp fromStamp = value.stamp(NodeView.DEFAULT);
-        if (fromStamp instanceof PrimitiveStamp && PrimitiveStamp.getBits(fromStamp) < lowerer.smallestCompareWidth()) {
-            Stamp toStamp = IntegerStamp.create(lowerer.smallestCompareWidth());
+        Integer smallestCompareWidth = lowerer.smallestCompareWidth();
+        if (fromStamp instanceof PrimitiveStamp && smallestCompareWidth != null && PrimitiveStamp.getBits(fromStamp) < smallestCompareWidth) {
+            Stamp toStamp = IntegerStamp.create(smallestCompareWidth);
             boolean zeroExtend = (signedness == Signedness.UNSIGNED);
             return IntegerConvertNode.convert(value, toStamp, zeroExtend, NodeView.DEFAULT);
         }
