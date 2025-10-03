@@ -356,11 +356,15 @@ public abstract class DynamicObject implements TruffleObject {
      * @see #getDoubleOrDefault(DynamicObject, Object, Object)
      * @since 25.1
      */
+    @GeneratePackagePrivate
     @GenerateCached(true)
     @GenerateInline(false)
     @GenerateUncached
     @ImportStatic(DynamicObject.class)
     public abstract static class GetNode extends Node {
+
+        GetNode() {
+        }
 
         /**
          * @since 25.1
@@ -598,6 +602,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateCached(true)
     @GenerateInline(false)
     public abstract static class PutNode extends Node {
+
+        PutNode() {
+        }
 
         /**
          * @since 25.1
@@ -910,6 +917,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class CopyPropertiesNode extends Node {
 
+        CopyPropertiesNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -987,6 +997,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class ContainsKeyNode extends Node {
 
+        ContainsKeyNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1050,6 +1063,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class RemoveKeyNode extends Node {
+
+        RemoveKeyNode() {
+        }
 
         /**
          * @since 25.1
@@ -1171,6 +1187,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class GetShapeFlagsNode extends Node {
 
+        GetShapeFlagsNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1250,6 +1269,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class HasShapeFlagsNode extends Node {
 
+        HasShapeFlagsNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1326,6 +1348,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetShapeFlagsNode extends Node {
+
+        SetShapeFlagsNode() {
+        }
 
         /**
          * @since 25.1
@@ -1420,6 +1445,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class AddShapeFlagsNode extends Node {
+
+        AddShapeFlagsNode() {
+        }
 
         /**
          * @since 25.1
@@ -1522,6 +1550,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class IsSharedNode extends Node {
 
+        IsSharedNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1573,6 +1604,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class MarkSharedNode extends Node {
+
+        MarkSharedNode() {
+        }
 
         /**
          * @since 25.1
@@ -1644,6 +1678,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class GetDynamicTypeNode extends Node {
 
+        GetDynamicTypeNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1696,6 +1733,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetDynamicTypeNode extends Node {
+
+        SetDynamicTypeNode() {
+        }
 
         /**
          * @since 25.1
@@ -1772,6 +1812,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class GetPropertyFlagsNode extends Node {
 
+        GetPropertyFlagsNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -1842,6 +1885,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class SetPropertyFlagsNode extends Node {
+
+        SetPropertyFlagsNode() {
+        }
 
         /**
          * @since 25.1
@@ -1960,6 +2006,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class UpdateShapeNode extends Node {
 
+        UpdateShapeNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -2023,6 +2072,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class ResetShapeNode extends Node {
+
+        ResetShapeNode() {
+        }
 
         /**
          * @since 25.1
@@ -2096,6 +2148,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateInline(false)
     public abstract static class GetPropertyNode extends Node {
 
+        GetPropertyNode() {
+        }
+
         /**
          * @since 25.1
          */
@@ -2147,6 +2202,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetKeyArrayNode extends Node {
+
+        GetKeyArrayNode() {
+        }
 
         /**
          * @since 25.1
@@ -2252,6 +2310,9 @@ public abstract class DynamicObject implements TruffleObject {
     @GenerateUncached
     @GenerateInline(false)
     public abstract static class GetPropertyArrayNode extends Node {
+
+        GetPropertyArrayNode() {
+        }
 
         /**
          * @since 25.1
