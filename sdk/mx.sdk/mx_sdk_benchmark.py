@@ -425,7 +425,7 @@ class NativeImageBenchmarkConfig:
         if vm.use_compacting_gc:
             base_image_build_args += ['-H:+CompactingOldGen']
         if vm.is_llvm:
-            base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm',
+            base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['--tool:llvm-backend',
                                                                                           '-H:DeadlockWatchdogInterval=0']
         if vm.gc:
             base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
