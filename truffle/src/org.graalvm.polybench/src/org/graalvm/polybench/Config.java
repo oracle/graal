@@ -132,7 +132,7 @@ public class Config {
         }
     }
 
-    private Summary parseFallbackBenchSpecificSummary(Value benchmark) {
+    private static Summary parseFallbackBenchSpecificSummary(Value benchmark) {
         if (benchmark.hasMember(OutlierRemovalAverageSummary.class.getSimpleName())) {
             double lowerThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "LowerThreshold").execute().asDouble();
             double upperThreshold = benchmark.getMember(OutlierRemovalAverageSummary.class.getSimpleName() + "UpperThreshold").execute().asDouble();
