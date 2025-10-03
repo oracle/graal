@@ -574,7 +574,7 @@ local devkits = graal_common.devkits;
 
   # loading large artifacts is not fast on those machines, so avoid them
   big_artifacts: {
-    capabilities+: ["!x82", "!x82_16_367"]
+    capabilities+: ["!x82_16_367"]
   },
 
   # Builds a GraalVM and publishes a pipeline artifact. Use pipelined_graalvm to declare a dependency on this build.
