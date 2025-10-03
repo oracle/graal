@@ -633,10 +633,6 @@ public class JSObject extends JSValue {
     public static native JSObject values(JSObject obj);
 
     @JS.Coerce
-    @JS(value = "return this.hasOwnProperty(prop);")
-    public native boolean hasOwnProperty(String prop);
-
-    @JS.Coerce
     @JS(value = "return this.isPrototypeOf(object);")
     public native boolean isPrototypeOf(JSObject object);
 

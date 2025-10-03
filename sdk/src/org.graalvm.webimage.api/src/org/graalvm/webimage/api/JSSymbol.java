@@ -160,8 +160,8 @@ public final class JSSymbol extends JSValue {
     public static native JSSymbol valueOf(Object sym);
 
     @JS.Coerce
-    @JS(value = "return Symbol.for(a) === Symbol.for(b);")
-    public static native boolean isSameSymbol(String a, String b);
+    @JS(value = "return a === b;")
+    public static native boolean isSameSymbol(JSSymbol a, JSSymbol b);
 
     @JS.Coerce
     @JS(value = "return sym.description;")

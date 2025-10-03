@@ -84,16 +84,16 @@ public final class JSString extends JSValue {
     }
 
     @JS.Coerce
-    @JS(value = "return String.fromCharCode();")
-    public static native JSString fromCharCode();
+    @JS(value = "return String.fromCharCode(codeUnit);")
+    public static native JSString fromCharCode(int codeUnit);
 
     @JS.Coerce
     @JS(value = "return String.fromCharCode(...codeUnits);")
     public static native JSString fromCharCode(int... codeUnits);
 
     @JS.Coerce
-    @JS(value = "return String.fromCodePoint();")
-    public static native JSString fromCodePoint();
+    @JS(value = "return String.fromCodePoint(codeUnit);")
+    public static native JSString fromCodePoint(int codeUnit);
 
     @JS.Coerce
     @JS(value = "return String.fromCodePoint(...codeUnits);")
@@ -113,18 +113,24 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.at(index);")
-    public native JSString at(int index);
+    public native JSValue at(int index);
 
     @JS.Coerce
     @JS(value = "return this.charAt(index);")
     public native JSString charAt(int index);
 
     @JS.Coerce
-    @JS(value = "return this.charCodeAt(index);")
+    @JS(value = """
+            const code = this.charCodeAt(index);
+            return Number.isNaN(code) ? -1 : code;
+            """)
     public native int charCodeAt(int index);
 
     @JS.Coerce
-    @JS(value = "return this.codePointAt(index);")
+    @JS(value = """
+            const code = this.codePointAt(index);
+            return code === undefined ? -1 : code;
+            """)
     public native int codePointAt(int index);
 
     @JS.Coerce

@@ -126,7 +126,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return isFinite(number);")
-    public native static boolean isFinite(Number number);
+    public native static boolean isFinite(double number);
 
     @JS.Coerce
     @JS(value = "return Number.isInteger(number);")
@@ -134,7 +134,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.isInteger(number);")
-    public native static boolean isInteger(Number number);
+    public native static boolean isInteger(double number);
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
@@ -142,7 +142,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
-    public native static boolean isNaN(Number number);
+    public native static boolean isNaN(double number);
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
@@ -150,11 +150,11 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
-    public native static boolean isSafeInteger(Number number);
+    public native static boolean isSafeInteger(double number);
 
     @JS.Coerce
     @JS(value = "return parseFloat(number);")
-    public native static float parseFloat(Number number);
+    public native static float parseFloat(double number);
 
     @JS.Coerce
     @JS(value = "return parseFloat(number);")
@@ -162,7 +162,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return parseInt(number);")
-    public native static int parseInt(Number number);
+    public native static int parseInt(double number);
 
     @JS.Coerce
     @JS(value = "return parseInt(number);")
@@ -240,14 +240,13 @@ public final class JSNumber extends JSValue {
     @JS(value = "return this.toPrecision(precision);")
     public native String toPrecision(int precision);
 
-    @Override
-    @JS.Coerce
-    @JS(value = "return this.toString();")
-    public native String toString();
-
     @JS.Coerce
     @JS(value = "return this.toString(radix);")
-    public native String toString(int radix);
+    private native String toJSString(int radix);
+
+    public String toString(int radix) {
+        return "JavaScript<" + typeof() + "; " + toJSString(radix) + ">";
+    }
 
     @JS.Coerce
     @JS(value = "return this.valueOf();")

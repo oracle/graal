@@ -27,6 +27,10 @@ package com.oracle.svm.hosted.webimage.test.spec;
 
 import java.nio.file.Path;
 
+import com.oracle.svm.webimage.jtt.api.JSNumberTest;
+import com.oracle.svm.webimage.jtt.api.JSObjectTest;
+import com.oracle.svm.webimage.jtt.api.JSStringTest;
+import com.oracle.svm.webimage.jtt.api.JSSymbolTest;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -131,4 +135,23 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
         testFileAgainstNoBuild(HtmlApiExamplesTest.OUTPUT, HtmlApiExamplesTest.class.getName());
     }
 
+    @Test
+    public void jsNumberTest() {
+        testFileAgainstNoBuild(JSNumberTest.class.getName());
+    }
+
+    @Test
+    public void jsStringTest() {
+        testFileAgainstNoBuild(JSStringTest.class.getName());
+    }
+
+    @Test
+    public void jsSymbolTest() {
+        testFileAgainstNoBuild(JSSymbolTest.class.getName());
+    }
+
+    @Test
+    public void jsObjectTest() {
+        testFileAgainstNoBuild(JSObjectTest.class.getName());
+    }
 }
