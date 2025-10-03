@@ -212,7 +212,7 @@ local devkits = graal_common.devkits;
     dynamic_ce_imports(os, arch)::
       local legacy_imports = '/tools,/compiler,/graal-js,/espresso,/substratevm';
       local ce_windows_imports = legacy_imports + ',/vm,/wasm,/sulong,graalpython';
-      local non_windows_imports = ',truffleruby';
+      local non_windows_imports = '';
 
       if (os == 'windows') then
         ce_windows_imports
@@ -238,7 +238,6 @@ local devkits = graal_common.devkits;
         '--suite', 'graalpython'
       ];
       local non_windows_suites = [
-        '--suite', 'truffleruby',
       ];
 
       if (os == 'windows') then
