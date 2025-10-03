@@ -1081,7 +1081,8 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             }
         }
         self.standalone_dir_dist = standalone_dir_dist
-        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
+        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' } if suite.name != 'truffleruby' else {}
+
         assert theLicense is None, "the 'license' attribute is ignored for DeliverableStandaloneArchive"
         theLicense = ['GFTC' if is_enterprise() else 'UPL']
         super().__init__(suite, name=dist_name, deps=[], layout=layout, path=None, theLicense=theLicense, platformDependent=True, path_substitutions=path_substitutions, string_substitutions=string_substitutions, maven=maven, defaultBuild=defaultBuild)
