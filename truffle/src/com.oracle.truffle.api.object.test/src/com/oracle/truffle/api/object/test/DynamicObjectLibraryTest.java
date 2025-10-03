@@ -56,10 +56,6 @@ import java.util.List;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -68,6 +64,10 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -97,35 +97,35 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         return params;
     }
 
-    private static void addParams(Collection<Object[]> params, Supplier<? extends Object> supplier) {
+    private static void addParams(Collection<Object[]> params, Supplier<? extends DynamicObject> supplier) {
         for (TestRun run : TestRun.values()) {
             params.add(new Object[]{run, supplier});
         }
     }
 
-    private DynamicObjectLibrary createDispatchedLibrary() {
+    private DynamicObjectLibraryWrapper createDispatchedLibrary() {
         if (run == TestRun.CACHED_LIBRARY) {
-            return adopt(DynamicObjectLibrary.getFactory().createDispatched(5));
+            return wrap(adopt(DynamicObjectLibrary.getFactory().createDispatched(5)));
         } else if (run == TestRun.UNCACHED_LIBRARY) {
-            return DynamicObjectLibrary.getUncached();
+            return wrap(DynamicObjectLibrary.getUncached());
         }
         return createLibrary();
     }
 
-    private DynamicObjectLibrary createLibraryForReceiver(DynamicObject receiver) {
-        DynamicObjectLibrary objectLibrary = createLibrary(receiver);
+    private DynamicObjectLibraryWrapper createLibraryForReceiver(DynamicObject receiver) {
+        var objectLibrary = createLibrary(receiver);
         assertTrue(objectLibrary.accepts(receiver));
         return objectLibrary;
     }
 
-    private DynamicObjectLibrary createLibraryForReceiverAndKey(DynamicObject receiver, Object key) {
+    private DynamicObjectLibraryWrapper createLibraryForReceiverAndKey(DynamicObject receiver, Object key) {
         assertFalse(key instanceof DynamicObject);
-        DynamicObjectLibrary objectLibrary = createLibrary(receiver);
+        var objectLibrary = createLibrary(receiver);
         assertTrue(objectLibrary.accepts(receiver));
         return objectLibrary;
     }
 
-    private DynamicObjectLibrary createLibraryForKey(Object key) {
+    private DynamicObjectLibraryWrapper createLibraryForKey(Object key) {
         assertFalse(key instanceof DynamicObject);
         return createDispatchedLibrary();
     }
@@ -140,7 +140,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o2, k1, v1, 0);
         assertSame(o1.getShape(), o2.getShape());
 
-        DynamicObjectLibrary getNode = createLibraryForReceiverAndKey(o1, k1);
+        var getNode = createLibraryForReceiverAndKey(o1, k1);
         assertEquals(v1, getNode.getOrDefault(o1, k1, null));
         assertEquals(v1, getNode.getIntOrDefault(o1, k1, null));
         assertEquals(v1, getNode.getOrDefault(o2, k1, null));
@@ -161,8 +161,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertEquals(v1, getNode.getIntOrDefault(o2, k1, null));
 
         String missingKey = "missing";
-        DynamicObjectLibrary getMissingKey;
-        getMissingKey = createLibraryForReceiverAndKey(o1, missingKey);
+        var getMissingKey = createLibraryForReceiverAndKey(o1, missingKey);
         assertEquals(null, getMissingKey.getOrDefault(o1, missingKey, null));
         assertEquals(404, getMissingKey.getIntOrDefault(o1, missingKey, 404));
         getMissingKey = createLibraryForReceiver(o1);
@@ -181,7 +180,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o2, key1, intval1, 0);
         assertSame(o1.getShape(), o2.getShape());
 
-        DynamicObjectLibrary setNode = createLibraryForReceiverAndKey(o1, key1);
+        var setNode = createLibraryForReceiverAndKey(o1, key1);
         setNode.put(o1, key1, intval2);
         assertEquals(intval2, uncachedGet(o1, key1));
         setNode.putInt(o1, key1, intval1);
@@ -198,17 +197,17 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
         String key2 = "key2";
         String strval2 = "qwer";
-        DynamicObjectLibrary setNode2 = createLibraryForReceiverAndKey(o1, key2);
+        var setNode2 = createLibraryForReceiverAndKey(o1, key2);
         setNode2.put(o1, key2, strval2);
         assertEquals(strval2, uncachedGet(o1, key2));
         setNode2.putInt(o1, key2, intval1);
         assertEquals(intval1, uncachedGet(o1, key2));
 
-        DynamicObjectLibrary setNode3 = createLibraryForReceiverAndKey(o1, key2);
+        var setNode3 = createLibraryForReceiverAndKey(o1, key2);
         setNode3.put(o1, key2, strval1);
         assertEquals(strval1, uncachedGet(o1, key2));
         assertTrue(setNode3.accepts(o1));
-        DynamicObjectLibrary setNode4 = createLibraryForReceiverAndKey(o1, key2);
+        var setNode4 = createLibraryForReceiverAndKey(o1, key2);
         setNode4.putInt(o1, key2, intval2);
         assertEquals(intval2, uncachedGet(o1, key2));
         assertTrue(setNode4.accepts(o1));
@@ -225,7 +224,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o2, key1, intval1, 0);
         assertSame(o1.getShape(), o2.getShape());
 
-        DynamicObjectLibrary setNode = createLibraryForKey(key1);
+        var setNode = createLibraryForKey(key1);
         assertTrue(setNode.putIfPresent(o1, key1, intval2));
         assertEquals(intval2, uncachedGet(o1, key1));
         assertTrue(setNode.putIfPresent(o1, key1, intval1));
@@ -242,7 +241,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
         String key2 = "key2";
         String strval2 = "qwer";
-        DynamicObjectLibrary setNode2 = createLibraryForReceiverAndKey(o1, key2);
+        var setNode2 = createLibraryForReceiverAndKey(o1, key2);
         assertFalse(uncachedLibrary().containsKey(o1, key2));
         assertFalse(setNode2.putIfPresent(o1, key2, strval2));
         assertTrue(setNode2.accepts(o1));
@@ -254,7 +253,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertTrue(uncachedLibrary().containsKey(o1, key2));
         assertEquals(strval2, uncachedGet(o1, key2));
 
-        DynamicObjectLibrary setNode3 = createLibraryForReceiverAndKey(o1, key2);
+        var setNode3 = createLibraryForReceiverAndKey(o1, key2);
         assertTrue(setNode3.putIfPresent(o1, key2, intval1));
         assertEquals(intval1, uncachedGet(o1, key2));
     }
@@ -269,7 +268,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v2 = 43;
         uncachedPut(o3, k1, v1, 0);
 
-        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+        var setNode1 = createLibraryForKey(k1);
         setNode1.put(o1, k1, v2);
         assertEquals(v2, uncachedGet(o1, k1));
         Assert.assertEquals(0, uncachedGetProperty(o1, k1).getFlags());
@@ -294,7 +293,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
         String k2 = "key2";
         String v4 = "qwer";
-        DynamicObjectLibrary setNode2 = createLibraryForKey(k2);
+        var setNode2 = createLibraryForKey(k2);
 
         setNode2.put(o1, k2, v4);
         assertEquals(v4, uncachedGet(o1, k2));
@@ -302,7 +301,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertEquals(v1, uncachedGet(o1, k2));
 
         int f2 = 0x42;
-        DynamicObjectLibrary setNode3 = createLibraryForKey(k1);
+        var setNode3 = createLibraryForKey(k1);
 
         setNode3.putWithFlags(o3, k1, v1, f2);
         assertEquals(v1, uncachedGet(o3, k1));
@@ -320,7 +319,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o3, k1, v1, 0);
 
         int flags = 0xf;
-        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+        var setNode1 = createLibraryForKey(k1);
         setNode1.putWithFlags(o1, k1, v2, flags);
         assertEquals(v2, uncachedGet(o1, k1));
         Assert.assertEquals(flags, uncachedGetProperty(o1, k1).getFlags());
@@ -345,7 +344,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
         String k2 = "key2";
         String v4 = "qwer";
-        DynamicObjectLibrary setNode2 = createLibraryForKey(k2);
+        var setNode2 = createLibraryForKey(k2);
 
         setNode2.put(o1, k2, v4);
         assertEquals(v4, uncachedGet(o1, k2));
@@ -353,7 +352,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertEquals(v1, uncachedGet(o1, k2));
 
         int f2 = 0x42;
-        DynamicObjectLibrary setNode3 = createLibraryForKey(k1);
+        var setNode3 = createLibraryForKey(k1);
 
         setNode3.putWithFlags(o3, k1, v1, f2);
         assertEquals(v1, uncachedGet(o3, k1));
@@ -362,7 +361,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
     @Test
     public void testTypeIdAndShapeFlags() {
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         Object myType = newObjectType();
         int flags = 42;
         String key = "key1";
@@ -389,7 +388,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         lib.put(o4, key, "value");
         assertSame(myType, lib.getDynamicType(o4));
 
-        DynamicObjectLibrary cached = createLibraryForReceiver(o4);
+        var cached = createLibraryForReceiver(o4);
         assertSame(myType, cached.getDynamicType(o4));
         assertSame(myType, cached.getDynamicType(o4));
         Object myType2 = newObjectType();
@@ -400,7 +399,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
     @Test
     public void testShapeFlags() {
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         int flags = 42;
 
         DynamicObject o1 = createEmpty();
@@ -424,7 +423,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         lib.markShared(o4);
         assertEquals(flags, lib.getShapeFlags(o2));
 
-        DynamicObjectLibrary cached = createLibraryForReceiver(o4);
+        var cached = createLibraryForReceiver(o4);
         assertEquals(flags, cached.getShapeFlags(o4));
         assertEquals(flags, cached.getShapeFlags(o4));
         int flags2 = 43;
@@ -439,7 +438,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int f2 = 0x10;
         int f3 = 0x1f;
 
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, "key", 42, 0);
         assertTrue(lib.setShapeFlags(o1, f1));
@@ -450,7 +449,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertEquals(f3, o1.getShape().getFlags());
     }
 
-    private static boolean updateShapeFlags(DynamicObjectLibrary lib, DynamicObject obj, IntUnaryOperator updateFunction) {
+    private static boolean updateShapeFlags(DynamicObjectLibraryWrapper lib, DynamicObject obj, IntUnaryOperator updateFunction) {
         int oldFlags = lib.getShapeFlags(obj);
         int newFlags = updateFunction.applyAsInt(oldFlags);
         if (oldFlags == newFlags) {
@@ -461,7 +460,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
 
     @Test
     public void testMakeShared() {
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
 
         DynamicObject o1 = createEmpty();
         assertFalse(lib.isShared(o1));
@@ -481,7 +480,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int f2 = 0x10;
         int f3 = 0x1f;
 
-        DynamicObjectLibrary lib = createLibraryForKey(k1);
+        var lib = createLibraryForKey(k1);
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, k1, v1, 0);
         assertTrue(lib.setPropertyFlags(o1, k1, f1));
@@ -510,7 +509,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         assertFalse(lib.setPropertyFlags(o3, k1, f1));
     }
 
-    private static boolean updatePropertyFlags(DynamicObjectLibrary lib, DynamicObject obj, String key, IntUnaryOperator updateFunction) {
+    private static boolean updatePropertyFlags(DynamicObjectLibraryWrapper lib, DynamicObject obj, String key, IntUnaryOperator updateFunction) {
         Property property = lib.getProperty(obj, key);
         if (property == null) {
             return false;
@@ -529,7 +528,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v2 = 43;
         Object v3 = "value";
 
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, "key1", v1, 0);
         uncachedPut(o1, "key2", v2, 0);
@@ -558,7 +557,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v1 = 42;
         int v2 = 43;
 
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         DynamicObject o1 = createEmpty();
         Shape emptyShape = o1.getShape();
         uncachedPut(o1, "key1", v1, 0);
@@ -583,7 +582,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v2 = 43;
         Object v3 = "value";
 
-        DynamicObjectLibrary lib = createDispatchedLibrary();
+        var lib = createDispatchedLibrary();
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, "key1", v1, 1);
         uncachedPut(o1, "key2", v2, 2);
@@ -632,7 +631,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o1, "key3", v3, 43);
 
         assertFalse(o1.getShape().allPropertiesMatch(p -> p.getFlags() >= 42));
-        DynamicObjectLibrary lib2 = createLibraryForKey("key1");
+        var lib2 = createLibraryForKey("key1");
         lib2.removeKey(o1, "key1");
         assertTrue(o1.getShape().allPropertiesMatch(p -> p.getFlags() >= 42));
     }
@@ -648,7 +647,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedPut(o1, "key2", v2, 2);
         uncachedPut(o1, "key3", v3, 3);
 
-        DynamicObjectLibrary lib = createLibraryForReceiver(o1);
+        var lib = createLibraryForReceiver(o1);
         assertTrue(lib.accepts(o1));
         for (int i = 1; i <= 3; i++) {
             Object key = "key" + i;
@@ -667,7 +666,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v2 = 43;
         int flags = 0xf;
 
-        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+        var setNode1 = createLibraryForKey(k1);
 
         setNode1.putConstant(o1, k1, v1, 0);
         assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
@@ -693,7 +692,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         int v2 = 43;
         int flags = 0xf;
 
-        DynamicObjectLibrary setNode1 = createLibraryForKey(k1);
+        var setNode1 = createLibraryForKey(k1);
 
         setNode1.putConstant(o1, k1, v1, 0);
         assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
@@ -740,12 +739,12 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         uncachedLibrary().put(o1, "k13", false);
         updateAllFlags(o2, 3);
         updateAllFlags(o3, 3);
-        DynamicObjectLibrary library = createLibrary(o1);
+        var library = createLibrary(o1);
         assertEquals(1, library.getOrDefault(o3, "k13", null));
     }
 
     private void fillObjectWithProperties(DynamicObject obj, boolean b) {
-        DynamicObjectLibrary library = createLibrary(obj);
+        var library = createLibrary(obj);
 
         for (int i = 0; i < 20; i++) {
             Object value;
@@ -768,7 +767,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
     }
 
     private void updateAllFlags(DynamicObject obj, int flags) {
-        DynamicObjectLibrary propertyFlags = createLibrary(obj);
+        var propertyFlags = createLibrary(obj);
 
         for (Property property : propertyFlags.getPropertyArray(obj)) {
             int oldFlags = property.getFlags();
@@ -779,7 +778,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
             }
         }
 
-        DynamicObjectLibrary shapeFlags = createLibrary(obj);
+        var shapeFlags = createLibrary(obj);
         shapeFlags.setShapeFlags(obj, flags);
     }
 
@@ -809,7 +808,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
     }
 
     private List<Object> getKeyList(DynamicObject obj) {
-        DynamicObjectLibrary objectLibrary = createLibrary(obj);
+        var objectLibrary = createLibrary(obj);
         return Arrays.asList(objectLibrary.getKeyArray(obj));
     }
 

@@ -46,18 +46,17 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.PropertyGetter;
-import com.oracle.truffle.api.object.Shape;
-import org.junit.Test;
+import java.util.List;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.util.List;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.PropertyGetter;
+import com.oracle.truffle.api.object.Shape;
 
 @RunWith(Parameterized.class)
 public class PropertyGetterTest extends ParametrizedDynamicObjectTest {
@@ -83,7 +82,7 @@ public class PropertyGetterTest extends ParametrizedDynamicObjectTest {
         double doubleVal = 3.14159265359;
         String doubleKey = "doubleKey";
 
-        DynamicObjectLibrary lib = createLibrary();
+        var lib = createLibrary();
         lib.putWithFlags(o1, key, val, 13);
         lib.putWithFlags(o2, key, val, 13);
 

@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.api.object.test;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @RunWith(Parameterized.class)
@@ -68,35 +69,243 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
     @Parameter // first data value (0) is default
     public /* NOT private */ TestRun run;
 
-    protected final DynamicObjectLibrary createLibrary(Object receiver) {
+    protected final DynamicObjectLibraryWrapper createLibrary(Object receiver) {
         return switch (run) {
-            case CACHED_LIBRARY -> adoptNode(DynamicObjectLibrary.getFactory().create(receiver)).get();
-            case UNCACHED_LIBRARY -> DynamicObjectLibrary.getFactory().getUncached(receiver);
-            case DISPATCHED_CACHED_LIBRARY -> adoptNode(DynamicObjectLibrary.getFactory().createDispatched(2)).get();
-            case DISPATCHED_UNCACHED_LIBRARY -> DynamicObjectLibrary.getUncached();
+            case CACHED_LIBRARY -> wrap(adoptNode(DynamicObjectLibrary.getFactory().create(receiver)).get());
+            case UNCACHED_LIBRARY -> wrap(DynamicObjectLibrary.getFactory().getUncached(receiver));
+            case DISPATCHED_CACHED_LIBRARY -> wrap(adoptNode(DynamicObjectLibrary.getFactory().createDispatched(2)).get());
+            case DISPATCHED_UNCACHED_LIBRARY -> wrap(DynamicObjectLibrary.getUncached());
             case CACHED_NODES -> new NodesFakeDynamicObjectLibrary();
             case UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
         };
 
     }
 
-    protected final DynamicObjectLibrary createLibrary() {
+    protected final DynamicObjectLibraryWrapper createLibrary() {
         assert run != TestRun.CACHED_LIBRARY;
         assert run != TestRun.UNCACHED_LIBRARY;
         return createLibrary(null);
     }
 
-    protected final DynamicObjectLibrary uncachedLibrary() {
+    protected final DynamicObjectLibraryWrapper uncachedLibrary() {
         return switch (run) {
             case CACHED_LIBRARY, UNCACHED_LIBRARY, DISPATCHED_CACHED_LIBRARY, DISPATCHED_UNCACHED_LIBRARY ->
-                DynamicObjectLibrary.getUncached();
+                wrap(DynamicObjectLibrary.getUncached());
             case CACHED_NODES, UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
         };
     }
 
-    static final DynamicObjectLibrary UNCACHED_NODES_LIBRARY = new NodesFakeDynamicObjectLibrary("uncached");
+    protected abstract static class DynamicObjectLibraryWrapper {
 
-    static class NodesFakeDynamicObjectLibrary extends DynamicObjectLibrary {
+        public abstract boolean accepts(Object receiver);
+
+        public abstract Shape getShape(DynamicObject object);
+
+        public abstract Object getOrDefault(DynamicObject object, Object key, Object defaultValue);
+
+        public abstract int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException;
+
+        public abstract double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException;
+
+        public abstract long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException;
+
+        public abstract void put(DynamicObject object, Object key, Object value);
+
+        public void putInt(DynamicObject object, Object key, int value) {
+            put(object, key, value);
+        }
+
+        public void putDouble(DynamicObject object, Object key, double value) {
+            put(object, key, value);
+        }
+
+        public void putLong(DynamicObject object, Object key, long value) {
+            put(object, key, value);
+        }
+
+        public abstract boolean putIfPresent(DynamicObject object, Object key, Object value);
+
+        public abstract void putWithFlags(DynamicObject object, Object key, Object value, int flags);
+
+        public abstract void putConstant(DynamicObject object, Object key, Object value, int flags);
+
+        public abstract boolean removeKey(DynamicObject object, Object key);
+
+        public abstract boolean setDynamicType(DynamicObject object, Object type);
+
+        public abstract Object getDynamicType(DynamicObject object);
+
+        public abstract boolean containsKey(DynamicObject object, Object key);
+
+        public abstract int getShapeFlags(DynamicObject object);
+
+        public abstract boolean setShapeFlags(DynamicObject object, int flags);
+
+        public abstract Property getProperty(DynamicObject object, Object key);
+
+        public final int getPropertyFlagsOrDefault(DynamicObject object, Object key, int defaultValue) {
+            Property property = getProperty(object, key);
+            return property != null ? property.getFlags() : defaultValue;
+        }
+
+        public abstract boolean setPropertyFlags(DynamicObject object, Object key, int propertyFlags);
+
+        public abstract void markShared(DynamicObject object);
+
+        public abstract boolean isShared(DynamicObject object);
+
+        public abstract boolean updateShape(DynamicObject object);
+
+        public abstract boolean resetShape(DynamicObject object, Shape otherShape);
+
+        public abstract Object[] getKeyArray(DynamicObject object);
+
+        public abstract Property[] getPropertyArray(DynamicObject object);
+    }
+
+    protected static DynamicObjectLibraryWrapper wrap(DynamicObjectLibrary library) {
+        return new DynamicObjectLibraryWrapper() {
+
+            @Override
+            public boolean accepts(Object receiver) {
+                return library.accepts(receiver);
+            }
+
+            @Override
+            public Shape getShape(DynamicObject object) {
+                return library.getShape(object);
+            }
+
+            @Override
+            public Object getOrDefault(DynamicObject object, Object key, Object defaultValue) {
+                return library.getOrDefault(object, key, defaultValue);
+            }
+
+            @Override
+            public int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+                return library.getIntOrDefault(object, key, defaultValue);
+            }
+
+            @Override
+            public long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+                return library.getLongOrDefault(object, key, defaultValue);
+            }
+
+            @Override
+            public double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+                return library.getDoubleOrDefault(object, key, defaultValue);
+            }
+
+            @Override
+            public void put(DynamicObject object, Object key, Object value) {
+                library.put(object, key, value);
+            }
+
+            @Override
+            public void putInt(DynamicObject object, Object key, int value) {
+                library.putInt(object, key, value);
+            }
+
+            @Override
+            public void putDouble(DynamicObject object, Object key, double value) {
+                library.putDouble(object, key, value);
+            }
+
+            @Override
+            public void putLong(DynamicObject object, Object key, long value) {
+                library.putLong(object, key, value);
+            }
+
+            @Override
+            public boolean putIfPresent(DynamicObject object, Object key, Object value) {
+                return library.putIfPresent(object, key, value);
+            }
+
+            @Override
+            public void putWithFlags(DynamicObject object, Object key, Object value, int flags) {
+                library.putWithFlags(object, key, value, flags);
+            }
+
+            @Override
+            public void putConstant(DynamicObject object, Object key, Object value, int flags) {
+                library.putConstant(object, key, value, flags);
+            }
+
+            @Override
+            public boolean removeKey(DynamicObject object, Object key) {
+                return library.removeKey(object, key);
+            }
+
+            @Override
+            public boolean setDynamicType(DynamicObject object, Object type) {
+                return library.setDynamicType(object, type);
+            }
+
+            @Override
+            public Object getDynamicType(DynamicObject object) {
+                return library.getDynamicType(object);
+            }
+
+            @Override
+            public boolean containsKey(DynamicObject object, Object key) {
+                return library.containsKey(object, key);
+            }
+
+            @Override
+            public int getShapeFlags(DynamicObject object) {
+                return library.getShapeFlags(object);
+            }
+
+            @Override
+            public boolean setShapeFlags(DynamicObject object, int flags) {
+                return library.setShapeFlags(object, flags);
+            }
+
+            @Override
+            public Property getProperty(DynamicObject object, Object key) {
+                return library.getProperty(object, key);
+            }
+
+            @Override
+            public boolean setPropertyFlags(DynamicObject object, Object key, int propertyFlags) {
+                return library.setPropertyFlags(object, key, propertyFlags);
+            }
+
+            @Override
+            public void markShared(DynamicObject object) {
+                library.markShared(object);
+            }
+
+            @Override
+            public boolean isShared(DynamicObject object) {
+                return library.isShared(object);
+            }
+
+            @Override
+            public boolean updateShape(DynamicObject object) {
+                return library.updateShape(object);
+            }
+
+            @Override
+            public boolean resetShape(DynamicObject object, Shape otherShape) {
+                return library.resetShape(object, otherShape);
+            }
+
+            @Override
+            public Object[] getKeyArray(DynamicObject object) {
+                return library.getKeyArray(object);
+            }
+
+            @Override
+            public Property[] getPropertyArray(DynamicObject object) {
+                return library.getPropertyArray(object);
+            }
+        };
+    }
+
+    static final DynamicObjectLibraryWrapper UNCACHED_NODES_LIBRARY = new NodesFakeDynamicObjectLibrary("uncached");
+
+    static class NodesFakeDynamicObjectLibrary extends DynamicObjectLibraryWrapper {
 
         final DynamicObject.GetNode getNode;
         final DynamicObject.PutNode putNode;
@@ -136,7 +345,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
             getPropertyArrayNode = DynamicObject.GetPropertyArrayNode.create();
         }
 
-        NodesFakeDynamicObjectLibrary(String uncached) {
+        NodesFakeDynamicObjectLibrary(@SuppressWarnings("unused") String uncached) {
             getNode = DynamicObject.GetNode.getUncached();
             putNode = DynamicObject.PutNode.getUncached();
             putConstantNode = DynamicObject.PutConstantNode.getUncached();
@@ -169,6 +378,21 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
         @Override
         public Object getOrDefault(DynamicObject object, Object key, Object defaultValue) {
             return getNode.getOrDefault(object, key, defaultValue);
+        }
+
+        @Override
+        public int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+            return getNode.getIntOrDefault(object, key, defaultValue);
+        }
+
+        @Override
+        public long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+            return getNode.getLongOrDefault(object, key, defaultValue);
+        }
+
+        @Override
+        public double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
+            return getNode.getDoubleOrDefault(object, key, defaultValue);
         }
 
         @Override

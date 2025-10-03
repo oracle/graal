@@ -51,15 +51,15 @@ import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Shape;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -85,7 +85,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testDifferentLocationsImplicitCast() {
         DynamicObject object = newInstanceShared();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 1);
         Location location1 = object.getShape().getProperty("a").getLocation();
@@ -104,7 +104,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testNoReuseOfPreviousLocation() {
         DynamicObject object = newInstanceShared();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 0);
         library.put(object, "a", 1);
@@ -143,7 +143,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testCanReuseLocationsUntilShared() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 1);
         Location locationA1 = object.getShape().getProperty("a").getLocation();
@@ -202,7 +202,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.markShared(object);
         Assert.assertSame(sharedShape, object.getShape());
@@ -228,7 +228,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testReuseReplaceProperty() {
         DynamicObject object = newInstanceShared();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 0);
         library.put(object, "a", 1);
@@ -242,7 +242,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testDeleteFromSharedShape() {
         DynamicObject object = newInstanceShared();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
         Shape emptyShape = object.getShape();
 
         library.put(object, "a", 1);
@@ -261,7 +261,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testDeleteFromSharedShape2() {
         DynamicObject object = newInstanceShared();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
         Shape emptyShape = object.getShape();
 
         library.put(object, "a", 1);
@@ -277,7 +277,7 @@ public class SharedShapeTest extends ParametrizedDynamicObjectTest {
     public void testReplaceProperty() {
         DynamicObject object = newInstance();
 
-        DynamicObjectLibrary library = createLibrary(object);
+        var library = createLibrary(object);
 
         library.put(object, "a", 1);
         library.markShared(object);

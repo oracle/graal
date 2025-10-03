@@ -45,13 +45,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 
 @RunWith(Parameterized.class)
 public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
@@ -67,7 +67,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
     public void testRemoveAfterReplace() {
         DynamicObject obj = new TestDynamicObjectDefault(rootShape);
 
-        DynamicObjectLibrary in = createLibrary(obj);
+        var in = createLibrary(obj);
         in.put(obj, "date", new Object());
         in.put(obj, "time", new Object());
         in.put(obj, "zone", new Object());
@@ -97,7 +97,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
 
         Map<Object, Object> archive = DOTestAsserts.archive(obj);
 
-        DynamicObjectLibrary rm = createLibrary(obj);
+        var rm = createLibrary(obj);
         rm.removeKey(obj, "time");
 
         DOTestAsserts.verifyValues(obj, archive);
@@ -107,7 +107,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
     public void testRemoveAfterReplaceGR30786() {
         DynamicObject obj = new TestDynamicObjectDefault(rootShape);
 
-        DynamicObjectLibrary in = createLibrary(obj);
+        var in = createLibrary(obj);
         in.put(obj, "head", new Object());
         in.put(obj, "fun", new Object());
         in.put(obj, "body", new Object());
@@ -141,7 +141,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
 
         Map<Object, Object> archive = DOTestAsserts.archive(obj);
 
-        DynamicObjectLibrary rm = createLibrary(obj);
+        var rm = createLibrary(obj);
         rm.removeKey(obj, "fun");
 
         DOTestAsserts.verifyValues(obj, archive);
@@ -155,7 +155,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
         Object undefined = new Object();
         DynamicObject obj = new TestDynamicObjectDefault(rootShape);
 
-        DynamicObjectLibrary lib = createLibrary(obj);
+        var lib = createLibrary(obj);
 
         lib.put(obj, "length", 10.0);
         lib.put(obj, "0", true);
@@ -212,7 +212,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
         Object undefined = new Object();
         DynamicObject obj = new TestDynamicObjectDefault(rootShape);
 
-        DynamicObjectLibrary lib = createLibrary(obj);
+        var lib = createLibrary(obj);
 
         lib.put(obj, "length", 10.0);
         lib.put(obj, "0", true);
@@ -270,7 +270,7 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
     @Test
     public void testRemoveUsingFallback() {
         DynamicObject obj1 = new TestDynamicObjectDefault(rootShape);
-        DynamicObjectLibrary lib = createLibrary(obj1);
+        var lib = createLibrary(obj1);
         lib.put(obj1, "length", 10.0);
         lib.put(obj1, "0", true);
         lib.put(obj1, "1", 11);
