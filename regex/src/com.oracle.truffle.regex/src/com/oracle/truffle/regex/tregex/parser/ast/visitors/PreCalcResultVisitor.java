@@ -51,7 +51,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 
 public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -111,12 +110,12 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         return visitor.result;
     }
 
-    public AbstractString getLiteral() {
-        return literal.materialize();
+    public AbstractStringBuffer getLiteral() {
+        return literal;
     }
 
-    public AbstractString getMask() {
-        return mask == null ? null : mask.materialize();
+    public AbstractStringBuffer getMask() {
+        return mask;
     }
 
     public PreCalculatedResultFactory getResultFactory() {

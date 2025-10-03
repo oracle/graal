@@ -65,7 +65,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class PythonRegexLexer extends RegexLexer {
@@ -100,7 +100,7 @@ public final class PythonRegexLexer extends RegexLexer {
         // in the Decimal_Number General Category.
         UNICODE_CHAR_CLASS_SETS.put('d', UNICODE.getProperty("General_Category=Decimal_Number"));
         // Non-digits: \D
-        UNICODE_CHAR_CLASS_SETS.put('D', UNICODE.getProperty("General_Category=Decimal_Number").createInverse(Encodings.UTF_32));
+        UNICODE_CHAR_CLASS_SETS.put('D', UNICODE.getProperty("General_Category=Decimal_Number").createInverse(Encoding.UTF_32));
 
         // Spaces: \s
         // Python accepts characters with either the Space_Separator General Category
@@ -116,7 +116,7 @@ public final class PythonRegexLexer extends RegexLexer {
         // contents of the resulting set.
         CodePointSet unicodeSpaces = UNICODE.getProperty("White_Space");
         CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
-        CodePointSet nonSpaces = spaces.createInverse(Encodings.UTF_32);
+        CodePointSet nonSpaces = spaces.createInverse(Encoding.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
         UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
 
@@ -149,7 +149,7 @@ public final class PythonRegexLexer extends RegexLexer {
                         0x2f890, 0x2f890);
         CodePointSet numeric = UNICODE.getProperty("General_Category=Number").union(numericExtras);
         CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
-        CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
+        CodePointSet nonWordChars = wordChars.createInverse(Encoding.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
     }

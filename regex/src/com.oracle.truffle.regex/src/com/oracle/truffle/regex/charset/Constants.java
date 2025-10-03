@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public final class Constants {
 
@@ -285,6 +285,6 @@ public final class Constants {
     public static final CodePointSet WORD_CHARS_UNICODE_SETS_IGNORE_CASE = CaseFoldData.simpleCaseFold(WORD_CHARS, new CodePointSetAccumulator());
 
     public static final CodePointSet NON_WORD_CHARS_UNICODE_SETS_IGNORE_CASE = WORD_CHARS_UNICODE_SETS_IGNORE_CASE.createInverse(CaseFoldData.FOLDED_CHARACTERS,
-                    new CompilationBuffer(Encodings.UTF_16));
+                    new CompilationBuffer(Encoding.UTF_16));
 
 }

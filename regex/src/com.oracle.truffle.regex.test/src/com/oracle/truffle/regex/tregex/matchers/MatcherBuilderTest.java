@@ -49,7 +49,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class MatcherBuilderTest {
 
@@ -111,11 +111,11 @@ public class MatcherBuilderTest {
     }
 
     private static void checkInverse(CodePointSet a, int... values) {
-        checkMatch("inverse(" + a + ")", a.createInverse(Encodings.UTF_16), values);
+        checkMatch("inverse(" + a + ")", a.createInverse(Encoding.UTF_16), values);
     }
 
     private static void checkIntersection(CodePointSet a, CodePointSet b, int... values) {
-        CompilationBuffer compilationBuffer = new CompilationBuffer(Encodings.UTF_16);
+        CompilationBuffer compilationBuffer = new CompilationBuffer(Encoding.UTF_16);
         CodePointSet intersection = a.createIntersection(b, compilationBuffer);
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
         assertTrue("intersection(" + a + "," + b + ")", a.intersects(b) == intersection.matchesSomething());
@@ -126,11 +126,11 @@ public class MatcherBuilderTest {
     }
 
     private static void checkSubtraction(CodePointSet a, CodePointSet b, int... values) {
-        checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer(Encodings.UTF_16)), values);
+        checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer(Encoding.UTF_16)), values);
     }
 
     private static void checkUnion(CodePointSet a, CodePointSet b, int... values) {
-        checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer(Encodings.UTF_16)), values);
+        checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer(Encoding.UTF_16)), values);
     }
 
     @Test

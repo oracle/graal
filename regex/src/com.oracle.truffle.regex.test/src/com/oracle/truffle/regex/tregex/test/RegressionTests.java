@@ -45,7 +45,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class RegressionTests extends RegexTestBase {
 
@@ -55,8 +55,8 @@ public class RegressionTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16_RAW;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_16_RAW;
     }
 
     @Test

@@ -278,7 +278,6 @@ final class TSCodeRange {
      * is not set) and {@link #isMoreRestrictiveThan more restrictive} than code range {@code b}.
      */
     static boolean isMoreRestrictiveAndNativeEndian(int a, int b) {
-        assert (MASK_ORDINAL + 1) << 1 == FLAG_FOREIGN_ENDIAN;
         return (a & MASK_ORDINAL_AND_FOREIGN_ENDIAN) < ordinal(b);
     }
 
@@ -287,7 +286,6 @@ final class TSCodeRange {
      * is not set) and {@link #isMoreRestrictiveThan more restrictive} than code range {@code b}.
      */
     static boolean isMoreRestrictiveOrEqualAndNativeEndian(int a, int b) {
-        assert (MASK_ORDINAL + 1) << 1 == FLAG_FOREIGN_ENDIAN;
         return (a & MASK_ORDINAL_AND_FOREIGN_ENDIAN) <= ordinal(b);
     }
 
@@ -446,5 +444,14 @@ final class TSCodeRange {
             sb.append("imprecise");
         }
         return sb.append(")").toString();
+    }
+
+    static {
+        checkForeignEndianFlagHigherThanOrdinal();
+    }
+
+    @SuppressWarnings("all")
+    private static void checkForeignEndianFlagHigherThanOrdinal() {
+        assert (MASK_ORDINAL + 1) << 1 == FLAG_FOREIGN_ENDIAN;
     }
 }

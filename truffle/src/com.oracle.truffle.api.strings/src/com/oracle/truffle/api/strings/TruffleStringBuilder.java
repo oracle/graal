@@ -998,7 +998,6 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 final int lengthA = a.length();
-                final int strideA = a.stride();
 
                 if (lengthA == 0) {
                     return;
@@ -1222,7 +1221,6 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 }
                 final long offsetA = a.offset() + addOffsetA;
                 final int lengthA = a.length();
-                final int strideA = a.stride();
 
                 boundsCheckRawRegion(lengthA, fromIndex, length);
                 if (!is7Bit(a.codeRange())) {

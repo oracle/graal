@@ -60,7 +60,7 @@ import org.junit.Test;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.flavor.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.test.generated.JavaGeneratedTests;
 import com.oracle.truffle.regex.util.EmptyArrays;
 
@@ -74,8 +74,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_16;
     }
 
     @Test
