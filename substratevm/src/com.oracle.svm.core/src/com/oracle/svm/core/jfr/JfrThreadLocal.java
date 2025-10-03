@@ -167,7 +167,8 @@ public class JfrThreadLocal implements ThreadListener {
             javaBuffer.set(isolateThread, Word.nullPointer());
             flushToGlobalMemoryAndFreeBuffer(jb);
         } else {
-            // Do not reset the thread local since we may need it to reinstate the buffer in the next recording.
+            // Do not reset the thread local since we may need it to reinstate the buffer in the
+            // next recording.
             flushToGlobalMemoryAndRetireBuffer(jb);
         }
 
