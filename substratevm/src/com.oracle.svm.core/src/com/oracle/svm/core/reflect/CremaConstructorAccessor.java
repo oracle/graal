@@ -44,7 +44,7 @@ public final class CremaConstructorAccessor extends AbstractCremaAccessor implem
         verifyArguments(args);
         ensureDeclaringClassInitialized();
 
-        Object newReference = CremaSupport.singleton().rawNewInstance(targetMethod.getDeclaringClass());
+        Object newReference = CremaSupport.singleton().allocateInstance(targetMethod.getDeclaringClass());
         Object[] finalArgs = new Object[args.length + 1];
         finalArgs[0] = newReference;
         System.arraycopy(args, 0, finalArgs, 1, args.length);
