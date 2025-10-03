@@ -104,6 +104,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static final String DEOPT_PADDING   = "                                                                                                            ";
     private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + " " + INV_PADDING + "|UTC %s|Src %s|Reason %s";
     private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|Invalidated %5b|" + DEOPT_PADDING + "|UTC %s|Src %s";
+    private static final String REPROF_FORMAT   = "opt reprof " + TARGET_FORMAT + "|" + INV_PADDING + "|UTC %s|Src %s";
     // @formatter:on
 
     @Override
@@ -223,13 +224,26 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+    public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame, String reason) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             log(target, String.format(DEOPT_FORMAT,
                             target.engineId(),
                             target.id,
                             safeTargetName(target),
                             !target.isValid(),
+                            TIME_FORMATTER.format(ZonedDateTime.now()),
+                            formatSourceSection(safeSourceSection(target)),
+                            reason != null ? reason : "unknown"));
+        }
+    }
+
+    @Override
+    public void onProfileReset(OptimizedCallTarget target) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            log(target, String.format(REPROF_FORMAT,
+                            target.engineId(),
+                            target.id,
+                            safeTargetName(target),
                             TIME_FORMATTER.format(ZonedDateTime.now()),
                             formatSourceSection(safeSourceSection(target))));
         }
