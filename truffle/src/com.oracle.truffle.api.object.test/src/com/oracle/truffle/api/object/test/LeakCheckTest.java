@@ -50,13 +50,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 @SuppressWarnings("deprecation")
-public class LeakCheckTest {
-    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
+@RunWith(Parameterized.class)
+public class LeakCheckTest extends ParametrizedDynamicObjectTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.UNCACHED_ONLY);
+    }
 
     private static Shape newEmptyShape() {
         return Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
@@ -77,9 +84,9 @@ public class LeakCheckTest {
         for (int i = 0; i < 100; i++) {
             DynamicObject obj = newInstance(emptyShape);
             for (int j = 0; j < 1000; j++) {
-                LIBRARY.put(obj, "a" + Math.random(), Math.random());
-                LIBRARY.put(obj, "b" + Math.random(), Math.random());
-                LIBRARY.put(obj, "c" + Math.random(), Math.random());
+                uncachedLibrary().put(obj, "a" + Math.random(), Math.random());
+                uncachedLibrary().put(obj, "b" + Math.random(), Math.random());
+                uncachedLibrary().put(obj, "c" + Math.random(), Math.random());
             }
             fullShapeRefs.add(new WeakReference<>(obj.getShape()));
         }
@@ -103,7 +110,7 @@ public class LeakCheckTest {
         for (int i = 0; i < 100000; i++) {
             DynamicObject obj = newInstance(emptyShape);
             Leak value = new Leak();
-            LIBRARY.putConstant(obj, "a" + i, value, 0);
+            uncachedLibrary().putConstant(obj, "a" + i, value, 0);
 
             Shape shape = obj.getShape();
             value.shape = shape;
@@ -120,7 +127,7 @@ public class LeakCheckTest {
 
         // trigger transition map cleanup
         DynamicObject obj = newInstance(emptyShape);
-        LIBRARY.putConstant(obj, "const", new Leak(), 0);
+        uncachedLibrary().putConstant(obj, "const", new Leak(), 0);
 
         Reference.reachabilityFence(emptyShape);
     }
@@ -137,7 +144,7 @@ public class LeakCheckTest {
         for (int i = 0; i < 100000; i++) {
             DynamicObject obj = newInstance(emptyShape);
             Leak value = new Leak();
-            LIBRARY.setDynamicType(obj, value);
+            uncachedLibrary().setDynamicType(obj, value);
 
             Shape shape = obj.getShape();
             value.shape = shape;
@@ -154,7 +161,7 @@ public class LeakCheckTest {
 
         // trigger transition map cleanup
         DynamicObject obj = newInstance(emptyShape);
-        LIBRARY.setDynamicType(obj, new Leak());
+        uncachedLibrary().setDynamicType(obj, new Leak());
 
         Reference.reachabilityFence(emptyShape);
     }
@@ -175,11 +182,11 @@ public class LeakCheckTest {
 
             Leak leak;
             leak = new Leak();
-            LIBRARY.putConstant(obj, "a", leak, 0);
+            uncachedLibrary().putConstant(obj, "a", leak, 0);
             leak.shape = obj.getShape();
-            LIBRARY.putConstant(obj, "b", leak, 0);
+            uncachedLibrary().putConstant(obj, "b", leak, 0);
             leak.shape = obj.getShape();
-            LIBRARY.putConstant(obj, "c", leak, 0);
+            uncachedLibrary().putConstant(obj, "c", leak, 0);
             leak.shape = obj.getShape();
 
             Shape shape = obj.getShape();
@@ -212,15 +219,15 @@ public class LeakCheckTest {
             DynamicObject obj = newInstance(emptyShape);
 
             Leak leak1 = new Leak();
-            LIBRARY.setDynamicType(obj, leak1);
+            uncachedLibrary().setDynamicType(obj, leak1);
             leak1.shape = obj.getShape();
 
             Leak leak2 = new Leak();
-            LIBRARY.setDynamicType(obj, leak2);
+            uncachedLibrary().setDynamicType(obj, leak2);
             leak2.shape = obj.getShape();
 
             Leak leak3 = new Leak();
-            LIBRARY.setDynamicType(obj, leak3);
+            uncachedLibrary().setDynamicType(obj, leak3);
             leak3.shape = obj.getShape();
 
             Shape shape = obj.getShape();
@@ -255,18 +262,18 @@ public class LeakCheckTest {
         Leak const1 = new Leak();
         Leak const2 = new Leak();
         Leak const3 = new Leak();
-        LIBRARY.putConstant(obj, "const1", const1, 0);
-        LIBRARY.putConstant(obj, "const2", const2, 0);
-        LIBRARY.putConstant(obj, "const3", const3, 0);
+        uncachedLibrary().putConstant(obj, "const1", const1, 0);
+        uncachedLibrary().putConstant(obj, "const2", const2, 0);
+        uncachedLibrary().putConstant(obj, "const3", const3, 0);
 
         Shape prevShape = obj.getShape();
 
         System.gc();
 
         obj = newInstance(emptyShape);
-        LIBRARY.putConstant(obj, "const1", const1, 0);
-        LIBRARY.putConstant(obj, "const2", const2, 0);
-        LIBRARY.putConstant(obj, "const3", const3, 0);
+        uncachedLibrary().putConstant(obj, "const1", const1, 0);
+        uncachedLibrary().putConstant(obj, "const2", const2, 0);
+        uncachedLibrary().putConstant(obj, "const3", const3, 0);
 
         Shape currShape = obj.getShape();
         assertSame(prevShape, currShape);
@@ -274,14 +281,14 @@ public class LeakCheckTest {
         // switch from single transition to transition map
         obj = newInstance(emptyShape);
         Leak const4 = new Leak();
-        LIBRARY.putConstant(obj, "const4", const4, 0);
+        uncachedLibrary().putConstant(obj, "const4", const4, 0);
 
         System.gc();
 
         obj = newInstance(emptyShape);
-        LIBRARY.putConstant(obj, "const1", const1, 0);
-        LIBRARY.putConstant(obj, "const2", const2, 0);
-        LIBRARY.putConstant(obj, "const3", const3, 0);
+        uncachedLibrary().putConstant(obj, "const1", const1, 0);
+        uncachedLibrary().putConstant(obj, "const2", const2, 0);
+        uncachedLibrary().putConstant(obj, "const3", const3, 0);
 
         currShape = obj.getShape();
         assertSame(prevShape, currShape);
