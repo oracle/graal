@@ -75,6 +75,10 @@ public final class Target_java_lang_reflect_Method {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotationDefaultComputer.class)//
     byte[] annotationDefault;
 
+    /**
+     * Value of the accessor when `this` is in the image heap. `null` for run-time constructed
+     * methods.
+     */
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
     public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
@@ -140,6 +144,7 @@ public final class Target_java_lang_reflect_Method {
         if (MetadataTracer.enabled()) {
             MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));
         }
+        assert methodAccessor == null : "acquireMethodAccessor() method must not be called if `this` is in image heap.";
         if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
             throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
