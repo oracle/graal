@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -60,6 +61,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     private SnippetResolvedJavaType arrayOfType;
 
     public SnippetResolvedJavaType(Class<?> javaClass) {
+        assert !javaClass.isRecord() : javaClass;
         this.javaClass = javaClass;
     }
 
@@ -327,6 +329,16 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
             return new ResolvedJavaMethod[0];
         }
         return methods.clone();
+    }
+
+    @Override
+    public boolean isRecord() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

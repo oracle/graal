@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -95,7 +96,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedJavaRecordComponent[] getRecordComponents() {
+    public List<? extends CremaResolvedJavaRecordComponent> getRecordComponents() {
         // (GR-69095)
         throw VMError.unimplemented("getRecordComponents");
     }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.crema;
 
+import java.util.List;
+
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -62,7 +64,8 @@ public interface CremaResolvedJavaType extends ResolvedJavaType {
      * @return An array of {@code RecordComponent} objects representing all the record components of
      *         this record class, or {@code null} if this type does not represent a record class
      */
-    CremaResolvedJavaRecordComponent[] getRecordComponents();
+    @Override
+    List<? extends CremaResolvedJavaRecordComponent> getRecordComponents();
 
     /**
      * Retrieves the raw annotation bytes for this field.
