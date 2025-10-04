@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -2045,7 +2046,14 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("markThreadedSwitch", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
+                b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
     }
 
     public static void registerEnsureAllocatedHereIntrinsic(GraphBuilderContext b, ValueNode object) {

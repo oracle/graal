@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.Builder;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterAllOpts;
 import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterNoOpts;
+import org.graalvm.truffle.benchmark.bytecode_dsl.manual.BytecodeInterpreterThreadedAllOpts;
 import org.graalvm.truffle.benchmark.bytecode_dsl.specs.BenchmarkSpec;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
@@ -88,6 +89,7 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
         callTarget = switch (benchMethod) {
             case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLThreadedAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeThreadedAllOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLUncached" -> {
                 var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
                 node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
@@ -102,6 +104,11 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
                 var builder = Builder.newBuilder();
                 benchmarkSpec.parseBytecode(builder);
                 yield createBytecodeNodes(BytecodeInterpreterAllOpts.class, null, builder).getCallTarget();
+            }
+            case "manualThreadedAllOpts" -> {
+                var builder = Builder.newBuilder();
+                benchmarkSpec.parseBytecode(builder);
+                yield createBytecodeNodes(BytecodeInterpreterThreadedAllOpts.class, null, builder).getCallTarget();
             }
             case "ast" -> benchmarkSpec.parseAST(null);
             default -> throw new AssertionError("Unexpected benchmark method " + benchMethod);
@@ -139,12 +146,22 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
     }
 
     @Benchmark
+    public void bytecodeDSLThreadedAllOpts() {
+        benchmark(callTarget);
+    }
+
+    @Benchmark
     public void manualNoOpts() {
         benchmark(callTarget);
     }
 
     @Benchmark
     public void manualAllOpts() {
+        benchmark(callTarget);
+    }
+
+    @Benchmark
+    public void manualThreadedAllOpts() {
         benchmark(callTarget);
     }
 
