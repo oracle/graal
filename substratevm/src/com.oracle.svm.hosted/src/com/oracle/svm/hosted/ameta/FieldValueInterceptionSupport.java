@@ -49,17 +49,23 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerImpl;
+import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -88,6 +94,7 @@ public final class FieldValueInterceptionSupport {
 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
     private final Map<ResolvedJavaField, Object> fieldValueInterceptors = new ConcurrentHashMap<>();
+    private final LayeredFieldValueTransformerSupport layeredSupport = HostedImageLayerBuildingSupport.buildingImageLayer() ? LayeredFieldValueTransformerSupport.singleton() : null;
 
     public static FieldValueInterceptionSupport singleton() {
         return ImageSingletons.lookup(FieldValueInterceptionSupport.class);
@@ -160,38 +167,54 @@ public final class FieldValueInterceptionSupport {
         field.beforeFieldValueAccess();
 
         ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(field);
-        FieldValueComputer computer = createFieldValueComputer(field);
-        Object result;
-        if (computer != null) {
-            VMError.guarantee(oField != null, "Cannot have a @UnknownObjectField or @UnknownPrimitiveField annotation on synthetic field %s", field);
-
-            var interceptor = fieldValueInterceptors.computeIfAbsent(oField, _ -> computer);
-            /*
-             * There can be a race with another thread, so `interceptor` might not be the same
-             * object as `computer`. But that is not a problem because they are equivalent
-             * `FieldValueComputer`. We only need to check that there was no field value transformer
-             * registered beforehand. Unfortunately, we do not have a good stack trace for the user
-             * showing how the field value transformer was created. But we expect this to be a rare
-             * error, since the `@Unknown*Field` annotations are not public API.
-             */
-            if (!(interceptor instanceof FieldValueComputer)) {
-                throw UserError.abort("Cannot register a field value transformer for field %s: %s", field.format("%H.%n"),
-                                "The field is annotated with @UnknownObjectField or @UnknownPrimitiveField.");
+        Object result = null;
+        if (layeredSupport != null) {
+            var transformation = createLayeredFieldValueTransformation(oField, field);
+            if (transformation != null) {
+                /*
+                 * There can be a race with another thread, so `result` might not be the same object
+                 * as created by this thread. But that is not a problem because they are equivalent
+                 * transformers. We only need to check that there was no traditional field value
+                 * transformer registered beforehand.
+                 */
+                result = fieldValueInterceptors.computeIfAbsent(oField, _ -> transformation);
+                VMError.guarantee(result instanceof FieldValueTransformation fvt && fvt.getFieldValueTransformer() instanceof LayeredFieldValueTransformerImpl);
             }
-            result = interceptor;
+        }
+        if (result == null) {
+            FieldValueComputer computer = createFieldValueComputer(field);
+            if (computer != null) {
+                VMError.guarantee(oField != null, "Cannot have a @UnknownObjectField or @UnknownPrimitiveField annotation on synthetic field %s", field);
 
-        } else if (oField != null) {
-            /*
-             * If no field value transformer was registered beforehand, install our marker value so
-             * that later registration of a field value transformer is reported as an error.
-             */
-            result = fieldValueInterceptors.computeIfAbsent(oField, _ -> INTERCEPTOR_ACCESSED_MARKER);
-        } else {
-            /*
-             * This is a synthetic field, so it is not possible to install a field value transformer
-             * for it.
-             */
-            result = INTERCEPTOR_ACCESSED_MARKER;
+                var interceptor = fieldValueInterceptors.computeIfAbsent(oField, _ -> computer);
+                /*
+                 * There can be a race with another thread, so `interceptor` might not be the same
+                 * object as `computer`. But that is not a problem because they are equivalent
+                 * `FieldValueComputer`s. We only need to check that there was no field value
+                 * transformer registered beforehand. Unfortunately, we do not have a good stack
+                 * trace for the user showing how the field value transformer was created. But we
+                 * expect this to be a rare error, since the `@Unknown*Field` annotations are not
+                 * public API.
+                 */
+                if (!(interceptor instanceof FieldValueComputer)) {
+                    throw UserError.abort("Cannot register a field value transformer for field %s: %s", field.format("%H.%n"),
+                                    "The field is annotated with @UnknownObjectField or @UnknownPrimitiveField.");
+                }
+                result = interceptor;
+
+            } else if (oField != null) {
+                /*
+                 * If no field value transformer was registered beforehand, install our marker value
+                 * so that later registration of a field value transformer is reported as an error.
+                 */
+                result = fieldValueInterceptors.computeIfAbsent(oField, _ -> INTERCEPTOR_ACCESSED_MARKER);
+            } else {
+                /*
+                 * This is a synthetic field, so it is not possible to install a field value
+                 * transformer for it.
+                 */
+                result = INTERCEPTOR_ACCESSED_MARKER;
+            }
         }
 
         Objects.requireNonNull(result, "Must have a non-null value now to avoid repeated invocation of this method");
@@ -208,16 +231,27 @@ public final class FieldValueInterceptionSupport {
      * Check if the value of the provided field is currently available. After this method has been
      * called, it is not possible to install a transformer anymore.
      */
-    public boolean isValueAvailable(AnalysisField field) {
+    public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
+        return isValueAvailable(field, receiver, false);
+    }
+
+    boolean isValueAvailable(AnalysisField field, JavaConstant receiver, boolean unknownReceiver) {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
-            if (!transformation.getFieldValueTransformer().isAvailable()) {
-                return false;
+            var transformer = transformation.getFieldValueTransformer();
+            if (transformer instanceof FieldValueTransformerWithReceiverBasedAvailability transformerWithReceiver) {
+                assert unknownReceiver || (!field.isStatic() && receiver != null) : Assertions.errorMessage("Missing receiver", field, receiver);
+                if (unknownReceiver) {
+                    // Receiver is unknown - we cannot resolve this query
+                    return false;
+                } else {
+                    return transformerWithReceiver.isAvailable(receiver);
+                }
+            } else {
+                return transformer.isAvailable();
             }
         } else if (interceptor instanceof FieldValueComputer computer) {
-            if (!computer.isAvailable()) {
-                return false;
-            }
+            return computer.isAvailable();
         }
         return true;
     }
@@ -280,7 +314,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        assert isValueAvailable(field) : field;
+        assert isValueAvailable(field, receiver) : field;
         JavaConstant value;
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
@@ -373,6 +407,15 @@ public final class FieldValueInterceptionSupport {
             return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         }
         return value;
+    }
+
+    private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, AnalysisField aField) {
+        LayeredFieldValue layeredFieldValue = aField.getAnnotation(LayeredFieldValue.class);
+        if (layeredFieldValue != null) {
+            var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
+            return new FieldValueTransformation(OriginalClassProvider.getJavaClass(oField.getType()), transformer);
+        }
+        return null;
     }
 
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {

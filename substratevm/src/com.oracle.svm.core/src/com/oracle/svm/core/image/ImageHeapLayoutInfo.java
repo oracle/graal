@@ -114,4 +114,8 @@ public class ImageHeapLayoutInfo {
     public long getWritablePatchedSize() {
         return writablePatchedSize;
     }
+
+    public boolean isWritablePatched(long offset) {
+        return offset >= writablePatchedOffset && offset < writablePatchedOffset + writablePatchedSize;
+    }
 }

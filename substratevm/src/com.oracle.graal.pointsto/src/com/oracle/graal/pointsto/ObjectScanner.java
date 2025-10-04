@@ -172,7 +172,7 @@ public class ObjectScanner {
     protected void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
-            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
+            if (!bb.getUniverse().getHeapScanner().isValueAvailable(field, receiver)) {
                 /* The value is not available yet. */
                 return;
             }

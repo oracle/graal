@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature.INVALID;
+import static com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature.NULL_CONSTANT_ID;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -64,6 +65,7 @@ import jdk.vm.ci.meta.JavaConstant;
 @AutomaticallyRegisteredFeature
 public class CrossLayerConstantRegistryFeature implements InternalFeature, FeatureSingleton, CrossLayerConstantRegistry {
     static final int INVALID = -1;
+    static final int NULL_CONSTANT_ID = -1;
     private static final Object NULL_CONSTANT_MARKER = new Object();
 
     private record FutureConstantCandidateInfo(ImageHeapRelocatableConstant constant) {
@@ -201,16 +203,19 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         for (var entry : finalizedFutureConstants.entrySet()) {
             // We know these constants have been installed via addInitialObjects
             Object value = entry.getValue();
+            int loaderId;
+            int offset;
             if (value == NULL_CONSTANT_MARKER) {
-                FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
-                tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, INVALID, INVALID));
+                loaderId = NULL_CONSTANT_ID;
+                offset = INVALID;
             } else {
                 var futureConstant = (ImageHeapConstant) snippetReflection.forObject(value);
                 var objectInfo = heap.getConstantInfo(futureConstant);
-                int id = ImageHeapConstant.getConstantID(futureConstant);
-                FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
-                tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, id, NumUtil.safeToInt(objectInfo.getOffset())));
+                loaderId = ImageHeapConstant.getConstantID(futureConstant);
+                offset = NumUtil.safeToInt(objectInfo.getOffset());
             }
+            FutureTrackingInfo info = (FutureTrackingInfo) tracker.getTrackingInfo(entry.getKey());
+            tracker.updateFutureTrackingInfo(new FutureTrackingInfo(info.key(), FutureTrackingInfo.State.Final, loaderId, offset));
         }
 
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
@@ -223,8 +228,8 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
      * which need to be patched. The reference encoding uses the appropriate compress encoding
      * format. Both the heap offset and reference can be stored in 4-byte integers due to the length
      * restrictions of the native-image heap.
-     *
-     * has the following format:
+     * <p>
+     * Overall, this array has the following format:
      *
      * <pre>
      *     ---------------------------------
@@ -242,6 +247,9 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
      * All patching is performed relative to the initial layer's
      * {@link com.oracle.svm.core.Isolates#IMAGE_HEAP_BEGIN}, so we must subtract this offset
      * (relative to the image heap start) away from all offsets to patch.
+     * <p>
+     * In addition, within the Image Layer Section we immediately before the array store the total
+     * array size as a long value.
      */
     private void generateRelocationPatchArray() {
         int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
@@ -254,7 +262,13 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
             VMError.guarantee(info.state() == FutureTrackingInfo.State.Final, "Invalid future %s", info);
 
             int offset = info.offset();
-            int referenceEncoding = offset == INVALID ? 0 : offset >>> shift;
+            int referenceEncoding;
+            if (offset == INVALID) {
+                referenceEncoding = 0;
+            } else {
+                assert (NumUtil.getNbitNumberInt(shift) & offset) == 0 : offset;
+                referenceEncoding = offset >>> shift;
+            }
             for (int heapOffset : offsetsToPatch) {
                 patchArray.add(heapOffset - heapBeginOffset);
                 patchArray.add(referenceEncoding);
@@ -300,20 +314,26 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         if (idInfo instanceof FutureTrackingInfo future) {
             VMError.guarantee(!finalizedFutureConstants.containsKey(keyName), "Future was finalized in this layer: %s", future);
 
-            if (future.loaderId() == INVALID) {
-                return JavaConstant.NULL_POINTER;
-            }
-
-            if (future.state() != FutureTrackingInfo.State.Type) {
-                return loader.getOrCreateConstant(future.loaderId());
-            }
-
-            // A constant has not been stored in the heap yet. Create and cache a constant candidate
-            FutureConstantCandidateInfo info = (FutureConstantCandidateInfo) constantCandidates.computeIfAbsent(keyName, (k) -> {
-                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(future.loaderId());
-                return new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(type, k));
-            });
-            return info.constant();
+            return switch (future.state()) {
+                case Relocatable, Final -> {
+                    int constantId = future.loaderId();
+                    if (constantId == NULL_CONSTANT_ID) {
+                        yield JavaConstant.NULL_POINTER;
+                    }
+                    yield loader.getOrCreateConstant(constantId);
+                }
+                case Type -> {
+                    /*
+                     * A constant has not been stored in the heap yet. Create and cache a constant
+                     * candidate.
+                     */
+                    FutureConstantCandidateInfo info = (FutureConstantCandidateInfo) constantCandidates.computeIfAbsent(keyName, (k) -> {
+                        AnalysisType type = loader.getAnalysisTypeForBaseLayerId(future.loaderId());
+                        return new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(type, k));
+                    });
+                    yield info.constant();
+                }
+            };
         }
 
         throw VMError.shouldNotReachHere("Missing key: %s", keyName);
@@ -530,8 +550,21 @@ record PriorTrackingInfo(int constantId) implements TrackingInfo {
 
 record FutureTrackingInfo(String key, State state, int loaderId, int offset) implements TrackingInfo {
     enum State {
+        /**
+         * Indicates a future constant has been registered, but not yet seen in the heap. In this
+         * state {@link #loaderId} will store a typeId.
+         */
         Type,
+        /**
+         * Indicates a {@link ImageHeapRelocatableConstant} has been seen in the heap. In this state
+         * {@link #loaderId} will store a constantId referring to the
+         * {@link ImageHeapRelocatableConstant}.
+         */
         Relocatable,
+        /**
+         * Indicates the constant has been finalized. In this state {@link #loaderId} will store a
+         * constantId referring to the final {@link ImageHeapConstant}.
+         */
         Final
     }
 
@@ -543,7 +576,7 @@ record FutureTrackingInfo(String key, State state, int loaderId, int offset) imp
                 assert offset == INVALID : Assertions.errorMessage(state, offset);
                 break;
             case Final:
-                assert offset > 0 || (offset == INVALID && loaderId == INVALID) : Assertions.errorMessage(state, offset);
+                assert offset > 0 || (offset == INVALID && loaderId == NULL_CONSTANT_ID) : Assertions.errorMessage(state, offset);
         }
     }
 }

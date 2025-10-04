@@ -773,7 +773,7 @@ public class UniverseBuilder {
             return true;
         }
 
-        boolean available = field.isValueAvailable();
+        boolean available = field.isValueAvailable(null);
         if (!available) {
             /*
              * Since the value is not yet available we must register it as a

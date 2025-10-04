@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1401,6 +1402,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return getOrCreateConstant(id, null);
     }
 
+    /* Retrieves the given constant iff it has already been relinked. */
+    public ImageHeapConstant getConstant(int id) {
+        return constants.get(id);
+    }
+
     /**
      * Get the {@link ImageHeapConstant} representation for a specific base layer constant id. If
      * known, the parentReachableHostedObject will point to the corresponding constant in the
@@ -1734,15 +1740,21 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             universe.getHeapScanner().registerBaseLayerValue(constant, getFieldFromIndex(imageHeapInstance, i));
         } else if (parentConstant instanceof ImageHeapObjectArray) {
             universe.getHeapScanner().registerBaseLayerValue(constant, i);
+        } else if (parentConstant instanceof ImageHeapRelocatableConstant) {
+            // skip - nothing to do
         } else {
             throw AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
         }
     }
 
     private void ensureHubInitialized(ImageHeapConstant constant) {
-        JavaConstant javaConstant = constant.getHostedObject();
+        if (constant instanceof ImageHeapRelocatableConstant) {
+            // not a hub
+            return;
+        }
+
         if (constant.getType().getJavaClass().equals(Class.class)) {
-            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, javaConstant);
+            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, constant.getHostedObject());
             AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
             ensureHubInitialized(type);
             /*
@@ -1937,5 +1949,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {
         return new JavaConstantSupplier(constantReference);
+    }
+
+    public List<Integer> getUpdatableFieldReceiverIds(int fid) {
+        var updatableReceivers = findField(fid).getUpdatableReceivers();
+        return IntStream.range(0, updatableReceivers.size()).map(updatableReceivers::get).boxed().toList();
     }
 }

@@ -237,7 +237,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             return null;
         }
 
-        if (!fieldValueInterceptionSupport.isValueAvailable(field)) {
+        if (!fieldValueInterceptionSupport.isValueAvailable(field, receiver)) {
             /* Value is not yet available. */
             return null;
         }

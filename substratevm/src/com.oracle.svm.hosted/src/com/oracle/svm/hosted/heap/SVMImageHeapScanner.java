@@ -89,8 +89,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    public boolean isValueAvailable(AnalysisField field) {
-        return fieldValueInterceptionSupport.isValueAvailable(field);
+    public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
+        return fieldValueInterceptionSupport.isValueAvailable(field, receiver);
     }
 
     /**

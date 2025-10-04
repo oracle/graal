@@ -92,6 +92,7 @@ import jdk.vm.ci.meta.JavaConstant;
  *  |  ..           | bitmap of code offsets to patch       |  \  for how these are gathered, see
  *  |  ..           | bitmap of code addresses to patch     |  /  {@link LayeredDispatchTableFeature}
  *  |  ..           | image heap reference patches          |
+ *  |  ..           | image heap field update patches       |
  *  ---------------------------------------------------------
  * </pre>
  */
@@ -129,7 +130,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class, CrossLayerConstantRegistryFeature.class, CGlobalDataFeature.class, CrossLayerFieldUpdaterFeature.class);
     }
 
     @Override
@@ -206,13 +207,24 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         sectionMaxSize += Long.BYTES + relocsBitmapMaxSize; // offsets to patch
         sectionMaxSize += Long.BYTES + relocsBitmapMaxSize; // addresses to patch
 
-        sectionMaxSize += Long.BYTES;
+        /* Account for the length of the image heap reference and field update arrays. */
+        sectionMaxSize += 2 * Long.BYTES;
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             /*
              * Patches for object references in image heaps of other layers. For a description of
              * the table layout, see CrossLayerConstantRegistryFeature#generateRelocationPatchArray.
              */
             sectionMaxSize += Integer.BYTES * CrossLayerConstantRegistryFeature.singleton().computeRelocationPatchesLength();
+            /*
+             * Patches for updated fields. For a description of the table layout see
+             * CrossLayerFieldUpdatersFeature#generateUpdatePatchArray.
+             */
+            int patchesLength = CrossLayerFieldUpdaterFeature.singleton().computeUpdatePatchesLength();
+            if (patchesLength > 0) {
+                // When the patch array is non-zero, then we must also store the header length
+                int headerLength = Integer.BYTES;
+                sectionMaxSize += headerLength + patchesLength;
+            }
         }
 
         layeredSectionData = new BasicProgbitsSectionImpl(new byte[sectionMaxSize]);
@@ -307,8 +319,22 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             for (int value : relocationPatches) {
                 buffer.putInt(value);
             }
+
+            /*
+             * Currently we place field update patches exclusively in the application layer.
+             * 
+             * See CrossLayerFieldUpdatersFeature#generateUpdatePatchArray for a thorough
+             * description of the field update patch info layout.
+             */
+            byte[] fieldUpdatePatches = CrossLayerFieldUpdaterFeature.singleton().getUpdatePatches();
+            buffer.putLong(fieldUpdatePatches.length);
+            if (fieldUpdatePatches.length != 0) {
+                buffer.putInt(CrossLayerFieldUpdaterFeature.singleton().getHeaderSize());
+                buffer.put(fieldUpdatePatches);
+            }
         } else {
             buffer.putLong(0); // no image heap reference patches
+            buffer.putLong(0); // no image heap field update patches
         }
 
         int size = buffer.position();

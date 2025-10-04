@@ -153,7 +153,7 @@ public abstract class ImageHeapScanner {
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
                 ((PointsToAnalysisField) field).saturatePrimitiveField();
             }
-        } else if (isValueAvailable(field)) {
+        } else if (isValueAvailable(field, null)) {
             JavaConstant fieldValue = readStaticFieldValue(field);
             if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
                 AnalysisError.guarantee(imageHeapConstant.getOrigin() != null, "The origin of the constant %s should have been registered before", imageHeapConstant);
@@ -362,6 +362,10 @@ public abstract class ImageHeapScanner {
     }
 
     public void registerBaseLayerValue(ImageHeapConstant constant, Object reason) {
+        if (constant instanceof ImageHeapRelocatableConstant) {
+            // relocatable constants have no backing hosted object
+            return;
+        }
         JavaConstant hostedValue = constant.getHostedObject();
         AnalysisError.guarantee(hostedValue.isNonNull(), "A relinked constant cannot have a NULL_CONSTANT hosted value.");
         Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
@@ -646,14 +650,15 @@ public abstract class ImageHeapScanner {
     }
 
     private void updateInstanceField(AnalysisField field, ImageHeapInstance imageHeapInstance, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        if (isValueAvailable(field)) {
+        if (isValueAvailable(field, imageHeapInstance)) {
             JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
             markReachable(fieldValue, reason, onAnalysisModified);
             notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
         }
     }
 
-    public boolean isValueAvailable(@SuppressWarnings("unused") AnalysisField field) {
+    @SuppressWarnings("unused")
+    public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
         return true;
     }
 

@@ -46,7 +46,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -89,6 +89,7 @@ import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -132,6 +133,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
     private final boolean initialLayerBuild = layeredBuild && ImageLayerBuildingSupport.buildingInitialLayer();
+    private final LayeredFieldValueTransformerSupport layeredFieldValueTransformerSupport = layeredBuild ? LayeredFieldValueTransformerSupport.singleton() : null;
 
     /**
      * A Map from objects at construction-time to native image objects.
@@ -318,7 +320,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         for (HostedField field : hUniverse.getFields()) {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
-                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable(null) || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
                 addConstant(hConstantReflection.readConstantField(field, null), false, field);
             }
@@ -592,13 +594,23 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
+                    boolean fieldPatchable = false;
+                    if (layeredFieldValueTransformerSupport != null) {
+                        fieldPatchable = layeredFieldValueTransformerSupport.finalizeFieldValue(field, constant);
+                    }
                     boolean fieldRelocatable = false;
                     /*
                      * Fields that are only available after heap layout, such as
                      * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
                      * not be processed.
                      */
-                    if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
+                    if (field.isRead() && field.isValueAvailable(constant) && !ignoredFields.contains(field)) {
+                        /*
+                         * We will only patch read fields. Hence, we only need to assign objects to
+                         * the patchable partition when the field value is part of the image heap.
+                         */
+                        patched = patched || fieldPatchable;
+
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
@@ -625,7 +637,7 @@ public final class NativeImageHeap implements ImageHeap {
                          */
                         relocatable = relocatable || fieldRelocatable;
                     }
-                    written = written || ((field.isWritten() || !field.isValueAvailable()) && !field.isFinal() && !fieldRelocatable);
+                    written = written || ((field.isWritten() || !field.isValueAvailable(constant)) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);

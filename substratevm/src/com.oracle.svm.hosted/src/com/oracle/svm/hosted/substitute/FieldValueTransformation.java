@@ -36,8 +36,8 @@ import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
