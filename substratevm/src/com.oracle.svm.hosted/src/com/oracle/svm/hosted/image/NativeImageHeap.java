@@ -46,6 +46,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -801,7 +802,7 @@ public final class NativeImageHeap implements ImageHeap {
     /**
      * Dumps metadata for every object in the image heap.
      */
-    public void dumpMetadata() {
+    public void dumpMetadata(ImageHeapLayoutInfo heapLayout) {
         String metadataFileName = SubstrateOptions.ImageHeapMetadataDumpFileName.getValue();
         if (metadataFileName == null || metadataFileName.isEmpty()) {
             // Do not dump metadata if the file name isn't set
@@ -815,11 +816,13 @@ public final class NativeImageHeap implements ImageHeap {
             throw VMError.shouldNotReachHere("Image heap metadata directory does not exist: " + metadataDir);
         }
 
+        long heapLayoutStartOffset = heapLayout.getStartOffset();
+
         try (FileWriter metadataOut = new FileWriter(metadataFile);
                         BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
             metadataBw.write("class-name,partition,offset-in-heap,size\n");
             for (ObjectInfo info : getObjects()) {
-                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + info.getOffset() + "," + info.getSize() + System.lineSeparator();
+                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + (info.getOffset() - heapLayoutStartOffset) + "," + info.getSize() + System.lineSeparator();
                 metadataBw.write(csvLine);
             }
         } catch (IOException ex) {

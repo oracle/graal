@@ -561,7 +561,7 @@ public abstract class NativeImage extends AbstractImage {
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
             printHeapStatistics(heap.getLayouter().getPartitions());
-            heap.dumpMetadata();
+            heap.dumpMetadata(heapLayout);
         }
     }
 
