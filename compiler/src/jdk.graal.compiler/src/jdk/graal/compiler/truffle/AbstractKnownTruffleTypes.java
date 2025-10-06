@@ -59,6 +59,10 @@ public abstract class AbstractKnownTruffleTypes {
         this.metaAccess = metaAccess;
     }
 
+    /**
+     * Resolves {@code className} to a type. Use {@link #lookupTypeCached(String)} instead for types
+     * that will have methods or fields looked up as well.
+     */
     public final ResolvedJavaType lookupType(String className) {
         ResolvedJavaType type = runtime.resolveType(metaAccess, className);
         onTypeLookup(type);
@@ -77,6 +81,10 @@ public abstract class AbstractKnownTruffleTypes {
         return type;
     }
 
+    /**
+     * Resolves {@code className} to a type. In contrast to {@link #lookupType(String)}, this
+     * version creates a {@link TypeCache} for efficient access to fields and methods in the type.
+     */
     protected final ResolvedJavaType lookupTypeCached(String className) {
         ResolvedJavaType type = runtime.resolveType(metaAccess, className);
         onTypeLookup(type);
