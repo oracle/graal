@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -64,6 +65,7 @@ public class ZBarrierSet extends BarrierSet {
     private final ResolvedJavaField referentField;
 
     public ZBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
     }

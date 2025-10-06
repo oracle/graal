@@ -25,9 +25,6 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import static jdk.graal.compiler.nodes.GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
-import static jdk.graal.compiler.nodes.GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
-
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -60,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * compilation stages (mid-tier or low-tier), deferred barriers for specific allocation scenarios,
  * and customization for pre-write and post-allocation initialization write behaviors.
  * <p>
- * 
+ *
  * @see jdk.graal.compiler.core.common.memory.BarrierType
  * @see jdk.graal.compiler.nodes.memory.FixedAccessNode
  * @see jdk.graal.compiler.nodes.java.AbstractNewObjectNode
@@ -68,6 +65,20 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 
 public abstract class BarrierSet {
+
+    /**
+     * The stage as which barriers should be inserted. May be {@code null} if no barriers are
+     * required, {@link jdk.graal.compiler.nodes.GraphState.StageFlag#MID_TIER_BARRIER_ADDITION} or
+     * {@link jdk.graal.compiler.nodes.GraphState.StageFlag#LOW_TIER_BARRIER_ADDITION}.
+     *
+     * @see jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase
+     */
+    private final GraphState.StageFlag barrierStage;
+
+    protected BarrierSet(GraphState.StageFlag barrierStage) {
+        assert barrierStage == null || barrierStage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION || barrierStage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION : barrierStage;
+        this.barrierStage = barrierStage;
+    }
 
     /**
      * Checks whether writing to {@link LocationIdentity#INIT_LOCATION} can be performed with an
@@ -197,13 +208,9 @@ public abstract class BarrierSet {
      * @return {@code true} if barriers should be added during the specified stage, {@code false}
      *         otherwise
      */
-    public boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
-        assert stage == MID_TIER_BARRIER_ADDITION || stage == LOW_TIER_BARRIER_ADDITION : stage;
-        /*
-         * Most barrier sets should be added in mid-tier, some might also wish to add in low-tier
-         * (e.g. Shenandoah GC).
-         */
-        return stage == MID_TIER_BARRIER_ADDITION;
+    public final boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
+        assert stage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION || stage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION : stage;
+        return stage == barrierStage;
     }
 
     /**

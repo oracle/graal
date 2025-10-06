@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -51,6 +52,7 @@ public class CardTableBarrierSet extends BarrierSet {
     private final boolean useDeferredInitBarriers;
 
     public CardTableBarrierSet(ResolvedJavaType objectArrayType, boolean useDeferredInitBarriers) {
+        super(GraphState.StageFlag.MID_TIER_BARRIER_ADDITION);
         this.objectArrayType = objectArrayType;
         this.useDeferredInitBarriers = useDeferredInitBarriers;
     }

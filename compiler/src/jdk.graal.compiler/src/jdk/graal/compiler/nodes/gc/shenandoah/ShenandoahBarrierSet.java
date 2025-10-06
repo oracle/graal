@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.nodes.gc.shenandoah;
 
-import static jdk.graal.compiler.nodes.GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
-import static jdk.graal.compiler.nodes.GraphState.StageFlag.MID_TIER_BARRIER_ADDITION;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
 import org.graalvm.word.LocationIdentity;
@@ -89,6 +87,7 @@ public class ShenandoahBarrierSet extends BarrierSet {
     protected boolean useCardBarrier;
 
     public ShenandoahBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
         this.useLoadRefBarrier = true;
@@ -339,11 +338,5 @@ public class ShenandoahBarrierSet extends BarrierSet {
             return BarrierType.READ;
         }
         return null;
-    }
-
-    @Override
-    public boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
-        assert stage == MID_TIER_BARRIER_ADDITION || stage == LOW_TIER_BARRIER_ADDITION : stage;
-        return stage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION;
     }
 }

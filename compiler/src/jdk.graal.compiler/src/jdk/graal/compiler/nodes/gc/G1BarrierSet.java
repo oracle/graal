@@ -28,6 +28,7 @@ package jdk.graal.compiler.nodes.gc;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -50,7 +51,8 @@ public class G1BarrierSet extends BarrierSet {
     private final ResolvedJavaField referentField;
     private final boolean useDeferredInitBarriers;
 
-    public G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers) {
+    protected G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers) {
+        super(GraphState.StageFlag.MID_TIER_BARRIER_ADDITION);
         this.objectArrayType = objectArrayType;
         this.referentField = referentField;
         this.useDeferredInitBarriers = useDeferredInitBarriers;
