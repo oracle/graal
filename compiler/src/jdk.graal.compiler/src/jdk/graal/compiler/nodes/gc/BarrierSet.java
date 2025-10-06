@@ -44,6 +44,29 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Abstract base class for emitting garbage collection barriers.
+ * <p>
+ * A {@code BarrierSet} defines methods to determine when and what kind of read, write, or
+ * read-write barriers should be inserted during memory accesses in the generated code. This
+ * includes barriers for field and array accesses, raw memory operations, and object allocations.
+ * <p>
+ * Subclasses are expected to provide barrier logic specific to the garbage collector being
+ * supported, such as adding necessary barriers to nodes, determining the required type of barrier
+ * for various memory operations, and verifying correctness of barrier placement within compilation
+ * graph structures.
+ * <p>
+ * This abstraction supports integration with GC strategies that require barriers at different
+ * compilation stages (mid-tier or low-tier), deferred barriers for specific allocation scenarios,
+ * and customization for pre-write and post-allocation initialization write behaviors.
+ * <p>
+ * 
+ * @see jdk.graal.compiler.core.common.memory.BarrierType
+ * @see jdk.graal.compiler.nodes.memory.FixedAccessNode
+ * @see jdk.graal.compiler.nodes.java.AbstractNewObjectNode
+ * @see jdk.graal.compiler.nodes.extended.ArrayRangeWrite
+ */
+
 public abstract class BarrierSet {
 
     /**
