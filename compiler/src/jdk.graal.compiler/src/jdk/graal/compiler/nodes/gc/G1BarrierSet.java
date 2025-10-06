@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class G1BarrierSet extends BarrierSet {
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
-    protected final boolean useDeferredInitBarriers;
+    private final boolean useDeferredInitBarriers;
 
     public G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers) {
         this.objectArrayType = objectArrayType;
