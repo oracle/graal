@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,6 +112,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     @Override
     protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
+        parent.getInvocationPlugins().collectRuntimeCheckedPlugins(decodingInvocationPlugins, config.architecture());
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, config.lastTier().providers(), config.architecture());
         decodingInvocationPlugins.closeRegistration();

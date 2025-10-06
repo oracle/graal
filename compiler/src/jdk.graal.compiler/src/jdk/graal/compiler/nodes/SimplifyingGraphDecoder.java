@@ -112,11 +112,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public boolean supportsRounding() {
-            return getLowerer().supportsRounding();
-        }
-
-        @Override
         public boolean divisionOverflowIsJVMSCompliant() {
             return getLowerer().divisionOverflowIsJVMSCompliant();
         }

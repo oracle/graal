@@ -80,6 +80,7 @@ import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
@@ -90,8 +91,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaS
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.spi.LoweringProvider;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
@@ -127,6 +126,7 @@ import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameIsNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSwapNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -161,7 +161,7 @@ public class TruffleGraphBuilderPlugins {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         registerObjectsPlugins(plugins, types);
         registerOptimizedAssumptionPlugins(plugins, types);
-        registerExactMathPlugins(plugins, types, providers.getReplacements(), providers.getLowerer());
+        registerExactMathPlugins(plugins, types);
         registerHostCompilerDirectivesPlugins(plugins, types);
         registerCompilerDirectivesPlugins(plugins, types, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, types, canDelayIntrinsification);
@@ -267,8 +267,8 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerExactMathPlugins(InvocationPlugins plugins, KnownTruffleTypes types, Replacements replacements, LoweringProvider lowerer) {
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.ExactMath), replacements);
+    public static void registerExactMathPlugins(InvocationPlugins plugins, KnownTruffleTypes types) {
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.ExactMath));
         for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
             Class<?> type = kind.toJavaClass();
             r.register(new InvocationPlugin("multiplyHigh", type, type) {
@@ -287,14 +287,17 @@ public class TruffleGraphBuilderPlugins {
             });
         }
         for (JavaKind kind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
-            r.registerConditional(lowerer.supportsRounding(), new InvocationPlugin("truncate", kind.toJavaClass()) {
-
+            r.register(new ConditionalInvocationPlugin("truncate", kind.toJavaClass()) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
                     b.addPush(kind, RoundNode.create(x, RoundingMode.TRUNCATE));
                     return true;
                 }
 
+                @Override
+                public boolean isApplicable(Architecture arch) {
+                    return RoundNode.isSupported(arch);
+                }
             });
         }
     }

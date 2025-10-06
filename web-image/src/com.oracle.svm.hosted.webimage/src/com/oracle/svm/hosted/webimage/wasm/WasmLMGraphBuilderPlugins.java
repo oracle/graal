@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.hosted.webimage.wasm;
 
 import static jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
@@ -50,6 +49,7 @@ import com.oracle.svm.hosted.webimage.wasm.nodes.WasmPopcntNode;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.BigIntegerSnippets;
 import jdk.graal.compiler.replacements.SnippetSubstitutionInvocationPlugin;
@@ -79,7 +79,6 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOpera
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.graal.compiler.word.WordCastNode;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -90,31 +89,31 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(GraphBuilderConfiguration.Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
+    public void registerPlugins(GraphBuilderConfiguration.Plugins plugins, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(() -> {
-            registerStringPlugins(invocationPlugins, replacements);
-            registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
-            registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
-            registerCharacterPlugins(invocationPlugins, replacements);
-            registerShortPlugins(invocationPlugins, replacements);
-            registerMathPlugins(Math.class, invocationPlugins, replacements);
-            registerMathPlugins(StrictMath.class, invocationPlugins, replacements);
-            registerBigIntegerPlugins(invocationPlugins, replacements);
-            registerArraysPlugins(invocationPlugins, replacements);
-            unregisterArrayFillPlugins(invocationPlugins, replacements);
+            registerStringPlugins(invocationPlugins);
+            registerIntegerLongPlugins(invocationPlugins, JavaKind.Int);
+            registerIntegerLongPlugins(invocationPlugins, JavaKind.Long);
+            registerCharacterPlugins(invocationPlugins);
+            registerShortPlugins(invocationPlugins);
+            registerMathPlugins(Math.class, invocationPlugins);
+            registerMathPlugins(StrictMath.class, invocationPlugins);
+            registerBigIntegerPlugins(invocationPlugins);
+            registerArraysPlugins(invocationPlugins);
+            unregisterArrayFillPlugins(invocationPlugins);
             registerMemoryPlugins(invocationPlugins);
-            JSGraphBuilderPlugins.registerThreadPlugins(invocationPlugins, replacements);
-            JSGraphBuilderPlugins.registerCurrentIsolatePlugins(invocationPlugins, replacements);
+            JSGraphBuilderPlugins.registerThreadPlugins(invocationPlugins);
+            JSGraphBuilderPlugins.registerCurrentIsolatePlugins(invocationPlugins);
         });
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {
-        final Registration r = new Registration(plugins, String.class, replacements).setAllowOverwrite(true);
+    private static void registerStringPlugins(InvocationPlugins plugins) {
+        final Registration r = new Registration(plugins, String.class).setAllowOverwrite(true);
         // String.equals produces ArrayEqualsNodes which have no counterpart in WASM.
         unregisterEquals(r, InvocationPlugin.Receiver.class, Object.class);
 
-        Registration utf16r = new Registration(plugins, StringUTF16Snippets.class, replacements);
+        Registration utf16r = new Registration(plugins, StringUTF16Snippets.class);
         utf16r.register(new InvocationPlugin("getChar", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -126,8 +125,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerMathPlugins(Class<?> mathImpl, InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, mathImpl, replacements).setAllowOverwrite(true);
+    public static void registerMathPlugins(Class<?> mathImpl, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, mathImpl).setAllowOverwrite(true);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
         registerUnaryMath(r, "exp", EXP);
@@ -149,6 +148,27 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
                 b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("rint", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(RoundNode.create(arg, RoundingMode.NEAREST)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("ceil", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(RoundNode.create(arg, RoundingMode.UP)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("floor", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(RoundNode.create(arg, RoundingMode.DOWN)));
                 return true;
             }
         });
@@ -244,10 +264,10 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
     }
 
-    public static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Replacements replacements) {
+    public static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, declaringClass, replacements).setAllowOverwrite(true);
+        Registration r = new Registration(plugins, declaringClass).setAllowOverwrite(true);
 
         r.register(new InvocationPlugin("bitCount", type) {
             @Override
@@ -283,8 +303,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerCharacterPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Character.class, replacements).setAllowOverwrite(true);
+    public static void registerCharacterPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Character.class).setAllowOverwrite(true);
         r.register(new InvocationPlugin("reverseBytes", char.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -297,8 +317,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerShortPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Short.class, replacements).setAllowOverwrite(true);
+    public static void registerShortPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Short.class).setAllowOverwrite(true);
         r.register(new InvocationPlugin("reverseBytes", short.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -311,8 +331,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerArraysPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Arrays.class, replacements).setAllowOverwrite(true);
+    public static void registerArraysPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Arrays.class).setAllowOverwrite(true);
         // Arrays.equals produces ArrayEqualsNodes which have no counterpart in WASM.
         unregisterEquals(r, boolean[].class, boolean[].class);
         unregisterEquals(r, byte[].class, byte[].class);
@@ -350,8 +370,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
      * {@link jdk.graal.compiler.replacements.nodes.ArrayFillNode}, for which there is no equivalent
      * in WasmLM (filling memory only works at the byte level).
      */
-    public static void unregisterArrayFillPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, Arrays.class, replacements).setAllowOverwrite(true);
+    public static void unregisterArrayFillPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Arrays.class).setAllowOverwrite(true);
 
         unregisterArrayFill(r, boolean.class);
         unregisterArrayFill(r, byte.class);
@@ -387,8 +407,8 @@ public class WasmLMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    public static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, BigInteger.class, replacements).setAllowOverwrite(true);
+    public static void registerBigIntegerPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, BigInteger.class).setAllowOverwrite(true);
         // the upstream plugin introduces a BigIntegerMultiplyToLenNode that is not supported
         r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
                         "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {

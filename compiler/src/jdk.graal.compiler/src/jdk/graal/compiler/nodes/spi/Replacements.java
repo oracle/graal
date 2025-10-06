@@ -95,13 +95,6 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);
 
     /**
-     * Marks a plugin as conditionally applied. In the context of libgraal conditional plugins can't
-     * be used during graph encoding for snippets and in method substitutions, and this is used to
-     * detect violations of this restriction.
-     */
-    void registerConditionalPlugin(InvocationPlugin plugin);
-
-    /**
      * Gets a graph that is a substitution for a given method.
      *
      * @param invokeBci the call site BCI for the substitution

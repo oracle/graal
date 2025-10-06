@@ -111,15 +111,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public void registerConditionalPlugin(InvocationPlugin plugin) {
-        if (!LibGraalSupport.inLibGraalRuntime()) {
-            if (snippetEncoder != null) {
-                snippetEncoder.registerConditionalPlugin(plugin);
-            }
-        }
-    }
-
-    @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (!LibGraalSupport.inLibGraalRuntime()) {
             if (b.parsingIntrinsic() && snippetEncoder != null) {

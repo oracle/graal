@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
@@ -64,17 +63,17 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
-        super.registerGraphBuilderPlugins(arch, plugins, options, replacements);
-        registerCommunityGraphBuilderPlugins(arch, plugins, options, replacements);
+    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options) {
+        super.registerGraphBuilderPlugins(arch, plugins, options);
+        registerCommunityGraphBuilderPlugins(arch, plugins, options);
     }
 
-    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
+    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options) {
         HostInliningPhase.installInlineInvokePlugin(plugins, options);
         plugins.getInvocationPlugins().defer(new Runnable() {
             @Override
             public void run() {
-                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), replacements);
+                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins());
             }
         });
     }
