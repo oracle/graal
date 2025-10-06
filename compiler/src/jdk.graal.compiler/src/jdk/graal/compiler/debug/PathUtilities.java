@@ -39,6 +39,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.ServiceLoader;
+import java.util.TimeZone;
 
 /**
  * Miscellaneous methods for modifying and generating file system paths.
@@ -94,7 +95,13 @@ public class PathUtilities {
      * {@code sun.text.resources.cldr.FormatData} as part of {@link SimpleDateFormat} construction)
      * and allows us to avoid class-lookup support in the image.
      */
-    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
+    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = getSimpleDateFormat();
+
+    private static SimpleDateFormat getSimpleDateFormat() {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
+        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return simpleDateFormat;
+    }
 
     public static DateFormatSymbols getSharedDateFormatSymbols() {
         // SimpleDateFormat is not thread-safe
