@@ -25,7 +25,6 @@
 package jdk.graal.compiler.nodes.gc;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
@@ -37,6 +36,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * A {@link BarrierSet} that does not emit any read or write barriers.
  */
 public class NoBarrierSet extends BarrierSet {
+
+    public NoBarrierSet() {
+        super(null);
+    }
 
     @Override
     public void addBarriers(FixedAccessNode n, CoreProviders context) {
@@ -61,11 +64,5 @@ public class NoBarrierSet extends BarrierSet {
     @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         return BarrierType.NONE;
-    }
-
-    @Override
-    public boolean shouldAddBarriersInStage(GraphState.StageFlag stage) {
-        // No barriers to add
-        return false;
     }
 }
