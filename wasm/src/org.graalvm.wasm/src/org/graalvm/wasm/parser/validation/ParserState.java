@@ -458,12 +458,19 @@ public class ParserState {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         int[] branchLabelReturnTypes = frame.labelTypes();
+        int arity = branchLabelReturnTypes.length;
         for (int otherBranchLabel : branchLabels) {
             checkLabelExists(otherBranchLabel);
             frame = getFrame(otherBranchLabel);
             int[] otherBranchLabelReturnTypes = frame.labelTypes();
-            checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
-            pushAll(popAll(otherBranchLabelReturnTypes));
+            if (otherBranchLabelReturnTypes.length != arity) {
+                throw ValidationErrors.createLabelTypesMismatch(branchLabelReturnTypes, otherBranchLabelReturnTypes);
+            }
+            try {
+                pushAll(popAll(otherBranchLabelReturnTypes));
+            } catch (WasmException e) {
+                throw ValidationErrors.createLabelTypesMismatch(branchLabelReturnTypes, otherBranchLabelReturnTypes);
+            }
             frame.addBranchTableItem(bytecode);
         }
         popAll(branchLabelReturnTypes);
@@ -779,19 +786,6 @@ public class ParserState {
     public void checkLabelExists(int label) {
         if (compareUnsigned(label, controlStackSize()) >= 0) {
             throw ValidationErrors.createMissingLabel(label, controlStackSize() - 1);
-        }
-    }
-
-    /**
-     * Checks if the value types of two different labels match.
-     *
-     * @param expectedTypes The expected value types.
-     * @param actualTypes The value types that should be checked.
-     * @throws WasmException If the provided sets of value types do not match.
-     */
-    public void checkLabelTypes(int[] expectedTypes, int[] actualTypes) {
-        if (isTypeMismatch(expectedTypes, actualTypes)) {
-            throw ValidationErrors.createLabelTypesMismatch(expectedTypes, actualTypes);
         }
     }
 
