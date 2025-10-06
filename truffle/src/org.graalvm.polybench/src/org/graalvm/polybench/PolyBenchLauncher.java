@@ -394,6 +394,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             } finally {
                 config.metric.afterLoad(config);
             }
+            if (language.equals("wasm")) {
+                result = result.newInstance();
+            }
             return new EvalResult(language, source.getName(), source.hasBytes(), source.getLength(), result);
         }
     }
@@ -475,6 +478,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Bench specific options :::");
             if (evalResult.value instanceof Value) {
                 Value value = (Value) evalResult.value;
+                if (evalResult.languageId.equals("wasm")) {
+                    value = value.getMember("exports");
+                }
                 config.parseBenchSpecificDefaults(value);
                 config.metric.parseBenchSpecificOptions(value);
             }
@@ -556,7 +562,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         // language-specific lookup
         switch (languageId) {
             case "wasm":
-                result = evalSourceValue.newInstance().getMember("exports").getMember(memberName);
+                result = evalSourceValue.getMember("exports").getMember(memberName);
                 break;
             case "java":
                 // Espresso doesn't provide methods as executable values.

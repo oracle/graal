@@ -23,6 +23,17 @@
  * questions.
  */
 
+void OutlierRemovalAverageSummary() {
+}
+
+double OutlierRemovalAverageSummaryLowerThreshold() {
+  return 0.0;
+}
+
+double OutlierRemovalAverageSummaryUpperThreshold() {
+  return 0.4;
+}
+
 int fibonacci(int n) {
   if (n < 1) {
     return 0;
