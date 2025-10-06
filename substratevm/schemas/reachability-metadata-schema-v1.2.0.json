@@ -7,7 +7,7 @@
   "default": {},
   "properties": {
     "comment": {
-      "title": "A comment applying to the whole file (e.g., generation date, author, etc.)",
+      "title": "Comment(s) applying to the whole file (e.g., generation date, author, etc.)",
       "oneOf": [
         {
           "type": "string"
@@ -59,7 +59,8 @@
               "properties": {
                 "name": {
                   "title": "Name of the field that should be registered for reflection",
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[^.;\\[/]+$"
                 }
               },
               "required": [
@@ -341,7 +342,7 @@
       "pattern": "^[^.;\\[/]+(\\.[^.;\\[/]+)*(\\[])*$"
     },
     "reason": {
-      "title": "A reason(s) for including this element (e.g., needed for establishing connections, or needed by method X#Y for task Z)",
+      "title": "Reason(s) for including this element (e.g., needed for establishing connections, or needed by method X#Y for task Z)",
       "oneOf": [
         {
           "type": "string"
@@ -437,7 +438,8 @@
       "properties": {
         "name": {
           "title": "Method name that should be registered for this class",
-          "type": "string"
+          "type": "string",
+          "pattern": "^[^.;\\[/]+$"
         },
         "parameterTypes": {
           "items": {
