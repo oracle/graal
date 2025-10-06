@@ -2615,6 +2615,15 @@ suite = {
             "maven" : False,
         },
 
+        "SVM_LLVM_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "LLVM backend support distribution for SVM",
+            "layout": {
+                "native-image.properties": "file:mx.substratevm/tool-llvm.properties",
+            },
+            "maven": False,
+        },
+
         "SVM_TRUFFLE_TCK" : {
             "subDir" : "src",
             "description" : "Truffle TCK",
