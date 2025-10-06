@@ -156,7 +156,7 @@ public class WasmInstantiator {
                     instance.setTableAddress(tableIndex, address);
 
                     final byte[] initBytecode = module.tableInitializerBytecode(tableIndex);
-                    final Object initValue =  module.tableInitialValue(tableIndex);
+                    final Object initValue = module.tableInitialValue(tableIndex);
                     store.linker().resolveTableInitialization(instance, tableIndex, initBytecode, initValue);
                 });
             }

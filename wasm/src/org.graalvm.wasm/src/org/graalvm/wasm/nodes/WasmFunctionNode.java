@@ -1737,7 +1737,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 Object reference = popReference(frame, --stackPointer);
                                 if (profileCondition(bytecode, offset + 1, reference == WasmConstant.NULL)) {
                                     final int offsetDelta = rawPeekU8(bytecode, offset);
-                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte value. BR_ON_NULL_U8
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte
+                                    // value. BR_ON_NULL_U8
                                     // can never perform a forward jump.
                                     offset -= offsetDelta;
                                 } else {
@@ -1761,7 +1762,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 Object reference = popReference(frame, --stackPointer);
                                 if (profileCondition(bytecode, offset + 1, reference != WasmConstant.NULL)) {
                                     final int offsetDelta = rawPeekU8(bytecode, offset);
-                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte value. BR_ON_NULL_U8
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte
+                                    // value. BR_ON_NULL_U8
                                     // can never perform a forward jump.
                                     offset -= offsetDelta;
                                     pushReference(frame, stackPointer++, reference);

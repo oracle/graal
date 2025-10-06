@@ -135,6 +135,7 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean threads;
     private final boolean simd;
     private final boolean exceptions;
+    private final boolean typedFunctionReferences;
 
     @TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
@@ -151,6 +152,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.threads = context.getContextOptions().supportThreads();
         this.simd = context.getContextOptions().supportSIMD();
         this.exceptions = context.getContextOptions().supportExceptions();
+        this.typedFunctionReferences = context.getContextOptions().supportTypedFunctionReferences();
     }
 
     @TruffleBoundary
@@ -437,7 +439,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.TABLE: {
-                    final int elemType = readRefType(exceptions);
+                    final int elemType = readRefType();
                     if (!bulkMemoryAndRefTypes) {
                         assertIntEqual(elemType, FUNCREF_TYPE, Failure.UNSPECIFIED_MALFORMED, "Invalid element type for table import");
                     }
@@ -455,7 +457,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
-                    int type = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+                    int type = readValueType();
                     byte mutability = readMutability();
                     int globalIndex = module.symbolTable().numGlobals();
                     module.symbolTable().importGlobal(moduleName, memberName, globalIndex, type, mutability);
@@ -498,15 +500,16 @@ public class BinaryParser extends BinaryStreamParser {
             final Object initValue;
             final byte[] initBytecode;
             if (peek1(data, offset) == 0x40 && peek1(data, offset + 1) == 0x00) {
+                Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
                 offset += 2;
-                elemType = readRefType(exceptions);
+                elemType = readRefType();
                 readTableLimits(multiResult);
                 Pair<Object, byte[]> initExpression = readConstantExpression(elemType);
                 initValue = initExpression.getLeft();
                 // Drop the initializer bytecode if we can eval the initializer during parsing
                 initBytecode = initValue == null ? initExpression.getRight() : null;
             } else {
-                elemType = readRefType(exceptions);
+                elemType = readRefType();
                 readTableLimits(multiResult);
                 initValue = null;
                 initBytecode = null;
@@ -578,7 +581,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int groupLength = readUnsignedInt32();
             localsLength += groupLength;
             module.limits().checkLocalCount(localsLength);
-            final int t = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+            final int t = readValueType();
             for (int i = 0; i != groupLength; ++i) {
                 localTypes.add(t);
             }
@@ -649,7 +652,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.BLOCK: {
                     final int[] blockParamTypes;
                     final int[] blockResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd, exceptions);
+                    readBlockType(multiResult);
                     // Extract value based on result arity.
                     switch (multiResult[1]) {
                         case BLOCK_TYPE_VOID -> {
@@ -676,7 +679,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Jumps are targeting the loop instruction for OSR.
                     final int[] loopParamTypes;
                     final int[] loopResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd, exceptions);
+                    readBlockType(multiResult);
                     // Extract value based on result arity.
                     switch (multiResult[1]) {
                         case BLOCK_TYPE_VOID -> {
@@ -702,7 +705,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.IF: {
                     final int[] ifParamTypes;
                     final int[] ifResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd, exceptions);
+                    readBlockType(multiResult);
                     // Extract value based on result arity.
                     switch (multiResult[1]) {
                         case BLOCK_TYPE_VOID -> {
@@ -860,7 +863,7 @@ public class BinaryParser extends BinaryStreamParser {
                     checkBulkMemoryAndRefTypesSupport(opcode);
                     final int length = readLength();
                     assertIntEqual(length, 1, Failure.INVALID_RESULT_ARITY);
-                    final int t = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+                    final int t = readValueType();
                     state.popChecked(I32_TYPE);
                     state.popChecked(t);
                     state.popChecked(t);
@@ -876,7 +879,7 @@ public class BinaryParser extends BinaryStreamParser {
                     checkExceptionHandlingSupport(opcode);
                     final int[] tryTableParamTypes;
                     final int[] tryTableResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd, exceptions);
+                    readBlockType(multiResult);
                     // Extract value based on result arity.
                     switch (multiResult[1]) {
                         case BLOCK_TYPE_VOID -> {
@@ -1127,6 +1130,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_REF: {
+                    checkTypedFunctionReferencesSupport(opcode);
                     final int expectedFunctionTypeIndex = readTypeIndex();
                     final int functionReferenceType = WasmType.withNullable(true, expectedFunctionTypeIndex);
                     state.popChecked(functionReferenceType);
@@ -1148,6 +1152,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.REF_AS_NON_NULL: {
+                    checkTypedFunctionReferencesSupport(opcode);
                     final int referenceType = state.popReferenceTypeChecked();
                     final int nonNullReferenceType = WasmType.withNullable(false, referenceType);
                     state.push(nonNullReferenceType);
@@ -1156,6 +1161,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR_ON_NULL: {
+                    checkTypedFunctionReferencesSupport(opcode);
                     final int branchLabel = readTargetOffset();
                     final int referenceType = state.popReferenceTypeChecked();
                     state.addBranchOnNull(branchLabel);
@@ -1164,6 +1170,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR_ON_NON_NULL: {
+                    checkTypedFunctionReferencesSupport(opcode);
                     final int branchLabel = readTargetOffset();
                     final int referenceType = state.popReferenceTypeChecked();
                     final int nonNullReferenceType = WasmType.withNullable(false, referenceType);
@@ -1705,7 +1712,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             case Instructions.REF_NULL:
                 checkBulkMemoryAndRefTypesSupport(opcode);
-                final int heapType = readHeapType(exceptions);
+                final int heapType = readHeapType();
                 final int nullableReferenceType = WasmType.withNullable(true, heapType);
                 state.push(nullableReferenceType);
                 state.addInstruction(Bytecode.REF_NULL);
@@ -2480,6 +2487,10 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().supportExceptions(), "Exception handling is not enabled (opcode: 0x%02x)", opcode);
     }
 
+    private void checkTypedFunctionReferencesSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().supportTypedFunctionReferences(), "Typed function references are not enabled (opcode: 0x%02x)", opcode);
+    }
+
     private void store(ParserState state, int type, int n, long[] result) {
         int alignHint = readAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
@@ -2714,7 +2725,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.REF_NULL:
                     checkBulkMemoryAndRefTypesSupport(opcode);
-                    final int heapType = readHeapType(exceptions);
+                    final int heapType = readHeapType();
                     final int nullableReferenceType = WasmType.withNullable(true, heapType);
                     state.push(nullableReferenceType);
                     state.addInstruction(Bytecode.REF_NULL);
@@ -2859,7 +2870,7 @@ public class BinaryParser extends BinaryStreamParser {
                         throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
                     }
                 case Instructions.REF_NULL:
-                    final int heapType = readHeapType(exceptions);
+                    final int heapType = readHeapType();
                     final int nullableReferenceType = WasmType.withNullable(true, heapType);
                     Assert.assertTrue(module.matches(elemType, nullableReferenceType), "Invalid ref.null type: 0x%02X", Failure.TYPE_MISMATCH);
                     elements[index] = ((long) ELEM_ITEM_REF_NULL_ENTRY_PREFIX << 32);
@@ -2929,7 +2940,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 if (useExpressions) {
                     if (useType) {
-                        elemType = readRefType(exceptions);
+                        elemType = readRefType();
                     } else {
                         elemType = FUNCREF_TYPE;
                     }
@@ -3065,7 +3076,7 @@ public class BinaryParser extends BinaryStreamParser {
         final int startingGlobalIndex = module.symbolTable().numGlobals();
         for (int globalIndex = startingGlobalIndex; globalIndex != startingGlobalIndex + globalCount; globalIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final int type = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+            final int type = readValueType();
             // 0x00 means const, 0x01 means var
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
@@ -3183,14 +3194,14 @@ public class BinaryParser extends BinaryStreamParser {
         module.limits().checkParamCount(paramCount);
         int[] paramTypes = new int[paramCount];
         for (int paramIdx = 0; paramIdx < paramCount; paramIdx++) {
-            paramTypes[paramIdx] = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+            paramTypes[paramIdx] = readValueType();
         }
 
         int resultCount = readLength();
         module.limits().checkResultCount(resultCount, multiValue);
         int[] resultTypes = new int[resultCount];
         for (int resultIdx = 0; resultIdx < resultCount; resultIdx++) {
-            resultTypes[resultIdx] = readValueType(bulkMemoryAndRefTypes, simd, exceptions);
+            resultTypes[resultIdx] = readValueType();
         }
 
         int funcTypeIdx = module.symbolTable().allocateFunctionType(paramCount, resultCount, multiValue);
@@ -3202,24 +3213,30 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    protected int readValueType(boolean allowRefTypes, boolean allowVecType, boolean allowExnType) {
+    protected int readValueType() {
         final int type = readSignedInt32();
         return switch (type) {
             case I32_TYPE, I64_TYPE, F32_TYPE, F64_TYPE -> type;
             case V128_TYPE -> {
-                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(simd, Failure.MALFORMED_VALUE_TYPE);
                 yield type;
             }
             case FUNCREF_TYPE, EXTERNREF_TYPE -> {
-                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(bulkMemoryAndRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 yield type;
             }
             case EXNREF_TYPE -> {
-                Assert.assertTrue(allowExnType, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(exceptions, Failure.MALFORMED_VALUE_TYPE);
                 yield type;
             }
-            case REF_NULL_TYPE_HEADER -> WasmType.withNullable(true, readHeapType(allowExnType));
-            case REF_TYPE_HEADER -> WasmType.withNullable(false, readHeapType(allowExnType));
+            case REF_NULL_TYPE_HEADER -> {
+                Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
+                yield WasmType.withNullable(true, readHeapType());
+            }
+            case REF_TYPE_HEADER -> {
+                Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
+                yield WasmType.withNullable(false, readHeapType());
+            }
             default -> throw Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", type);
         };
     }
@@ -3232,7 +3249,7 @@ public class BinaryParser extends BinaryStreamParser {
      * @param result The array used for returning the result.
      *
      */
-    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType, boolean allowExnType) {
+    protected void readBlockType(int[] result) {
         int type = readSignedInt32();
         switch (type) {
             case VOID_BLOCK_TYPE -> {
@@ -3243,23 +3260,23 @@ public class BinaryParser extends BinaryStreamParser {
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
             case V128_TYPE -> {
-                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(simd, Failure.MALFORMED_VALUE_TYPE);
                 result[0] = type;
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
             case FUNCREF_TYPE, EXTERNREF_TYPE -> {
-                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(bulkMemoryAndRefTypes, Failure.MALFORMED_VALUE_TYPE);
                 result[0] = type;
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
             case EXNREF_TYPE -> {
-                Assert.assertTrue(allowExnType, Failure.MALFORMED_VALUE_TYPE);
+                Assert.assertTrue(exceptions, Failure.MALFORMED_VALUE_TYPE);
                 result[0] = type;
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
             case REF_NULL_TYPE_HEADER, REF_TYPE_HEADER -> {
                 boolean nullable = type == REF_NULL_TYPE_HEADER;
-                int heapType = readHeapType(allowExnType);
+                int heapType = readHeapType();
                 result[0] = WasmType.withNullable(nullable, heapType);
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
@@ -3369,32 +3386,39 @@ public class BinaryParser extends BinaryStreamParser {
         return read1();
     }
 
-    private int readRefType(boolean allowExnType) {
+    private int readRefType() {
         final int refType = readSignedInt32();
         return switch (refType) {
             case FUNCREF_TYPE, EXTERNREF_TYPE -> refType;
             case EXNREF_TYPE -> {
-                assertTrue(allowExnType, Failure.MALFORMED_REFERENCE_TYPE);
+                assertTrue(exceptions, Failure.MALFORMED_REFERENCE_TYPE);
                 yield refType;
             }
-            case REF_NULL_TYPE_HEADER -> WasmType.withNullable(true, readHeapType(allowExnType));
-            case REF_TYPE_HEADER -> WasmType.withNullable(false, readHeapType(allowExnType));
+            case REF_NULL_TYPE_HEADER -> {
+                assertTrue(typedFunctionReferences, Failure.MALFORMED_REFERENCE_TYPE);
+                yield WasmType.withNullable(true, readHeapType());
+            }
+            case REF_TYPE_HEADER -> {
+                assertTrue(typedFunctionReferences, Failure.MALFORMED_REFERENCE_TYPE);
+                yield WasmType.withNullable(false, readHeapType());
+            }
             default -> throw fail(Failure.MALFORMED_REFERENCE_TYPE, "Unexpected reference type");
         };
     }
 
-    private int readHeapType(boolean allowExnType) {
+    private int readHeapType() {
         int heapType = readSignedInt32();
         return switch (heapType) {
             case FUNC_HEAPTYPE, EXTERN_HEAPTYPE -> heapType;
             case EXN_HEAPTYPE -> {
-                assertTrue(allowExnType, Failure.MALFORMED_HEAP_TYPE);
+                assertTrue(exceptions, Failure.MALFORMED_HEAP_TYPE);
                 yield heapType;
             }
             default -> {
                 if (heapType < 0 || heapType >= module.typeCount()) {
                     throw fail(Failure.UNKNOWN_TYPE, "Unknown heap type %d", heapType);
                 }
+                assertTrue(typedFunctionReferences, Failure.MALFORMED_HEAP_TYPE);
                 yield heapType;
             }
         };

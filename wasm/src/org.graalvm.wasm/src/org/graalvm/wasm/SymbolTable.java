@@ -186,7 +186,8 @@ public abstract class SymbolTable {
 
         @Override
         public boolean matches(ClosedValueType valueSubType) {
-            return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) && this.closedHeapType.matches(referenceSubType.closedHeapType);
+            return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
+                            this.closedHeapType.matches(referenceSubType.closedHeapType);
         }
 
         @Override
@@ -276,7 +277,8 @@ public abstract class SymbolTable {
     public static final class BottomType extends ClosedValueType {
         public static final BottomType BOTTOM = new BottomType();
 
-        private BottomType() {}
+        private BottomType() {
+        }
 
         @Override
         public boolean matches(ClosedValueType valueSubType) {
@@ -296,8 +298,10 @@ public abstract class SymbolTable {
      *            <em>Note:</em> this is the upper bound defined by the module. A table instance
      *            might have a lower internal max allowed size in practice.
      * @param elemType The element type of the table.
-     * @param initValue The initial value of the table's elements, can be {@code null} if no initializer present
-     * @param initBytecode The bytecode of the table's initializer expression, can be {@code null} if no initializer present
+     * @param initValue The initial value of the table's elements, can be {@code null} if no
+     *            initializer present
+     * @param initBytecode The bytecode of the table's initializer expression, can be {@code null}
+     *            if no initializer present
      */
     public record TableInfo(int initialSize, int maximumSize, int elemType, Object initValue, byte[] initBytecode) {
     }
@@ -604,7 +608,7 @@ public abstract class SymbolTable {
 
     private void checkUniqueExport(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemories.containsKey(name) || exportedTables.containsKey(name)) {
+        if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemories.containsKey(name) || exportedTables.containsKey(name) || exportedTags.containsKey(name)) {
             throw WasmException.create(Failure.DUPLICATE_EXPORT, "All export names must be different, but '" + name + "' is exported twice.");
         }
     }

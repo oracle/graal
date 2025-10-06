@@ -61,6 +61,7 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean simd;
     @CompilationFinal private boolean relaxedSimd;
     @CompilationFinal private boolean exceptions;
+    @CompilationFinal private boolean typedFunctionReferences;
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
@@ -93,6 +94,7 @@ public final class WasmContextOptions {
         this.simd = readBooleanOption(WasmOptions.SIMD);
         this.relaxedSimd = readBooleanOption(WasmOptions.RelaxedSIMD);
         this.exceptions = readBooleanOption(WasmOptions.Exceptions);
+        this.typedFunctionReferences = readBooleanOption(WasmOptions.TypedFunctionReferences);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
@@ -165,6 +167,10 @@ public final class WasmContextOptions {
         return exceptions;
     }
 
+    public boolean supportTypedFunctionReferences() {
+        return typedFunctionReferences;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
     }
@@ -199,6 +205,7 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.simd ? 1 : 0);
         hash = 53 * hash + (this.relaxedSimd ? 1 : 0);
         hash = 53 * hash + (this.exceptions ? 1 : 0);
+        hash = 53 * hash + (this.typedFunctionReferences ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
@@ -249,6 +256,9 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.exceptions != other.exceptions) {
+            return false;
+        }
+        if (this.typedFunctionReferences != other.typedFunctionReferences) {
             return false;
         }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {

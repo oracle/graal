@@ -535,8 +535,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         // (table 1 1 funcref)
         // (table 1 1 externref)
         // (table 1 1 exnref)
-        final byte[] binary = newBuilder().addTable(1, 1, WasmType.FUNCREF_TYPE).addTable(1, 1, WasmType.EXTERNREF_TYPE)
-                .addTable(1, 1, WasmType.EXNREF_TYPE).build();
+        final byte[] binary = newBuilder().addTable(1, 1, WasmType.FUNCREF_TYPE).addTable(1, 1, WasmType.EXTERNREF_TYPE).addTable(1, 1, WasmType.EXNREF_TYPE).build();
         runParserTest(binary, options -> options.option("wasm.Exceptions", "true"), Context::eval);
         runParserTest(binary, Context::eval);
     }

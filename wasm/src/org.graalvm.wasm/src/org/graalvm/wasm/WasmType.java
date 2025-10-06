@@ -163,7 +163,8 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isReferenceType(int type) {
-        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE || isBottomType(type);
+        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE ||
+                        isBottomType(type);
     }
 
     public static boolean isBottomType(int type) {

@@ -623,8 +623,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a reference call instruction to the bytecode. If the nodeIndex and typeIndex both fit
-     * into a u8 value, a call_ref_u8 and two u8 values are added. Otherwise, a call_ref_i32 and
-     * two i32 values are added.
+     * into a u8 value, a call_ref_u8 and two u8 values are added. Otherwise, a call_ref_i32 and two
+     * i32 values are added.
      *
      * @param nodeIndex The node index of the reference call
      * @param typeIndex The type index of the reference call
