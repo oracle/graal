@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -36,7 +35,6 @@ import com.oracle.truffle.espresso.substitutions.VersionFilter;
 @EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_io_Console {
     @Substitution
-    @TruffleBoundary
     public static boolean istty(@Inject InformationLeak iL) {
         return iL.istty();
     }
