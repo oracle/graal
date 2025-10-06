@@ -224,7 +224,7 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     @ExportMessage
     void writeMember(String name, Object value,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @Cached DynamicObject.PutNode putNode) throws UnknownIdentifierException {
+                    @Cached DynamicObject.PutNode putNode) {
         putNode.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
     }
 }

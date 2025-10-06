@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-
-import java.util.Objects;
 
 /**
  * Property location.
@@ -162,7 +162,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"unused", "deprecation"})
     @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         try {

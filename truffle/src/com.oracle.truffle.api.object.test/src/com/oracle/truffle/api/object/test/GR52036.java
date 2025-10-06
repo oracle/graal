@@ -48,17 +48,17 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.List;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
-
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.util.List;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 
 @RunWith(Parameterized.class)
 public class GR52036 extends ParametrizedDynamicObjectTest {
@@ -91,7 +91,7 @@ public class GR52036 extends ParametrizedDynamicObjectTest {
         }
 
         Shape initialShape = Shape.newBuilder().build();
-        try (Engine engine = Engine.create(); Context context = Context.newBuilder().engine(engine).build()) {
+        try (Engine engine = Engine.create(); Context ctx = Context.newBuilder().engine(engine).build()) {
             var o1 = new ObjType1(initialShape);
             var o2 = new ObjType1(initialShape);
 

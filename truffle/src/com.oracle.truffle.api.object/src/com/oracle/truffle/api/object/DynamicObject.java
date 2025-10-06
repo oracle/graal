@@ -69,9 +69,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObjectLibraryImpl.RemovePlan;
 import com.oracle.truffle.api.object.DynamicObjectFactory.GetNodeGen;
 import com.oracle.truffle.api.object.DynamicObjectFactory.PutNodeGen;
-import com.oracle.truffle.api.object.DynamicObjectLibraryImpl.RemovePlan;
 
 import sun.misc.Unsafe;
 
@@ -947,8 +947,8 @@ public abstract class DynamicObject implements TruffleObject {
         @ExplodeLoop
         @Specialization(guards = "shape == cachedShape", limit = "SHAPE_CACHE_LIMIT")
         static void doCached(DynamicObject from, DynamicObject to,
-                        @Bind("from.getShape()") Shape shape,
-                        @Cached("shape") Shape cachedShape,
+                        @Bind("from.getShape()") @SuppressWarnings("unused") Shape shape,
+                        @Cached("shape") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached(value = "createPropertyGetters(cachedShape)", dimensions = 1) PropertyGetter[] getters,
                         @Cached DynamicObject.PutNode putNode) {
             for (int i = 0; i < getters.length; i++) {
@@ -2176,10 +2176,10 @@ public abstract class DynamicObject implements TruffleObject {
         public abstract Property execute(DynamicObject receiver, Object key);
 
         @Specialization(guards = {"shape == cachedShape", "key == cachedKey"}, limit = "SHAPE_CACHE_LIMIT")
-        static Property doCached(DynamicObject receiver, Object key,
-                        @Bind("receiver.getShape()") Shape shape,
-                        @Cached("shape") Shape cachedShape,
-                        @Cached("key") Object cachedKey,
+        static Property doCached(@SuppressWarnings("unused") DynamicObject receiver, @SuppressWarnings("unused") Object key,
+                        @Bind("receiver.getShape()") @SuppressWarnings("unused") Shape shape,
+                        @Cached("shape") @SuppressWarnings("unused") Shape cachedShape,
+                        @Cached("key") @SuppressWarnings("unused") Object cachedKey,
                         @Cached("cachedShape.getProperty(cachedKey)") Property cachedProperty) {
             return cachedProperty;
         }

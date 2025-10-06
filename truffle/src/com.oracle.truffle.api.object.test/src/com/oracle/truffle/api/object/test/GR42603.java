@@ -47,15 +47,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.oracle.truffle.api.object.Shape;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
-
-import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
 
 @RunWith(Parameterized.class)
 public class GR42603 extends ParametrizedDynamicObjectTest {
@@ -84,11 +84,11 @@ public class GR42603 extends ParametrizedDynamicObjectTest {
             for (int i = 0; i < 2; i++) {
                 int iFixed = i;
                 futures.add(executorService.submit(() -> {
-                    try (Context context = Context.newBuilder().engine(engine).build()) {
+                    try (Context ctx = Context.newBuilder().engine(engine).build()) {
                         TestDynamicObject object = newEmptyObject(rootShape);
                         uncachedLibrary().put(object, "propertyBefore", newEmptyObject(rootShape));
                         boolean assignObject = iFixed == 0;
-                        Object hostNullValue = context.asValue(null);
+                        Object hostNullValue = ctx.asValue(null);
                         uncachedLibrary().put(object, "offendingProperty", assignObject ? object : hostNullValue);
                         freezeObject(object);
 

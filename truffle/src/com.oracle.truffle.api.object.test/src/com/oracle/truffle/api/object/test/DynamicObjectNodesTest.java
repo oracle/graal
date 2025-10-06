@@ -217,7 +217,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
-    private DynamicObject.SetPropertyFlagsNode createSetPropertyFlagsNodeForKey(Object k) {
+    private DynamicObject.SetPropertyFlagsNode createSetPropertyFlagsNodeForKey(@SuppressWarnings("unused") Object k) {
         return switch (run) {
             case CACHED -> DynamicObject.SetPropertyFlagsNode.create();
             case UNCACHED -> DynamicObject.SetPropertyFlagsNode.getUncached();
@@ -231,7 +231,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
-    private DynamicObject.GetPropertyFlagsNode createGetPropertyFlagsNodeForKey(Object k) {
+    private DynamicObject.GetPropertyFlagsNode createGetPropertyFlagsNodeForKey(@SuppressWarnings("unused") Object k) {
         return switch (run) {
             case CACHED -> DynamicObject.GetPropertyFlagsNode.create();
             case UNCACHED -> DynamicObject.GetPropertyFlagsNode.getUncached();
@@ -245,7 +245,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
-    private DynamicObject.GetPropertyNode createGetPropertyNodeForKey(Object k) {
+    private DynamicObject.GetPropertyNode createGetPropertyNodeForKey(@SuppressWarnings("unused") Object k) {
         return switch (run) {
             case CACHED -> DynamicObject.GetPropertyNode.create();
             case UNCACHED -> DynamicObject.GetPropertyNode.getUncached();
@@ -561,9 +561,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
         DynamicObject.SetDynamicTypeNode setDynamicTypeNode = createSetDynamicTypeNode();
         DynamicObject.GetShapeFlagsNode getShapeFlagsNode = createGetShapeFlagsNode();
-        DynamicObject.HasShapeFlagsNode hasShapeFlagsNode = createHasShapeFlagsNode();
         DynamicObject.SetShapeFlagsNode setShapeFlagsNode = createSetShapeFlagsNode();
-        DynamicObject.AddShapeFlagsNode addShapeFlagsNode = createAddShapeFlagsNode();
         DynamicObject.MarkSharedNode markSharedNode = createMarkSharedNode();
 
         DynamicObject o1 = createEmpty();
