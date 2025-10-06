@@ -34,6 +34,8 @@ import static java.lang.reflect.Modifier.PUBLIC;
 import static java.util.Objects.requireNonNull;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
@@ -274,6 +276,9 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     }
 
     @Override
+    public native boolean isHidden();
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         Class<?>[] permittedSubclass = getPermittedSubclasses0(getMirror());
         if (permittedSubclass == null) {
@@ -490,6 +495,16 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
             return null;
         }
         return runtime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(enclosingClass);
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        Method enclosingMethod = getMirror().getEnclosingMethod();
+        Executable enclosingExecutable = enclosingMethod != null ? enclosingMethod : getMirror().getEnclosingConstructor();
+        if (enclosingExecutable != null) {
+            return runtime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(enclosingExecutable);
+        }
+        return null;
     }
 
     @Override

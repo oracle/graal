@@ -96,6 +96,11 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
+    public boolean isHidden() {
+        return false;
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         return null;
     }

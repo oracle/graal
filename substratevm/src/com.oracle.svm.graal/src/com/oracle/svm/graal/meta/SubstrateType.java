@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +47,6 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -320,7 +321,12 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public boolean isHidden() {
+        return hub.isHidden();
+    }
+
+    @Override
+    public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {
             return null;
@@ -452,6 +458,17 @@ public class SubstrateType implements SharedType {
             return null;
         }
         return SubstrateMetaAccess.singleton().lookupJavaType(enclosingClass);
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        Class<?> cls = DynamicHub.toClass(hub);
+        Method enclosingMethod = cls.getEnclosingMethod();
+        Executable enclosingExecutable = enclosingMethod != null ? enclosingMethod : cls.getEnclosingConstructor();
+        if (enclosingExecutable != null) {
+            return SubstrateMetaAccess.singleton().lookupJavaMethod(enclosingExecutable);
+        }
+        return null;
     }
 
     @Override

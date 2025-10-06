@@ -227,6 +227,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public boolean isHidden() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
@@ -319,6 +324,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     @Override
     public ResolvedJavaType getEnclosingType() {
         return enclosingType;
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
     @Override

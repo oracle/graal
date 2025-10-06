@@ -188,6 +188,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
     }
 
     @Override
+    public boolean isHidden() {
+        return false;
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         return null;
     }
@@ -256,6 +261,11 @@ public final class EspressoResolvedPrimitiveType extends EspressoResolvedJavaTyp
 
     @Override
     public ResolvedJavaType getEnclosingType() {
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
         return null;
     }
 

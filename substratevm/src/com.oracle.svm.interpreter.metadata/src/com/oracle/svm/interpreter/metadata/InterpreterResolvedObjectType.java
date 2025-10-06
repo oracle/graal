@@ -209,6 +209,11 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @Override
+    public boolean isHidden() {
+        throw VMError.unimplemented("isHidden");
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         throw VMError.unimplemented("getPermittedSubclasses");
     }

@@ -89,6 +89,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     }
 
     @Substitution
+    public static boolean isHidden(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
+        return context.getVM().JVM_IsHiddenClass(self);
+    }
+
+    @Substitution
     public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self, @Inject EspressoContext context) {
         return context.getVM().JVM_GetPermittedSubclasses(self);
     }

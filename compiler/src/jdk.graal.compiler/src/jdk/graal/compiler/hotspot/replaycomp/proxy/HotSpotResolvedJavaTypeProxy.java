@@ -42,6 +42,7 @@ import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.C
 import java.lang.annotation.Annotation;
 import java.util.List;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
@@ -84,6 +85,22 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getArrayClass() {
         return (HotSpotResolvedObjectType) handle(getArrayClassMethod, getArrayClassInvokable);
+    }
+
+    private static final SymbolicMethod getEnclosingMethodMethod = method("getEnclosingMethod");
+    private static final InvokableMethod getEnclosingMethodInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingMethod();
+
+    @Override
+    public HotSpotResolvedJavaMethod getEnclosingMethod() {
+        return (HotSpotResolvedJavaMethod) handle(getEnclosingMethodMethod, getEnclosingMethodInvokable);
+    }
+
+    private static final SymbolicMethod isHiddenMethod = method("isHidden");
+    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isHidden();
+
+    @Override
+    public boolean isHidden() {
+        return (boolean) handle(isHiddenMethod, isHiddenInvokable);
     }
 
     private static final SymbolicMethod getPermittedSubclassesMethod = method("getPermittedSubclasses");

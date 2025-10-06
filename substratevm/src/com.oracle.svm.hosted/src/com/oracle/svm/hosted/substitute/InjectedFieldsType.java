@@ -205,7 +205,12 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public boolean isHidden() {
+        return original.isHidden();
+    }
+
+    @Override
+    public List<? extends JavaType> getPermittedSubclasses() {
         return original.getPermittedSubclasses();
     }
 
@@ -262,6 +267,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public ResolvedJavaType getEnclosingType() {
         return original.getEnclosingType();
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return original.getEnclosingMethod();
     }
 
     @Override

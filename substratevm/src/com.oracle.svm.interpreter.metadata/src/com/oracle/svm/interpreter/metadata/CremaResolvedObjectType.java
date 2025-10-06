@@ -114,7 +114,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaEnclosingMethodInfo getEnclosingMethod() {
+    public ResolvedJavaMethod getEnclosingMethod() {
         // (GR-69095)
         throw VMError.unimplemented("getEnclosingMethod");
     }
@@ -123,6 +123,12 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     public JavaType[] getDeclaredClasses() {
         // (GR-69095)
         throw VMError.unimplemented("getDeclaredClasses");
+    }
+
+    @Override
+    public boolean isHidden() {
+        // (GR-69095)
+        throw VMError.unimplemented("isHidden");
     }
 
     @Override

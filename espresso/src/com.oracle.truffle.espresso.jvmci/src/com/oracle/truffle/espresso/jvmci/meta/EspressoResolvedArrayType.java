@@ -219,6 +219,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public boolean isHidden() {
+        return false;
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         return null;
     }
@@ -286,6 +291,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
 
     @Override
     public ResolvedJavaType getEnclosingType() {
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
         return null;
     }
 
