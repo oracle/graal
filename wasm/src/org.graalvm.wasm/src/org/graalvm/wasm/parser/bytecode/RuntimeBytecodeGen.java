@@ -356,7 +356,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an if opcode to the bytecode and reserves an i32 value for the jump offset and a 2-byte
      * profile.
-     * 
+     *
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)}.
      */
@@ -370,139 +370,82 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return location;
     }
 
-    /**
-     * Adds a branch opcode to the bytecode. If the negative jump offset fits into a u8 value, a
-     * br_u8 and u8 jump offset is added (The jump offset is encoded as a positive value).
-     * Otherwise, a br_i32 and i32 jump offset is added.
-     * 
-     * @param location The target location of the branch.
-     */
-    public void addBranch(int location) {
-        assert location >= 0;
-        final int relativeOffset = location - (location() + 1);
-        if (relativeOffset <= 0 && relativeOffset >= -255) {
-            add1(Bytecode.BR_U8);
-            add1(-relativeOffset);
-        } else {
-            add1(Bytecode.BR_I32);
-            add4(relativeOffset);
+    public enum BranchOp {
+        BR(op(Bytecode.BR_U8), op(Bytecode.BR_I32), false),
+        BR_IF(op(Bytecode.BR_IF_U8), op(Bytecode.BR_IF_I32), true),
+        BR_ON_NULL(miscOp(Bytecode.BR_ON_NULL_U8), miscOp(Bytecode.BR_ON_NULL_I32), true),
+        BR_ON_NON_NULL(miscOp(Bytecode.BR_ON_NON_NULL_U8), miscOp(Bytecode.BR_ON_NON_NULL_I32), true);
+
+        private final byte[] opcodesU8;
+        private final byte[] opcodesI32;
+        private final boolean profiled;
+
+        BranchOp(byte[] opcodesU8, byte[] opcodesI32, boolean profiled) {
+            this.opcodesU8 = opcodesU8;
+            this.opcodesI32 = opcodesI32;
+            this.profiled = profiled;
+        }
+
+        public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+            bytecode.addBytes(opcodesU8, 0, opcodesU8.length);
+        }
+
+        public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+            bytecode.addBytes(opcodesI32, 0, opcodesI32.length);
+        }
+
+        public void emitProfile(RuntimeBytecodeGen bytecode) {
+            if (profiled) {
+                bytecode.addProfile();
+            }
+        }
+
+        private static byte[] op(int opcode) {
+            return new byte[]{(byte) opcode};
+        }
+
+        private static byte[] miscOp(int opcode) {
+            return new byte[]{(byte) Bytecode.MISC, (byte) opcode};
         }
     }
 
     /**
-     * Adds a br_i32 instruction to the bytecode and reserves an i32 value for the jump offset.
-     * 
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)}).
-     */
-    public int addBranchLocation() {
-        add1(Bytecode.BR_I32);
-        final int location = location();
-        add4(0);
-        return location;
-    }
-
-    /**
-     * Adds a conditional branch opcode to the bytecode. If the jump offset fits into a signed i8
-     * value, a br_if_i8 and i8 jump offset is added. Otherwise, a br_if_i32 and i32 jump offset is
-     * added. In both cases, a profile with a size of 2-byte is added.
-     * 
+     * Adds a branch opcode to the bytecode. If the jump offset fits into a signed i8 value,
+     * {@code opcodesU8} and i8 jump offset is added. Otherwise, {@code opcodesI32} and i32 jump
+     * offset is added. In both cases, a profile with a size of 2-byte is added.
+     *
      * @param location The target location of the branch.
      */
-    public void addBranchIf(int location) {
+    public void addBranch(int location, BranchOp branchOp) {
         assert location >= 0;
         final int relativeOffset = location - (location() + 1);
         if (relativeOffset <= 0 && relativeOffset >= -255) {
-            add1(Bytecode.BR_IF_U8);
+            branchOp.emitOpcodesU8(this);
             // target
             add1(-relativeOffset);
-            // profile
-            addProfile();
         } else {
-            add1(Bytecode.BR_IF_I32);
+            branchOp.emitOpcodesI32(this);
             // target
             add4(relativeOffset);
-            // profile
-            addProfile();
         }
+        // profile
+        branchOp.emitProfile(this);
     }
 
     /**
-     * Adds a br_if_i32 opcode to the bytecode and reserves an i32 value for the jump offset. In
+     * Adds a branch opcode to the bytecode and reserves an i32 value for the jump offset. In
      * addition, a profile with a size of 2-byte is added.
-     * 
+     *
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)})
      */
-    public int addBranchIfLocation() {
-        add1(Bytecode.BR_IF_I32);
+    public int addBranchLocation(BranchOp branchOp) {
+        branchOp.emitOpcodesI32(this);
         final int location = location();
         // target
         add4(0);
         // profile
-        addProfile();
-        return location;
-    }
-
-    public void addBranchOnNull(int location) {
-        assert location >= 0;
-        final int relativeOffset = location - (location() + 1);
-        if (relativeOffset <= 0 && relativeOffset >= -255) {
-            add1(Bytecode.MISC);
-            add1(Bytecode.BR_ON_NULL_U8);
-            // target
-            add1(-relativeOffset);
-            // profile
-            addProfile();
-        } else {
-            add1(Bytecode.MISC);
-            add1(Bytecode.BR_ON_NULL_I32);
-            // target
-            add4(relativeOffset);
-            // profile
-            addProfile();
-        }
-    }
-
-    public int addBranchOnNullLocation() {
-        add1(Bytecode.MISC);
-        add1(Bytecode.BR_ON_NULL_I32);
-        final int location = location();
-        // target
-        add4(0);
-        // profile
-        addProfile();
-        return location;
-    }
-
-    public void addBranchOnNonNull(int location) {
-        assert location >= 0;
-        final int relativeOffset = location - (location() + 1);
-        if (relativeOffset <= 0 && relativeOffset >= -255) {
-            add1(Bytecode.MISC);
-            add1(Bytecode.BR_ON_NON_NULL_U8);
-            // target
-            add1(-relativeOffset);
-            // profile
-            addProfile();
-        } else {
-            add1(Bytecode.MISC);
-            add1(Bytecode.BR_ON_NON_NULL_I32);
-            // target
-            add4(relativeOffset);
-            // profile
-            addProfile();
-        }
-    }
-
-    public int addBranchOnNonNullLocation() {
-        add1(Bytecode.MISC);
-        add1(Bytecode.BR_ON_NON_NULL_I32);
-        final int location = location();
-        // target
-        add4(0);
-        // profile
-        addProfile();
+        branchOp.emitProfile(this);
         return location;
     }
 

@@ -140,25 +140,12 @@ public abstract class ControlFrame {
     abstract void exit(RuntimeBytecodeGen bytecode);
 
     /**
-     * Adds an unconditional branch targeting this control frame. Automatically patches the branch
-     * target as soon as it is available.
+     * Adds a branch targeting this control frame. Automatically patches the branch target as soon
+     * as it is available.
      * 
      * @param bytecode The bytecode of the current control frame.
      */
-    abstract void addBranch(RuntimeBytecodeGen bytecode);
-
-    /**
-     * Adds a conditional branch targeting this control frame. Automatically patches the branch
-     * target as soon as it is available.
-     * 
-     * @param bytecode The bytecode of the current control frame.
-     */
-
-    abstract void addBranchIf(RuntimeBytecodeGen bytecode);
-
-    abstract void addBranchOnNull(RuntimeBytecodeGen bytecode);
-
-    abstract void addBranchOnNonNull(RuntimeBytecodeGen bytecode);
+    abstract void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp);
 
     /**
      * Adds a branch table item targeting this control frame. Automatically patches the branch

@@ -159,7 +159,7 @@ public class BytecodeSuite {
 
     @Test
     public void testBrU8Min() {
-        test(b -> b.addBranch(1), new byte[]{Bytecode.BR_U8, 0x00});
+        test(b -> b.addBranch(1, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_U8, 0x00});
     }
 
     @Test
@@ -171,18 +171,18 @@ public class BytecodeSuite {
             for (int i = 0; i < 254; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0);
+            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR);
         }, expected);
     }
 
     @Test
     public void testBrI32MinForward() {
-        test(b -> b.addBranch(2), new byte[]{Bytecode.BR_I32, 0x01, 0x00, 0x00, 0x00});
+        test(b -> b.addBranch(2, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_I32, 0x01, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testBrI32MaxForward() {
-        test(b -> b.addBranch(2147483647), new byte[]{Bytecode.BR_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F});
+        test(b -> b.addBranch(2147483647, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F});
     }
 
     @Test
@@ -197,13 +197,13 @@ public class BytecodeSuite {
             for (int i = 0; i < 255; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0);
+            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR);
         }, expected);
     }
 
     @Test
     public void testBrIfU8Min() {
-        test(b -> b.addBranchIf(1), new byte[]{Bytecode.BR_IF_U8, 0x00, 0x00, 0x00});
+        test(b -> b.addBranch(1, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_U8, 0x00, 0x00, 0x00});
     }
 
     @Test
@@ -215,18 +215,18 @@ public class BytecodeSuite {
             for (int i = 0; i < 254; i++) {
                 b.addOp(0);
             }
-            b.addBranchIf(0);
+            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
         }, expected);
     }
 
     @Test
     public void testBrIfI32MinForward() {
-        test(b -> b.addBranchIf(2), new byte[]{Bytecode.BR_IF_I32, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addBranch(2, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_I32, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testBrIfI32MaxForward() {
-        test(b -> b.addBranchIf(2147483647), new byte[]{Bytecode.BR_IF_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F, 0x00, 0x00});
+        test(b -> b.addBranch(2147483647, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F, 0x00, 0x00});
     }
 
     @Test
@@ -241,7 +241,7 @@ public class BytecodeSuite {
             for (int i = 0; i < 255; i++) {
                 b.addOp(0);
             }
-            b.addBranchIf(0);
+            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
         }, expected);
     }
 

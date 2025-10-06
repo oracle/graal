@@ -102,23 +102,8 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchLocation());
-    }
-
-    @Override
-    void addBranchIf(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchIfLocation());
-    }
-
-    @Override
-    void addBranchOnNull(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchOnNullLocation());
-    }
-
-    @Override
-    void addBranchOnNonNull(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchOnNonNullLocation());
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp) {
+        branches.add(bytecode.addBranchLocation(branchOp));
     }
 
     @Override

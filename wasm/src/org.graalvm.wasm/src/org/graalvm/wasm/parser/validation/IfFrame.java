@@ -78,7 +78,7 @@ class IfFrame extends ControlFrame {
     @Override
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
-        final int location = bytecode.addBranchLocation();
+        final int location = bytecode.addBranchLocation(RuntimeBytecodeGen.BranchOp.BR);
         bytecode.patchLocation(falseJumpLocation, bytecode.location());
         falseJumpLocation = location;
         elseBranch = true;
@@ -107,23 +107,8 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchLocation());
-    }
-
-    @Override
-    void addBranchIf(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchIfLocation());
-    }
-
-    @Override
-    void addBranchOnNull(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchOnNullLocation());
-    }
-
-    @Override
-    void addBranchOnNonNull(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchOnNonNullLocation());
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp) {
+        branchTargets.add(bytecode.addBranchLocation(branchOp));
     }
 
     @Override

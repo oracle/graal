@@ -401,7 +401,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addBranchIf(bytecode);
+        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_IF);
     }
 
     /**
@@ -415,7 +415,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addBranch(bytecode);
+        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR);
     }
 
     public void addBranchOnNull(int branchLabel) {
@@ -424,7 +424,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addBranchOnNull(bytecode);
+        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_ON_NULL);
     }
 
     public void addBranchOnNonNull(int branchLabel, int referenceType) {
@@ -443,7 +443,7 @@ public class ParserState {
         for (int i = 0; i < labelTypes.length - 1; i++) {
             push(labelTypes[i]);
         }
-        frame.addBranchOnNonNull(bytecode);
+        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_ON_NON_NULL);
     }
 
     /**
