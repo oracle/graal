@@ -9,7 +9,7 @@ permalink: /security-guide/native-image/sbom/
 
 GraalVM Native Image assembles a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities (only available in Oracle GraalVM).
 Pass the `--enable-sbom` option to the `native-image` command to configure the SBOM feature.
-The SBOM feature is enabled by default and defaults to the `embed` option which embeds an SBOM into the native executable. 
+The SBOM feature is enabled by default and defaults to the `embed` option which embeds an SBOM into the native executable.
 In addition to being embedded, the SBOM can be added to the classpath or exported as a JSON file by using `--enable-sbom=classpath,export`.
 
 The CycloneDX format is supported and is the default.
@@ -40,6 +40,7 @@ It outputs the contents in the JSON format:
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
   "version": 1,
+  "serialNumber": "urn:uuid:51ec305f-616e-4139-a033-a094bb94a17c",
   "components": [
     {
       "bom-ref": "pkg:maven/io.netty/netty-codec-http2@4.1.104.Final",
@@ -48,6 +49,16 @@ It outputs the contents in the JSON format:
       "name": "netty-codec-http2",
       "version": "4.1.104.Final",
       "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.104.Final",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fc03e6a2cc2d59f80fb1ec2957621e2630a952db36e069ccbbd72e0662796881"
+        },
+        {
+          "alg": "SHA-512",
+          "content": "d8dd3f31df4961b1ec6a9b047eaee3ba69c1363754b88afe29e2b4823e14f9c4efbe37632f6194110bb83053f1ecc178095ce63d0f1cbe075f36cae0e95d3c80"
+        }
+      ],
       "properties": [
         {
           "name": "syft:cpe23",
@@ -78,8 +89,7 @@ It outputs the contents in the JSON format:
       ]
     },
     ...
-  ],
-  "serialNumber": "urn:uuid:51ec305f-616e-4139-a033-a094bb94a17c"
+  ]
 }
 ```
 
@@ -110,7 +120,7 @@ json               20211205      java-archive
 ```
 
 ## Enabling Security Scanning
- 
+
 You can leverage the generated SBOM to integrate with security scanning solutions.
 There are a variety of tools to help detect and mitigate security vulnerabilities in your application dependencies.
 
@@ -137,11 +147,42 @@ The generated report can then be used to update any vulnerable dependencies in y
 
 Integrating security scanning into your CI/CD workflows has never been easier.
 With SBOM support available in the [GraalVM GitHub Action](https://github.com/marketplace/actions/github-action-for-graalvm){:target="_blank"}, your generated SBOM can be automatically submitted and analyzed using [GitHub’s dependency submission API](https://docs.github.com/en/rest/dependency-graph/dependency-submission){:target="_blank"}.
-It enables: 
+It enables:
 - Vulnerability tracking with GitHub's Dependabot.
 - Dependency tracking with GitHub's Dependency Graph.
 
 This integration helps ensure that your application is continuously monitored for vulnerabilities throughout the development lifecycle.
+
+## Verifying Component Integrity with Hashes
+
+Use `--enable-sbom=hashes` to associate each component with SHA-256 and SHA-512 hashes.
+The hash can be verified against trusted sources such as Maven Central.
+Verifying the component hashes can detect malicious tampering or substitutions in your native image builds.
+If a compromised dependency poses as a legitimate library, a hash mismatch against the trusted source would reveal tampering.
+
+> Verifying component hashes strengthens integrity verification, but does not provide complete end‑to‑end supply chain security. Use cryptographic signing and SLSA provenances to guarantee authenticity and integrity.
+
+Hashes are computed for applications JARs and GraalVM components, but not for classpath directories.
+The GraalVM components are associated with the hash of the runtime image file. 
+These GraalVM components include for example `org.graalvm.nativeimage/svm`, `org.graalvm.sdk/nativeimage`, and `Oracle GraalVM`.
+
+| Kind                  | Hashed | How to verify                                                                                                                    |
+|-----------------------|:------:|----------------------------------------------------------------------------------------------------------------------------------|
+| Application JARs      |  Yes   | Download the JAR from a trusted source, hash it, and compare with the component hash.                                            |
+| GraalVM components    |  Yes   | Hash `$GRAALVM_HOME/lib/modules` from the same GraalVM distribution used to build the image and compare with the component hash. |
+| Classpath directories |   No   | -                                                                                                                                |
+
+If you use a fat (or shaded) JAR, the hash is computed from the fat JAR, which will not match individual component hashes published on Maven Central.
+
+Pair this with `--enable-sbom=hashes,strict`.
+The `strict` flag enforces completeness by ensuring every class in the image is mapped to a component.
+When using `strict`, the `native-image` builder will throw an exception if one or more components cannot be associated with a hash.
+
+The Security Report in the build output indicates whether any components could not be associated with a hash. 
+Run the following command to find these components:
+```bash
+jq '.components[] | select(.hashes == null)' /path/to/app.sbom.json
+```
 
 ## Dependency Tree
 
@@ -243,6 +284,7 @@ The class-level SBOM component would look like this:
     "purl": "pkg:maven/com.sbom/sbom-test-app@1.0.0",
     "bom-ref": "pkg:maven/com.sbom/sbom-test-app@1.0.0",
     "properties": [...],
+    "hashes": [...],
     "components": [
         {
             "type": "library",
