@@ -419,6 +419,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
+                        Node.Child.class,
+                        Node.Children.class,
                         RootNode.class,
                         UnexpectedResultException.class,
                         SlowPathException.class,
@@ -427,6 +429,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         OptimizedAssumption.class,
                         HostCompilerDirectives.class,
                         CompilerDirectives.class,
+                        CompilerDirectives.CompilationFinal.class,
                         CompilerDirectives.TruffleBoundary.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitch.class,
                         HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class,

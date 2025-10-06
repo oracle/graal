@@ -24,25 +24,36 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFactory {
 
@@ -69,14 +80,19 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
 
     @Override
     public SubstrateField createField(AnalysisField aField, HostedStringDeduplication stringTable) {
-        ConstantFieldInfo fieldInfo = truffleRuntime.getConstantFieldInfo(aField);
+        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
+        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) aField);
+        ResolvedJavaType child = GraalAccess.lookupType(Node.Child.class);
+        ResolvedJavaType children = GraalAccess.lookupType(Node.Children.class);
+        ResolvedJavaType compilationFinal = GraalAccess.lookupType(CompilerDirectives.CompilationFinal.class);
+        ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, child, children, compilationFinal);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method) {
-        var info = ((SubstrateTruffleRuntime) runtime).getPartialEvaluationMethodInfo(method);
+        var info = runtime.getPartialEvaluationMethodInfo(method);
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {

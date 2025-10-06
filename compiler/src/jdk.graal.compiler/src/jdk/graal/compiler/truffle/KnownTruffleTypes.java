@@ -86,6 +86,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     // truffle.api
     public final ResolvedJavaType CompilerDirectives = lookupType("com.oracle.truffle.api.CompilerDirectives");
+    public final ResolvedJavaType CompilerDirectives_CompilationFinal = lookupType("com.oracle.truffle.api.CompilerDirectives$CompilationFinal");
     public final ResolvedJavaType CompilerAsserts = lookupType("com.oracle.truffle.api.CompilerAsserts");
     public final ResolvedJavaType ExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType HostCompilerDirectives = lookupType("com.oracle.truffle.api.HostCompilerDirectives");
@@ -94,6 +95,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     // truffle.api.nodes
     public final ResolvedJavaType RootNode = lookupType("com.oracle.truffle.api.nodes.RootNode");
     public final ResolvedJavaType Node = lookupTypeCached("com.oracle.truffle.api.nodes.Node");
+    public final ResolvedJavaType Node_Child = lookupType("com.oracle.truffle.api.nodes.Node$Child");
+    public final ResolvedJavaType Node_Children = lookupType("com.oracle.truffle.api.nodes.Node$Children");
     public final ResolvedJavaField Node_parent = findField(Node, "parent");
     public final ResolvedJavaType UnexpectedResultException = lookupType("com.oracle.truffle.api.nodes.UnexpectedResultException");
     public final ResolvedJavaType SlowPathException = lookupType("com.oracle.truffle.api.nodes.SlowPathException");

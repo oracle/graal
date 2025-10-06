@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,6 +35,8 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.FieldKey;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
@@ -45,11 +48,13 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
@@ -119,7 +124,6 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
             cache = graphCacheRef.get();
         } while (cache == null &&
                         !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(new ConcurrentHashMap<>())));
-        assert cache != null;
         return cache;
     }
 
@@ -200,9 +204,9 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
-            return config.runtime().getConstantFieldInfo(field);
+            KnownTruffleTypes types = getTypes();
+            Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(field);
+            return computeConstantFieldInfo(field, declaredAnnotationValues, types.Node_Child, types.Node_Children, types.CompilerDirectives_CompilationFinal);
         }
-
     }
-
 }

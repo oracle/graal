@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -37,6 +38,7 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
@@ -73,6 +75,7 @@ import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProv
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -145,6 +148,57 @@ public abstract class PartialEvaluator {
 
         firstTierDecodingPlugins.maybePrintIntrinsics(options);
         lastTierDecodingPlugins.maybePrintIntrinsics(options);
+    }
+
+    private static int getArrayDimensions(JavaType type) {
+        int dimensions = 0;
+        for (JavaType componentType = type; componentType.isArray(); componentType = componentType.getComponentType()) {
+            dimensions++;
+        }
+        return dimensions;
+    }
+
+    private static int actualStableDimensions(ResolvedJavaField field, int dimensions) {
+        if (dimensions == 0) {
+            return 0;
+        }
+        int arrayDim = getArrayDimensions(field.getType());
+        if (dimensions < 0) {
+            if (dimensions != -1) {
+                throw new IllegalArgumentException("Negative @CompilationFinal dimensions");
+            }
+            return arrayDim;
+        }
+        if (dimensions > arrayDim) {
+            throw new IllegalArgumentException(String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field));
+        }
+        return dimensions;
+    }
+
+    /**
+     * Gets an object describing how a read of {@code field} can be constant folded based on Truffle
+     * annotations.
+     *
+     * @return {@code null} if there are no constant folding related Truffle annotations on
+     *         {@code field}
+     */
+    public static ConstantFieldInfo computeConstantFieldInfo(ResolvedJavaField field,
+                    Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
+                    ResolvedJavaType Child,
+                    ResolvedJavaType Children,
+                    ResolvedJavaType CompilationFinal) {
+        if (declaredAnnotationValues.containsKey(Child)) {
+            return ConstantFieldInfo.CHILD;
+        }
+        if (declaredAnnotationValues.containsKey(Children)) {
+            return ConstantFieldInfo.CHILDREN;
+        }
+        AnnotationValue cf = declaredAnnotationValues.get(CompilationFinal);
+        if (cf != null) {
+            int dimensions = actualStableDimensions(field, cf.get("dimensions", Integer.class));
+            return ConstantFieldInfo.forDimensions(dimensions);
+        }
+        return null;
     }
 
     public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);
@@ -558,6 +612,5 @@ public abstract class PartialEvaluator {
         public String getNodeClassName() {
             return delegate.getNodeClassName();
         }
-
     }
 }
