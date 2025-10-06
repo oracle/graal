@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
 public abstract class AbstractToolchainWrapper {
@@ -61,8 +62,19 @@ public abstract class AbstractToolchainWrapper {
         return System.getProperty("os.name").startsWith("Windows");
     }
 
+    private static boolean isNativeImage() {
+        return ImageInfo.inImageCode();
+    }
+
     private static Path getCurrentExecutablePath() {
-        final String path = ProcessProperties.getExecutableName();
+        String path = System.getProperty("org.graalvm.launcher.executablePath");
+        if (path != null) {
+            assert !isNativeImage() : "only expected with JVM wrappers";
+            return Path.of(path).toAbsolutePath().normalize();
+        }
+
+        assert isNativeImage();
+        path = ProcessProperties.getExecutableName();
         return path == null ? null : Paths.get(path);
     }
 
@@ -89,11 +101,11 @@ public abstract class AbstractToolchainWrapper {
         }
         Path llvmPath = toolchainPath.resolve(RELATIVE_LLVM_PATH).normalize();
 
-        String programName;
+        String programName = null;
         if (isWindows()) {
             // set by the exe_link_template.cmd wrapper script
             programName = System.getenv("GRAALVM_ARGUMENT_VECTOR_PROGRAM_NAME");
-        } else {
+        } else if (isNativeImage()) {
             programName = ProcessProperties.getArgumentVectorProgramName();
         }
 
