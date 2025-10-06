@@ -398,7 +398,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature, Fe
             return false;
         }
 
-        if (!fieldValueInterceptionSupport.isValueAvailable(aField)) {
+        if (!fieldValueInterceptionSupport.isValueAvailable(aField, null)) {
             /*
              * Cannot optimize static field whose value is recomputed and is not yet available,
              * i.e., it may depend on analysis/compilation derived data.

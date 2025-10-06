@@ -101,7 +101,7 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
          * for initialization at build time) before any constant folding of static fields is
          * attempted.
          */
-        if (!fieldValueInterceptionSupport.isValueAvailable(aField)) {
+        if (!fieldValueInterceptionSupport.isValueAvailable(aField, tool == null ? null : tool.getReceiver())) {
             return false;
         }
 
