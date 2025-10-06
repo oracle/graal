@@ -134,6 +134,7 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
@@ -753,10 +754,16 @@ public class TruffleFeature implements InternalFeature {
 
     private void blocklistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
         for (Executable m : clazz.getDeclaredMethods()) {
-            blocklistMethods.add(metaAccess.lookupJavaMethod(m));
+            try {
+                blocklistMethods.add(metaAccess.lookupJavaMethod(m));
+            } catch (DeletedElementException e) {
+            }
         }
         for (Executable m : clazz.getDeclaredConstructors()) {
-            blocklistMethods.add(metaAccess.lookupJavaMethod(m));
+            try {
+                blocklistMethods.add(metaAccess.lookupJavaMethod(m));
+            } catch (DeletedElementException e) {
+            }
         }
     }
 
@@ -770,10 +777,16 @@ public class TruffleFeature implements InternalFeature {
 
     private void tempTargetAllowlistAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
         for (Executable m : clazz.getMethods()) {
-            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+            try {
+                tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+            } catch (DeletedElementException e) {
+            }
         }
         for (Executable m : clazz.getConstructors()) {
-            tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+            try {
+                tempTargetAllowlistMethods.add(metaAccess.lookupJavaMethod(m));
+            } catch (DeletedElementException e) {
+            }
         }
     }
 
