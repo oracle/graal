@@ -47,15 +47,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public abstract class BarrierSet {
 
     /**
-     * Checks if this barrier set has a write barrier. All barrier sets that do any work include a
-     * write barrier. Only the special {@link NoBarrierSet} returns false since it performs no
-     * barrier work at all.
-     */
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    /**
      * Checks whether writing to {@link LocationIdentity#INIT_LOCATION} can be performed with an
      * intervening allocation.
      */
