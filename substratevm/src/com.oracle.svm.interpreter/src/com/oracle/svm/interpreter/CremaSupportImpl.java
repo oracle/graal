@@ -264,10 +264,12 @@ public class CremaSupportImpl implements CremaSupport {
             if (Modifier.isInterface(parsed.getFlags())) {
                 return new CremaInterfaceDispatchTableImpl(partialType);
             } else {
-                Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> tables = VTable.create(partialType,
-                                false,
-                                false,
-                                true);
+                /*
+                 * GR-70607: once we handle vtable indicies better in crema we should enable
+                 * mirandas.
+                 */
+                boolean addMirandas = false;
+                var tables = VTable.create(partialType, false, false, addMirandas);
                 return new CremaInstanceDispatchTableImpl(tables, partialType);
             }
         } catch (MethodTableException e) {
