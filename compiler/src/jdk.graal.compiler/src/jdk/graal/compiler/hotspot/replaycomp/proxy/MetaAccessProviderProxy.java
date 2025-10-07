@@ -40,8 +40,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 public final class MetaAccessProviderProxy extends CompilationProxyBase implements MetaAccessProvider {
     MetaAccessProviderProxy(InvocationHandler handler) {
         super(handler);

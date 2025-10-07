@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 public final class SpeculationLogProxy extends CompilationProxyBase implements SpeculationLog {
     SpeculationLogProxy(InvocationHandler handler) {
         super(handler);
