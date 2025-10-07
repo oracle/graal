@@ -791,7 +791,7 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    private static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {
+    public static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {
         int tableAddress = instance.tableAddress(tableIndex);
         WasmTable table = instance.store().tables().table(tableAddress);
         table.fill(0, table.size(), initValue);

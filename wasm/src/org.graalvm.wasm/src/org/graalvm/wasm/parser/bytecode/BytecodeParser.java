@@ -224,6 +224,13 @@ public abstract class BytecodeParser {
      */
     public static void resetTableState(WasmStore store, WasmModule module, WasmInstance instance) {
         final byte[] bytecode = module.bytecode();
+        for (int tableIndex = 0; tableIndex < module.tableCount(); tableIndex++) {
+            if (module.tableInitialValue(tableIndex) != null) {
+                Linker.initializeTable(instance, tableIndex, module.tableInitialValue(tableIndex));
+            } else if (module.tableInitializerBytecode(tableIndex) != null) {
+                Linker.initializeTable(instance, tableIndex, Linker.evalConstantExpression(instance, module.tableInitializerBytecode(tableIndex)));
+            }
+        }
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemOffset = module.elemInstanceOffset(i);
             final int flags = bytecode[elemOffset];
