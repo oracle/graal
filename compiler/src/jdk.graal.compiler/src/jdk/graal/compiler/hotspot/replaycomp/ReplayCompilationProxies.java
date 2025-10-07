@@ -569,7 +569,11 @@ public class ReplayCompilationProxies implements CompilationProxies {
                 entry: for (int j = 0; j < entries; j++) {
                     for (int k = 0; k < method.paramCount(); k++) {
                         Object arg = operationResults[i++];
-                        if (!Objects.equals(args[k], arg)) {
+                        /*
+                         * Call equals on the deserialized object to allow the deserialized object
+                         * to override equals behavior (i.e., to support ClassSurrogate).
+                         */
+                        if (!Objects.equals(arg, args[k])) {
                             i += method.paramCount() - k;
                             continue entry;
                         }
