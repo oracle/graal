@@ -49,13 +49,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class G1BarrierSet extends BarrierSet {
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
-    private final boolean useDeferredInitBarriers;
 
-    protected G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean useDeferredInitBarriers) {
-        super(GraphState.StageFlag.MID_TIER_BARRIER_ADDITION);
+    protected G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean hasDeferredInitBarriers) {
+        super(GraphState.StageFlag.MID_TIER_BARRIER_ADDITION, hasDeferredInitBarriers);
         this.objectArrayType = objectArrayType;
         this.referentField = referentField;
-        this.useDeferredInitBarriers = useDeferredInitBarriers;
     }
 
     @Override
@@ -98,21 +96,15 @@ public class G1BarrierSet extends BarrierSet {
 
     @Override
     public void addBarriers(FixedAccessNode n, CoreProviders context) {
-        if (n instanceof ReadNode) {
-            addReadNodeBarriers((ReadNode) n);
-        } else if (n instanceof WriteNode) {
-            WriteNode write = (WriteNode) n;
-            addWriteBarriers(write, write.value(), null, true);
-        } else if (n instanceof LoweredAtomicReadAndWriteNode) {
-            LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
-            addWriteBarriers(atomic, atomic.getNewValue(), null, true);
-        } else if (n instanceof AbstractCompareAndSwapNode) {
-            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
-            addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false);
-        } else if (n instanceof ArrayRangeWrite) {
-            addArrayRangeBarriers((ArrayRangeWrite) n);
-        } else {
-            GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
+        switch (n) {
+            case ReadNode readNode -> addReadNodeBarriers(readNode);
+            case WriteNode write -> addWriteBarriers(write, write.value(), null, true);
+            case LoweredAtomicReadAndWriteNode atomic -> addWriteBarriers(atomic, atomic.getNewValue(), null, true);
+            case AbstractCompareAndSwapNode cmpSwap ->
+                addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false);
+            case ArrayRangeWrite arrayRangeWrite -> addArrayRangeBarriers(arrayRangeWrite);
+            default ->
+                GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
         }
     }
 
@@ -184,7 +176,7 @@ public class G1BarrierSet extends BarrierSet {
         if (StampTool.isPointerAlwaysNull(writtenValue)) {
             return false;
         }
-        return !useDeferredInitBarriers || !isWriteToNewObject(node);
+        return !hasDeferredInitBarriers || !isWriteToNewObject(node);
     }
 
     private void addArrayRangeBarriers(ArrayRangeWrite write) {
@@ -208,7 +200,7 @@ public class G1BarrierSet extends BarrierSet {
         if (!write.writesObjectArray()) {
             return false;
         }
-        return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedAccessNode());
+        return !hasDeferredInitBarriers || !isWriteToNewObject(write.asFixedAccessNode());
     }
 
     private void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, StructuredGraph graph) {
