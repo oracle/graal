@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -215,13 +215,13 @@ public class SerializationSupport implements SerializationRegistry {
         }
     }
 
-    private final EconomicMap<Object /* DynamicHubKey or DynamicHub.typeID */, RuntimeConditionSet> classes = EconomicMap.create();
-    private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
+    private final EconomicMap<Object /* DynamicHubKey or DynamicHub.typeID */, RuntimeDynamicAccessMetadata> classes = EconomicMap.create();
+    private final EconomicMap<String, RuntimeDynamicAccessMetadata> lambdaCapturingClasses = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerSerializationTargetClass(AccessCondition cnd, DynamicHub hub, boolean preserved) {
         synchronized (classes) {
-            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeConditionSet.createHosted(cnd, preserved));
+            var previous = classes.putIfAbsent(BuildPhaseProvider.isHostedUniverseBuilt() ? hub.getTypeID() : new DynamicHubKey(hub), RuntimeDynamicAccessMetadata.createHosted(cnd, preserved));
             if (previous != null) {
                 previous.addCondition(cnd);
                 if (!preserved) {
@@ -232,7 +232,7 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     public void replaceHubKeyWithTypeID() {
-        EconomicMap<Integer, RuntimeConditionSet> newEntries = EconomicMap.create();
+        EconomicMap<Integer, RuntimeDynamicAccessMetadata> newEntries = EconomicMap.create();
         var cursor = classes.getEntries();
         while (cursor.advance()) {
             Object key = cursor.getKey();
@@ -247,7 +247,7 @@ public class SerializationSupport implements SerializationRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerLambdaCapturingClass(AccessCondition cnd, String lambdaCapturingClass) {
         synchronized (lambdaCapturingClasses) {
-            var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeConditionSet.createHosted(cnd, false));
+            var previousConditions = lambdaCapturingClasses.putIfAbsent(lambdaCapturingClass, RuntimeDynamicAccessMetadata.createHosted(cnd, false));
             if (previousConditions != null) {
                 previousConditions.addCondition(cnd);
             }

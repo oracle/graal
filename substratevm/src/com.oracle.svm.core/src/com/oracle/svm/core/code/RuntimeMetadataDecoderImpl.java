@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -356,7 +356,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
 
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId, preserved);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
@@ -364,7 +364,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  * Generate negative copy of the field. Finding a non-public field when looking for
                  * a public one should not result in a missing registration exception.
                  */
-                return ReflectionObjectFactory.newField(conditions, declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
+                return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
                                 null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
             }
             if (reflectOnly) {
@@ -393,7 +393,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             if (!reflectOnly) {
                 return new FieldDescriptor(declaringClass, name);
             }
-            return ReflectionObjectFactory.newField(conditions, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null,
+            return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null,
+                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null,
                             null);
         }
         boolean trustedFinal = buf.getU1() == 1;
@@ -406,13 +407,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             modifiers |= NEGATIVE_FLAG_MASK;
         }
 
-        Field reflectField = ReflectionObjectFactory.newField(conditions, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason, typeAnnotations);
+        Field reflectField = ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason,
+                        typeAnnotations);
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
-    private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf, int layerId, boolean preserved) {
+    private static RuntimeDynamicAccessMetadata decodeDynamicAccessMetadata(UnsafeArrayTypeReader buf, int layerId, boolean preserved) {
         var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
-        return RuntimeConditionSet.createDecoded(conditionTypes, preserved);
+        return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
     }
 
     /**
@@ -523,7 +525,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId, preserved);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
@@ -532,10 +534,12 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  * looking for a public one should not result in a missing registration exception.
                  */
                 if (isMethod) {
-                    executable = ReflectionObjectFactory.newMethod(conditions, declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK,
+                    executable = ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null,
+                                    modifiers | NEGATIVE_FLAG_MASK,
                                     null, null, null, null, null, null, null, layerId);
                 } else {
-                    executable = ReflectionObjectFactory.newConstructor(conditions, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null, null, null,
+                    executable = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null,
+                                    null, null,
                                     null);
                 }
             }
@@ -578,13 +582,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 if (!reflectOnly) {
                     return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
                 }
-                return ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
+                return ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
                                 null, null, null, null, null, null, null, layerId);
             } else {
                 if (!reflectOnly) {
                     return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
                 }
-                return ReflectionObjectFactory.newConstructor(conditions, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
+                return ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
             }
         }
         Class<?>[] exceptionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
@@ -601,14 +605,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
         Target_java_lang_reflect_Executable executable;
         if (isMethod) {
-            Method method = ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
+            Method method = ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
                             signature, annotations, parameterAnnotations, annotationDefault, accessor, reflectParameters, typeAnnotations, layerId);
             if (!reflectOnly) {
                 return new MethodDescriptor(method);
             }
             executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         } else {
-            Constructor<?> constructor = ReflectionObjectFactory.newConstructor(conditions, declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
+            Constructor<?> constructor = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
                             modifiers, signature, annotations, parameterAnnotations, accessor, reflectParameters, typeAnnotations);
             if (!reflectOnly) {
                 return new ConstructorDescriptor(constructor);

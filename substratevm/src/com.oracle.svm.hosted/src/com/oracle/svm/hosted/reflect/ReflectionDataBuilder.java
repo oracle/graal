@@ -92,7 +92,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -479,18 +479,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean registered = false;
         ConditionalRuntimeValue<Executable> conditionalValue = classMethods.get(analysisMethod);
         if (conditionalValue == null) {
-            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectExecutable);
+            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectExecutable);
             conditionalValue = classMethods.putIfAbsent(analysisMethod, newConditionalValue);
             if (conditionalValue == null) {
                 conditionalValue = newConditionalValue;
                 registered = true;
             }
         } else if (!preserved) {
-            conditionalValue.getConditions().setNotPreserved();
+            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
-            conditionalValue.getConditions().addCondition(cnd);
+            conditionalValue.getDynamicAccessMetadata().addCondition(cnd);
         }
 
         if (registered) {
@@ -653,10 +653,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         var classFields = registeredFields.computeIfAbsent(declaringClass, _ -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
-        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), reflectField));
+        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectField));
         if (exists) {
             if (!preserved) {
-                cndValue.getConditions().setNotPreserved();
+                cndValue.getDynamicAccessMetadata().setNotPreserved();
             }
         } else {
             registerTypesForField(analysisField, reflectField, queriedOnly);
@@ -692,7 +692,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         if (!queriedOnly) {
             /* queryOnly methods are conditioned on the type itself */
-            cndValue.getConditions().addCondition(cnd);
+            cndValue.getDynamicAccessMetadata().addCondition(cnd);
             registerTypesForField(analysisField, reflectField, false);
         }
     }

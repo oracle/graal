@@ -55,7 +55,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -87,7 +87,7 @@ public class LocalizationSupport {
 
     public final Charset defaultCharset;
 
-    private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create("registeredBundles");
+    private final EconomicMap<String, RuntimeDynamicAccessMetadata> registeredBundles = ImageHeapMap.create("registeredBundles");
 
     public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
@@ -284,9 +284,9 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerBundleLookup(AccessCondition condition, String baseName) {
-        RuntimeConditionSet conditionSet = RuntimeConditionSet.emptySet(false);
-        var registered = registeredBundles.putIfAbsent(baseName, conditionSet);
-        (registered == null ? conditionSet : registered).addCondition(condition);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = RuntimeDynamicAccessMetadata.emptySet(false);
+        var registered = registeredBundles.putIfAbsent(baseName, dynamicAccessMetadata);
+        (registered == null ? dynamicAccessMetadata : registered).addCondition(condition);
     }
 
     public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {

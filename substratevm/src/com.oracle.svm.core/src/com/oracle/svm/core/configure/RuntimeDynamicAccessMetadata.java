@@ -41,32 +41,33 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
 /**
- * Represents a group of {@link #conditions} that guard a value. The conditions are encoded
+ * The dynamic access metadata for some value that can be accessed at run time. Contains a set of
+ * {@link #conditions} that dictate whether the value (e.g., a resource) should be accessible; also
+ * tracks whether the value is present because it was preserved.
  * <p>
  * If any of the {@link #conditions} is satisfied then the whole set becomes also
- * {@link #satisfied}. {@link RuntimeConditionSet}s can be created at build time
+ * {@link #satisfied}. {@link RuntimeDynamicAccessMetadata}s can be created at build time
  * {@link #createHosted(AccessCondition,boolean)} and stored to the image heap, or it can be encoded
  * ({@link #getTypesForEncoding()} and later decoded at run time
  * ({@link #createDecoded(Object[], boolean)}. The current implementation does not cache
  * {@link #conditions}, although this will be implemented in the future (GR-49526)
  */
-public class RuntimeConditionSet {
+public class RuntimeDynamicAccessMetadata {
 
     private Object[] conditions;
     private boolean satisfied;
     private volatile boolean preserved;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static RuntimeConditionSet emptySet(boolean preserved) {
-        return new RuntimeConditionSet(new Object[0], preserved);
-
+    public static RuntimeDynamicAccessMetadata emptySet(boolean preserved) {
+        return new RuntimeDynamicAccessMetadata(new Object[0], preserved);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static RuntimeConditionSet createHosted(AccessCondition condition, boolean preserved) {
-        var conditionSet = new RuntimeConditionSet(new Object[0], preserved);
-        conditionSet.addCondition(condition);
-        return conditionSet;
+    public static RuntimeDynamicAccessMetadata createHosted(AccessCondition condition, boolean preserved) {
+        var metadata = new RuntimeDynamicAccessMetadata(new Object[0], preserved);
+        metadata.addCondition(condition);
+        return metadata;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -101,12 +102,12 @@ public class RuntimeConditionSet {
         }
     }
 
-    public static RuntimeConditionSet unmodifiableEmptySet() {
-        return UnmodifiableRuntimeConditionSet.UNMODIFIABLE_EMPTY_SET;
+    public static RuntimeDynamicAccessMetadata unmodifiableEmptyMetadata() {
+        return UnmodifiableRuntimeDynamicAccessMetadata.UNMODIFIABLE_EMPTY_METADATA;
     }
 
-    public static RuntimeConditionSet createDecoded(Object[] conditions, boolean preserved) {
-        return new RuntimeConditionSet(conditions, preserved);
+    public static RuntimeDynamicAccessMetadata createDecoded(Object[] conditions, boolean preserved) {
+        return new RuntimeDynamicAccessMetadata(conditions, preserved);
     }
 
     /**
@@ -160,7 +161,7 @@ public class RuntimeConditionSet {
         return conditionsString + " = " + satisfied;
     }
 
-    private RuntimeConditionSet(Object[] conditions, boolean preserved) {
+    private RuntimeDynamicAccessMetadata(Object[] conditions, boolean preserved) {
         setConditions(conditions);
         this.preserved = preserved;
     }
@@ -199,10 +200,10 @@ public class RuntimeConditionSet {
         }
     }
 
-    public static final class UnmodifiableRuntimeConditionSet extends RuntimeConditionSet {
-        private static final RuntimeConditionSet UNMODIFIABLE_EMPTY_SET = new UnmodifiableRuntimeConditionSet(new Object[0]);
+    public static final class UnmodifiableRuntimeDynamicAccessMetadata extends RuntimeDynamicAccessMetadata {
+        private static final RuntimeDynamicAccessMetadata UNMODIFIABLE_EMPTY_METADATA = new UnmodifiableRuntimeDynamicAccessMetadata(new Object[0]);
 
-        private UnmodifiableRuntimeConditionSet(Object[] conditions) {
+        private UnmodifiableRuntimeDynamicAccessMetadata(Object[] conditions) {
             super(conditions, false);
         }
 

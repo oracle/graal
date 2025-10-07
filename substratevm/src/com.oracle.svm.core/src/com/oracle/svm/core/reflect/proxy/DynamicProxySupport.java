@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -117,12 +117,12 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ProxyCacheKey key = new ProxyCacheKey(intfs);
         ConditionalRuntimeValue<Object> conditionalValue = proxyCache.get(key);
         if (conditionalValue == null) {
-            conditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(preserved), createProxyClass(intfs, preserved));
+            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), createProxyClass(intfs, preserved));
             proxyCache.put(key, conditionalValue);
         } else if (!preserved) {
-            conditionalValue.getConditions().setNotPreserved();
+            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
-        conditionalValue.getConditions().addCondition(condition);
+        conditionalValue.getDynamicAccessMetadata().addCondition(condition);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -200,7 +200,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
 
-        if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
+        if (clazzOrError == null || !clazzOrError.getDynamicAccessMetadata().satisfied()) {
             throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
@@ -233,7 +233,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
     public boolean isProxyPreserved(Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         if (proxyCache.get(key) instanceof ConditionalRuntimeValue<Object> entry) {
-            return entry.getConditions().isPreserved();
+            return entry.getDynamicAccessMetadata().isPreserved();
         }
         return false;
     }

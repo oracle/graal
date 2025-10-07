@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
@@ -121,7 +121,7 @@ public final class ClassForNameSupport {
      * The map used to collect registered class names. When respecting class loaders this replaces
      * knownClasses.
      */
-    private final EconomicMap<String, RuntimeConditionSet> knownClassNames;
+    private final EconomicMap<String, RuntimeDynamicAccessMetadata> knownClassNames;
     /**
      * The map used to collect exceptions that should be thrown by Class.forName. Only used when
      * respecting class loaders.
@@ -131,7 +131,7 @@ public final class ClassForNameSupport {
      * The map used to collect unsafe allocated classes. This map only collects data for the current
      * layer.
      */
-    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses;
+    private final EconomicMap<Class<?>, RuntimeDynamicAccessMetadata> unsafeInstantiatedClasses;
 
     /**
      * The map used to collect classes registered in previous layers. The boolean associated to each
@@ -244,12 +244,12 @@ public final class ClassForNameSupport {
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
                     AccessCondition additionalCondition, boolean preserved) {
         if (existingConditionalValue == null) {
-            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition, preserved), newValue);
+            return new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(additionalCondition, preserved), newValue);
         } else {
-            existingConditionalValue.getConditions().addCondition(additionalCondition);
+            existingConditionalValue.getDynamicAccessMetadata().addCondition(additionalCondition);
             existingConditionalValue.updateValue(newValue);
             if (!preserved) {
-                existingConditionalValue.getConditions().setNotPreserved();
+                existingConditionalValue.getDynamicAccessMetadata().setNotPreserved();
             }
             return existingConditionalValue;
         }
@@ -287,13 +287,13 @@ public final class ClassForNameSupport {
     private void registerKnownClassName(AccessCondition condition, String className, boolean preserved) {
         assert respectClassLoader();
         synchronized (knownClassNames) {
-            RuntimeConditionSet existingConditions = knownClassNames.get(className);
-            if (existingConditions == null) {
-                knownClassNames.put(className, RuntimeConditionSet.createHosted(condition, preserved));
+            RuntimeDynamicAccessMetadata existingMetadata = knownClassNames.get(className);
+            if (existingMetadata == null) {
+                knownClassNames.put(className, RuntimeDynamicAccessMetadata.createHosted(condition, preserved));
             } else {
-                existingConditions.addCondition(condition);
+                existingMetadata.addCondition(condition);
                 if (!preserved) {
-                    existingConditions.setNotPreserved();
+                    existingMetadata.setNotPreserved();
                 }
             }
         }
@@ -304,7 +304,7 @@ public final class ClassForNameSupport {
         if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             /* Otherwise, UNSAFE.allocateInstance results in InstantiationException */
             if (!previousLayerUnsafe.contains(clazz.getName())) {
-                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition, preserved));
+                var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeDynamicAccessMetadata.createHosted(condition, preserved));
                 if (conditionSet != null) {
                     conditionSet.addCondition(condition);
                     if (!preserved) {
@@ -317,11 +317,11 @@ public final class ClassForNameSupport {
 
     private void updateCondition(AccessCondition condition, String className, Object value) {
         synchronized (knownClasses) {
-            var cond = new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition, false), value);
+            var cond = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.createHosted(condition, false), value);
             addKnownClass(className, (map) -> {
                 var runtimeConditions = map.putIfAbsent(className, cond);
                 if (runtimeConditions != null) {
-                    runtimeConditions.getConditions().addCondition(condition);
+                    runtimeConditions.getDynamicAccessMetadata().addCondition(condition);
                 }
             }, cond);
         }
@@ -427,15 +427,15 @@ public final class ClassForNameSupport {
         }
     }
 
-    public static RuntimeConditionSet getConditionFor(Class<?> jClass) {
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataFor(Class<?> jClass) {
         Objects.requireNonNull(jClass);
         String jClassName = jClass.getName();
         if (respectClassLoader()) {
-            RuntimeConditionSet conditionSet = getConditionForName(jClassName);
-            if (conditionSet == null) {
-                return RuntimeConditionSet.unmodifiableEmptySet();
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(jClassName);
+            if (dynamicAccessMetadata == null) {
+                return RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
             }
-            return conditionSet;
+            return dynamicAccessMetadata;
         }
         ConditionalRuntimeValue<Object> conditionalClass = null;
         for (var singleton : layeredSingletons()) {
@@ -445,9 +445,9 @@ public final class ClassForNameSupport {
             }
         }
         if (conditionalClass == null) {
-            return RuntimeConditionSet.unmodifiableEmptySet();
+            return RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         } else {
-            return conditionalClass.getConditions();
+            return conditionalClass.getDynamicAccessMetadata();
         }
     }
 
@@ -455,16 +455,16 @@ public final class ClassForNameSupport {
         Objects.requireNonNull(jClass);
         String jClassName = jClass.getName();
         if (respectClassLoader()) {
-            RuntimeConditionSet conditionSet = getConditionForName(jClassName);
-            if (conditionSet == null) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(jClassName);
+            if (dynamicAccessMetadata == null) {
                 return false;
             }
-            return conditionSet.isPreserved();
+            return dynamicAccessMetadata.isPreserved();
         }
         for (var singleton : layeredSingletons()) {
             ConditionalRuntimeValue<Object> conditionalClass = singleton.knownClasses.get(jClassName);
             if (conditionalClass != null) {
-                return conditionalClass.getConditions().isPreserved();
+                return conditionalClass.getDynamicAccessMetadata().isPreserved();
             }
         }
         return false;
@@ -473,9 +473,9 @@ public final class ClassForNameSupport {
     public static boolean isUnsafeAllocatedPreserved(Class<?> jClass) {
         Objects.requireNonNull(jClass);
         for (var singleton : layeredSingletons()) {
-            RuntimeConditionSet conditionSet = singleton.unsafeInstantiatedClasses.get(jClass);
-            if (conditionSet != null) {
-                return conditionSet.isPreserved();
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(jClass);
+            if (dynamicAccessMetadata != null) {
+                return dynamicAccessMetadata.isPreserved();
             }
         }
         return false;
@@ -483,11 +483,11 @@ public final class ClassForNameSupport {
 
     public static boolean isRegisteredClass(String className) {
         if (respectClassLoader()) {
-            RuntimeConditionSet conditionSet = getConditionForName(className);
-            if (conditionSet == null) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(className);
+            if (dynamicAccessMetadata == null) {
                 return false;
             }
-            return conditionSet.satisfied();
+            return dynamicAccessMetadata.satisfied();
         } else {
             return queryResultFor(className, null) != null;
         }
@@ -496,18 +496,18 @@ public final class ClassForNameSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isCurrentLayerRegisteredClass(String className) {
         assert respectClassLoader();
-        RuntimeConditionSet conditionSet = currentLayer().knownClassNames.get(className);
-        if (conditionSet == null) {
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = currentLayer().knownClassNames.get(className);
+        if (dynamicAccessMetadata == null) {
             return false;
         }
-        return conditionSet.satisfied();
+        return dynamicAccessMetadata.satisfied();
     }
 
-    private static RuntimeConditionSet getConditionForName(String className) {
+    private static RuntimeDynamicAccessMetadata getDynamicAccessMetadataForName(String className) {
         for (var singleton : layeredSingletons()) {
-            RuntimeConditionSet conditionSet = singleton.knownClassNames.get(className);
-            if (conditionSet != null) {
-                return conditionSet;
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = singleton.knownClassNames.get(className);
+            if (dynamicAccessMetadata != null) {
+                return dynamicAccessMetadata;
             }
         }
         return null;
@@ -534,15 +534,15 @@ public final class ClassForNameSupport {
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        RuntimeConditionSet conditionSet = null;
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = null;
         for (var singleton : layeredSingletons()) {
-            conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);
-            if (conditionSet != null) {
+            dynamicAccessMetadata = singleton.unsafeInstantiatedClasses.get(clazz);
+            if (dynamicAccessMetadata != null) {
                 break;
             }
         }
-        if (conditionSet != null) {
-            return conditionSet.satisfied();
+        if (dynamicAccessMetadata != null) {
+            return dynamicAccessMetadata.satisfied();
         }
         return false;
     }

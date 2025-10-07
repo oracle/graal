@@ -32,7 +32,7 @@ import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -81,7 +81,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     private static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
         return ReflectionObjectFactory.newField(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),
                         resolvedField.getName(),
                         toClassOrThrow(resolvedField.getType(), resolvedField.getDeclaringClass()),
@@ -110,7 +110,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         Class<?> receiverType = DynamicHub.toClass(declaringClass);
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedJavaMethod.getSignature().toParameterTypes(null), type);
         return ReflectionObjectFactory.newMethod(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         receiverType,
                         resolvedJavaMethod.getName(),
                         parameterTypes,
@@ -148,7 +148,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
     private Constructor<?> fromResolvedConstructor(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedConstructor) {
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedConstructor.toParameterTypes(), type);
         return ReflectionObjectFactory.newConstructor(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),
                         parameterTypes,
                         /* (GR-69097) resolvedConstructor.getDeclaredExceptions() */

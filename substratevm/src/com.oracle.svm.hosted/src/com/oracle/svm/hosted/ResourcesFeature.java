@@ -210,7 +210,7 @@ public class ResourcesFeature implements InternalFeature {
             if (conditionalResource != null) {
                 VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
                 classInitializationSupport.addForTypeReachedTracking(((TypeReachabilityCondition) condition).getType());
-                conditionalResource.getConditions().addCondition(condition);
+                conditionalResource.getDynamicAccessMetadata().addCondition(condition);
             }
         }
 

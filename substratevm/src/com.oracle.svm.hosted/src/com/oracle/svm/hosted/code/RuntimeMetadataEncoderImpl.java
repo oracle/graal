@@ -85,7 +85,7 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -438,9 +438,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
         Delete deleteAnnotation = AnnotationAccess.getAnnotation(hostedField, Delete.class);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
-        RuntimeConditionSet conditions = conditionalReflectField.getConditions();
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalReflectField.getDynamicAccessMetadata();
         /* Fill encoders with the necessary values. */
-        for (Class<?> conditionType : conditions.getTypesForEncoding()) {
+        for (Class<?> conditionType : dynamicAccessMetadata.getTypesForEncoding()) {
             encoders.classes.addObject(conditionType);
         }
         encoders.memberNames.addObject(name);
@@ -452,7 +452,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         AnnotationValue[] annotations = registerAnnotationValues(analysisField);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisField);
 
-        registerField(declaringType, reflectField, new FieldMetadata(conditions, declaringType, name, type, modifiers, trustedFinal, signature, annotations,
+        registerField(declaringType, reflectField, new FieldMetadata(dynamicAccessMetadata, declaringType, name, type, modifiers, trustedFinal, signature, annotations,
                         typeAnnotations, offset, deletedReason));
     }
 
@@ -464,14 +464,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         HostedType[] parameterTypes = getParameterTypes(hostedMethod);
         /* Reflect method because substitution of Object.hashCode() is private */
         Executable reflectMethod = conditionalMethod.getValueUnconditionally();
-        RuntimeConditionSet conditions = conditionalMethod.getConditions();
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalMethod.getDynamicAccessMetadata();
         int modifiers = reflectMethod.getModifiers();
         HostedType returnType = hostedMethod.getSignature().getReturnType();
         HostedType[] exceptionTypes = getExceptionTypes(metaAccess, reflectMethod);
         String signature = getSignature(reflectMethod);
 
         /* Fill encoders with the necessary values. */
-        for (Class<?> type : conditions.getTypesForEncoding()) {
+        for (Class<?> type : dynamicAccessMetadata.getTypesForEncoding()) {
             encoders.classes.addObject(type);
         }
         if (isMethod) {
@@ -500,11 +500,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
         if (isMethod) {
             registerMethod(declaringType, reflectMethod,
-                            new MethodMetadata(conditions, declaringType, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations,
+                            new MethodMetadata(dynamicAccessMetadata, declaringType, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations,
                                             annotationDefault, typeAnnotations, reflectParameters, accessorConstant));
         } else {
             registerConstructor(declaringType, reflectMethod,
-                            new ConstructorMetadata(conditions, declaringType, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations,
+                            new ConstructorMetadata(dynamicAccessMetadata, declaringType, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations,
                                             typeAnnotations, reflectParameters, accessorConstant));
         }
     }
@@ -537,7 +537,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
         AccessibleObjectMetadata metadata;
         /* In-heap objects have an always satisfied condition */
-        RuntimeConditionSet alwaysSatisfied = RuntimeConditionSet.unmodifiableEmptySet();
+        RuntimeDynamicAccessMetadata alwaysSatisfied = RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         if (isMethod) {
             metadata = new MethodMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, annotationDefault, typeAnnotations, reflectParameters);
             registerMethod((HostedType) metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (MethodMetadata) metadata);
@@ -627,7 +627,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(type.getJavaClass());
 
         addType(declaringType);
-        registerField(declaringType, analysisField, new FieldMetadata(RuntimeConditionSet.emptySet(false), declaringType, name, type, modifiers));
+        registerField(declaringType, analysisField, new FieldMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringType, name, type, modifiers));
     }
 
     @Override
@@ -640,7 +640,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(returnType.getJavaClass());
 
         addType(declaringType);
-        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeConditionSet.emptySet(false), declaringType, name, parameterTypes, modifiers, returnType));
+        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringType, name, parameterTypes, modifiers, returnType));
     }
 
     @Override
@@ -651,7 +651,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         /* Fill encoders with the necessary values. */
         encoders.memberNames.addObject(name);
 
-        registerField(declaringType, field, new FieldMetadata(RuntimeConditionSet.emptySet(false), declaringType, name, false));
+        registerField(declaringType, field, new FieldMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringType, name, false));
     }
 
     @Override
@@ -670,16 +670,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, executable, new MethodMetadata(RuntimeConditionSet.emptySet(false), declaringType, name, parameterTypeNames));
+            registerMethod(declaringType, executable, new MethodMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringType, name, parameterTypeNames));
         } else {
-            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeConditionSet.emptySet(false), declaringType, parameterTypeNames));
+            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringType, parameterTypeNames));
         }
     }
 
     @Override
     public void addNegativeFieldQueryMetadata(HostedType declaringClass, String fieldName) {
         encoders.memberNames.addObject(fieldName);
-        registerField(declaringClass, fieldName, new FieldMetadata(RuntimeConditionSet.emptySet(false), declaringClass, fieldName, true));
+        registerField(declaringClass, fieldName, new FieldMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringClass, fieldName, true));
     }
 
     @Override
@@ -688,7 +688,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeConditionSet.emptySet(false), declaringClass, methodName, parameterTypes));
+        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringClass, methodName, parameterTypes));
     }
 
     @Override
@@ -696,7 +696,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeConditionSet.emptySet(false), declaringClass, parameterTypes));
+        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeDynamicAccessMetadata.emptySet(false), declaringClass, parameterTypes));
     }
 
     @Override
@@ -967,9 +967,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= field.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= field.hiding ? HIDING_FLAG_MASK : 0;
         modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
-        modifiers |= field.conditions.isPreserved() ? PRESERVED_FLAG_MASK : 0;
+        modifiers |= field.dynamicAccessMetadata.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
-        encodeConditions(buf, field.conditions);
+        encodeConditions(buf, field.dynamicAccessMetadata);
 
         if (field.heapObject != null) {
             encodeObject(buf, field.heapObject);
@@ -989,8 +989,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
     }
 
-    private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeConditionSet conditions) {
-        encodeArray(buf, conditions.getTypesForEncoding().toArray(Class[]::new), t -> encodeType(buf, t));
+    private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
+        encodeArray(buf, dynamicAccessMetadata.getTypesForEncoding().toArray(Class[]::new), t -> encodeType(buf, t));
     }
 
     private void encodeExecutable(UnsafeArrayTypeWriter buf, ExecutableMetadata executable) {
@@ -1003,10 +1003,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= executable.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= isHiding ? HIDING_FLAG_MASK : 0;
         modifiers |= executable.negative ? NEGATIVE_FLAG_MASK : 0;
-        modifiers |= executable.conditions.isPreserved() ? PRESERVED_FLAG_MASK : 0;
+        modifiers |= executable.dynamicAccessMetadata.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
 
-        encodeConditions(buf, executable.conditions);
+        encodeConditions(buf, executable.dynamicAccessMetadata);
 
         if (executable.heapObject != null) {
             encodeObject(buf, executable.heapObject);
