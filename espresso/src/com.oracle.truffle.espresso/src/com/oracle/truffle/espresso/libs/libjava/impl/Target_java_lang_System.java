@@ -81,6 +81,7 @@ public final class Target_java_lang_System {
         @TruffleBoundary
         public static @JavaType(String[].class) StaticObject platformProperties(@Inject EspressoContext ctx, @Inject TruffleIO io) {
             // Import properties from host.
+            // All of those assignments should be considered as InformationLeaks!
             Props props = new Props(ctx);
             String[] known = new String[props.fixedLength];
             known[props.userHomeNdx] = java.lang.System.getProperty("user.home");
@@ -93,10 +94,10 @@ public final class Target_java_lang_System {
             }
             if (ctx.getJavaVersion().java25OrLater()) {
                 known[props.nativeEncodingNDX] = java.lang.System.getProperty("native.encoding");
+                known[props.stdinEncodingNdx] = java.lang.System.getProperty("stdin.encoding");
             }
             known[props.stdoutEncodingNdx] = java.lang.System.getProperty("stdout.encoding");
             known[props.stderrEncodingNdx] = java.lang.System.getProperty("stderr.encoding");
-            known[props.stdinEncodingNdx] = java.lang.System.getProperty("stdin.encoding");
 
             known[props.osNameNdx] = java.lang.System.getProperty("os.name");
             known[props.osArchNdx] = java.lang.System.getProperty("os.arch");
@@ -150,8 +151,6 @@ public final class Target_java_lang_System {
             private final int displayLanguageNdx;
             private final int displayScriptNdx;
             private final int displayVariantNdx;
-            // only in 21-
-            private final int fileEncodingNdx;
             private final int fileSeparatorNdx;
             private final int formatCountryNdx;
             private final int formatLanguageNdx;
@@ -171,13 +170,10 @@ public final class Target_java_lang_System {
             private final int osNameNdx;
             private final int osVersionNdx;
             private final int pathSeparatorNdx;
-            // only in 25+
-            private final int nativeEncodingNDX;
             private final int socksNonProxyHostsNdx;
             private final int socksProxyHostNdx;
             private final int socksProxyPortNdx;
             private final int stderrEncodingNdx;
-            private final int stdinEncodingNdx;
             private final int stdoutEncodingNdx;
             private final int sunArchAbiNdx;
             private final int sunArchDataModelNdx;
@@ -190,6 +186,11 @@ public final class Target_java_lang_System {
             private final int userHomeNdx;
             private final int userNameNdx;
             private final int fixedLength;
+            // only in 21-
+            private final int fileEncodingNdx;
+            // only in 25+
+            private final int nativeEncodingNDX;
+            private final int stdinEncodingNdx;
 
             private Props(EspressoContext ctx) {
                 ObjectKlass guestRaw = ctx.getMeta().jdk_internal_util_SystemProps_Raw;
@@ -204,8 +205,10 @@ public final class Target_java_lang_System {
                 }
                 if (ctx.getJavaVersion().java25OrLater()) {
                     nativeEncodingNDX = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_native_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
+                    stdinEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdin_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 } else {
                     nativeEncodingNDX = -1;
+                    stdinEncodingNdx = -1;
                 }
                 fileSeparatorNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_file_separator_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 formatCountryNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_format_country_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
@@ -230,7 +233,6 @@ public final class Target_java_lang_System {
                 socksProxyHostNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyHost_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 socksProxyPortNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_socksProxyPort_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 stderrEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stderr_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
-                stdinEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdin_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 stdoutEncodingNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_stdout_encoding_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchAbiNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_abi_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
                 sunArchDataModelNdx = guestRaw.lookupDeclaredField(ctx.getNames().getOrCreate("_sun_arch_data_model_NDX"), Types._int).getInt(guestRaw.tryInitializeAndGetStatics());
