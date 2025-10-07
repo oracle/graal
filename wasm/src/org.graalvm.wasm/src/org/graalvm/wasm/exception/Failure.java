@@ -93,7 +93,7 @@ public enum Failure {
     START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
     DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
-    IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
+    IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "immutable global"),
     CONSTANT_EXPRESSION_REQUIRED(Type.INVALID, "constant expression required"),
     LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
