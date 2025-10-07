@@ -66,6 +66,7 @@ public enum Failure {
     MALFORMED_IMPORT_KIND(Type.MALFORMED, "malformed import kind"),
     END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
     UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
+    MALFORMED_LIMITS_FLAGS(Type.MALFORMED, "malformed limits flags"),
     MALFORMED_MEMOP_FLAGS(Type.MALFORMED, "malformed memop flags"),
     MALFORMED_CATCH(Type.MALFORMED, "malformed catch clause"),
     MALFORMED_TAG_ATTRIBUTE(Type.MALFORMED, "malformed tag attribute"),

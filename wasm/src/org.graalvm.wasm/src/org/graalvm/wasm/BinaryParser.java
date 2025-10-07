@@ -3457,11 +3457,7 @@ public class BinaryParser extends BinaryStreamParser {
                 break;
             }
             default:
-                if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
-                } else {
-                    fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
-                }
+                fail(Failure.MALFORMED_LIMITS_FLAGS, "Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix);
         }
     }
 
@@ -3498,11 +3494,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
             default: {
                 if (!threads) {
-                    if (limitsPrefix < 0) {
-                        fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix);
-                    } else {
-                        fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix);
-                    }
+                    fail(Failure.MALFORMED_LIMITS_FLAGS, "Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix);
                 } else {
                     switch (limitsPrefix) {
                         case 0x02:
@@ -3525,11 +3517,7 @@ public class BinaryParser extends BinaryStreamParser {
                             break;
                         }
                         default:
-                            if (limitsPrefix < 0) {
-                                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix);
-                            } else {
-                                fail(Failure.INTEGER_TOO_LARGE, "Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix);
-                            }
+                            fail(Failure.MALFORMED_LIMITS_FLAGS, "Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix);
                     }
                 }
             }
