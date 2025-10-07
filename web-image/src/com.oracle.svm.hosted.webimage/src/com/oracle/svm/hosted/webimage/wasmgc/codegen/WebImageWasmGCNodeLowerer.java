@@ -79,6 +79,7 @@ import com.oracle.svm.webimage.wasmgc.WasmExtern;
 import com.oracle.svm.webimage.wasmgc.WasmGCJSConversion;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -240,6 +241,37 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         }
 
         return new Instruction.Return(result);
+    }
+
+    @Override
+    protected Instruction lowerExpression(ValueNode n, WasmIRWalker.Requirements reqs) {
+        Instruction inst = super.lowerExpression(n, reqs);
+
+        /*
+         * Produce a constant null value for always-null stamps.
+         *
+         * Always null stamps are a bit of a special case because they often don't have concrete
+         * type information, which is required in WasmGC because even null-constant have a static
+         * type. For that reason, the actual instruction are emitted as a top-level instruction and
+         * dropped (since it may have a side effect) and we simply return a "ref.null none", which
+         * represents the bottom type and thus satisfies all subtype checks, at all usages.
+         */
+        if (n.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp pointerStamp && pointerStamp.alwaysNull()) {
+            if (!(inst instanceof Instruction.LocalGet)) {
+                /*
+                 * We can't just not emit the instruction, it may have side effects, so we just emit
+                 * it in the same block and ignore its output (which is guaranteed to be null).
+                 *
+                 * If the node's value was stored in a variable and would be just loaded here, we
+                 * can omit this, as there are no side-effects.
+                 */
+                masm.genInst(new Instruction.Drop(inst));
+            }
+
+            return new Instruction.RefNull(WasmRefType.NONE);
+        } else {
+            return inst;
+        }
     }
 
     protected Instruction lowerUnwind(UnwindNode n) {
