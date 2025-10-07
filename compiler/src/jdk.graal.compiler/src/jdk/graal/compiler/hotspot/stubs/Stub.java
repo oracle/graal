@@ -41,6 +41,8 @@ import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.core.phases.EconomyHighTier;
+import jdk.graal.compiler.core.phases.EconomyMarkFixReadsPhase;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -312,11 +314,16 @@ public abstract class Stub {
     }
 
     protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch).copy();
+        Suites original = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+        Suites defaultSuites = original.copy();
 
         PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
+
         emptyHighTier.appendPhase(new DisableOverflownCountedLoopsPhase());
         emptyHighTier.appendPhase(new EmptyHighTier());
+        if (original.getHighTier() instanceof EconomyHighTier) {
+            emptyHighTier.appendPhase(EconomyMarkFixReadsPhase.SINGLETON);
+        }
 
         defaultSuites.getMidTier().removeSubTypePhases(Speculative.class);
         defaultSuites.getLowTier().removeSubTypePhases(Speculative.class);

@@ -27,12 +27,11 @@ package jdk.graal.compiler.nodes.spi;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.extended.AnchoringNode;
-import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.LogicNode;
-
+import jdk.graal.compiler.nodes.extended.AnchoringNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
