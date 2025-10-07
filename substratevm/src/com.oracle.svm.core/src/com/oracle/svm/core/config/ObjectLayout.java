@@ -26,21 +26,26 @@ package com.oracle.svm.core.config;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.EnumSet;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.config.ObjectLayout.LayeredCallbacks;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -73,6 +78,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * See this classes instantiation sites (such as {@code HostedConfiguration#createObjectLayout}) for
  * more details on the exact object layout for a given configuration.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class ObjectLayout {
 
     private final SubstrateTargetDescription target;
@@ -114,32 +120,6 @@ public final class ObjectLayout {
         this.identityHashMode = identityHashMode.value;
         this.identityHashNumBits = identityHashNumBits;
         this.identityHashShift = identityHashShift;
-
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            int[] currentValues = {
-                            /* this.target, */
-                            this.referenceSize,
-                            this.objectAlignment,
-                            this.alignmentMask,
-                            this.hubSize,
-                            this.hubOffset,
-                            this.firstFieldOffset,
-                            this.arrayLengthOffset,
-                            this.arrayBaseOffset,
-                            this.objectHeaderIdentityHashOffset,
-                            this.identityHashMode,
-                            this.identityHashNumBits,
-                            this.identityHashShift,
-            };
-            var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
-            VMError.guarantee(numFields - 1 == currentValues.length, "Missing fields");
-
-            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                ImageSingletons.add(PriorObjectLayout.class, new PriorObjectLayout(currentValues));
-            } else {
-                VMError.guarantee(Arrays.equals(currentValues, ImageSingletons.lookup(PriorObjectLayout.class).priorValues));
-            }
-        }
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -311,6 +291,22 @@ public final class ObjectLayout {
         return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }
 
+    private List<Integer> getCurrentValues() {
+        return List.of(/* this.target, */
+                        this.referenceSize,
+                        this.objectAlignment,
+                        this.alignmentMask,
+                        this.hubSize,
+                        this.hubOffset,
+                        this.firstFieldOffset,
+                        this.arrayLengthOffset,
+                        this.arrayBaseOffset,
+                        this.objectHeaderIdentityHashOffset,
+                        this.identityHashMode,
+                        this.identityHashNumBits,
+                        this.identityHashShift);
+    }
+
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, JavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
         if (!(type instanceof ResolvedJavaType resolvedJavaType)) {
             assert type instanceof UnresolvedJavaType : type;
@@ -341,28 +337,34 @@ public final class ObjectLayout {
         }
     }
 
-    static class PriorObjectLayout implements LayeredImageSingleton {
-        final int[] priorValues;
-
-        PriorObjectLayout(int[] priorValues) {
-            this.priorValues = priorValues;
-        }
-
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-        }
+        public SingletonTrait getLayeredCallbacksTrait() {
+            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+                @Override
+                public PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                    ObjectLayout objectLayout = (ObjectLayout) singleton;
+                    List<Integer> currentValues = objectLayout.getCurrentValues();
+                    writer.writeIntList("priorValues", currentValues);
+                    return PersistFlags.CALLBACK_ON_REGISTRATION;
+                }
 
-        @Override
-        public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            writer.writeIntList("priorValues", Arrays.stream(priorValues).boxed().toList());
-            return PersistFlags.CREATE;
-        }
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
+                    ObjectLayout objectLayout = (ObjectLayout) singleton;
 
-        @SuppressWarnings("unused")
-        public static Object createFromLoader(ImageSingletonLoader loader) {
-            int[] priorValues = loader.readIntList("priorValues").stream().mapToInt(e -> e).toArray();
-            return new PriorObjectLayout(priorValues);
+                    List<Integer> currentValues = objectLayout.getCurrentValues();
+                    List<Integer> priorValues = loader.readIntList("priorValues");
+
+                    var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
+                    VMError.guarantee(numFields - 1 == currentValues.size(), "Missing fields");
+
+                    VMError.guarantee(currentValues.equals(priorValues),
+                                    "The object layout values should be consistent across layers. The previous layer object layout were %s, but the current layer are %s",
+                                    priorValues, currentValues);
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
         }
     }
 }

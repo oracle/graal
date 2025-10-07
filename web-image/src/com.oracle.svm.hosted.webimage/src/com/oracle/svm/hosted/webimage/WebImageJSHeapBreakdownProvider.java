@@ -30,6 +30,10 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -37,6 +41,7 @@ import com.oracle.svm.hosted.webimage.codegen.WebImageJSProviders;
 import com.oracle.svm.hosted.webimage.codegen.WebImageProviders;
 import com.oracle.svm.webimage.object.ConstantIdentityMapping;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 public class WebImageJSHeapBreakdownProvider extends HeapBreakdownProvider {
 
     /**
