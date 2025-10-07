@@ -617,6 +617,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             VMError.guarantee(info.singleton() != null);
             Object singleton = info.singleton();
+            if (singleton == SINGLETON_INSTALLATION_FORBIDDEN) {
+                throw UserError.abort("Singleton is forbidden in current layer. Key: %s", key.getTypeName());
+            }
             if (!allowMultiLayered) {
                 var trait = info.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                 trait.ifPresent(t -> {

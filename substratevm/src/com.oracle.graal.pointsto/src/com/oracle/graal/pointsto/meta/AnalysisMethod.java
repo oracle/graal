@@ -353,6 +353,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return compilationBehavior == CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
     }
 
+    /**
+     * Ensures this method is compiled in the initial layer. See
+     * {@link CompilationBehavior#PINNED_TO_INITIAL_LAYER} for more details.
+     */
     public void setPinnedToInitialLayer(Object reason) {
         BigBang bigbang = getUniverse().getBigbang();
         AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);

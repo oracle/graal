@@ -63,6 +63,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -110,6 +111,10 @@ public class HeapDumpFeature implements InternalFeature {
         if (VMInspectionOptions.hasHeapDumpSupport()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                var method = ReflectionUtil.lookupMethod(VMInspectionOptions.class, "determineHeapDumpPath");
+                ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess().lookupJavaMethod(method).setFullyDelayedToApplicationLayer();
+            }
         }
     }
 
