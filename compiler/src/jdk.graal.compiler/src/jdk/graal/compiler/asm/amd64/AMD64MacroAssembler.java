@@ -627,6 +627,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return applyMIOpAndJcc(AMD64MIOp.TEST, OperandSize.DWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
     }
 
+    public final int testqAndJcc(Register src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
+        return applyMIOpAndJcc(AMD64MIOp.TEST, OperandSize.QWORD, src, imm32, cc, branchTarget, isShortJmp, false, null);
+    }
+
     public final int testAndJcc(OperandSize size, Register src1, Register src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp) {
         AMD64RMOp op = size == OperandSize.BYTE ? AMD64RMOp.TESTB : AMD64RMOp.TEST;
         return applyRMOpAndJcc(op, size, src1, src2, cc, branchTarget, isShortJmp);
