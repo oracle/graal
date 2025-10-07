@@ -16915,11 +16915,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = method.createBuilder();
 
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
-            }
-
             CodeTree readSlot = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
             if (materialized) {
                 b.declaration(type(int.class), "slot", readSlot);
