@@ -193,6 +193,7 @@ public class BinaryParser extends BinaryStreamParser {
 
             final int size = readLength();
             final int startOffset = offset;
+            final int endOffset = startOffset + size;
             switch (sectionID) {
                 case Section.CUSTOM:
                     readCustomSection(size, customData);
@@ -207,7 +208,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readFunctionSection();
                     break;
                 case Section.TABLE:
-                    readTableSection();
+                    readTableSection(endOffset);
                     break;
                 case Section.MEMORY:
                     readMemorySection();
@@ -216,7 +217,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readTagSection();
                     break;
                 case Section.GLOBAL:
-                    readGlobalSection();
+                    readGlobalSection(endOffset);
                     break;
                 case Section.EXPORT:
                     readExportSection();
@@ -225,7 +226,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readStartSection();
                     break;
                 case Section.ELEMENT:
-                    readElementSection(bytecode);
+                    readElementSection(bytecode, endOffset);
                     break;
                 case Section.DATA_COUNT:
                     if (bulkMemoryAndRefTypes) {
@@ -241,7 +242,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Section.DATA:
                     dataSectionPresent = true;
-                    readDataSection(bytecode);
+                    readDataSection(bytecode, endOffset);
                     break;
             }
             assertIntEqual(offset - startOffset, size, Failure.SECTION_SIZE_MISMATCH, "Declared section (0x%02X) size is incorrect", sectionID);
@@ -490,7 +491,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readTableSection() {
+    private void readTableSection(int endOffset) {
         final int tableCount = readLength();
         final int startingTableIndex = module.tableCount();
         module.limits().checkTableCount(startingTableIndex + tableCount);
@@ -504,7 +505,7 @@ public class BinaryParser extends BinaryStreamParser {
                 offset += 2;
                 elemType = readRefType();
                 readTableLimits(multiResult);
-                Pair<Object, byte[]> initExpression = readConstantExpression(elemType);
+                Pair<Object, byte[]> initExpression = readConstantExpression(elemType, endOffset);
                 initValue = initExpression.getLeft();
                 // Drop the initializer bytecode if we can eval the initializer during parsing
                 initBytecode = initValue == null ? initExpression.getRight() : null;
@@ -2651,11 +2652,11 @@ public class BinaryParser extends BinaryStreamParser {
         return handlers;
     }
 
-    private Pair<Integer, byte[]> readOffsetExpression() {
+    private Pair<Integer, byte[]> readOffsetExpression(int endOffset) {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE);
+        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, endOffset);
         if (result.getRight() == null) {
             return Pair.create((int) result.getLeft(), null);
         } else {
@@ -2663,8 +2664,8 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private Pair<Long, byte[]> readLongOffsetExpression() {
-        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE);
+    private Pair<Long, byte[]> readLongOffsetExpression(int endOffset) {
+        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, endOffset);
         if (result.getRight() == null) {
             return Pair.create((long) result.getLeft(), null);
         } else {
@@ -2672,7 +2673,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private Pair<Object, byte[]> readConstantExpression(int resultType) {
+    private Pair<Object, byte[]> readConstantExpression(int resultType, int endOffset) {
         // Read the constant expression.
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
@@ -2682,8 +2683,9 @@ public class BinaryParser extends BinaryStreamParser {
         boolean calculable = true;
 
         state.enterFunction(EMPTY_TYPES, new int[]{resultType}, EMPTY_TYPES);
-        int opcode;
-        while ((opcode = read1() & 0xFF) != Instructions.END) {
+        int opcode = -1;
+        read_loop: while (offset < endOffset) {
+            opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.I32_CONST: {
                     final int value = readSignedInt32();
@@ -2811,11 +2813,14 @@ public class BinaryParser extends BinaryStreamParser {
                             break;
                     }
                     break;
+                case Instructions.END:
+                    break read_loop;
                 default:
                     fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
+        Assert.assertTrue(opcode == Instructions.END, Failure.UNEXPECTED_END);
         assertIntEqual(state.valueStackSize(), 1, Failure.TYPE_MISMATCH, "Unexpected number of results on stack at constant expression end");
         state.exit(multiValue);
         if (calculable) {
@@ -2906,7 +2911,7 @@ public class BinaryParser extends BinaryStreamParser {
         return elements;
     }
 
-    private void readElementSection(RuntimeBytecodeGen bytecode) {
+    private void readElementSection(RuntimeBytecodeGen bytecode, int endOffset) {
         int elemSegmentCount = readLength();
         module.limits().checkElementSegmentCount(elemSegmentCount);
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
@@ -2929,7 +2934,7 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         tableIndex = 0;
                     }
-                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
                     currentOffsetAddress = offsetExpression.getLeft();
                     currentOffsetBytecode = offsetExpression.getRight();
                 } else {
@@ -2957,7 +2962,7 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 tableIndex = readTableIndex();
-                Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
                 currentOffsetAddress = offsetExpression.getLeft();
                 currentOffsetBytecode = offsetExpression.getRight();
                 elemType = FUNCREF_TYPE;
@@ -3070,7 +3075,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readGlobalSection() {
+    private void readGlobalSection(int endOffset) {
         final int globalCount = readLength();
         module.limits().checkGlobalCount(globalCount);
         final int startingGlobalIndex = module.symbolTable().numGlobals();
@@ -3081,7 +3086,7 @@ public class BinaryParser extends BinaryStreamParser {
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            Pair<Object, byte[]> initExpression = readConstantExpression(type);
+            Pair<Object, byte[]> initExpression = readConstantExpression(type, endOffset);
             final Object initValue = initExpression.getLeft();
             final byte[] initBytecode = initExpression.getRight();
             final boolean isInitialized = initBytecode == null;
@@ -3098,7 +3103,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(RuntimeBytecodeGen bytecode) {
+    private void readDataSection(RuntimeBytecodeGen bytecode, int endOffset) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes) {
@@ -3128,11 +3133,11 @@ public class BinaryParser extends BinaryStreamParser {
                 if (mode == SegmentMode.ACTIVE) {
                     checkMemoryIndex(memoryIndex);
                     if (module.memoryHasIndexType64(memoryIndex)) {
-                        Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                        Pair<Long, byte[]> offsetExpression = readLongOffsetExpression(endOffset);
                         offsetAddress = offsetExpression.getLeft();
                         offsetBytecode = offsetExpression.getRight();
                     } else {
-                        Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                        Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
                         offsetAddress = offsetExpression.getLeft();
                         offsetBytecode = offsetExpression.getRight();
                     }
@@ -3149,11 +3154,11 @@ public class BinaryParser extends BinaryStreamParser {
                     memoryIndex = 0;
                 }
                 if (module.memoryHasIndexType64(memoryIndex)) {
-                    Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                    Pair<Long, byte[]> offsetExpression = readLongOffsetExpression(endOffset);
                     offsetAddress = offsetExpression.getLeft();
                     offsetBytecode = offsetExpression.getRight();
                 } else {
-                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
                     offsetAddress = offsetExpression.getLeft();
                     offsetBytecode = offsetExpression.getRight();
                 }
