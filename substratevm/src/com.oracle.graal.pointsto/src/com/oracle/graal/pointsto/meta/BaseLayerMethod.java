@@ -51,6 +51,8 @@ import jdk.vm.ci.meta.SpeculationLog;
  * method, using the information from the base layer.
  */
 public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMethod {
+    private static final String CLINIT = "<clinit>";
+
     private final int id;
     private final ResolvedJavaType declaringClass;
     private final String name;
@@ -153,7 +155,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public boolean isClassInitializer() {
-        throw unimplemented();
+        return name.equals(CLINIT);
     }
 
     @Override
