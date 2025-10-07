@@ -790,9 +790,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
             node = node.getParent();
         }
-        if (node == null) {
-            checkAdoptable();
-        }
+        checkAdoptable();
         return null;
     }
 

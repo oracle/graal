@@ -245,7 +245,6 @@ final class HostMethodScope {
                                 "Avoid accessing scoped objects after their corresponding method has finished execution. " +
                                 "Alternatively, use Value.pin() to prevent a scoped object from being released after the host call completed.");
             }
-            assert d != null : "delegate must not be null here";
             Object returnValue = library.send(d, message, args);
             if (message.getReturnType() == Object.class && !(d instanceof PinnedObject)) {
                 /*

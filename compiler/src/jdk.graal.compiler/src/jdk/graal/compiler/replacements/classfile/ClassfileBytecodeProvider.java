@@ -110,6 +110,7 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         if (classfile == null) {
             try {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                // Parfait_ALLOW impossible-redundant-condition (Parfait bug PARSEC-7191)
                 try (InputStream in = GraalServices.getClassfileAsStream(c)) {
                     if (in != null) {
                         DataInputStream stream = new DataInputStream(in);

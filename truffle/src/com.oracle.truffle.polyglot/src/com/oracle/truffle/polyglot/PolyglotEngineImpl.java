@@ -1621,6 +1621,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             for (Future<Void> future : futures) {
                 boolean timedOut = false;
                 try {
+                    // Parfait_ALLOW impossible-redundant-condition
                     if (timeout != null && timeout != Duration.ZERO) {
                         long timeElapsed = System.currentTimeMillis() - startMillis;
                         long timeoutMillis = timeout.toMillis();
