@@ -2445,11 +2445,11 @@ public class BinaryParser extends BinaryStreamParser {
                         state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     default:
-                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFD 0x%02x", vectorOpcode);
+                        fail(Failure.ILLEGAL_OPCODE, "Unknown opcode: 0xFD 0x%02x", vectorOpcode);
                 }
                 break;
             default:
-                fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
+                fail(Failure.ILLEGAL_OPCODE, "Unknown opcode: 0x%02x", opcode);
                 break;
         }
     }
