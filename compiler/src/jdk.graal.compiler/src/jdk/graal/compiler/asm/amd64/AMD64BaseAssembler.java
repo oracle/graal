@@ -667,7 +667,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -703,7 +703,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -737,7 +737,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte : disp;
+                                assert isByte(disp) : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;

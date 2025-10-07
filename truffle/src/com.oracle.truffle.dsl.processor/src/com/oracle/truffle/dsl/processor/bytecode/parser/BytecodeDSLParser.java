@@ -1265,61 +1265,59 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 continue;
             }
             Set<Element> processedElements = new HashSet<>();
-            if (node != null) {
-                // order map for determinism
-                Map<String, Set<SpecializationData>> grouping = new LinkedHashMap<>();
-                for (SpecializationData specialization : node.getSpecializations()) {
-                    if (specialization.getMethod() == null) {
+            // order map for determinism
+            Map<String, Set<SpecializationData>> grouping = new LinkedHashMap<>();
+            for (SpecializationData specialization : node.getSpecializations()) {
+                if (specialization.getMethod() == null) {
+                    continue;
+                }
+                ExecutableElement method = specialization.getMethod();
+                processedElements.add(method);
+
+                Map<String, List<SpecializationData>> seenNames = new LinkedHashMap<>();
+                for (AnnotationMirror forceQuickening : ElementUtils.getRepeatedAnnotation(method.getAnnotationMirrors(), types.ForceQuickening)) {
+                    String name = ElementUtils.getAnnotationValue(String.class, forceQuickening, "value", false);
+
+                    if (!model.enableQuickening) {
+                        model.addError(method, "Cannot use @%s if quickening is not enabled for @%s. Enable quickening in @%s to resolve this.", ElementUtils.getSimpleName(types.ForceQuickening),
+                                        ElementUtils.getSimpleName(types.GenerateBytecode), ElementUtils.getSimpleName(types.ForceQuickening));
+                        break;
+                    }
+
+                    if (name == null) {
+                        name = "";
+                    } else if (name.equals("")) {
+                        model.addError(method, "Identifier for @%s must not be an empty string.", ElementUtils.getSimpleName(types.ForceQuickening));
                         continue;
                     }
-                    ExecutableElement method = specialization.getMethod();
-                    processedElements.add(method);
 
-                    Map<String, List<SpecializationData>> seenNames = new LinkedHashMap<>();
-                    for (AnnotationMirror forceQuickening : ElementUtils.getRepeatedAnnotation(method.getAnnotationMirrors(), types.ForceQuickening)) {
-                        String name = ElementUtils.getAnnotationValue(String.class, forceQuickening, "value", false);
-
-                        if (!model.enableQuickening) {
-                            model.addError(method, "Cannot use @%s if quickening is not enabled for @%s. Enable quickening in @%s to resolve this.", ElementUtils.getSimpleName(types.ForceQuickening),
-                                            ElementUtils.getSimpleName(types.GenerateBytecode), ElementUtils.getSimpleName(types.ForceQuickening));
-                            break;
-                        }
-
-                        if (name == null) {
-                            name = "";
-                        } else if (name.equals("")) {
-                            model.addError(method, "Identifier for @%s must not be an empty string.", ElementUtils.getSimpleName(types.ForceQuickening));
-                            continue;
-                        }
-
-                        seenNames.computeIfAbsent(name, (v) -> new ArrayList<>()).add(specialization);
-                        grouping.computeIfAbsent(name, (v) -> new LinkedHashSet<>()).add(specialization);
-                    }
-
-                    for (var entry : seenNames.entrySet()) {
-                        if (entry.getValue().size() > 1) {
-                            model.addError(method, "Multiple @%s with the same value are not allowed for one specialization.", ElementUtils.getSimpleName(types.ForceQuickening));
-                            break;
-                        }
-                    }
+                    seenNames.computeIfAbsent(name, (v) -> new ArrayList<>()).add(specialization);
+                    grouping.computeIfAbsent(name, (v) -> new LinkedHashSet<>()).add(specialization);
                 }
 
-                for (var entry : grouping.entrySet()) {
-                    if (entry.getKey().equals("")) {
-                        for (SpecializationData specialization : entry.getValue()) {
-                            decisions.add(new QuickenDecision(operation, Set.of(specialization)));
-                        }
-                    } else {
-                        if (entry.getValue().size() == 1) {
-                            SpecializationData s = entry.getValue().iterator().next();
-                            model.addError(s.getMethod(), "@%s with name '%s' does only match a single quickening, but must match more than one. " +
-                                            "Specify additional quickenings with the same name or remove the value from the annotation to resolve this.",
-                                            ElementUtils.getSimpleName(types.ForceQuickening),
-                                            entry.getKey());
-                            continue;
-                        }
-                        decisions.add(new QuickenDecision(operation, entry.getValue()));
+                for (var entry : seenNames.entrySet()) {
+                    if (entry.getValue().size() > 1) {
+                        model.addError(method, "Multiple @%s with the same value are not allowed for one specialization.", ElementUtils.getSimpleName(types.ForceQuickening));
+                        break;
                     }
+                }
+            }
+
+            for (var entry : grouping.entrySet()) {
+                if (entry.getKey().equals("")) {
+                    for (SpecializationData specialization : entry.getValue()) {
+                        decisions.add(new QuickenDecision(operation, Set.of(specialization)));
+                    }
+                } else {
+                    if (entry.getValue().size() == 1) {
+                        SpecializationData s = entry.getValue().iterator().next();
+                        model.addError(s.getMethod(), "@%s with name '%s' does only match a single quickening, but must match more than one. " +
+                                        "Specify additional quickenings with the same name or remove the value from the annotation to resolve this.",
+                                        ElementUtils.getSimpleName(types.ForceQuickening),
+                                        entry.getKey());
+                        continue;
+                    }
+                    decisions.add(new QuickenDecision(operation, entry.getValue()));
                 }
             }
 

@@ -898,7 +898,6 @@ public class Graph implements EventCounter {
                     cur = cur.next;
                 }
 
-                assert cur == listener : "Listener not found";
                 last.next = listener.next;
             }
 

@@ -622,8 +622,6 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             if (l == null) {
                 return null;
             }
-            assert l != null : "Loop for guard anchor block must not be null:" + guardAnchorBlock.getBeginNode() + " loop " + iv.getLoop() + " inverted?" +
-                            isInverted(iv.getLoop());
             do {
                 if (!allowsSpeculativeGuardMovement(guard.getReason(), (LoopBeginNode) l.getHeader().getBeginNode(), true)) {
                     debug.log("shouldOptimizeCompare(%s):The guard would not hoist", guard);

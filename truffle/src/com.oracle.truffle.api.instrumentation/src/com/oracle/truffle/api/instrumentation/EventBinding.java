@@ -511,7 +511,7 @@ public class EventBinding<T> {
             if (!instrumentedLeaf || rootNode == null) {
                 return false;
             }
-            if (!isProbe || nearestSourceSections == null || isProbe && isNearestSection(nodeSourceSection)) {
+            if (!isProbe || nearestSourceSections == null || isNearestSection(nodeSourceSection)) {
                 return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
             }
             return false;
