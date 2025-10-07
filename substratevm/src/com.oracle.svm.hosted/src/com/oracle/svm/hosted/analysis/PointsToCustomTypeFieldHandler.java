@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 
 public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
@@ -47,17 +48,18 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
         assert aField.getStorageKind().isObject();
+        var ptaField = (PointsToAnalysisField) aField;
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {
             if (type.isPrimitive() || type.isWordType()) {
                 continue;
             }
-            type.getTypeFlow(analysis, canBeNull).addUse(analysis, aField.getInitialFlow());
+            type.getTypeFlow(analysis, canBeNull).addUse(analysis, ptaField.getInitialFlow());
 
             if (type.isArray()) {
                 AnalysisType fieldComponentType = type.getComponentType();
-                aField.getInitialFlow().addUse(analysis, aField.getSinkFlow());
+                ptaField.getInitialFlow().addUse(analysis, ptaField.getSinkFlow());
                 if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
                     /*
                      * Write the component type abstract object into the field array elements type

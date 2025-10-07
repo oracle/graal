@@ -141,6 +141,7 @@ innr public abstract interface static !annotation BytecodeInterpreterSwitchBound
 innr public abstract interface static !annotation InliningCutoff
 innr public abstract interface static !annotation InliningRoot
 meth public static boolean inInterpreterFastPath()
+meth public static int markThreadedSwitch(int)
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch

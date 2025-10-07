@@ -52,6 +52,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -337,7 +338,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
         operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), constantOperandAfterNames);
 
-        operation.setInstruction(createCustomInstruction(customOperation, generatedNode, signature, name));
+        createCustomInstruction(customOperation, generatedNode, signature, name);
 
         parseStoreBytecodeIndex(mirror, operation);
 
@@ -618,11 +619,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 encoding = OperationArgument.Encoding.LOCAL_ARRAY;
             } else {
                 builderType = constantOperand.type();
-                encoding = OperationArgument.Encoding.OBJECT;
+                encoding = OperationArgument.Encoding.CONSTANT;
             }
-            arguments[i] = new OperationArgument(builderType, constantOperand.type(), encoding,
-                            sanitizeConstantArgumentName(argumentName),
-                            constantOperand.doc());
+            arguments[i] = new OperationArgument(builderType, encoding, sanitizeConstantArgumentName(argumentName), constantOperand.doc(), Optional.of(constantOperand));
         }
         return arguments;
     }
@@ -802,7 +801,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (ElementUtils.typeEqualsAny(mirror.getAnnotationType(), types.EpilogReturn, types.EpilogExceptional)) {
             customOperation.addError("An @%s operation cannot declare constant operands.", getSimpleName(mirror.getAnnotationType()));
-            return null;
+            return ConstantOperandsModel.NONE;
         }
 
         List<ConstantOperandModel> before = new ArrayList<>();
@@ -810,11 +809,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         for (AnnotationMirror constantOperandMirror : constantOperands) {
             TypeMirror type = parseConstantOperandType(constantOperandMirror);
+            ImmediateKind kind = getConstantOperandEncoding(type);
             String operandName = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "name");
             String javadoc = ElementUtils.getAnnotationValue(String.class, constantOperandMirror, "javadoc");
             Boolean specifyAtEnd = ElementUtils.getAnnotationValue(Boolean.class, constantOperandMirror, "specifyAtEnd", false);
             int dimensions = ElementUtils.getAnnotationValue(Integer.class, constantOperandMirror, "dimensions");
-            ConstantOperandModel constantOperand = new ConstantOperandModel(type, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
+            ConstantOperandModel constantOperand = new ConstantOperandModel(type, kind, operandName, javadoc, specifyAtEnd, dimensions, constantOperandMirror);
 
             if (ElementUtils.isAssignable(type, types.Node) && !ElementUtils.isAssignable(type, types.RootNode)) {
                 // It is probably a bug if the user tries to define a constant Node. It will not be
@@ -871,6 +871,23 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
         return true;
+    }
+
+    private ImmediateKind getConstantOperandEncoding(TypeMirror constantOperandType) {
+        if (parent.inlinePrimitiveConstants && constantOperandType.getKind().isPrimitive()) {
+            return switch (constantOperandType.getKind()) {
+                case LONG -> ImmediateKind.CONSTANT_LONG;
+                case DOUBLE -> ImmediateKind.CONSTANT_DOUBLE;
+                case INT -> ImmediateKind.CONSTANT_INT;
+                case FLOAT -> ImmediateKind.CONSTANT_FLOAT;
+                case SHORT -> ImmediateKind.CONSTANT_SHORT;
+                case CHAR -> ImmediateKind.CONSTANT_CHAR;
+                case BYTE -> ImmediateKind.CONSTANT_BYTE;
+                case BOOLEAN -> ImmediateKind.CONSTANT_BOOL;
+                default -> throw new AssertionError("Unexpected constant operand type " + constantOperandType);
+            };
+        }
+        return ImmediateKind.CONSTANT;
     }
 
     /*
@@ -938,15 +955,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<AnnotationMirror> result = new ArrayList<>();
 
         OperationModel operation = customOperation.operation;
-        ConstantOperandsModel constantOperands = operation.constantOperands;
-        for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), constantOperands.before().get(i).type()));
+        List<ConstantOperandModel> before = operation.constantOperands.before();
+        for (int i = 0; i < before.size(); i++) {
+            result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), before.get(i).type()));
         }
         for (int i = 0; i < signature.dynamicOperandCount; i++) {
             result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
         }
-        for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-            result.add(createNodeChildAnnotation(operation.getConstantOperandAfterName(i), constantOperands.after().get(i).type()));
+        List<ConstantOperandModel> after = operation.constantOperands.after();
+        for (int i = 0; i < after.size(); i++) {
+            result.add(createNodeChildAnnotation(operation.getConstantOperandAfterName(i), after.get(i).type()));
         }
 
         return result;
@@ -1004,15 +1022,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (uncached) {
             OperationModel operation = customOperation.operation;
-            ConstantOperandsModel constantOperands = operation.constantOperands;
-            for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-                ex.addParameter(new CodeVariableElement(constantOperands.before().get(i).type(), operation.getConstantOperandBeforeName(i)));
+            List<ConstantOperandModel> before = operation.constantOperands.before();
+            for (int i = 0; i < before.size(); i++) {
+                ex.addParameter(new CodeVariableElement(before.get(i).type(), operation.getConstantOperandBeforeName(i)));
             }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
                 ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
             }
-            for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-                ex.addParameter(new CodeVariableElement(constantOperands.after().get(i).type(), operation.getConstantOperandAfterName(i)));
+            List<ConstantOperandModel> after = operation.constantOperands.after();
+            for (int i = 0; i < after.size(); i++) {
+                ex.addParameter(new CodeVariableElement(after.get(i).type(), operation.getConstantOperandAfterName(i)));
             }
 
         }
@@ -1027,43 +1046,39 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * generate a {@link NodeData node model} that will later be used by {@link FlatNodeGenFactory
      * code generation} to generate code for the instruction.
      */
-    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
+    private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
         String instructionName = "c." + operationName;
         InstructionModel instr;
         if (customOperation.isEpilogExceptional()) {
             // We don't emit bytecode for this operation. Allocate an InstructionModel but don't
             // register it as an instruction.
-            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature, null);
+            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature);
         } else {
             instr = parent.instruction(InstructionKind.CUSTOM, instructionName, signature);
         }
         instr.nodeType = generatedNode;
         instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
 
+        customOperation.operation.setInstruction(instr);
         if (customOperation.operation.variadicReturn) {
             instr.nonNull = true;
         }
 
         OperationModel operation = customOperation.operation;
-        for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
-            instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandBeforeName(i));
+        List<ConstantOperandModel> constantOperandsBefore = operation.constantOperands.before();
+        for (int i = 0; i < constantOperandsBefore.size(); i++) {
+            instr.addConstantOperandImmediate(constantOperandsBefore.get(i), operation.getConstantOperandBeforeName(i));
         }
-
-        for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
-            instr.addImmediate(ImmediateKind.CONSTANT, operation.getConstantOperandAfterName(i));
+        List<ConstantOperandModel> constantOperandsAfter = operation.constantOperands.after();
+        for (int i = 0; i < constantOperandsAfter.size(); i++) {
+            instr.addConstantOperandImmediate(constantOperandsAfter.get(i), operation.getConstantOperandAfterName(i));
         }
 
         if (customOperation.isCustomYield()) {
             // Index of continuation root node.
             instr.addImmediate(ImmediateKind.CONSTANT, "location");
         }
-
-        if (!instr.canUseNodeSingleton()) {
-            instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
-        }
-
-        return instr;
     }
 
     /**

@@ -88,7 +88,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -1198,7 +1197,8 @@ public class SubstrateGraphBuilderPlugins {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
                 if (!result && imageLayer) {
-                    if (MultiLayeredImageSingleton.class.isAssignableFrom(key)) {
+                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
+                    if (trait != null && SingletonLayeredInstallationKind.getInstallationKind(trait) == SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER) {
                         /*
                          * The array representation of a MultiLayeredImageSingleton will only be
                          * created in the final layer. However, we assume they exist in all layers.
@@ -1208,7 +1208,6 @@ public class SubstrateGraphBuilderPlugins {
                          */
                         result = true;
                     } else {
-                        var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                         if (trait != null) {
                             if (sharedLayer) {
                                 /*

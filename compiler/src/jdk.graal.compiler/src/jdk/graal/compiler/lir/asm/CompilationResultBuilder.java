@@ -46,6 +46,7 @@ import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.code.CompilationResult.CompilationResultWatermark;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -103,26 +104,10 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     public static final List<LIRInstructionVerifier> NO_VERIFIERS = Collections.emptyList();
 
-    private static class ExceptionInfo {
-
-        public final int codeOffset;
-        public final LabelRef exceptionEdge;
-
-        ExceptionInfo(int pcOffset, LabelRef exceptionEdge) {
-            this.codeOffset = pcOffset;
-            this.exceptionEdge = exceptionEdge;
-        }
+    public record ExceptionInfo(int codeOffset, LabelRef exceptionEdge) {
     }
 
-    public static class PendingImplicitException {
-
-        public final int codeOffset;
-        public final ImplicitLIRFrameState state;
-
-        PendingImplicitException(int pcOffset, ImplicitLIRFrameState state) {
-            this.codeOffset = pcOffset;
-            this.state = state;
-        }
+    public record PendingImplicitException(int codeOffset, ImplicitLIRFrameState state) {
     }
 
     public final Assembler<?> asm;
@@ -759,5 +744,62 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     public List<PendingImplicitException> getPendingImplicitExceptionList() {
         return pendingImplicitExceptionList;
+    }
+
+    /**
+     * @return the sizes of recorded and pending Sites
+     */
+    public CompilationResultWatermark getSitesWatermark() {
+        return compilationResult.getSitesWatermark(exceptionInfoList == null ? 0 : exceptionInfoList.size(),
+                        pendingImplicitExceptionList == null ? 0 : pendingImplicitExceptionList.size());
+    }
+
+    /**
+     * We assume the order of {@link ExceptionInfo} in {@link #exceptionInfoList} and the order of
+     * {@link PendingImplicitException} in {@link #pendingImplicitExceptionList} will not change.
+     * Any
+     */
+    private boolean verifyPendingSites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd) {
+        if (exceptionInfoList != null) {
+            for (int i = 0; i < exceptionInfoList.size(); i++) {
+                int codeOffset = exceptionInfoList.get(i).codeOffset;
+                if (watermarkAtCodeStart.pendingExceptionInfoListSize() <= i && i < watermarkAtCodeEnd.pendingExceptionInfoListSize()) {
+                    assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, exceptionInfoList);
+                } else {
+                    assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, exceptionInfoList);
+                }
+            }
+        }
+        if (pendingImplicitExceptionList != null) {
+            for (int i = 0; i < pendingImplicitExceptionList.size(); i++) {
+                int codeOffset = pendingImplicitExceptionList.get(i).codeOffset;
+                if (watermarkAtCodeStart.pendingImplicitExceptionListSize() <= i && i < watermarkAtCodeEnd.pendingImplicitExceptionListSize()) {
+                    assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, pendingImplicitExceptionList);
+                } else {
+                    assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, pendingImplicitExceptionList);
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Duplicates the sites between {@code codeStart} and {@code codeEnd} with an offset.
+     */
+    public void duplicateSites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd, int offset) {
+        assert verifyPendingSites(codeStart, watermarkAtCodeStart, codeEnd, watermarkAtCodeEnd) : Assertions.errorMessage(codeStart, codeEnd);
+        if (exceptionInfoList != null) {
+            for (int i = watermarkAtCodeStart.pendingExceptionInfoListSize(); i < watermarkAtCodeEnd.pendingExceptionInfoListSize(); i++) {
+                ExceptionInfo ei = exceptionInfoList.get(i);
+                exceptionInfoList.add(new ExceptionInfo(ei.codeOffset + offset, ei.exceptionEdge));
+            }
+        }
+        if (pendingImplicitExceptionList != null) {
+            for (int i = watermarkAtCodeStart.pendingImplicitExceptionListSize(); i < watermarkAtCodeEnd.pendingImplicitExceptionListSize(); i++) {
+                PendingImplicitException pendingImplicitException = pendingImplicitExceptionList.get(i);
+                pendingImplicitExceptionList.add(new PendingImplicitException(pendingImplicitException.codeOffset + offset, pendingImplicitException.state()));
+            }
+        }
+        compilationResult.duplicateSites(codeStart, watermarkAtCodeStart, codeEnd, watermarkAtCodeEnd, offset);
     }
 }

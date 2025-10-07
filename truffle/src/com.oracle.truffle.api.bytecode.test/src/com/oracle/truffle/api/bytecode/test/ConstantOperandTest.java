@@ -42,11 +42,20 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,6 +69,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
@@ -67,6 +77,12 @@ import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
+import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer.DeserializerContext;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.MaterializedLocalAccessor;
@@ -88,16 +104,148 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class ConstantOperandTest {
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
-    @Parameters(name = "{0}")
-    public static List<Class<? extends ConstantOperandTestRootNode>> getParameters() {
-        return List.of(ConstantOperandTestRootNodeCached.class, ConstantOperandTestRootNodeUncached.class);
+    private record TestRun(Class<? extends ConstantOperandTestRootNode> interpreterClass, boolean testSerialize) {
+
+        private boolean inlinesConstants() {
+            return interpreterClass == ConstantOperandTestRootNodeCached.class || interpreterClass == ConstantOperandTestRootNodeUncached.class;
+        }
+
+        private BytecodeSerializer getSerializer() {
+            if (inlinesConstants()) {
+                return InlinedConstantsSerialization.SERIALIZER;
+            } else {
+                return ConstantsSerialization.SERIALIZER;
+            }
+        }
+
+        private BytecodeDeserializer getDeserializer() {
+            if (inlinesConstants()) {
+                return InlinedConstantsSerialization.DESERIALIZER;
+            } else {
+                return ConstantsSerialization.DESERIALIZER;
+            }
+        }
+
+        private static final class ConstantsSerialization {
+            private static final byte TAG_BOOL = 1;
+            private static final byte TAG_BYTE = 2;
+            private static final byte TAG_CHAR = 3;
+            private static final byte TAG_SHORT = 4;
+            private static final byte TAG_INT = 5;
+            private static final byte TAG_FLOAT = 6;
+            private static final byte TAG_LONG = 7;
+            private static final byte TAG_DOUBLE = 8;
+            private static final byte TAG_STRING = 9;
+
+            static final BytecodeSerializer SERIALIZER = (SerializerContext context, DataOutput buffer, Object object) -> {
+                if (object instanceof Boolean b) {
+                    buffer.writeByte(TAG_BOOL);
+                    buffer.writeBoolean(b);
+                } else if (object instanceof Byte b) {
+                    buffer.writeByte(TAG_BYTE);
+                    buffer.writeByte(b);
+                } else if (object instanceof Character c) {
+                    buffer.writeByte(TAG_CHAR);
+                    buffer.writeChar(c);
+                } else if (object instanceof Short s) {
+                    buffer.writeByte(TAG_SHORT);
+                    buffer.writeShort(s);
+                } else if (object instanceof Integer i) {
+                    buffer.writeByte(TAG_INT);
+                    buffer.writeInt(i);
+                } else if (object instanceof Float f) {
+                    buffer.writeByte(TAG_FLOAT);
+                    buffer.writeFloat(f);
+                } else if (object instanceof Long l) {
+                    buffer.writeByte(TAG_LONG);
+                    buffer.writeLong(l);
+                } else if (object instanceof Double d) {
+                    buffer.writeByte(TAG_DOUBLE);
+                    buffer.writeDouble(d);
+                } else if (object instanceof String s) {
+                    buffer.writeByte(TAG_STRING);
+                    buffer.writeUTF(s);
+                } else {
+                    throw new AssertionError("Unsupported constant type " + object.getClass());
+                }
+            };
+
+            static final BytecodeDeserializer DESERIALIZER = (DeserializerContext context, DataInput buffer) -> {
+                byte tag = buffer.readByte();
+                return switch (tag) {
+                    case TAG_BOOL -> buffer.readBoolean();
+                    case TAG_BYTE -> buffer.readByte();
+                    case TAG_CHAR -> buffer.readChar();
+                    case TAG_SHORT -> buffer.readShort();
+                    case TAG_INT -> buffer.readInt();
+                    case TAG_FLOAT -> buffer.readFloat();
+                    case TAG_LONG -> buffer.readLong();
+                    case TAG_DOUBLE -> buffer.readDouble();
+                    case TAG_STRING -> buffer.readUTF();
+                    default -> throw new AssertionError("Unsupported tag " + tag);
+                };
+            };
+        }
+
+        /**
+         * When primitive constants are inlined, the user should not have to define how to
+         * serialize/deserialize them.
+         */
+        private static final class InlinedConstantsSerialization {
+            private static final byte TAG_STRING = 1;
+
+            static final BytecodeSerializer SERIALIZER = (SerializerContext context, DataOutput buffer, Object object) -> {
+                if (object instanceof String s) {
+                    buffer.writeByte(TAG_STRING);
+                    buffer.writeUTF(s);
+                } else {
+                    throw new AssertionError("Unsupported constant type " + object.getClass());
+                }
+            };
+
+            static final BytecodeDeserializer DESERIALIZER = (DeserializerContext context, DataInput buffer) -> {
+                byte tag = buffer.readByte();
+                return switch (tag) {
+                    case TAG_STRING -> buffer.readUTF();
+                    default -> throw new AssertionError("Unsupported tag " + tag);
+                };
+            };
+        }
     }
 
-    @Parameter(0) public Class<? extends ConstantOperandTestRootNode> interpreterClass;
+    @Parameters(name = "{0}")
+    public static List<TestRun> getParameters() {
+        List<TestRun> result = new ArrayList<>();
+        for (var interpreterClass : List.of(ConstantOperandTestRootNodeCached.class, ConstantOperandTestRootNodeUncached.class, ConstantOperandTestRootNodeCachedNoInlining.class,
+                        ConstantOperandTestRootNodeUncachedNoInlining.class)) {
+            result.add(new TestRun(interpreterClass, false));
+            result.add(new TestRun(interpreterClass, true));
+        }
+        return result;
+    }
+
+    @Parameter(0) public TestRun testRun;
 
     @SuppressWarnings("unchecked")
     private <T extends ConstantOperandTestRootNodeBuilder> ConstantOperandTestRootNode parse(BytecodeParser<? extends T> parser) {
-        return ConstantOperandTestRootNodeBuilder.invokeCreate(interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, parser).getNode(0);
+        BytecodeRootNodes<ConstantOperandTestRootNode> rootNodes = ConstantOperandTestRootNodeBuilder.invokeCreate(testRun.interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, parser);
+        if (testRun.testSerialize) {
+            rootNodes = doRoundTrip(testRun.interpreterClass, rootNodes, testRun.getSerializer(), testRun.getDeserializer());
+        }
+        return rootNodes.getNode(0);
+    }
+
+    private static <T extends ConstantOperandTestRootNode> BytecodeRootNodes<T> doRoundTrip(Class<? extends ConstantOperandTestRootNode> interpreterClass,
+                    BytecodeRootNodes<ConstantOperandTestRootNode> nodes, BytecodeSerializer serializer, BytecodeDeserializer deserializer) {
+        // Perform a serialize-deserialize round trip.
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            nodes.serialize(new DataOutputStream(output), serializer);
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        return ConstantOperandTestRootNodeBuilder.invokeDeserialize(interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, input, deserializer);
     }
 
     @Test
@@ -172,7 +320,7 @@ public class ConstantOperandTest {
         });
         assertEquals(123, root.getCallTarget().call(123));
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(testRun.interpreterClass).addInstrumentation(ReplaceValue.class).build());
         assertEquals(42, root.getCallTarget().call(123));
     }
 
@@ -187,15 +335,15 @@ public class ConstantOperandTest {
             b.beginRoot();
             b.beginYield();
             b.beginReplaceValue();
-            b.emitLoadConstant(42);
+            b.emitLoadConstant("hello");
             b.endReplaceValue(123);
             b.endYield();
             b.endRoot();
         });
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
-        assertEquals(42, cont.getResult());
+        assertEquals("hello", cont.getResult());
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(testRun.interpreterClass).addInstrumentation(ReplaceValue.class).build());
         cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(123, cont.getResult());
     }
@@ -270,13 +418,23 @@ public class ConstantOperandTest {
 
     @Test
     public void testConstantNulls() {
-        parse(b -> {
+        assertThrows(IllegalArgumentException.class, () -> parse(b -> {
             b.beginRoot();
-            assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
-            assertThrows(IllegalArgumentException.class, () -> b.beginGetAttrWithDefault(null));
-            assertThrows(IllegalArgumentException.class, () -> b.endGetAttrWithDefault(null));
+            b.emitLoadConstant(null);
             b.endRoot();
-        });
+        }));
+
+        assertThrows(IllegalArgumentException.class, () -> parse(b -> {
+            b.beginRoot();
+            b.beginGetAttrWithDefault(null);
+            b.endRoot();
+        }));
+
+        assertThrows(IllegalArgumentException.class, () -> parse(b -> {
+            b.beginRoot();
+            b.endGetAttrWithDefault(null);
+            b.endRoot();
+        }));
     }
 
     @Test
@@ -305,11 +463,251 @@ public class ConstantOperandTest {
         assertEquals(List.of("bar", 123), bar.prologEvents);
     }
 
+    @Test
+    public void testLongConstants() {
+        for (long value : List.of(0L, 42L, -42L, Long.MAX_VALUE, Long.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitLongConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "LongConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginLongConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endLongConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "LongConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testDoubleConstants() {
+        for (double value : List.of(0.0d, 42.0d, -42.0d, Double.MAX_VALUE, Double.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitDoubleConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "DoubleConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginDoubleConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endDoubleConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "DoubleConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testIntConstants() {
+        for (int value : List.of(0, 42, -42, Integer.MAX_VALUE, Integer.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitIntConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "IntConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginIntConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endIntConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "IntConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testFloatConstants() {
+        for (float value : List.of(0.0f, 42.0f, -42.0f, Float.MAX_VALUE, Float.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitFloatConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "FloatConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginFloatConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endFloatConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "FloatConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testShortConstants() {
+        for (short value : List.of((short) 0, (short) 42, (short) -42, Short.MAX_VALUE, Short.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitShortConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "ShortConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginShortConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endShortConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "ShortConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testCharConstants() {
+        for (char value : List.of((char) 0, 'a', '?', Character.MAX_VALUE, Character.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitCharConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "CharConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginCharConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endCharConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "CharConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testByteConstants() {
+        for (byte value : List.of((byte) 0, (byte) 42, (byte) -42, Byte.MAX_VALUE, Byte.MIN_VALUE)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitByteConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "ByteConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginByteConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endByteConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "ByteConstantWithOperand");
+        }
+    }
+
+    @Test
+    public void testBooleanConstants() {
+        for (boolean value : List.of(true, false)) {
+            ConstantOperandTestRootNode root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitBooleanConstant(value);
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "BooleanConstant");
+
+            root = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.beginBooleanConstantWithOperand(value);
+                b.emitLoadNull();
+                b.endBooleanConstantWithOperand();
+                b.endReturn();
+                b.endRoot();
+            });
+            assertEquals(value, root.getCallTarget().call());
+            assertConstantOperand(value, root, "BooleanConstantWithOperand");
+        }
+    }
+
+    private void assertConstantOperand(Object value, ConstantOperandTestRootNode root, String instructionName) {
+        var instructions = root.getBytecodeNode().getInstructionsAsList().stream().filter(instr -> instr.getName().contains(instructionName)).toList();
+        if (instructions.size() != 1) {
+            fail("Expected exactly one %s instruction, but %d found: %s".formatted(instructionName, instructions.size(), instructions));
+        }
+        List<Object> constants = new ArrayList<>();
+        for (var arg : instructions.get(0).getArguments()) {
+            if (arg.getKind() == Instruction.Argument.Kind.CONSTANT) {
+                constants.add(arg.asConstant());
+                if (testRun.inlinesConstants()) {
+                    assertTrue("Constant " + arg + " was not inlined.", arg.getClass().getName().contains("InlinedConstant"));
+                }
+            }
+        }
+        if (constants.size() != 1) {
+            fail("Expected exactly one constant operand to %s, but %s found: %s".formatted(instructionName, constants.size(), constants));
+        }
+        assertEquals(value, constants.get(0));
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Cached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = false)),
-                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+                @Variant(suffix = "Cached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = false)),
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "CachedNoInlining", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = false, //
+                                inlinePrimitiveConstants = false)),
+                @Variant(suffix = "UncachedNoInlining", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
+                                inlinePrimitiveConstants = false))
 })
 
 abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeRootNode {
@@ -349,10 +747,145 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 
     @Operation
+    @ConstantOperand(type = long.class)
+    static final class LongConstant {
+        @Specialization
+        public static long doLong(long constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = long.class)
+    static final class LongConstantWithOperand {
+        @Specialization
+        public static long doLong(long constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = double.class)
+    static final class DoubleConstant {
+        @Specialization
+        public static double doDouble(double constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = double.class)
+    static final class DoubleConstantWithOperand {
+        @Specialization
+        public static double doDouble(double constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
     @ConstantOperand(type = int.class)
     public static final class IntConstant {
         @Specialization
         public static int doInt(int constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = int.class)
+    public static final class IntConstantWithOperand {
+        @Specialization
+        public static int doInt(int constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = float.class)
+    public static final class FloatConstant {
+        @Specialization
+        public static float doFloat(float constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = float.class)
+    public static final class FloatConstantWithOperand {
+        @Specialization
+        public static float doFloat(float constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = short.class)
+    public static final class ShortConstant {
+        @Specialization
+        public static short doShort(short constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = short.class)
+    public static final class ShortConstantWithOperand {
+        @Specialization
+        public static short doShort(short constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = char.class)
+    public static final class CharConstant {
+        @Specialization
+        public static char doChar(char constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = char.class)
+    public static final class CharConstantWithOperand {
+        @Specialization
+        public static char doChar(char constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = byte.class)
+    public static final class ByteConstant {
+        @Specialization
+        public static byte doByte(byte constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = byte.class)
+    public static final class ByteConstantWithOperand {
+        @Specialization
+        public static byte doByte(byte constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = boolean.class)
+    static final class BooleanConstant {
+        @Specialization
+        public static boolean doBoolean(boolean constantOperand) {
+            return constantOperand;
+        }
+    }
+
+    @Operation
+    @ConstantOperand(type = boolean.class)
+    static final class BooleanConstantWithOperand {
+        @Specialization
+        public static boolean doBoolean(boolean constantOperand, @SuppressWarnings("unused") Object dynamicOperand) {
             return constantOperand;
         }
     }

@@ -62,10 +62,12 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.generator.BitSet;
+import com.oracle.truffle.dsl.processor.generator.NodeState;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -122,11 +124,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean storeBciInFrame;
     public boolean bytecodeDebugListener;
     public boolean additionalAssertions;
+    public boolean inlinePrimitiveConstants;
     public boolean enableSpecializationIntrospection;
     public boolean enableTagInstrumentation;
     public boolean enableRootTagging;
     public boolean enableRootBodyTagging;
     public boolean enableBlockScoping;
+    public boolean enableThreadedSwitch;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
     public String variadicStackLimit;
@@ -371,21 +375,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return customRegularOperations.get(typeElement);
     }
 
-    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
-        InstructionModel model = instruction(base.kind, base.name + "$" + specializationName, signature, specializationName);
-        for (InstructionImmediate imm : base.getImmediates()) {
-            model.addImmediate(imm.kind(), imm.name());
-        }
-        model.filteredSpecializations = base.filteredSpecializations;
-        model.nodeData = base.nodeData;
-        model.nodeType = base.nodeType;
-        model.quickeningBase = base;
-        model.operation = base.operation;
-        model.shortCircuitModel = base.shortCircuitModel;
-        base.quickenedInstructions.add(model);
-        return model;
-    }
-
     public boolean overridesBytecodeDebugListenerMethod(String methodName) {
         if (!bytecodeDebugListener) {
             return false;
@@ -398,17 +387,20 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return ElementUtils.findOverride(e, getTemplateType()) != null;
     }
 
-    private InstructionModel instruction(InstructionKind kind, String name, Signature signature, String quickeningName) {
-        if (instructions.containsKey(name)) {
-            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
+    private InstructionModel instruction(InstructionModel instr) {
+        if (instructions.containsKey(instr.name)) {
+            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", instr.name));
         }
-        InstructionModel instr = new InstructionModel(kind, name, signature, quickeningName);
-        instructions.put(name, instr);
+        instructions.put(instr.name, instr);
         return instr;
     }
 
     public InstructionModel instruction(InstructionKind kind, String name, Signature signature) {
-        return instruction(kind, name, signature, null);
+        return instruction(new InstructionModel(kind, name, signature));
+    }
+
+    public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
+        return instruction(new InstructionModel(base, specializationName, signature));
     }
 
     public InstructionModel shortCircuitInstruction(String name, ShortCircuitInstructionModel shortCircuitModel) {
@@ -438,6 +430,26 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
+        for (InstructionModel instr : getInstructions()) {
+            if (instr.nodeData == null) {
+                continue;
+            }
+            /*
+             * InstructionModel.canUseNodeSingleton() depends on NodeData.isForceSpecialize() which
+             * is initialized in the parser when quickening is applied. By generating the node
+             * profile in finalizeInstructions we ensure that it is properly initialized.
+             */
+            if (!instr.canUseNodeSingleton()) {
+                instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
+            }
+            if (instr.canInlineState()) {
+                NodeState state = NodeState.create(instr.nodeData, ImmediateKind.STATE_PROFILE.width.byteSize * 8);
+                for (BitSet s : state.activeState.getSets()) {
+                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), false);
+                }
+            }
+        }
+
         BytecodeDSLBuiltins.addBuiltinsOnFinalize(this);
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();

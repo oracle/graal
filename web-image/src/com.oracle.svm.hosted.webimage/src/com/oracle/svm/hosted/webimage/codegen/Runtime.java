@@ -41,6 +41,8 @@ public class Runtime {
 
     // unsigned math comparison
     public static final JSFunctionDefinition UnsignedIClI32 = new JSGenericFunctionDefinition("unsignedCompareLessI32", 2, false, null, false);
+    public static final JSFunctionDefinition UnsignedMinI32 = new JSGenericFunctionDefinition("unsignedMinI32", 2, false, null, false);
+    public static final JSFunctionDefinition UnsignedMaxI32 = new JSGenericFunctionDefinition("unsignedMaxI32", 2, false, null, false);
 
     public static final JSFunctionDefinition isA = new JSGenericFunctionDefinition("isA", 3, false, null, false);
     public static final JSFunctionDefinition isExact = new JSGenericFunctionDefinition("isExact", 3, false, null, false);

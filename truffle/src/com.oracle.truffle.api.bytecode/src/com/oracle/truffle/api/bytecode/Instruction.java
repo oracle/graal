@@ -455,12 +455,29 @@ public abstract class Instruction {
          * @since 24.2
          */
         public final List<SpecializationInfo> getSpecializationInfo() {
+            List<SpecializationInfo> info = getSpecializationInfoInternal();
+            if (info != null) {
+                return info;
+            }
+
             Node n = asCachedNode();
             if (Introspection.isIntrospectable(n)) {
-                return Introspection.getSpecializations(n);
-            } else {
-                return null;
+                try {
+                    return Introspection.getSpecializations(n);
+                } catch (UnsupportedOperationException o) {
+                    // for backwards compatibility fallback to null
+                }
             }
+            return null;
+        }
+
+        /**
+         * Allows the generated code to customize the specialization info lookup.
+         *
+         * @since 25.1
+         */
+        protected List<SpecializationInfo> getSpecializationInfoInternal() {
+            return null;
         }
 
         private RuntimeException unsupported() {
@@ -513,13 +530,21 @@ public abstract class Instruction {
             if (info != null) {
                 sb.append("(");
                 String sep = "";
+                boolean empty = true;
                 for (SpecializationInfo specialization : info) {
                     if (specialization.getInstances() == 0) {
                         continue;
                     }
+                    empty = false;
                     sb.append(sep);
                     sb.append(specialization.getMethodName());
                     sep = "#";
+                }
+                if (empty) {
+                    sb.append("UNINITIALIZED");
+                }
+                if (o instanceof Node n && !n.isAdoptable()) {
+                    sb.append(",SINGLETON");
                 }
                 sb.append(")");
             }

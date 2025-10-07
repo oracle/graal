@@ -44,10 +44,11 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
@@ -65,8 +66,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     private final HostedInterface[] interfaces;
 
     protected HostedArrayClass arrayType;
-    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
-    private List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<? extends HostedType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private List<? extends HostedType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
@@ -379,6 +387,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
+    }
+
+    @Override
     public final boolean hasFinalizer() {
         /* We just ignore finalizers. */
         return false;
@@ -412,12 +425,17 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
+    public List<? extends HostedType> getPermittedSubclasses() {
         if (isPrimitive() || isArray()) {
             return null;
         }
-        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
-            List<JavaType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            List<? extends AnalysisType> aPermittedSubclasses = wrapped.getPermittedSubclasses();
             permittedSubclasses = aPermittedSubclasses == null ? null : aPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
         }
         return permittedSubclasses;
@@ -548,6 +566,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public HostedMethod getEnclosingMethod() {
+        return universe.lookup(wrapped.getEnclosingMethod());
+    }
+
+    @Override
     public ResolvedJavaType[] getDeclaredTypes() {
         ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
         for (int i = 0; i < declaredTypes.length; i++) {
@@ -559,6 +582,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -595,6 +623,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     @Override
     public void link() {
         wrapped.link();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
     }
 
     @Override

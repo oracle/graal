@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,34 +41,28 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.StringJoiner;
+
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.WasmType;
 
-import java.util.StringJoiner;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class ValidationErrors {
     private static String getValueTypeString(byte valueType) {
-        switch (valueType) {
-            case WasmType.VOID_TYPE:
-                return "";
-            case WasmType.I32_TYPE:
-                return "i32";
-            case WasmType.I64_TYPE:
-                return "i64";
-            case WasmType.F32_TYPE:
-                return "f32";
-            case WasmType.F64_TYPE:
-                return "f64";
-            case WasmType.V128_TYPE:
-                return "v128";
-            case WasmType.FUNCREF_TYPE:
-                return "funcref";
-            case WasmType.EXTERNREF_TYPE:
-                return "externref";
-        }
-        return "unknown";
+        return switch (valueType) {
+            case WasmType.VOID_TYPE -> "";
+            case WasmType.I32_TYPE -> "i32";
+            case WasmType.I64_TYPE -> "i64";
+            case WasmType.F32_TYPE -> "f32";
+            case WasmType.F64_TYPE -> "f64";
+            case WasmType.V128_TYPE -> "v128";
+            case WasmType.FUNCREF_TYPE -> "funcref";
+            case WasmType.EXTERNREF_TYPE -> "externref";
+            case WasmType.EXNREF_TYPE -> "exnref";
+            default -> "unknown";
+        };
     }
 
     private static String getValueTypesString(byte[] valueTypes) {

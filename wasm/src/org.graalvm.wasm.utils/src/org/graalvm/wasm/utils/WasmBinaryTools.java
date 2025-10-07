@@ -68,7 +68,8 @@ public class WasmBinaryTools {
 
     public enum WabtOption {
         MULTI_MEMORY,
-        THREADS
+        THREADS,
+        EXCEPTIONS
     }
 
     private interface OutputSupplier {
@@ -148,6 +149,7 @@ public class WasmBinaryTools {
             switch (option) {
                 case MULTI_MEMORY -> commandLine.add("--enable-multi-memory");
                 case THREADS -> commandLine.add("--enable-threads");
+                case EXCEPTIONS -> commandLine.add("--enable-exceptions");
             }
         }
         return commandLine;

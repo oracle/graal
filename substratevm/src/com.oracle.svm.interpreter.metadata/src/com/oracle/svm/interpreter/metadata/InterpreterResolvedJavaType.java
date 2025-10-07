@@ -34,6 +34,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -45,6 +46,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
@@ -214,6 +216,16 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
+    public final boolean isRecord() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public List<? extends CremaResolvedJavaRecordComponent> getRecordComponents() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public final boolean isInitialized() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -269,6 +281,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public final InterpreterResolvedObjectType getArrayClass() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -289,6 +306,11 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -304,7 +326,9 @@ public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, C
     }
 
     @Override
-    public final ResolvedJavaMethod getClassInitializer() {
+    public ResolvedJavaMethod getClassInitializer() {
+        // We currently do not expect this to be called for any other type than
+        // CremaResolvedObjectType.
         throw VMError.intentionallyUnimplemented();
     }
 

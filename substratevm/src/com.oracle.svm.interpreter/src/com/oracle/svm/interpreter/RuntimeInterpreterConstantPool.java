@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.interpreter;
 
+import java.lang.invoke.MethodType;
+
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
+import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -38,6 +43,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -62,8 +68,57 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             case INTERFACE_METHOD_REF -> resolveInterfaceMethodRefConstant(cpi, accessingClass);
             case METHOD_REF -> resolveClassMethodRefConstant(cpi, accessingClass);
             case CLASS -> resolveClassConstant(cpi, accessingClass);
+            case METHODTYPE -> resolveMethodType(cpi, accessingClass);
+            case METHODHANDLE -> resolveMethodHandle(cpi, accessingClass);
             default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tag);
         };
+    }
+
+    private Object resolveMethodHandle(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Object mtype;
+        InterpreterResolvedJavaType mklass;
+        Symbol<Name> refName;
+
+        int memberIndex = this.methodHandleMemberIndex(cpi);
+
+        Tag refTag = this.tagAt(memberIndex);
+        if (refTag == Tag.METHOD_REF || refTag == Tag.INTERFACE_METHOD_REF) {
+            InterpreterResolvedJavaMethod target = this.resolvedMethodAt(accessingClass, memberIndex);
+            Symbol<Type>[] parsed = target.getParsedSymbolicSignature(CremaRuntimeAccess.getInstance().getSymbolPool());
+
+            mtype = signatureToMethodType(parsed, accessingClass);
+            /*
+             * we should use the klass from the method ref here rather than the declaring klass of
+             * the target this is because the resolved target might come from a default method and
+             * have an interface as declaring klass however if the refKind is invokeVirtual, it
+             * would be illegal to use the interface type
+             */
+            int holderIndex = this.memberClassIndex(memberIndex);
+            mklass = this.resolvedTypeAt(accessingClass, holderIndex);
+            refName = target.getSymbolicName();
+        } else {
+            assert refTag == Tag.FIELD_REF;
+            InterpreterResolvedJavaField field = this.resolvedFieldAt(accessingClass, memberIndex);
+            JavaType fieldType = field.getType();
+            if (fieldType instanceof InterpreterResolvedJavaType resolvedJavaType) {
+                mtype = resolvedJavaType.getJavaClass();
+            } else {
+                mtype = resolveSymbolAndAccessCheck(field.getDeclaringClass(), (UnresolvedJavaType) fieldType);
+            }
+            mklass = field.getDeclaringClass();
+            refName = field.getSymbolicName();
+        }
+        String mname = refName.toString();
+        int refKind = this.methodHandleRefKind(cpi);
+        return Target_java_lang_invoke_MethodHandleNatives.linkMethodHandleConstant(
+                        accessingClass.getJavaClass(), refKind,
+                        mklass.getJavaClass(), mname, mtype);
+    }
+
+    private Object resolveMethodType(int cpi, InterpreterResolvedObjectType accessingClass) {
+        Symbol<Signature> sig = this.methodTypeSignature(cpi);
+        Symbol<Type>[] parsed = SymbolsSupport.getSignatures().parsed(sig);
+        return signatureToMethodType(parsed, accessingClass);
     }
 
     private String resolveStringConstant(int stringIndex, @SuppressWarnings("unused") InterpreterResolvedObjectType accessingKlass) {
@@ -222,5 +277,31 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         // TODO(peterssen): Support MethodHandle invoke intrinsics.
 
         return interfaceMethod;
+    }
+
+    public static MethodType signatureToMethodType(Symbol<Type>[] signature, InterpreterResolvedObjectType accessingClass) {
+        Symbol<Type> rt = SignatureSymbols.returnType(signature);
+        int pcount = SignatureSymbols.parameterCount(signature);
+        Class<?>[] ptypes = new Class<?>[pcount];
+        Class<?> rtype;
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
+            ptypes[i] = resolveSymbolAndAccessCheck(accessingClass, paramType);
+        }
+        rtype = resolveSymbolAndAccessCheck(accessingClass, rt);
+
+        return Target_java_lang_invoke_MethodHandleNatives.findMethodHandleType(rtype, ptypes);
+    }
+
+    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
+        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+        // GR-62339 check access
+        return clazz;
+    }
+
+    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, UnresolvedJavaType type) {
+        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+        // GR-62339 check access
+        return clazz;
     }
 }

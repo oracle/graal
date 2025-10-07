@@ -102,8 +102,6 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return simdEncoding;
     }
 
-    protected abstract Value emitIntegerMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, Signedness signedness);
-
     public abstract Variable emitVectorOpMaskTestMove(Value left, boolean negateLeft, Value right, Value trueValue, Value falseValue);
 
     public abstract Variable emitVectorOpMaskOrTestMove(Value left, Value right, boolean allZeros, Value trueValue, Value falseValue);
@@ -457,23 +455,29 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
     }
 
     @Override
-    public Value emitMathMax(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Max);
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max);
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Min);
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min);
     }
 
     @Override
-    public Value emitMathUnsignedMax(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
     }
 
     @Override
-    public Value emitMathUnsignedMin(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
     }
 
     public Variable emitReverseBytes(Value input) {

@@ -41,6 +41,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.MULTIANEWARRAY;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.NEW;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTSTATIC;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EMPTY_EXCEPTION_HANDLERS;
 
 import java.util.List;
 
@@ -88,9 +89,6 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class BuildTimeConstantPool {
-
-    private static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
-
     private final ConstantPoolBuilder poolBuilder;
 
     /**

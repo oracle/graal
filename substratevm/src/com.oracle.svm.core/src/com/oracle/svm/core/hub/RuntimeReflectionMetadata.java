@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
@@ -167,12 +168,12 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     @Override
     public RecordComponent[] getRecordComponents(DynamicHub declaringClass, @SuppressWarnings("unused") int layerNum) {
-        CremaResolvedJavaRecordComponent[] recordComponents = type.getRecordComponents();
-        RecordComponent[] result = new RecordComponent[recordComponents.length];
+        List<? extends CremaResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
+        RecordComponent[] result = new RecordComponent[recordComponents.size()];
         Class<?> clazz = DynamicHub.toClass(declaringClass);
 
-        for (int i = 0; i < recordComponents.length; i++) {
-            CremaResolvedJavaRecordComponent recordComponent = recordComponents[i];
+        for (int i = 0; i < recordComponents.size(); i++) {
+            CremaResolvedJavaRecordComponent recordComponent = recordComponents.get(i);
             result[i] = ReflectionObjectFactory.newRecordComponent(
                             clazz,
                             recordComponent.getName(),

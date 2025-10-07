@@ -382,7 +382,9 @@ public abstract class AbstractBasicInterpreterTest {
                         Node node = arg.asCachedNode();
                         if (bytecode.getTier() == BytecodeTier.CACHED) {
                             assertNotNull(node);
-                            assertSame(bytecode, node.getParent());
+                            if (node.isAdoptable()) {
+                                assertSame(bytecode, node.getParent());
+                            }
                             assertNotNull(arg.getSpecializationInfo());
                         } else {
                             assertNull(node);

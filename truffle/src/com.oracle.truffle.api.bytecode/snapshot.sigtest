@@ -315,8 +315,10 @@ meth public abstract !hasdefault boolean enableRootTagging()
 meth public abstract !hasdefault boolean enableSerialization()
 meth public abstract !hasdefault boolean enableSpecializationIntrospection()
 meth public abstract !hasdefault boolean enableTagInstrumentation()
+meth public abstract !hasdefault boolean enableThreadedSwitch()
 meth public abstract !hasdefault boolean enableUncachedInterpreter()
 meth public abstract !hasdefault boolean enableYield()
+meth public abstract !hasdefault boolean inlinePrimitiveConstants()
 meth public abstract !hasdefault boolean storeBytecodeIndexInFrame()
 meth public abstract !hasdefault java.lang.Class<?> tagTreeNodeLibrary()
 meth public abstract !hasdefault java.lang.Class<?>[] boxingEliminationTypes()
@@ -366,6 +368,7 @@ CLSS public abstract static com.oracle.truffle.api.bytecode.Instruction$Argument
 cons protected init(java.lang.Object)
 innr public final static !enum Kind
 innr public final static BranchProfile
+meth protected java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializationInfoInternal()
 meth public abstract com.oracle.truffle.api.bytecode.Instruction$Argument$Kind getKind()
 meth public abstract java.lang.String getName()
 meth public com.oracle.truffle.api.bytecode.Instruction$Argument$BranchProfile asBranchProfile()

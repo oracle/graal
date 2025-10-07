@@ -31,7 +31,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,17 +61,41 @@ public interface CremaSupport {
 
     void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
 
-    Object newInstance(ResolvedJavaMethod targetMethod, Object[] args);
+    /**
+     * Creates a new instance of {@code type} without running any constructor yet. The caller should
+     * make sure to run a constructor before publishing the result.
+     */
+    Object rawNewInstance(ResolvedJavaType type);
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args);
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 
-    Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+    default Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return resolveOrThrow(symbolicType, accessingClass);
+    }
 
-    Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+    Class<?> resolveOrThrow(Symbol<Type> type, ResolvedJavaType accessingClass);
 
-    Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+    default Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return resolveOrNull(symbolicType, accessingClass);
+    }
+
+    Class<?> resolveOrNull(Symbol<Type> type, ResolvedJavaType accessingClass);
+
+    default Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return findLoadedClass(symbolicType, accessingClass);
+    }
+
+    Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass);
+
+    Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);

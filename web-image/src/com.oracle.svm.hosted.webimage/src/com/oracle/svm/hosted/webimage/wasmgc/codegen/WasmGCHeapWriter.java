@@ -448,7 +448,7 @@ public class WasmGCHeapWriter {
 
         for (HostedField field : heap.hUniverse.getFields()) {
             if (shouldGenerateStaticField(field)) {
-                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable(null) || MaterializedConstantFields.singleton().contains(field.wrapped);
 
                 WasmValType fieldType = providers.util().typeForJavaType(field.getType());
                 WasmId.Global staticFieldId = providers.idFactory().forStaticField(fieldType, field);

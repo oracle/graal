@@ -28,7 +28,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaVersion;
@@ -92,37 +92,11 @@ public final class CremaRuntimeAccess implements RuntimeAccess<InterpreterResolv
         throw fatal(message);
     }
 
-    private static String toClassForName(Symbol<Type> type) {
-        String typeString = type.toString();
-        if (TypeSymbols.isArray(type)) {
-            return typeString.replace('/', '.');
-        }
-        // Primitives cannot be resolved via Class.forName, but provide name for completeness.
-        if (TypeSymbols.isPrimitive(type)) {
-            // I -> int
-            // Z -> boolean
-            // ...
-            return TypeSymbols.getJavaKind(type).toJavaClass().getName();
-        }
-        assert typeString.startsWith("L") && typeString.endsWith(";");
-        return typeString.substring(1, typeString.length() - 1); // drop L and ;
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
-        throw (T) t;
-    }
-
     @Override
     public InterpreterResolvedObjectType lookupOrLoadType(Symbol<Type> type, InterpreterResolvedJavaType accessingClass) {
-        String className = toClassForName(type);
-        try {
-            Class<?> result = ClassRegistries.forName(className, accessingClass.getJavaClass().getClassLoader());
-            assert !result.isPrimitive();
-            return (InterpreterResolvedObjectType) DynamicHub.fromClass(result).getInterpreterType();
-        } catch (ClassNotFoundException e) {
-            throw uncheckedThrow(e);
-        }
+        Class<?> result = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+        assert !result.isPrimitive();
+        return (InterpreterResolvedObjectType) DynamicHub.fromClass(result).getInterpreterType();
     }
 
     @Override

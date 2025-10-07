@@ -233,6 +233,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
         model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
+        model.inlinePrimitiveConstants = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "inlinePrimitiveConstants");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
         model.enableMaterializedLocalAccesses = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableMaterializedLocalAccesses");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
@@ -248,6 +249,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
                         ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
+        model.enableThreadedSwitch = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableThreadedSwitch");
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
@@ -1073,14 +1075,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
             }
 
-            for (InstructionModel instruction1 : model.getInstructions().toArray(InstructionModel[]::new)) {
+            for (InstructionModel instruction1 : model.getInstructions()) {
                 if (instruction1.nodeData != null) {
                     if (instruction1.getQuickeningRoot().hasSpecializedQuickenings()) {
                         instruction1.nodeData.setForceSpecialize(true);
                     }
                 }
             }
+
         }
+
     }
 
     private static void parseDefaultUncachedThreshold(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, DSLExpressionResolver resolver) {

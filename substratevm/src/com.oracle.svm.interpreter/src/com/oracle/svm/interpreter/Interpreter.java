@@ -264,9 +264,10 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.SWAP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
-import com.oracle.svm.core.StaticFieldsSupport;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
@@ -367,17 +368,6 @@ public final class Interpreter {
 
         initializeFrame(frame, method);
         return execute0(method, frame, forceStayInInterpreter);
-    }
-
-    public static Object newInstance(InterpreterResolvedJavaMethod method, Object[] args) {
-        // this is a constructor call, so we have to allocate a new instance,
-        // expand this into args[0] and then execute
-        Object newReference = InterpreterToVM.createNewReference(method.getDeclaringClass());
-        Object[] finalArgs = new Object[args.length + 1];
-        finalArgs[0] = newReference;
-        System.arraycopy(args, 0, finalArgs, 1, args.length);
-        execute(method, finalArgs, false);
-        return newReference;
     }
 
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean stayInInterpreter) {
@@ -1209,6 +1199,12 @@ public final class Interpreter {
                 String string = pool.resolveStringAt(cpi);
                 putObject(frame, top, string);
             }
+            case METHODTYPE -> {
+                putObject(frame, top, resolveMethodType(pool, method, opcode, cpi));
+            }
+            case METHODHANDLE -> {
+                putObject(frame, top, resolveMethodHandle(pool, method, opcode, cpi));
+            }
             case INVOKEDYNAMIC -> {
                 // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
@@ -1281,6 +1277,24 @@ public final class Interpreter {
 
         /* instructions have fixed stack effect encoded */
         return retStackEffect - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private static MethodType resolveMethodType(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == LDC || opcode == LDC_W;
+        try {
+            return pool.resolvedMethodTypeAt(cpi, method.getDeclaringClass());
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
+    }
+
+    private static MethodHandle resolveMethodHandle(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == LDC || opcode == LDC_W;
+        try {
+            return pool.resolvedMethodHandleAt(cpi, method.getDeclaringClass());
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
     }
 
     // region Class/Method/Field resolution
@@ -1503,8 +1517,7 @@ public final class Interpreter {
 
         int slotCount = kind.getSlotCount();
         Object receiver = (opcode == PUTSTATIC)
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - slotCount - 1));
 
         if (field.isStatic()) {
@@ -1547,8 +1560,7 @@ public final class Interpreter {
         assert kind != JavaKind.Illegal;
 
         Object receiver = opcode == GETSTATIC
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - 1));
 
         if (field.isStatic()) {

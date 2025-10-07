@@ -446,14 +446,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     int pos = asm.position();
                     Register thread = getProviders().getRegisters().getThreadRegister();
                     // Store deoptimization reason and action into thread local storage.
-                    asm.movl(new AMD64Address(thread, config.pendingDeoptimizationOffset), pendingImplicitException.state.deoptReasonAndAction.asInt());
+                    asm.movl(new AMD64Address(thread, config.pendingDeoptimizationOffset), pendingImplicitException.state().deoptReasonAndAction.asInt());
 
-                    JavaConstant deoptSpeculation = pendingImplicitException.state.deoptSpeculation;
+                    JavaConstant deoptSpeculation = pendingImplicitException.state().deoptSpeculation;
                     if (deoptSpeculation.getJavaKind() == JavaKind.Long) {
                         // Store speculation into thread local storage. As AMD64 does not support
                         // 64-bit long integer memory store, we break it into two 32-bit integer
                         // store.
-                        long speculationAsLong = pendingImplicitException.state.deoptSpeculation.asLong();
+                        long speculationAsLong = pendingImplicitException.state().deoptSpeculation.asLong();
                         if (NumUtil.isInt(speculationAsLong)) {
                             AMD64Assembler.AMD64MIOp.MOV.emit(asm, AMD64BaseAssembler.OperandSize.QWORD,
                                             new AMD64Address(thread, config.pendingFailedSpeculationOffset), (int) speculationAsLong);
@@ -463,12 +463,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                         }
                     } else {
                         assert deoptSpeculation.getJavaKind() == JavaKind.Int : deoptSpeculation;
-                        int speculationAsInt = pendingImplicitException.state.deoptSpeculation.asInt();
+                        int speculationAsInt = pendingImplicitException.state().deoptSpeculation.asInt();
                         asm.movl(new AMD64Address(thread, config.pendingFailedSpeculationOffset), speculationAsInt);
                     }
 
-                    AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP), null, false, pendingImplicitException.state);
-                    crb.recordImplicitException(pendingImplicitException.codeOffset, pos, pendingImplicitException.state);
+                    AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNCOMMON_TRAP), null, false, pendingImplicitException.state());
+                    crb.recordImplicitException(pendingImplicitException.codeOffset(), pos, pendingImplicitException.state());
                 }
             }
             emitExceptionHandler(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);

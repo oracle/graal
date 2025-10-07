@@ -79,7 +79,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench']
   },
 
-  polybench_vm_hpc_common: self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape='e4_8_64') + {
+  polybench_vm_hpc_common(bench=false): self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape=if bench then 'x52' else 'e4_8_64') + {
     polybench_wrap(command)::
       super.polybench_wrap(command) + [
         '--mx-benchmark-args',

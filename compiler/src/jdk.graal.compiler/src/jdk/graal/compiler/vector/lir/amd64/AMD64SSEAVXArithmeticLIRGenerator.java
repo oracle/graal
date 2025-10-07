@@ -1259,20 +1259,22 @@ public class AMD64SSEAVXArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
      * @see Math#min(float, float)
      */
     @Override
-    protected Value emitMathMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
+    protected Value emitMathMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         AVXSize size = AVXKind.getRegisterSize(kind);
         GraalError.guarantee(size != AVXSize.ZMM, "SSE/AVX arithmetic LIR generator can not generate instructions of size ZMM!");
         if (kind.getScalar().isInteger()) {
-            return emitIntegerMinMax(a, b, minmaxop, NumUtil.Signedness.SIGNED);
+            return emitIntegerMinMax(cmpKind, a, b, minmaxop, NumUtil.Signedness.SIGNED);
         }
-        return super.emitMathMinMax(a, b, minmaxop);
+        return super.emitMathMinMax(cmpKind, a, b, minmaxop);
     }
 
     @Override
-    protected Value emitIntegerMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, NumUtil.Signedness signedness) {
+    protected Value emitIntegerMinMax(LIRKind cmpKind, Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, NumUtil.Signedness signedness) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
-        GraalError.guarantee(kind.getVectorLength() > 1, "scalar integer min/max not supported");
+        if (kind.getVectorLength() == 1) {
+            return super.emitIntegerMinMax(cmpKind, a, b, minmaxop, signedness);
+        }
         GraalError.guarantee(kind.getScalar().isInteger(), "expected integer vector for integer min/max");
         LIRKind resultKind = LIRKind.combine(a, b);
         boolean min = (minmaxop == AMD64MathMinMaxFloatOp.Min);

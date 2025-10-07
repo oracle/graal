@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -33,10 +31,11 @@ import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.MetadataAccessorImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * Stores the encoding of all runtime metadata.
@@ -49,7 +48,8 @@ import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
  * we would need an index to locate all relevant runtime metadata of an entity from all layers.
  */
 @AutomaticallyRegisteredImageSingleton
-public class RuntimeMetadataEncoding implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public class RuntimeMetadataEncoding {
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -64,10 +64,5 @@ public class RuntimeMetadataEncoding implements MultiLayeredImageSingleton, Unsa
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setEncoding(byte[] encoding) {
         this.encoding = encoding;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

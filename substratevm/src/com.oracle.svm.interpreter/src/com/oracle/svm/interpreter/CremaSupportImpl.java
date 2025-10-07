@@ -26,7 +26,6 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,15 +51,20 @@ import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
-import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.attributes.Attribute;
+import com.oracle.svm.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
@@ -77,7 +81,6 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -167,7 +170,7 @@ public class CremaSupportImpl implements CremaSupport {
                 /* ignore e.g. hosted fields */
                 continue;
             }
-            if (!analysisUniverse.hostVM().platformSupported((AnnotatedElement) wrappedField.getType())) {
+            if (wrappedField.getType() instanceof ResolvedJavaType resolvedFieldType && !analysisUniverse.hostVM().platformSupported(resolvedFieldType)) {
                 /* ignore fields with unsupported types */
                 continue;
             }
@@ -203,7 +206,8 @@ public class CremaSupportImpl implements CremaSupport {
                         table.getParserKlass(),
                         hub.getModifiers(),
                         componentType, superType, interfaces,
-                        DynamicHub.toClass(hub));
+                        DynamicHub.toClass(hub),
+                        table.layout.getStaticReferenceFieldCount(), table.layout.getStaticPrimitiveFieldSize());
 
         ParserKlass parserKlass = table.partialType.parserKlass;
         thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
@@ -241,6 +245,8 @@ public class CremaSupportImpl implements CremaSupport {
         thisType.setAfterFieldsOffset(table.layout().afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
 
+        initStaticFields(thisType, table.getParserKlass().getFields());
+
         // Done
         hub.setInterpreterType(thisType);
 
@@ -263,6 +269,86 @@ public class CremaSupportImpl implements CremaSupport {
             }
         } catch (MethodTableException e) {
             throw new IncompatibleClassChangeError(e.getMessage());
+        }
+    }
+
+    private static void initStaticFields(CremaResolvedObjectType type, ParserField[] fields) {
+        // GR-61367: Currently done eagerly, but should be done during linking.
+        InterpreterResolvedJavaField[] declaredFields = type.getDeclaredFields();
+        for (int i = 0; i < declaredFields.length; i++) {
+            InterpreterResolvedJavaField resolvedField = declaredFields[i];
+            ParserField parsedField = fields[i];
+            assert resolvedField.getSymbolicName() == parsedField.getName();
+            assert resolvedField.isStatic() == parsedField.isStatic();
+            if (resolvedField.isStatic()) {
+                ConstantValueAttribute cva = null;
+                for (Attribute attribute : parsedField.getAttributes()) {
+                    if (attribute.getName() == ConstantValueAttribute.NAME) {
+                        assert attribute instanceof ConstantValueAttribute;
+                        cva = (ConstantValueAttribute) attribute;
+                        break;
+                    }
+                }
+                if (cva != null) {
+                    int constantValueIndex = cva.getConstantValueIndex();
+                    switch (parsedField.getKind()) {
+                        case Boolean: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            boolean c = type.getConstantPool().intAt(constantValueIndex) != 0;
+                            InterpreterToVM.setFieldBoolean(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Byte: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            byte c = (byte) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldByte(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Short: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            short c = (short) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldShort(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Char: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            char c = (char) type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldChar(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Int: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.INTEGER;
+                            int c = type.getConstantPool().intAt(constantValueIndex);
+                            InterpreterToVM.setFieldInt(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Float: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.FLOAT;
+                            float c = type.getConstantPool().floatAt(constantValueIndex);
+                            InterpreterToVM.setFieldFloat(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Long: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.LONG;
+                            long c = type.getConstantPool().longAt(constantValueIndex);
+                            InterpreterToVM.setFieldLong(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Double: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.DOUBLE;
+                            double c = type.getConstantPool().doubleAt(constantValueIndex);
+                            InterpreterToVM.setFieldDouble(c, type.getStaticStorage(true, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                        case Object: {
+                            assert type.getConstantPool().tagAt(constantValueIndex) == ConstantPool.Tag.STRING;
+                            String c = type.getConstantPool().resolveStringAt(constantValueIndex);
+                            InterpreterToVM.setFieldObject(c, type.getStaticStorage(false, resolvedField.getInstalledLayerNum()), resolvedField);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -552,50 +638,86 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+    public Class<?> resolveOrThrow(Symbol<Type> type, ResolvedJavaType accessingClass) {
+        int arrayDimensions = TypeSymbols.getArrayDimensions(type);
+        Symbol<Type> elementalType;
+        if (arrayDimensions == 0) {
+            elementalType = type;
+        } else {
+            elementalType = SymbolsSupport.getTypes().getOrCreateValidType(type.subSequence(arrayDimensions));
+        }
         try {
-            Class<?> result = loadClass(unresolvedJavaType, (InterpreterResolvedJavaType) accessingClass);
+            Class<?> result = loadClass(elementalType, (InterpreterResolvedJavaType) accessingClass);
             if (result == null) {
-                throw new NoClassDefFoundError(getTypeName(unresolvedJavaType));
-            } else {
-                return result;
+                throw new NoClassDefFoundError(elementalType.toString());
             }
+            if (arrayDimensions > 0) {
+                while (arrayDimensions-- > 0) {
+                    result = DynamicHub.toClass(DynamicHub.fromClass(result).arrayType());
+                }
+            }
+            return result;
         } catch (ClassNotFoundException e) {
-            NoClassDefFoundError error = new NoClassDefFoundError(getTypeName(unresolvedJavaType));
+            NoClassDefFoundError error = new NoClassDefFoundError(elementalType.toString());
             error.initCause(e);
             throw error;
         }
     }
 
-    private static String getTypeName(JavaType unresolvedJavaType) {
-        assert unresolvedJavaType.getElementalType().getName().startsWith("L");
-
-        String internalName = unresolvedJavaType.getElementalType().getName();
-        return internalName.substring(1, internalName.length() - 1);
-    }
-
     @Override
-    public Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+    public Class<?> resolveOrNull(Symbol<Type> type, ResolvedJavaType accessingClass) {
+        int arrayDimensions = TypeSymbols.getArrayDimensions(type);
+        Symbol<Type> elementalType;
+        if (arrayDimensions == 0) {
+            elementalType = type;
+        } else {
+            elementalType = SymbolsSupport.getTypes().getOrCreateValidType(type.subSequence(arrayDimensions));
+        }
         try {
-            return loadClass(unresolvedJavaType, (InterpreterResolvedJavaType) accessingClass);
+            Class<?> result = loadClass(elementalType, (InterpreterResolvedJavaType) accessingClass);
+            if (result == null) {
+                return null;
+            }
+            if (arrayDimensions > 0) {
+                while (arrayDimensions-- > 0) {
+                    result = DynamicHub.toClass(DynamicHub.fromClass(result).arrayType());
+                }
+            }
+            return result;
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
-    private static Class<?> loadClass(JavaType unresolvedJavaType, InterpreterResolvedJavaType accessingClass) throws ClassNotFoundException {
-        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
-        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
-        AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(accessingClass.getJavaClass().getClassLoader());
-        return registry.loadClass(symbolicType);
+    private static Class<?> loadClass(Symbol<Type> type, InterpreterResolvedJavaType accessingClass) throws ClassNotFoundException {
+        JavaKind kind = TypeSymbols.getJavaKind(type);
+        return switch (kind) {
+            case Object -> {
+                AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(accessingClass.getJavaClass().getClassLoader());
+                yield registry.loadClass(type);
+            }
+            case Boolean -> boolean.class;
+            case Byte -> byte.class;
+            case Short -> short.class;
+            case Char -> char.class;
+            case Int -> int.class;
+            case Long -> long.class;
+            case Float -> float.class;
+            case Double -> double.class;
+            case Void -> void.class;
+            default -> throw VMError.shouldNotReachHere(kind.toString());
+        };
     }
 
     @Override
-    public Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
-        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
-        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+    public Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass) {
         AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());
-        return registry.findLoadedClass(symbolicType);
+        return registry.findLoadedClass(type);
+    }
+
+    @Override
+    public Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum) {
+        return ((InterpreterResolvedObjectType) DynamicHub.fromClass(cls).getInterpreterType()).getStaticStorage(primitives, layerNum);
     }
 
     @Override
@@ -604,7 +726,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Object newInstance(ResolvedJavaMethod targetMethod, Object[] args) {
-        return Interpreter.newInstance((InterpreterResolvedJavaMethod) targetMethod, args);
+    public Object rawNewInstance(ResolvedJavaType type) {
+        return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
     }
 }

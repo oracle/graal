@@ -126,6 +126,13 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             return result;
         }
 
+        if (tool != null && stamp instanceof IntegerStamp integerStamp && integerStamp.getBits() >= tool.getLowerer().smallestCompareWidth()) {
+            ValueNode minMaxSynonym = MinMaxNode.fromConditional(condition, trueValue, falseValue, view);
+            if (minMaxSynonym != null) {
+                return minMaxSynonym;
+            }
+        }
+
         return this;
     }
 

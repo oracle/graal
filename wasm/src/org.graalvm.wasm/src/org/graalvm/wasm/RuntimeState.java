@@ -60,6 +60,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public abstract class RuntimeState {
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
+    private static final int INITIAL_TAG_SIZE = 1;
 
     private final WasmStore store;
     private final WasmModule module;
@@ -84,6 +85,8 @@ public abstract class RuntimeState {
     @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
     @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
+
+    @CompilationFinal(dimensions = 1) private WasmTag[] tags;
 
     /**
      * The passive elem instances that can be used to lazily initialize tables. They can potentially
@@ -133,12 +136,21 @@ public abstract class RuntimeState {
         }
     }
 
+    private void ensureTagCapacity(int index) {
+        if (index >= tags.length) {
+            final WasmTag[] nTags = new WasmTag[Math.max(Integer.highestOneBit(index) << 1, 2 * tags.length)];
+            System.arraycopy(tags, 0, nTags, 0, tags.length);
+            tags = nTags;
+        }
+    }
+
     public RuntimeState(WasmStore store, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.store = store;
         this.module = module;
         this.globals = new GlobalRegistry(module.numInternalGlobals(), module.numExternalGlobals());
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
+        this.tags = new WasmTag[INITIAL_TAG_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
@@ -273,6 +285,16 @@ public abstract class RuntimeState {
         ensureMemoriesCapacity(index);
         checkNotLinked();
         memories[index] = memory;
+    }
+
+    public WasmTag tag(int index) {
+        return tags[index];
+    }
+
+    public void setTag(int index, WasmTag tag) {
+        ensureTagCapacity(index);
+        checkNotLinked();
+        tags[index] = tag;
     }
 
     public WasmFunctionInstance functionInstance(WasmFunction function) {

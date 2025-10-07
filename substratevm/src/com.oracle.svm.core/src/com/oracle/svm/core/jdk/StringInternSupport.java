@@ -49,10 +49,12 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -202,7 +204,8 @@ class RuntimeInternedStrings {
 }
 
 @AutomaticallyRegisteredImageSingleton
-class ImageInternedStrings implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+class ImageInternedStrings {
 
     /**
      * The native image contains a lot of interned strings. All Java String literals, and all class
@@ -224,11 +227,6 @@ class ImageInternedStrings implements MultiLayeredImageSingleton, UnsavedSinglet
 
     String[] getImageInternedStrings() {
         return imageInternedStrings;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }
 

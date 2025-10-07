@@ -178,6 +178,9 @@ public final class BuildTimeInterpreterUniverse {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void initializeJavaFieldFromHosted(HostedField hostedField, InterpreterResolvedJavaField resolvedJavaField) {
         resolvedJavaField.setOffset(hostedField.getOffset());
+        if (hostedField.hasInstalledLayerNum()) {
+            resolvedJavaField.setInstalledLayerNum(hostedField.getInstalledLayerNum());
+        }
         InterpreterResolvedJavaType fType = getType(hostedField.getType().getWrapped());
         if (fType != null) {
             // If the resolvedType is included, we can prepare it for the interpreter field.

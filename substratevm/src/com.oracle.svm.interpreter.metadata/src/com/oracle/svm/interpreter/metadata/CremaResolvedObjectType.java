@@ -25,22 +25,36 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType {
+    private final byte[] primitiveStatics;
+    private final Object[] referenceStatics;
 
     public CremaResolvedObjectType(Symbol<Type> type, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass, InterpreterResolvedObjectType[] interfaces,
-                    InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType) {
+                    InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType,
+                    int staticReferenceFields, int staticPrimitiveFieldsSize) {
         super(type, modifiers, componentType, superclass, interfaces, constantPool, javaClass, isWordType);
+        this.primitiveStatics = new byte[staticPrimitiveFieldsSize];
+        this.referenceStatics = new Object[staticReferenceFields];
+    }
+
+    @Override
+    public Object getStaticStorage(boolean primitives, int layerNum) {
+        assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
+        return primitives ? primitiveStatics : referenceStatics;
     }
 
     @Override
@@ -72,7 +86,17 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaResolvedJavaRecordComponent[] getRecordComponents() {
+    public ResolvedJavaMethod getClassInitializer() {
+        for (InterpreterResolvedJavaMethod method : getDeclaredMethods(false)) {
+            if (method.isClassInitializer()) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public List<? extends CremaResolvedJavaRecordComponent> getRecordComponents() {
         // (GR-69095)
         throw VMError.unimplemented("getRecordComponents");
     }
@@ -90,7 +114,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public CremaEnclosingMethodInfo getEnclosingMethod() {
+    public ResolvedJavaMethod getEnclosingMethod() {
         // (GR-69095)
         throw VMError.unimplemented("getEnclosingMethod");
     }
@@ -99,6 +123,12 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     public JavaType[] getDeclaredClasses() {
         // (GR-69095)
         throw VMError.unimplemented("getDeclaredClasses");
+    }
+
+    @Override
+    public boolean isHidden() {
+        // (GR-69095)
+        throw VMError.unimplemented("isHidden");
     }
 
     @Override

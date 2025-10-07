@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -64,6 +63,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 /**
@@ -132,7 +132,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             case WasmType.I64_TYPE -> asLong(result);
             case WasmType.F32_TYPE -> asFloat(result);
             case WasmType.F64_TYPE -> asDouble(result);
-            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> result;
+            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> result;
             default -> {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
             }
@@ -172,7 +172,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
                         }
                         objectMultiValueStack[i] = value;
                     }
-                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> objectMultiValueStack[i] = value;
+                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> objectMultiValueStack[i] = value;
                     default -> {
                         errorBranch.enter();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);

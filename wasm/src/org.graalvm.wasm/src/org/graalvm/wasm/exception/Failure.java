@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,8 @@ public enum Failure {
     END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
     UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
     MALFORMED_MEMOP_FLAGS(Type.MALFORMED, "malformed memop flags"),
+    MALFORMED_CATCH(Type.MALFORMED, "malformed catch clause"),
+    MALFORMED_TAG_ATTRIBUTE(Type.MALFORMED, "malformed tag attribute"),
     // GraalWasm-specific:
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
@@ -74,6 +76,7 @@ public enum Failure {
     UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
     TYPE_MISMATCH(Type.INVALID, "type mismatch"),
     INVALID_RESULT_ARITY(Type.INVALID, "invalid result arity"),
+    NON_EMPTY_TAG_RESULT_TYPE(Type.INVALID, "non-empty tag result type"),
     MULTIPLE_MEMORIES(Type.INVALID, "multiple memories"),
     MULTIPLE_TABLES(Type.INVALID, "multiple tables"),
     LOOP_INPUT(Type.INVALID, "non-empty loop input type"),
@@ -101,6 +104,7 @@ public enum Failure {
     UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),
     UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
     UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
+    UNKNOWN_TAG(Type.INVALID, "unknown tag"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
@@ -116,6 +120,7 @@ public enum Failure {
     FUNCTION_SIZE_LIMIT_EXCEEDED(Type.INVALID, "function size exceeds limit"),
     PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
     RESULT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "result values count exceeds limit"),
+    TAG_COUNT_LIMIT_EXCEEDED(Type.INVALID, "tag count exceeds limit"),
 
     // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
@@ -159,7 +164,8 @@ public enum Failure {
 
     NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data"),
 
-    INVALID_LANE_INDEX(Type.INVALID, "invalid lane index");
+    INVALID_LANE_INDEX(Type.INVALID, "invalid lane index"),
+    INVALID_CATCH_CLAUSE_LABEL(Type.INVALID, "invalid catch clause label");
 
     public enum Type {
         TRAP("trap"),

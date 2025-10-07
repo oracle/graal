@@ -32,11 +32,11 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestate.MultiTypeState;
+import com.oracle.graal.pointsto.typestate.MultiTypeStateWithBitSet;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class ContextSensitiveMultiTypeState extends MultiTypeState {
+public class ContextSensitiveMultiTypeState extends MultiTypeStateWithBitSet {
 
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;

@@ -42,6 +42,7 @@ import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.C
 import java.lang.annotation.Annotation;
 import java.util.List;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
@@ -50,6 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -83,6 +85,22 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getArrayClass() {
         return (HotSpotResolvedObjectType) handle(getArrayClassMethod, getArrayClassInvokable);
+    }
+
+    private static final SymbolicMethod getEnclosingMethodMethod = method("getEnclosingMethod");
+    private static final InvokableMethod getEnclosingMethodInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getEnclosingMethod();
+
+    @Override
+    public HotSpotResolvedJavaMethod getEnclosingMethod() {
+        return (HotSpotResolvedJavaMethod) handle(getEnclosingMethodMethod, getEnclosingMethodInvokable);
+    }
+
+    private static final SymbolicMethod isHiddenMethod = method("isHidden");
+    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isHidden();
+
+    @Override
+    public boolean isHidden() {
+        return (boolean) handle(isHiddenMethod, isHiddenInvokable);
     }
 
     private static final SymbolicMethod getPermittedSubclassesMethod = method("getPermittedSubclasses");
@@ -299,6 +317,14 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (boolean) handle(isPrimitiveMethod, isPrimitiveInvokable);
     }
 
+    private static final SymbolicMethod isRecordMethod = method("isRecord");
+    private static final InvokableMethod isRecordInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isRecord();
+
+    @Override
+    public boolean isRecord() {
+        return (boolean) handle(isRecordMethod, isRecordInvokable);
+    }
+
     public static final SymbolicMethod getJavaKindMethod = method("getJavaKind");
     public static final InvokableMethod getJavaKindInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getJavaKind();
 
@@ -379,6 +405,15 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final HotSpotResolvedObjectType getEnclosingType() {
         return (HotSpotResolvedObjectType) handle(getEnclosingTypeMethod, getEnclosingTypeInvokable);
+    }
+
+    private static final SymbolicMethod getRecordComponentsMethod = method("getRecordComponents");
+    private static final InvokableMethod getRecordComponentsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getRecordComponents();
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return (List<ResolvedJavaRecordComponent>) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
     private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");

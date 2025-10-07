@@ -41,11 +41,15 @@ public final class FieldLayout {
     private final int afterInstanceFieldsOffset;
     private final int[] offsets;
     private final int[] referenceFieldsOffsets;
+    private final int staticReferenceFieldCount;
+    private final int staticPrimitiveFieldSize;
 
-    FieldLayout(int afterInstanceFieldsOffset, int[] offsets, int[] referenceFieldsOffsets) {
+    FieldLayout(int afterInstanceFieldsOffset, int[] offsets, int[] referenceFieldsOffsets, int staticReferenceFieldCount, int staticPrimitiveFieldSize) {
         this.afterInstanceFieldsOffset = afterInstanceFieldsOffset;
         this.offsets = offsets;
         this.referenceFieldsOffsets = referenceFieldsOffsets;
+        this.staticReferenceFieldCount = staticReferenceFieldCount;
+        this.staticPrimitiveFieldSize = staticPrimitiveFieldSize;
     }
 
     /**
@@ -84,5 +88,19 @@ public final class FieldLayout {
      */
     public int[] getReferenceFieldsOffsets() {
         return referenceFieldsOffsets;
+    }
+
+    /**
+     * @return The number of static reference fields.
+     */
+    public int getStaticReferenceFieldCount() {
+        return staticReferenceFieldCount;
+    }
+
+    /**
+     * @return The size of static primitive fields to allocate.
+     */
+    public int getStaticPrimitiveFieldSize() {
+        return staticPrimitiveFieldSize;
     }
 }

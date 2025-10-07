@@ -44,6 +44,7 @@ import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
@@ -67,6 +68,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess {
     public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
+    public static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
 
     public static final int UNKNOWN_METHOD_ID = 0;
 
@@ -88,7 +90,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     private final LineNumberTable lineNumberTable;
 
-    private ExceptionHandler[] exceptionHandlers;
+    protected ExceptionHandler[] exceptionHandlers;
 
     private LocalVariableTable localVariableTable;
 
@@ -330,16 +332,16 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     @Override
     public final boolean isClassInitializer() {
-        return "<clinit>".equals(getName()) && isStatic();
+        return ParserSymbols.ParserNames._clinit_ == getSymbolicName() && isStatic();
     }
 
     @Override
     public final boolean isConstructor() {
-        return "<init>".equals(getName()) && !isStatic();
+        return ParserSymbols.ParserNames._init_ == getSymbolicName() && !isStatic();
     }
 
     @Override
-    public final ExceptionHandler[] getExceptionHandlers() {
+    public ExceptionHandler[] getExceptionHandlers() {
         ExceptionHandler[] result = exceptionHandlers;
         VMError.guarantee(result != null);
         return result;

@@ -95,8 +95,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * 
      * @param opcode The opcode
      */
-    @Override
-    public void add(int opcode) {
+    public void addOp(int opcode) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
     }
@@ -108,7 +107,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param opcode The opcode
      * @param value The immediate value
      */
-    public void add(int opcode, int value) {
+    public void addOp(int opcode, int value) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add4(value);
@@ -121,7 +120,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param opcode The opcode
      * @param value The immediate value
      */
-    public void add(int opcode, long value) {
+    public void addOp(int opcode, long value) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add8(value);
@@ -134,7 +133,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param opcode The opcode
      * @param value The immediate value
      */
-    public void add(int opcode, Vector128 value) {
+    public void addOp(int opcode, Vector128 value) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add16(value);
@@ -148,7 +147,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param value1 The first immediate value
      * @param value2 The second immediate value
      */
-    public void add(int opcode, int value1, int value2) {
+    public void addOp(int opcode, int value1, int value2) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add4(value1);
@@ -348,7 +347,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      */
     public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
         int loopLabel = addLabel(resultCount, stackSize, commonResultType);
-        add(Bytecode.LOOP);
+        addOp(Bytecode.LOOP);
         return loopLabel;
     }
 
@@ -477,6 +476,28 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         // profile
         addProfile();
         return location;
+    }
+
+    /**
+     * Adds an exception handler that catches a specific exception type (tag), formatted as below.
+     * 
+     * <pre>
+     * from (4 byte) | to (4 byte) | type (1 byte) | tag (4 byte) | target (4 byte)
+     * </pre>
+     *
+     * @param from start offset of the bytecode range caught by the exception handler (exclusive)
+     * @param to end offset of the bytecode range caught by the exception handler (inclusive)
+     * @param type The opcode of the exception handler (see
+     *            {@link org.graalvm.wasm.constants.ExceptionHandlerType}).
+     * @param tag The tag of the exception handler.
+     * @param target The target (jump location) of the exception handler.
+     */
+    public void addExceptionHandler(int from, int to, int type, int tag, int target) {
+        add4(from);
+        add4(to);
+        add1(type);
+        add4(tag);
+        add4(target);
     }
 
     /**
@@ -674,20 +695,15 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     public int addElemHeader(int mode, int count, byte elemType, int tableIndex, byte[] offsetBytecode, int offsetAddress) {
         assert offsetBytecode == null || offsetAddress == -1 : "elem header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE : "invalid segment mode in elem header";
-        assert elemType == WasmType.FUNCREF_TYPE || elemType == WasmType.EXTERNREF_TYPE : "invalid elem type in elem header";
+        assert WasmType.isReferenceType(elemType) : "invalid elem type in elem header";
         int location = location();
         add1(0);
-        final int type;
-        switch (elemType) {
-            case WasmType.FUNCREF_TYPE:
-                type = BytecodeBitEncoding.ELEM_SEG_TYPE_FUNREF;
-                break;
-            case WasmType.EXTERNREF_TYPE:
-                type = BytecodeBitEncoding.ELEM_SEG_TYPE_EXTERNREF;
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
+        final int type = switch (elemType) {
+            case WasmType.FUNCREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_FUNREF;
+            case WasmType.EXTERNREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_EXTERNREF;
+            case WasmType.EXNREF_TYPE -> BytecodeBitEncoding.ELEM_SEG_TYPE_EXNREF;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
         add1(type | mode);
 
         int flags = 0;
@@ -861,7 +877,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param sourceCodeLocation the location in the source
      */
     public void addNotify(int lineNumber, int sourceCodeLocation) {
-        add(Bytecode.NOTIFY);
+        addOp(Bytecode.NOTIFY);
         add4(lineNumber);
         add4(sourceCodeLocation);
     }

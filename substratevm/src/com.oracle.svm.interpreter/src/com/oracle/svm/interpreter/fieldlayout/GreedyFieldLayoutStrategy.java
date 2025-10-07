@@ -42,10 +42,13 @@ import jdk.graal.compiler.core.common.NumUtil;
  */
 /* GR-69569: This should move closer to UniverseBuilder.layoutInstanceFields */
 final class GreedyFieldLayoutStrategy {
+
     static FieldLayout build(ParserField[] declaredParsedFields, long startOffset) {
         FieldLayoutImpl.ForInstanceFields forInstance = new FieldLayoutImpl.ForInstanceFields(declaredParsedFields, startOffset);
-        FieldLayoutImpl.ForStaticReferenceFields forStaticReferences = new FieldLayoutImpl.ForStaticReferenceFields(declaredParsedFields, /*- GR-69003 */ 0);
-        FieldLayoutImpl.ForStaticPrimitiveFields forStaticPrimitives = new FieldLayoutImpl.ForStaticPrimitiveFields(declaredParsedFields, /*- GR-69003 */ 0);
+        FieldLayoutImpl.ForStaticReferenceFields forStaticReferences = new FieldLayoutImpl.ForStaticReferenceFields(declaredParsedFields,
+                        ConfigurationValues.getObjectLayout().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Object));
+        FieldLayoutImpl.ForStaticPrimitiveFields forStaticPrimitives = new FieldLayoutImpl.ForStaticPrimitiveFields(declaredParsedFields,
+                        ConfigurationValues.getObjectLayout().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Byte));
 
         int[] offsets = new int[declaredParsedFields.length];
         int[] referenceOffsets = new int[forInstance.getCountFor(JavaKind.Object)];
@@ -71,7 +74,8 @@ final class GreedyFieldLayoutStrategy {
             offsets[i] = offset;
         }
         assert referencePos == referenceOffsets.length;
-        return new FieldLayout(NumUtil.safeToInt(forInstance.getAfterFieldsOffset()), offsets, referenceOffsets);
+        return new FieldLayout(NumUtil.safeToInt(forInstance.getAfterFieldsOffset()), offsets, referenceOffsets,
+                        forStaticReferences.getTotalCount(), forStaticPrimitives.getTotalSize());
     }
 
     private abstract static class FieldLayoutImpl {
@@ -115,6 +119,22 @@ final class GreedyFieldLayoutStrategy {
 
         public final int getCountFor(JavaKind kind) {
             return counts[indexOf(kind)];
+        }
+
+        public final int getTotalCount() {
+            long total = 0;
+            for (int i = 0; i < COUNT_LEN; i++) {
+                total = total + counts[i];
+            }
+            return NumUtil.safeToInt(total);
+        }
+
+        public final int getTotalSize() {
+            long total = 0;
+            for (int i = 0; i < COUNT_LEN; i++) {
+                total += counts[i] * (long) SIZES_IN_BYTES[i];
+            }
+            return NumUtil.safeToInt(total);
         }
 
         FieldLayoutImpl(ParserField[] declaredParsedFields, long startOffset) {

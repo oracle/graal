@@ -21,15 +21,30 @@ Select the installation option that you prefer.
 ## SDKMAN!
 
 Install Oracle GraalVM with [SDKMAN!](https://sdkman.io/){:target="_blank"}:
+
 ```bash
 sdk install java <version>-graal
 ```
 To install GraalVM Community Edition, change the distribution from `graal` to `graalce` in the command.
 
 SDKMAN! helps you install and easily switch between JDKs.
-Check which GraalVM releases are available for installation by running: 
+
+To check which GraalVM releases are available for installation, run:
+
 ```bash
 sdk list java
+```
+
+To switch to the specified GraalVM version for your current terminal session, run:
+
+```bash
+sdk use java <version>-graal
+```
+
+To set a version as the default for all new terminal sessions, run:
+
+```bash
+sdk default java <version>-graal
 ```
 
 ## From an Archive
@@ -48,7 +63,7 @@ Install GraalVM from an archive (_.tar.gz_) for the current user into any locati
     ```bash
     sudo mv graalvm-jdk-<version> /Library/Java/JavaVirtualMachines
     ```
-    To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
+    To verify that the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:

@@ -41,6 +41,8 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -49,6 +51,7 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 
 public class AbstractInstructionTest {
 
@@ -149,6 +152,23 @@ public class AbstractInstructionTest {
             return;
         }
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static void assertSingletonNode(Instruction.Argument nodeArgument) {
+        assertFalse(nodeArgument.asCachedNode().isAdoptable());
+    }
+
+    public static void assertInstanceNode(Instruction.Argument nodeArgument) {
+        assertTrue(nodeArgument.asCachedNode().isAdoptable());
+    }
+
+    public static Instruction.Argument findNodeArgument(Instruction i) {
+        for (Instruction.Argument arg : i.getArguments()) {
+            if (arg.getKind() == Kind.NODE_PROFILE) {
+                return arg;
+            }
+        }
+        return null;
     }
 
 }

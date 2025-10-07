@@ -88,6 +88,7 @@ import com.oracle.svm.webimage.hightiercodegen.variables.ResolvedVar;
 import com.oracle.svm.webimage.type.TypeControl;
 
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -135,6 +136,8 @@ import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
+import jdk.graal.compiler.nodes.calc.MinNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
@@ -153,6 +156,7 @@ import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
+import jdk.graal.compiler.nodes.calc.UnsignedMinNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
@@ -1237,19 +1241,37 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(BinaryArithmeticNode<?> node) {
-        switch (node.getStackKind()) {
-            case Int:
+        JavaKind stackKind = node.getStackKind();
+
+        /*
+         * MinMaxNode cannot be represented using an operator and needs special handling. For longs
+         * this is not necessary as Long64Lowerer can deal with min/max as well.
+         */
+        if (node instanceof MinMaxNode<?> minMaxNode && stackKind != JavaKind.Long) {
+            if (minMaxNode.signedness() == NumUtil.Signedness.SIGNED) {
+                /*
+                 * For the signed min/max operation, we can simply use the built-in
+                 * Math.min/Math.max, even for 32-bit integers since those can be fully represented
+                 * in a JS number.
+                 */
+                boolean isMin = minMaxNode instanceof MinNode;
+                BinaryFloatOperationLowerer.minMax(codeGenTool, isMin, node.getX(), node.getY());
+            } else {
+                assert stackKind == JavaKind.Int;
+                assert minMaxNode.signedness() == NumUtil.Signedness.UNSIGNED;
+                boolean isMin = minMaxNode instanceof UnsignedMinNode;
+                BinaryIntOperationLowerer.unsignedMinMax(codeGenTool, isMin, node.getX(), node.getY());
+            }
+            return;
+        }
+
+        switch (stackKind) {
+            case Int ->
                 BinaryIntOperationLowerer.binaryOp(node, node.getX(), node.getY(), codeGenTool, getSymbolForBinaryArithmeticOp(node), true);
-                break;
-            case Long:
-                Long64Lowerer.genBinaryArithmeticOperation(node, node.getX(), node.getY(), codeGenTool);
-                break;
-            case Float:
-            case Double:
+            case Long -> Long64Lowerer.genBinaryArithmeticOperation(node, node.getX(), node.getY(), codeGenTool);
+            case Float, Double ->
                 BinaryFloatOperationLowerer.doop(codeGenTool, getSymbolForBinaryArithmeticOp(node), node);
-                break;
-            default:
-                throw GraalError.shouldNotReachHereUnexpectedValue(node.getStackKind());
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(stackKind);
         }
     }
 
