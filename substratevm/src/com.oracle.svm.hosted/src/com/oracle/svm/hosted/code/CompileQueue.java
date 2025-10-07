@@ -292,6 +292,9 @@ public class CompileQueue {
         public void beforeEncode(HostedMethod method, StructuredGraph graph, HighTierContext context) {
         }
 
+        public void beforeCompile() {
+        }
+
         @SuppressWarnings("unused")
         public void afterMethodCompile(HostedMethod method, StructuredGraph graph) {
         }
@@ -458,6 +461,7 @@ public class CompileQueue {
             assert suitesNotCreated();
             createSuites();
             try (ProgressReporter.ReporterClosable _ = reporter.printCompiling()) {
+                notifyBeforeCompile();
                 compileAll();
                 notifyAfterCompile();
             }
@@ -948,6 +952,12 @@ public class CompileQueue {
 
     protected CompileTask createCompileTask(HostedMethod method, CompileReason reason) {
         return new CompileTask(method, reason);
+    }
+
+    private void notifyBeforeCompile() {
+        for (Policy policy : this.policies) {
+            policy.beforeCompile();
+        }
     }
 
     protected void compileAll() throws InterruptedException {
