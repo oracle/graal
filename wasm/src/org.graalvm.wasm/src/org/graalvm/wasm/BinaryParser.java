@@ -514,7 +514,7 @@ public class BinaryParser extends BinaryStreamParser {
                 readTableLimits(multiResult);
                 initValue = null;
                 initBytecode = null;
-                Assert.assertTrue(WasmType.isNullable(elemType), Failure.UNINITIALIZED_TABLE);
+                Assert.assertTrue(WasmType.isNullable(elemType), "uninitialized table of non-nullable element type", Failure.TYPE_MISMATCH);
             }
             module.symbolTable().declareTable(tableIndex, multiResult[0], multiResult[1], elemType, initBytecode, initValue, bulkMemoryAndRefTypes);
         }
