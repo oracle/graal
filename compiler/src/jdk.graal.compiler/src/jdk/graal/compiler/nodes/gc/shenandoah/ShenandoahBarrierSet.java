@@ -87,7 +87,7 @@ public class ShenandoahBarrierSet extends BarrierSet {
     protected boolean useCardBarrier;
 
     public ShenandoahBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
-        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION);
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION, false);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
         this.useLoadRefBarrier = true;

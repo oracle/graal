@@ -65,7 +65,7 @@ public class ZBarrierSet extends BarrierSet {
     private final ResolvedJavaField referentField;
 
     public ZBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
-        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION);
+        super(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION, false);
         this.referentField = referentField;
         this.objectArrayType = objectArrayType;
     }

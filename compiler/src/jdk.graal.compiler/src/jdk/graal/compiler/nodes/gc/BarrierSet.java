@@ -67,7 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public abstract class BarrierSet {
 
     /**
-     * The stage as which barriers should be inserted. May be {@code null} if no barriers are
+     * The stage at which barriers should be inserted. May be {@code null} if no barriers are
      * required, {@link jdk.graal.compiler.nodes.GraphState.StageFlag#MID_TIER_BARRIER_ADDITION} or
      * {@link jdk.graal.compiler.nodes.GraphState.StageFlag#LOW_TIER_BARRIER_ADDITION}.
      *
@@ -75,14 +75,24 @@ public abstract class BarrierSet {
      */
     private final GraphState.StageFlag barrierStage;
 
-    protected BarrierSet(GraphState.StageFlag barrierStage) {
+    protected final boolean hasDeferredInitBarriers;
+
+    protected BarrierSet(GraphState.StageFlag barrierStage, boolean hasDeferredInitBarriers) {
         assert barrierStage == null || barrierStage == GraphState.StageFlag.MID_TIER_BARRIER_ADDITION || barrierStage == GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION : barrierStage;
         this.barrierStage = barrierStage;
+        this.hasDeferredInitBarriers = hasDeferredInitBarriers;
     }
 
     /**
-     * Checks whether writing to {@link LocationIdentity#INIT_LOCATION} can be performed with an
-     * intervening allocation.
+     * Return {@code true} if the last allocated object can elide all barriers.
+     */
+    public boolean hasDeferredInitBarriers() {
+        return hasDeferredInitBarriers;
+    }
+
+    /**
+     * Returns the barrier type to use when writing to {@link LocationIdentity#INIT_LOCATION} after
+     * an intervening allocation.
      */
     public BarrierType postAllocationInitBarrier(BarrierType original) {
         return original;

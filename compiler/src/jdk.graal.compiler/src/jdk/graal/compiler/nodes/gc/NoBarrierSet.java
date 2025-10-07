@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class NoBarrierSet extends BarrierSet {
 
     public NoBarrierSet() {
-        super(null);
+        super(null, false);
     }
 
     @Override
