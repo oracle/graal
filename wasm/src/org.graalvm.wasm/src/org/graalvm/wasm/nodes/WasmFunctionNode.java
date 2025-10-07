@@ -587,7 +587,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                         // Validate that the target function type matches the expected type of the
                         // indirect call.
-                        if (!symtab.closedTypeAt(expectedFunctionTypeIndex).matches(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
+                        if (!symtab.closedTypeAt(expectedFunctionTypeIndex).matchesType(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
                             enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }

@@ -44,8 +44,7 @@ import org.graalvm.wasm.WasmType;
 
 public enum TableKind {
     externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE),
-    exnref(WasmType.EXNREF_TYPE);
+    anyfunc(WasmType.FUNCREF_TYPE);
 
     private final int value;
 
@@ -61,7 +60,6 @@ public enum TableKind {
         return switch (value) {
             case WasmType.EXTERNREF_TYPE -> "externref";
             case WasmType.FUNCREF_TYPE -> "anyfunc";
-            case WasmType.EXNREF_TYPE -> "exnref";
             default -> "";
         };
     }

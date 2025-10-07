@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -127,21 +128,16 @@ public final class ExecuteHostFunctionNode extends RootNode {
      */
     private Object convertResult(Object result, int resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
+        SymbolTable.ClosedValueType closedResultType = module.closedTypeAt(resultType);
+        CompilerAsserts.partialEvaluationConstant(closedResultType);
         return switch (resultType) {
             case WasmType.I32_TYPE -> asInt(result);
             case WasmType.I64_TYPE -> asLong(result);
             case WasmType.F32_TYPE -> asFloat(result);
             case WasmType.F64_TYPE -> asDouble(result);
-            case WasmType.V128_TYPE -> {
-                if (!(result instanceof Vector128)) {
-                    errorBranch.enter();
-                    throw WasmException.create(Failure.TYPE_MISMATCH);
-                }
-                yield result;
-            }
             default -> {
-                assert WasmType.isReferenceType(resultType);
-                if (!WasmType.isNullable(resultType) && result == WasmConstant.NULL) {
+                assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
+                if (!closedResultType.matchesValue(result)) {
                     errorBranch.enter();
                     throw WasmException.create(Failure.TYPE_MISMATCH);
                 }
@@ -170,22 +166,17 @@ public final class ExecuteHostFunctionNode extends RootNode {
             for (int i = 0; i < resultCount; i++) {
                 int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
+                SymbolTable.ClosedValueType closedResultType = module.closedTypeAt(resultType);
+                CompilerAsserts.partialEvaluationConstant(closedResultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {
                     case WasmType.I32_TYPE -> primitiveMultiValueStack[i] = asInt(value);
                     case WasmType.I64_TYPE -> primitiveMultiValueStack[i] = asLong(value);
                     case WasmType.F32_TYPE -> primitiveMultiValueStack[i] = Float.floatToRawIntBits(asFloat(value));
                     case WasmType.F64_TYPE -> primitiveMultiValueStack[i] = Double.doubleToRawLongBits(asDouble(value));
-                    case WasmType.V128_TYPE -> {
-                        if (!(value instanceof Vector128)) {
-                            errorBranch.enter();
-                            throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
-                        }
-                        objectMultiValueStack[i] = value;
-                    }
                     default -> {
-                        assert WasmType.isReferenceType(resultType);
-                        if (!WasmType.isNullable(resultType) && value == WasmConstant.NULL) {
+                        assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
+                        if (!closedResultType.matchesValue(result)) {
                             throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
                         }
                         objectMultiValueStack[i] = value;

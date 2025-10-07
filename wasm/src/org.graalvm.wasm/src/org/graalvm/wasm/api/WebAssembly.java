@@ -112,7 +112,7 @@ public class WebAssembly extends Dictionary {
         addMember("mem_set_wait_callback", new Executable(WebAssembly::memSetWaitCallback));
 
         addMember("global_alloc", new Executable(this::globalAlloc));
-        addMember("global_read", new Executable(WebAssembly::globalRead));
+        addMember("global_read", new Executable(this::globalRead));
         addMember("global_write", new Executable(this::globalWrite));
 
         addMember("tag_alloc", new Executable(WebAssembly::tagAlloc));
@@ -442,10 +442,10 @@ public class WebAssembly extends Dictionary {
         if (Integer.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
         }
-        if (elemKind != TableKind.externref && elemKind != TableKind.anyfunc && elemKind != TableKind.exnref) {
+        if (elemKind != TableKind.externref && elemKind != TableKind.anyfunc) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be a reftype");
         }
-        if (!refTypes && (elemKind == TableKind.externref || elemKind == TableKind.exnref)) {
+        if (!refTypes && elemKind == TableKind.externref) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
@@ -508,23 +508,12 @@ public class WebAssembly extends Dictionary {
     }
 
     public Object tableWrite(WasmTable table, int index, Object element) {
-        final Object elem;
-        if (element instanceof WasmFunctionInstance) {
-            elem = element;
-        } else if (element == WasmConstant.NULL) {
-            elem = WasmConstant.NULL;
-        } else {
-            if (!currentContext.getContextOptions().supportBulkMemoryAndRefTypes()) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
-            }
-            if (table.elemType() == WasmType.FUNCREF_TYPE) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
-            }
-            elem = element;
+        if (!table.closedValueType().matchesValue(element)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
         }
 
         try {
-            table.set(index, elem);
+            table.set(index, element);
         } catch (ArrayIndexOutOfBoundsException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
@@ -799,79 +788,68 @@ public class WebAssembly extends Dictionary {
             String valueTypeString = lib.asString(args[0]);
             valueType = ValueType.valueOf(valueTypeString);
         } catch (UnsupportedMessageException e) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (value type) must be convertible to String");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (value type) must be convertible to String.");
         } catch (IllegalArgumentException ex) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type.");
         }
         final boolean mutable;
         try {
             mutable = lib.asBoolean(args[1]);
         } catch (UnsupportedMessageException e) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (mutable) must be convertible to boolean");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument (mutable) must be convertible to boolean.");
         }
         return globalAlloc(valueType, mutable, args[2]);
     }
 
     public WasmGlobal globalAlloc(ValueType valueType, boolean mutable, Object value) {
-        InteropLibrary valueInterop = InteropLibrary.getUncached(value);
-        try {
-            switch (valueType) {
-                case i32:
-                    return new WasmGlobal(valueType, mutable, valueInterop.asInt(value));
-                case i64:
-                    return new WasmGlobal(valueType, mutable, valueInterop.asLong(value));
-                case f32:
-                    return new WasmGlobal(valueType, mutable, Float.floatToRawIntBits(valueInterop.asFloat(value)));
-                case f64:
-                    return new WasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
-                case anyfunc:
-                    if (!refTypes || !(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
-                        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
-                    }
-                    return new WasmGlobal(valueType, mutable, value);
-                case externref:
-                    if (!refTypes) {
-                        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
-                    }
-                    return new WasmGlobal(valueType, mutable, value);
-                default:
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
-            }
-        } catch (UnsupportedMessageException ex) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Cannot convert value to the specified value type");
+        if (!valueType.asClosedValueType().matchesValue(value)) {
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
         }
+        return switch (valueType) {
+            case i32 -> WasmGlobal.alloc32(valueType, mutable, (int) value);
+            case i64 -> WasmGlobal.alloc64(valueType, mutable, (long) value);
+            case f32 -> WasmGlobal.alloc32(valueType, mutable, Float.floatToRawIntBits((float) value));
+            case f64 -> WasmGlobal.alloc64(valueType, mutable, Double.doubleToRawLongBits((double) value));
+            case v128 -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            case anyfunc, externref -> {
+                if (!refTypes) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
+                }
+                yield WasmGlobal.allocRef(valueType, mutable, value);
+            }
+        };
     }
 
-    private static Object globalRead(Object[] args) {
+    private Object globalRead(Object[] args) {
         checkArgumentCount(args, 1);
         if (!(args[0] instanceof WasmGlobal global)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global.");
         }
         return globalRead(global);
     }
 
-    public static Object globalRead(WasmGlobal global) {
-        switch (global.getValueType()) {
-            case i32:
-                return global.loadAsInt();
-            case i64:
-                return global.loadAsLong();
-            case f32:
-                return Float.intBitsToFloat(global.loadAsInt());
-            case f64:
-                return Double.longBitsToDouble(global.loadAsLong());
-            case anyfunc:
-            case externref:
-                return global.loadAsReference();
-
-        }
-        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Incorrect internal Global type");
+    public Object globalRead(WasmGlobal global) {
+        int type = global.getType();
+        return switch (type) {
+            case WasmType.I32_TYPE -> global.loadAsInt();
+            case WasmType.I64_TYPE -> global.loadAsLong();
+            case WasmType.F32_TYPE -> Float.intBitsToFloat(global.loadAsInt());
+            case WasmType.F64_TYPE -> Double.longBitsToDouble(global.loadAsLong());
+            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            default -> {
+                assert WasmType.isReferenceType(type);
+                if (!refTypes) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
+                }
+                yield global.loadAsReference();
+            }
+        };
     }
 
     private Object globalWrite(Object[] args) {
         checkArgumentCount(args, 2);
         if (!(args[0] instanceof WasmGlobal global)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global");
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm global.");
         }
         return globalWrite(global, args[1]);
     }
@@ -880,48 +858,23 @@ public class WebAssembly extends Dictionary {
         if (!global.isMutable()) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
         }
-        ValueType valueType = global.getValueType();
-        switch (valueType) {
-            case i32:
-                if (!(value instanceof Integer)) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
-                }
-                global.storeInt((int) value);
-                break;
-            case i64:
-                if (!(value instanceof Long)) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
-                }
-                global.storeLong((long) value);
-                break;
-            case f32:
-                if (!(value instanceof Float)) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
-                }
-                global.storeInt(Float.floatToRawIntBits((float) value));
-                break;
-            case f64:
-                if (!(value instanceof Double)) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
-                }
-                global.storeLong(Double.doubleToRawLongBits((double) value));
-                break;
-            case anyfunc:
+        int type = global.getType();
+        if (!global.getClosedValueType().matchesValue(value)) {
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", ValueType.fromValue(type), value);
+        }
+        switch (type) {
+            case WasmType.I32_TYPE -> global.storeInt((int) value);
+            case WasmType.I64_TYPE -> global.storeLong((long) value);
+            case WasmType.F32_TYPE -> global.storeInt(Float.floatToRawIntBits((float) value));
+            case WasmType.F64_TYPE -> global.storeLong(Double.doubleToRawLongBits((double) value));
+            case WasmType.V128_TYPE -> throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            default -> {
+                assert WasmType.isReferenceType(type);
                 if (!refTypes) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
-                }
-                if (!(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
-                } else {
-                    global.storeReference(value);
-                }
-                break;
-            case externref:
-                if (!refTypes) {
-                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
                 global.storeReference(value);
-                break;
+            }
         }
         return WasmConstant.VOID;
     }

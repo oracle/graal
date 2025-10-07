@@ -98,8 +98,7 @@ public class WasmType implements TruffleObject {
     /**
      * Implementation-specific Types.
      */
-    public static final int TOP = -0x7d;
-    public static final int NULL_TYPE = -0x7e;
+    public static final int TOP = -0x7e;
     public static final int BOT = -0x7f;
 
     /**
@@ -131,6 +130,8 @@ public class WasmType implements TruffleObject {
             case F32_TYPE -> "f32";
             case F64_TYPE -> "f64";
             case V128_TYPE -> "v128";
+            case TOP -> "top";
+            case BOT -> "bot";
             default -> {
                 assert WasmType.isReferenceType(valueType);
                 boolean nullable = WasmType.isNullable(valueType);

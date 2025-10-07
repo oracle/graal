@@ -151,7 +151,7 @@ public class WasmInstantiator {
                     final ModuleLimits limits = instance.module().limits();
                     final int maxAllowedSize = WasmMath.minUnsigned(tableMaxSize, limits.tableInstanceSizeLimit());
                     limits.checkTableInstanceSize(tableMinSize);
-                    final WasmTable wasmTable = new WasmTable(tableMinSize, tableMaxSize, maxAllowedSize, tableElemType);
+                    final WasmTable wasmTable = new WasmTable(tableMinSize, tableMaxSize, maxAllowedSize, tableElemType, module);
                     final int address = store.tables().register(wasmTable);
                     instance.setTableAddress(tableIndex, address);
 

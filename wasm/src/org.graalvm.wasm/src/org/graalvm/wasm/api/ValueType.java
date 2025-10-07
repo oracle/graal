@@ -70,9 +70,18 @@ public enum ValueType {
             case WasmType.F32_TYPE -> f32;
             case WasmType.F64_TYPE -> f64;
             case WasmType.V128_TYPE -> v128;
-            case WasmType.FUNCREF_TYPE -> anyfunc;
-            case WasmType.EXTERNREF_TYPE -> externref;
-            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+            default -> {
+                assert WasmType.isReferenceType(value);
+                yield switch (WasmType.getAbstractHeapType(value)) {
+                    case WasmType.FUNC_HEAPTYPE -> anyfunc;
+                    case WasmType.EXTERN_HEAPTYPE -> externref;
+                    case WasmType.EXN_HEAPTYPE -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+                    default -> {
+                        assert WasmType.isConcreteReferenceType(value);
+                        yield anyfunc;
+                    }
+                };
+            }
         };
     }
 
@@ -93,15 +102,14 @@ public enum ValueType {
     }
 
     public SymbolTable.ClosedValueType asClosedValueType() {
-        return switch (value) {
-            case WasmType.I32_TYPE -> SymbolTable.NumberType.I32;
-            case WasmType.I64_TYPE -> SymbolTable.NumberType.I64;
-            case WasmType.F32_TYPE -> SymbolTable.NumberType.F32;
-            case WasmType.F64_TYPE -> SymbolTable.NumberType.F64;
-            case WasmType.V128_TYPE -> SymbolTable.VectorType.V128;
-            case WasmType.FUNCREF_TYPE -> SymbolTable.ClosedReferenceType.FUNCREF;
-            case WasmType.EXTERNREF_TYPE -> SymbolTable.ClosedReferenceType.EXTERNREF;
-            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+        return switch (this) {
+            case i32 -> SymbolTable.NumberType.I32;
+            case i64 -> SymbolTable.NumberType.I64;
+            case f32 -> SymbolTable.NumberType.F32;
+            case f64 -> SymbolTable.NumberType.F64;
+            case v128 -> SymbolTable.VectorType.V128;
+            case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
+            case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
         };
     }
 
@@ -111,9 +119,6 @@ public enum ValueType {
             case Vector -> fromValue(((SymbolTable.VectorType) closedValueType).value());
             case Reference -> {
                 SymbolTable.ClosedReferenceType referenceType = (SymbolTable.ClosedReferenceType) closedValueType;
-                if (!referenceType.nullable()) {
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: non-nullable reference");
-                }
                 yield switch (referenceType.heapType().kind()) {
                     case Abstract -> {
                         SymbolTable.AbstractHeapType abstractHeapType = (SymbolTable.AbstractHeapType) referenceType.heapType();
@@ -123,7 +128,7 @@ public enum ValueType {
                             default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(abstractHeapType.value()));
                         };
                     }
-                    case Function -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: typed function reference");
+                    case Function -> anyfunc;
                 };
             }
             case Bottom -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: bottom");

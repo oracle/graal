@@ -88,7 +88,6 @@ import org.graalvm.wasm.Linker.ResolutionDag.InitializeTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
-import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -312,7 +311,7 @@ public class Linker {
             final int exportedValueType;
             final byte exportedMutability;
             if (externalGlobal != null) {
-                exportedValueType = externalGlobal.getValueType().value();
+                exportedValueType = externalGlobal.getType();
                 exportedMutability = externalGlobal.getMutability();
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
@@ -362,7 +361,7 @@ public class Linker {
         assert !instance.globals().isInitialized(globalIndex) : globalIndex;
         SymbolTable symbolTable = instance.symbolTable();
         if (symbolTable.globalExternal(globalIndex)) {
-            var global = new WasmGlobal(ValueType.fromValue(symbolTable.globalValueType(globalIndex)), symbolTable.isGlobalMutable(globalIndex), initValue);
+            var global = new WasmGlobal(symbolTable.globalValueType(globalIndex), symbolTable.isGlobalMutable(globalIndex), instance.symbolTable(), initValue);
             instance.setExternalGlobal(globalIndex, global);
         } else {
             instance.globals().store(symbolTable.globalValueType(globalIndex), symbolTable.globalAddress(globalIndex), initValue);
@@ -402,7 +401,7 @@ public class Linker {
             Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
-                    if (!function.closedType().matches(functionInstance.function().closedType())) {
+                    if (!function.closedType().matchesType(functionInstance.function().closedType())) {
                         throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
                     }
                     instance.setTarget(function.index(), functionInstance.target());
@@ -435,7 +434,7 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            if (!function.closedType().matches(importedFunction.closedType())) {
+            if (!function.closedType().matchesType(importedFunction.closedType())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
@@ -539,7 +538,7 @@ public class Linker {
                 }
                 importedTag = importedInstance.tag(exportedTagIndex);
             }
-            Assert.assertTrue(type.matches(importedTag.type()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            Assert.assertTrue(type.matchesType(importedTag.type()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTag(tagIndex, importedTag);
         };
         resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);

@@ -52,10 +52,12 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 
@@ -92,7 +94,9 @@ public abstract class SymbolTable {
             Bottom
         }
 
-        public abstract boolean matches(ClosedValueType valueSubType);
+        public abstract boolean matchesType(ClosedValueType valueSubType);
+
+        public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
     }
@@ -104,7 +108,9 @@ public abstract class SymbolTable {
             Function
         }
 
-        public abstract boolean matches(ClosedHeapType heapSubType);
+        public abstract boolean matchesType(ClosedHeapType heapSubType);
+
+        public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
     }
@@ -126,8 +132,19 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedValueType valueSubType) {
+        public boolean matchesType(ClosedValueType valueSubType) {
             return valueSubType == BottomType.BOTTOM || valueSubType == this;
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return switch (value()) {
+                case WasmType.I32_TYPE -> val instanceof Integer;
+                case WasmType.I64_TYPE -> val instanceof Long;
+                case WasmType.F32_TYPE -> val instanceof Float;
+                case WasmType.F64_TYPE -> val instanceof Double;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
         }
 
         @Override
@@ -150,8 +167,13 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedValueType valueSubType) {
+        public boolean matchesType(ClosedValueType valueSubType) {
             return valueSubType == BottomType.BOTTOM || valueSubType == this;
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return val instanceof Vector128;
         }
 
         @Override
@@ -185,9 +207,14 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedValueType valueSubType) {
+        public boolean matchesType(ClosedValueType valueSubType) {
             return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
-                            this.closedHeapType.matches(referenceSubType.closedHeapType);
+                            this.closedHeapType.matchesType(referenceSubType.closedHeapType);
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return nullable() && value == WasmConstant.NULL || heapType().matchesValue(value);
         }
 
         @Override
@@ -212,11 +239,21 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedHeapType heapSubType) {
+        public boolean matchesType(ClosedHeapType heapSubType) {
             return switch (this.value) {
                 case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedFunctionType;
                 case WasmType.EXTERN_HEAPTYPE -> heapSubType == EXTERN;
                 case WasmType.EXN_HEAPTYPE -> heapSubType == EXN;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+
+        @Override
+        public boolean matchesValue(Object val) {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> val instanceof WasmFunctionInstance;
+                case WasmType.EXTERN_HEAPTYPE -> true;
+                case WasmType.EXN_HEAPTYPE -> val instanceof WasmRuntimeException;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -245,7 +282,7 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedHeapType heapSubType) {
+        public boolean matchesType(ClosedHeapType heapSubType) {
             if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
                 return false;
             }
@@ -253,7 +290,7 @@ public abstract class SymbolTable {
                 return false;
             }
             for (int i = 0; i < this.paramTypes.length; i++) {
-                if (!functionSubType.paramTypes[i].matches(this.paramTypes[i])) {
+                if (!functionSubType.paramTypes[i].matchesType(this.paramTypes[i])) {
                     return false;
                 }
             }
@@ -261,11 +298,16 @@ public abstract class SymbolTable {
                 return false;
             }
             for (int i = 0; i < this.resultTypes.length; i++) {
-                if (!this.resultTypes[i].matches(functionSubType.resultTypes[i])) {
+                if (!this.resultTypes[i].matchesType(functionSubType.resultTypes[i])) {
                     return false;
                 }
             }
             return true;
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return value instanceof WasmFunctionInstance instance && matchesType(instance.function().closedType());
         }
 
         @Override
@@ -281,8 +323,13 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matches(ClosedValueType valueSubType) {
+        public boolean matchesType(ClosedValueType valueSubType) {
             return valueSubType instanceof BottomType;
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return false;
         }
 
         @Override
@@ -849,7 +896,7 @@ public abstract class SymbolTable {
     }
 
     public boolean matches(int expectedType, int actualType) {
-        return closedTypeAt(expectedType).matches(closedTypeAt(actualType));
+        return closedTypeAt(expectedType).matchesType(closedTypeAt(actualType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -1121,9 +1168,9 @@ public abstract class SymbolTable {
             final WasmTable wasmTable;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty table in memory overhead mode.
-                wasmTable = new WasmTable(0, 0, 0, elemType);
+                wasmTable = new WasmTable(0, 0, 0, elemType, this);
             } else {
-                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
+                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType, this);
             }
             final int address = store.tables().register(wasmTable);
             instance.setTableAddress(index, address);

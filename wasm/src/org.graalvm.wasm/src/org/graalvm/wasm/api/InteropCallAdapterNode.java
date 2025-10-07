@@ -42,12 +42,10 @@ package org.graalvm.wasm.api;
 
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -135,73 +133,9 @@ public final class InteropCallAdapterNode extends RootNode {
     private static void validateArgument(Object[] arguments, int offset, SymbolTable.ClosedValueType[] paramTypes, int i) throws UnsupportedTypeException {
         SymbolTable.ClosedValueType paramType = paramTypes[i];
         Object value = arguments[i + offset];
-        switch (paramType.kind()) {
-            case Number -> {
-                SymbolTable.NumberType numberType = (SymbolTable.NumberType) paramType;
-                switch (numberType.value()) {
-                    case WasmType.I32_TYPE -> {
-                        if (value instanceof Integer) {
-                            return;
-                        }
-                    }
-                    case WasmType.I64_TYPE -> {
-                        if (value instanceof Long) {
-                            return;
-                        }
-                    }
-                    case WasmType.F32_TYPE -> {
-                        if (value instanceof Float) {
-                            return;
-                        }
-                    }
-                    case WasmType.F64_TYPE -> {
-                        if (value instanceof Double) {
-                            return;
-                        }
-                    }
-                }
-            }
-            case Vector -> {
-                if (value instanceof Vector128) {
-                    return;
-                }
-            }
-            case Reference -> {
-                SymbolTable.ClosedReferenceType referenceType = (SymbolTable.ClosedReferenceType) paramType;
-                boolean nullable = referenceType.nullable();
-                SymbolTable.ClosedHeapType heapType = referenceType.heapType();
-                switch (heapType.kind()) {
-                    case Abstract -> {
-                        SymbolTable.AbstractHeapType abstractHeapType = (SymbolTable.AbstractHeapType) heapType;
-                        switch (abstractHeapType.value()) {
-                            case WasmType.FUNCREF_TYPE -> {
-                                if (value instanceof WasmFunctionInstance || nullable && value == WasmConstant.NULL) {
-                                    return;
-                                }
-                            }
-                            case WasmType.EXTERNREF_TYPE -> {
-                                if (nullable || value != WasmConstant.NULL) {
-                                    return;
-                                }
-                            }
-                            case WasmType.EXNREF_TYPE -> {
-                                if (value instanceof WasmRuntimeException || nullable && value == WasmConstant.NULL) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    case Function -> {
-                        SymbolTable.ClosedFunctionType functionType = (SymbolTable.ClosedFunctionType) heapType;
-                        if (value instanceof WasmFunctionInstance instance && functionType.matches(instance.function().closedType()) || nullable && value == WasmConstant.NULL) {
-                            return;
-                        }
-                    }
-                }
-            }
-            case Bottom -> throw CompilerDirectives.shouldNotReachHere();
+        if (!paramType.matchesValue(value)) {
+            throw UnsupportedTypeException.create(arguments);
         }
-        throw UnsupportedTypeException.create(arguments);
     }
 
     private Object multiValueStackAsArray(WasmLanguage language) {
