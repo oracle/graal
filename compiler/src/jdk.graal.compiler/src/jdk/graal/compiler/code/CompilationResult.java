@@ -726,6 +726,13 @@ public class CompilationResult {
         default Object getId() {
             return this;
         }
+
+        /**
+         * @return {@code true} if only one instance of this {@code MarkID} is allowed
+         */
+        default boolean isUnique() {
+            return true;
+        }
     }
 
     /**
@@ -883,6 +890,7 @@ public class CompilationResult {
     public record CompilationResultWatermark(int infopointsSize,
                     int dataPatchesSize,
                     int exceptionHandlersSize,
+                    int marksSize,
                     int pendingExceptionInfoListSize,
                     int pendingImplicitExceptionListSize) {
     }
@@ -893,7 +901,7 @@ public class CompilationResult {
      *         {@link ExceptionHandler} or {@link ImplicitExceptionDispatch}.
      */
     public CompilationResultWatermark getSitesWatermark(int pendingExceptionInfoListSize, int pendingImplicitExceptionListSize) {
-        return new CompilationResultWatermark(infopoints.size(), dataPatches.size(), exceptionHandlers.size(), pendingExceptionInfoListSize,
+        return new CompilationResultWatermark(infopoints.size(), dataPatches.size(), exceptionHandlers.size(), marks.size(), pendingExceptionInfoListSize,
                         pendingImplicitExceptionListSize);
     }
 
@@ -925,6 +933,14 @@ public class CompilationResult {
                 assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, exceptionHandlers);
             }
         }
+        for (int i = 0; i < marks.size(); i++) {
+            int codeOffset = marks.get(i).pcOffset;
+            if (watermarkAtCodeStart.marksSize() <= i && i < watermarkAtCodeEnd.marksSize()) {
+                assert codeStart <= codeOffset && codeOffset < codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, marks);
+            } else {
+                assert codeOffset < codeStart || codeOffset >= codeEnd : Assertions.errorMessage(codeOffset, codeStart, codeEnd, marks);
+            }
+        }
         return true;
     }
 
@@ -951,6 +967,10 @@ public class CompilationResult {
         for (int i = watermarkAtCodeStart.exceptionHandlersSize; i < watermarkAtCodeEnd.exceptionHandlersSize; i++) {
             ExceptionHandler handler = exceptionHandlers.get(i);
             exceptionHandlers.add(new ExceptionHandler(handler.pcOffset + offset, handler.handlerPos));
+        }
+        for (int i = watermarkAtCodeStart.marksSize; i < watermarkAtCodeEnd.marksSize; i++) {
+            CodeMark mark = marks.get(i);
+            marks.add(new CodeMark(mark.pcOffset + offset, mark.id));
         }
     }
 }
