@@ -204,17 +204,6 @@ public final class DebugContext implements AutoCloseable {
         final boolean listMetrics;
 
         /**
-         * Names of counters. A counter is active if this set is empty or contains the counter's
-         * name.
-         */
-        final EconomicSet<String> counters;
-
-        /**
-         * Names of timers. A timer is active if this set is empty or contains the timer's name.
-         */
-        final EconomicSet<String> timers;
-
-        /**
          * Names of unscoped counters. A counter is unscoped if this set is empty or contains the
          * counter's name.
          */
@@ -231,25 +220,6 @@ public final class DebugContext implements AutoCloseable {
          * is empty or contains the memory usage tracker's name.
          */
         final EconomicSet<String> unscopedMemUseTrackers;
-
-        private static EconomicSet<String> parseMetricSpec(String spec, boolean accumulatedKey) {
-            if (spec == null) {
-                return null;
-            } else if (spec.isEmpty()) {
-                return EconomicSet.emptySet();
-            } else {
-                EconomicSet<String> res = EconomicSet.create();
-                if (!accumulatedKey) {
-                    res.addAll(Arrays.asList(spec.split(",")));
-                } else {
-                    for (String n : spec.split(",")) {
-                        res.add(n + AccumulatedKey.ACCUMULATED_KEY_SUFFIX);
-                        res.add(n + AccumulatedKey.FLAT_KEY_SUFFIX);
-                    }
-                }
-                return res;
-            }
-        }
 
         private static EconomicSet<String> parseUnscopedMetricSpec(String spec, boolean unconditional, boolean accumulatedKey) {
             EconomicSet<String> res;
@@ -301,8 +271,6 @@ public final class DebugContext implements AutoCloseable {
 
         private Immutable(OptionValues options) {
             this.options = options;
-            this.counters = parseMetricSpec(DebugOptions.Counters.getValue(options), false);
-            this.timers = parseMetricSpec(DebugOptions.Timers.getValue(options), true);
             String timeValue = DebugOptions.Time.getValue(options);
             String trackMemUseValue = DebugOptions.TrackMemUse.getValue(options);
             this.unscopedCounters = parseUnscopedMetricSpec(DebugOptions.Counters.getValue(options), "".equals(DebugOptions.Count.getValue(options)), false);
@@ -332,8 +300,6 @@ public final class DebugContext implements AutoCloseable {
             this.unscopedMemUseTrackers = null;
             this.scopesEnabled = false;
             this.listMetrics = false;
-            this.counters = null;
-            this.timers = null;
         }
 
         public boolean hasUnscopedMetrics() {
@@ -786,14 +752,6 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean isDumpEnabled(int dumpLevel) {
         return currentScope != null && currentScope.isDumpEnabled(dumpLevel);
-    }
-
-    public boolean areCountersEnabled() {
-        return immutable.counters != null;
-    }
-
-    public boolean areTimersEnabled() {
-        return immutable.timers != null;
     }
 
     /**

@@ -507,7 +507,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), wrapper.compilationId, new TruffleDebugJavaMethod(task, compilable), INVOCATION_ENTRY_BCI);
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions());
-                        DebugCloseable b = GraalServices.GCTimerScope.create(debug);
                         TruffleInliningScope inlining = TruffleInliningScope.open(debug)) {
             StructuredGraph graph = truffleTier(wrapper, debug);
 
