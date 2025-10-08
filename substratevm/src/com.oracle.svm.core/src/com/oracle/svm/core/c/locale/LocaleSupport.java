@@ -218,19 +218,17 @@ public class LocaleSupport {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+            var action = new SingletonLayeredCallbacks<LocaleSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    LocaleSupport localeSupport = (LocaleSupport) singleton;
-                    writer.writeString(LOCALE, getLocaleString(localeSupport.locale));
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LocaleSupport singleton) {
+                    writer.writeString(LOCALE, getLocaleString(singleton.locale));
                     return PersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    LocaleSupport localeSupport = (LocaleSupport) singleton;
+                public void onSingletonRegistration(ImageSingletonLoader loader, LocaleSupport singleton) {
                     String previousLocale = loader.readString(LOCALE);
-                    String currentLocale = getLocaleString(localeSupport.locale);
+                    String currentLocale = getLocaleString(singleton.locale);
                     VMError.guarantee(currentLocale.equals(previousLocale),
                                     "The locale data should be consistent across layers. The previous layer locale data were %s, but the locale data are %s", previousLocale, currentLocale);
                 }

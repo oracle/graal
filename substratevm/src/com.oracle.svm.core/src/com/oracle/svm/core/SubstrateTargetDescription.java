@@ -75,19 +75,17 @@ public class SubstrateTargetDescription extends TargetDescription {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            SingletonLayeredCallbacks action = new SingletonLayeredCallbacks() {
+            var action = new SingletonLayeredCallbacks<SubstrateTargetDescription>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    SubstrateTargetDescription substrateTargetDescription = (SubstrateTargetDescription) singleton;
-                    writer.writeStringList(RUNTIME_CHECKED_CPU_FEATURES, getCPUFeaturesList(substrateTargetDescription));
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, SubstrateTargetDescription singleton) {
+                    writer.writeStringList(RUNTIME_CHECKED_CPU_FEATURES, getCPUFeaturesList(singleton));
                     return PersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    SubstrateTargetDescription substrateTargetDescription = (SubstrateTargetDescription) singleton;
+                public void onSingletonRegistration(ImageSingletonLoader loader, SubstrateTargetDescription singleton) {
                     List<String> previousLayerRuntimeCheckedCPUFeatures = loader.readStringList(RUNTIME_CHECKED_CPU_FEATURES);
-                    List<String> currentLayerRuntimeCheckedCPUFeatures = getCPUFeaturesList(substrateTargetDescription);
+                    List<String> currentLayerRuntimeCheckedCPUFeatures = getCPUFeaturesList(singleton);
                     VMError.guarantee(previousLayerRuntimeCheckedCPUFeatures.equals(currentLayerRuntimeCheckedCPUFeatures),
                                     "The runtime checked CPU Features should be consistent across layers. The previous layer CPU Features were %s, but the current layer are %s",
                                     previousLayerRuntimeCheckedCPUFeatures, currentLayerRuntimeCheckedCPUFeatures);

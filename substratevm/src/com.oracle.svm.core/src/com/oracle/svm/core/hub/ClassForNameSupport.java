@@ -511,23 +511,22 @@ public final class ClassForNameSupport {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<ClassForNameSupport>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    ClassForNameSupport support = (ClassForNameSupport) singleton;
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
                     List<String> classNames = new ArrayList<>();
                     List<Boolean> classStates = new ArrayList<>();
-                    Set<String> unsafeNames = new HashSet<>(support.previousLayerUnsafe);
+                    Set<String> unsafeNames = new HashSet<>(singleton.previousLayerUnsafe);
 
-                    var cursor = support.knownClasses.getEntries();
+                    var cursor = singleton.knownClasses.getEntries();
                     while (cursor.advance()) {
                         classNames.add(cursor.getKey());
                         boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY;
                         classStates.add(!isNegativeQuery);
                     }
 
-                    for (var entry : support.previousLayerClasses.entrySet()) {
+                    for (var entry : singleton.previousLayerClasses.entrySet()) {
                         /*
                          * If a complete entry overwrites a negative query from a previous layer,
                          * the previousLayerClasses map entry needs to be skipped to register the
@@ -539,7 +538,7 @@ public final class ClassForNameSupport {
                         }
                     }
 
-                    support.unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
+                    singleton.unsafeInstantiatedClasses.getKeys().iterator().forEachRemaining(c -> unsafeNames.add(c.getName()));
 
                     writer.writeStringList(CLASSES_REGISTERED, classNames);
                     writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
@@ -554,16 +553,16 @@ public final class ClassForNameSupport {
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<ClassForNameSupport> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public ClassForNameSupport createFromLoader(ImageSingletonLoader loader) {
             List<String> previousLayerClassKeys = loader.readStringList(CLASSES_REGISTERED);
             List<Boolean> previousLayerClassStates = loader.readBoolList(CLASSES_REGISTERED_STATES);
 
