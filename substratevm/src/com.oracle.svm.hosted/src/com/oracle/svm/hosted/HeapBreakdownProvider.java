@@ -40,6 +40,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
@@ -105,6 +106,7 @@ public class HeapBreakdownProvider {
     protected void calculate(BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
         HostedMetaAccess metaAccess = access.getHostedMetaAccess();
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
+        HeapBreakdownEntry.imageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
 
@@ -119,7 +121,9 @@ public class HeapBreakdownProvider {
             }
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
-            classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of).add(objectSize);
+            HeapBreakdownEntry heapBreakdownEntry = classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of);
+            heapBreakdownEntry.add(objectSize);
+            heapBreakdownEntry.addPartition(o.getPartition());
             if (reportStringBytesConstant && o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
@@ -201,6 +205,8 @@ public class HeapBreakdownProvider {
 
     private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, long byteSize, int count) {
         newData.add(byteSize, count);
+        // Assign byte[] entry's partitions to the new more specific byte[] entry.
+        newData.copyPartitions(byteArrayEntry);
         entries.add(newData);
         byteArrayEntry.remove(byteSize, count);
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
@@ -215,14 +221,18 @@ public class HeapBreakdownProvider {
     }
 
     public abstract static class HeapBreakdownEntry {
+        public static ImageHeapPartition[] imageHeapPartitions;
+
         long byteSize;
         int count;
+        int partitions = 0;
 
         public static HeapBreakdownEntry of(HostedClass hostedClass) {
             return new HeapBreakdownEntryForClass(hostedClass.getJavaClass());
         }
 
         public static HeapBreakdownEntry of(String name) {
+
             return new HeapBreakdownEntryFixed(new SimpleHeapObjectKindName(name));
         }
 
@@ -231,6 +241,22 @@ public class HeapBreakdownProvider {
         }
 
         public abstract HeapBreakdownLabel getLabel(int maxLength);
+
+        public ImageHeapPartition[] getPartitions() {
+            ImageHeapPartition[] entryPartitions = new ImageHeapPartition[Integer.bitCount(partitions)];
+            int i = 0;
+            for (int j = 0; j < imageHeapPartitions.length; j++) {
+                if (((partitions >> j) & 1) == 1) {
+                    entryPartitions[i] = imageHeapPartitions[j];
+                    i++;
+                }
+            }
+            return entryPartitions;
+        }
+
+        public HeapBreakdownLabel getLabel() {
+            return getLabel(-1);
+        }
 
         public long getByteSize() {
             return byteSize;
@@ -252,6 +278,21 @@ public class HeapBreakdownProvider {
         void remove(long subByteSize, int subCount) {
             this.byteSize -= subByteSize;
             this.count -= subCount;
+        }
+
+        void addPartition(ImageHeapPartition newPartition) {
+            int newPartitionMask = 1;
+            for (ImageHeapPartition partition : imageHeapPartitions) {
+                if (partition.equals(newPartition)) {
+                    break;
+                }
+                newPartitionMask <<= 1;
+            }
+            this.partitions |= newPartitionMask;
+        }
+
+        public void copyPartitions(HeapBreakdownEntry sourceEntry) {
+            this.partitions = sourceEntry.partitions;
         }
     }
 
