@@ -33,6 +33,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -217,7 +218,19 @@ public class AnnotationValueParser {
         if (!sig.equals("V")) {
             checkSig(sig);
         }
-        return UnresolvedJavaType.create(sig).resolve(container);
+        try {
+            return UnresolvedJavaType.create(sig).resolve(container);
+        } catch (Error e) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
+                String s = e.toString();
+                if (s.contains("NoClassDefFoundError") && s.contains(sig)) {
+                    // Workaround for JDK that does not properly translate
+                    // a NoClassDefFoundError from HotSpot into libgraal
+                    throw (NoClassDefFoundError) new NoClassDefFoundError(sig).initCause(e);
+                }
+            }
+            throw e;
+        }
     }
 
     static Object parseEnumValue(ResolvedJavaType enumType, ByteBuffer buf, ConstantPool constPool) {
