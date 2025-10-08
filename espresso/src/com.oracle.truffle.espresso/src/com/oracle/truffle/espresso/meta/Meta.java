@@ -3009,7 +3009,28 @@ public final class Meta extends ContextAccessImpl
         return klass;
     }
 
+    /**
+     * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean)} with
+     * allowClassInit set to true.
+     */
     public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
+        return getIntConstant(klass, constant, true);
+    }
+
+    /**
+     * Retrieves the int constant from the given guest class. Used for synchronizing constants
+     * between the host and guest world.
+     * </p>
+     * First the method tries to retrieve the constant from the constantPool (which does not trigger
+     * class initialization). If this fails and allowClassInit is true, it triggers class
+     * initialization and gets the constant from the loaded class.
+     *
+     * @param klass the guest class which has the constant as a field.
+     * @param constant the symbol of the int constant to retrieve.
+     * @param allowClassInit whether to allow class initialization
+     * @return the int constant
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
         Field f = klass.lookupDeclaredField(constant, Types._int);
         if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
             throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
@@ -3017,6 +3038,9 @@ public final class Meta extends ContextAccessImpl
         int constantValueIndex = f.getConstantValueIndex();
         if (constantValueIndex != 0) {
             return klass.getConstantPool().intAt(constantValueIndex);
+        }
+        if (!allowClassInit) {
+            throw EspressoError.shouldNotReachHere("Without classInit, cannot find " + constant + " int constant in class " + klass.getName());
         }
         return f.getInt(klass.tryInitializeAndGetStatics());
     }

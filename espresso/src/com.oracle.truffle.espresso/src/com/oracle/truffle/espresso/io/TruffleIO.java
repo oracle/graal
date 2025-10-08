@@ -70,8 +70,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
@@ -81,7 +79,6 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.libs.LibsState;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
@@ -143,10 +140,10 @@ public final class TruffleIO implements ContextAccess {
     public final Method sun_nio_fs_DefaultFileSystemProvider_instance;
 
     public final ObjectKlass sun_nio_fs_FileAttributeParser;
-    @CompilationFinal public FileAttributeParser_Sync fileAttributeParserSync;
+    public final FileAttributeParser_Sync fileAttributeParserSync;
 
     public final ObjectKlass sun_nio_ch_FileChannelImpl;
-    @CompilationFinal public FileChannelImpl_Sync fileChannelImplSync;
+    public final FileChannelImpl_Sync fileChannelImplSync;
 
     public final ObjectKlass sun_nio_ch_IOStatus;
     public final IOStatus_Sync ioStatusSync;
@@ -158,7 +155,7 @@ public final class TruffleIO implements ContextAccess {
     public final InetAddressResolver_LookupPolicy_Sync inetAddressResolverLookupPolicySync;
 
     public final ObjectKlass sun_nio_ch_Net;
-    @CompilationFinal public Net_ShutFlags_Sync netShutFlagsSync;
+    public final Net_ShutFlags_Sync netShutFlagsSync;
 
     // Checkstyle: resume field name check
 
@@ -1121,11 +1118,13 @@ public final class TruffleIO implements ContextAccess {
         sun_nio_fs_DefaultFileSystemProvider_instance = sun_nio_fs_DefaultFileSystemProvider.requireDeclaredMethod(Names.instance, Signatures.sun_nio_fs_TruffleFileSystemProvider);
 
         sun_nio_fs_FileAttributeParser = meta.knownKlass(EspressoSymbols.Types.sun_nio_fs_FileAttributeParser);
+        this.fileAttributeParserSync = new FileAttributeParser_Sync(this);
 
         sun_nio_ch_IOStatus = meta.knownKlass(EspressoSymbols.Types.sun_nio_ch_IOStatus);
         ioStatusSync = new IOStatus_Sync(this);
 
         sun_nio_ch_FileChannelImpl = meta.knownKlass(EspressoSymbols.Types.sun_nio_ch_FileChannelImpl);
+        this.fileChannelImplSync = new FileChannelImpl_Sync(this);
 
         sun_nio_fs_TrufflePath = meta.knownKlass(Types.sun_nio_fs_TrufflePath);
         sun_nio_fs_TrufflePath_HIDDEN_TRUFFLE_FILE = sun_nio_fs_TrufflePath.requireHiddenField(Names.HIDDEN_TRUFFLE_FILE);
@@ -1137,17 +1136,9 @@ public final class TruffleIO implements ContextAccess {
         inetAddressResolverLookupPolicySync = new InetAddressResolver_LookupPolicy_Sync(this);
 
         sun_nio_ch_Net = meta.knownKlass(Types.sun_nio_ch_Net);
+        netShutFlagsSync = new Net_ShutFlags_Sync(this);
 
         setEnv(context.getEnv());
-    }
-
-    /**
-     * See {@link Meta#postSystemInit()}.
-     */
-    public void postSystemInit() {
-        this.fileAttributeParserSync = new FileAttributeParser_Sync(this);
-        this.fileChannelImplSync = new FileChannelImpl_Sync(this);
-        netShutFlagsSync = new Net_ShutFlags_Sync(this);
     }
 
     private void setEnv(TruffleLanguage.Env env) {
@@ -1391,13 +1382,6 @@ public final class TruffleIO implements ContextAccess {
         throw Throw.throwNonSeekable(context);
     }
 
-    private static int lookupSyncedValue(ObjectKlass klass, Symbol<Name> constant) {
-        Field f = klass.lookupDeclaredField(constant, Types._int);
-        EspressoError.guarantee(f != null, "Failed to sync " + klass.getExternalName() + " constants");
-        assert f.isStatic();
-        return f.getInt(klass.tryInitializeAndGetStatics());
-    }
-
     // Checkstyle: stop field name check
     public static final class RAF_Sync {
         public final int O_RDONLY;
@@ -1407,11 +1391,11 @@ public final class TruffleIO implements ContextAccess {
         public final int O_TEMPORARY;
 
         public RAF_Sync(TruffleIO io) {
-            this.O_RDONLY = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_RDONLY);
-            this.O_RDWR = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_RDWR);
-            this.O_SYNC = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_SYNC);
-            this.O_DSYNC = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_DSYNC);
-            this.O_TEMPORARY = lookupSyncedValue(io.java_io_RandomAccessFile, Names.O_TEMPORARY);
+            this.O_RDONLY = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_RDONLY);
+            this.O_RDWR = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_RDWR);
+            this.O_SYNC = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_SYNC);
+            this.O_DSYNC = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_DSYNC);
+            this.O_TEMPORARY = Meta.getIntConstant(io.java_io_RandomAccessFile, Names.O_TEMPORARY);
         }
     }
 
@@ -1426,13 +1410,13 @@ public final class TruffleIO implements ContextAccess {
         public final int ACCESS_EXECUTE;
 
         public FileSystem_Sync(TruffleIO io) {
-            this.BA_EXISTS = lookupSyncedValue(io.java_io_FileSystem, Names.BA_EXISTS);
-            this.BA_REGULAR = lookupSyncedValue(io.java_io_FileSystem, Names.BA_REGULAR);
-            this.BA_DIRECTORY = lookupSyncedValue(io.java_io_FileSystem, Names.BA_DIRECTORY);
-            this.BA_HIDDEN = lookupSyncedValue(io.java_io_FileSystem, Names.BA_HIDDEN);
-            this.ACCESS_READ = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_READ);
-            this.ACCESS_WRITE = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_WRITE);
-            this.ACCESS_EXECUTE = lookupSyncedValue(io.java_io_FileSystem, Names.ACCESS_EXECUTE);
+            this.BA_EXISTS = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_EXISTS);
+            this.BA_REGULAR = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_REGULAR);
+            this.BA_DIRECTORY = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_DIRECTORY);
+            this.BA_HIDDEN = Meta.getIntConstant(io.java_io_FileSystem, Names.BA_HIDDEN);
+            this.ACCESS_READ = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_READ);
+            this.ACCESS_WRITE = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_WRITE);
+            this.ACCESS_EXECUTE = Meta.getIntConstant(io.java_io_FileSystem, Names.ACCESS_EXECUTE);
         }
     }
 
@@ -1448,15 +1432,16 @@ public final class TruffleIO implements ContextAccess {
         public final int OTHERS_EXECUTE_VALUE;
 
         public FileAttributeParser_Sync(TruffleIO io) {
-            this.OWNER_READ_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OWNER_READ_VALUE);
-            this.OWNER_WRITE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OWNER_WRITE_VALUE);
-            this.OWNER_EXECUTE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OWNER_EXECUTE_VALUE);
-            this.GROUP_READ_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.GROUP_READ_VALUE);
-            this.GROUP_WRITE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.GROUP_WRITE_VALUE);
-            this.GROUP_EXECUTE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.GROUP_EXECUTE_VALUE);
-            this.OTHERS_READ_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_READ_VALUE);
-            this.OTHERS_WRITE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_WRITE_VALUE);
-            this.OTHERS_EXECUTE_VALUE = lookupSyncedValue(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_EXECUTE_VALUE);
+            // if this would fail we would need to load the class at post system init.
+            this.OWNER_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_READ_VALUE, false);
+            this.OWNER_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_WRITE_VALUE, false);
+            this.OWNER_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OWNER_EXECUTE_VALUE, false);
+            this.GROUP_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_READ_VALUE, false);
+            this.GROUP_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_WRITE_VALUE, false);
+            this.GROUP_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.GROUP_EXECUTE_VALUE, false);
+            this.OTHERS_READ_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_READ_VALUE, false);
+            this.OTHERS_WRITE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_WRITE_VALUE, false);
+            this.OTHERS_EXECUTE_VALUE = Meta.getIntConstant(io.sun_nio_fs_FileAttributeParser, Names.OTHERS_EXECUTE_VALUE, false);
         }
     }
 
@@ -1464,7 +1449,8 @@ public final class TruffleIO implements ContextAccess {
         public final int MAP_RW;
 
         public FileChannelImpl_Sync(TruffleIO io) {
-            this.MAP_RW = lookupSyncedValue(io.sun_nio_ch_FileChannelImpl, Names.MAP_RW);
+            // if this would fail we would need to load the class at post system init.
+            this.MAP_RW = Meta.getIntConstant(io.sun_nio_ch_FileChannelImpl, Names.MAP_RW, false);
         }
     }
 
@@ -1477,12 +1463,12 @@ public final class TruffleIO implements ContextAccess {
         public final int UNSUPPORTED_CASE;
 
         public IOStatus_Sync(TruffleIO io) {
-            this.EOF = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.EOF);
-            this.UNAVAILABLE = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNAVAILABLE);
-            this.INTERRUPTED = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.INTERRUPTED);
-            this.UNSUPPORTED = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED);
-            this.THROWN = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.THROWN);
-            this.UNSUPPORTED_CASE = lookupSyncedValue(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED_CASE);
+            this.EOF = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.EOF);
+            this.UNAVAILABLE = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNAVAILABLE);
+            this.INTERRUPTED = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.INTERRUPTED);
+            this.UNSUPPORTED = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED);
+            this.THROWN = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.THROWN);
+            this.UNSUPPORTED_CASE = Meta.getIntConstant(io.sun_nio_ch_IOStatus, Names.UNSUPPORTED_CASE);
         }
     }
 
@@ -1493,10 +1479,10 @@ public final class TruffleIO implements ContextAccess {
         public final int IPV6_FIRST;
 
         public InetAddressResolver_LookupPolicy_Sync(TruffleIO io) {
-            this.IPV4 = lookupSyncedValue(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4);
-            this.IPV6 = lookupSyncedValue(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6);
-            this.IPV4_FIRST = lookupSyncedValue(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4_FIRST);
-            this.IPV6_FIRST = lookupSyncedValue(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6_FIRST);
+            this.IPV4 = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4);
+            this.IPV6 = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6);
+            this.IPV4_FIRST = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV4_FIRST);
+            this.IPV6_FIRST = Meta.getIntConstant(io.java_net_spi_InetAddressResolver$LookupPolicy, Names.IPV6_FIRST);
         }
     }
 
@@ -1506,9 +1492,10 @@ public final class TruffleIO implements ContextAccess {
         public final int SHUT_RDWR;
 
         public Net_ShutFlags_Sync(TruffleIO io) {
-            this.SHUT_RD = lookupSyncedValue(io.sun_nio_ch_Net, Names.SHUT_RD);
-            this.SHUT_WR = lookupSyncedValue(io.sun_nio_ch_Net, Names.SHUT_WR);
-            this.SHUT_RDWR = lookupSyncedValue(io.sun_nio_ch_Net, Names.SHUT_RDWR);
+            // if this would fail we would need to load the class at post system init.
+            this.SHUT_RD = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_RD, false);
+            this.SHUT_WR = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_WR, false);
+            this.SHUT_RDWR = Meta.getIntConstant(io.sun_nio_ch_Net, Names.SHUT_RDWR, false);
         }
     }
     // Checkstyle: resume field name check
