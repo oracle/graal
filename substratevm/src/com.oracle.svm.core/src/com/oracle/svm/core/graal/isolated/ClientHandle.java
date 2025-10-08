@@ -22,19 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.svm.core.graal.isolated;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.isolated.IsolatedHandle;
-import com.oracle.svm.core.handles.ThreadLocalHandles;
-
-public final class IsolatedHandles {
-    @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T, H extends IsolatedHandle<? extends T>> H nullHandle() {
-        return ThreadLocalHandles.nullHandle();
-    }
-
-    private IsolatedHandles() {
-    }
+/**
+ * A handle to an object of type T that exists in the {@linkplain ClientIsolateThread compilation
+ * client's isolate}.
+ */
+public interface ClientHandle<T> extends IsolatedHandle<T> {
 }

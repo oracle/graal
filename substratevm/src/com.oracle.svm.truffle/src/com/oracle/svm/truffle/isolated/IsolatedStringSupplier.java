@@ -29,11 +29,11 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.graal.isolated.ClientHandle;
-import com.oracle.svm.graal.isolated.CompilerHandle;
-import com.oracle.svm.graal.isolated.CompilerIsolateThread;
-import com.oracle.svm.graal.isolated.IsolatedCompileClient;
-import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.core.graal.isolated.ClientHandle;
+import com.oracle.svm.core.graal.isolated.CompilerHandle;
+import com.oracle.svm.core.graal.isolated.CompilerIsolateThread;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
+import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
 
 final class IsolatedStringSupplier implements Supplier<String> {
 
