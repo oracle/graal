@@ -906,9 +906,9 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
 
         if vm_dist_name is not None:
             # Examples (later we call `.lower().replace('_', '-')`):
-            # GraalVM_community_openjdk_17.0.7+4.1
-            # GraalVM_jdk_17.0.7+4.1
-            # GraalVM_jit_jdk_17.0.7+4.1
+            # GraalVM_community_25.1.0+36.1
+            # GraalVM_25.1.0+36.1
+            # GraalVM_jit_25.1.0+36.1
             base_dir = '{base_name}{vm_dist_name}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
