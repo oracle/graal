@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -37,13 +36,15 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
+
+import jdk.graal.compiler.word.Word;
 
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -105,7 +106,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
                 CCharPointer osVersionStr = Foundation.systemVersionPlatform();
                 if (osVersionStr.isNonNull()) {
                     osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-                    UntrackedNullableNativeMemory.free(osVersionStr);
+                    LibC.free(osVersionStr);
                     return osVersionValue;
                 }
             } else {
@@ -120,7 +121,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
         CCharPointer osVersionStr = Foundation.systemVersionPlatformFallback();
         if (osVersionStr.isNonNull()) {
             osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-            UntrackedNullableNativeMemory.free(osVersionStr);
+            LibC.free(osVersionStr);
             return osVersionValue;
         }
         return osVersionValue = "Unknown";
