@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -59,6 +58,8 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
@@ -356,7 +357,7 @@ public abstract class InterpreterStubSection {
 
         Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
-            stackBuffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(Word.unsigned(stackSize));
+            stackBuffer = NativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
 
@@ -421,7 +422,7 @@ public abstract class InterpreterStubSection {
         } finally {
             if (stackSize > 0) {
                 VMError.guarantee(stackBuffer.isNonNull());
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackBuffer);
+                NativeMemory.free(stackBuffer);
             }
         }
 
