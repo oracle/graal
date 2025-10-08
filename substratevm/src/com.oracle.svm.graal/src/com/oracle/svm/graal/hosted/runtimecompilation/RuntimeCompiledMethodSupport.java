@@ -35,9 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.nodes.NodeClassMap;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -55,6 +53,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
@@ -83,6 +82,7 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeClassMap;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -103,7 +103,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
-import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaConstant;
@@ -319,7 +318,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         HeapBreakdownProvider.singleton().setGraphEncodingByteLength(compilationState.graphEncoder.getEncoding().length);
-        com.oracle.svm.graal.TruffleRuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
+        RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
                         compilationState.graphEncoder.getNodeClasses());
 
         compilationState.objectReplacer.setMethodsImplementations(hUniverse);
@@ -378,17 +377,11 @@ public class RuntimeCompiledMethodSupport {
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
         public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
-        private final ImageHeapScanner heapScanner;
-        /**
-         * Cache already converted location identity objects to avoid creating multiple new
-         * instances for the same underlying location identity.
-         */
-        private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
+        protected final ImageHeapScanner heapScanner;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
             super(architecture, null, RUNTIME_NODE_CLASS_MAP);
             this.heapScanner = heapScanner;
-            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -400,8 +393,6 @@ public class RuntimeCompiledMethodSupport {
         protected Object replaceObjectForEncoding(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
                 return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
-            } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc, heapScanner.getConstantReflection())));
             }
             return object;
         }
@@ -410,16 +401,10 @@ public class RuntimeCompiledMethodSupport {
     static class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
         private final ImageHeapScanner heapScanner;
-        /**
-         * Cache already converted location identity objects to avoid creating multiple new
-         * instances for the same underlying location identity.
-         */
-        private final Map<JavaConstant, LocationIdentity> locationIdentityCache;
 
         RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
             super(architecture, graph);
             this.heapScanner = heapScanner;
-            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -427,21 +412,19 @@ public class RuntimeCompiledMethodSupport {
             Object object = super.readObject(methodScope);
             if (object instanceof JavaConstant constant) {
                 return SubstrateGraalUtils.runtimeToHosted(constant, heapScanner);
-            } else if (object instanceof ObjectLocationIdentity oli) {
-                return locationIdentityCache.computeIfAbsent(oli.getObject(), (constant) -> ObjectLocationIdentity.create(SubstrateGraalUtils.runtimeToHosted(constant, heapScanner)));
             }
             return object;
         }
     }
 
-    static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
+    public static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
 
         private RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, SVMHost hostVM) {
             super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, hostVM);
         }
 
-        static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
+        public static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
 
             // Adjust graphbuilderconfig to match analysis phase

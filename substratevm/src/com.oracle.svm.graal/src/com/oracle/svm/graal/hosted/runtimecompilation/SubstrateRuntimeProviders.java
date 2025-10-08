@@ -26,7 +26,7 @@ package com.oracle.svm.graal.hosted.runtimecompilation;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
@@ -41,20 +41,20 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * The set of provider objects that are installed via {@link GraalGraphObjectReplacer}.
  */
-public class SubstrateProviders {
+public class SubstrateRuntimeProviders {
     private final SubstrateMetaAccess metaAccess;
     private final ConstantFieldProvider constantFieldProvider;
     private final ConstantReflectionProvider constantReflection;
     private final SnippetReflectionProvider snippetReflectionProvider;
 
-    SubstrateProviders(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess, WordTypes wordTypes) {
+    SubstrateRuntimeProviders(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess, WordTypes wordTypes) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = new SubstrateConstantFieldProvider(aMetaAccess);
         this.constantReflection = new SubstrateConstantReflectionProvider(this.metaAccess);
         this.snippetReflectionProvider = new SubstrateSnippetReflectionProvider(wordTypes);
     }
 
-    protected SubstrateProviders(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection,
+    protected SubstrateRuntimeProviders(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = constantFieldProvider;
@@ -79,6 +79,6 @@ public class SubstrateProviders {
     }
 
     public ForeignCallsProvider getForeignCallsProvider() {
-        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getForeignCalls();
+        return RuntimeCompilationSupport.getRuntimeConfig().getProviders().getForeignCalls();
     }
 }

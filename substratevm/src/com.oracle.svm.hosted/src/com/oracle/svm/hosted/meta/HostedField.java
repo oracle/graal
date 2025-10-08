@@ -221,4 +221,10 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         VMError.guarantee(hasInstalledLayerNum(), "Bad installed layer value: %s %s", installedLayerNum, this);
         return installedLayerNum;
     }
+
+    @Override
+    public Object getStaticFieldBaseForRuntimeLoadedClass() {
+        // never a runtime loaded class
+        return null;
+    }
 }

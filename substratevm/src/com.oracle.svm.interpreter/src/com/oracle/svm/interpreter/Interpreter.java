@@ -291,6 +291,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -621,6 +622,11 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
+
+            if (RistrettoProfileSupport.isEnabled()) {
+                RistrettoProfileSupport.profileMethodCall(method);
+            }
+
             int curBCI = startBCI;
             int top = startTop;
             byte[] code = method.getInterpretedCode();
@@ -1521,7 +1527,7 @@ public final class Interpreter {
         }
     }
 
-    private static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    public static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert Bytecodes.isInvoke(opcode);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchMethodError(opcode, null);

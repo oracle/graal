@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -84,6 +85,16 @@ public class SubstrateField implements SharedField {
 
         this.name = stringTable.deduplicate(aField.getName(), true);
         this.hashCode = aField.hashCode();
+    }
+
+    /**
+     * Must only be called at run-time from Ristretto.
+     */
+    protected SubstrateField() {
+        assert SubstrateOptions.useRistretto() : "Must only be initialized at runtime by ristretto";
+        name = null;
+        modifiers = -1;
+        hashCode = -1;
     }
 
     public void setLinks(SubstrateType type, SubstrateType declaringClass) {
@@ -188,5 +199,11 @@ public class SubstrateField implements SharedField {
     @Override
     public String toString() {
         return "SubstrateField<" + format("%h.%n") + " location: " + location + ">";
+    }
+
+    @Override
+    public Object getStaticFieldBaseForRuntimeLoadedClass() {
+        // only AOT known static fields available, those are in regular static arrays
+        return null;
     }
 }

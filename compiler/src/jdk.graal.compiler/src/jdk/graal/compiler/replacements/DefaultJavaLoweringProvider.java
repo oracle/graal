@@ -485,7 +485,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         assert loadField.getStackKind() != JavaKind.Illegal : loadField;
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
-        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
+        ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field, tool) : loadField.object();
         object = createNullCheckedValue(object, loadField, tool);
         Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
@@ -502,7 +502,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
     protected void lowerStoreFieldNode(StoreFieldNode storeField, LoweringTool tool) {
         StructuredGraph graph = storeField.graph();
         ResolvedJavaField field = storeField.field();
-        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field) : storeField.object();
+        ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field, tool) : storeField.object();
         object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, getStorageKind(storeField.field()), storeField.value());
         AddressNode address = createFieldAddress(graph, object, field);
@@ -1242,7 +1242,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return fieldIdentity;
     }
 
-    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field);
+    public abstract ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField field, LoweringTool tool);
 
     public abstract int arrayLengthOffset();
 

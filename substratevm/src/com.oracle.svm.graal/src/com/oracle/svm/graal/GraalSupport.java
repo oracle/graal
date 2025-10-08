@@ -33,9 +33,9 @@ public class GraalSupport {
     public static class GraalShutdownHook implements RuntimeSupport.Hook {
         @Override
         public void execute(boolean isFirstIsolate) {
-            TruffleRuntimeCompilationSupport truffleRuntimeCompilationSupport = TruffleRuntimeCompilationSupport.get();
-            truffleRuntimeCompilationSupport.metricValues.print(RuntimeOptionValues.singleton());
-            truffleRuntimeCompilationSupport.outputDirectory.close();
+            RuntimeCompilationSupport runtimeCompilationSupport = RuntimeCompilationSupport.get();
+            runtimeCompilationSupport.metricValues.print(RuntimeOptionValues.singleton());
+            runtimeCompilationSupport.outputDirectory.close();
         }
     }
 }

@@ -1063,8 +1063,28 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     public Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass) {
+        int arrayDimensions = TypeSymbols.getArrayDimensions(type);
+        Symbol<Type> elementalType;
+        if (arrayDimensions == 0) {
+            elementalType = type;
+        } else {
+            elementalType = SymbolsSupport.getTypes().lookupValidType(type.subSequence(arrayDimensions));
+        }
+        if (elementalType == null) {
+            // type is not loaded
+            return null;
+        }
         AbstractClassRegistry registry = ClassRegistries.singleton().getRegistry(((InterpreterResolvedJavaType) accessingClass).getJavaClass().getClassLoader());
-        return registry.findLoadedClass(type);
+        Class<?> result = registry.findLoadedClass(elementalType);
+        if (result == null) {
+            return null;
+        }
+        if (arrayDimensions > 0) {
+            while (arrayDimensions-- > 0) {
+                result = DynamicHub.toClass(DynamicHub.fromClass(result).arrayType());
+            }
+        }
+        return result;
     }
 
     @Override

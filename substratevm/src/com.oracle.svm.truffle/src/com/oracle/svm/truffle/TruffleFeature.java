@@ -126,7 +126,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.CallTreeInfo;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidate;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
@@ -257,7 +257,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
+        return List.of(TruffleRuntimeCompilationFeature.class, TruffleBaseFeature.class);
     }
 
     /*
@@ -294,7 +294,7 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.resetHosted();
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         runtimeCompilationFeature.addAfterInstallRuntimeConfigCallback(() -> {
-            Providers providers = TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders();
+            Providers providers = RuntimeCompilationSupport.getRuntimeConfig().getProviders();
             ImageSingletons.add(KnownTruffleTypes.class, new SubstrateKnownTruffleTypes(truffleRuntime, providers.getMetaAccess(), providers.getConstantReflection()));
         });
         runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
@@ -316,7 +316,7 @@ public class TruffleFeature implements InternalFeature {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
 
-        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
+        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(TruffleRuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -384,7 +384,7 @@ public class TruffleFeature implements InternalFeature {
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true,
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
-        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilationFeature = TruffleRuntimeCompilationFeature.singleton();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -866,7 +866,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private void checkBlockList(CallTreeInfo treeInfo) {
-        RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilation = TruffleRuntimeCompilationFeature.singleton();
         boolean failBlockListViolations;
         if (Options.TruffleCheckBlackListedMethods.hasBeenSet()) {
             failBlockListViolations = Options.TruffleCheckBlackListedMethods.getValue();
@@ -1015,7 +1015,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        CallTreeInfo treeInfo = RuntimeCompilationFeature.singleton().getCallTreeInfo();
+        CallTreeInfo treeInfo = TruffleRuntimeCompilationFeature.singleton().getCallTreeInfo();
 
         checkBlockList(treeInfo);
 

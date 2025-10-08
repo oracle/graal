@@ -814,6 +814,14 @@ public final class InterpreterToVM {
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("reverting virtual call to invokespecial: ").string(seedMethod.toString()).newline();
             }
+
+            if (callCompiledTarget && calleeFtnPtr.isNull()) {
+                /*
+                 * have not found compiled variant for it so far, and we won't look in vtables for
+                 * it anymore
+                 */
+                callCompiledTarget = false;
+            }
         }
 
         InterpreterResolvedJavaMethod targetMethod = seedMethod;

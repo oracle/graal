@@ -910,7 +910,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
+    public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f, LoweringTool tool) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
         JavaConstant base = constantReflection.asJavaClass(field.getDeclaringClass());
         return ConstantNode.forConstant(base, metaAccess, graph);

@@ -287,7 +287,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         }
     }
 
-    private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+    public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
 
