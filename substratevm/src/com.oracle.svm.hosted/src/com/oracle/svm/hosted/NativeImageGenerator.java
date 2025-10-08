@@ -817,9 +817,9 @@ public class NativeImageGenerator {
                 bb.getHostVM().getClassInitializationSupport().sealConfiguration();
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     ImageSingletons.lookup(LoadImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
-                }
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
+                    if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                        HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
+                    }
                 }
             }
 
@@ -1252,6 +1252,8 @@ public class NativeImageGenerator {
 
             performSnippetGraphAnalysis(bb, aReplacements, options, Function.identity());
         }
+
+        bb.markInitializationFinished();
     }
 
     /**

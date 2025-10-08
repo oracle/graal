@@ -214,6 +214,7 @@ public final class PointsToAnalyzer {
             PointstoGraphBuilderPlugins.registerSystemPlugins(plugins.getInvocationPlugins());
             PointstoGraphBuilderPlugins.registerObjectPlugins(plugins.getInvocationPlugins());
         }
+        bigbang.markInitializationFinished();
     }
 
     private String getAnalysisName(String entryClass) {

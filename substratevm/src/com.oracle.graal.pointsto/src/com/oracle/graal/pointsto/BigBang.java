@@ -128,6 +128,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     void initializeMetaData(AnalysisType type);
 
+    void markInitializationFinished();
+
+    boolean isInitialized();
+
     /**
      * Callback executed after the analysis finished. The cleanupAfterAnalysis is executed after the
      * universe builder, which can be too late for some tasks.

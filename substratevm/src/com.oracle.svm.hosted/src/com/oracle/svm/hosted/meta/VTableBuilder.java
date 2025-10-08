@@ -42,6 +42,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -74,6 +75,7 @@ public final class VTableBuilder {
         private final boolean closedTypeWorld;
         private final boolean registerTrackedTypes;
         private final boolean registerAllTypes;
+        private final OpenTypeWorldFeature otwFeature = OpenTypeWorldFeature.singleton();
 
         OpenTypeWorldHubLayoutUtils(HostedUniverse hUniverse) {
             closedTypeWorld = SubstrateOptions.useClosedTypeWorld();
@@ -104,7 +106,7 @@ public final class VTableBuilder {
                      *
                      * GR-60010 - We are currently loading base analysis types too late.
                      */
-                    return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                    return otwFeature.isOpenTypeWorldDispatchTableMethodsCalculated(type.getWrapped());
                 }
 
                 /*
@@ -118,7 +120,7 @@ public final class VTableBuilder {
                  * When using the open type world we are conservative and calculate metadata for all
                  * types seen during analysis.
                  */
-                return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                return otwFeature.isOpenTypeWorldDispatchTableMethodsCalculated(type.getWrapped());
             }
         }
 
@@ -217,7 +219,8 @@ public final class VTableBuilder {
                 return !m.getWrapped().canBeStaticallyBound();
             };
         }
-        var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
+        var table = openHubUtils.otwFeature.getOpenTypeWorldDispatchTableMethods(type.getWrapped()).stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR)
+                        .toList();
 
         int index = parentClassTable.size();
         for (HostedMethod typeMethod : table) {

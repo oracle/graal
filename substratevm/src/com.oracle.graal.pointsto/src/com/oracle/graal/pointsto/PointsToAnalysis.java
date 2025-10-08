@@ -662,6 +662,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @SuppressWarnings("try")
     @Override
     public boolean finish() throws InterruptedException {
+        assert isInitialized();
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             boolean didSomeWork = false;
             do {

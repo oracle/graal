@@ -724,7 +724,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         LayeredStaticFieldSupport.LayerAssignmentStatus assignmentStatus = LayeredStaticFieldSupport.singleton().getAssignmentStatus(field);
         if (hostedField.hasInstalledLayerNum()) {
             fieldInstalledNum = hostedField.getInstalledLayerNum();
-            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNDECIDED) {
+            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNSPECIFIED) {
                 assignmentStatus = LayeredStaticFieldSupport.LayerAssignmentStatus.PRIOR_LAYER;
             } else {
                 assert assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.APP_LAYER_REQUESTED ||
