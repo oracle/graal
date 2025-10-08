@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
@@ -309,9 +308,11 @@ public class Linker {
             assert instance.module().globalImported(globalIndex) && globalIndex == importDescriptor.targetIndex() : importDescriptor;
             WasmGlobal externalGlobal = lookupImportObject(instance, importDescriptor, imports, WasmGlobal.class);
             final int exportedValueType;
+            final SymbolTable.ClosedValueType exportedClosedValueType;
             final byte exportedMutability;
             if (externalGlobal != null) {
                 exportedValueType = externalGlobal.getType();
+                exportedClosedValueType = externalGlobal.getClosedValueType();
                 exportedMutability = externalGlobal.getMutability();
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
@@ -328,11 +329,12 @@ public class Linker {
                 }
 
                 exportedValueType = importedInstance.symbolTable().globalValueType(exportedGlobalIndex);
+                exportedClosedValueType = importedInstance.symbolTable().globalClosedValueType(exportedGlobalIndex);
                 exportedMutability = importedInstance.symbolTable().globalMutability(exportedGlobalIndex);
 
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            if (exportedValueType != valueType) {
+            if (instance.symbolTable().closedTypeAt(valueType).matchesType(exportedClosedValueType)) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the type " + WasmType.toString(valueType) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
@@ -538,7 +540,9 @@ public class Linker {
                 }
                 importedTag = importedInstance.tag(exportedTagIndex);
             }
-            Assert.assertTrue(type.matchesType(importedTag.type()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            // matching for tag types does not work by subtyping, but requires equivalent types,
+            // A <= B and B <= A
+            Assert.assertTrue(type.matchesType(importedTag.type()) && importedTag.type().matchesType(type), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTag(tagIndex, importedTag);
         };
         resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);
@@ -849,7 +853,7 @@ public class Linker {
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
             assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertIntEqual(elemType, importedTable.elemType(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertTrue(instance.symbolTable().closedTypeAt(elemType).matchesType(importedTable.closedValueType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);

@@ -1092,6 +1092,10 @@ public abstract class SymbolTable {
         return globalTypes[index];
     }
 
+    public ClosedValueType globalClosedValueType(int index) {
+        return closedTypeAt(globalTypes[index]);
+    }
+
     private byte globalFlags(int index) {
         return globalFlags[index];
     }
