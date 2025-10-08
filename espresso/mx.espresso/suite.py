@@ -25,7 +25,7 @@ suite = {
     "mxversion": "7.46.0",
     "name": "espresso",
     "version" : "25.0.1",
-    "release" : False,
+    "release" : True,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
     "developer" : {
