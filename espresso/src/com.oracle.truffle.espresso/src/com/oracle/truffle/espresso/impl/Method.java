@@ -1955,7 +1955,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         private EspressoException unsatisfiedLinkError() {
-            getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", toString());
+            getContext().getLogger().log(Level.FINE, "Failed to link native method: {0}", this);
             Meta meta = getMeta();
             return meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, toExternalString());
         }
