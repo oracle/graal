@@ -215,6 +215,10 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
      * @return the recorded entry for the mark
      */
     public CompilationResult.CodeMark recordMark(int codePos, CompilationResult.MarkId markId) {
+        if (markId.isUnique() && asm.isRecordingCodeSnippet()) {
+            // We cannot duplicate unique MarkId
+            asm.abortRecordingCodeSnippet();
+        }
         return compilationResult.recordMark(codePos, markId);
     }
 

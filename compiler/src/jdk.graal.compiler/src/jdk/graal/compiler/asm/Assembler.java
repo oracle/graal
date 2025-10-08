@@ -370,7 +370,7 @@ public abstract class Assembler<T extends Enum<T>> {
             if (recordedCodeSnippets == null) {
                 recordedCodeSnippets = EconomicMap.create();
             }
-            recordedCodeSnippets.put(currentCodeSnippet.codeStart, currentCodeSnippet);
+            recordedCodeSnippets.put(currentCodeSnippet.getCodeStart(), currentCodeSnippet);
             currentCodeSnippet = null;
         }
     }
@@ -393,11 +393,11 @@ public abstract class Assembler<T extends Enum<T>> {
         return false;
     }
 
-    protected boolean isRecordingCodeSnippet() {
+    public boolean isRecordingCodeSnippet() {
         return currentCodeSnippet != null && currentCodeSnippet.isRecording();
     }
 
-    protected void abortRecordingCodeSnippet() {
+    public void abortRecordingCodeSnippet() {
         currentCodeSnippet = null;
     }
 

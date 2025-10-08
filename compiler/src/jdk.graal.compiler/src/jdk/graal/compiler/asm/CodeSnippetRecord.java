@@ -24,22 +24,33 @@
  */
 package jdk.graal.compiler.asm;
 
-import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
-import jdk.vm.ci.code.site.Site;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.code.CompilationResult.CompilationResultWatermark;
+import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
+import jdk.vm.ci.code.site.Site;
 
 /**
  * Records a snippet of emitted assembly. The recorded snippet can be replayed, i.e., inserted into
  * the code buffer at different positions, multiple times. On each replay, the snippet is patched
  * based on its insertion position.
+ *
+ * If a slow path is added via {@link LIR#addSlowPath} during recording, it will not be duplicated
+ * during replay, as the replay only copies the exact bytes between {@link #codeStart} and
+ * {@link #codeEnd}. As a result, all replayed snippets will jump to the same slow path. The slow
+ * path may jump back to the originally recorded snippet (e.g., in the G1 write barrier, or ZGC load
+ * and write barriers). This behavior is semantically correct because each replayed snippet is a
+ * complete replica. However, it may reduce the effectiveness of branch prediction optimizations
+ * introduced by the assembly replay mechanism. To preserve potential branch predictor benefits,
+ * {@link LIR#addSlowPath} should be reserved exclusively for genuine slow paths that are
+ * infrequently taken and do not usually jump back to the original snippet.
  */
-final class CodeSnippetRecord {
-    int codeStart;
-    int codeEnd;
-    EconomicMap<Integer, Label> codePatchLabels;
+public final class CodeSnippetRecord {
+    private int codeStart;
+    private int codeEnd;
+    private EconomicMap<Integer, Label> codePatchLabels;
 
     /**
      * Watermarks represent the sizes of recorded or pending {@link Site}s essential for execution,
@@ -47,8 +58,8 @@ final class CodeSnippetRecord {
      * execution, we can identify the {@link Site}s appended during recording and replicate them
      * during replay.
      */
-    CompilationResultWatermark watermarkAtCodeStart;
-    CompilationResultWatermark watermarkAtCodeEnd;
+    private CompilationResultWatermark watermarkAtCodeStart;
+    private CompilationResultWatermark watermarkAtCodeEnd;
 
     CodeSnippetRecord(int codeStart, CompilationResultWatermark watermark) {
         this.codeStart = codeStart;
@@ -56,6 +67,10 @@ final class CodeSnippetRecord {
         this.watermarkAtCodeStart = watermark;
         this.watermarkAtCodeEnd = null;
         this.codePatchLabels = EconomicMap.create();
+    }
+
+    int getCodeStart() {
+        return codeStart;
     }
 
     boolean isRecording() {
