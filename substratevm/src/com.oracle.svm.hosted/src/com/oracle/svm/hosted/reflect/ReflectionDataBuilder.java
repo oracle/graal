@@ -73,6 +73,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -772,6 +773,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
         try {
+            DeadlockWatchdog.singleton().recordActivity();
             for (AnalysisMethod subClassMethod : subtype.getDeclaredMethods(false)) {
                 for (AnalysisMethod registeredMethod : superclassMethods) {
                     if (registeredMethod.getName().equals(subClassMethod.getName()) &&
