@@ -106,6 +106,8 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             if (!jniParser) {
                 registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
                 registerIfNotDefault(data, false, clazz, "jniAccessible", () -> delegate.registerAsJniAccessed(condition, clazz));
+            } else {
+                delegate.registerAsJniAccessed(condition, clazz);
             }
 
             registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, typeJniAccessible, clazz));

@@ -140,11 +140,6 @@ public class JNIRegistryAdapter extends RegistryAdapter {
         VMError.shouldNotReachHere("serializable cannot be set on JNI registrations");
     }
 
-    @Override
-    public void registerAsJniAccessed(AccessCondition condition, Class<?> clazz) {
-        VMError.shouldNotReachHere("jniAccessible cannot be set on JNI registrations");
-    }
-
     private static void ensureJniAccessible(boolean jniAccessible) {
         VMError.guarantee(jniAccessible, "JNIRegistryAdapter can only be used for JNI queries");
     }
