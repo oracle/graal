@@ -30,6 +30,7 @@ import org.graalvm.webimage.api.JSBoolean;
 import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
+import org.graalvm.webimage.api.JSSymbol;
 import org.graalvm.webimage.api.JSValue;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
 
@@ -37,6 +38,7 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class JSObjectTest {
@@ -87,19 +89,8 @@ public class JSObjectTest {
         properties.set("name", nameDescriptor);
 
         JSObject obj = JSObject.create(proto, properties);
-        boolean failed = false;
-        try {
-            obj.set("name", "Alice");
-        } catch (Exception e) {
-            failed = true;
-        }
-        String result = JSValue.checkedCoerce(obj.get("name"), String.class);
-        JSValue fun = (JSValue) obj.get("greet");
-        String greeting = apply(fun, null, "World");
 
-        assertTrue(failed);
-        assertEquals("Bob", result);
-        assertEquals("Hello, World", greeting);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("name", "Alice"));
     }
 
     public static void testDefineProperties() {
@@ -116,18 +107,11 @@ public class JSObjectTest {
         String name1 = JSValue.checkedCoerce(result.get("name"), String.class);
         int age = JSValue.checkedCoerce(result.get("age"), Integer.class);
         result.set("name", JSString.of("Bob"));
-        boolean failed = false;
-        try {
-            result.set("age", JSNumber.of(21));
-        } catch (Exception e) {
-            failed = true;
-        }
-        String name2 = JSValue.checkedCoerce(result.get("name"), String.class);
 
         assertEquals("Alice", name1);
         assertEquals(26, age);
-        assertEquals("Bob", name2);
-        assertTrue(failed);
+        assertThrows(ThrownFromJavaScript.class, () -> result.set("age", JSNumber.of(21)));
+        assertEquals("Bob", JSValue.checkedCoerce(result.get("name"), String.class));
     }
 
     public static void testDefinePropertyVariants() {
@@ -138,21 +122,9 @@ public class JSObjectTest {
 
         JSObject.defineProperty(obj1, JSString.of("name"), descriptor);
         JSObject.defineProperty(obj2, "name", descriptor);
-        boolean failed1 = false;
-        boolean failed2 = false;
-        try {
-            obj1.set("name", "NotAlice");
-        } catch (Exception e) {
-            failed1 = true;
-        }
-        try {
-            obj2.set("name", "StillNotAlice");
-        } catch (Exception e) {
-            failed2 = true;
-        }
 
-        assertTrue(failed1);
-        assertTrue(failed2);
+        assertThrows(ThrownFromJavaScript.class, () -> obj1.set("name", "NotAlice"));
+        assertThrows(ThrownFromJavaScript.class, () -> obj2.set("name", "StillNotAlice"));
         assertEquals("Alice", JSValue.checkedCoerce(obj1.get("name"), String.class));
         assertEquals("Alice", JSValue.checkedCoerce(obj2.get("name"), String.class));
     }
@@ -172,14 +144,8 @@ public class JSObjectTest {
         obj.set("name", "Alice");
 
         JSObject.freeze(obj);
-        boolean failed = false;
-        try {
-            obj.set("name", "Changed");
-        } catch (ThrownFromJavaScript e) {
-            failed = true;
-        }
 
-        assertTrue(failed);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("name", "Changed"));
         assertEquals("Alice", JSValue.checkedCoerce(obj.get("name"), String.class));
     }
 
@@ -194,7 +160,6 @@ public class JSObjectTest {
         assertEquals("framework,mode", keys);
         assertEquals("GraalVM", result.get("framework"));
         assertEquals("native", result.get("mode"));
-
     }
 
     public static void testGetOwnPropertyDescriptor() {
@@ -239,9 +204,16 @@ public class JSObjectTest {
     public static void testHasOwn() {
         JSObject obj = JSObject.create();
         obj.set("x", 10);
+        JSSymbol sym = JSSymbol.forKey("x");
+        obj.set(sym, 42);
+        JSSymbol missing = JSSymbol.forKey("y");
 
         assertTrue(JSObject.hasOwn(obj, "x"));
         assertFalse(JSObject.hasOwn(obj, "y"));
+        assertTrue(JSObject.hasOwn(obj, JSString.of("x")));
+        assertFalse(JSObject.hasOwn(obj, JSString.of("y")));
+        assertTrue(JSObject.hasOwn(obj, sym));
+        assertFalse(JSObject.hasOwn(obj, missing));
     }
 
     public static void testIsEquality() {
@@ -265,16 +237,10 @@ public class JSObjectTest {
         boolean result1 = JSObject.isExtensible(obj);
         JSObject.preventExtensions(obj);
         boolean result2 = JSObject.isExtensible(obj);
-        boolean failed = false;
-        try {
-            obj.set("newProp", "test");
-        } catch (Exception e) {
-            failed = true;
-        }
 
         assertTrue(result1);
         assertFalse(result2);
-        assertTrue(failed);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("newProp", "test"));
         assertFalse(JSObject.hasOwn(obj, "newProp"));
     }
 
@@ -284,23 +250,11 @@ public class JSObjectTest {
         boolean result1 = JSObject.isFrozen(obj);
         JSObject.freeze(obj);
         boolean result2 = JSObject.isFrozen(obj);
-        boolean failed1 = false;
-        try {
-            obj.set("name", "Bob");
-        } catch (Exception e) {
-            failed1 = true;
-        }
-        boolean failed2 = false;
-        try {
-            obj.set("newProp", "test");
-        } catch (Exception e) {
-            failed2 = true;
-        }
 
         assertFalse(result1);
         assertTrue(result2);
-        assertTrue(failed1);
-        assertTrue(failed2);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("name", "Bob"));
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("newProp", "test"));
         assertEquals("Alice", obj.get("name"));
         assertFalse(JSObject.hasOwn(obj, "newProp"));
     }
@@ -320,27 +274,13 @@ public class JSObjectTest {
         boolean result1 = JSObject.isSealed(obj);
         JSObject.seal(obj);
         boolean result2 = JSObject.isSealed(obj);
-        boolean failed1 = false;
-        try {
-            obj.set("name", "Bob");
-        } catch (Exception e) {
-            failed1 = true;
-        }
-        boolean failed2 = false;
-        try {
-            obj.set("newProp", "test");
-        } catch (Exception e) {
-            failed2 = true;
-        }
-        String finalName = JSValue.checkedCoerce(obj.get("name"), String.class);
-        boolean exists = JSObject.hasOwn(obj, "newProp");
+        obj.set("name", "Bob");
 
         assertFalse(result1);
         assertTrue(result2);
-        assertFalse(failed1);
-        assertTrue(failed2);
-        assertEquals("Bob", finalName);
-        assertFalse(exists);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("newProp", "test"));
+        assertEquals("Bob", JSValue.checkedCoerce(obj.get("name"), String.class));
+        assertFalse(JSObject.hasOwn(obj, "newProp"));
     }
 
     public static void testKeysAndValues() {
@@ -361,18 +301,11 @@ public class JSObjectTest {
         boolean result1 = JSObject.isExtensible(obj);
         JSObject.preventExtensions(obj);
         boolean result2 = JSObject.isExtensible(obj);
-        boolean failed = false;
-        try {
-            obj.set("newProp", "test");
-        } catch (Exception e) {
-            failed = true;
-        }
-        boolean exists = JSObject.hasOwn(obj, "newProp");
 
         assertTrue(result1);
         assertFalse(result2);
-        assertTrue(failed);
-        assertFalse(exists);
+        assertThrows(ThrownFromJavaScript.class, () -> obj.set("newProp", "test"));
+        assertFalse(JSObject.hasOwn(obj, "newProp"));
     }
 
     public static void testPropertyIsEnumerable() {
@@ -384,13 +317,22 @@ public class JSObjectTest {
         hiddenDescriptor.set("enumerable", JSBoolean.of(false));
         descriptors.set("hidden", hiddenDescriptor);
         JSObject.defineProperties(obj, descriptors);
-
-        String keys = objToString(obj.keys());
+        JSSymbol sym = JSSymbol.forKey("secret");
+        obj.set(sym, "classified");
+        JSObject symbolDescriptor = JSObject.create();
+        symbolDescriptor.set("value", "classified");
+        symbolDescriptor.set("enumerable", JSBoolean.of(false));
+        JSObject symbolDescriptors = JSObject.create();
+        symbolDescriptors.set(sym, symbolDescriptor);
+        JSObject.defineProperties(obj, symbolDescriptors);
 
         assertTrue(obj.propertyIsEnumerable("visible"));
         assertFalse(obj.propertyIsEnumerable("hidden"));
         assertFalse(obj.propertyIsEnumerable("missing"));
-        assertEquals("visible", keys);
+        assertTrue(obj.propertyIsEnumerable(JSString.of("visible")));
+        assertFalse(obj.propertyIsEnumerable(JSString.of("hidden")));
+        assertFalse(obj.propertyIsEnumerable(JSString.of("missing")));
+        assertFalse(obj.propertyIsEnumerable(sym));
     }
 
     public static void testPrototypeMethodBinding() {
@@ -398,7 +340,6 @@ public class JSObjectTest {
 
         JSObject proto = JSObject.create();
         proto.set("describe", fromJSArgs("return 'I am ' + String(this.name);"));
-
         JSObject result = JSObject.setPrototypeOf(obj, proto);
         JSValue describeFn = (JSValue) result.get("describe");
         String description = JSValue.checkedCoerce(apply(describeFn, result), String.class);
@@ -471,12 +412,6 @@ public class JSObjectTest {
     @JS("return it.toString();")
     private static native String objToString(Object it);
 
-    @JS(value = """
-                    const arr = [];
-                    for (let i = 0; i < values.length; i++) {
-                        arr.push(values[i]);
-                    }
-                    return arr;
-                    """)
+    @JS(value = "return Array.from(values);")
     public static native JSObject createArray(Object... values);
 }

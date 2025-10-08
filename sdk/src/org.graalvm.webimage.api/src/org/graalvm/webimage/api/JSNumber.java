@@ -138,7 +138,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
-    public native static boolean isNaN(JSValue number);
+    public native static boolean isNaN(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
@@ -146,31 +146,39 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
-    public native static boolean isSafeInteger(JSValue number);
+    public native static boolean isSafeInteger(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
     public native static boolean isSafeInteger(double number);
 
     @JS.Coerce
-    @JS(value = "return parseFloat(number);")
-    public native static float parseFloat(double number);
+    @JS(value = "return Number.parseFloat(number);")
+    public native static double parseFloat(String number);
 
     @JS.Coerce
-    @JS(value = "return parseFloat(number);")
-    public native static float parseFloat(String number);
+    @JS(value = "return Number.parseInt(number);")
+    private static native double parseIntRaw(String number);
 
     @JS.Coerce
-    @JS(value = "return parseInt(number);")
-    public native static int parseInt(double number);
+    @JS(value = "return Number.parseInt(number, radix);")
+    private static native double parseIntRaw(String number, int radix);
 
-    @JS.Coerce
-    @JS(value = "return parseInt(number);")
-    public native static int parseInt(String number);
+    public static long parseInt(String number) {
+        double result = parseIntRaw(number);
+        if (Double.isNaN(result)) {
+            throw new IllegalArgumentException("Invalid integer: " + number);
+        }
+        return (long) result;
+    }
 
-    @JS.Coerce
-    @JS(value = "return parseInt(number, radix);")
-    public native static int parseInt(String number, int radix);
+    public static long parseInt(String number, int radix) {
+        double result = parseIntRaw(number, radix);
+        if (Double.isNaN(result)) {
+            throw new IllegalArgumentException("Invalid integer: " + number + " with radix " + radix);
+        }
+        return (long) result;
+    }
 
     @JS.Coerce
     @JS(value = "return Number.EPSILON;")
@@ -178,7 +186,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.MAX_SAFE_INTEGER;")
-    public native static double MAX_SAFE_INTEGER();
+    public native static long MAX_SAFE_INTEGER();
 
     @JS.Coerce
     @JS(value = "return Number.MAX_VALUE;")
@@ -186,7 +194,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.MIN_SAFE_INTEGER;")
-    public native static double MIN_SAFE_INTEGER();
+    public native static long MIN_SAFE_INTEGER();
 
     @JS.Coerce
     @JS(value = "return Number.MIN_VALUE;")
@@ -242,11 +250,7 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.toString(radix);")
-    private native String toJSString(int radix);
-
-    public String toString(int radix) {
-        return "JavaScript<" + typeof() + "; " + toJSString(radix) + ">";
-    }
+    public native String toString(int radix);
 
     @JS.Coerce
     @JS(value = "return this.valueOf();")

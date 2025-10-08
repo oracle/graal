@@ -557,8 +557,8 @@ public class JSObject extends JSValue {
     public static native JSObject create(JSObject proto, JSObject properties);
 
     @JS.Coerce
-    @JS(value = "return Object.defineProperties(obj, prop);")
-    public static native JSObject defineProperties(JSObject obj, JSObject prop);
+    @JS(value = "return Object.defineProperties(obj, props);")
+    public static native JSObject defineProperties(JSObject obj, JSObject props);
 
     @JS.Coerce
     @JS(value = "return Object.defineProperty(obj, prop, descriptor);")
@@ -573,8 +573,8 @@ public class JSObject extends JSValue {
     public static native JSObject entries(JSObject obj);
 
     @JS.Coerce
-    @JS(value = "Object.freeze(obj);")
-    public static native void freeze(JSObject obj);
+    @JS(value = "return Object.freeze(obj);")
+    public static native JSObject freeze(JSObject obj);
 
     @JS.Coerce
     @JS(value = "return Object.fromEntries(iterable);")
@@ -595,6 +595,14 @@ public class JSObject extends JSValue {
     @JS.Coerce
     @JS(value = "return Object.hasOwn(obj, prop);")
     public static native boolean hasOwn(JSObject obj, String prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.hasOwn(obj, prop);")
+    public static native boolean hasOwn(JSObject obj, JSString prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.hasOwn(obj, prop);")
+    public static native boolean hasOwn(JSObject obj, JSSymbol prop);
 
     @JS.Coerce
     @JS(value = "return Object.is(value1, value2);")
@@ -639,6 +647,14 @@ public class JSObject extends JSValue {
     @JS.Coerce
     @JS(value = "return this.propertyIsEnumerable(prop);")
     public native boolean propertyIsEnumerable(String prop);
+
+    @JS.Coerce
+    @JS(value = "return this.propertyIsEnumerable(prop);")
+    public native boolean propertyIsEnumerable(JSString prop);
+
+    @JS.Coerce
+    @JS(value = "return this.propertyIsEnumerable(prop);")
+    public native boolean propertyIsEnumerable(JSSymbol prop);
 
     @JS.Coerce
     @JS(value = "return this.toLocaleString();")

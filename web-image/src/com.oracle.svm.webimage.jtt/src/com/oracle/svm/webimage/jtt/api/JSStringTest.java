@@ -26,12 +26,12 @@
 package com.oracle.svm.webimage.jtt.api;
 
 import org.graalvm.webimage.api.JS;
+import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
 
-import java.util.Map;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -86,7 +86,7 @@ public class JSStringTest {
         testToUpperCase();
         testToWellFormed();
         testTrim();
-        testValueOf();
+        testSubstring();
     }
 
     public static void testAt() {
@@ -96,18 +96,18 @@ public class JSStringTest {
         JSString mathString = JSString.fromCodePoint(MATH_CODE_POINTS);
         JSString currencyString = JSString.fromCodePoint(CURRENCY_CODE_POINTS);
 
-        assertEquals("H", helloString.at(0).as(String.class));
-        assertEquals("o", helloString.at(4).as(String.class));
+        assertEquals("H", helloString.at(0).asString());
+        assertEquals("o", helloString.at(4).asString());
         assertEquals(JSUndefined.undefined(), JSValue.checkedCoerce(helloString.at(10), JSUndefined.class));
-        assertEquals("o", helloString.at(-1).as(String.class));
-        assertEquals("S", javaScriptString.at(4).as(String.class));
-        assertEquals("i", javaScriptString.at(-3).as(String.class));
-        assertEquals("\u2191", arrowsString.at(1).as(String.class));
-        assertEquals("\u2192", arrowsString.at(-2).as(String.class));
-        assertEquals("\u2211", mathString.at(0).as(String.class));
-        assertEquals("\u221E", mathString.at(3).as(String.class));
-        assertEquals("\u20B9", currencyString.at(2).as(String.class));
-        assertEquals("\u0024", currencyString.at(-1).as(String.class));
+        assertEquals("o", helloString.at(-1).asString());
+        assertEquals("S", javaScriptString.at(4).asString());
+        assertEquals("i", javaScriptString.at(-3).asString());
+        assertEquals("\u2191", arrowsString.at(1).asString());
+        assertEquals("\u2192", arrowsString.at(-2).asString());
+        assertEquals("\u2211", mathString.at(0).asString());
+        assertEquals("\u221E", mathString.at(3).asString());
+        assertEquals("\u20B9", currencyString.at(2).asString());
+        assertEquals("\u0024", currencyString.at(-1).asString());
     }
 
     public static void testCharAt() {
@@ -117,18 +117,18 @@ public class JSStringTest {
         JSString mathString = JSString.fromCodePoint(MATH_CODE_POINTS);
         JSString currencyString = JSString.fromCodePoint(CURRENCY_CODE_POINTS);
 
-        assertEquals("H", helloString.charAt(0).as(String.class));
-        assertEquals("o", helloString.charAt(4).as(String.class));
-        assertEquals("", helloString.charAt(-1).as(String.class));
-        assertEquals("S", javaScriptString.charAt(4).as(String.class));
-        assertEquals("t", javaScriptString.charAt(9).as(String.class));
-        assertEquals("", javaScriptString.charAt(10).as(String.class));
-        assertEquals("\u2190", arrowsString.charAt(0).as(String.class));
-        assertEquals("\u2192", arrowsString.charAt(2).as(String.class));
-        assertEquals("\u221A", mathString.charAt(1).as(String.class));
-        assertEquals("\u221E", mathString.charAt(3).as(String.class));
-        assertEquals("\u20B9", currencyString.charAt(2).as(String.class));
-        assertEquals("\u0024", currencyString.charAt(3).as(String.class));
+        assertEquals("H", helloString.charAt(0).asString());
+        assertEquals("o", helloString.charAt(4).asString());
+        assertEquals("", helloString.charAt(-1).asString());
+        assertEquals("S", javaScriptString.charAt(4).asString());
+        assertEquals("t", javaScriptString.charAt(9).asString());
+        assertEquals("", javaScriptString.charAt(10).asString());
+        assertEquals("\u2190", arrowsString.charAt(0).asString());
+        assertEquals("\u2192", arrowsString.charAt(2).asString());
+        assertEquals("\u221A", mathString.charAt(1).asString());
+        assertEquals("\u221E", mathString.charAt(3).asString());
+        assertEquals("\u20B9", currencyString.charAt(2).asString());
+        assertEquals("\u0024", currencyString.charAt(3).asString());
     }
 
     public static void testCharCodeAt() {
@@ -177,9 +177,9 @@ public class JSStringTest {
         JSString arrowsString = JSString.fromCodePoint(ARROWS_CODE_POINTS);
         JSString mathString = JSString.fromCodePoint(MATH_CODE_POINTS);
 
-        assertEquals("Hello, World!", helloString.concat(comma, worldString, exclaim).as(String.class));
-        assertEquals("Arrows: \u2190\u2191\u2192\u2193", label.concat(arrowsString).as(String.class));
-        assertEquals("Math: \u2211\u221A\u03C0\u221E", mathLabel.concat(mathString).as(String.class));
+        assertEquals("Hello, World!", helloString.concat(comma, worldString, exclaim).asString());
+        assertEquals("Arrows: \u2190\u2191\u2192\u2193", label.concat(arrowsString).asString());
+        assertEquals("Math: \u2211\u221A\u03C0\u221E", mathLabel.concat(mathString).asString());
     }
 
     public static void testEndsWith() {
@@ -216,20 +216,20 @@ public class JSStringTest {
     }
 
     public static void testFromCharCode() {
-        assertEquals("", JSString.fromCharCode().as(String.class));
-        assertEquals("A", JSString.fromCharCode(65).as(String.class));
-        assertEquals("Hello", JSString.fromCharCode(72, 101, 108, 108, 111).as(String.class));
-        assertEquals("\u0024\u00A9\u00AE", JSString.fromCharCode(36, 169, 174).as(String.class));
-        assertEquals("\uD83D\uDE00", JSString.fromCharCode(0xD83D, 0xDE00).as(String.class));
+        assertEquals("", JSString.fromCharCode().asString());
+        assertEquals("A", JSString.fromCharCode(65).asString());
+        assertEquals("Hello", JSString.fromCharCode(72, 101, 108, 108, 111).asString());
+        assertEquals("\u0024\u00A9\u00AE", JSString.fromCharCode(36, 169, 174).asString());
+        assertEquals("\uD83D\uDE00", JSString.fromCharCode(0xD83D, 0xDE00).asString());
     }
 
     public static void testFromCodePoint() {
-        assertEquals("", JSString.fromCodePoint().as(String.class));
-        assertEquals("A", JSString.fromCodePoint(65).as(String.class));
-        assertEquals("Hello", JSString.fromCodePoint(72, 101, 108, 108, 111).as(String.class));
-        assertEquals("\u0024\u00A9\u00AE", JSString.fromCodePoint(36, 169, 174).as(String.class));
-        assertEquals("\uD83D\uDE00", JSString.fromCodePoint(0x1F600).as(String.class));
-        assertEquals("\u03A9\uD83D\uDE80", JSString.fromCodePoint(0x03A9, 0x1F680).as(String.class));
+        assertEquals("", JSString.fromCodePoint().asString());
+        assertEquals("A", JSString.fromCodePoint(65).asString());
+        assertEquals("Hello", JSString.fromCodePoint(72, 101, 108, 108, 111).asString());
+        assertEquals("\u0024\u00A9\u00AE", JSString.fromCodePoint(36, 169, 174).asString());
+        assertEquals("\uD83D\uDE00", JSString.fromCodePoint(0x1F600).asString());
+        assertEquals("\u03A9\uD83D\uDE80", JSString.fromCodePoint(0x03A9, 0x1F680).asString());
     }
 
     public static void testIndexOf() {
@@ -286,8 +286,11 @@ public class JSStringTest {
         JSString a2 = JSString.of("A");
         JSString a3 = JSString.of("\u00E4");
         JSString a4 = JSString.of("ae");
-        Map<String, Object> caseSensitive = Map.of("sensitivity", "case");
-        Map<String, Object> accentSensitive = Map.of("sensitivity", "accent");
+        JSObject caseSensitive = JSObject.create();
+        caseSensitive.set("sensitivity", "case");
+
+        JSObject accentSensitive = JSObject.create();
+        accentSensitive.set("sensitivity", "accent");
 
         assertEquals(1, a2.localeCompare("a"));
         assertEquals(-1, a.localeCompare("A"));
@@ -316,7 +319,7 @@ public class JSStringTest {
 
         String result1 = objToString(phrase.match("World"));
         String result2 = objToString(mixed.match(eval("/[A-Z]/g")));
-        String result3 = objToString(phrase.match("\\d+"));
+        String result3 = objToString(phrase.match(JSString.of("\\d+")));
         String result4 = objToString(phrase.match(eval("/\\d+/g")));
 
         assertEquals("World", result1);
@@ -331,72 +334,72 @@ public class JSStringTest {
         JSString decomposed = JSString.fromCodePoint(0x0065, 0x0301);
         JSString fullWidth = JSString.fromCodePoint(0xFF21);
 
-        assertEquals("\u00E9", composed.as(String.class));
-        assertEquals("e\u0301", decomposed.as(String.class));
-        assertEquals("\u00E9", decomposed.normalize().as(String.class));
-        assertEquals("e\u0301", decomposed.normalize("NFD").as(String.class));
-        assertEquals("e\u0301", composed.normalize("NFD").as(String.class));
-        assertEquals("\u00E9", composed.normalize("NFC").as(String.class));
-        assertEquals("\u00E9", decomposed.normalize("NFC").as(String.class));
-        assertEquals("\uFF21", fullWidth.as(String.class));
-        assertEquals("A", fullWidth.normalize("NFKC").as(String.class));
+        assertEquals("\u00E9", composed.asString());
+        assertEquals("e\u0301", decomposed.asString());
+        assertEquals("\u00E9", decomposed.normalize().asString());
+        assertEquals("e\u0301", decomposed.normalize("NFD").asString());
+        assertEquals("e\u0301", composed.normalize("NFD").asString());
+        assertEquals("\u00E9", composed.normalize("NFC").asString());
+        assertEquals("\u00E9", decomposed.normalize("NFC").asString());
+        assertEquals("\uFF21", fullWidth.asString());
+        assertEquals("A", fullWidth.normalize("NFKC").asString());
     }
 
     public static void testPadEnd() {
         JSString base = JSString.of("Hi");
 
-        assertEquals("Hi   ", base.padEnd(5).as(String.class));
-        assertEquals("Hi***", base.padEnd(5, "*").as(String.class));
-        assertEquals("Hi*****", base.padEnd(7, JSString.of("*")).as(String.class));
+        assertEquals("Hi   ", base.padEnd(5).asString());
+        assertEquals("Hi***", base.padEnd(5, "*").asString());
+        assertEquals("Hi*****", base.padEnd(7, JSString.of("*")).asString());
     }
 
     public static void testPadStart() {
         JSString base = JSString.of("Hi");
 
-        assertEquals("   Hi", base.padStart(5).as(String.class));
-        assertEquals("---Hi", base.padStart(5, "-").as(String.class));
-        assertEquals("-----Hi", base.padStart(7, JSString.of("-")).as(String.class));
+        assertEquals("   Hi", base.padStart(5).asString());
+        assertEquals("---Hi", base.padStart(5, "-").asString());
+        assertEquals("-----Hi", base.padStart(7, JSString.of("-")).asString());
     }
 
     public static void testRaw() {
         JSObject template = JSObject.create();
         template.set("raw", new String[]{"Line1\n", "Line2\t", "End"});
 
-        assertEquals("Line1\nLine2\tEnd", JSString.raw(template).as(String.class));
-        assertEquals("Line1\nALine2\tBEnd", JSString.raw(template, "A", "B").as(String.class));
+        assertEquals("Line1\nLine2\tEnd", JSString.raw(template).asString());
+        assertEquals("Line1\nALine2\tBEnd", JSString.raw(template, "A", "B").asString());
     }
 
     public static void testRepeat() {
         JSString base = JSString.of("Echo");
         JSString helloString = JSString.of(HELLO_STRING);
 
-        assertEquals("EchoEchoEcho", base.repeat(3).as(String.class));
-        assertEquals("HelloHelloHelloHello", helloString.repeat(4).as(String.class));
+        assertEquals("EchoEchoEcho", base.repeat(3).asString());
+        assertEquals("HelloHelloHelloHello", helloString.repeat(4).asString());
     }
 
     public static void testReplace() {
         JSString phrase = JSString.of("foo bar foo");
         JSString digits = JSString.of("Price: 42");
         JSString helloWorldString = JSString.of(HELLO_WORLD_STRING);
-        Object replacer1 = eval("(match) => '[' + match + ']'");
+        JSObject replacer1 = eval("(match) => '[' + match + ']'");
         JSValue replacer2 = fromJavaFunction((JSString match) -> JSString.of("(" + match.asString() + ")"));
 
-        assertEquals("baz bar foo", phrase.replace("foo", "baz").as(String.class));
-        assertEquals("baz bar foo", phrase.replace(eval("/foo/"), "baz").as(String.class));
-        assertEquals("World, Hello", helloWorldString.replace(eval("/(\\w+) (\\w+)/"), "\u00242, \u00241").as(String.class));
-        assertEquals("Price: [42]", digits.replace(eval("/\\d+/"), replacer1).as(String.class));
-        assertEquals("Price: (42)", digits.replace(eval("/\\d+/"), replacer2).as(String.class));
-        assertEquals("foo bar foo", phrase.replace("xyz", "baz").as(String.class));
-        assertEquals("123 bar foo", phrase.replace("foo", 123).as(String.class));
+        assertEquals("baz bar foo", phrase.replace(JSString.of("foo"), JSString.of("baz")).asString());
+        assertEquals("baz bar foo", phrase.replace(eval("/foo/"), JSString.of("baz")).asString());
+        assertEquals("World, Hello", helloWorldString.replace(eval("/(\\w+) (\\w+)/"), JSString.of("\u00242, \u00241")).asString());
+        assertEquals("Price: [42]", digits.replace(eval("/\\d+/"), replacer1).asString());
+        assertEquals("Price: (42)", digits.replace(eval("/\\d+/"), replacer2).asString());
+        assertEquals("foo bar foo", phrase.replace(JSString.of("xyz"), JSString.of("baz")).asString());
+        assertEquals("123 bar foo", phrase.replace(JSString.of("foo"), JSNumber.of(123)).asString());
 
         JSString multi = JSString.of("foo bar foo");
-        assertEquals("baz bar baz", multi.replace(eval("/foo/g"), "baz").as(String.class));
+        assertEquals("baz bar baz", multi.replace(eval("/foo/g"), JSString.of("baz")).asString());
     }
 
     public static void testReplaceAll() {
         JSString multi = JSString.of("foo bar foo");
 
-        assertEquals("baz bar baz", multi.replace(eval("/foo/g"), "baz").as(String.class));
+        assertEquals("baz bar baz", multi.replace(eval("/foo/g"), JSString.of("baz")).asString());
     }
 
     public static void testSearch() {
@@ -413,10 +416,10 @@ public class JSStringTest {
     public static void testSlice() {
         JSString longText = JSString.of(LONG_TEXT);
 
-        assertEquals("the lazy dog.", longText.slice(31).as(String.class));
-        assertEquals("dog.", longText.slice(-4).as(String.class));
-        assertEquals("quick brown fox", longText.slice(4, 19).as(String.class));
-        assertEquals("lazy", longText.slice(-9, -5).as(String.class));
+        assertEquals("the lazy dog.", longText.slice(31).asString());
+        assertEquals("dog.", longText.slice(-4).asString());
+        assertEquals("quick brown fox", longText.slice(4, 19).asString());
+        assertEquals("lazy", longText.slice(-9, -5).asString());
     }
 
     public static void testSplit() {
@@ -455,36 +458,36 @@ public class JSStringTest {
         JSString turkish = JSString.fromCodePoint(0x0130).concat(JSString.of("stanbul"));
         JSString english = JSString.of("HELLO WORLD");
 
-        assertEquals("i\u0307stanbul", turkish.toLocaleLowerCase().as(String.class));
-        assertEquals("istanbul", turkish.toLocaleLowerCase("tr").as(String.class));
-        assertEquals("istanbul", turkish.toLocaleLowerCase(JSString.of("tr")).as(String.class));
-        assertEquals("hello world", english.toLocaleLowerCase().as(String.class));
-        assertEquals("hello world", english.toLocaleLowerCase("en").as(String.class));
-        assertEquals("hello world", english.toLocaleLowerCase(JSString.of("en")).as(String.class));
+        assertEquals("i\u0307stanbul", turkish.toLocaleLowerCase().asString());
+        assertEquals("istanbul", turkish.toLocaleLowerCase("tr").asString());
+        assertEquals("istanbul", turkish.toLocaleLowerCase(JSString.of("tr")).asString());
+        assertEquals("hello world", english.toLocaleLowerCase().asString());
+        assertEquals("hello world", english.toLocaleLowerCase("en").asString());
+        assertEquals("hello world", english.toLocaleLowerCase(JSString.of("en")).asString());
     }
 
     public static void testToLocaleUpperCase() {
         JSString turkish = JSString.fromCodePoint(0x0069).concat(JSString.of("stanbul"));
         JSString english = JSString.of("hello world");
 
-        assertEquals("ISTANBUL", turkish.toLocaleUpperCase().as(String.class));
-        assertEquals("\u0130STANBUL", turkish.toLocaleUpperCase("tr").as(String.class));
-        assertEquals("\u0130STANBUL", turkish.toLocaleUpperCase(JSString.of("tr")).as(String.class));
-        assertEquals("HELLO WORLD", english.toLocaleUpperCase().as(String.class));
-        assertEquals("HELLO WORLD", english.toLocaleUpperCase("en").as(String.class));
-        assertEquals("HELLO WORLD", english.toLocaleUpperCase(JSString.of("en")).as(String.class));
+        assertEquals("ISTANBUL", turkish.toLocaleUpperCase().asString());
+        assertEquals("\u0130STANBUL", turkish.toLocaleUpperCase("tr").asString());
+        assertEquals("\u0130STANBUL", turkish.toLocaleUpperCase(JSString.of("tr")).asString());
+        assertEquals("HELLO WORLD", english.toLocaleUpperCase().asString());
+        assertEquals("HELLO WORLD", english.toLocaleUpperCase("en").asString());
+        assertEquals("HELLO WORLD", english.toLocaleUpperCase(JSString.of("en")).asString());
     }
 
     public static void testToLowerCase() {
         JSString longText = JSString.of(LONG_TEXT);
 
-        assertEquals("the quick brown fox jumps over the lazy dog.", longText.toLowerCase().as(String.class));
+        assertEquals("the quick brown fox jumps over the lazy dog.", longText.toLowerCase().asString());
     }
 
     public static void testToUpperCase() {
         JSString longText = JSString.of(LONG_TEXT);
 
-        assertEquals("THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.", longText.toUpperCase().as(String.class));
+        assertEquals("THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.", longText.toUpperCase().asString());
     }
 
     public static void testToWellFormed() {
@@ -495,28 +498,33 @@ public class JSStringTest {
         JSString str5 = JSString.of("abc");
         JSString str6 = JSString.of("ab").concat(JSString.fromCodePoint(0x1F604)).concat(JSString.of("c"));
 
-        assertEquals("ab\uFFFD", str1.toWellFormed().as(String.class));
-        assertEquals("ab\uFFFDc", str2.toWellFormed().as(String.class));
-        assertEquals("\uFFFDab", str3.toWellFormed().as(String.class));
-        assertEquals("c\uFFFDab", str4.toWellFormed().as(String.class));
-        assertEquals("abc", str5.toWellFormed().as(String.class));
-        assertEquals("ab\uD83D\uDE04c", str6.toWellFormed().as(String.class));
+        assertEquals("ab\uFFFD", str1.toWellFormed().asString());
+        assertEquals("ab\uFFFDc", str2.toWellFormed().asString());
+        assertEquals("\uFFFDab", str3.toWellFormed().asString());
+        assertEquals("c\uFFFDab", str4.toWellFormed().asString());
+        assertEquals("abc", str5.toWellFormed().asString());
+        assertEquals("ab\uD83D\uDE04c", str6.toWellFormed().asString());
     }
 
     public static void testTrim() {
         JSString padded = JSString.of("   To be, or not to be   ");
 
-        assertEquals("To be, or not to be", padded.trim().as(String.class));
-        assertEquals("To be, or not to be   ", padded.trimStart().as(String.class));
-        assertEquals("   To be, or not to be", padded.trimEnd().as(String.class));
-        assertEquals("To be, or not to be   ", padded.trimLeft().as(String.class));
-        assertEquals("   To be, or not to be", padded.trimRight().as(String.class));
+        assertEquals("To be, or not to be", padded.trim().asString());
+        assertEquals("To be, or not to be   ", padded.trimStart().asString());
+        assertEquals("   To be, or not to be", padded.trimEnd().asString());
     }
 
-    public static void testValueOf() {
-        JSString text = JSString.of("To be, or not to be");
 
-        assertEquals("To be, or not to be", text.valueOf().as(String.class));
+    public static void testSubstring() {
+        JSString text = JSString.of("JavaScript");
+
+        assertEquals("Java", text.substring(0, 4).asString());
+        assertEquals("Script", text.substring(4).asString());
+        assertEquals("Java", text.substring(4, 0).asString());
+        assertEquals("Script", text.substring(4, 100).asString());
+        assertEquals("", text.substring(100, 200).asString());
+        assertEquals("Java", text.substring(-4, 4).asString());
+        assertEquals("JavaScript", text.substring(-10, 100).asString());
     }
 
     @JS.Coerce

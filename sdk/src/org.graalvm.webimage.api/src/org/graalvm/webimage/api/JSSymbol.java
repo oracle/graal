@@ -71,10 +71,6 @@ public final class JSSymbol extends JSValue {
         return javaString();
     }
 
-    public String description() {
-        return javaString();
-    }
-
     @Override
     public boolean equals(Object that) {
         if (that instanceof JSSymbol) {
@@ -93,7 +89,12 @@ public final class JSSymbol extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Symbol.keyFor(sym);")
-    public static native JSValue keyFor(JSSymbol sym);
+    private static native JSValue keyForRaw(JSSymbol sym);
+
+    public static String keyFor(JSSymbol sym) {
+        JSValue result = keyForRaw(sym);
+        return result.typeof().equals("undefined") ? null : result.asString();
+    }
 
     @JS.Coerce
     @JS(value = "return Symbol.asyncDispose;")
@@ -156,14 +157,10 @@ public final class JSSymbol extends JSValue {
     public static native JSSymbol unscopables();
 
     @JS.Coerce
-    @JS(value = "return sym.valueOf();")
-    public static native JSSymbol valueOf(Object sym);
-
-    @JS.Coerce
     @JS(value = "return a === b;")
     public static native boolean isSameSymbol(JSSymbol a, JSSymbol b);
 
     @JS.Coerce
-    @JS(value = "return sym.description;")
-    public static native String description(Object sym);
+    @JS(value = "return this.description;")
+    public native String description();
 }

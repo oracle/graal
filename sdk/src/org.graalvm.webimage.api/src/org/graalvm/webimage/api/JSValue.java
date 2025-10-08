@@ -55,9 +55,23 @@ public abstract class JSValue {
     JSValue() {
     }
 
+    /**
+     * Attempts to coerce a given value to the specified Java type.
+     * <p>
+     * If the value is a {@link JSValue}, it will be converted using its {@code as(...)} method.
+     * Otherwise, the value is cast directly.
+     *
+     * @param value the value to coerce, which may be a {@code JSValue} or a native Java object
+     * @param cls   the target Java class to coerce to
+     * @param <R>   the return type
+     * @return the coerced value as an instance of {@code cls}
+     * @throws ClassCastException if the coercion fails or is unsupported
+     */
     @SuppressWarnings("unchecked")
     public static <R> R checkedCoerce(Object value, Class<R> cls) {
-        if (value instanceof JSValue jsResult) return jsResult.as(cls);
+        if (value instanceof JSValue jsResult) {
+            return jsResult.as(cls);
+        }
         return (R) value;
     }
 

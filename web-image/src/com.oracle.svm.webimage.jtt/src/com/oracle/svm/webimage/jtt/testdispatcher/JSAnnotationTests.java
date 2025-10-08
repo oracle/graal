@@ -66,13 +66,13 @@ public class JSAnnotationTests extends JTTTestDispatcher {
         } else if (checkClass(HtmlApiExamplesTest.class, className)) {
             HtmlApiExamplesTest.main(remainingArgs);
         } else if (checkClass(JSNumberTest.class, className)) {
-            JSNumberTest.main(null);
+            JSNumberTest.main(remainingArgs);
         } else if (checkClass(JSStringTest.class, className)) {
-            JSStringTest.main(null);
+            JSStringTest.main(remainingArgs);
         } else if (checkClass(JSSymbolTest.class, className)) {
-            JSSymbolTest.main(null);
+            JSSymbolTest.main(remainingArgs);
         } else if (checkClass(JSObjectTest.class, className)) {
-            JSObjectTest.main(null);
+            JSObjectTest.main(remainingArgs);
         } else {
             throw new IllegalArgumentException("unexpected class name");
         }

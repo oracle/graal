@@ -31,6 +31,7 @@ import org.graalvm.webimage.api.JSObject;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class JSNumberTest {
 
@@ -48,7 +49,6 @@ public class JSNumberTest {
     static final int NEG_INT = -42;
     static final int HEX = 255;
     static final double DELTA = 0.0;
-    static final double SMALL_DELTA = 0.001;
 
     public static void main(String[] args) {
         testIsFinite();
@@ -99,32 +99,40 @@ public class JSNumberTest {
     }
 
     public static void testConstants() {
-        assertEquals(2.220446e-16, JSNumber.EPSILON(), 1e-16);
-        assertEquals(9.007199e+15, JSNumber.MAX_SAFE_INTEGER(), 0.000001e+15);
-        assertEquals(1.797693e+308, JSNumber.MAX_VALUE(), 0.000001e+308);
-        assertEquals(-9.007199e+15, JSNumber.MIN_SAFE_INTEGER(), 0.000001e+15);
-        assertEquals(4.900000e-324, JSNumber.MIN_VALUE(), 1e-16);
-        assertEquals(NAN, JSNumber.NaN(), DELTA);
-        assertEquals(NEG_INF, JSNumber.NEGATIVE_INFINITY(), DELTA);
-        assertEquals(POS_INF, JSNumber.POSITIVE_INFINITY(), DELTA);
+        assertEquals(Math.ulp(1.0), JSNumber.EPSILON(), DELTA);
+        assertEquals(9007199254740991L, JSNumber.MAX_SAFE_INTEGER(), DELTA);
+        assertEquals(Double.MAX_VALUE, JSNumber.MAX_VALUE(), DELTA);
+        assertEquals(-9007199254740991L, JSNumber.MIN_SAFE_INTEGER(), DELTA);
+        assertEquals(Double.MIN_VALUE, JSNumber.MIN_VALUE(), DELTA);
+        assertEquals(Double.NaN, JSNumber.NaN(), DELTA);
+        assertEquals(Double.NEGATIVE_INFINITY, JSNumber.NEGATIVE_INFINITY(), DELTA);
+        assertEquals(Double.POSITIVE_INFINITY, JSNumber.POSITIVE_INFINITY(), DELTA);
+
     }
 
     public static void testParseFloat() {
-        assertEquals(42.0, JSNumber.parseFloat(INT), DELTA);
-        assertEquals(DOUBLE_BIG, JSNumber.parseFloat(DOUBLE_BIG), SMALL_DELTA);
-        assertEquals(3.14, JSNumber.parseFloat("3.14abc"), SMALL_DELTA);
+        assertEquals(3.14, JSNumber.parseFloat("3.14abc"), DELTA);
         assertEquals(NAN, JSNumber.parseFloat("abc"), DELTA);
     }
 
     public static void testParseInt() {
-        assertEquals(42, JSNumber.parseInt(42.9));
-        assertEquals(-3, JSNumber.parseInt(-3.99));
-        assertEquals(123, JSNumber.parseInt("123"));
-        assertEquals(123, JSNumber.parseInt("123.456"));
-        assertEquals(0, JSNumber.parseInt("abc"));
-        assertEquals(10, JSNumber.parseInt("1010", 2));
-        assertEquals(255, JSNumber.parseInt("FF", 16));
-        assertEquals(63, JSNumber.parseInt("77", 8));
+        assertEquals(123L, JSNumber.parseInt("123"));
+        assertEquals(123L, JSNumber.parseInt("123.456"));
+        assertEquals(10L, JSNumber.parseInt("1010", 2));
+        assertEquals(255L, JSNumber.parseInt("FF", 16));
+        assertEquals(63L, JSNumber.parseInt("77", 8));
+        try {
+            JSNumber.parseInt("abc");
+            fail();
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Invalid integer: abc", expected.getMessage());
+        }
+        try {
+            JSNumber.parseInt("not-a-number", 10);
+            fail();
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Invalid integer: not-a-number with radix 10", expected.getMessage());
+        }
     }
 
     public static void testToExponential() {
@@ -135,7 +143,6 @@ public class JSNumberTest {
         assertEquals("1.234e-5", small.toExponential());
         assertEquals("9.87654321e+8", big.toExponential());
         assertEquals("3.14159e+0", pi.toExponential());
-
         assertEquals("1.23e-5", small.toExponential(2));
         assertEquals("9.8765e+8", big.toExponential(4));
         assertEquals("3.141590e+0", pi.toExponential(6));
@@ -149,7 +156,6 @@ public class JSNumberTest {
         assertEquals("3", pi.toFixed());
         assertEquals("123", big.toFixed());
         assertEquals("0", small.toFixed());
-
         assertEquals("3.14", pi.toFixed(2));
         assertEquals("123.4568", big.toFixed(4));
         assertEquals("0.00001234", small.toFixed(8));
@@ -157,11 +163,9 @@ public class JSNumberTest {
 
     public static void testToLocaleString() {
         JSNumber number = JSNumber.of(1234567.89);
-
         JSObject currencyOpts = JSObject.create();
         currencyOpts.set("style", "currency");
         currencyOpts.set("currency", "EUR");
-
         JSObject fractionOpts = JSObject.create();
         fractionOpts.set("minimumFractionDigits", JSNumber.of(4));
         fractionOpts.set("maximumFractionDigits", JSNumber.of(4));
@@ -181,7 +185,6 @@ public class JSNumberTest {
         assertEquals("123.456789", big.toPrecision());
         assertEquals("0.0000123456789", extended.toPrecision());
         assertEquals("987654321.123", large.toPrecision());
-
         assertEquals("123.5", big.toPrecision(4));
         assertEquals("0.0000123", extended.toPrecision(3));
         assertEquals("9.87654e+8", large.toPrecision(6));
@@ -195,16 +198,15 @@ public class JSNumberTest {
         assertEquals("JavaScript<number; 255.0>", hex.toString());
         assertEquals("JavaScript<number; 3.14159>", pi.toString());
         assertEquals("JavaScript<number; -42.0>", neg.toString());
-
-        assertEquals("JavaScript<number; 11111111>", hex.toString(2));
-        assertEquals("JavaScript<number; ff>", hex.toString(16));
-        assertEquals("JavaScript<number; 377>", hex.toString(8));
-        assertEquals("JavaScript<number; -132>", neg.toString(5));
+        assertEquals("11111111", hex.toString(2));
+        assertEquals("ff", hex.toString(16));
+        assertEquals("377", hex.toString(8));
+        assertEquals("-132", neg.toString(5));
     }
 
     public static void testValueOf() {
         assertEquals(42.0, JSNumber.of(INT).valueOf(), DELTA);
-        assertEquals(DOUBLE_SMALL, JSNumber.of(DOUBLE_SMALL).valueOf(), 0.000001);
+        assertEquals(DOUBLE_SMALL, JSNumber.of(DOUBLE_SMALL).valueOf(), DELTA);
         assertEquals(NAN, JSNumber.of(NAN).valueOf(), DELTA);
     }
 }

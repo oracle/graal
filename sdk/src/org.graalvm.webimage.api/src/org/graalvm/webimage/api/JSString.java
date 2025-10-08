@@ -84,31 +84,17 @@ public final class JSString extends JSValue {
     }
 
     @JS.Coerce
-    @JS(value = "return String.fromCharCode(codeUnit);")
-    public static native JSString fromCharCode(int codeUnit);
-
-    @JS.Coerce
     @JS(value = "return String.fromCharCode(...codeUnits);")
     public static native JSString fromCharCode(int... codeUnits);
 
     @JS.Coerce
-    @JS(value = "return String.fromCodePoint(codeUnit);")
-    public static native JSString fromCodePoint(int codeUnit);
-
-    @JS.Coerce
-    @JS(value = "return String.fromCodePoint(...codeUnits);")
-    public static native JSString fromCodePoint(int... codeUnits);
-
-    @JS(value = "return String.raw(template);")
-    public static native JSString raw(JSObject template);
+    @JS(value = "return String.fromCodePoint(...codePoints);")
+    public static native JSString fromCodePoint(int... codePoints);
 
     @JS(value = """
-            const args = [];
-            for (let i = 0; i < substitutions.length; i++) {
-                args.push(substitutions[i]);
-            }
-            return String.raw(template, ...args);
-            """)
+            const sub = Array.from(substitutions);
+            console.log(sub);
+            return String.raw(template, ...sub);""")
     public static native JSString raw(JSObject template, Object... substitutions);
 
     @JS.Coerce
@@ -215,7 +201,7 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.localeCompare(compareString, locales, options);")
-    public native int localeCompare(String compareString, String locales, Object options);
+    public native int localeCompare(String compareString, String locales, JSObject options);
 
     @JS.Coerce
     @JS(value = "return this.localeCompare(compareString);")
@@ -227,15 +213,23 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.localeCompare(compareString, locales, options);")
-    public native int localeCompare(JSString compareString, JSString locales, Object options);
+    public native int localeCompare(JSString compareString, JSString locales, JSObject options);
 
     @JS.Coerce
     @JS(value = "return this.match(regexp);")
-    public native JSObject match(Object regexp);
+    public native JSObject match(String regexp);
+
+    @JS.Coerce
+    @JS(value = "return this.match(regexp);")
+    public native JSObject match(JSObject regexp);
+
+    @JS.Coerce
+    @JS(value = "return this.match(regexp);")
+    public native JSObject match(JSString regexp);
 
     @JS.Coerce
     @JS(value = "return this.matchAll(regexp);")
-    public native JSObject matchAll(Object regexp);
+    public native JSObject matchAll(JSObject regexp);
 
     @JS.Coerce
     @JS(value = "return this.normalize();")
@@ -275,15 +269,19 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.replace(pattern, replacement);")
-    public native JSString replace(Object pattern, Object replacement);
+    public native JSString replace(JSValue pattern, JSValue replacement);
 
     @JS.Coerce
     @JS(value = "return this.replaceAll(pattern, replacement);")
-    public native JSString replaceAll(Object pattern, Object replacement);
+    public native JSString replaceAll(JSValue pattern, JSValue replacement);
 
     @JS.Coerce
     @JS(value = "return this.search(regexp);")
-    public native int search(Object regexp);
+    public native int search(String regexp);
+
+    @JS.Coerce
+    @JS(value = "return this.search(regexp);")
+    public native int search(JSValue regexp);
 
     @JS.Coerce
     @JS(value = "return this.slice(indexStart);")
@@ -299,7 +297,7 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.split(separator);")
-    public native JSObject split(JSObject separator);
+    public native JSObject split(JSValue separator);
 
     @JS.Coerce
     @JS(value = "return this.split(separator, limit);")
@@ -307,7 +305,7 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = "return this.split(separator, limit);")
-    public native JSObject split(JSObject separator, int limit);
+    public native JSObject split(JSValue separator, int limit);
 
     @JS.Coerce
     @JS(value = "return this.startsWith(searchString);")
@@ -370,22 +368,18 @@ public final class JSString extends JSValue {
     public native JSString trimEnd();
 
     @JS.Coerce
-    @JS(value = "return this.trimRight();")
-    public native JSString trimRight();
-
-    @JS.Coerce
     @JS(value = "return this.trimStart();")
     public native JSString trimStart();
 
     @JS.Coerce
-    @JS(value = "return this.trimLeft();")
-    public native JSString trimLeft();
-
-    @JS.Coerce
-    @JS(value = "return this.valueOf();")
-    public native JSString valueOf();
-
-    @JS.Coerce
     @JS(value = "return this.length;")
     public native int length();
+
+    @JS.Coerce
+    @JS(value = "return this.substring(indexStart);")
+    public native JSString substring(int indexStart);
+
+    @JS.Coerce
+    @JS(value = "return this.substring(indexStart, indexEnd);")
+    public native JSString substring(int indexStart, int indexEnd);
 }
