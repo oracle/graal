@@ -126,6 +126,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
     private final boolean immutableGraph;
 
+    private final boolean verifyProxies;
+
     public SchedulePhase(OptionValues options) {
         this(false, options);
     }
@@ -139,8 +141,13 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     }
 
     public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
+        this(strategy, immutableGraph, true);
+    }
+
+    public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph, boolean verifyProxies) {
         this.selectedStrategy = strategy;
         this.immutableGraph = immutableGraph;
+        this.verifyProxies = verifyProxies;
     }
 
     /**
@@ -207,6 +214,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         try (NodeEventScope scope = verifyImmutableGraph(graph)) {
             Instance inst = new Instance(context.getLowerer().supportsImplicitNullChecks());
+            inst.verifyProxies = verifyProxies;
             inst.run(graph, selectedStrategy, immutableGraph);
         }
     }
@@ -235,6 +243,14 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
     }
 
+    public static void runWithoutContextOptimizations(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, boolean immutable, boolean verifyProxies) {
+        if (shouldApply(graph, strategy)) {
+            Instance inst = new Instance(cfg, false);
+            inst.verifyProxies = verifyProxies;
+            inst.run(graph, strategy, immutable);
+        }
+    }
+
     public static void run(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, CoreProviders context, boolean immutable) {
         if (shouldApply(graph, strategy)) {
             Instance inst = new Instance(cfg, context.getLowerer().supportsImplicitNullChecks());
@@ -252,6 +268,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         protected BlockMap<List<Node>> blockToNodesMap;
         protected NodeMap<HIRBlock> nodeToBlockMap;
         protected boolean supportsImplicitNullChecks;
+        private boolean verifyProxies;
 
         public Instance(boolean supportsImplicitNullChecks) {
             this(null, supportsImplicitNullChecks);
@@ -292,7 +309,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
                 assert (!Assertions.detailedAssertionsEnabled(graph.getOptions())) ||
-                                ScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap);
+                                ScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap, verifyProxies);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -1048,7 +1065,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
             }
 
-            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || ScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock);
+            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || ScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock, verifyProxies);
         }
 
         private static void processNodes(NodeBitMap visited, NodeMap<MicroBlock> entries, NodeStack stack, MicroBlock startBlock, Iterable<? extends Node> nodes) {
