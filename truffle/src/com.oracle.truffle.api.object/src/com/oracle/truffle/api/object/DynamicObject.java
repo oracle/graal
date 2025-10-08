@@ -174,6 +174,9 @@ import sun.misc.Unsafe;
 @SuppressWarnings("deprecation")
 public abstract class DynamicObject implements TruffleObject {
 
+    static final Object[] EMPTY_OBJECT_ARRAY = {};
+    static final int[] EMPTY_INT_ARRAY = {};
+
     private static final MethodHandles.Lookup LOOKUP = internalLookup();
 
     /**
@@ -193,9 +196,9 @@ public abstract class DynamicObject implements TruffleObject {
     private Shape shape;
 
     /** Object extension array. */
-    @DynamicField private Object[] extRef;
+    @DynamicField private Object[] extRef = EMPTY_OBJECT_ARRAY;
     /** Primitive extension array. */
-    @DynamicField private int[] extVal;
+    @DynamicField private int[] extVal = EMPTY_INT_ARRAY;
 
     /**
      * Constructor for {@link DynamicObject} subclasses. Initializes the object with the provided
