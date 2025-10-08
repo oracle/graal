@@ -212,7 +212,7 @@ public class CremaSupportImpl implements CremaSupport {
                         table.layout.getStaticReferenceFieldCount(), table.layout.getStaticPrimitiveFieldSize());
 
         ParserKlass parserKlass = table.partialType.parserKlass;
-        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
+        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass));
 
         table.registerClass(thisType);
 

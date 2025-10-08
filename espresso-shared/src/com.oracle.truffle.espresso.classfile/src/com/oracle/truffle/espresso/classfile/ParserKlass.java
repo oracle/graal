@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 /**
  * Immutable raw representation of classes in Espresso, this is the output of the parser, super
@@ -167,5 +168,20 @@ public final class ParserKlass {
     @Override
     public String toString() {
         return "ParserKlass<" + getType() + ">";
+    }
+
+    public static ParserKlass forHiddenClass(ParserKlass parserKlass, Symbol<Type> requestedClassType, long hiddenKlassId, ParsingContext parsingContext) {
+        assert requestedClassType != null;
+        Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
+        Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
+        var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
+        var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
+        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
+                        parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
+                        parserKlass.getMethods(), parserKlass.getFields(),
+                        parserKlass.getAttributes(),
+                        parserKlass.getThisKlassIndex(),
+                        parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
+                        parserKlass.getHiddenKlassId());
     }
 }

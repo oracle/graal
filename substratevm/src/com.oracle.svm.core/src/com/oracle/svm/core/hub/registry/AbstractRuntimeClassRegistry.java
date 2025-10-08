@@ -214,9 +214,13 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             String externalName = getExternalName(parsed, info);
             throw new LinkageError("Loader " + ClassRegistries.loaderNameAndId(getClassLoader()) + " attempted duplicate " + kind + " definition for " + externalName + ".");
         }
+        int typeID = TypeIDs.singleton().nextTypeId();
+        if (info.isHidden) {
+            parsed = ParserKlass.forHiddenClass(parsed, typeOrNull, typeID, ClassRegistries.getParsingContext());
+        }
         Class<?> clazz;
         try {
-            clazz = createClass(parsed, info, type);
+            clazz = createClass(parsed, info, type, typeID);
         } catch (ParserException.ClassFormatError error) {
             throw new ClassFormatError(error.getMessage());
         }
@@ -268,7 +272,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
-    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type) {
+    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type, int typeID) {
         Symbol<Type> superKlassType = parsed.getSuperKlass();
         assert superKlassType != null; // j.l.Object is always AOT
         // Load direct super interfaces
@@ -369,7 +373,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * @formatter:on
          */
         DynamicHub superHub = DynamicHub.fromClass(superClass);
-        int typeID = TypeIDs.singleton().nextTypeId();
         int interfaceID = isInterface ? TypeIDs.singleton().nextInterfaceId() : DynamicHub.NO_INTERFACE_ID;
         short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
         short numClassTypes;
@@ -423,7 +426,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
                         typeID, interfaceID,
                         hasClassInitializer(parsed), numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength,
-                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
+                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased, info);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 

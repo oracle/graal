@@ -30,7 +30,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
@@ -49,8 +49,10 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public final class RuntimeInterpreterConstantPool extends InterpreterConstantPool {
 
-    public RuntimeInterpreterConstantPool(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool) {
-        super(holder, parserConstantPool);
+    public RuntimeInterpreterConstantPool(InterpreterResolvedObjectType holder, ParserKlass parserKlass) {
+        super(holder, parserKlass.getConstantPool());
+        // pre-resolve the holder class so that hidden classes can resolve themselves
+        cachedEntries[parserKlass.getThisKlassIndex()] = holder;
     }
 
     @Override
