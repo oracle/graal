@@ -4201,8 +4201,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startSwitch().string("operation.operation").end().startBlock();
                         b.startCase().tree(createOperationConstant(model.rootOperation)).end();
                         b.startCaseBlock();
-                        emitCastOperationData(b, model.rootOperation, "i", "rootOperationData", "currentState");
-                        b.startIf().string(operationStack.read(model.rootOperation, "rootOperationData", operationFields.index), " == localImpl.rootIndex").end().startBlock();
+                        b.startIf().string(operationStack.read(model.rootOperation, "operation", operationFields.index), " == localImpl.rootIndex").end().startBlock();
                         b.lineComment("root node found");
                         b.statement("return");
                         b.end();
@@ -4495,7 +4494,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                         b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
                         b.startCaseBlock();
-                        emitCastOperationData(b, model.sourceOperation, "i", "sourceData", "currentState");
+                        emitCastOperationData(b, model.sourceOperation, "i", "sourceData", "currentState", false);
                         b.statement("foundSourceIndex = ", operationStack.read(model.sourceOperation, "sourceData", operationFields.sourceIndex));
                         b.statement("break loop");
                         b.end(); // case epilog
@@ -5437,14 +5436,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName) {
-            emitCastOperationData(b, operation, sp, localName, "state");
+            emitCastOperationData(b, operation, sp, localName, "state", true);
         }
 
-        private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName, String stateName) {
+        private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName, String stateName, boolean checkOperation) {
             b.startDeclaration(operationStack.asType(), localName);
             b.string(stateName, ".operationStack[", sp, "]");
             b.end();
-            b.startAssert().string(localName, ".operation == ").tree(createOperationConstant(operation)).end();
+            if (checkOperation) {
+                b.startAssert().string(localName, ".operation == ").tree(createOperationConstant(operation)).end();
+            }
         }
 
         /**
