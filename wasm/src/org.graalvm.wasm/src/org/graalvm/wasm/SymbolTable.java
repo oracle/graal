@@ -975,6 +975,32 @@ public abstract class SymbolTable {
         return closedTypes[typeIndex];
     }
 
+    public static ClosedValueType closedTypeOfPredefined(int type) {
+        return switch (type) {
+            case WasmType.I32_TYPE -> NumberType.I32;
+            case WasmType.I64_TYPE -> NumberType.I64;
+            case WasmType.F32_TYPE -> NumberType.F32;
+            case WasmType.F64_TYPE -> NumberType.F64;
+            case WasmType.V128_TYPE -> VectorType.V128;
+            default -> {
+                if (WasmType.isBottomType(type)) {
+                    yield BottomType.BOTTOM;
+                }
+                assert WasmType.isReferenceType(type);
+                boolean nullable = WasmType.isNullable(type);
+                yield switch (WasmType.getAbstractHeapType(type)) {
+                    case WasmType.FUNC_HEAPTYPE -> nullable ? ClosedReferenceType.FUNCREF : ClosedReferenceType.NONNULL_FUNCREF;
+                    case WasmType.EXTERN_HEAPTYPE -> nullable ? ClosedReferenceType.EXTERNREF : ClosedReferenceType.NONNULL_EXTERNREF;
+                    case WasmType.EXN_HEAPTYPE -> nullable ? ClosedReferenceType.EXNREF : ClosedReferenceType.NONNULL_EXNREF;
+                    default -> {
+                        assert WasmType.isConcreteReferenceType(type);
+                        throw new IllegalArgumentException();
+                    }
+                };
+            }
+        };
+    }
+
     public ClosedValueType makeClosedType(int type) {
         return switch (type) {
             case WasmType.I32_TYPE -> NumberType.I32;

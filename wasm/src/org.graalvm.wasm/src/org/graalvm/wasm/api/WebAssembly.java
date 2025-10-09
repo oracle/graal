@@ -53,6 +53,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -780,13 +781,14 @@ public class WebAssembly extends Dictionary {
             case i64 -> WasmGlobal.alloc64(valueType, mutable, (long) value);
             case f32 -> WasmGlobal.alloc32(valueType, mutable, Float.floatToRawIntBits((float) value));
             case f64 -> WasmGlobal.alloc64(valueType, mutable, Double.doubleToRawLongBits((double) value));
-            case v128 -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            case v128 -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
             case anyfunc, externref -> {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
                 yield WasmGlobal.allocRef(valueType, mutable, value);
             }
+            case exnref -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
         };
     }
 
@@ -799,17 +801,19 @@ public class WebAssembly extends Dictionary {
     }
 
     public Object globalRead(WasmGlobal global) {
-        int type = global.getType();
-        return switch (type) {
+        return switch (global.getType()) {
             case WasmType.I32_TYPE -> global.loadAsInt();
             case WasmType.I64_TYPE -> global.loadAsLong();
             case WasmType.F32_TYPE -> Float.intBitsToFloat(global.loadAsInt());
             case WasmType.F64_TYPE -> Double.longBitsToDouble(global.loadAsLong());
-            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
             default -> {
-                assert WasmType.isReferenceType(type);
+                assert WasmType.isReferenceType(global.getType());
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
+                }
+                if (SymbolTable.closedTypeOfPredefined(WasmType.EXNREF_TYPE).isSupertypeOf(global.getClosedValueType())) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 yield global.loadAsReference();
             }
@@ -828,20 +832,22 @@ public class WebAssembly extends Dictionary {
         if (!global.isMutable()) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
         }
-        int type = global.getType();
         if (!global.getClosedValueType().matchesValue(value)) {
-            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", ValueType.fromValue(type), value);
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", ValueType.fromValue(global.getType()), value);
         }
-        switch (type) {
+        switch (global.getType()) {
             case WasmType.I32_TYPE -> global.storeInt((int) value);
             case WasmType.I64_TYPE -> global.storeLong((long) value);
             case WasmType.F32_TYPE -> global.storeInt(Float.floatToRawIntBits((float) value));
             case WasmType.F64_TYPE -> global.storeLong(Double.doubleToRawLongBits((double) value));
-            case WasmType.V128_TYPE -> throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing v128 globals from JS is not allowed.");
+            case WasmType.V128_TYPE -> throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.V128_VALUE_ACCESS);
             default -> {
-                assert WasmType.isReferenceType(type);
+                assert WasmType.isReferenceType(global.getType());
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
+                }
+                if (SymbolTable.closedTypeOfPredefined(WasmType.EXNREF_TYPE).isSupertypeOf(global.getClosedValueType())) {
+                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 global.storeReference(value);
             }
@@ -888,40 +894,12 @@ public class WebAssembly extends Dictionary {
         for (int i = 0; i < paramCount; i++) {
             final ValueType paramType = type.paramTypeAt(i);
             final Object value = args[i + 1];
-            switch (paramType) {
-                case i32:
-                    if (!(value instanceof Integer)) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
-                    }
-                    break;
-                case i64:
-                    if (!(value instanceof Long)) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
-                    }
-                    break;
-                case f32:
-                    if (!(value instanceof Float)) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
-                    }
-                    break;
-                case f64:
-                    if (!(value instanceof Double)) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
-                    }
-                    break;
-                case anyfunc:
-                    if (!refTypes) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
-                    }
-                    if (!(value == WasmConstant.NULL || value instanceof WasmFunctionInstance)) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
-                    }
-                    break;
-                case externref:
-                    if (!refTypes) {
-                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
-                    }
-                    break;
+
+            if (!paramType.asClosedValueType().matchesValue(value)) {
+                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Param type %s, value: %s", paramType, value);
+            }
+            if (ValueType.isReferenceType(paramType) && !refTypes) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
             }
             fields[i] = value;
         }

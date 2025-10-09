@@ -1935,7 +1935,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     @TruffleBoundary
     private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
-        throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
+        throw WasmException.format(Failure.INDIRECT_CALL_TYPE_MISMATCH, this,
                         "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
                         function.typeIndex(), function.name(), expectedFunctionTypeIndex, module.name());
     }

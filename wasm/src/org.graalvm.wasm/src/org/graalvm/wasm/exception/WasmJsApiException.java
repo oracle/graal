@@ -51,6 +51,9 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
  */
 public class WasmJsApiException extends AbstractTruffleException {
 
+    public static final String V128_VALUE_ACCESS = "Invalid value type. Accessing v128 values from JS is not allowed.";
+    public static final String EXNREF_VALUE_ACCESS = "Invalid value type. Accessing exnref values from JS is not allowed.";
+
     public enum Kind {
         TypeError,
         RangeError,

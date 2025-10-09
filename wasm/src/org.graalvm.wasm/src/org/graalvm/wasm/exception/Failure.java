@@ -143,7 +143,7 @@ public enum Failure {
     OUT_OF_BOUNDS_MEMORY_ACCESS(Type.TRAP, "out of bounds memory access"),
     UNALIGNED_ATOMIC(Type.TRAP, "unaligned atomic"),
     EXPECTED_SHARED_MEMORY(Type.TRAP, "expected shared memory"),
-    INDIRECT_CALL_TYPE__MISMATCH(Type.TRAP, "indirect call type mismatch"),
+    INDIRECT_CALL_TYPE_MISMATCH(Type.TRAP, "indirect call type mismatch"),
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
 

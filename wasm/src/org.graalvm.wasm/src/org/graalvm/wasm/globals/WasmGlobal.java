@@ -122,6 +122,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
                 case v128 -> SymbolTable.VectorType.V128;
                 case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
                 case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
+                case exnref -> SymbolTable.ClosedReferenceType.EXNREF;
             };
         }
     }
@@ -238,7 +239,6 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
             case WasmType.F32_TYPE -> storeInt(Float.floatToRawIntBits(valueLibrary.asFloat(value)));
             case WasmType.F64_TYPE -> storeLong(Double.doubleToRawLongBits(valueLibrary.asDouble(value)));
             case WasmType.V128_TYPE -> {
-                assert WasmType.isVectorType(type);
                 if (!getClosedValueType().matchesValue(value)) {
                     throw UnsupportedMessageException.create();
                 }

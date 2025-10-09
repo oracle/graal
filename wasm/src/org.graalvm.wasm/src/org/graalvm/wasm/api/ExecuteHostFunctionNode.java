@@ -177,6 +177,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
                     default -> {
                         assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
                         if (!closedResultType.matchesValue(result)) {
+                            errorBranch.enter();
                             throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
                         }
                         objectMultiValueStack[i] = value;

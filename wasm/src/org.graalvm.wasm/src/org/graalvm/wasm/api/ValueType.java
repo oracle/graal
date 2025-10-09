@@ -42,10 +42,10 @@ package org.graalvm.wasm.api;
 
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public enum ValueType {
     i32(WasmType.I32_TYPE),
@@ -54,7 +54,8 @@ public enum ValueType {
     f64(WasmType.F64_TYPE),
     v128(WasmType.V128_TYPE),
     anyfunc(WasmType.FUNCREF_TYPE),
-    externref(WasmType.EXTERNREF_TYPE);
+    externref(WasmType.EXTERNREF_TYPE),
+    exnref(WasmType.EXNREF_TYPE);
 
     private final int value;
 
@@ -75,7 +76,7 @@ public enum ValueType {
                 yield switch (WasmType.getAbstractHeapType(value)) {
                     case WasmType.FUNC_HEAPTYPE -> anyfunc;
                     case WasmType.EXTERN_HEAPTYPE -> externref;
-                    case WasmType.EXN_HEAPTYPE -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+                    case WasmType.EXN_HEAPTYPE -> exnref;
                     default -> {
                         assert WasmType.isConcreteReferenceType(value);
                         yield anyfunc;
@@ -98,7 +99,7 @@ public enum ValueType {
     }
 
     public static boolean isReferenceType(ValueType valueType) {
-        return valueType == anyfunc || valueType == externref;
+        return valueType == anyfunc || valueType == externref || valueType == exnref;
     }
 
     public SymbolTable.ClosedValueType asClosedValueType() {
@@ -110,6 +111,7 @@ public enum ValueType {
             case v128 -> SymbolTable.VectorType.V128;
             case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
             case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
+            case exnref -> SymbolTable.ClosedReferenceType.EXNREF;
         };
     }
 
