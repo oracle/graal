@@ -207,7 +207,7 @@ The example below defines two custom operations, `OperationA` and `OperationB`:
 public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
     ...
     @Operation
-    public static final OperationA {
+    public static final class OperationA {
         @Specialization
         public static int doInt(VirtualFrame frame, int num) { ... }
 
@@ -217,7 +217,7 @@ public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRoo
 }
 
 @OperationProxy.Proxyable
-public abstract OperationB extends Node {
+public abstract class OperationB extends Node {
     @Specialization
     public static void doInts(int a, int b) { ... }
 
