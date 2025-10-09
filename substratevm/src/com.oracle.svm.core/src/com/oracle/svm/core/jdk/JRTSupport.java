@@ -31,12 +31,13 @@ import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.jdk.JRTSupport.JRTDisabled;
 import com.oracle.svm.core.jdk.JRTSupport.JRTEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
@@ -84,17 +86,14 @@ public final class JRTSupport {
 }
 
 @AutomaticallyRegisteredFeature
-class JRTDisableFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !JRTSupport.Options.AllowJRTFileSystem.getValue();
-    }
-
-    @SuppressWarnings("unchecked")
+class JRTFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", new HashSet<>(Arrays.asList("jdk.internal.jrtfs.JrtFileSystemProvider")));
+        if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
+            RuntimeClassInitialization.initializeAtRunTime(ReflectionUtil.lookupClass("jdk.internal.jrtfs.SystemImage"));
+        } else {
+            ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", Set.of("jdk.internal.jrtfs.JrtFileSystemProvider"));
+        }
     }
 }
 
