@@ -652,16 +652,6 @@ public class WebAssembly extends Dictionary {
     private static Object memSetGrowCallback(Object[] args) {
         checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (args.length > 1) {
-            // TODO: drop this branch after JS adopts the single-argument version
-            if (!(args[0] instanceof WasmMemory)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
-            }
-            if (!lib.isExecutable(args[1])) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
-            }
-            return memSetGrowCallback(args[1]);
-        }
         if (!lib.isExecutable(args[0])) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
@@ -690,16 +680,6 @@ public class WebAssembly extends Dictionary {
     private static Object memSetNotifyCallback(Object[] args) {
         checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (args.length > 1) {
-            // TODO: drop this branch after JS adopts the single-argument version
-            if (!(args[0] instanceof WasmMemory)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
-            }
-            if (!lib.isExecutable(args[1])) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
-            }
-            return memSetNotifyCallback(args[1]);
-        }
         if (!lib.isExecutable(args[0])) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
@@ -729,16 +709,6 @@ public class WebAssembly extends Dictionary {
     private static Object memSetWaitCallback(Object[] args) {
         checkArgumentCount(args, 1);
         InteropLibrary lib = InteropLibrary.getUncached();
-        if (args.length > 1) {
-            // TODO: drop this branch after JS adopts the single-argument version
-            if (!(args[0] instanceof WasmMemory)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be executable");
-            }
-            if (!lib.isExecutable(args[1])) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
-            }
-            return memSetWaitCallback(args[1]);
-        }
         if (!lib.isExecutable(args[0])) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Argument must be executable");
         }
