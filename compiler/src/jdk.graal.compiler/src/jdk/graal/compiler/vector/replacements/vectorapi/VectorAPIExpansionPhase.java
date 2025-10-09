@@ -47,12 +47,16 @@ import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.NodeUnionFind;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -60,6 +64,7 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
@@ -71,13 +76,17 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
+import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMacroNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPISinkNode;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Expands {@link VectorAPIMacroNode}s to SIMD operations if they are supported by the target
@@ -139,6 +148,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * produces one new node, or at most a few (e.g., a core operation plus some type conversion).
  */
 public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTierContext> {
+
+    private static final SpeculationReasonGroup FIXED_GUARD_HOISTING_SPECULATIONS = new SpeculationReasonGroup("VectorAPIFixedGuardHoisting", ResolvedJavaMethod.class, int.class,
+                    DeoptimizationReason.class);
 
     public VectorAPIExpansionPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer.copyWithCustomSimplification(new VectorAPIExpansionPhase.VectorAPISimplification()));
@@ -256,6 +268,10 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
         graph.getGraphState().setDuringStage(GraphState.StageFlag.VECTOR_API_EXPANSION);
         if (!graph.hasNode(VectorAPIMacroNode.TYPE)) {
             return;
+        }
+
+        if (graph.getSpeculationLog() != null) {
+            speculativelyHoistGuardsThroughPhis(graph, context);
         }
 
         /*
@@ -998,6 +1014,99 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             }
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "after adding duplicates for %s", component);
+    }
+
+    /*
+     * A limit on the width of phis that we are willing to hoist through. The exact value doesn't
+     * matter, but as hoisting guards through phis duplicates code, we want some limit to avoid
+     * explosive surprises.
+     */
+    private static final int MAX_PHI_PREDECESSORS = 4;
+
+    /**
+     * Try to improve a graph shape involving loop phis that don't have precise Vector API type
+     * stamps. Given code like this:
+     *
+     * <pre>
+     *     Object init = [some generic Object value];
+     *     Object phi = init;
+     *     loop {
+     *         Byte128Vector v = (Byte128Vector) phi;
+     *         Byte128Vector w = v.add(1);
+     *         phi = w;
+     *     }
+     * </pre>
+     *
+     * This method will hoist the cast through the phi, placing the guards in all phi predecessors
+     * that don't have a precise stamp yet (i.e., in this case, at the loop entry):
+     *
+     * <pre>
+     *     Object init = [some generic Object value];
+     *     Byte128Vector castInit = (Byte128Vector) init;  // hoisted type check guard
+     *     Byte128Vector phi = castInit;
+     *     loop {
+     *         phi = phi.add(1);
+     *     }
+     * </pre>
+     *
+     * In the original code, we have a type check on every loop iteration, plus we would have to
+     * insert unboxing/boxing code around the SIMD add operation. In the modified code, we only have
+     * one type check and one unboxing before the loop, and the SIMD computation in the loop can be
+     * fully unboxed. Reasonably written code should not contain such patterns, but Truffle OSR
+     * compilations have such code shapes because OSR locals have generic object stamps.
+     * <p>
+     *
+     * The hoisting of the type check is guarded by a speculation, so we do not repeat this
+     * transformation if we ever see the hoisted guard fail.
+     */
+    private void speculativelyHoistGuardsThroughPhis(StructuredGraph graph, HighTierContext context) {
+        for (VectorAPIMacroNode macro : graph.getNodes(VectorAPIMacroNode.TYPE)) {
+            for (ValueNode vectorInput : macro.vectorInputs()) {
+                if (vectorInput instanceof PiNode pi && pi.getGuard() instanceof FixedGuardNode guard && guard.canFloat()) {
+                    if (guard.getCondition() instanceof InstanceOfNode instanceOf &&
+                                    !guard.isNegated() &&  // if (!(x instanceof T)) { deopt; }
+                                    instanceOf.getValue() == pi.getOriginalNode() &&
+                                    instanceOf.getCheckedStamp().nonNull() &&
+                                    instanceOf.getCheckedStamp().equals(pi.piStamp()) &&
+                                    instanceOf.getValue() instanceof ValuePhiNode phi &&
+                                    phi.valueCount() <= MAX_PHI_PREDECESSORS &&
+                                    phi.isLoopPhi() &&
+                                    VectorAPIBoxingUtils.asUnboxableVectorType(pi, context) != null) {
+                        SpeculationLog.SpeculationReason speculationReason = FIXED_GUARD_HOISTING_SPECULATIONS.createSpeculationReason(phi.merge().stateAfter().getMethod(),
+                                        phi.merge().stateAfter().bci, guard.getReason());
+                        if (graph.getSpeculationLog().maySpeculate(speculationReason)) {
+                            SpeculationLog.Speculation hoistingSpeculation = graph.getSpeculationLog().speculate(speculationReason);
+                            for (int i = 0; i < phi.valueCount(); i++) {
+                                LogicNode newCondition = InstanceOfNode.create(instanceOf.type(), phi.valueAt(i));
+                                if (newCondition instanceof LogicConstantNode logicConstant && logicConstant.getValue() == !guard.isNegated()) {
+                                    /*
+                                     * This phi input already has a precise stamp that doesn't need
+                                     * to be improved.
+                                     */
+                                    continue;
+                                }
+                                newCondition = graph.addOrUnique(newCondition);
+                                FixedGuardNode newGuard = graph.add(new FixedGuardNode(newCondition, guard.getReason(), guard.getAction(), hoistingSpeculation, guard.isNegated(),
+                                                guard.getNoDeoptSuccessorPosition()));
+                                graph.addBeforeFixed(phi.merge().phiPredecessorAt(i), newGuard);
+                                ValueNode newPi = graph.addOrUnique(PiNode.create(phi.valueAt(i), pi.piStamp(), newGuard));
+                                if (newPi != phi.valueAt(i)) {
+                                    phi.setValueAt(i, newPi);
+                                }
+                            }
+                            /*
+                             * Improve the phi and canonicalize its usages right away. The original
+                             * guard and its pi will fold away, and other macros using the same pi
+                             * will now see the phi with its precise stamp. This way, we don't
+                             * repeat the same work for other usages of the pi.
+                             */
+                            phi.inferStamp();
+                            canonicalizer.applyIncremental(graph, context, phi.usages());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public static class VectorAPISimplification implements CanonicalizerPhase.CustomSimplification {
