@@ -597,7 +597,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
 
         String methodDescriptor = imageLayerSnapshotUtil.getMethodDescriptor(method);
-        if (methodDescriptors.put(methodDescriptor, method) != null) {
+        if (methodDescriptors.putIfAbsent(methodDescriptor, method) != null) {
             throw GraalError.shouldNotReachHere("The method descriptor should be unique, but %s got added twice.\nThe first method is %s and the second is %s."
                             .formatted(methodDescriptor, methodDescriptors.get(methodDescriptor), method));
         }
