@@ -65,6 +65,7 @@ public class HeapBreakdownProvider {
     private static final String BYTE_ARRAY_PREFIX = "byte[] for ";
     private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
 
+    protected ImageHeapPartition[] allImageHeapPartitions;
     private boolean reportStringBytes = true;
     private int graphEncodingByteLength = -1;
 
@@ -103,10 +104,16 @@ public class HeapBreakdownProvider {
         this.totalHeapSize = totalHeapSize;
     }
 
+    public ImageHeapPartition[] getAllImageHeapPartitions() {
+        assert allImageHeapPartitions != null;
+        return allImageHeapPartitions;
+    }
+
     protected void calculate(BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
+        allImageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
+
         HostedMetaAccess metaAccess = access.getHostedMetaAccess();
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
-        HeapBreakdownEntry.imageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
 
@@ -123,7 +130,7 @@ public class HeapBreakdownProvider {
             totalObjectSize += objectSize;
             HeapBreakdownEntry heapBreakdownEntry = classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of);
             heapBreakdownEntry.add(objectSize);
-            heapBreakdownEntry.addPartition(o.getPartition());
+            heapBreakdownEntry.addPartition(o.getPartition(), allImageHeapPartitions);
             if (reportStringBytesConstant && o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
@@ -221,8 +228,6 @@ public class HeapBreakdownProvider {
     }
 
     public abstract static class HeapBreakdownEntry {
-        public static ImageHeapPartition[] imageHeapPartitions;
-
         long byteSize;
         int count;
         int partitions = 0;
@@ -242,12 +247,12 @@ public class HeapBreakdownProvider {
 
         public abstract HeapBreakdownLabel getLabel(int maxLength);
 
-        public ImageHeapPartition[] getPartitions() {
+        public ImageHeapPartition[] getPartitions(ImageHeapPartition[] allImageHeapPartitions) {
             ImageHeapPartition[] entryPartitions = new ImageHeapPartition[Integer.bitCount(partitions)];
             int i = 0;
-            for (int j = 0; j < imageHeapPartitions.length; j++) {
+            for (int j = 0; j < allImageHeapPartitions.length; j++) {
                 if (((partitions >> j) & 1) == 1) {
-                    entryPartitions[i] = imageHeapPartitions[j];
+                    entryPartitions[i] = allImageHeapPartitions[j];
                     i++;
                 }
             }
@@ -280,9 +285,9 @@ public class HeapBreakdownProvider {
             this.count -= subCount;
         }
 
-        void addPartition(ImageHeapPartition newPartition) {
+        void addPartition(ImageHeapPartition newPartition, ImageHeapPartition[] allImageHeapPartitions) {
             int newPartitionMask = 1;
-            for (ImageHeapPartition partition : imageHeapPartitions) {
+            for (ImageHeapPartition partition : allImageHeapPartitions) {
                 if (partition.equals(newPartition)) {
                     break;
                 }
