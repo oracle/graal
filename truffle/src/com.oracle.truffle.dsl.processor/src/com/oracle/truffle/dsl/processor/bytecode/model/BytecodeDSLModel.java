@@ -271,7 +271,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean isBytecodeUpdatable() {
-        return !getInstrumentations().isEmpty() || !getProvidedTags().isEmpty();
+        return !getInstrumentations().isEmpty() || (enableTagInstrumentation && !getProvidedTags().isEmpty());
     }
 
     public boolean hasYieldOperation() {
