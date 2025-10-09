@@ -249,6 +249,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.bytecodeDebugListener = (!enableBytecodeDebugListener || types.BytecodeDebugListener == null) ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
                         ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
+        model.enableThreadedSwitch = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableThreadedSwitch");
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 

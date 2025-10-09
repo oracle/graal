@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -45,11 +47,12 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class SubstrateType implements SharedType {
     private final JavaKind kind;
@@ -184,6 +187,16 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    public boolean isRecord() {
+        throw VMError.unimplemented("Record support not implemented");
+    }
+
+    @Override
+    public List<ResolvedJavaRecordComponent> getRecordComponents() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
     public int getModifiers() {
         return hub.getModifiers();
     }
@@ -308,7 +321,12 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public boolean isHidden() {
+        return hub.isHidden();
+    }
+
+    @Override
+    public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {
             return null;
@@ -443,6 +461,17 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        Class<?> cls = DynamicHub.toClass(hub);
+        Method enclosingMethod = cls.getEnclosingMethod();
+        Executable enclosingExecutable = enclosingMethod != null ? enclosingMethod : cls.getEnclosingConstructor();
+        if (enclosingExecutable != null) {
+            return SubstrateMetaAccess.singleton().lookupJavaMethod(enclosingExecutable);
+        }
+        return null;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
@@ -497,6 +526,11 @@ public class SubstrateType implements SharedType {
     @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 

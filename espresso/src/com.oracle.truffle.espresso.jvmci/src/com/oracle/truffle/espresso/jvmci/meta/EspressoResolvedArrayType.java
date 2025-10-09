@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
@@ -218,6 +219,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public boolean isHidden() {
+        return false;
+    }
+
+    @Override
     public List<JavaType> getPermittedSubclasses() {
         return null;
     }
@@ -289,6 +295,11 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return null;
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
         return NO_METHODS;
     }
@@ -331,6 +342,16 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     @Override
     public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         return getElementalType().lookupType(unresolvedJavaType, resolve);
+    }
+
+    @Override
+    public boolean isRecord() {
+        return false;
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return null;
     }
 
     @Override

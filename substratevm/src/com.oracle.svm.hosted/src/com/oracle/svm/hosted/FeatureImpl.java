@@ -313,6 +313,15 @@ public class FeatureImpl {
         }
 
         /**
+         * Register a callback which will execute once for each analysis type created. Note this
+         * callback runs when the created AnalysisType is already visible within the analysis
+         * universe.
+         */
+        public void registerOnTypeCreatedCallback(Consumer<AnalysisType> callback) {
+            getUniverse().registerOnTypeCreatedCallback(callback);
+        }
+
+        /**
          * Register a callback that is executed when an object of the specified type or any of its
          * subtypes is marked as reachable. The callback is executed before the object is added to
          * the shadow heap. A callback may throw an {@link UnsupportedFeatureException} to reject an

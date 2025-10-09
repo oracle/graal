@@ -418,9 +418,10 @@ public class AArch64ControlFlow {
         @Alive({REG}) protected AllocatableValue key;
 
         private final boolean inputMayBeOutOfRange;
+        private final boolean mayEmitThreadedCode;
 
         public RangeTableSwitchOp(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
-                        boolean inputMayBeOutOfRange) {
+                        boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
             super(TYPE);
             this.lowKey = lowKey;
             assert defaultTarget != null;
@@ -430,6 +431,7 @@ public class AArch64ControlFlow {
             this.remainingTargets = remainingTargets;
             this.key = key;
             this.inputMayBeOutOfRange = inputMayBeOutOfRange;
+            this.mayEmitThreadedCode = mayEmitThreadedCode;
         }
 
         @Override
@@ -471,6 +473,9 @@ public class AArch64ControlFlow {
                 }
 
                 emitJumpTable(crb, masm, keyOffsetReg, scratch1, scratch2, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+                if (mayEmitThreadedCode) {
+                    masm.stopRecordingCodeSnippet(crb);
+                }
             }
         }
 

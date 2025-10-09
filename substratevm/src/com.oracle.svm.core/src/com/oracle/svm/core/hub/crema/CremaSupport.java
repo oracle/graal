@@ -65,7 +65,7 @@ public interface CremaSupport {
      * Creates a new instance of {@code type} without running any constructor yet. The caller should
      * make sure to run a constructor before publishing the result.
      */
-    Object rawNewInstance(ResolvedJavaType type);
+    Object allocateInstance(ResolvedJavaType type);
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args);
 

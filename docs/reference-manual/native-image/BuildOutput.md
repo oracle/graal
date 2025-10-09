@@ -97,10 +97,10 @@ Recommendations:
    1.3s (4.8% of total time) in 88 GCs | Peak RSS: 2.14GiB | CPU load: 18.03
 --------------------------------------------------------------------------------
 Build artifacts:
- /home/janedoe/helloworld/gdb-debughelpers.py (debug_info)
- /home/janedoe/helloworld/helloworld (executable)
- /home/janedoe/helloworld/helloworld.debug (debug_info)
- /home/janedoe/helloworld/sources (debug_info)
+ /home/janedoe/helloworld/gdb-debughelpers.py (debug_info, 80.60KiB)
+ /home/janedoe/helloworld/helloworld (executable, 6.88MiB)
+ /home/janedoe/helloworld/helloworld.debug (debug_info, 6.66MiB)
+ /home/janedoe/helloworld/sources (debug_info, 37.61MiB)
 ================================================================================
 Finished generating 'helloworld' in 25.5s.
 ```
@@ -315,6 +315,14 @@ The SBOM feature can be disabled with `--enable-sbom=false`.
 Unassociated types are displayed when certain types (such as classes, interfaces, or annotations) cannot be linked to an SBOM component.
 If these types contain vulnerabilities, SBOM scanning will not detect them.
 To fix this, ensure that proper GAV coordinates (Group ID, Artifact ID, and Version) are defined in the project POM's properties or in _MANIFEST.MF_ using standard formats.
+
+Hashes are computed for JAR inputs and GraalVM internal components if the `hashes` option is used.
+Hashes are not computed for directories.
+If `hashes` is enabled and hashes cannot be computed, the number of components without hashes is displayed.
+To list these components, use:
+```bash
+jq '.components[] | select(.hashes == null)' /path/to/app.sbom.json
+```
 
 Use the [build report](BuildReport.md) to view included components, their dependencies, and any unassociated types.
 For more information, see [Software Bill of Materials (SBOM) in Native Image](../../security/SBOM.md).

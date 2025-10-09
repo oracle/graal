@@ -65,6 +65,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
+import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -264,9 +265,18 @@ public class LayeredDispatchTableFeature implements FeatureSingleton, InternalFe
     public void recordVirtualCallTarget(HostedMethod caller, HostedMethod callee) {
         Module callerModule = caller.getDeclaringClass().getJavaClass().getModule();
         Module calleeModule = callee.getDeclaringClass().getJavaClass().getModule();
-        if (!(builderModules.contains(callerModule) || builderModules.contains(calleeModule))) {
+        if (!(builderModules.contains(callerModule) && !isFactoryMethod(caller)) && !builderModules.contains(calleeModule)) {
             virtualCallTargets.add(callee);
         }
+    }
+
+    /**
+     * {@link FactoryMethod FactoryMethods} outline the allocation and call to the original
+     * constructor. Hence, whether the call is included or not should be based exclusively on the
+     * callee.
+     */
+    private static boolean isFactoryMethod(HostedMethod caller) {
+        return caller.getWrapped().getWrapped() instanceof FactoryMethod;
     }
 
     public void registerDeclaredDispatchInfo(HostedType type, List<HostedMethod> declaredMethods) {

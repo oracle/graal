@@ -208,7 +208,7 @@ public class WebImageObjectInspector extends ObjectInspector {
         HostedUniverse hUniverse = ((WebImageTypeControl) typeControl).getHUniverse();
         for (HostedField f : fields.fields) {
             if (f.getJavaKind().isObject() && f.getType().getStorageKind().isObject()) {
-                if (!f.isValueAvailable()) {
+                if (!f.isValueAvailable(c)) {
                     // Use NULL for computed fields such as StringInternSupport.imageInternedStrings
                     // WebImageTypeControl.postProcess will patch the right value
                     members.add(NULL);

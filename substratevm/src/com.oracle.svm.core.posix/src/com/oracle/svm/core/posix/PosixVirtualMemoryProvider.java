@@ -57,7 +57,6 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -67,7 +66,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.word.Word;
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class PosixVirtualMemoryProviderFeature implements InternalFeature {
     @Override

@@ -132,7 +132,7 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
             if (receiver.isNull() || !receiver.getJavaKind().isObject()) {
                 return null;
             }
-            Class<?> holderClass = ((EspressoResolvedJavaType) espressoField.getDeclaringClass()).getMirror();
+            Class<?> holderClass = espressoField.getDeclaringClass().getMirror();
             Object objReceiver = unwrap((EspressoObjectConstant) receiver);
             if (!holderClass.isAssignableFrom(objReceiver.getClass())) {
                 return null;

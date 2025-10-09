@@ -76,6 +76,7 @@ import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins.Options;
 import jdk.vm.ci.aarch64.AArch64;
@@ -101,6 +102,7 @@ public class TruffleInvocationPlugins {
         }
         registerFramePlugins(plugins);
         registerBytecodePlugins(plugins);
+        registerCompilerDirectivesPlugins(plugins);
     }
 
     private static void registerFramePlugins(InvocationPlugins plugins) {
@@ -757,5 +759,18 @@ public class TruffleInvocationPlugins {
                 }
             });
         }
+    }
+
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/HostCompilerDirectives;"));
+        var r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.HostCompilerDirectives");
+        r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("markThreadedSwitch", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
+                b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
     }
 }

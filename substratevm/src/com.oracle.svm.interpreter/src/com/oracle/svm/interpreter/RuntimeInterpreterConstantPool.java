@@ -30,7 +30,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.ParserConstantPool;
+import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
@@ -43,15 +43,16 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public final class RuntimeInterpreterConstantPool extends InterpreterConstantPool {
 
-    public RuntimeInterpreterConstantPool(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool) {
-        super(holder, parserConstantPool);
+    public RuntimeInterpreterConstantPool(InterpreterResolvedObjectType holder, ParserKlass parserKlass) {
+        super(holder, parserKlass.getConstantPool());
+        // pre-resolve the holder class so that hidden classes can resolve themselves
+        cachedEntries[parserKlass.getThisKlassIndex()] = holder;
     }
 
     @Override
@@ -99,12 +100,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         } else {
             assert refTag == Tag.FIELD_REF;
             InterpreterResolvedJavaField field = this.resolvedFieldAt(accessingClass, memberIndex);
-            JavaType fieldType = field.getType();
-            if (fieldType instanceof InterpreterResolvedJavaType resolvedJavaType) {
-                mtype = resolvedJavaType.getJavaClass();
-            } else {
-                mtype = resolveSymbolAndAccessCheck(field.getDeclaringClass(), (UnresolvedJavaType) fieldType);
-            }
+            mtype = field.getResolvedType().getJavaClass();
             mklass = field.getDeclaringClass();
             refName = field.getSymbolicName();
         }
@@ -294,12 +290,6 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     }
 
     private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
-        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-        // GR-62339 check access
-        return clazz;
-    }
-
-    private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, UnresolvedJavaType type) {
         Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
         // GR-62339 check access
         return clazz;

@@ -28,6 +28,7 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VALUE_BASED;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,7 +69,9 @@ import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -95,8 +98,14 @@ import jdk.vm.ci.meta.MetaUtil;
  * {@linkplain UserDefinedClassRegistry all other class loaders}.
  */
 public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassRegistry permits BootClassRegistry, UserDefinedClassRegistry {
+    public static final Object UNINITIALIZED_DECLARING_CLASS_SENTINEL = new Object();
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+    private static final ClassLoader bootLoader;
+    static {
+        Method method = ReflectionUtil.lookupMethod(ClassLoaders.class, "bootLoader");
+        bootLoader = ReflectionUtil.invokeMethod(method, null);
+    }
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
@@ -205,9 +214,13 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             String externalName = getExternalName(parsed, info);
             throw new LinkageError("Loader " + ClassRegistries.loaderNameAndId(getClassLoader()) + " attempted duplicate " + kind + " definition for " + externalName + ".");
         }
+        int typeID = TypeIDs.singleton().nextTypeId();
+        if (info.isHidden) {
+            parsed = ParserKlass.forHiddenClass(parsed, typeOrNull, typeID, ClassRegistries.getParsingContext());
+        }
         Class<?> clazz;
         try {
-            clazz = createClass(parsed, info, type);
+            clazz = createClass(parsed, info, type, typeID);
         } catch (ParserException.ClassFormatError error) {
             throw new ClassFormatError(error.getMessage());
         }
@@ -259,7 +272,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
-    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type) {
+    private Class<?> createClass(ParserKlass parsed, ClassDefinitionInfo info, Symbol<Type> type, int typeID) {
         Symbol<Type> superKlassType = parsed.getSuperKlass();
         assert superKlassType != null; // j.l.Object is always AOT
         // Load direct super interfaces
@@ -284,7 +297,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         String externalName = getExternalName(parsed, info);
         String simpleBinaryName = getSimpleBinaryName(parsed);
         String sourceFile = getSourceFile(parsed);
-        Class<?> enclosingClass = getEnclosingClass(parsed);
+        // The declaring class must be computed lazily
+        Object declaringClass = UNINITIALIZED_DECLARING_CLASS_SENTINEL;
         String classSignature = getClassSignature(parsed);
 
         int modifiers = getClassModifiers(parsed);
@@ -359,7 +373,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
          * @formatter:on
          */
         DynamicHub superHub = DynamicHub.fromClass(superClass);
-        int typeID = TypeIDs.singleton().nextTypeId();
         int interfaceID = isInterface ? TypeIDs.singleton().nextInterfaceId() : DynamicHub.NO_INTERFACE_ID;
         short numInterfacesTypes = (short) transitiveSuperInterfaces.size();
         short numClassTypes;
@@ -398,16 +411,22 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         boolean isValueBased = (parsed.getFlags() & ACC_VALUE_BASED) != 0;
 
         // GR-62339
-        Module module = getClassLoader().getUnnamedModule();
+        Module module;
+        ClassLoader classLoader = getClassLoader();
+        if (classLoader == null) {
+            module = bootLoader.getUnnamedModule();
+        } else {
+            module = classLoader.getUnnamedModule();
+        }
 
         checkNotHybrid(parsed);
 
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
-                        sourceFile, modifiers, flags, getClassLoader(), simpleBinaryName, module, enclosingClass, classSignature,
+                        sourceFile, modifiers, flags, classLoader, simpleBinaryName, module, declaringClass, classSignature,
                         typeID, interfaceID,
                         hasClassInitializer(parsed), numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         dispatchTableLength,
-                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased);
+                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased, info);
 
         CremaSupport.singleton().fillDynamicHubInfo(hub, dispatchTable, transitiveSuperInterfaces, iTableStartingIndices);
 
@@ -495,14 +514,6 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             externalName = new String(chars);
         }
         return externalName;
-    }
-
-    private static Class<?> getEnclosingClass(ParserKlass parsed) {
-        InnerClassesAttribute innerClassesAttribute = (InnerClassesAttribute) parsed.getAttribute(InnerClassesAttribute.NAME);
-        if (innerClassesAttribute == null) {
-            return null;
-        }
-        throw VMError.unimplemented("enclosing class is not supported yet");
     }
 
     private static String getSimpleBinaryName(ParserKlass parsed) {

@@ -139,10 +139,12 @@ suite = {
       ],
       "requiresConcealed" : {
         "java.base" : [
-          "jdk.internal.misc"
+          "jdk.internal.misc",
+          "sun.reflect.generics.parser",
         ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.code",
           "jdk.vm.ci.code.site",
           "jdk.vm.ci.code.stack",
@@ -190,6 +192,10 @@ suite = {
         "jdk.graal.compiler.jtt",
         "jdk.graal.compiler.truffle.test",
       ],
+      # Direct reference to jdk.vm.ci.meta.annotation and
+      # jdk.vm.ci.meta.ResolvedJavaRecordComponent causes
+      # spotbugs analysis to fail with "missing class" error.
+      "spotbugs": "false",
     },
 
     "jdk.graal.compiler.processor" : {
@@ -204,11 +210,37 @@ suite = {
       "javaCompliance" : "21+",
     },
 
+    # Definition of classes that jdk.graal.compiler.test compiles against.
+    # An alternative version of these classes is provided by jdk.graal.compiler.test.runtime.
+    "jdk.graal.compiler.test.compiletime" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "jdk.graal.compiler",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
+    # Alternative definition of classes in jdk.graal.compiler.test.compiletime
+    # that jdk.graal.compiler.test runs against. See _replace_graal_test_deps
+    # in mx_compiler.py.
+    "jdk.graal.compiler.test.runtime" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "jdk.graal.compiler",
+      "javaCompliance" : "24+",
+      "forceJavac": True,
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
     "jdk.graal.compiler.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.graal.compiler",
+        "GRAAL_TEST_COMPILETIME",
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
         "truffle:TRUFFLE_SL_TEST",
@@ -228,8 +260,10 @@ suite = {
         "java.base" : [
           "jdk.internal.module",
           "jdk.internal.misc",
+          "jdk.internal.reflect",
           "jdk.internal.util",
           "jdk.internal.vm.annotation",
+          "sun.reflect.annotation",
           "sun.security.util.math",
           "sun.security.util.math.intpoly",
         ],
@@ -238,6 +272,7 @@ suite = {
         ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.code",
           "jdk.vm.ci.code.site",
           "jdk.vm.ci.code.stack",
@@ -408,6 +443,7 @@ suite = {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.code",
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.runtime",
           "jdk.vm.ci.services",
           "jdk.vm.ci.hotspot",
@@ -420,7 +456,7 @@ suite = {
       ],
 
       # Direct reference to jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope
-      # causing spotbugs analysis to fail with "missing class" error.
+      # causes spotbugs analysis to fail with "missing class" error.
       "spotbugs": "false",
     },
 
@@ -449,6 +485,26 @@ suite = {
 
     # ------------- Distributions -------------
 
+    # Compile time dependency for GRAAL_TEST
+    "GRAAL_TEST_COMPILETIME": {
+        "subDir": "src",
+        "dependencies": [
+            "jdk.graal.compiler.test.compiletime",
+        ],
+        "testDistribution": True,
+        "maven": False,
+    },
+
+    # Run time dependency for GRAAL_TEST
+    "GRAAL_TEST_RUNTIME": {
+        "subDir": "src",
+        "dependencies": [
+            "jdk.graal.compiler.test.runtime",
+        ],
+        "testDistribution": True,
+        "maven": False,
+    },
+
     "GRAAL_TEST" : {
       "subDir" : "src",
       "dependencies" : [
@@ -456,6 +512,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
+        "GRAAL_TEST_COMPILETIME",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
         "truffle:TRUFFLE_COMPILER",

@@ -50,9 +50,14 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
             ensureDeclaringClassInitialized();
         }
 
-        Object[] finalArgs = new Object[args.length + 1];
-        finalArgs[0] = obj;
-        System.arraycopy(args, 0, finalArgs, 1, args.length);
+        Object[] finalArgs;
+        if (targetMethod.isStatic()) {
+            finalArgs = args;
+        } else {
+            finalArgs = new Object[args.length + 1];
+            finalArgs[0] = obj;
+            System.arraycopy(args, 0, finalArgs, 1, args.length);
+        }
         try {
             return CremaSupport.singleton().execute(targetMethod, finalArgs);
         } catch (Throwable t) {

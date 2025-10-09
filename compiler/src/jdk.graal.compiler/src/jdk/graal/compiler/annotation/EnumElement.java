@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,53 +22,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.annotation;
+package jdk.graal.compiler.annotation;
 
-import java.nio.ByteBuffer;
-import java.util.Objects;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-import jdk.internal.reflect.ConstantPool;
+/**
+ * Represents an enum element within an {@link AnnotationValue}.
+ */
+public final class EnumElement {
+    /**
+     * The type of the enum.
+     */
+    public final ResolvedJavaType enumType;
 
-public final class AnnotationStringValue extends AnnotationMemberValue {
-    private final String value;
+    /**
+     * The name of the enum constants.
+     */
+    public final String name;
 
-    static AnnotationStringValue extract(ByteBuffer buf, ConstantPool cp, boolean skip) {
-        String value = AnnotationMetadata.extractString(buf, cp, skip);
-        return skip ? null : new AnnotationStringValue(value);
-    }
-
-    AnnotationStringValue(String value) {
-        this.value = value;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
-    @Override
-    public char getTag() {
-        return 's';
-    }
-
-    @Override
-    public Object get(Class<?> memberType) {
-        return AnnotationMetadata.checkResult(value, memberType);
+    /**
+     * Creates an enum constant.
+     *
+     * @param enumType the {@linkplain Enum enum type}
+     * @param name the {@linkplain Enum#name() name} of the enum
+     */
+    public EnumElement(ResolvedJavaType enumType, String name) {
+        this.enumType = enumType;
+        this.name = name;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
+    public String toString() {
+        return name;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof EnumElement that) {
+            return this.enumType.equals(that.enumType) && this.name.equals(that.name);
         }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        AnnotationStringValue that = (AnnotationStringValue) o;
-        return Objects.equals(value, that.value);
+        return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value);
+        return this.enumType.hashCode() ^ this.name.hashCode();
     }
 }

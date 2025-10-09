@@ -27,7 +27,6 @@ package jdk.graal.compiler.core.test;
 
 import org.junit.Test;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -102,7 +101,9 @@ public class MinMaxCanonicalizationTest extends GraalCompilerTest {
     }
 
     public static boolean byteUMaxEqualsToLessThanSnippet(ByteHolder holder) {
-        return NumUtil.maxUnsigned(holder.b & 0xff, 7) == 7;
+        byte b = holder.b;
+        int result = Integer.compareUnsigned(b & 0xff, 7) < 0 ? 7 : b & 0xff;
+        return result == 7;
     }
 
     public static boolean byteUMaxEqualsToLessThanReference(ByteHolder holder) {
@@ -128,7 +129,9 @@ public class MinMaxCanonicalizationTest extends GraalCompilerTest {
     }
 
     public static boolean byteUMinEqualsToLessThanSnippet(ByteHolder holder) {
-        return NumUtil.minUnsigned(holder.b & 0xff, 7) == 7;
+        byte b = holder.b;
+        int result = Integer.compareUnsigned(b & 0xff, 7) > 0 ? 7 : b & 0xff;
+        return result == 7;
     }
 
     public static boolean byteUMinEqualsToLessThanReference(ByteHolder holder) {

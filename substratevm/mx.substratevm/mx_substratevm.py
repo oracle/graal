@@ -1546,11 +1546,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
-ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
+ce_llvm_backend = mx_sdk_vm.GraalVmSvmTool(
     suite=suite,
     name='Native Image LLVM Backend',
     short_name='svml',
-    dir_name='svm',
+    dir_name='llvm-backend',
     license_files=[],
     third_party_license_files=[],
     dependencies=[
@@ -1564,6 +1564,7 @@ ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:LLVM_PLATFORM_SPECIFIC_SHADOWED',
         'substratevm:JAVACPP_PLATFORM_SPECIFIC_SHADOWED',
     ],
+    support_distributions=['substratevm:SVM_LLVM_GRAALVM_SUPPORT'],
     stability="experimental-earlyadopter",
     jlink=False,
 )
@@ -1690,6 +1691,17 @@ libgraal_build_args = [
     '-Dtruffle.TruffleRuntime=',
     '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
+
+    # A libgraal image contains classes with the same FQN loaded by different classloaders.
+    # I.e. the SVM runtime depends on
+    # - jdk.vm.ci.* classes loaded by the bootstrap classloader
+    # - jdk.graal.compiler.options.* classes loaded by the platform classloader
+    # - org.graalvm.collections.* classes loaded by the app classloader
+    # But potentially different versions of those classes are also loaded by the
+    # LibGraalClassLoader as part of the classes that libgraal consist of.
+    # Thus, we cannot use the naive default ClassForName implementation that only
+    # works if there are no two different classes in the image with the same FQN.
+    '-H:+ClassForNameRespectsClassLoader',
 
     # Needed for initializing jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE.
     # Remove after JDK-8346781.

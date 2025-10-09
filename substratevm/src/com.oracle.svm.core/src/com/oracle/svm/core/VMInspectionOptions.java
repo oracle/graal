@@ -168,9 +168,18 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS_BASE.class);
     }
 
+    /**
+     * This needs to be an explicit method so that in layered builds compilation can be deferred to
+     * the app layer. Otherwise {@link SubstrateOptions#Name} will refer to the initial layer's
+     * name.
+     */
+    static String determineHeapDumpPath() {
+        return HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+    }
+
     public static boolean dumpImageHeap() {
         if (hasHeapDumpSupport()) {
-            String absoluteHeapDumpPath = HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+            String absoluteHeapDumpPath = determineHeapDumpPath();
             try {
                 HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
             } catch (IOException e) {

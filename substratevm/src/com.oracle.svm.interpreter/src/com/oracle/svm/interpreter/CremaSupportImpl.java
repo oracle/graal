@@ -26,7 +26,6 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -147,7 +146,9 @@ public class CremaSupportImpl implements CremaSupport {
             return;
         }
         InterpreterResolvedJavaMethod method = btiUniverse.getOrCreateMethod(analysisMethod);
-        method.setNativeEntryPoint(new MethodPointer(analysisMethod));
+        if (!method.isAbstract()) {
+            method.setNativeEntryPoint(new MethodPointer(analysisMethod));
+        }
         methods.add(method);
     }
 
@@ -171,7 +172,7 @@ public class CremaSupportImpl implements CremaSupport {
                 /* ignore e.g. hosted fields */
                 continue;
             }
-            if (!analysisUniverse.hostVM().platformSupported((AnnotatedElement) wrappedField.getType())) {
+            if (wrappedField.getType() instanceof ResolvedJavaType resolvedFieldType && !analysisUniverse.hostVM().platformSupported(resolvedFieldType)) {
                 /* ignore fields with unsupported types */
                 continue;
             }
@@ -211,7 +212,7 @@ public class CremaSupportImpl implements CremaSupport {
                         table.layout.getStaticReferenceFieldCount(), table.layout.getStaticPrimitiveFieldSize());
 
         ParserKlass parserKlass = table.partialType.parserKlass;
-        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass.getConstantPool()));
+        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass));
 
         table.registerClass(thisType);
 
@@ -262,10 +263,12 @@ public class CremaSupportImpl implements CremaSupport {
             if (Modifier.isInterface(parsed.getFlags())) {
                 return new CremaInterfaceDispatchTableImpl(partialType);
             } else {
-                Tables<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> tables = VTable.create(partialType,
-                                false,
-                                false,
-                                true);
+                /*
+                 * GR-70607: once we handle vtable indicies better in crema we should enable
+                 * mirandas.
+                 */
+                boolean addMirandas = false;
+                var tables = VTable.create(partialType, false, false, addMirandas);
                 return new CremaInstanceDispatchTableImpl(tables, partialType);
             }
         } catch (MethodTableException e) {
@@ -727,7 +730,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Object rawNewInstance(ResolvedJavaType type) {
+    public Object allocateInstance(ResolvedJavaType type) {
         return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
     }
 }

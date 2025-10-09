@@ -51,18 +51,5 @@ suite = {
         "IdealGraphVisualizer",
       ],
     },
-
-    "IGV_DATA_SETTINGS": {
-      "dependencies" : [
-        "IGV",
-      ],
-      "layout" : {
-        "./": [
-          "file:IdealGraphVisualizer/Data/build/classes/*",
-          "file:IdealGraphVisualizer/Settings/build/classes/*"
-          ],
-      },
-      "defaultBuild" : False,
-    },
   },
 }

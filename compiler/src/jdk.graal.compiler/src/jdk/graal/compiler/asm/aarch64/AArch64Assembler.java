@@ -857,11 +857,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     private static final int PcRelImmHiOffset = 5;
     private static final int PcRelImmLoOffset = 29;
 
-    private static final int PcRelImmOp = 0x10000000;
+    protected static final int PcRelImmOp = 0x10000000;
 
-    private static final int UnconditionalBranchImmOp = 0x14000000;
+    protected static final int UnconditionalBranchImmOp = 0x14000000;
     private static final int UnconditionalBranchRegOp = 0xD6000000;
-    private static final int CompareBranchOp = 0x34000000;
+    protected static final int CompareBranchOp = 0x34000000;
 
     private static final int ConditionalBranchImmOffset = 5;
 

@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -99,7 +100,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -110,6 +110,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
@@ -594,16 +595,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             ResolvedJavaType objectType = universe.getOriginalMetaAccess().lookupJavaType(Object.class);
             Annotation[] annotations = getAnnotations(td.getAnnotationList());
 
-            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
+            return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,
                             enclosingType, componentType, superClass, interfaces, objectType, annotations);
         });
     }
 
-    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
+    private Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader> reader) {
         return CapnProtoAdapters.toArray(reader, this::getAnnotation, Annotation[]::new);
     }
 
-    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader a) {
+    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation.Reader a) {
         String typeName = a.getTypeName().toString();
         Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
         Map<String, Object> annotationValuesMap = new HashMap<>();
@@ -614,7 +615,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
     }
 
-    private Object getAnnotationValue(AnnotationValue.Reader v) {
+    private Object getAnnotationValue(PersistedAnnotationElement.Reader v) {
         return switch (v.which()) {
             case STRING -> v.getString().toString();
             case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
@@ -695,7 +696,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
          * initialization kind, even in ways that would otherwise be considered compatible, e.g.,
          * RUN_TIME -> BUILD_TIME. Similarly, if a different initialization kind was already
          * registered in this layer registration will fail.
-         * 
+         *
          * Note that this is done after the app-layer class initialization specification is applied,
          * so we don't have to traverse all types. Moreover, for package-level specification this
          * should also be OK, because package-level specification is only a suggestion and the
@@ -1401,6 +1402,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return getOrCreateConstant(id, null);
     }
 
+    /* Retrieves the given constant iff it has already been relinked. */
+    public ImageHeapConstant getConstant(int id) {
+        return constants.get(id);
+    }
+
     /**
      * Get the {@link ImageHeapConstant} representation for a specific base layer constant id. If
      * known, the parentReachableHostedObject will point to the corresponding constant in the
@@ -1734,15 +1740,21 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             universe.getHeapScanner().registerBaseLayerValue(constant, getFieldFromIndex(imageHeapInstance, i));
         } else if (parentConstant instanceof ImageHeapObjectArray) {
             universe.getHeapScanner().registerBaseLayerValue(constant, i);
+        } else if (parentConstant instanceof ImageHeapRelocatableConstant) {
+            // skip - nothing to do
         } else {
             throw AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
         }
     }
 
     private void ensureHubInitialized(ImageHeapConstant constant) {
-        JavaConstant javaConstant = constant.getHostedObject();
+        if (constant instanceof ImageHeapRelocatableConstant) {
+            // not a hub
+            return;
+        }
+
         if (constant.getType().getJavaClass().equals(Class.class)) {
-            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, javaConstant);
+            DynamicHub hub = universe.getHostedValuesProvider().asObject(DynamicHub.class, constant.getHostedObject());
             AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
             ensureHubInitialized(type);
             /*
@@ -1937,5 +1949,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {
         return new JavaConstantSupplier(constantReference);
+    }
+
+    public List<Integer> getUpdatableFieldReceiverIds(int fid) {
+        var updatableReceivers = findField(fid).getUpdatableReceivers();
+        return IntStream.range(0, updatableReceivers.size()).map(updatableReceivers::get).boxed().toList();
     }
 }

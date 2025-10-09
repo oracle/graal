@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Optional;
 
 import jdk.graal.compiler.lir.CastValue;
+import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import org.graalvm.collections.EconomicMap;
@@ -158,6 +160,10 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
             IntegerConvertNode<?> extend = (IntegerConvertNode<?>) node;
             origNumExtends++;
             assert extend.getInputBits() < extend.getResultBits() : Assertions.errorMessage(extend);
+            if (extend.getValue() instanceof ValuePhiNode phiNode && phiNode.merge() instanceof LoopBeginNode loopBeginNode && loopBeginNode.mayEmitThreadedCode()) {
+                // Skip extend on loop phis when the loop is marked as threaded
+                continue;
+            }
             // record use of this node
             defsWithExtends.add(extend.getValue());
         }

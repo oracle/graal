@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -72,8 +71,10 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
@@ -169,7 +170,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
-    private Set<AnalysisMethod> dispatchTableMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -223,8 +223,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private volatile AnalysisType arrayClass = null;
 
-    private static final List<JavaType> PERMITTED_SUBCLASSES_INIT = new ArrayList<>();
-    private volatile List<JavaType> permittedSubclasses = PERMITTED_SUBCLASSES_INIT;
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<AnalysisType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private volatile List<AnalysisType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -965,12 +971,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
-        if (permittedSubclasses == PERMITTED_SUBCLASSES_INIT) {
-            List<JavaType> wrappedPermittedSubclasses = wrapped.getPermittedSubclasses();
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
+    public List<? extends AnalysisType> getPermittedSubclasses() {
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            List<? extends JavaType> wrappedPermittedSubclasses = wrapped.getPermittedSubclasses();
             permittedSubclasses = wrappedPermittedSubclasses == null ? null : wrappedPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
         }
         return permittedSubclasses;
+    }
+
+    @Override
+    public AnalysisType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
     }
 
     @Override
@@ -981,6 +997,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isEnum() {
         return wrapped.isEnum();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return wrapped.getRecordComponents();
     }
 
     @Override
@@ -1311,6 +1337,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
+    public AnalysisMethod getEnclosingMethod() {
+        return universe.lookup(wrapped.getEnclosingMethod());
+    }
+
+    @Override
     public ResolvedJavaType[] getDeclaredTypes() {
         ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
         for (int i = 0; i < declaredTypes.length; i++) {
@@ -1354,63 +1385,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
-        return dispatchTableMethods != null;
-    }
-
-    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
-        Objects.requireNonNull(dispatchTableMethods);
-        return dispatchTableMethods;
-    }
-
-    /*
-     * Calculates all methods in this class which should be included in its dispatch table.
-     */
-    public Set<AnalysisMethod> getOrCalculateOpenTypeWorldDispatchTableMethods() {
-        if (dispatchTableMethods != null) {
-            return dispatchTableMethods;
-        }
-        if (isPrimitive()) {
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-        if (getWrapped() instanceof BaseLayerType) {
-            // GR-58587 implement proper support.
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-
-        var resultSet = new HashSet<AnalysisMethod>();
-        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
-            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
-            if (m.isStatic()) {
-                /* Only looking at member methods */
-                continue;
-            }
-            try {
-                AnalysisMethod aMethod = universe.lookup(m);
-                assert aMethod != null : m;
-                resultSet.add(aMethod);
-            } catch (UnsupportedFeatureException t) {
-                /*
-                 * Methods which are deleted or not available on this platform will throw an error
-                 * during lookup - ignore and continue execution
-                 *
-                 * Note it is not simple to create a check to determine whether calling
-                 * universe#lookup will trigger an error by creating an analysis object for a type
-                 * not supported on this platform, as creating a method requires, in addition to the
-                 * types of its return type and parameters, all of the super types of its return and
-                 * parameters to be created as well.
-                 */
-            }
-        }
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        dispatchTableMethods = resultSet;
-        return dispatchTableMethods;
     }
 
     @Override

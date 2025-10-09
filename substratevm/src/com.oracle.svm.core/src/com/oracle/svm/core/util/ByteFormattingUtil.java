@@ -25,8 +25,13 @@
 package com.oracle.svm.core.util;
 
 public class ByteFormattingUtil {
-    // "123.12KiB".length() = 9, holds as long as it's not >= 1000GiB
+    /**
+     * {@code "123.12KiB".length() = 9} almost always holds as long as the value is not >= 1000GiB
+     * and {@link String#format} floating point rounding does not bump the whole part to 4 digits
+     * (e.g. {@code String.format("%.2f", 999.995D) == "1000.00"}).
+     */
     private static final int MAX_WIDTH = 9;
+
     public static final String RIGHT_ALIGNED_FORMAT = "%" + MAX_WIDTH + "s";
 
     private enum Unit {
@@ -44,7 +49,7 @@ public class ByteFormattingUtil {
     // We want to respect MAX_WIDTH and keep it concise,
     // so we prefer to show 0.99MiB than 1010.00KiB (length 10).
     public static String bytesToHuman(long bytes) {
-        assert bytes >= 0;
+        assert bytes >= 0 : bytes;
         if (bytes < 1_000) {
             return bytes + "B";
         } else if (bytes < 1_000 * Unit.KiB.value) {
@@ -61,8 +66,6 @@ public class ByteFormattingUtil {
     }
 
     private static String toHuman(long value, Unit unit) {
-        String string = "%.2f%s".formatted((double) value / unit.value, unit);
-        assert string.length() <= MAX_WIDTH || value >= 1000L * Unit.GiB.value;
-        return string;
+        return "%.2f%s".formatted((double) value / (double) unit.value, unit.toString());
     }
 }

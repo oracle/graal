@@ -41,7 +41,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Type which fully substitutes its original type, i.e. @{@link Substitute} on the class level.
@@ -149,6 +151,16 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public boolean isRecord() {
+        return annotated.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return annotated.getRecordComponents();
+    }
+
+    @Override
     public int getModifiers() {
         int result = annotated.getModifiers();
         if (!original.isLeaf()) {
@@ -220,7 +232,12 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public List<JavaType> getPermittedSubclasses() {
+    public boolean isHidden() {
+        return annotated.isHidden();
+    }
+
+    @Override
+    public List<? extends JavaType> getPermittedSubclasses() {
         return annotated.getPermittedSubclasses();
     }
 
@@ -291,6 +308,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return annotated.getEnclosingMethod();
+    }
+
+    @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
         return getDeclaredConstructors(true);
     }
@@ -342,6 +364,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean declaresDefaultMethods() {
         return original.declaresDefaultMethods();
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return original.lookupType(unresolvedJavaType, resolve);
     }
 
     @Override

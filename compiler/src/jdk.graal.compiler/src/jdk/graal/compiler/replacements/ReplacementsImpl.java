@@ -272,10 +272,6 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         return openSnippetDebugContext(idPrefix, method, DebugContext.forCurrentThread(), options);
     }
 
-    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
-        return openDebugContext(idPrefix, method, options, DebugContext.forCurrentThread(), false);
-    }
-
     private static final AtomicInteger nextDebugContextId = new AtomicInteger();
 
     private DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options, DebugContext outer, boolean disabled) {

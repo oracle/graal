@@ -184,9 +184,9 @@ class GCCauseFeature implements InternalFeature {
 
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<GCCauseFeature>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, GCCauseFeature singleton) {
                     List<String> gcCauses;
                     if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                         gcCauses = GCCause.getGCCauses().stream().map(gcCause -> {
@@ -198,7 +198,7 @@ class GCCauseFeature implements InternalFeature {
                             }
                         }).toList();
                     } else {
-                        gcCauses = ((GCCauseFeature) singleton).registeredGCCauses;
+                        gcCauses = singleton.registeredGCCauses;
                     }
                     writer.writeStringList("registeredGCCauses", gcCauses);
 
@@ -206,8 +206,8 @@ class GCCauseFeature implements InternalFeature {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    ((GCCauseFeature) singleton).registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
+                public void onSingletonRegistration(ImageSingletonLoader loader, GCCauseFeature singleton) {
+                    singleton.registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
                 }
             });
         }

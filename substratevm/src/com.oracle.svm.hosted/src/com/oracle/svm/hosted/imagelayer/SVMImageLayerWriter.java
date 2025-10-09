@@ -32,8 +32,6 @@ import static com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchem
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -99,6 +97,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
@@ -121,8 +120,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
-import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
-import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.InitialLayerCGlobalTracking;
@@ -133,7 +130,6 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -145,6 +141,8 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
@@ -175,9 +173,12 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
+import jdk.graal.compiler.annotation.AnnotationValueType;
+import jdk.graal.compiler.annotation.EnumElement;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -194,7 +195,7 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.annotation.AnnotationType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
@@ -271,7 +272,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
-            return new StringBuilder("@").append(offset).append("[").append(encodedGraph.length).append("]").toString();
+            return "@" + offset + "[" + encodedGraph.length + "]";
         }
 
         void finish() {
@@ -477,6 +478,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setModifiers(type.getModifiers());
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
+        builder.setIsRecord(type.isRecord());
         builder.setIsInitialized(type.isInitialized());
         boolean successfulSimulation = simulateClassInitializerSupport.isSuccessfulSimulation(type);
         boolean failedSimulation = simulateClassInitializerSupport.isFailedSimulation(type);
@@ -722,7 +724,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         LayeredStaticFieldSupport.LayerAssignmentStatus assignmentStatus = LayeredStaticFieldSupport.singleton().getAssignmentStatus(field);
         if (hostedField.hasInstalledLayerNum()) {
             fieldInstalledNum = hostedField.getInstalledLayerNum();
-            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNDECIDED) {
+            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNSPECIFIED) {
                 assignmentStatus = LayeredStaticFieldSupport.LayerAssignmentStatus.PRIOR_LAYER;
             } else {
                 assert assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.APP_LAYER_REQUESTED ||
@@ -732,70 +734,62 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setPriorInstalledLayerNum(fieldInstalledNum);
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
+        var updatableReceivers = LayeredFieldValueTransformerSupport.singleton().getUpdatableReceivers(field);
+        var receivers = builder.initUpdatableReceivers(updatableReceivers.size());
+        int idx = 0;
+        for (var receiver : updatableReceivers) {
+            receivers.set(idx, ImageHeapConstant.getConstantID(receiver));
+            idx++;
+        }
+
         persistAnnotations(field, builder::initAnnotationList);
 
         JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
         writeConstant(simulatedFieldValue, builder.initSimulatedFieldValue());
     }
 
-    private void persistAnnotations(AnnotatedElement annotatedElement, IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
-        Class<? extends Annotation>[] annotationTypes = AnnotationAccess.getAnnotationTypes(annotatedElement);
-        persistAnnotations(annotatedElement, annotationTypes, builder);
-    }
-
-    private void persistAnnotations(AnnotatedElement annotatedElement, Class<? extends Annotation>[] annotationTypes,
-                    IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
-        var b = builder.apply(annotationTypes.length);
-        for (int i = 0; i < annotationTypes.length; i++) {
-            Class<? extends Annotation> annotationClass = annotationTypes[i];
-            SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder annotationBuilder = b.get(i);
-            annotationBuilder.setTypeName(annotationClass.getName());
-            Annotation annotation = AnnotationAccess.getAnnotation(annotatedElement, annotationClass);
-            persistAnnotationValues(annotation, annotationClass, annotationBuilder::initValues);
+    private void persistAnnotations(Annotated annotated, IntFunction<StructList.Builder<PersistedAnnotation.Builder>> builder) {
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(annotated);
+        var b = builder.apply(annotationValues.size());
+        int i = 0;
+        for (var e : annotationValues.entrySet()) {
+            ResolvedJavaType annotationClass = e.getKey();
+            PersistedAnnotation.Builder annotationBuilder = b.get(i++);
+            annotationBuilder.setTypeName(annotationClass.toJavaName());
+            persistAnnotationElements(e.getValue(), annotationBuilder::initValues);
         }
     }
 
-    private void persistAnnotationValues(Annotation annotation, Class<? extends Annotation> annotationClass, IntFunction<StructList.Builder<AnnotationValue.Builder>> builder) {
-        AnnotationType annotationType = AnnotationType.getInstance(annotationClass);
-        EconomicMap<String, Object> members = EconomicMap.create();
-        annotationType.members().forEach((memberName, memberAccessor) -> {
-            try {
-                String moduleName = memberAccessor.getDeclaringClass().getModule().getName();
-                if (moduleName != null) {
-                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SVMImageLayerWriter.class, false, moduleName);
-                }
-                AnnotationMemberValue memberValue = AnnotationMemberValue.getMemberValue(annotation, memberName, memberAccessor, annotationType);
-                Object value = memberValue.get(annotationType.memberTypes().get(memberName));
-                members.put(memberName, value);
-            } catch (AnnotationMetadata.AnnotationExtractionError e) {
-                /* We skip the incorrect annotation */
-            }
-        });
+    private void persistAnnotationElements(AnnotationValue annotation,
+                    IntFunction<StructList.Builder<PersistedAnnotationElement.Builder>> builder) {
+        Map<String, Object> members = annotation.getElements();
+        Map<String, ResolvedJavaType> memberTypes = AnnotationValueType.getInstance(annotation.getAnnotationType()).memberTypes();
         if (!members.isEmpty()) {
             var list = builder.apply(members.size());
-            MapCursor<String, Object> cursor = members.getEntries();
-            for (int i = 0; cursor.advance(); i++) {
-                var b = list.get(i);
-                b.setName(cursor.getKey());
-                Object v = cursor.getValue();
-                persistAnnotationValue(v, b);
+            int i = 0;
+            for (var e : members.entrySet()) {
+                var b = list.get(i++);
+                b.setName(e.getKey());
+                Object v = e.getValue();
+                persistAnnotationElement(v, memberTypes.get(e.getKey()), b);
             }
         }
     }
 
-    private void persistAnnotationValue(Object v, AnnotationValue.Builder b) {
-        if (v.getClass().isArray()) {
-            if (v instanceof Object[] array) {
+    private void persistAnnotationElement(Object v, ResolvedJavaType memberType, PersistedAnnotationElement.Builder b) {
+        if (memberType.isArray()) {
+            List<?> list = (List<?>) v;
+            ResolvedJavaType componentType = memberType.getComponentType();
+            if (!componentType.isPrimitive()) {
                 var ba = b.initMembers();
-                ba.setClassName(v.getClass().getComponentType().getName());
-                var bav = ba.initMemberValues(array.length);
-                for (int i = 0; i < array.length; ++i) {
-                    persistAnnotationValue(array[i], bav.get(i));
+                ba.setClassName(componentType.toJavaName());
+                var bav = ba.initMemberValues(list.size());
+                int i = 0;
+                for (Object e : list) {
+                    persistAnnotationElement(e, componentType, bav.get(i++));
                 }
             } else {
-                Class<?> componentType = v.getClass().getComponentType();
-                assert componentType.isPrimitive() : v + " should be a primitive array";
-                persistConstantPrimitiveArray(b.initPrimitiveArray(), JavaKind.fromJavaClass(componentType), v);
+                persistConstantPrimitiveArray(b.initPrimitiveArray(), componentType.getJavaKind(), v);
             }
         } else {
             switch (v) {
@@ -807,21 +801,21 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 case Float f -> setAnnotationPrimitiveValue(b, JavaKind.Float, Float.floatToRawIntBits(f));
                 case Long j -> setAnnotationPrimitiveValue(b, JavaKind.Long, j);
                 case Double d -> setAnnotationPrimitiveValue(b, JavaKind.Double, Double.doubleToRawLongBits(d));
-                case Class<?> clazz -> b.setClassName(clazz.getName());
-                case Annotation innerAnnotation ->
-                    persistAnnotationValues(innerAnnotation, innerAnnotation.annotationType(), b.initAnnotation()::initValues);
+                case ResolvedJavaType type -> b.setClassName(type.toJavaName());
+                case AnnotationValue innerAnnotation ->
+                    persistAnnotationElements(innerAnnotation, b.initAnnotation()::initValues);
                 case String s -> b.setString(s);
-                case Enum<?> e -> {
+                case EnumElement e -> {
                     var ba = b.initEnum();
-                    ba.setClassName(e.getDeclaringClass().getName());
-                    ba.setName(e.name());
+                    ba.setClassName(e.enumType.toJavaName());
+                    ba.setName(e.name);
                 }
-                default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v);
+                default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v + ", " + v.getClass());
             }
         }
     }
 
-    private static void setAnnotationPrimitiveValue(AnnotationValue.Builder b, JavaKind kind, long rawValue) {
+    private static void setAnnotationPrimitiveValue(PersistedAnnotationElement.Builder b, JavaKind kind, long rawValue) {
         var pv = b.initPrimitive();
         pv.setTypeChar(NumUtil.safeToUByte(kind.getTypeChar()));
         pv.setRawValue(rawValue);
@@ -1133,7 +1127,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     record RecreateInfo(String clazz, String method) {
     }
 
-    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks action) {
+    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks<?> action) {
         if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
             // GR-66792 remove once no custom persist actions exist
             Class<?> singletonClass = injectAction.getSingletonClass();
@@ -1149,6 +1143,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
         /*
          * First write the image singleton keys
@@ -1165,8 +1160,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
             if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
-                var flags = action.doPersist(writer, singleton);
+                var action = (SingletonLayeredCallbacks<?>) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
+                var flags = SubstrateUtil.cast(action, SingletonLayeredCallbacks.class).doPersist(writer, singleton);
                 if (initialLayerOnly) {
                     VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
                                     singleton);

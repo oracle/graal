@@ -34,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -65,20 +66,31 @@ public class RuntimeOptionFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
+        boolean extensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         UnmodifiableEconomicMap<OptionKey<?>, Object> map = HostedOptionValues.singleton().getMap();
         for (OptionKey<?> key : map.getKeys()) {
             if (key instanceof RuntimeOptionKey<?> runtimeOptionKey && runtimeOptionKey.shouldRegisterForIsolateArgumentParser()) {
-                /*
-                 * The list of options IsolateArgumentParser has to parse, is built dynamically, to
-                 * include only options of the current configuration. Here, all options that should
-                 * get parsed by the IsolateArgumentParser are added to this list.
-                 */
-                IsolateArgumentParser.singleton().register(runtimeOptionKey);
-                registerOptionAsRead(accessImpl, runtimeOptionKey.getDescriptor().getDeclaringClass(), runtimeOptionKey.getName());
+                if (!extensionLayer) {
+                    /*
+                     * The list of options IsolateArgumentParser has to parse, is built dynamically,
+                     * to include only options of the current configuration. Here, all options that
+                     * should get parsed by the IsolateArgumentParser are added to this list.
+                     */
+                    IsolateArgumentParser.singleton().register(runtimeOptionKey);
+                    registerOptionAsRead(accessImpl, runtimeOptionKey.getDescriptor().getDeclaringClass(), runtimeOptionKey.getName());
+                } else {
+                    /*
+                     * All runtime options must have already been installed within the base layer.
+                     * Within the extension layer we only confirm they are present.
+                     */
+                    assert IsolateArgumentParser.getOptionIndex(runtimeOptionKey) >= 0;
+                }
             }
         }
 
-        IsolateArgumentParser.singleton().sealOptions();
+        if (!extensionLayer) {
+            IsolateArgumentParser.singleton().sealOptions();
+        }
     }
 
     @SuppressWarnings("unused")

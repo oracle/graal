@@ -501,6 +501,8 @@ class PolybenchBenchmarkSuite(
             guest_vm = "graal-js"
         elif "python" in resolved_benchmark.suite.languages:
             guest_vm = "graalpython"
+        elif "wasm" in resolved_benchmark.suite.languages:
+            guest_vm = "wasm"
         else:
             guest_vm = "none"
         if "--engine.Compilation=false" in self.runArgs(

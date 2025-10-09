@@ -125,22 +125,6 @@ public class RuntimeClassLoading {
         return Options.RuntimeClassLoading.getValue();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class NoRuntimeClassLoading implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return !isSupported();
-        }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class WithRuntimeClassLoading implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return isSupported();
-        }
-    }
-
     public static Class<?> defineClass(ClassLoader loader, String expectedName, byte[] b, int off, int len, ClassDefinitionInfo info) {
         if (PredefinedClassesSupport.hasBytecodeClasses()) {
             Class<?> knownClass = PredefinedClassesSupport.knownClass(b, off, len);
@@ -286,5 +270,21 @@ public class RuntimeClassLoading {
             return;
         }
         // GR-59739 runtime linking
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class NoRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return !isSupported();
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class WithRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return isSupported();
+        }
     }
 }

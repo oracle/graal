@@ -34,6 +34,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +56,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.jfr.FlightRecorder;
 
 public final class ImageClassLoader {
 
@@ -205,9 +207,12 @@ public final class ImageClassLoader {
         try {
             /*
              * Annotations should not be computed during the scanning of classes, to avoid issues
-             * with the Native Image module access setup.
+             * with the Native Image module access setup. When JFR is initialized, it can trigger
+             * annotation parsing when it looks for JFR related annotations on classes as they are
+             * loaded.
              */
-            assert classAnnotationData.get(clazz) == initialAnnotationData;
+            assert classAnnotationData.get(clazz) == initialAnnotationData || FlightRecorder.isInitialized() : clazz + " initialAnnotationData=" + initialAnnotationData + ", declaredAnnotations=" +
+                            Arrays.asList(clazz.getDeclaredAnnotations());
         } catch (IllegalAccessException e) {
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }

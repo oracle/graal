@@ -245,7 +245,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
             SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
-            SubstrateOptions.ParseRuntimeOptions.update(values, false);
             if (SubstrateOptions.imageLayerEnabledHandler != null) {
                 SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
             }
