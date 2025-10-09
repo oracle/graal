@@ -541,11 +541,15 @@ public final class InstructionModel implements PrettyPrintable {
     public String getInternalName() {
         String operationName = switch (kind) {
             case CUSTOM -> {
-                assert name.startsWith("c.");
+                if (!name.startsWith("c.")) {
+                    throw new AssertionError("Unexpected custom operation name: " + name);
+                }
                 yield name.substring(2) + "_";
             }
             case CUSTOM_SHORT_CIRCUIT -> {
-                assert name.startsWith("sc.");
+                if (!name.startsWith("sc.")) {
+                    throw new AssertionError("Unexpected short-circuit custom operation name: " + name);
+                }
                 yield name.substring(3) + "_";
             }
             default -> name;
