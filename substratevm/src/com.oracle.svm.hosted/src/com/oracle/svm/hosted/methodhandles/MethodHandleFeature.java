@@ -42,6 +42,8 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -411,9 +413,10 @@ public class MethodHandleFeature implements InternalFeature {
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         int numTypes = access.getUniverse().getTypes().size();
-        access.rescanRoot(typedAccessors);
-        access.rescanRoot(typedCollectors);
-        access.rescanObject(runtimeMethodTypeInternTable);
+        ScanReason reason = new ObjectScanner.OtherReason("Manual rescan triggered during analysis from " + MethodHandleFeature.class);
+        access.rescanRoot(typedAccessors, reason);
+        access.rescanRoot(typedCollectors, reason);
+        access.rescanObject(runtimeMethodTypeInternTable, reason);
         if (numTypes != access.getUniverse().getTypes().size()) {
             access.requireAnalysisIteration();
         }
@@ -434,7 +437,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.getBigBang().postTask(unused -> {
             Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
             if (bmhSpeciesField != null) {
-                access.rescanRoot(bmhSpeciesField);
+                access.rescanRoot(bmhSpeciesField, new ObjectScanner.OtherReason("Manual rescan triggered from a subtype reachability handler in " + MethodHandleFeature.class));
             }
         });
 

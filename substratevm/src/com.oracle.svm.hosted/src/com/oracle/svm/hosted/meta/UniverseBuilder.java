@@ -51,6 +51,8 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -874,8 +876,9 @@ public class UniverseBuilder {
         byte[] staticPrimitiveFields = new byte[currentLayerOffsets.nextPrimitiveField];
         StaticFieldsSupport.setData(staticObjectFields, staticPrimitiveFields);
         /* After initializing the static field arrays add them to the shadow heap. */
-        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
-        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        ScanReason reason = new OtherReason("Manual rescan for static fields triggered from " + UniverseBuilder.class);
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), reason);
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), reason);
     }
 
     @SuppressWarnings("unchecked")
