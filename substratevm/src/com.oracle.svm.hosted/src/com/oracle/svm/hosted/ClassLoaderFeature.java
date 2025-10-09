@@ -27,6 +27,8 @@ package com.oracle.svm.hosted;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -167,7 +169,8 @@ public class ClassLoaderFeature implements InternalFeature {
              * We need to scan this because the final package info cannot be installed until after
              * analysis has completed.
              */
-            config.rescanObject(HostedClassLoaderPackageManagement.singleton().getPriorAppClassLoaderPackages());
+            ScanReason reason = new OtherReason("Manual rescan triggered from " + ClassLoaderFeature.class);
+            config.rescanObject(HostedClassLoaderPackageManagement.singleton().getPriorAppClassLoaderPackages(), reason);
         }
     }
 

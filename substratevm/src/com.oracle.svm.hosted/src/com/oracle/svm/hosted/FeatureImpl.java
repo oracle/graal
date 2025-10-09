@@ -55,7 +55,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -263,16 +263,16 @@ public class FeatureImpl {
             return baseMethod.collectMethodImplementations(true);
         }
 
-        public void rescanObject(Object obj) {
-            getUniverse().getHeapScanner().rescanObject(obj);
+        public void rescanObject(Object obj, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanObject(obj, reason);
         }
 
-        public void rescanField(Object receiver, Field field) {
-            getUniverse().getHeapScanner().rescanField(receiver, field);
+        public void rescanField(Object receiver, Field field, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanField(receiver, field, reason);
         }
 
-        public void rescanRoot(Field field) {
-            getUniverse().getHeapScanner().rescanRoot(field);
+        public void rescanRoot(Field field, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanRoot(field, reason);
         }
 
         public Field findField(String declaringClassName, String fieldName) {
@@ -465,7 +465,7 @@ public class FeatureImpl {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ObjectScanner.ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.dedent;
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.indent;
 
@@ -248,6 +250,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Class<?> jceSecurityClass;
 
     private AnnotationSubstitutionProcessor substitutionProcessor;
+
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
@@ -911,21 +915,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 throw VMError.shouldNotReachHere(e);
             }
         }
-        access.rescanRoot(oidMapField);
+        access.rescanRoot(oidMapField, scanReason);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot(oidTableField);
+        access.rescanRoot(oidTableField, scanReason);
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             maybeScanVerificationResultsField(access);
             maybeScanProvidersField(access);
             if (cachedProviders != null) {
                 for (Provider provider : cachedProviders.providers()) {
                     for (Service service : provider.getServices()) {
-                        access.rescanField(service, classCacheField);
-                        access.rescanField(service, constructorCacheField);
+                        access.rescanField(service, classCacheField, scanReason);
+                        access.rescanField(service, constructorCacheField, scanReason);
                     }
                 }
             }
@@ -938,7 +942,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 var filteredVerificationCache = filterVerificationCache(verificationResultsField.get(null));
                 if (cachedVerificationCache == null || !cachedVerificationCache.equals(filteredVerificationCache)) {
                     cachedVerificationCache = filteredVerificationCache;
-                    access.rescanObject(cachedVerificationCache);
+                    access.rescanObject(cachedVerificationCache, scanReason);
                 }
             } catch (IllegalAccessException ex) {
                 throw VMError.shouldNotReachHere("Cannot access field: " + verificationResultsField.getName(), ex);
@@ -952,7 +956,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 List<Provider> filteredProviders = filterProviderList(providerListField.get(null));
                 if (cachedProviders == null || !cachedProviders.providers().equals(filteredProviders)) {
                     cachedProviders = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
-                    access.rescanObject(cachedProviders);
+                    access.rescanObject(cachedProviders, scanReason);
                 }
             } catch (IllegalAccessException ex) {
                 throw VMError.shouldNotReachHere("Cannot access field: " + providerListField.getName(), ex);

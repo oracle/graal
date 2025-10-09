@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -182,6 +185,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
     public boolean processUpdatableValues(FeatureImpl.DuringAnalysisAccessImpl access) {
         SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         boolean updated = false;
+        ScanReason reason = new OtherReason("Manual rescan triggered from " + LayeredFieldValueTransformerSupport.class);
         for (var updatableValue : priorUpdatableValues) {
             if (!updatableValue.updated) {
                 if (updatableValue.receiver == null) {
@@ -200,7 +204,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                         var newValue = result.value();
                         getFieldUpdater().updateField(updatableValue.receiver, updatableValue.transformer.aField, newValue);
                         if (access != null) {
-                            access.rescanObject(newValue);
+                            access.rescanObject(newValue, reason);
                         }
                         updated = true;
                     }

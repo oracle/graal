@@ -81,6 +81,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -175,6 +176,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnnotatedElement, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
+
+    // Reason tracking for manually triggered rescans
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ReflectionDataBuilder.class);
 
     public ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
         this.annotationExtractor = annotationExtractor;
@@ -527,7 +531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!queriedOnly) {
             methodAccessors.computeIfAbsent(analysisMethod, _ -> {
                 SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(reflectExecutable);
-                universe.getHeapScanner().rescanObject(accessor);
+                universe.getHeapScanner().rescanObject(accessor, scanReason);
                 return accessor;
             });
         }
@@ -1206,7 +1210,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             throw error;
         } else {
             var registeredError = errorMap.computeIfAbsent(clazz, _ -> {
-                universe.getHeapScanner().rescanObject(error);
+                universe.getHeapScanner().rescanObject(error, scanReason);
                 return error;
             });
             assert registeredError.toString().equals(error.toString()) : "Attempting to replace " + registeredError + " with " + error;

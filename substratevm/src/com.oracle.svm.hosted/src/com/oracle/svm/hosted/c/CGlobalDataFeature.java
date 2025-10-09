@@ -39,6 +39,8 @@ import java.util.stream.IntStream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.ParsingReason;
@@ -147,7 +149,8 @@ public class CGlobalDataFeature implements InternalFeature {
              * The non-constant registry needs to be rescanned in layered images to make sure it is
              * always reachable in every layer and that all the data is properly tracked.
              */
-            ((FeatureImpl.BeforeAnalysisAccessImpl) access).rescanObject(nonConstantRegistry);
+            ScanReason reason = new OtherReason("Manual rescan triggered from " + CGlobalDataFeature.class);
+            ((FeatureImpl.BeforeAnalysisAccessImpl) access).rescanObject(nonConstantRegistry, reason);
         }
     }
 

@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.security.SecureRandom;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.PosixSunSecuritySubstitutions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
@@ -56,6 +59,7 @@ public class NativeSecureRandomFilesCloser implements InternalFeature {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         RuntimeSupport.Hook hook = PosixSunSecuritySubstitutions.getTearDownHook();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(hook);
-        access.rescanObject(hook);
+        ScanReason reason = new OtherReason("Manual rescan triggered from " + NativeSecureRandomFilesCloser.class);
+        access.rescanObject(hook, reason);
     }
 }

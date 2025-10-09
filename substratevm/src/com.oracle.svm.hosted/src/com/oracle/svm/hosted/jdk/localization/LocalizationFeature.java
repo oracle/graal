@@ -66,7 +66,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -314,7 +315,7 @@ public class LocalizationFeature implements InternalFeature {
      * {@link ResourceBundle} object in the heap, and we eagerly initialize it.
      */
     @SuppressWarnings("unused")
-    private void eagerlyInitializeBundles(DuringAnalysisAccess access, ResourceBundle bundle, ObjectScanner.ScanReason reason) {
+    private void eagerlyInitializeBundles(DuringAnalysisAccess access, ResourceBundle bundle, ScanReason reason) {
         assert optimizedMode : "Should only be triggered in the optimized mode.";
         try {
             /*
@@ -348,15 +349,16 @@ public class LocalizationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        scanLocaleCache(access, baseLocaleCacheField);
-        scanLocaleCache(access, localeCacheField);
-        scanLocaleCache(access, candidatesCacheField);
-        access.rescanRoot(langAliasesCacheField);
-        access.rescanRoot(parentLocalesMapField);
+        ScanReason reason = new OtherReason("Manual rescan triggered during analysis from " + LocalizationFeature.class);
+        scanLocaleCache(access, baseLocaleCacheField, reason);
+        scanLocaleCache(access, localeCacheField, reason);
+        scanLocaleCache(access, candidatesCacheField, reason);
+        access.rescanRoot(langAliasesCacheField, reason);
+        access.rescanRoot(parentLocalesMapField, reason);
     }
 
-    private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
-        access.rescanRoot(cacheFieldField);
+    private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField, ScanReason reason) {
+        access.rescanRoot(cacheFieldField, reason);
 
         Object localeCache;
         try {
@@ -365,7 +367,7 @@ public class LocalizationFeature implements InternalFeature {
             throw VMError.shouldNotReachHere(ex);
         }
         if (localeCache != null && localeObjectCacheMapField != null) {
-            access.rescanField(localeCache, localeObjectCacheMapField);
+            access.rescanField(localeCache, localeObjectCacheMapField, reason);
         }
     }
 
