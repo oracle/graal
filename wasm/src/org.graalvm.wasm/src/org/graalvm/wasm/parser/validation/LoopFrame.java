@@ -54,7 +54,7 @@ class LoopFrame extends ControlFrame {
     private final int labelLocation;
 
     LoopFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int labelLocation) {
-        super(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+        super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
         this.labelLocation = labelLocation;
     }
 

@@ -42,7 +42,6 @@
 package org.graalvm.wasm.parser.validation;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 
 import org.graalvm.wasm.collection.IntArrayList;
@@ -62,7 +61,7 @@ class IfFrame extends ControlFrame {
     private boolean elseBranch;
 
     IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int falseJumpLocation) {
-        super(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+        super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
         this.branchTargets = new IntArrayList();
         this.exceptionHandlers = new ArrayList<>();
         this.parentFrame = parentFrame;
@@ -89,8 +88,17 @@ class IfFrame extends ControlFrame {
 
     @Override
     void exit(RuntimeBytecodeGen bytecode) {
-        if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+        if (!elseBranch) {
+            if (resultTypes().length != paramTypes().length) {
+                throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+            }
+            if (!isUnreachable()) {
+                for (int i = 0; i < resultTypes().length; i++) {
+                    if (!getSymbolTable().matches(resultTypes()[i], paramTypes()[i])) {
+                        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+                    }
+                }
+            }
         }
         if (branchTargets.size() == 0 && exceptionHandlers.isEmpty()) {
             bytecode.patchLocation(falseJumpLocation, bytecode.location());

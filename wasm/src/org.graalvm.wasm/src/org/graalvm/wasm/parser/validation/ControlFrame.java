@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
@@ -52,6 +53,7 @@ import java.util.BitSet;
 public abstract class ControlFrame {
     private final int[] paramTypes;
     private final int[] resultTypes;
+    private final SymbolTable symbolTable;
 
     private final int initialStackSize;
     private boolean unreachable;
@@ -61,11 +63,14 @@ public abstract class ControlFrame {
     /**
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
+     * @param symbolTable Necessary to look up the definitions of types in {@code paramTypes} and {@code resultTypes}
      * @param initialStackSize The size of the value stack when entering this block structure.
+     * @param initializedLocals The set of locals which are already initialized at the start of this function
      */
-    ControlFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, BitSet initializedLocals) {
+    ControlFrame(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable, int initialStackSize, BitSet initializedLocals) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
+        this.symbolTable = symbolTable;
         this.initialStackSize = initialStackSize;
         this.unreachable = false;
         commonResultType = WasmType.getCommonValueType(resultTypes);
@@ -82,6 +87,10 @@ public abstract class ControlFrame {
 
     protected int resultTypeLength() {
         return resultTypes.length;
+    }
+
+    protected SymbolTable getSymbolTable() {
+        return symbolTable;
     }
 
     /**

@@ -266,7 +266,7 @@ public class ParserState {
     }
 
     public void enterFunction(int[] paramTypes, int[] resultTypes, int[] locals) {
-        ControlFrame frame = BlockFrame.createFunctionFrame(paramTypes, resultTypes, locals);
+        ControlFrame frame = BlockFrame.createFunctionFrame(paramTypes, resultTypes, locals, symbolTable);
         controlStack.push(frame);
     }
 

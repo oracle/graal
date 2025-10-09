@@ -44,6 +44,7 @@ package org.graalvm.wasm.parser.validation;
 import java.util.ArrayList;
 import java.util.BitSet;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
@@ -57,24 +58,24 @@ class BlockFrame extends ControlFrame {
     private final IntArrayList branches;
     private final ArrayList<ExceptionHandler> exceptionHandlers;
 
-    private BlockFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, BitSet initializedLocals) {
-        super(paramTypes, resultTypes, initialStackSize, initializedLocals);
+    private BlockFrame(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable, int initialStackSize, BitSet initializedLocals) {
+        super(paramTypes, resultTypes, symbolTable, initialStackSize, initializedLocals);
         branches = new IntArrayList();
         exceptionHandlers = new ArrayList<>();
     }
 
     BlockFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame) {
-        this(paramTypes, resultTypes, initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+        this(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
     }
 
-    static BlockFrame createFunctionFrame(int[] paramTypes, int[] resultTypes, int[] locals) {
+    static BlockFrame createFunctionFrame(int[] paramTypes, int[] resultTypes, int[] locals, SymbolTable symbolTable) {
         BitSet initializedLocals = new BitSet(locals.length);
         for (int localIndex = 0; localIndex < locals.length; localIndex++) {
             if (localIndex < paramTypes.length || WasmType.hasDefaultValue(locals[localIndex])) {
                 initializedLocals.set(localIndex);
             }
         }
-        return new BlockFrame(paramTypes, resultTypes, 0, initializedLocals);
+        return new BlockFrame(paramTypes, resultTypes, symbolTable, 0, initializedLocals);
     }
 
     @Override
