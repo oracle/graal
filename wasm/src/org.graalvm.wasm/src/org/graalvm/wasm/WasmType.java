@@ -49,6 +49,44 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+/**
+ * <p>
+ * Wasm value types are represented as {@code int}s. Predefined types are negative values, while
+ * user-defined types are non-negative. The second-highest bit is used to signal if a reference type
+ * is nullable. For the predefined non-reference types (numbers and vectors), that bit is always
+ * set.
+ * </p>
+ * <p>
+ * For predefined types, the negative values are the LEB128 decodings of the bytes that represent
+ * these predefined types in the wasm binary format. E.g., {@code i32} is represented as
+ * {@code 0x7f} in the binary format, which decodes into {@code -1}, and that is the internal
+ * representation we use in {@link #I32_TYPE}.
+ * </p>
+ * <p>
+ * For user-defined types, the non-negative value is the type index which points to the type
+ * definition in the module's {@link SymbolTable}.
+ * </p>
+ * <p>
+ * Wasm heap types are represented using the same schema (a union of negative predefined types and
+ * user-defined non-negative type indices), but without using a special nullability bit. To build a
+ * reference type out of a heap type, set the nullability bit using {@link #withNullable}:
+ * </p>
+ * 
+ * <pre>
+ *     boolean nullable = ...;
+ *     int heapType = ...;
+ *     int referenceType = WasmType.withNullable(nullable, heapType);
+ * </pre>
+ * <p>
+ * During type checking, it is not enough to compare types by equality, as this does not take into
+ * account type aliases and subtyping. Instead, use {@link SymbolTable#matchesType(int, int)}.
+ * </p>
+ * <p>
+ * For an example of how to do case analysis on a Wasm value type, check the source of
+ * {@link #toString(int)}. NB: The types {@link #TOP} and {@link #BOT} only occur during module
+ * validation.
+ * </p>
+ */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused", "static-method"})
 public class WasmType implements TruffleObject {
@@ -95,10 +133,14 @@ public class WasmType implements TruffleObject {
     public static final int EXNREF_TYPE = EXN_HEAPTYPE;
     @CompilationFinal(dimensions = 1) public static final int[] EXNREF_TYPE_ARRAY = {EXNREF_TYPE};
 
+    // Implementation-specific Types.
     /**
-     * Implementation-specific Types.
+     * The common supertype of all types, the universal type.
      */
     public static final int TOP = -0x7e;
+    /**
+     * The common subtype of all types, the impossible type.
+     */
     public static final int BOT = -0x7f;
 
     /**
@@ -172,29 +214,58 @@ public class WasmType implements TruffleObject {
         return withNullable(true, type) == BOT;
     }
 
+    /**
+     * Indicates whether this is a user-defined reference type.
+     */
     public static boolean isConcreteReferenceType(int type) {
         return type >= 0 || isBottomType(type);
     }
 
+    /**
+     * Returns the type index of this user-defined reference type. This must be used together with
+     * the appropriate {@link SymbolTable} to be able to expand the type's definition.
+     */
     public static int getTypeIndex(int type) {
         assert isConcreteReferenceType(type);
         return type & TYPE_VALUE_MASK;
     }
 
+    /**
+     * Returns the "payload" of this reference type, which can be matched against the predefined
+     * abstract heap types (such as {@link #FUNC_HEAPTYPE} or {@link #EXTERN_HEAPTYPE}) in a switch
+     * statement.
+     */
     public static int getAbstractHeapType(int type) {
         assert isReferenceType(type);
         return withNullable(true, type);
     }
 
+    /**
+     * Indicates whether this value types admits the value {@link WasmConstant#NULL}. Can only be
+     * called on reference types.
+     */
     public static boolean isNullable(int type) {
         assert isReferenceType(type);
         return (type & TYPE_NULLABLE_MASK) != 0;
     }
 
+    /**
+     * Updates the nullability bit of this reference type. Can also be used to create a reference
+     * type from a heap type.
+     * 
+     * @param nullable whether the resulting reference type should be nullable
+     * @param type a reference type or a heap type (one of the {@code *_HEAPTYPE} constants or a
+     *            type index)
+     */
     public static int withNullable(boolean nullable, int type) {
         return nullable ? type | TYPE_NULLABLE_MASK : type & ~TYPE_NULLABLE_MASK;
     }
 
+    /**
+     * Indicates whether this type has a default value (this is the case for all value types except
+     * for non-nullable reference types). Locals of such types do not have to be initialized prior
+     * to first access.
+     */
     public static boolean hasDefaultValue(int type) {
         return !(isReferenceType(type) && !isNullable(type));
     }
