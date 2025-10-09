@@ -364,6 +364,16 @@ JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_initIDs(JNIEnv *e
     return NULL;
 }
 
+JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_receive0(JNIEnv *env) {
+    (*env)->FatalError(env, "Currently SCTP not supported for native-images");
+    return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_send0(JNIEnv *env) {
+    (*env)->FatalError(env, "Currently SCTP not supported for native-images");
+    return NULL;
+}
+
 jboolean VerifyFixClassname(char *utf_name) {
     fprintf(stderr, "VerifyFixClassname(%s) called:  Unimplemented\n", utf_name);
     abort();

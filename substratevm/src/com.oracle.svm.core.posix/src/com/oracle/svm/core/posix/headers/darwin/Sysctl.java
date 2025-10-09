@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -35,9 +35,9 @@ import org.graalvm.word.PointerBase;
 /**
  * Definitions manually translated from the C header file sys/sysctl.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(DarwinDirectives.class)
 public class Sysctl {
 
     @CFunction
-    public static native int sysctl(CIntPointer name, long nlen, PointerBase oldval, WordPointer oldlenp, PointerBase newval, long newlen);
+    public static native int sysctl(CIntPointer name, int nlen, PointerBase oldval, WordPointer oldlenp, PointerBase newval, long newlen);
 }

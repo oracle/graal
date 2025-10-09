@@ -159,4 +159,9 @@ public interface BigBang extends ReachabilityAnalysis {
     default void tryRegisterFieldForBaseImage(AnalysisField field) {
 
     }
+
+    @SuppressWarnings("unused")
+    default void tryRegisterNativeMethodsForBaseImage(ResolvedJavaType analysisType) {
+
+    }
 }
