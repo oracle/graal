@@ -603,7 +603,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private OperationArgument[] createOperationConstantArguments(List<ConstantOperandModel> operands, List<String> operandNames) {
-        assert operands.size() == operandNames.size();
+        if (operands.size() != operandNames.size()) {
+            throw new AssertionError("Operands and operand names have different sizes (%d vs. %d)".formatted(operands.size(), operandNames.size()));
+        }
         OperationArgument[] arguments = new OperationArgument[operandNames.size()];
         for (int i = 0; i < operandNames.size(); i++) {
             ConstantOperandModel constantOperand = operands.get(i);
@@ -673,7 +675,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         List<ExecutableElement> specializations = findSpecializations(typeElement);
-        assert specializations.size() != 0;
+        if (specializations.isEmpty()) {
+            throw new AssertionError("Boolean converter should have at least one specialization if it parsed without error.");
+        }
 
         boolean returnsBoolean = true;
         for (ExecutableElement spec : specializations) {

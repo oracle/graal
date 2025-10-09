@@ -9113,11 +9113,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     CodeVariableElement var;
                     if (fieldIndex < variables.size()) {
                         var = variables.get(fieldIndex);
-                    } else {
-                        assert fieldIndex == variables.size();
+                    } else if (fieldIndex == variables.size()) {
                         String prefix = ElementUtils.firstLetterLowerCase(ElementUtils.getTypeSimpleId(fieldType));
                         var = new CodeVariableElement(Set.of(PRIVATE), fieldType, prefix + fieldIndex);
                         variables.add(var);
+                    } else {
+                        throw new AssertionError("fieldIndex %d exceeds variable size %d".formatted(fieldIndex, variables.size()));
                     }
 
                     this.fieldToVariable.put(field, var);
