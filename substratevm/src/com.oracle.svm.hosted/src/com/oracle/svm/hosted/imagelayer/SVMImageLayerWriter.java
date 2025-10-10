@@ -94,6 +94,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -102,6 +103,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -116,6 +118,7 @@ import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.SVMHost;
@@ -632,7 +635,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsImplementationInvoked(method.isSimplyImplementationInvoked());
         builder.setIsIntrinsicMethod(method.isIntrinsicMethod());
 
-        builder.setCompilationBehaviorOrdinal((byte) method.getCompilationBehavior().ordinal());
+        var compilationBehavior = method.getCompilationBehavior();
+        if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER) {
+            UserError.guarantee(hUniverse.lookup(method).isCompiled(), "User methods with layered compilation behavior %s must be registered via %s in the initial layer",
+                            LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER, LayeredCompilationSupport.class);
+        }
+        builder.setCompilationBehaviorOrdinal((byte) compilationBehavior.ordinal());
 
         if (graphsInfo != null && graphsInfo.analysisGraphLocation != null) {
             assert !method.isDelayed() : "The method " + method + " has an analysis graph, but is delayed to the application layer";

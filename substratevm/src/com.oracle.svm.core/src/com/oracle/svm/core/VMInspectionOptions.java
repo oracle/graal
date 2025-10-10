@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
 
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
@@ -173,6 +174,7 @@ public final class VMInspectionOptions {
      * the app layer. Otherwise {@link SubstrateOptions#Name} will refer to the initial layer's
      * name.
      */
+    @LayeredCompilationBehavior(LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     static String determineHeapDumpPath() {
         return HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
     }

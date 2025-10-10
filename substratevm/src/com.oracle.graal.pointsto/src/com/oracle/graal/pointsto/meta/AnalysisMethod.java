@@ -65,6 +65,9 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -198,7 +201,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     private boolean hasOpaqueReturn;
 
-    private CompilationBehavior compilationBehavior = CompilationBehavior.DEFAULT;
+    private LayeredCompilationBehavior.Behavior compilationBehavior;
 
     @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
@@ -280,6 +283,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = universe.analysisPolicy().parsingContextMaxDepth();
 
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
+        compilationBehavior = LayeredCompilationBehavior.Behavior.DEFAULT;
+        if (universe.hostVM.buildingImageLayer()) {
+            var annotationExtractor = universe.getAnnotationExtractor();
+            if (annotationExtractor.hasAnnotation(wrapped, LayeredCompilationBehavior.class)) {
+                LayeredCompilationBehavior behavior = annotationExtractor.extractAnnotation(wrapped, LayeredCompilationBehavior.class, true);
+                compilationBehavior = behavior.value();
+                if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInBaseLayer) {
+                    var errorMessage = String.format("User methods with layered compilation behavior %s must be registered via %s in the initial layer",
+                                    LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER, LayeredCompilationSupport.class);
+                    throw AnalysisError.userError(errorMessage);
+                }
+            }
+        }
     }
 
     @SuppressWarnings("this-escape")
@@ -314,21 +330,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     /**
-     * This method should not be used directly, except to set the {@link CompilationBehavior} from a
-     * previous layer. To set a new {@link CompilationBehavior}, please use the associated setter.
+     * This method should not be used directly, except to set the {@link Behavior} from a previous
+     * layer. To set a new {@link Behavior}, please use the associated setter.
      */
-    public void setCompilationBehavior(CompilationBehavior compilationBehavior) {
+    public void setCompilationBehavior(LayeredCompilationBehavior.Behavior compilationBehavior) {
         assert getUniverse().getBigbang().getHostVM().buildingImageLayer() : "The method compilation behavior can only be set in layered images";
         this.compilationBehavior = compilationBehavior;
     }
 
-    private void setNewCompilationBehavior(CompilationBehavior compilationBehavior) {
-        assert (!isInBaseLayer && this.compilationBehavior == CompilationBehavior.DEFAULT) || this.compilationBehavior == compilationBehavior : "The method was already assigned " +
+    private void setNewCompilationBehavior(LayeredCompilationBehavior.Behavior compilationBehavior) {
+        assert (!isInBaseLayer && this.compilationBehavior == LayeredCompilationBehavior.Behavior.DEFAULT) || this.compilationBehavior == compilationBehavior : "The method was already assigned " +
                         this.compilationBehavior + ", but trying to assign " + compilationBehavior;
         setCompilationBehavior(compilationBehavior);
     }
 
-    public CompilationBehavior getCompilationBehavior() {
+    public LayeredCompilationBehavior.Behavior getCompilationBehavior() {
         return compilationBehavior;
     }
 
@@ -342,7 +358,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         AnalysisError.guarantee(parsedGraphCacheState.get() == GraphCacheEntry.UNPARSED, "The method %s was marked as delayed to the application layer but was already parsed", this);
         AnalysisError.guarantee(!hostVM.hasAlwaysInlineDirective(this), "Method %s with an always inline directive cannot be delayed to the application layer as such methods cannot be inlined", this);
         AnalysisError.guarantee(isConcrete(), "Method %s is not concrete and cannot be delayed to the application layer", this);
-        setNewCompilationBehavior(CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER);
+        setNewCompilationBehavior(LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER);
     }
 
     /**
@@ -350,27 +366,27 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * layer is a shared layer.
      */
     public boolean isDelayed() {
-        return compilationBehavior == CompilationBehavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
+        return compilationBehavior == LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER && buildingSharedLayer;
     }
 
     /**
      * Ensures this method is compiled in the initial layer. See
-     * {@link CompilationBehavior#PINNED_TO_INITIAL_LAYER} for more details.
+     * {@link Behavior#PINNED_TO_INITIAL_LAYER} for more details.
      */
-    public void setPinnedToInitialLayer(Object reason) {
+    public void setPinnedToInitialLayer() {
         BigBang bigbang = getUniverse().getBigbang();
         AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);
         boolean nonAbstractInstanceClass = !declaringClass.isArray() && declaringClass.isInstanceClass() && !declaringClass.isAbstract();
         AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be pinned: %s", this);
-        bigbang.forcedAddRootMethod(this, true, "pinned to initial layer: " + reason);
+        bigbang.forcedAddRootMethod(this, true, "pinned to initial layer");
         if (!isStatic()) {
-            declaringClass.registerAsInstantiated("declared method " + this.format("%H.%n(%p)") + " is pinned to initial layer: " + reason);
+            declaringClass.registerAsInstantiated("declared method " + this.format("%H.%n(%p)") + " is pinned to initial layer");
         }
-        setNewCompilationBehavior(CompilationBehavior.PINNED_TO_INITIAL_LAYER);
+        setNewCompilationBehavior(LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER);
     }
 
     public boolean isPinnedToInitialLayer() {
-        return compilationBehavior == CompilationBehavior.PINNED_TO_INITIAL_LAYER;
+        return compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -1432,40 +1448,4 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
-
-    /**
-     * This state represents how a method should be compiled in layered images. The state of a
-     * method can only be decided in the first layer if it is marked as tracked across layers. The
-     * state has to stay the same across all the extension layers. If not specified, the state of a
-     * method will be {@link CompilationBehavior#DEFAULT}.
-     */
-    public enum CompilationBehavior {
-
-        /**
-         * Method remains unanalyzed until the application layer and any inlining in a shared layer
-         * is prevented. A call to the method in a shared layer will be replaced by an indirect
-         * call. The compilation of those methods is then forced in the application layer and the
-         * corresponding symbol is declared as global.
-         *
-         * A delayed method that is not referenced in any shared layer is treated as a
-         * {@link CompilationBehavior#DEFAULT} method in the application layer and does not have to
-         * be compiled. If it is only referenced in the application layer, it might be inlined and
-         * not compiled at all.
-         */
-        FULLY_DELAYED_TO_APPLICATION_LAYER,
-
-        /**
-         * Method can be inlined into other methods, both before analysis and during compilation,
-         * and will be compiled as a distinct compilation unit as stipulated by the normal native
-         * image generation process (i.e., the method is installed as a root and/or a reference to
-         * the method exists via a call and/or an explicit MethodReference).
-         */
-        DEFAULT,
-
-        /**
-         * Method is pinned to the initial layer, meaning it has to be analyzed and compiled in this
-         * specific layer.
-         */
-        PINNED_TO_INITIAL_LAYER,
-    }
 }
