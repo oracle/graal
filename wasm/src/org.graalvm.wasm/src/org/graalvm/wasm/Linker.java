@@ -334,7 +334,7 @@ public class Linker {
 
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            if (instance.symbolTable().closedTypeAt(valueType).matchesType(exportedClosedValueType)) {
+            if (instance.symbolTable().makeClosedType(valueType).matchesType(exportedClosedValueType)) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the type " + WasmType.toString(valueType) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
@@ -853,7 +853,7 @@ public class Linker {
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
             assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertTrue(instance.symbolTable().closedTypeAt(elemType).matchesType(importedTable.closedValueType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertTrue(instance.symbolTable().makeClosedType(elemType).matchesType(importedTable.closedValueType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);

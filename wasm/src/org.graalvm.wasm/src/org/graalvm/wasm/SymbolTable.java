@@ -46,6 +46,7 @@ import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -402,6 +403,8 @@ public abstract class SymbolTable {
      */
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
+    @CompilationFinal(dimensions = 1) private ClosedValueType[] closedTypes;
+
     @CompilationFinal private int typeDataSize;
     @CompilationFinal private int typeCount;
 
@@ -608,6 +611,7 @@ public abstract class SymbolTable {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
+        this.closedTypes = new ClosedValueType[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
         this.importedSymbols = new ArrayList<>();
@@ -670,8 +674,8 @@ public abstract class SymbolTable {
         return newArray;
     }
 
-    private static WasmFunction[] reallocate(WasmFunction[] array, int currentSize, int newLength) {
-        WasmFunction[] newArray = new WasmFunction[newLength];
+    private static <T> T[] reallocate(T[] array, int currentSize, int newLength) {
+        T[] newArray = (T[]) Array.newInstance(array.getClass().getComponentType(), newLength);
         System.arraycopy(array, 0, newArray, 0, currentSize);
         return newArray;
     }
@@ -702,6 +706,7 @@ public abstract class SymbolTable {
         if (typeOffsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
             typeOffsets = reallocate(typeOffsets, typeCount, newLength);
+            closedTypes = reallocate(closedTypes, typeCount, newLength);
         }
     }
 
@@ -732,6 +737,7 @@ public abstract class SymbolTable {
         for (int i = 0; i < resultTypes.length; i++) {
             registerFunctionTypeResultType(typeIdx, i, resultTypes[i]);
         }
+        finishFunctionType(typeIdx);
         return typeIdx;
     }
 
@@ -745,6 +751,10 @@ public abstract class SymbolTable {
         checkNotParsed();
         int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + resultIdx;
         typeData[idx] = type;
+    }
+
+    void finishFunctionType(int funcTypeIdx) {
+        closedTypes[funcTypeIdx] = makeClosedType(funcTypeIdx);
     }
 
     private void ensureFunctionsCapacity(int index) {
@@ -860,16 +870,20 @@ public abstract class SymbolTable {
     public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
         ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(typeIndex)];
         for (int i = 0; i < paramTypes.length; i++) {
-            paramTypes[i] = closedTypeAt(functionTypeParamTypeAt(typeIndex, i));
+            paramTypes[i] = makeClosedType(functionTypeParamTypeAt(typeIndex, i));
         }
         ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(typeIndex)];
         for (int i = 0; i < resultTypes.length; i++) {
-            resultTypes[i] = closedTypeAt(functionTypeResultTypeAt(typeIndex, i));
+            resultTypes[i] = makeClosedType(functionTypeResultTypeAt(typeIndex, i));
         }
         return new ClosedFunctionType(paramTypes, resultTypes);
     }
 
-    public ClosedValueType closedTypeAt(int type) {
+    public ClosedValueType closedTypeAt(int typeIndex) {
+        return closedTypes[typeIndex];
+    }
+
+    public ClosedValueType makeClosedType(int type) {
         return switch (type) {
             case WasmType.I32_TYPE -> NumberType.I32;
             case WasmType.I64_TYPE -> NumberType.I64;
@@ -896,7 +910,7 @@ public abstract class SymbolTable {
     }
 
     public boolean matches(int expectedType, int actualType) {
-        return closedTypeAt(expectedType).matchesType(closedTypeAt(actualType));
+        return makeClosedType(expectedType).matchesType(makeClosedType(actualType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -1093,7 +1107,7 @@ public abstract class SymbolTable {
     }
 
     public ClosedValueType globalClosedValueType(int index) {
-        return closedTypeAt(globalTypes[index]);
+        return makeClosedType(globalTypes[index]);
     }
 
     private byte globalFlags(int index) {

@@ -171,7 +171,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     }
 
     public SymbolTable.ClosedValueType closedValueType() {
-        return symbolTable.closedTypeAt(elemType);
+        return symbolTable.makeClosedType(elemType);
     }
 
     /**

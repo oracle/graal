@@ -49,6 +49,7 @@ public final class WasmFunction {
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
+    private final SymbolTable.ClosedFunctionType closedFunctionType;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
     /** Interop call adapter for argument and return value validation and conversion. */
@@ -62,6 +63,7 @@ public final class WasmFunction {
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.typeIndex = typeIndex;
+        this.closedFunctionType = symbolTable.closedFunctionTypeAt(typeIndex);
     }
 
     public String moduleName() {
@@ -145,7 +147,7 @@ public final class WasmFunction {
     }
 
     public SymbolTable.ClosedFunctionType closedType() {
-        return symbolTable.closedFunctionTypeAt(typeIndex());
+        return closedFunctionType;
     }
 
     public int index() {

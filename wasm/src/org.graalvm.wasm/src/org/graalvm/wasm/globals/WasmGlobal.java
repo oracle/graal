@@ -111,7 +111,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
 
     public SymbolTable.ClosedValueType getClosedValueType() {
         if (symbolTable != null) {
-            return symbolTable.closedTypeAt(getType());
+            return symbolTable.makeClosedType(getType());
         } else {
             // Global was created by WebAssembly#global_alloc
             return switch (ValueType.fromValue(getType())) {

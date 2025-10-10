@@ -3216,6 +3216,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int resultIdx = 0; resultIdx < resultCount; resultIdx++) {
             module.symbolTable().registerFunctionTypeResultType(funcTypeIdx, resultIdx, resultTypes[resultIdx]);
         }
+        module.symbolTable().finishFunctionType(funcTypeIdx);
     }
 
     protected int readValueType() {
