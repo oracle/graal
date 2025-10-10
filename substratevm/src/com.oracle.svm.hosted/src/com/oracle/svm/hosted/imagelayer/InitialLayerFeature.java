@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import static com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
@@ -45,30 +44,19 @@ public class InitialLayerFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-
+    public void duringSetup(DuringSetupAccess access) {
         /*
          * Make sure that critical VM components are included in the base layer by registering
          * runtime APIs as entry points. Although the types below are part of java.base, so they
          * would anyway be included in every base layer created with module=java.base, this ensures
          * that the base layer is usable regardless of the class inclusion policy.
          */
-        String pinReason = "base layer entry point included unconditionally";
-        AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Unsafe.class, "getUnsafe")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Unsafe.class, "allocateInstance", Class.class)).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "gc")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class)).setPinnedToInitialLayer(pinReason);
-
-        /* SVM start-up logic should be pinned to the initial layer. */
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(JavaMainWrapper.class, "doRun", int.class, CCharPointerPointer.class)).setPinnedToInitialLayer(pinReason);
-        /*
-         * We want the method handle invocation present in this method to be inlined, and that is
-         * only possible within the application layer.
-         */
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(JavaMainWrapper.class, "invokeMain", String[].class)).setFullyDelayedToApplicationLayer();
+        var compilationSupport = LayeredCompilationSupport.singleton();
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Unsafe.class, "getUnsafe"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Unsafe.class, "allocateInstance", Class.class), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "gc"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
     }
 
 }
