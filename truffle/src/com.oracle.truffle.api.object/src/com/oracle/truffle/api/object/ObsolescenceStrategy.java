@@ -171,6 +171,13 @@ abstract class ObsolescenceStrategy {
     }
 
     @TruffleBoundary
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags) {
+        Shape shape = object.getShape();
+        Property existingProperty = shape.getProperty(key);
+        return putGeneric(object, key, value, newPropertyFlags, putFlags, shape, existingProperty);
+    }
+
+    @TruffleBoundary
     static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
         if (existingProperty == null) {
             if (Flags.isPutIfPresent(putFlags)) {

@@ -44,14 +44,21 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.lang.invoke.MethodHandles;
+import java.util.List;
 
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
+import com.oracle.truffle.api.object.Shape;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.test.AbstractLibraryTest;
+@RunWith(Parameterized.class)
+public class DynamicObjectConstructorTest extends ParametrizedDynamicObjectTest {
 
-public class DynamicObjectConstructorTest extends AbstractLibraryTest {
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.UNCACHED_ONLY);
+    }
 
     @Test
     public void testIncompatibleShape() {
@@ -65,7 +72,7 @@ public class DynamicObjectConstructorTest extends AbstractLibraryTest {
     public void testNonEmptyShape() {
         Shape emptyShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
         TestDynamicObjectDefault obj = new TestDynamicObjectDefault(emptyShape);
-        DynamicObjectLibrary.getUncached().put(obj, "key", "value");
+        uncachedLibrary().put(obj, "key", "value");
         Shape nonEmptyShape = obj.getShape();
 
         assertFails(() -> new TestDynamicObjectDefault(nonEmptyShape), IllegalArgumentException.class,
