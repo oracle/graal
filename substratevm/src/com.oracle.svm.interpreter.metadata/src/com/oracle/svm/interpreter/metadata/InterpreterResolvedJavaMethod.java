@@ -171,13 +171,13 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
                     InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId, SignaturePolymorphicIntrinsic intrinsic) {
-        this.name = name;
+        this.name = MetadataUtil.requireNonNull(name);
         this.maxLocals = maxLocals;
         this.maxStackSize = maxStackSize;
         this.modifiers = modifiers;
         this.isSubstitutedNative = isSubstitutedNative;
-        this.declaringClass = declaringClass;
-        this.signature = signature;
+        this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
+        this.signature = MetadataUtil.requireNonNull(signature);
         this.interpretedCode = code;
         this.exceptionHandlers = exceptionHandlers;
         this.lineNumberTable = lineNumberTable;
@@ -198,10 +198,10 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     protected InterpreterResolvedJavaMethod(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
         assert RuntimeClassLoading.isSupported();
-        this.name = m.getName();
-        this.signatureSymbol = m.getSignature();
+        this.name = MetadataUtil.requireNonNull(m.getName());
+        this.signatureSymbol = MetadataUtil.requireNonNull(m.getSignature());
 
-        this.declaringClass = declaringClass;
+        this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
         this.modifiers = m.getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
         this.signaturePolymorphic = (m.getFlags() & ACC_SIGNATURE_POLYMORPHIC) != 0;
         CodeAttribute codeAttribute = (CodeAttribute) m.getAttribute(CodeAttribute.NAME);
