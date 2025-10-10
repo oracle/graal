@@ -57,7 +57,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +67,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -153,11 +151,11 @@ final class EngineAccessor extends Accessor {
     static final StringsSupport STRINGS = ACCESSOR.stringsSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
-    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -1217,9 +1215,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
+        public boolean isHostException(Object vmObject, Throwable exception) {
+            PolyglotEngineImpl engine;
+            if (vmObject instanceof PolyglotLanguageContext polyglotLanguageContext) {
+                engine = polyglotLanguageContext.context.engine;
+            } else if (vmObject instanceof PolyglotEngineImpl polyglotEngine) {
+                engine = polyglotEngine;
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unsupported vmObject " + vmObject);
+            }
             // During context pre-initialization, engine.host is null, languages are not allowed to
             // use host interop. But the call to isHostException is supported and returns false
             // because languages cannot create a HostObject.
@@ -1853,14 +1857,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
-            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(engine, hostStack, guestFrames, inHostLanguage, includeHostFrames,
-                            hostFrameConvertor, guestFrameConvertor);
-        }
-
-        @Override
         public boolean isHostToGuestRootNode(RootNode root) {
             return root instanceof HostToGuestRootNode;
         }
@@ -2281,6 +2277,31 @@ final class EngineAccessor extends Accessor {
             return ((PolyglotEngineImpl) engine).out;
         }
 
+        @Override
+        public int findGuestToHostFrame(Object polyglotEngineImpl, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
+            if (engine.host == null) {
+                return -1;
+            }
+            return engine.host.findNextGuestToHostStackTraceElement(firstElement, hostStack, nextElementIndex);
+        }
+
+        @Override
+        public <T extends Throwable> T updateHostException(Throwable forException, T hostException) {
+            return PolyglotImpl.findInstance().getRootImpl().mergeHostStackTrace(forException, hostException);
+        }
+
+        @Override
+        public void materializePolyglotException(RuntimeException polyglotException) {
+            PolyglotExceptionImpl impl = (PolyglotExceptionImpl) PolyglotImpl.findInstance().getAPIAccess().getPolyglotExceptionReceiver(polyglotException);
+            impl.materialize();
+        }
+
+        @Override
+        public boolean isGuestToHostRootNode(Object polyglotEngineImpl, RootNode rootNode) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngineImpl;
+            return engine.host != null && engine.host.isGuestToHostRootNode(rootNode);
+        }
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {
