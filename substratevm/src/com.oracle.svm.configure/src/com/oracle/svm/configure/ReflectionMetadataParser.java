@@ -88,9 +88,9 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         for (T clazz : classes) {
             delegate.registerType(conditionResult.get(), clazz);
 
-            delegate.registerDeclaredClasses(queryCondition, clazz);
-            delegate.registerPublicClasses(queryCondition, clazz);
             if (!jniParser) {
+                delegate.registerPublicClasses(queryCondition, clazz);
+                delegate.registerDeclaredClasses(queryCondition, clazz);
                 delegate.registerRecordComponents(queryCondition, clazz);
                 delegate.registerPermittedSubclasses(queryCondition, clazz);
                 delegate.registerNestMembers(queryCondition, clazz);
