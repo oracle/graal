@@ -1289,6 +1289,7 @@ public abstract class BytecodeNode extends Node {
      */
     @TruffleBoundary
     public static BytecodeNode get(FrameInstance frameInstance) {
+        assert !(frameInstance.getCallNode() instanceof BytecodeRootNode) : "A BytecodeRootNode should not be used as a call location.";
         return get(frameInstance.getCallNode());
     }
 

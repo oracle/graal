@@ -865,6 +865,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "findBytecodeIndex", new String[]{"node", "frame"});
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
+        b.startAssert().string("!(node instanceof ").type(types.BytecodeRootNode).string("): ").doubleQuote("A BytecodeRootNode should not be used as a call location.").end();
         if (model.storeBciInFrame) {
             b.startIf().string("node == null").end().startBlock();
             b.statement("return -1");
@@ -882,7 +883,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(types.Node, "prev", "node");
             b.declaration(types.Node, "current", "node");
             b.startWhile().string("current != null").end().startBlock();
-            b.startIf().string("current ").instanceOf(abstractBytecodeNode.asType()).string(" b").end().startBlock();
+            b.startIf().string("current").instanceOf(abstractBytecodeNode.asType()).string(" b").end().startBlock();
             b.statement("bytecode = b");
             b.statement("break");
             b.end();

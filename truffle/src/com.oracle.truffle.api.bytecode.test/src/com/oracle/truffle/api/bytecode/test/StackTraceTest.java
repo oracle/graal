@@ -45,6 +45,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -87,6 +88,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -97,6 +99,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
@@ -450,6 +453,52 @@ public class StackTraceTest extends AbstractInstructionTest {
         assertNull(BytecodeNode.get(element));
     }
 
+    @Test
+    public void testBadLocationFrameInstance() {
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            CallTarget collectBytecodeNodes = new RootNode(null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    List<BytecodeNode> bytecodeNodes = new ArrayList<>();
+                    Truffle.getRuntime().iterateFrames(f -> {
+                        bytecodeNodes.add(BytecodeNode.get(f));
+                        return null;
+                    });
+                    return bytecodeNodes;
+                }
+            }.getCallTarget();
+
+            StackTraceTestRootNode caller = parse(b -> {
+                b.beginRoot();
+                b.emitCallWithBadLocation(collectBytecodeNodes);
+                b.endRoot();
+            });
+
+            assertThrows(AssertionError.class, () -> caller.getCallTarget().call());
+        }
+    }
+
+    @Test
+    public void testBadLocationTruffleStackTraceElement() {
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            StackTraceTestRootNode capturesStack = parse(b -> {
+                b.beginRoot();
+                b.beginReturn();
+                b.emitCaptureStack();
+                b.endReturn();
+                b.endRoot();
+            });
+
+            StackTraceTestRootNode caller = parse(b -> {
+                b.beginRoot();
+                b.emitCallWithBadLocation(capturesStack.getCallTarget());
+                b.endRoot();
+            });
+
+            assertThrows(AssertionError.class, () -> caller.getCallTarget().call());
+        }
+    }
+
     private StackTraceTestRootNode[] chainCalls(int depth, BytecodeParser<StackTraceTestRootNodeBuilder> innerParser, boolean includeLocation, boolean includeSources) {
         StackTraceTestRootNode[] nodes = new StackTraceTestRootNode[depth];
         nodes[0] = parse(innerParser);
@@ -596,6 +645,17 @@ public class StackTraceTest extends AbstractInstructionTest {
             @Specialization
             static Object doDefault(CallTarget target) {
                 return target.call((Node) null);
+            }
+        }
+
+        @Operation(storeBytecodeIndex = true)
+        @ConstantOperand(type = CallTarget.class)
+        static final class CallWithBadLocation {
+            @Specialization
+            static Object doDefault(CallTarget target, @Bind StackTraceTestRootNode root) {
+                // This is incorrect. The tests using this operation exert paths that should trigger
+                // assertions.
+                return target.call(root);
             }
         }
 
