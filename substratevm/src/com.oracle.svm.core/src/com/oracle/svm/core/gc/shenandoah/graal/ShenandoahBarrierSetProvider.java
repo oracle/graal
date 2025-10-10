@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
+package com.oracle.svm.core.gc.shenandoah.graal;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.core.heap.ReferenceInternals;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-import com.oracle.svm.core.SubstrateOptions;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
+public class ShenandoahBarrierSetProvider implements BarrierSetProvider {
     @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
-
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
+        ResolvedJavaField referentField = ReferenceInternals.getReferentField(metaAccess);
+        return new SubstrateShenandoahBarrierSet(metaAccess.lookupJavaType(Object[].class), referentField);
     }
 }

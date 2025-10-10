@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
-
-import java.util.function.BooleanSupplier;
+package com.oracle.svm.core.gc.shenandoah;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.gc.shenandoah.nativelib.ShenandoahLibrary;
+import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
+import jdk.graal.compiler.word.Word;
+
+public final class ShenandoahPinnedObjectSupport extends AbstractPinnedObjectSupport {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ShenandoahPinnedObjectSupport() {
     }
 
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    @Override
+    @Uninterruptible(reason = "Use untracked pointers. Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    protected void pinObject(Object object) {
+        ShenandoahLibrary.pinObject(Word.objectToUntrackedPointer(object));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Use untracked pointers. Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    protected void unpinObject(Object object) {
+        ShenandoahLibrary.unpinObject(Word.objectToUntrackedPointer(object));
     }
 }

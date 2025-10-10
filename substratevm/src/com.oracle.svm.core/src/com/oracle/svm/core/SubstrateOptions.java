@@ -593,7 +593,7 @@ public class SubstrateOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, ReplacingLocatableMultiOptionValue.DelimitedString oldValue,
                         ReplacingLocatableMultiOptionValue.DelimitedString newValue) {
 
-            if (newValue.contains(GCOptionValue.G1.getValue())) {
+            if (newValue.contains(GCOptionValue.G1.getValue()) || newValue.contains(GCOptionValue.Shenandoah.getValue())) {
                 SubstrateOptions.SpawnIsolates.update(values, true);
                 SubstrateOptions.AllowVMInternalThreads.update(values, true);
                 SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread.update(values, true);
@@ -617,6 +617,11 @@ public class SubstrateOptions {
     @Fold
     public static boolean useG1GC() {
         return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.G1.getValue());
+    }
+
+    @Fold
+    public static boolean useShenandoahGC() {
+        return SubstrateOptions.SupportedGCs.getValue().contains(GCOptionValue.Shenandoah.getValue());
     }
 
     public static class DeprecatedOptions {
@@ -645,6 +650,21 @@ public class SubstrateOptions {
                 if (newValue) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Epsilon.getValue()));
                 } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Epsilon.getValue())) {
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
+                }
+            }
+        };
+
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
+        @APIOption(name = "shenandoah", group = GCGroup.class, customHelp = "Shenandoah garbage collector")//
+        @Option(help = "Use the Shenandoah GC", deprecated = true, deprecationMessage = "Please use '--gc=shenandoah' instead")//
+        public static final HostedOptionKey<Boolean> UseShenandoahGC = new HostedOptionKey<>(false) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Shenandoah.getValue()));
+                } else if (!values.containsKey(SubstrateOptions.SupportedGCs) ||
+                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Shenandoah.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }

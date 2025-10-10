@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
-
-import java.util.function.BooleanSupplier;
+package com.oracle.svm.core.gc.shenandoah;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.gc.shared.NativeGCOptions;
+import com.oracle.svm.core.gc.shenandoah.nativelib.ShenandoahLibrary;
+import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
+public class ShenandoahGC implements GC {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ShenandoahGC() {
     }
 
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    @Override
+    public void collect(GCCause cause) {
+        ShenandoahLibrary.collect(cause.getId());
+    }
+
+    @Override
+    public void collectCompletely(GCCause cause) {
+        ShenandoahLibrary.collect(cause.getId());
+    }
+
+    @Override
+    public void collectionHint(boolean fullGC) {
+        /* Ignore collection hints. */
+    }
+
+    @Override
+    public String getName() {
+        return "Shenandoah GC";
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getDefaultMaxHeapSize() {
+        return String.format("%s%% of RAM", NativeGCOptions.MaxRAMPercentage.getValue());
     }
 }

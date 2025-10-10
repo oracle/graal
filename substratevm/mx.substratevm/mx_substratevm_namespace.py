@@ -40,7 +40,7 @@ qualify_with_namespace = {"swap", "CardTableBarrierSet", "G1BarrierSet", "tty", 
 ignore_files = {"copy_x86.hpp", "copy_aarch64.hpp", "osThread_linux.hpp"}
 ignore_includes = {"CPU_HEADER(copy)", "OS_HEADER(osThread)"}
 
-files_with_cpp_guard = {"sharedGCStructs.h", "g1GCStructs.h"}
+files_with_cpp_guard = {"sharedGCStructs.h", "shenandoahGCStructs.h", "g1GCStructs.h"}
 
 SVM_NAMESPACE = "svm_namespace"
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
+package com.oracle.svm.core.gc.shenandoah.nativelib;
 
-import java.util.function.BooleanSupplier;
+import java.util.Collections;
+import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.ProjectHeaderFile;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
+/** Determines which header files are included when building a native image that uses Shenandoah. */
+public class ShenandoahHeaderFiles implements CContext.Directives {
     @Override
-    public boolean getAsBoolean() {
-        return get();
+    public boolean isInConfiguration() {
+        return SubstrateOptions.useShenandoahGC();
     }
 
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    @Override
+    public List<String> getHeaderFiles() {
+        return Collections.singletonList(ProjectHeaderFile.resolve("", "include/shenandoahGCStructs.h"));
     }
 }

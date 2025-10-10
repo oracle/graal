@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
 
-import java.util.function.BooleanSupplier;
+#ifndef SVM_SHENANDOAH_GC_STRUCTS_H
+#define SVM_SHENANDOAH_GC_STRUCTS_H
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+#include <sys/types.h>
 
-import com.oracle.svm.core.SubstrateOptions;
+#ifdef __cplusplus
+namespace svm_gc {
+#endif
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
+struct ShenandoahHeapOptions {
+  size_t max_heap_size;
+  size_t heap_address_space_size;
+  size_t physical_memory_size;
+};
 
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
-    }
-}
+struct ShenandoahInitState {
+  void* card_table_address;
+  int tlab_top_offset;
+  int tlab_end_offset;
+  int card_table_shift;
+  int log_of_heap_region_grain_bytes;
+  int java_thread_size;
+  int vm_operation_data_size;
+  int vm_operation_wrapper_data_size;
+  char dirty_card_value;
+};
+
+struct ShenandoahRegionBoundaries {
+  u_char *bottom;
+  u_char *top;
+};
+
+struct ShenandoahRegionInfo {
+  u_char *bottom;
+  u_char *top;
+  u_char *end;
+  char region_type;
+};
+
+struct ShenandoahInternalState {
+  unsigned int total_collections;
+  unsigned int full_collections;
+
+  void* card_table_start;
+  size_t card_table_size;
+};
+
+#ifdef __cplusplus
+} // namespace svm_gc
+#endif
+
+#endif // SVM_SHENANDOAH_GC_STRUCTS_H

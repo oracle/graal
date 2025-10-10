@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.gc.shared;
+package com.oracle.svm.core.gc.shenandoah;
 
-import java.util.function.BooleanSupplier;
+import java.util.Collections;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.GCRelatedMXBeans;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class UseNativeGC implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
+public final class ShenandoahRelatedMXBeans extends GCRelatedMXBeans {
 
-    public static boolean get() {
-        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ShenandoahRelatedMXBeans() {
+        beans.addSingleton(java.lang.management.MemoryMXBean.class, new ShenandoahMemoryMXBean());
+        /* The following MX beans are not yet implemented for Shenandoah. */
+        beans.addList(java.lang.management.MemoryPoolMXBean.class, Collections.emptyList());
+        beans.addList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
+        beans.addList(com.sun.management.GarbageCollectorMXBean.class, Collections.emptyList());
     }
 }

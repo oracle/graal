@@ -37,6 +37,7 @@ import jdk.graal.compiler.options.OptionsContainer;
 public enum GCOptionValue {
     Serial("serial"),
     Epsilon("epsilon"),
+    Shenandoah("shenandoah"),
     G1("G1");
 
     private static Set<String> supportedValues = null;
