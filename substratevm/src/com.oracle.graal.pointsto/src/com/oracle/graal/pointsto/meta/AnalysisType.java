@@ -643,6 +643,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * is not reached through other paths.
              */
         }
+        /*
+         * Track fields of tracked types to ensure the analysis results are transferred across
+         * layers. This is important for things such as object layout decisions made in later
+         * layers.
+         */
+        for (var field : getInstanceFields(true)) {
+            ((AnalysisField) field).registerAsTrackedAcrossLayers(reason);
+        }
+        for (var field : getStaticFields()) {
+            ((AnalysisField) field).registerAsTrackedAcrossLayers(reason);
+        }
     }
 
     /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
