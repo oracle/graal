@@ -194,15 +194,21 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
-        if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
-            # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
-            # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
-            # in the manifest file at build time only. Dotty is a special benchmark since it also needs to know
-            # this classpath at runtime to be able to perform compilations. The location of the fatjar must then be
-            # explicitly passed also to the final image.
-            return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + run_args
-        else:
-            return run_args
+        return self._extra_native_run_args(benchmark) + run_args
+
+    def _extra_native_run_args(self, benchmark):
+        if benchmark == "dotty":
+            # Dotty uses -H:+AllowJRTFileSystem which requires setting java.home at run time.
+            dotty_extra_run_args = ['-Djava.home=' + mx.get_jdk().home]
+            if self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
+                # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
+                # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
+                # in the manifest file at build time only. Dotty is a special benchmark since it also needs to know
+                # this classpath at runtime to be able to perform compilations. The location of the fatjar must then be
+                # explicitly passed also to the final image.
+                dotty_extra_run_args += ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))]
+            return dotty_extra_run_args
+        return []
 
     def renaissance_additional_lib(self, lib):
         return mx.library(lib).get_path(True)
@@ -219,16 +225,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_sdk_benchmark.RenaissanceBenchmark
             extra_profile_run_args = mx_sdk_benchmark.adjust_arg_with_number('-r', 1, user_args)
         else:
             extra_profile_run_args = user_args
-
-        if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
-            # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
-            # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
-            # in the manifest file at build time only. Dotty is a special benchmark since it also needs to know
-            # this classpath at runtime to be able to perform compilations. The location of the fatjar must then be
-            # explicitly passed also to the final image.
-            return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + extra_profile_run_args
-        else:
-            return extra_profile_run_args
+        return self._extra_native_run_args(benchmark) + extra_profile_run_args
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
