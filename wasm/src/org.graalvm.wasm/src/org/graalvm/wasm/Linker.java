@@ -191,12 +191,7 @@ public class Linker {
                 ArrayList<Throwable> failures = new ArrayList<>();
                 final int maxStartFunctionIndex = runLinkActions(store, instances, importValues, failures);
                 linkTopologically(store, failures, maxStartFunctionIndex);
-                for (WasmInstance instance : instances.values()) {
-                    WasmModule module = instance.module();
-                    if (instance.isLinkInProgress() && !module.isParsed()) {
-                        module.setParsed();
-                    }
-                }
+                assignTypeEquivalenceClasses(store);
                 resolutionDag = null;
                 runStartFunctions(instances, failures);
                 checkFailures(failures);
@@ -240,6 +235,39 @@ public class Linker {
         for (String moduleName : moduleOrdering) {
             store.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
             i++;
+        }
+    }
+
+    private static void assignTypeEquivalenceClasses(WasmStore store) {
+        final Map<String, WasmInstance> instances = store.moduleInstances();
+        for (WasmInstance instance : instances.values()) {
+            WasmModule module = instance.module();
+            if (instance.isLinkInProgress() && !module.isParsed()) {
+                assignTypeEquivalenceClasses(module, store.language());
+            }
+        }
+    }
+
+    private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
+        var lock = module.getLock();
+        lock.lock();
+        try {
+            if (module.isParsed()) {
+                return;
+            }
+            final SymbolTable symtab = module.symbolTable();
+            for (int index = 0; index < symtab.typeCount(); index++) {
+                SymbolTable.ClosedFunctionType type = symtab.closedFunctionTypeAt(index);
+                int equivalenceClass = language.equivalenceClassFor(type);
+                symtab.setEquivalenceClass(index, equivalenceClass);
+            }
+            for (int index = 0; index < symtab.numFunctions(); index++) {
+                final WasmFunction function = symtab.function(index);
+                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
+            }
+            module.setParsed();
+        } finally {
+            lock.unlock();
         }
     }
 

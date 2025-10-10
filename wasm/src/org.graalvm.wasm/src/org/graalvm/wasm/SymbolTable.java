@@ -48,6 +48,7 @@ import static org.graalvm.wasm.WasmMath.minUnsigned;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -86,6 +87,8 @@ public abstract class SymbolTable {
     private static final byte GLOBAL_FUNCTION_INITIALIZER_BIT = 0x20;
 
     public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
+    public static final int NO_EQUIVALENCE_CLASS = 0;
+    public static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
     public abstract static sealed class ClosedValueType {
         // This is a workaround until we can use pattern matching in JDK 21+.
@@ -104,6 +107,11 @@ public abstract class SymbolTable {
         public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof ClosedValueType otherValueType && isSubtypeOf(otherValueType) && isSupertypeOf(otherValueType);
+        }
     }
 
     public abstract static sealed class ClosedHeapType {
@@ -120,6 +128,11 @@ public abstract class SymbolTable {
         public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof ClosedHeapType otherHeapType && isSubtypeOf(otherHeapType) && isSupertypeOf(otherHeapType);
+        }
     }
 
     public static final class NumberType extends ClosedValueType {
@@ -163,6 +176,11 @@ public abstract class SymbolTable {
         public Kind kind() {
             return Kind.Number;
         }
+
+        @Override
+        public int hashCode() {
+            return value;
+        }
     }
 
     public static final class VectorType extends ClosedValueType {
@@ -196,6 +214,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Vector;
+        }
+
+        @Override
+        public int hashCode() {
+            return value;
         }
     }
 
@@ -244,6 +267,11 @@ public abstract class SymbolTable {
         public Kind kind() {
             return Kind.Reference;
         }
+
+        @Override
+        public int hashCode() {
+            return Boolean.hashCode(nullable) ^ closedHeapType.hashCode();
+        }
     }
 
     public static final class AbstractHeapType extends ClosedHeapType {
@@ -289,6 +317,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Abstract;
+        }
+
+        @Override
+        public int hashCode() {
+            return value;
         }
     }
 
@@ -375,6 +408,11 @@ public abstract class SymbolTable {
         public Kind kind() {
             return Kind.Function;
         }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
+        }
     }
 
     public static final class BottomType extends ClosedValueType {
@@ -402,6 +440,11 @@ public abstract class SymbolTable {
         public Kind kind() {
             return Kind.Bottom;
         }
+
+        @Override
+        public int hashCode() {
+            return Integer.MIN_VALUE;
+        }
     }
 
     public static final class TopType extends ClosedValueType {
@@ -428,6 +471,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Top;
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.MAX_VALUE;
         }
     }
 
@@ -496,6 +544,15 @@ public abstract class SymbolTable {
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
     @CompilationFinal(dimensions = 1) private ClosedValueType[] closedTypes;
+    /**
+     * Stores the type equivalence class.
+     * <p>
+     * Since multiple types have the same shape, each type is mapped to an equivalence class, so
+     * that two types can be quickly compared.
+     * <p>
+     * The equivalence classes are computed globally for all the modules, during linking.
+     */
+    @CompilationFinal(dimensions = 1) private int[] typeEquivalenceClasses;
 
     @CompilationFinal private int typeDataSize;
     @CompilationFinal private int typeCount;
@@ -704,6 +761,7 @@ public abstract class SymbolTable {
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
         this.closedTypes = new ClosedValueType[INITIAL_TYPE_SIZE];
+        this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
         this.importedSymbols = new ArrayList<>();
@@ -787,9 +845,9 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeOffsets} array has enough space to store the data for the type at
-     * {@code index}. If there is not enough space, then a reallocation of the array takes place,
-     * doubling its capacity.
+     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have enough
+     * space to store the data for the type at {@code index}. If there is not enough space, then a
+     * reallocation of the array takes place, doubling its capacity.
      * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
@@ -799,6 +857,7 @@ public abstract class SymbolTable {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
             typeOffsets = reallocate(typeOffsets, typeCount, newLength);
             closedTypes = reallocate(closedTypes, typeCount, newLength);
+            typeEquivalenceClasses = reallocate(typeEquivalenceClasses, typeCount, newLength);
         }
     }
 
@@ -847,6 +906,18 @@ public abstract class SymbolTable {
 
     void finishFunctionType(int funcTypeIdx) {
         closedTypes[funcTypeIdx] = makeClosedType(funcTypeIdx);
+    }
+
+    public int equivalenceClass(int typeIndex) {
+        return typeEquivalenceClasses[typeIndex];
+    }
+
+    void setEquivalenceClass(int index, int eqClass) {
+        checkNotParsed();
+        if (typeEquivalenceClasses[index] != NO_EQUIVALENCE_CLASS) {
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Type at index " + index + " already has an equivalence class.");
+        }
+        typeEquivalenceClasses[index] = eqClass;
     }
 
     private void ensureFunctionsCapacity(int index) {

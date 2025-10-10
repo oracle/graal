@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public final class WasmFunction {
     private final SymbolTable symbolTable;
@@ -50,6 +52,7 @@ public final class WasmFunction {
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
     private final SymbolTable.ClosedFunctionType closedFunctionType;
+    @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
     /** Interop call adapter for argument and return value validation and conversion. */
@@ -88,6 +91,13 @@ public final class WasmFunction {
 
     public int resultTypeAt(int returnIndex) {
         return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
+    }
+
+    void setTypeEquivalenceClass(int typeEquivalenceClass) {
+        if (this.typeEquivalenceClass != SymbolTable.NO_EQUIVALENCE_CLASS) {
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Function at index " + index + " already has an equivalence class.");
+        }
+        this.typeEquivalenceClass = typeEquivalenceClass;
     }
 
     public int[] resultTypes() {
@@ -148,6 +158,10 @@ public final class WasmFunction {
 
     public SymbolTable.ClosedFunctionType closedType() {
         return closedFunctionType;
+    }
+
+    public int typeEquivalenceClass() {
+        return typeEquivalenceClass;
     }
 
     public int index() {

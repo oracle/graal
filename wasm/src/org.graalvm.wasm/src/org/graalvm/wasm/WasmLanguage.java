@@ -95,7 +95,25 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
 
+    private final Map<SymbolTable.ClosedFunctionType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
+    private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
     private final Map<SymbolTable.ClosedFunctionType, CallTarget> interopCallAdapters = new ConcurrentHashMap<>();
+
+    public int equivalenceClassFor(SymbolTable.ClosedFunctionType type) {
+        CompilerAsserts.neverPartOfCompilation();
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            synchronized (this) {
+                equivalenceClass = equivalenceClasses.get(type);
+                if (equivalenceClass == null) {
+                    equivalenceClass = nextEquivalenceClass++;
+                    Integer prev = equivalenceClasses.put(type, equivalenceClass);
+                    assert prev == null;
+                }
+            }
+        }
+        return equivalenceClass;
+    }
 
     /**
      * Gets or creates the interop call adapter for a function type. Always returns the same call

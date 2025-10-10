@@ -582,12 +582,17 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                         }
 
+                        int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+
                         // Target function instance must be from the same context.
                         assert functionInstanceContext == WasmContext.get(this);
 
                         // Validate that the target function type matches the expected type of the
-                        // indirect call.
-                        if (!symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
+                        // indirect call. We first try if the types are equivalent using the
+                        // equivalence classes. If they are not equivalent, we run the full subtype
+                        // matching procedure.
+                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass() &&
+                                        !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
                             enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }
