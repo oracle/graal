@@ -47,7 +47,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.printer.CanonicalStringGraphPrinter;
 import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -104,16 +103,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * replay is close to the code compiled during recording.
  */
 public final class ReplayCompilationSupport {
-    /**
-     * Libgraal build-time system property name for enabling the replay compilation launcher.
-     */
-    public static final String ENABLE_REPLAY_LAUNCHER_PROP = "debug.jdk.graal.enableReplayLauncher";
-
-    /**
-     * Whether the replay compilation launcher is enabled in libgraal.
-     */
-    public static final boolean ENABLE_REPLAY_LAUNCHER = Boolean.parseBoolean(GraalServices.getSavedProperty(ENABLE_REPLAY_LAUNCHER_PROP));
-
     /**
      * Checks whether the given method's compilation should be recorded according to the given
      * options.

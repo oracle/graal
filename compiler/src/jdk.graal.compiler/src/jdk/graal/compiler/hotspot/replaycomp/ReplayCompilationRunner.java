@@ -66,15 +66,12 @@ import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
-//JaCoCo Exclude
-
 /**
  * The entry point for running replay compilations in jargraal and libgraal.
  *
  * @see ReplayCompilationSupport
  * @see CompilerInterfaceDeclarations
  */
-@LibGraalSupport.HostedOnly(unlessTrue = ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER_PROP)
 public class ReplayCompilationRunner {
     /**
      * The exit status of a replay compilation run.
