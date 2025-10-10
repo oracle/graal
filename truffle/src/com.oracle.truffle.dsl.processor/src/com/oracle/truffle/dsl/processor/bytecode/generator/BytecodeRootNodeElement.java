@@ -768,12 +768,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.lineComment("Bytecode or tier changed");
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
-        if (model.isBytecodeUpdatable()) {
+        if (model.isBytecodeUpdatable() || model.hasYieldOperation()) {
             b.declaration(abstractBytecodeNode.asType(), "oldBytecode", "bc");
             b.statement("bc = this.bytecode");
-            b.startAssign("state").startCall("oldBytecode.transitionState");
+
+            if (model.isBytecodeUpdatable()) {
+                b.startAssign("state");
+            } else {
+                b.startStatement();
+            }
+            b.startCall("oldBytecode.transition");
             b.string("bc");
-            b.string("state");
+            if (model.isBytecodeUpdatable()) {
+                b.string("state");
+            }
             if (model.hasYieldOperation()) {
                 b.string("continuationRootNode");
             }
@@ -4193,8 +4201,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startSwitch().string("operation.operation").end().startBlock();
                         b.startCase().tree(createOperationConstant(model.rootOperation)).end();
                         b.startCaseBlock();
-                        emitCastOperationData(b, model.rootOperation, "i", "rootOperationData", "currentState");
-                        b.startIf().string(operationStack.read(model.rootOperation, "rootOperationData", operationFields.index), " == localImpl.rootIndex").end().startBlock();
+                        b.startIf().string(operationStack.read(model.rootOperation, "operation", operationFields.index), " == localImpl.rootIndex").end().startBlock();
                         b.lineComment("root node found");
                         b.statement("return");
                         b.end();
@@ -4487,7 +4494,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                         b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
                         b.startCaseBlock();
-                        emitCastOperationData(b, model.sourceOperation, "i", "sourceData", "currentState");
+                        emitCastOperationData(b, model.sourceOperation, "i", "sourceData", "currentState", false);
                         b.statement("foundSourceIndex = ", operationStack.read(model.sourceOperation, "sourceData", operationFields.sourceIndex));
                         b.statement("break loop");
                         b.end(); // case epilog
@@ -5429,14 +5436,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName) {
-            emitCastOperationData(b, operation, sp, localName, "state");
+            emitCastOperationData(b, operation, sp, localName, "state", true);
         }
 
-        private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName, String stateName) {
+        private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp, String localName, String stateName, boolean checkOperation) {
             b.startDeclaration(operationStack.asType(), localName);
             b.string(stateName, ".operationStack[", sp, "]");
             b.end();
-            b.startAssert().string(localName, ".operation == ").tree(createOperationConstant(operation)).end();
+            if (checkOperation) {
+                b.startAssert().string(localName, ".operation == ").tree(createOperationConstant(operation)).end();
+            }
         }
 
         /**
@@ -9104,11 +9113,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     CodeVariableElement var;
                     if (fieldIndex < variables.size()) {
                         var = variables.get(fieldIndex);
-                    } else {
-                        assert fieldIndex == variables.size();
+                    } else if (fieldIndex == variables.size()) {
                         String prefix = ElementUtils.firstLetterLowerCase(ElementUtils.getTypeSimpleId(fieldType));
                         var = new CodeVariableElement(Set.of(PRIVATE), fieldType, prefix + fieldIndex);
                         variables.add(var);
+                    } else {
+                        throw new AssertionError("fieldIndex %d exceeds variable size %d".formatted(fieldIndex, variables.size()));
                     }
 
                     this.fieldToVariable.put(field, var);
@@ -11772,8 +11782,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             this.add(createTranslateBytecodeIndex());
+            if (model.isBytecodeUpdatable() || model.hasYieldOperation()) {
+                this.add(createTransition());
+            }
             if (model.isBytecodeUpdatable()) {
-                this.add(createTransitionState());
                 this.add(createToStableBytecodeIndex());
                 this.add(createFromStableBytecodeIndex());
                 this.add(createTransitionInstrumentationIndex());
@@ -12612,7 +12624,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.isBytecodeUpdatable()) {
 
                 CodeTreeBuilder tb = CodeTreeBuilder.createBuilder();
-                tb.startCall("transitionState");
+                tb.startCall("transition");
                 tb.startGroup();
                 tb.cast(this.asType());
                 tb.string("newNode");
@@ -12632,18 +12644,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createTransitionState() {
-            CodeExecutableElement transitionState = new CodeExecutableElement(Set.of(FINAL), type(long.class), "transitionState");
-            transitionState.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
-            transitionState.addParameter(new CodeVariableElement(type(long.class), "state"));
+        private CodeExecutableElement createTransition() {
+            // Returns updated state long, if updatable.
+            TypeMirror returnType = model.isBytecodeUpdatable() ? type(long.class) : type(void.class);
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), returnType, "transition");
+            ex.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
+            if (model.isBytecodeUpdatable()) {
+                ex.addParameter(new CodeVariableElement(type(long.class), "state"));
+            }
             if (model.hasYieldOperation()) {
-                transitionState.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
+                ex.addParameter(new CodeVariableElement(continuationRootNodeImpl.asType(), "continuationRootNode"));
             }
 
-            CodeTreeBuilder b = transitionState.createBuilder();
-
-            b.declaration(arrayOf(type(byte.class)), "oldBc", "this.oldBytecodes");
-            b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
+            CodeTreeBuilder b = ex.createBuilder();
 
             if (model.hasYieldOperation()) {
                 /*
@@ -12657,7 +12671,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                  * patches all ContinuationRootNodes with the new bytecode, we don't have to update
                  * anything.
                  */
-                b.startIf().string("continuationRootNode != null && oldBc == null").end().startBlock();
+                b.startIf().string("continuationRootNode != null && this.getTier() == ").staticReference(types.BytecodeTier, "UNCACHED").end().startBlock();
                 b.lineComment("Transition continuationRootNode to cached.");
 
                 b.startDeclaration(types.BytecodeLocation, "newContinuationLocation");
@@ -12675,34 +12689,38 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            b.startIf().string("oldBc == null || this == newBytecode || this.bytecodes == newBc").end().startBlock();
-            b.lineComment("No change in bytecodes.");
-            b.startReturn().string("state").end();
-            b.end();
+            if (model.isBytecodeUpdatable()) {
+                b.declaration(arrayOf(type(byte.class)), "oldBc", "this.oldBytecodes");
+                b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
+                b.startIf().string("oldBc == null || this == newBytecode || this.bytecodes == newBc").end().startBlock();
+                b.lineComment("No change in bytecodes.");
+                b.startReturn().string("state").end();
+                b.end();
 
-            b.declaration(type(int.class), "oldBci", decodeBci("state"));
+                b.declaration(type(int.class), "oldBci", decodeBci("state"));
 
-            b.startDeclaration(type(int.class), "newBci");
-            b.startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
-            if (model.enableTagInstrumentation) {
-                b.string("this.getTagNodes()");
-                b.string("newBytecode.getTagNodes()");
+                b.startDeclaration(type(int.class), "newBci");
+                b.startCall("computeNewBci").string("oldBci").string("oldBc").string("newBc");
+                if (model.enableTagInstrumentation) {
+                    b.string("this.getTagNodes()");
+                    b.string("newBytecode.getTagNodes()");
+                }
+                b.end(); // call
+
+                b.end();
+
+                if (model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
+                    b.startStatement();
+                    b.startCall("getRoot().onBytecodeStackTransition");
+                    emitParseInstruction(b, "this", "oldBci", readInstruction("oldBc", "oldBci"));
+                    emitParseInstruction(b, "newBytecode", "newBci", readInstruction("newBc", "newBci"));
+                    b.end().end();
+                }
+
+                b.startReturn().string(encodeNewBci("newBci", "state")).end();
             }
-            b.end(); // call
 
-            b.end();
-
-            if (model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
-                b.startStatement();
-                b.startCall("getRoot().onBytecodeStackTransition");
-                emitParseInstruction(b, "this", "oldBci", readInstruction("oldBc", "oldBci"));
-                emitParseInstruction(b, "newBytecode", "newBci", readInstruction("newBc", "newBci"));
-                b.end().end();
-            }
-
-            b.startReturn().string(encodeNewBci("newBci", "state")).end();
-
-            return transitionState;
+            return ex;
         }
 
         private CodeExecutableElement createTransitionInstrumentationIndex() {
@@ -12740,19 +12758,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
             }
 
-            CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "transitionInstrumentationIndex");
-            invalidate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
-            invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciBase"));
-            invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciTarget"));
-            invalidate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
-            invalidate.addParameter(new CodeVariableElement(type(int.class), "newBciBase"));
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "transitionInstrumentationIndex");
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "oldBciBase"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "oldBciTarget"));
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "newBciBase"));
             if (model.enableTagInstrumentation) {
-                invalidate.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "oldTagNodes"));
-                invalidate.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "newTagNodes"));
+                ex.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "oldTagNodes"));
+                ex.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "newTagNodes"));
             }
-            CodeTreeBuilder b = invalidate.createBuilder();
+            CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "oldBci", "oldBciBase");
             b.declaration(type(int.class), "newBci", "newBciBase");
+            b.lineComment("Find the last instrumentation instruction executed before oldBciTarget.");
+            b.lineComment("The new bci should point directly after this reference instruction in the new bytecode.");
             b.declaration(type(short.class), "searchOp", "-1");
             if (model.enableTagInstrumentation) {
                 b.declaration(type(int.class), "searchTags", "-1");
@@ -12765,7 +12785,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
                 if (!group.instrumentation) {
-                    // seeing an instrumentation here is a failure
+                    // only instrumentation instructions should be reached
                     continue;
                 }
                 List<InstructionModel> instructions = groupEntry.getValue();
@@ -12795,7 +12815,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // while block
 
             b.startAssert().string("searchOp != -1").end();
-
+            b.lineComment("The instruction may occur multiple times between oldBci and oldTargetBci.");
+            b.lineComment("Count the number of occurrences so that we identify the correct reference instruction.");
             b.startAssign("oldBci").string("oldBciBase").end();
             b.declaration(type(int.class), "opCounter", "0");
 
@@ -12805,7 +12826,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
                 if (!group.instrumentation) {
-                    // seeing an instrumentation here is a failure
+                    // only instrumentation instructions should be reached
                     continue;
                 }
                 List<InstructionModel> instructions = groupEntry.getValue();
@@ -12839,14 +12860,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(); // while block
 
             b.startAssert().string("opCounter > 0").end();
-
+            b.lineComment("Walk the new bytecode to find the location directly after the reference instruction.");
             b.startWhile().string("opCounter > 0").end().startBlock();
             b.declaration(type(short.class), "op", readInstruction("newBc", "newBci"));
             b.startSwitch().string("op").end().startBlock();
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
                 if (!group.instrumentation) {
-                    // seeing an instrumentation here is a failure
+                    // only instrumentation instructions should be reached
                     continue;
                 }
                 List<InstructionModel> instructions = groupEntry.getValue();
@@ -12881,7 +12902,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startReturn().string("newBci").end();
 
-            return invalidate;
+            return ex;
         }
 
         private CodeExecutableElement createComputeNewBci() {
@@ -16914,11 +16935,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
 
             CodeTreeBuilder b = method.createBuilder();
-
-            boolean needsLocalTags = localAccessNeedsLocalTags(instr);
-            if (needsLocalTags) {
-                b.declaration(type(byte[].class), "localTags", readLocalTagsFastPath());
-            }
 
             CodeTree readSlot = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX));
             if (materialized) {
