@@ -29,9 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.vm.ci.code.CodeUtil;
@@ -74,21 +71,7 @@ public class SimdConstant implements SerializableConstant {
     }
 
     public static ConstantNode constantNodeForConstants(JavaConstant[] values) {
-        Stamp[] stamps = new Stamp[values.length];
-        for (int i = 0; i < stamps.length; i++) {
-            JavaConstant c = values[i];
-            if (c.getJavaKind().isNumericInteger()) {
-                /*
-                 * Use the kind's actual bits, but at least 8. Boolean vectors would otherwise have
-                 * an illegal i1 stamp.
-                 */
-                int bits = Math.max(c.getJavaKind().getBitCount(), 8);
-                stamps[i] = IntegerStamp.create(bits, c.asLong(), c.asLong());
-            } else {
-                stamps[i] = StampFactory.forConstant(c);
-            }
-        }
-        return new ConstantNode(new SimdConstant(values), new SimdStamp(stamps));
+        return new ConstantNode(new SimdConstant(values), SimdStamp.forConstants(values));
     }
 
     public static ConstantNode constantNodeForBroadcast(JavaConstant value, int length) {
@@ -133,6 +116,22 @@ public class SimdConstant implements SerializableConstant {
 
     public List<Constant> getValues() {
         return Collections.unmodifiableList(Arrays.asList(values));
+    }
+
+    /**
+     * Returns a newly allocated array of this constant's entries as {@link JavaConstant}s. Returns
+     * {@code null} if some element is not a {@link JavaConstant}.
+     */
+    public JavaConstant[] asJavaConstants() {
+        JavaConstant[] ret = new JavaConstant[getVectorLength()];
+        for (int i = 0; i < getVectorLength(); i++) {
+            if (values[i] instanceof JavaConstant jc) {
+                ret[i] = jc;
+            } else {
+                return null;
+            }
+        }
+        return ret;
     }
 
     public Constant getValue(int idx) {
@@ -203,6 +202,11 @@ public class SimdConstant implements SerializableConstant {
 
     @Override
     public int hashCode() {
+        /*
+         * If you came here wondering why the SIMD stamps <0,0,0,0>, <-1,-1,-1,-1>, and <-1,0,0,-1>
+         * all have the same hash code, it's because PrimitiveConstant#hashCode maps 0 and -1 of the
+         * same kind to the same hash value.
+         */
         return Arrays.deepHashCode(values);
     }
 
