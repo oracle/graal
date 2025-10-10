@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import jdk.graal.compiler.code.CompilationResult;
@@ -65,23 +65,26 @@ import jdk.vm.ci.meta.VMConstant;
 class AMD64HostedPatcherFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new PatchConsumerFactory.HostedPatchConsumerFactory() {
-            @Override
-            public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-                return new Consumer<>() {
-                    @Override
-                    public void accept(Assembler.CodeAnnotation annotation) {
-                        if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AMD64HostedPatcher((OperandDataAnnotation) annotation));
+        ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new AMD64HostedPatchConsumerFactory());
+    }
 
-                        } else if (annotation instanceof AddressDisplacementAnnotation) {
-                            AddressDisplacementAnnotation dispAnnotation = (AddressDisplacementAnnotation) annotation;
-                            compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (JavaConstant) dispAnnotation.annotation));
-                        }
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static final class AMD64HostedPatchConsumerFactory extends PatchConsumerFactory.HostedPatchConsumerFactory {
+        @Override
+        public Consumer<CodeAnnotation> newConsumer(CompilationResult compilationResult) {
+            return new Consumer<>() {
+                @Override
+                public void accept(CodeAnnotation annotation) {
+                    if (annotation instanceof OperandDataAnnotation) {
+                        compilationResult.addAnnotation(new AMD64HostedPatcher((OperandDataAnnotation) annotation));
+
+                    } else if (annotation instanceof AddressDisplacementAnnotation) {
+                        AddressDisplacementAnnotation dispAnnotation = (AddressDisplacementAnnotation) annotation;
+                        compilationResult.addAnnotation(new HostedImageHeapConstantPatch(dispAnnotation.operandPosition, (JavaConstant) dispAnnotation.annotation));
                     }
-                };
-            }
-        });
+                }
+            };
+        }
     }
 }
 

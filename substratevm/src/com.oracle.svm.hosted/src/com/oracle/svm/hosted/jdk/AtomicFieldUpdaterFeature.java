@@ -33,6 +33,10 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -45,6 +49,7 @@ import jdk.internal.misc.Unsafe;
  * offset) and mark it as unsafe accessed.
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class AtomicFieldUpdaterFeature implements InternalFeature {
 
     private boolean sealed = false;
