@@ -48,16 +48,25 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
+import java.util.List;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-public class GR52036 {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 
-    private static final DynamicObjectLibrary OBJLIB = DynamicObjectLibrary.getUncached();
+@RunWith(Parameterized.class)
+public class GR52036 extends ParametrizedDynamicObjectTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.UNCACHED_ONLY);
+    }
 
     /**
      * Regression test for a case of two locations sharing the same type assumption, where one
@@ -82,22 +91,22 @@ public class GR52036 {
         }
 
         Shape initialShape = Shape.newBuilder().build();
-        try (Engine engine = Engine.create(); Context context = Context.newBuilder().engine(engine).build()) {
+        try (Engine engine = Engine.create(); Context ctx = Context.newBuilder().engine(engine).build()) {
             var o1 = new ObjType1(initialShape);
             var o2 = new ObjType1(initialShape);
 
-            OBJLIB.put(o1, "a", new ObjType1(initialShape));
-            OBJLIB.put(o1, "b", new ObjType1(initialShape));
-            OBJLIB.put(o1, "c", new ObjType1(initialShape));
+            uncachedLibrary().put(o1, "a", new ObjType1(initialShape));
+            uncachedLibrary().put(o1, "b", new ObjType1(initialShape));
+            uncachedLibrary().put(o1, "c", new ObjType1(initialShape));
 
-            OBJLIB.put(o2, "a", new ObjType1(initialShape));
-            OBJLIB.put(o2, "b", new ObjType1(initialShape));
-            OBJLIB.put(o2, "c", new ObjType1(initialShape));
+            uncachedLibrary().put(o2, "a", new ObjType1(initialShape));
+            uncachedLibrary().put(o2, "b", new ObjType1(initialShape));
+            uncachedLibrary().put(o2, "c", new ObjType1(initialShape));
 
             assertSame("Objects must have the same shape", o1.getShape(), o2.getShape());
 
             // Remove property "b", shifting the location of "c".
-            OBJLIB.removeKey(o1, "b");
+            uncachedLibrary().removeKey(o1, "b");
 
             var location1 = o1.getShape().getProperty("c").getLocation();
             var location2 = o2.getShape().getProperty("c").getLocation();
@@ -108,7 +117,7 @@ public class GR52036 {
             assertTrue(commonTypeAssumption.isValid());
 
             // Change the type of "c", invalidating the type assumption.
-            OBJLIB.put(o1, "c", new ObjType2(initialShape));
+            uncachedLibrary().put(o1, "c", new ObjType2(initialShape));
             assertFalse("Invalidated type assumption", commonTypeAssumption.isValid());
             assertTrue("New type assumption should be valid", getTypeAssumption(location1).isValid());
             assertNotSame("Type assumption of location1 has been replaced", getTypeAssumptionRecord(location1), commonTypeAssumptionRecord);
@@ -117,7 +126,7 @@ public class GR52036 {
             assertSame("Type assumption of location2 has not been replaced", getTypeAssumptionRecord(location2), commonTypeAssumptionRecord);
 
             // Assign "c" a value still compatible with the invalidated type assumption.
-            OBJLIB.put(o2, "c", new ObjType1(initialShape));
+            uncachedLibrary().put(o2, "c", new ObjType1(initialShape));
             assertTrue("New type assumption of location2 should be valid", getTypeAssumption(location2).isValid());
         }
     }
