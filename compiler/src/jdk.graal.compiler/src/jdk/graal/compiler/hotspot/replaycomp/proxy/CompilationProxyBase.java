@@ -27,8 +27,6 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
-//JaCoCo Exclude
-
 /**
  * A base class for compilation proxies providing implementations of shared methods.
  */

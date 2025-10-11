@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
@@ -1420,7 +1421,9 @@ public final class TypeCheckBuilder {
              */
             static boolean verifyC1POrderingProperty(List<BitSet> c1POrdering, PrimeMatrix matrix) {
                 ArrayList<Integer> overlappingSets = new ArrayList<>();
+                var watchdog = DeadlockWatchdog.singleton();
                 for (int i = 0; i < c1POrdering.size(); i++) {
+                    watchdog.recordActivity();
                     BitSet item = c1POrdering.get(i);
                     boolean hasOverlap = item.intersects(matrix.containedNodes);
                     if (hasOverlap) {
@@ -1816,7 +1819,9 @@ public final class TypeCheckBuilder {
                 return result;
             });
             List<Node> iterationOrder = Arrays.stream(graph.interfaceNodes).sorted(comparator).toList();
+            DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
             for (Node node : iterationOrder) {
+                watchdog.recordActivity();
 
                 // first trying to add grouping to existing slot
                 boolean foundAssignment = false;
@@ -1854,6 +1859,7 @@ public final class TypeCheckBuilder {
 
             // assigning slot IDs
             for (InterfaceSlot slot : slots) {
+                watchdog.recordActivity();
                 List<BitSet> c1POrder = slot.getC1POrder();
                 int slotId = slot.id;
                 int id = 1;
@@ -1872,6 +1878,7 @@ public final class TypeCheckBuilder {
 
             // now computing ranges for each interface
             for (Node interfaceNode : graph.interfaceNodes) {
+                watchdog.recordActivity();
                 int minId = Integer.MAX_VALUE;
                 int maxId = Integer.MIN_VALUE;
                 HostedType type = interfaceNode.type;

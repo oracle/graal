@@ -409,7 +409,7 @@ public class ThreadedInterpreterTest extends GraalCompilerTest {
                 } else {
                     if (opcodeJmpReg) {
                         // preceding byte is 0xFF
-                        if ((b & 0xC2) == 0xC2) {
+                        if ((b & 0xF8) == 0xE0) {
                             count++;
                         }
                     }

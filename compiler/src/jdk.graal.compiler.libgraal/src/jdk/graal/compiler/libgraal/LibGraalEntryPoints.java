@@ -31,7 +31,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -54,7 +53,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -301,7 +299,7 @@ final class LibGraalEntryPoints {
      * @return the exit status of the replay compilation launcher
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_replaycomp_test_ReplayCompilationLauncher_runInLibgraal", include = LibGraalReplayLauncherEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_replaycomp_test_ReplayCompilationLauncher_runInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static int replayCompilation(JNIEnv jniEnv,
                     PointerBase jclass,
                     @IsolateThreadContext long isolateThread,
@@ -320,16 +318,6 @@ final class LibGraalEntryPoints {
             return ReplayCompilationRunner.ExitStatus.Failure.getStatus();
         } finally {
             LibGraalSupportImpl.doReferenceHandling();
-        }
-    }
-
-    /**
-     * Controls whether the replay launcher entry point should be included in libgraal.
-     */
-    private static final class LibGraalReplayLauncherEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return new LibGraalFeature.IsEnabled().getAsBoolean() && ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER;
         }
     }
 }

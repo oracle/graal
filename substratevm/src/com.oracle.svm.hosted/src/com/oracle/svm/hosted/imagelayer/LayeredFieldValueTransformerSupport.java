@@ -270,11 +270,10 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredFieldValueTransformerSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    LayeredFieldValueTransformerSupport support = (LayeredFieldValueTransformerSupport) singleton;
-                    var fieldsWithUpdatableValues = support.fieldToLayeredTransformer.entrySet().stream()
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
+                    var fieldsWithUpdatableValues = singleton.fieldToLayeredTransformer.entrySet().stream()
                                     .filter(e -> e.getValue().currentLayerHasUpdatableValues)
                                     .map(e -> e.getKey().getId()).toList();
                     writer.writeIntList("fieldsWithUpdatableValues", fieldsWithUpdatableValues);
@@ -282,8 +281,8 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    ((LayeredFieldValueTransformerSupport) singleton).fieldsWithUpdatableValues = Set.copyOf(loader.readIntList("fieldsWithUpdatableValues"));
+                public void onSingletonRegistration(ImageSingletonLoader loader, LayeredFieldValueTransformerSupport singleton) {
+                    singleton.fieldsWithUpdatableValues = Set.copyOf(loader.readIntList("fieldsWithUpdatableValues"));
                 }
             });
         }

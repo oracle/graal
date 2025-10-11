@@ -1099,6 +1099,17 @@ void ProjectionTest(int n)
   List_Destroy(dests);
 }
 
+void OutlierRemovalAverageSummary() {
+}
+
+double OutlierRemovalAverageSummaryLowerThreshold() {
+  return 0.0;
+}
+
+double OutlierRemovalAverageSummaryUpperThreshold() {
+  return 0.5;
+}
+
 int run()
 {
   int n = 1000;

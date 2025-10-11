@@ -35,7 +35,6 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GlobalMetrics;
@@ -77,7 +76,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * @see ReplayCompilationSupport
  */
-@LibGraalSupport.HostedOnly(unlessTrue = ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER_PROP)
 public class ReplayCompilationProxies implements CompilationProxies {
     public static class Options {
         // @formatter:off
@@ -569,7 +567,11 @@ public class ReplayCompilationProxies implements CompilationProxies {
                 entry: for (int j = 0; j < entries; j++) {
                     for (int k = 0; k < method.paramCount(); k++) {
                         Object arg = operationResults[i++];
-                        if (!Objects.equals(args[k], arg)) {
+                        /*
+                         * Call equals on the deserialized object to allow the deserialized object
+                         * to override equals behavior (i.e., to support ClassSurrogate).
+                         */
+                        if (!Objects.equals(arg, args[k])) {
                             i += method.paramCount() - k;
                             continue entry;
                         }

@@ -72,7 +72,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
 from mx_util import Stage, StageName, Layer
-from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite, Vm, SingleBenchmarkExecutionContext
+from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite, Vm, SingleBenchmarkExecutionContext, ForkInfo
 from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('sdk')
@@ -3061,8 +3061,8 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         self.baristaProjectConfigurationPath()
         self.baristaHarnessPath()
 
-    def new_execution_context(self, vm: Vm, benchmarks: List[str], bmSuiteArgs: List[str]) -> SingleBenchmarkExecutionContext:
-        return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs)
+    def new_execution_context(self, vm: Optional[Vm], benchmarks: List[str], bmSuiteArgs: List[str], fork_info: Optional[ForkInfo] = None) -> SingleBenchmarkExecutionContext:
+        return SingleBenchmarkExecutionContext(self, vm, benchmarks, bmSuiteArgs, fork_info)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         # Pass the VM options, BaristaCommand will form the final command.

@@ -35,6 +35,17 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Lowering provider used as the "host" lowering provider when running the native image generator on
+ * espresso.
+ * <p>
+ * It is used as part of {code
+ * com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport} while parsing methods and
+ * canonicalizing graphs. This dummy version tries to provide as neutral answers as possible.
+ * <p>
+ * See also {@code com.oracle.graal.pointsto.util.GraalAccess} for how the native image generator
+ * accesses the "host" providers.
+ */
 public final class DummyLoweringProvider implements LoweringProvider {
     private final TargetDescription target;
 

@@ -27,13 +27,15 @@ package com.oracle.svm.core.traits;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 
+import jdk.graal.compiler.debug.Assertions;
+
 // GR-66792 remove once no custom persist actions exist
 
 /**
  * Temporarily used to convert {@link LayeredImageSingleton} callbacks into {@link SingletonTrait}
  * information.
  */
-public final class InjectedSingletonLayeredCallbacks extends SingletonLayeredCallbacks {
+public final class InjectedSingletonLayeredCallbacks extends SingletonLayeredCallbacks<LayeredImageSingleton> {
     final LayeredImageSingleton singleton;
 
     public InjectedSingletonLayeredCallbacks(LayeredImageSingleton singleton) {
@@ -41,7 +43,9 @@ public final class InjectedSingletonLayeredCallbacks extends SingletonLayeredCal
     }
 
     @Override
-    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object obj) {
+    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredImageSingleton obj) {
+        assert singleton == obj : Assertions.errorMessage(singleton, obj);
+
         return singleton.preparePersist(writer);
     }
 

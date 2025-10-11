@@ -43,8 +43,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-//JaCoCo Exclude
-
 public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.CompilationProxyAnnotatedBase implements HotSpotResolvedJavaMethod, Formattable {
     HotSpotResolvedJavaMethodProxy(InvocationHandler handler) {
         super(handler);

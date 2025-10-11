@@ -281,7 +281,7 @@ public class SymbolicSnippetEncoder {
         // Dumps of the graph preparation step can be captured with -H:Dump=LibGraal:2 and
         // MethodFilter can be used to focus on particular snippets.
         IntrinsicContext.CompilationContext contextToUse = IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-        try (DebugContext debug = snippetReplacements.openDebugContext("LibGraalBuildGraph_", method, options)) {
+        try (DebugContext debug = snippetReplacements.openSnippetDebugContext("LibGraalBuildGraph_", method, options)) {
             StructuredGraph graph;
             try (DebugContext.Scope s = debug.scope("LibGraal", method)) {
                 graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, nonNullParameters, original,

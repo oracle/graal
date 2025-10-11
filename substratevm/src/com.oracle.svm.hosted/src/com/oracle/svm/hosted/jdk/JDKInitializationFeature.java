@@ -37,6 +37,10 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -54,6 +58,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
     private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
@@ -228,7 +233,10 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
-        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+            rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl", JDK_CLASS_REASON);
+            rci.initializeAtRunTime("sun.security.ssl.SSLAlgorithmConstraints", JDK_CLASS_REASON);
+        } else {
             rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
             rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);

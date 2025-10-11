@@ -25,10 +25,10 @@
 
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.util.ByteFormattingUtil;
-
 import java.net.URL;
 import java.security.CodeSource;
+
+import com.oracle.svm.core.util.ByteFormattingUtil;
 
 final class ProgressReporterUtils {
 
@@ -85,10 +85,20 @@ final class ProgressReporterUtils {
                 }
                 break;
             }
+            if (sb.length() + 2 >= maxLength) {
+                // if next char + '.' reaches limit, stop
+                sb.append(TRUNCATION_PLACEHOLDER);
+                break;
+            }
             sb.append(fqn.charAt(currentDot + 1)).append('.');
             if (sb.length() + (classNameLength - nextDot) <= maxLength) {
                 // Rest fits maxLength, append and return.
                 sb.append(fqn.substring(nextDot + 1));
+                break;
+            }
+            if (sb.length() + 1 >= maxLength) {
+                // if no more space for next reduction, stop
+                sb.append(TRUNCATION_PLACEHOLDER);
                 break;
             }
             currentDot = nextDot;

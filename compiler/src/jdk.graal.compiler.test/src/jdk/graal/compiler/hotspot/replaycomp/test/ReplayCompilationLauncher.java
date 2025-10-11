@@ -31,7 +31,6 @@ import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.graal.compiler.api.test.ModuleSupport;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
-import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
 import jdk.graal.compiler.hotspot.test.LibGraalCompilationDriver;
 
 /**
@@ -55,13 +54,7 @@ public class ReplayCompilationLauncher {
 
     public static void main(String[] args) {
         if (LibGraal.isAvailable()) {
-            try {
-                LibGraal.registerNativeMethods(ReplayCompilationLauncher.class);
-            } catch (Error error) {
-                System.err.printf("The replay launcher entry point could not be linked. Build libgraal with -D%s=true as an extra image builder option to enable the launcher.%n",
-                                ReplayCompilationSupport.ENABLE_REPLAY_LAUNCHER_PROP);
-                throw error;
-            }
+            LibGraal.registerNativeMethods(ReplayCompilationLauncher.class);
             StringBuilder argString = new StringBuilder();
             for (String arg : args) {
                 if (!argString.isEmpty()) {

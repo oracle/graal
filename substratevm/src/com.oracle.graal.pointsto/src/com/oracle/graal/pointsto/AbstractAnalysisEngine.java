@@ -103,6 +103,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final ClassInclusionPolicy classInclusionPolicy;
     private static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[]{};
     private static final ResolvedJavaField[] NO_FIELDS = new ResolvedJavaField[]{};
+    private volatile boolean initialized = false;
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
@@ -224,6 +225,19 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         /* Initialize for the next iteration. */
         executor.init(getTiming());
         return analysisModified;
+    }
+
+    @Override
+    public void markInitializationFinished() {
+        assert !initialized;
+
+        initialized = true;
+        universe.notifyBigBangInitialized();
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
     }
 
     @Override

@@ -56,8 +56,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-//JaCoCo Exclude
-
 public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType implements CompilationProxy permits HotSpotResolvedObjectTypeProxy {
     private final InvocationHandler handler;
 
@@ -96,7 +94,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     }
 
     private static final SymbolicMethod isHiddenMethod = method("isHidden");
-    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).isHidden();
+    private static final InvokableMethod isHiddenInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isHidden();
 
     @Override
     public boolean isHidden() {
@@ -392,7 +390,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     }
 
     private static final SymbolicMethod getDeclaredTypesMethod = method("getDeclaredTypes");
-    private static final InvokableMethod getDeclaredTypesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods();
+    private static final InvokableMethod getDeclaredTypesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredTypes();
 
     @Override
     public ResolvedJavaType[] getDeclaredTypes() {
@@ -446,7 +444,7 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     @SuppressWarnings("unchecked")
     public List<ResolvedJavaMethod> getAllMethods(boolean forceLink) {
-        return (List<ResolvedJavaMethod>) handle(getAllMethodsMethod, getAllMethodsInvokable);
+        return (List<ResolvedJavaMethod>) handle(getAllMethodsMethod, getAllMethodsInvokable, forceLink);
     }
 
     private static final SymbolicMethod getDeclaredMethodsBooleanMethod = method("getDeclaredMethods", boolean.class);

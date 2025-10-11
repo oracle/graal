@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -106,6 +107,7 @@ public class AnalysisUniverse implements Universe {
 
     private Function<Object, Object>[] objectReplacers;
     private Function<Object, ImageHeapConstant>[] objectToConstantReplacers;
+    private Consumer<AnalysisType>[] onTypeCreatedCallbacks;
 
     private SubstitutionProcessor[] featureSubstitutions;
     private SubstitutionProcessor[] featureNativeSubstitutions;
@@ -147,6 +149,7 @@ public class AnalysisUniverse implements Universe {
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
         objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
+        onTypeCreatedCallbacks = (Consumer<AnalysisType>[]) new Consumer<?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
         unsafeAccessedStaticFields = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
@@ -326,6 +329,12 @@ public class AnalysisUniverse implements Universe {
             Object oldValue = types.put(type, newValue);
             assert oldValue == claim : oldValue + " != " + claim;
             claim = null;
+
+            /*
+             * Trigger type creation callbacks. Note this will run in parallel with other threads
+             * being able to retrieve this AnalysisType from {@code types}.
+             */
+            runOnTypeCreatedCallbacks(newValue);
 
             return newValue;
 
@@ -621,6 +630,13 @@ public class AnalysisUniverse implements Universe {
         objectToConstantReplacers[objectToConstantReplacers.length - 1] = replacer;
     }
 
+    public void registerOnTypeCreatedCallback(Consumer<AnalysisType> consumer) {
+        assert consumer != null;
+        assert !bb.isInitialized() : "too late to add a callback";
+        onTypeCreatedCallbacks = Arrays.copyOf(onTypeCreatedCallbacks, onTypeCreatedCallbacks.length + 1);
+        onTypeCreatedCallbacks[onTypeCreatedCallbacks.length - 1] = consumer;
+    }
+
     public void registerFeatureSubstitution(SubstitutionProcessor substitution) {
         SubstitutionProcessor[] subs = featureSubstitutions;
         subs = Arrays.copyOf(subs, subs.length + 1);
@@ -697,6 +713,40 @@ public class AnalysisUniverse implements Universe {
         }
 
         return ihc == null ? destination : ihc;
+    }
+
+    public void notifyBigBangInitialized() {
+        assert bb.isInitialized();
+
+        /*
+         * It is possible for types to be created before all typeCreationCallbacks are installed.
+         * Hence, we trigger the typeCreationCallbacks for all types created prior to the completion
+         * of big bang initialization at this point.
+         */
+        for (var obj : types.values().toArray()) {
+            /*
+             * Nominally the map values are of type object and can hold a thread object while an
+             * AnalysisType is being created. However, this method is called when all values will be
+             * of type AnalysisType.
+             */
+            AnalysisType aType = (AnalysisType) obj;
+            runOnTypeCreatedCallbacks(aType);
+        }
+    }
+
+    private void runOnTypeCreatedCallbacks(AnalysisType type) {
+        if (bb == null || !bb.isInitialized()) {
+            /*
+             * Until the big bang is initialized, it is possible for more callbacks to be
+             * registered. Hence, these hooks are run on all types created before big bang
+             * initialization via {@code notifyBigBangInitialized}
+             */
+            return;
+        }
+
+        for (var callback : onTypeCreatedCallbacks) {
+            bb.postTask((t) -> callback.accept(type));
+        }
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {

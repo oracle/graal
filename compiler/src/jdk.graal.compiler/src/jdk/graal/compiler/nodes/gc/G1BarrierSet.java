@@ -25,12 +25,10 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
-import org.graalvm.word.LocationIdentity;
-
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -48,18 +46,14 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class G1BarrierSet implements BarrierSet {
+public class G1BarrierSet extends BarrierSet {
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
 
-    public G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+    protected G1BarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField, boolean hasDeferredInitBarriers) {
+        super(GraphState.StageFlag.MID_TIER_BARRIER_ADDITION, hasDeferredInitBarriers);
         this.objectArrayType = objectArrayType;
         this.referentField = referentField;
-    }
-
-    @Override
-    public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
-        return BarrierType.NONE;
     }
 
     @Override
@@ -86,16 +80,6 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
-    }
-
-    @Override
-    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
-        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
-    }
-
-    @Override
     public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
@@ -111,32 +95,16 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     @Override
-    public boolean hasWriteBarrier() {
-        return true;
-    }
-
-    @Override
-    public boolean hasReadBarrier() {
-        return false;
-    }
-
-    @Override
     public void addBarriers(FixedAccessNode n, CoreProviders context) {
-        if (n instanceof ReadNode) {
-            addReadNodeBarriers((ReadNode) n);
-        } else if (n instanceof WriteNode) {
-            WriteNode write = (WriteNode) n;
-            addWriteBarriers(write, write.value(), null, true);
-        } else if (n instanceof LoweredAtomicReadAndWriteNode) {
-            LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
-            addWriteBarriers(atomic, atomic.getNewValue(), null, true);
-        } else if (n instanceof AbstractCompareAndSwapNode) {
-            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
-            addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false);
-        } else if (n instanceof ArrayRangeWrite) {
-            addArrayRangeBarriers((ArrayRangeWrite) n);
-        } else {
-            GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
+        switch (n) {
+            case ReadNode readNode -> addReadNodeBarriers(readNode);
+            case WriteNode write -> addWriteBarriers(write, write.value(), null, true);
+            case LoweredAtomicReadAndWriteNode atomic -> addWriteBarriers(atomic, atomic.getNewValue(), null, true);
+            case AbstractCompareAndSwapNode cmpSwap ->
+                addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false);
+            case ArrayRangeWrite arrayRangeWrite -> addArrayRangeBarriers(arrayRangeWrite);
+            default ->
+                GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
         }
     }
 
@@ -170,7 +138,7 @@ public class G1BarrierSet implements BarrierSet {
             case ARRAY:
             case UNKNOWN:
             case AS_NO_KEEPALIVE_WRITE:
-                if (isObjectValue(writtenValue)) {
+                if (writtenValue.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp) {
                     StructuredGraph graph = node.graph();
                     boolean init = node.getLocationIdentity().isInit();
                     if (!init && barrierType != BarrierType.AS_NO_KEEPALIVE_WRITE) {
@@ -202,10 +170,13 @@ public class G1BarrierSet implements BarrierSet {
 
     @SuppressWarnings("unused")
     protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
-        // Without help from the runtime all writes (except null writes) require an explicit post
-        // barrier.
-        assert isObjectValue(writtenValue);
-        return !StampTool.isPointerAlwaysNull(writtenValue);
+        if (!(writtenValue.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp)) {
+            return false;
+        }
+        if (StampTool.isPointerAlwaysNull(writtenValue)) {
+            return false;
+        }
+        return !hasDeferredInitBarriers || !isWriteToNewObject(node);
     }
 
     private void addArrayRangeBarriers(ArrayRangeWrite write) {
@@ -226,7 +197,10 @@ public class G1BarrierSet implements BarrierSet {
 
     @SuppressWarnings("unused")
     protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
-        return true;
+        if (!write.writesObjectArray()) {
+            return false;
+        }
+        return !hasDeferredInitBarriers || !isWriteToNewObject(write.asFixedAccessNode());
     }
 
     private void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, StructuredGraph graph) {
@@ -239,10 +213,6 @@ public class G1BarrierSet implements BarrierSet {
     private void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, ValueNode object, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         graph.addAfterFixed(node, graph.add(new G1PostWriteBarrierNode(address, maybeUncompressExpectedValue(value), object, alwaysNull)));
-    }
-
-    private static boolean isObjectValue(ValueNode value) {
-        return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
     }
 
     @Override

@@ -32,7 +32,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitution(languageFilter = VersionFilter.Java11OrLater.class)
     public static void registerNatives() {
-        LOGGER.warning("Ignoring jdk.jfr.internal.JVM initialization, JFR is not supported in Espresso");
+        LOGGER.fine("Ignoring jdk.jfr.internal.JVM initialization, JFR is not supported in Espresso");
     }
 
     @Substitution(languageFilter = VersionFilter.Java11OrLater.class)

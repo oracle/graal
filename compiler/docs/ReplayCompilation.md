@@ -65,18 +65,12 @@ Any `-ea`, `-esa`, and `-X` arguments from the command line are passed to the JV
 
 Jargraal can replay both jargraal and libgraal compilations. Libgraal can replay only libgraal compilations.
 
-It is necessary to explicitly enable the replay launcher entry point when building libgraal using the VM argument
-`-Ddebug.jdk.graal.enableReplayLauncher=true`.
+To replay on libgraal, build libgraal first. Then, pass the `--libgraal` argument to `mx replaycomp`, which invokes the
+native launcher. With the below commands, all replay related processing (including JSON parsing) is performed by
+libgraal code.
 
 ```shell
-EXTRA_IMAGE_BUILDER_ARGUMENTS=-Ddebug.jdk.graal.enableReplayLauncher=true mx --env libgraal build
-```
-
-When the `--libgraal` argument is passed to `mx replaycomp`, the previously built libgraal native library is loaded, and
-the native launcher is invoked instead of the Java launcher. With the below command, all replay related processing
-(including JSON parsing) is performed by libgraal code.
-
-```shell
+mx -p ../vm --env libgraal build
 mx replaycomp --libgraal ./replay-files
 ```
 

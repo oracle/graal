@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.handles;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
 @AutomaticallyRegisteredFeature
 final class PinnedPrimitiveArrayViewFeature implements InternalFeature {
@@ -51,7 +50,6 @@ final class PinnedPrimitiveArrayViewSupportImpl implements PrimitiveArrayViewSup
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void close() {
             pinnedObject.close();
         }

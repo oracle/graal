@@ -31,8 +31,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
 public final class HotSpotObjectConstantProxy extends HotSpotConstantProxy implements HotSpotObjectConstant {
     HotSpotObjectConstantProxy(InvocationHandler handler) {
         super(handler);

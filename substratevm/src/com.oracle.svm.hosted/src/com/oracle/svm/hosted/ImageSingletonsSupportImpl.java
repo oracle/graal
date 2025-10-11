@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
@@ -437,7 +438,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
                 if (layeredBuild) {
                     if (traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).isEmpty()) {
-                        SingletonLayeredCallbacks action = new InjectedSingletonLayeredCallbacks(layeredImageSingleton);
+                        SingletonLayeredCallbacks<?> action = new InjectedSingletonLayeredCallbacks(layeredImageSingleton);
                         traitMap.addTrait(new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action));
                     }
                 }
@@ -500,10 +501,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             /* Run onSingletonRegistration hook if needed. */
             if (extensionLayerBuild) {
                 if (singletonLoader.hasRegistrationCallback(key)) {
-                    synchronizeRegistrationCallbackExecution(value, () -> {
-                        var trait = traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get();
-                        var callbacks = ((SingletonLayeredCallbacks) trait.metadata());
-                        callbacks.onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), value);
+                    synchronizeRegistrationCallbackExecution(value, new Runnable() {
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        public void run() {
+                            var trait = traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get();
+                            SubstrateUtil.cast(trait.metadata(), SingletonLayeredCallbacks.class).onSingletonRegistration(singletonLoader.getImageSingletonLoader(key), value);
+                        }
                     });
                 }
             }
@@ -617,6 +621,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             VMError.guarantee(info.singleton() != null);
             Object singleton = info.singleton();
+            if (singleton == SINGLETON_INSTALLATION_FORBIDDEN) {
+                throw UserError.abort("Singleton is forbidden in current layer. Key: %s", key.getTypeName());
+            }
             if (!allowMultiLayered) {
                 var trait = info.traitMap().getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND);
                 trait.ifPresent(t -> {

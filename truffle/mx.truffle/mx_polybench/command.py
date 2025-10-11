@@ -281,7 +281,7 @@ def _validate_jdk(run_spec: "PolybenchRunSpecification") -> mx.JDKConfig:
         '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
     )
     if not mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home):
-        if run_spec.is_native:
+        if run_spec.is_native():
             mx.abort(
                 f"Polybench was invoked with a non-Graal JDK ({jdk.home}), but a native image run was requested. "
                 f"Re-run using a Graal JDK. " + rerun_details

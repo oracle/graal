@@ -169,7 +169,8 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return name;
     }
 
-    boolean isWritable() {
+    @Override
+    public boolean isWritable() {
         return writable;
     }
 

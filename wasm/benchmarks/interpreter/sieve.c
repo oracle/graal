@@ -23,6 +23,17 @@
  * questions.
  */
 
+void OutlierRemovalAverageSummary() {
+}
+
+double OutlierRemovalAverageSummaryLowerThreshold() {
+  return 0.0;
+}
+
+double OutlierRemovalAverageSummaryUpperThreshold() {
+  return 0.5;
+}
+
 int run() {
   int i;
   int number = 600000;

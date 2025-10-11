@@ -117,6 +117,7 @@ public class InformationLeak {
         }
     }
 
+    @TruffleBoundary
     public boolean istty() {
         if (!(context.getEnv().in() == System.in && context.getEnv().out() == System.out)) {
             return false;

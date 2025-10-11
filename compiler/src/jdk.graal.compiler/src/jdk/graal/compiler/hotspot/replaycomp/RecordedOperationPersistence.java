@@ -35,6 +35,7 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
@@ -43,7 +44,7 @@ import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.Platform;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
-import jdk.graal.compiler.hotspot.stubs.IllegalArgumentExceptionArgumentIsNotAnArrayStub;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -57,19 +58,24 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.hotspot.VMField;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.hotspot.amd64.AMD64HotSpotRegisterConfig;
 import jdk.vm.ci.hotspot.riscv64.RISCV64HotSpotRegisterConfig;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -187,8 +193,41 @@ public class RecordedOperationPersistence {
     }
 
     private static final class ClassSerializer implements ObjectSerializer {
-        private static final Class<?>[] knownClasses = new Class<?>[]{String.class, System.class, Object[].class,
-                        ExceptionHandler.class, IllegalArgumentExceptionArgumentIsNotAnArrayStub.class};
+        /**
+         * Class constants mapped by name used during deserialization. Classes not present in this
+         * map are deserialized as {@link ClassSurrogate}.
+         */
+        private static final Map<String, Class<?>> knownClasses = createKnownClasses();
+
+        private static Map<String, Class<?>> createKnownClasses() {
+            Class<?>[] classes = {
+                            // Needed to deserialize enum constants
+                            AMD64.CPUFeature.class, AArch64.CPUFeature.class, RISCV64.CPUFeature.class,
+                            DeoptimizationReason.class, JavaKind.class, MethodHandleAccessProvider.IntrinsicMethod.class,
+                            // Needed to deserialize array component types
+                            HotSpotResolvedJavaMethod.class, HotSpotResolvedJavaField.class, HotSpotResolvedObjectType.class,
+                            Object.class, ExceptionHandler.class, TriState.class, AllocatableValue.class, Value.class,
+                            // Needed to deserialize Field objects
+                            String.class,
+            };
+            Map<String, Class<?>> map = new EconomicHashMap<>();
+            for (Class<?> clazz : classes) {
+                map.put(clazz.getName(), clazz);
+            }
+            return map;
+        }
+
+        /**
+         * Casts a deserialized object to a {@link Class}, providing an actionable error message if
+         * the class was deserialized as a {@link ClassSurrogate}.
+         */
+        @SuppressWarnings("unchecked")
+        public static <C> Class<C> classCast(Object clazz) {
+            if (clazz instanceof ClassSurrogate(String name)) {
+                throw new GraalError(String.format("Failed to find a Class object for %s. This can be fixed by adding %s.class to ClassSerializer#knownClasses.", name, name));
+            }
+            return (Class<C>) clazz;
+        }
 
         @Override
         public Class<?> clazz() {
@@ -206,22 +245,17 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Class<?> deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             String name = (String) json.get("name");
             Class<?> primitiveClass = Class.forPrimitiveName(name);
             if (primitiveClass != null) {
                 return primitiveClass;
             }
-            for (Class<?> knownClass : knownClasses) {
-                if (knownClass.getName().equals(name)) {
-                    return knownClass;
-                }
+            Class<?> knownClass = knownClasses.get(name);
+            if (knownClass != null) {
+                return knownClass;
             }
-            try {
-                return Class.forName(name);
-            } catch (ClassNotFoundException e) {
-                throw new DeserializationException(this, json, e);
-            }
+            return new ClassSurrogate(name);
         }
     }
 
@@ -404,7 +438,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             String loader = (String) json.get("loader");
             String module = (String) json.get("module");
             String moduleVer = (String) json.get("moduleVer");
@@ -434,7 +468,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             return json.get("content");
         }
     }
@@ -457,7 +491,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             return json.get("value");
         }
     }
@@ -513,7 +547,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             String className = (String) json.get("class");
             String value = (String) json.get("value");
             switch (className) {
@@ -609,22 +643,15 @@ public class RecordedOperationPersistence {
         @Override
         public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
             Enum<?> en = (Enum<?>) instance;
-            objectBuilder.append("holder", en.getClass().getName());
+            serializer.serialize(en.getClass(), objectBuilder.append("holder"));
             objectBuilder.append("constant", en.name());
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
-            String holderName = (String) json.get("holder");
+            Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) deserializer.deserialize(json.get("holder"), proxyFactory);
             String constantName = (String) json.get("constant");
-            Class<? extends Enum<?>> enumClass;
-            try {
-                enumClass = (Class<? extends Enum<?>>) Class.forName(holderName);
-            } catch (ClassNotFoundException e) {
-                throw new DeserializationException(this, json, e);
-            }
-            // TODO This could be more efficient.
             for (Enum<?> constant : enumClass.getEnumConstants()) {
                 if (constant.name().equals(constantName)) {
                     return constant;
@@ -676,7 +703,7 @@ public class RecordedOperationPersistence {
         @SuppressWarnings("unchecked")
         @Override
         public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
-            Class<?> component = (Class<?>) deserializer.deserialize(json.get("component"), proxyFactory);
+            Class<?> component = ClassSerializer.classCast(deserializer.deserialize(json.get("component"), proxyFactory));
             List<Object> elements = (List<Object>) json.get("elements");
             Object[] array = (Object[]) Array.newInstance(component, elements.size());
             for (int i = 0; i < elements.size(); i++) {
@@ -813,7 +840,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             return singleton;
         }
     }
@@ -868,7 +895,7 @@ public class RecordedOperationPersistence {
 
         @Override
         public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
-            Class<?> holder = (Class<?>) deserializer.deserialize(json.get("holder"), proxyFactory);
+            Class<?> holder = ClassSerializer.classCast(deserializer.deserialize(json.get("holder"), proxyFactory));
             String name = (String) json.get("name");
             try {
                 if (holder == String.class) {
@@ -1077,7 +1104,7 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             String name = (String) json.get("name");
             return UnresolvedJavaType.create(name);
         }
@@ -1190,11 +1217,11 @@ public class RecordedOperationPersistence {
         }
 
         @Override
-        public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
+        public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) {
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
             return new ForeignCallDescriptorSurrogate();
         }
     }
@@ -1621,7 +1648,7 @@ public class RecordedOperationPersistence {
         @Override
         @SuppressWarnings("unchecked")
         public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
-            Class<UnknownEnum> elementType = (Class<UnknownEnum>) deserializer.deserialize(json.get("enum"), proxyFactory);
+            Class<UnknownEnum> elementType = ClassSerializer.classCast(deserializer.deserialize(json.get("enum"), proxyFactory));
             return asEnumSet(elementType, (List<Object>) json.get("ordinals"));
         }
 
@@ -1790,19 +1817,19 @@ public class RecordedOperationPersistence {
         @Override
         public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
             Throwable throwable = (Throwable) instance;
-            serializer.serialize(throwable.getClass(), objectBuilder.append("class"));
+            objectBuilder.append("class", throwable.getClass().getName());
             objectBuilder.append("message", throwable.getMessage());
         }
 
         @Override
-        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) throws DeserializationException {
-            Class<?> clazz = (Class<?>) deserializer.deserialize(json.get("class"), proxyFactory);
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
+            String clazz = (String) json.get("class");
             String message = (String) json.get("message");
-            if (clazz == JVMCIError.class) {
+            if (clazz.equals(JVMCIError.class.getName())) {
                 return new JVMCIError(message);
-            } else if (clazz == GraalError.class) {
+            } else if (clazz.equals(GraalError.class.getName())) {
                 return new GraalError(message);
-            } else if (clazz == IllegalArgumentException.class) {
+            } else if (clazz.equals(IllegalArgumentException.class.getName())) {
                 return new IllegalArgumentException(message);
             } else {
                 return new Throwable(message);

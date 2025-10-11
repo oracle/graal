@@ -271,7 +271,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean isBytecodeUpdatable() {
-        return !getInstrumentations().isEmpty() || !getProvidedTags().isEmpty();
+        return !getInstrumentations().isEmpty() || (enableTagInstrumentation && !getProvidedTags().isEmpty());
     }
 
     public boolean hasYieldOperation() {
@@ -281,8 +281,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel getInvalidateInstruction(int length) {
         if (invalidateInstructions == null) {
             return null;
+        } else if (length % 2 != 0) {
+            throw new AssertionError("instructions must be short-aligned");
         }
-        assert length % 2 == 0;
         return invalidateInstructions[(length - OPCODE_WIDTH) / 2];
     }
 

@@ -752,23 +752,22 @@ public final class Resources {
 
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<Resources>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    Resources instance = (Resources) singleton;
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {
                     List<String> resourceKeys = new ArrayList<>();
                     List<Boolean> resourceRegistrationStates = new ArrayList<>();
-                    Set<String> patterns = new HashSet<>(instance.previousLayerPatterns);
+                    Set<String> patterns = new HashSet<>(singleton.previousLayerPatterns);
 
-                    var cursor = instance.resources.getEntries();
+                    var cursor = singleton.resources.getEntries();
                     while (cursor.advance()) {
                         resourceKeys.add(cursor.getKey().toString());
                         boolean isNegativeQuery = cursor.getValue().getValueUnconditionally() == NEGATIVE_QUERY_MARKER;
                         resourceRegistrationStates.add(!isNegativeQuery);
                     }
 
-                    for (var entry : instance.previousLayerResources.entrySet()) {
+                    for (var entry : singleton.previousLayerResources.entrySet()) {
                         /*
                          * If a complete entry overwrites a negative query from a previous layer,
                          * the previousLayerResources map entry needs to be skipped to register the
@@ -780,7 +779,7 @@ public final class Resources {
                         }
                     }
 
-                    instance.requestedPatterns.getKeys().forEach(p -> patterns.add(p.toString()));
+                    singleton.requestedPatterns.getKeys().forEach(p -> patterns.add(p.toString()));
 
                     writer.writeStringList(RESOURCE_KEYS, resourceKeys);
                     writer.writeBoolList(RESOURCE_REGISTRATION_STATES, resourceRegistrationStates);
@@ -790,16 +789,16 @@ public final class Resources {
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<Resources> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public Resources createFromLoader(ImageSingletonLoader loader) {
             List<String> previousLayerResourceKeys = loader.readStringList(RESOURCE_KEYS);
             List<Boolean> previousLayerRegistrationStates = loader.readBoolList(RESOURCE_REGISTRATION_STATES);
             Map<String, Boolean> previousLayerResources = new HashMap<>();

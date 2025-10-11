@@ -368,10 +368,10 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<CrossLayerFieldUpdaterFeature>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-                    var updateInfoMap = ((CrossLayerFieldUpdaterFeature) singleton).updateInfoMap;
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, CrossLayerFieldUpdaterFeature singleton) {
+                    var updateInfoMap = singleton.updateInfoMap;
                     ArrayList<Integer> fieldIds = new ArrayList<>();
                     ArrayList<Integer> receiverIds = new ArrayList<>();
                     ArrayList<Integer> offsets = new ArrayList<>();
@@ -390,7 +390,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
+                public void onSingletonRegistration(ImageSingletonLoader loader, CrossLayerFieldUpdaterFeature singleton) {
                     Map<CrossLayerFieldUpdaterFeature.UpdatableField, CrossLayerFieldUpdaterFeature.UpdatableFieldStatus> map = new HashMap<>();
                     Iterator<Integer> fieldIds = loader.readIntList("fieldIds").iterator();
                     Iterator<Integer> receiverIds = loader.readIntList("receiverIds").iterator();
@@ -407,7 +407,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
                         assert prev == null : prev;
                     }
                     assert !receiverIds.hasNext() && !offsets.hasNext() && !javaKindOrdinals.hasNext() : "information is not properly synced";
-                    ((CrossLayerFieldUpdaterFeature) singleton).updateInfoMap = Collections.unmodifiableMap(map);
+                    singleton.updateInfoMap = Collections.unmodifiableMap(map);
                 }
             });
         }

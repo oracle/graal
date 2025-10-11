@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -59,6 +61,14 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime")).setPinnedToInitialLayer(pinReason);
         metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "gc")).setPinnedToInitialLayer(pinReason);
         metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class)).setPinnedToInitialLayer(pinReason);
+
+        /* SVM start-up logic should be pinned to the initial layer. */
+        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(JavaMainWrapper.class, "doRun", int.class, CCharPointerPointer.class)).setPinnedToInitialLayer(pinReason);
+        /*
+         * We want the method handle invocation present in this method to be inlined, and that is
+         * only possible within the application layer.
+         */
+        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(JavaMainWrapper.class, "invokeMain", String[].class)).setFullyDelayedToApplicationLayer();
     }
 
 }

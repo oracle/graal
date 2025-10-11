@@ -24,14 +24,12 @@ package com.oracle.truffle.espresso.preinit;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParsingContext;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -67,20 +65,7 @@ public interface ParserKlassProvider {
         ParserKlass parserKlass = ClassfileParser.parse(parsingContext, new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden,
                         info.forceAllowVMAnnotations, validate);
         if (info.isHidden) {
-            Symbol<Type> requestedClassType = typeOrNull;
-            assert requestedClassType != null;
-            long hiddenKlassId = env.getNewKlassId();
-            Symbol<Name> thisKlassName = parsingContext.getOrCreateName(TypeSymbols.hiddenClassName(requestedClassType, hiddenKlassId));
-            Symbol<Type> thisKlassType = parsingContext.getOrCreateTypeFromName(thisKlassName);
-            var pool = parserKlass.getConstantPool().patchForHiddenClass(parserKlass.getThisKlassIndex(), thisKlassName);
-            var classFlags = parserKlass.getFlags() | Constants.ACC_IS_HIDDEN_CLASS;
-            return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType,
-                            parserKlass.getSuperKlass(), parserKlass.getSuperInterfaces(),
-                            parserKlass.getMethods(), parserKlass.getFields(),
-                            parserKlass.getAttributes(),
-                            parserKlass.getThisKlassIndex(),
-                            parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
-                            parserKlass.getHiddenKlassId());
+            return ParserKlass.forHiddenClass(parserKlass, typeOrNull, env.getNewKlassId(), parsingContext);
         }
 
         return parserKlass;

@@ -27,7 +27,7 @@ import mx
 import mx_sdk_vm
 import mx_gate
 
-from mx_espresso import _espresso_stability, _has_native_espresso_standalone, _send_sigquit, get_java_home_dep, _jdk_lib_dir, jvm_standalone_with_llvm
+from mx_espresso import _espresso_stability, _send_sigquit, get_java_home_dep, _jdk_lib_dir, jvm_standalone_with_llvm
 from mx_sdk_vm_ng import _find_native_image_command, ThinLauncherProject  # pylint: disable=unused-import
 from mx_sdk_vm_impl import get_final_graalvm_distribution, has_component, graalvm_skip_archive
 
@@ -113,7 +113,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     native = create_ni_standalone('ESPRESSO_NATIVE_STANDALONE', register_distribution)
     jvm = create_ni_standalone('ESPRESSO_JVM_STANDALONE', register_distribution)
     if not (native or jvm):
-        raise mx.abort("Couldn't create any Espresso native-image standalone")
+        mx.warn("Couldn't create any Espresso native-image standalone")
 
 def _run_espresso_native_image_launcher(args, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None, mode=None):
     extra_args = ['-J--vm.' + arg for arg in mx_gate.get_jacoco_agent_args() or []]
@@ -139,10 +139,16 @@ def _run_espresso_native_image_launcher(args, cwd=None, nonZeroIsFatal=True, out
     return mx.run([native_image_command] + extra_args + args, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 def _detect_espresso_native_image_mode():
-    if _has_native_espresso_standalone() and exists(mx.distribution('ESPRESSO_NI_NATIVE_STANDALONE').get_output()):
+    native_dist = mx.distribution('ESPRESSO_NI_NATIVE_STANDALONE', fatalIfMissing=False)
+    jvm_dist = mx.distribution('ESPRESSO_JVM_NATIVE_STANDALONE', fatalIfMissing=False)
+    if native_dist and exists(native_dist.get_output()):
         return 'native'
-    else:
+    elif jvm_dist and exists(jvm_dist.get_output()):
         return 'jvm'
+    elif jvm_dist or native_dist:
+        raise mx.abort("No espresso Native Image Standalone is built")
+    else:
+        raise mx.abort("No espresso Native Image Standalone is available (see warnings above)")
 
 def _run_espresso_native_image_jvm_launcher(args, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     return _run_espresso_native_image_launcher(args, cwd, nonZeroIsFatal, out, err, timeout, mode='jvm')

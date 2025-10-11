@@ -28,8 +28,6 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 
-//JaCoCo Exclude
-
 public final class HotSpotMetaspaceConstantProxy extends HotSpotConstantProxy implements HotSpotMetaspaceConstant {
     HotSpotMetaspaceConstantProxy(InvocationHandler handler) {
         super(handler);

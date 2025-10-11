@@ -161,6 +161,10 @@ public class JavaMainWrapper {
         }
     }
 
+    /**
+     * For layered images this method is delayed until the application layer. This is necessary so
+     * that the method handle can be inlined before analysis.
+     */
     public static void invokeMain(String[] args) throws Throwable {
         String[] mainArgs = args;
         if (ImageSingletons.contains(PreMainSupport.class)) {
