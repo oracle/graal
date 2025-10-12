@@ -238,8 +238,23 @@ public final class GCImpl implements GC {
         assert getCollectionEpoch().equal(data.getRequestingEpoch()) ||
                         data.getForceFullGC() && GCImpl.getAccounting().getCompleteCollectionCount() == data.getCompleteCollectionCount() : "unnecessary GC?";
 
-        timers.mutator.stopAt(data.getRequestingNanoTime());
+        /*
+         * We use the time of the GC request as the beginning of the collection because it includes
+         * the delay of entering a safepoint, which we want the policy to consider for GC cost.
+         * Other VM operations can run in between, but we expect them to have insignificant impact.
+         */
+        long beginNanoTime = data.getRequestingNanoTime();
+        if (getCollectionEpoch().notEqual(data.getRequestingEpoch())) {
+            /* Another GC happened since the GC request, use the current time instead. */
+            beginNanoTime = System.nanoTime();
+        }
+        if (!timers.mutator.wasStartedAtLeastOnce()) {
+            long origin = Isolates.isStartTimeAssigned() ? Isolates.getStartTimeNanos() : beginNanoTime;
+            timers.mutator.startAt(origin);
+        }
+        timers.mutator.stopAt(beginNanoTime);
         timers.resetAllExceptMutator();
+
         /* The type of collection will be determined later on. */
         completeCollection = false;
 
@@ -256,7 +271,7 @@ public final class GCImpl implements GC {
 
             verifyHeap(Before);
 
-            boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
+            boolean outOfMemory = collectImpl(cause, beginNanoTime, data.getForceFullGC());
             data.setOutOfMemory(outOfMemory);
 
             verifyHeap(After);
@@ -277,18 +292,17 @@ public final class GCImpl implements GC {
         timers.mutator.start();
     }
 
-    private boolean collectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC) {
+    private boolean collectImpl(GCCause cause, long beginNanoTime, boolean forceFullGC) {
         boolean outOfMemory;
         long startTicks = JfrTicks.elapsedTicks();
         try {
-            outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
+            outOfMemory = doCollectImpl(cause, beginNanoTime, forceFullGC, false);
             if (outOfMemory) {
-                // Avoid running out of memory with a full GC that reclaims softly reachable
-                // objects
+                // Avoid running out of memory with a full GC that reclaims softly reachable objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                 try {
                     verifyHeap(During);
-                    outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
+                    outOfMemory = doCollectImpl(cause, System.nanoTime(), true, true);
                 } finally {
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
                 }
@@ -299,7 +313,7 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC, boolean forceNoIncremental) {
+    private boolean doCollectImpl(GCCause cause, long initialBeginNanoTime, boolean forceFullGC, boolean forceNoIncremental) {
         checkSanityBeforeCollection();
 
         ChunkBasedCommittedMemoryProvider.get().beforeGarbageCollection();
@@ -310,19 +324,21 @@ public final class GCImpl implements GC {
         if (incremental) {
             long startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
+                outOfMemory = doCollectOnce(cause, initialBeginNanoTime, false, false);
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
             }
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
-            if (incremental) { // uncommit unaligned chunks
-                ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
+            long beginNanoTime = initialBeginNanoTime;
+            if (incremental) {
+                beginNanoTime = System.nanoTime();
+                ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory(); // unaligned chunks
                 verifyHeap(During);
             }
             long startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
+                outOfMemory = doCollectOnce(cause, beginNanoTime, true, incremental);
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
             }
@@ -335,13 +351,13 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectOnce(GCCause cause, long requestingNanoTime, boolean complete, boolean followsIncremental) {
+    private boolean doCollectOnce(GCCause cause, long beginNanoTime, boolean complete, boolean followsIncremental) {
         assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
         assert !completeCollection || complete : "After a complete collection, no further incremental collections may happen";
         completeCollection = complete;
 
         accounting.beforeCollectOnce(completeCollection);
-        policy.onCollectionBegin(completeCollection, requestingNanoTime);
+        policy.onCollectionBegin(completeCollection, beginNanoTime);
 
         doCollectCore(!complete);
         if (complete) {
