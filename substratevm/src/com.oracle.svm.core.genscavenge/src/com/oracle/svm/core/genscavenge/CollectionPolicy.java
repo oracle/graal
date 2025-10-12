@@ -209,7 +209,7 @@ public interface CollectionPolicy {
     int getTenuringAge();
 
     /** Called at the beginning of a collection, in the safepoint operation. */
-    void onCollectionBegin(boolean completeCollection, long requestingNanoTime);
+    void onCollectionBegin(boolean completeCollection, long beginNanoTime);
 
     /** Called before the end of a collection, in the safepoint operation. */
     void onCollectionEnd(boolean completeCollection, GCCause cause);
