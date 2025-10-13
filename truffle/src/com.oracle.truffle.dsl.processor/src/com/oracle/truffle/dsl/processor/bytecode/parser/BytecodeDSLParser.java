@@ -230,6 +230,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     @SuppressWarnings("unchecked")
     private void parseBytecodeDSLModel(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
+        AnnotationMirror languageRegistration = ElementUtils.findAnnotationMirror(model.languageClass.asElement(), types.TruffleLanguage_Registration);
+        model.languageId = languageRegistration != null ? (String) ElementUtils.getAnnotationValue(languageRegistration, "id").getValue() : null;
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
         model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");

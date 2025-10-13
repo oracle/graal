@@ -12175,6 +12175,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createFindBytecodeNode());
             this.addOptional(createDispatch());
             this.add(createGetLanguage());
+            this.add(createGetLanguageId());
 
             // TagTree
             this.add(createGetTreeChildren());
@@ -12264,8 +12265,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.getModifiers().add(Modifier.FINAL);
             ex.setReturnType(generic(type(Class.class), model.languageClass));
             ex.getAnnotationMirrors().clear();
+            GeneratorUtils.mergeSuppressWarnings(ex, "deprecation");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().typeLiteral(model.languageClass).end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLanguageId() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTreeNode, "getLanguageId");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.getAnnotationMirrors().clear();
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().doubleQuote(model.languageId).end();
             b.end();
             return ex;
         }

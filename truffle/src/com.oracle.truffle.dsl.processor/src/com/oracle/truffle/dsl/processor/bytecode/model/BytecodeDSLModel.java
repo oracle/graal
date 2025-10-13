@@ -109,6 +109,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
+    public String languageId;
     public boolean enableUncachedInterpreter;
     public String defaultUncachedThreshold;
     public DSLExpression defaultUncachedThresholdExpression;

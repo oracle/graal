@@ -74,11 +74,20 @@ public abstract class TagTreeNode extends Node implements TagTree {
     }
 
     /**
-     * Allows to access the language instance associated with this node.
-     *
+     * Allows to access the language instance associated with this node. GR-69615: Remove deprecated
+     * InteropLibrary#hasLanguage and InteropLibrary#getLanguage messages.
+     * 
      * @since 24.2
      */
+    @Deprecated
     protected abstract Class<? extends TruffleLanguage<?>> getLanguage();
+
+    /**
+     * Returns an id of a language associated with this node.
+     * 
+     * @since 26.0
+     */
+    protected abstract String getLanguageId();
 
     /**
      * Returns the currently used {@link NodeLibrary} exports for this tag library.

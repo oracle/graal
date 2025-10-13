@@ -126,7 +126,7 @@ final class DefaultBytecodeScope implements TruffleObject {
 
     @ExportMessage
     String getLanguageId(@Shared @Cached("this.node") TagTreeNode cachedNode) {
-        return BytecodeAccessor.ENGINE.getLanguageId(cachedNode.getLanguage());
+        return cachedNode.getLanguageId();
     }
 
     @ExportMessage
