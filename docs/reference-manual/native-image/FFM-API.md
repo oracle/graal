@@ -754,4 +754,4 @@ This is also why the `native-image` tool currently disallows native `MemorySegme
 * [Interoperability with Native Code](InteropWithNativeCode.md)
 * [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md)
 * [Reachability Metadata](ReachabilityMetadata.md)
-* [reachability-metadata-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json)
+* [reachability-metadata-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.2.0.json)
