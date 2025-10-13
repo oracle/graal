@@ -448,11 +448,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * Debug only decorator for {@link RecursiveVisitor} to log all basic blocks how they are
      * visited one by one.
      */
-    public static class LoggingCFGDecorator implements ControlFlowGraph.RecursiveVisitor<HIRBlock> {
-        private final ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor;
+    public static class LoggingCFGDecorator<L> implements ControlFlowGraph.RecursiveVisitor<L> {
+        private final ControlFlowGraph.RecursiveVisitor<L> visitor;
         private String indent = "";
 
-        public LoggingCFGDecorator(ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor, ControlFlowGraph cfg) {
+        public LoggingCFGDecorator(ControlFlowGraph.RecursiveVisitor<L> visitor, ControlFlowGraph cfg) {
             this.visitor = visitor;
             TTY.printf("DomTree for %s%n", cfg.graph);
             printDomTree(cfg.getStartBlock(), "");
@@ -468,14 +468,14 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         }
 
         @Override
-        public HIRBlock enter(HIRBlock b) {
+        public L enter(HIRBlock b) {
             TTY.printf("%sEnter block %s for %s%n", indent, b, visitor);
             indent += "\t";
             return visitor.enter(b);
         }
 
         @Override
-        public void exit(HIRBlock b, HIRBlock value) {
+        public void exit(HIRBlock b, L value) {
             indent = indent.substring(0, indent.length() - 1);
             TTY.printf("%sExit block %s with value %s for %s%n", indent, b, value, visitor);
             visitor.exit(b, value);
