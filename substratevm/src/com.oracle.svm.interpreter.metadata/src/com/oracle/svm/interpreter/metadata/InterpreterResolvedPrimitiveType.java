@@ -199,6 +199,11 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
+    public InterpreterResolvedJavaMethod lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> name) {
+        return null;
+    }
+
+    @Override
     public InterpreterResolvedJavaMethod lookupVTableEntry(int vtableIndex) {
         return null;
     }

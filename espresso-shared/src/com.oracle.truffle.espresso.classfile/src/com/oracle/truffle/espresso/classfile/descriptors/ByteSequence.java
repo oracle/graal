@@ -245,6 +245,15 @@ public abstract class ByteSequence {
         return -1;
     }
 
+    public int indexOf(byte b) {
+        for (int i = 0; i < length(); i++) {
+            if (byteAt(i) == b) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     /**
      * Writes this sequence into the destination byte array.
      *

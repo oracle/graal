@@ -98,12 +98,12 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvoke;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -1578,18 +1578,18 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return null;
     }
 
-    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        Method m = lookupPolysignatureDeclaredMethod(methodName, lookupMode);
+    public Method lookupSignaturePolymorphicMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
+        Method m = lookupSignaturePolymorphicDeclaredMethod(methodName, lookupMode);
         if (m != null) {
             return findMethodHandleIntrinsic(m, signature);
         }
         return null;
     }
 
-    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName, LookupMode lookupMode) {
+    public Method lookupSignaturePolymorphicDeclaredMethod(Symbol<Name> methodName, LookupMode lookupMode) {
         for (Method m : getDeclaredMethods()) {
             if (lookupMode.include(m)) {
-                if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
+                if (m.getName() == methodName && m.isDeclaredSignaturePolymorphic()) {
                     return m;
                 }
             }
@@ -1597,13 +1597,17 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return null;
     }
 
+    @Override
+    public Method lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> methodName) {
+        return lookupSignaturePolymorphicDeclaredMethod(methodName, LookupMode.ALL);
+    }
+
     @TruffleBoundary
-    private Method findMethodHandleIntrinsic(Method m,
-                    Symbol<Signature> signature) {
-        assert m.isSignaturePolymorphicDeclared();
-        MethodHandleIntrinsics.PolySigIntrinsics iid = MethodHandleIntrinsics.getId(m);
+    private Method findMethodHandleIntrinsic(Method m, Symbol<Signature> signature) {
+        assert m.isDeclaredSignaturePolymorphic();
+        SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(m);
         Symbol<Signature> sig = signature;
-        if (iid.isStaticPolymorphicSignature()) {
+        if (iid.isStaticSignaturePolymorphic()) {
             sig = getSignatures().toBasic(signature, true);
         }
         return m.findIntrinsic(sig);
