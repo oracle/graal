@@ -1162,7 +1162,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
         CompilationTask task = this.compilationTask;
         if (task != null && cancelAndResetCompilationTask()) {
-            runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);
+            runtime().getListener().onCompilationDequeued(this, null, reason, task.tier());
             return true;
         }
         return false;

@@ -131,7 +131,7 @@ public final class LibGraalFeature implements Feature {
                 throw new GraalError(cl.getClass().getName() + " does not support META-INF/libgraal.java.home protocol (see javadoc of HostedLibGraalClassLoader)");
             }
             return Path.of(new String(in.readAllBytes()));
-        } catch (IOException e) {
+        } catch (IOException e) { // Parfait_ALLOW impossible-redundant-condition (PARSEC-7191)
             throw new GraalError(e);
         }
     }

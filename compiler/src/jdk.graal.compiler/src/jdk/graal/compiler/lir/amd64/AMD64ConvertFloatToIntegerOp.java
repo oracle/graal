@@ -134,7 +134,7 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
     }
 
     private static boolean needZeroTmp(boolean canOverflow, boolean canBeNaN, Signedness signedness, AMD64SIMDInstructionEncoding encoding) {
-        return canOverflow || (signedness == Signedness.UNSIGNED && encoding == AMD64SIMDInstructionEncoding.EVEX && (canOverflow || canBeNaN));
+        return canOverflow || (signedness == Signedness.UNSIGNED && encoding == AMD64SIMDInstructionEncoding.EVEX && canBeNaN);
     }
 
     @Override

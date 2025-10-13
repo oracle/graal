@@ -611,7 +611,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             }
         }
         if (newStackState == StackState.Rethrow && stackState != StackState.Rethrow && popKind == JavaKind.Void) {
-            assert popKind == JavaKind.Void : Assertions.errorMessage(popKind);
             copyStackSize = 0;
         } else {
             if (popKind != JavaKind.Void) {
