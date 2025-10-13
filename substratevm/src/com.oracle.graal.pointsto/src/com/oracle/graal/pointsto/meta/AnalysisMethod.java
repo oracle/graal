@@ -58,7 +58,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -69,6 +68,7 @@ import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;

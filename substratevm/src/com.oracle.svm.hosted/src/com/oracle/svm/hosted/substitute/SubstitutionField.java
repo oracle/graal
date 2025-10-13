@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.AnnotatedElement;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
 import jdk.vm.ci.meta.JavaConstant;

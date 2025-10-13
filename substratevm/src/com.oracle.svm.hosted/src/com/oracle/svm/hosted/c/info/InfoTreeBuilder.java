@@ -56,7 +56,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;

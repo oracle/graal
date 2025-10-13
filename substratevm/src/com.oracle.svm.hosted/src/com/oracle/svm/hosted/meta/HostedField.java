@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;

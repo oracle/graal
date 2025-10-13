@@ -53,7 +53,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ArenaIntrinsics;
 import com.oracle.svm.core.FrameAccess;

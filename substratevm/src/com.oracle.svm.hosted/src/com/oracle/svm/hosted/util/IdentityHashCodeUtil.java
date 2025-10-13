@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.util;
 
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;

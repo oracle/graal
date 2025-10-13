@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.jfr.JfrJavaEvents;

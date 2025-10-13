@@ -32,7 +32,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.reflect.target.Target_sun_reflect_annotation_AnnotationParser;
 

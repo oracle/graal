@@ -43,7 +43,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;

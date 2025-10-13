@@ -30,7 +30,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
 

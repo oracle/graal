@@ -104,7 +104,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.DirectMethodProcessingHandler;

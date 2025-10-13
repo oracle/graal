@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
@@ -126,7 +126,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                  * handle and the bytecode type of the invocation itself (for compatible primitive
                  * types only). For example, int value = mh.invokeBasic(...) where
                  * mh.type().returnType() == short.class.
-                 * 
+                 *
                  * This doesn't cause trouble in HotSpot since these values can be silently casted
                  * to the expected type. However, since Native Image handles the return value as a
                  * boxed object, it needs to explicitly cast it to the required type to avoid tricky

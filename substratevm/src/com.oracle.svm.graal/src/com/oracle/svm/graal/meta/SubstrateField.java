@@ -32,7 +32,6 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
