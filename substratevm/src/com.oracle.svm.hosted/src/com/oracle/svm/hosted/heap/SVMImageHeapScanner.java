@@ -78,7 +78,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
-    @Override
     protected Class<?> getClass(String className) {
         return loader.findClassOrFail(className);
     }

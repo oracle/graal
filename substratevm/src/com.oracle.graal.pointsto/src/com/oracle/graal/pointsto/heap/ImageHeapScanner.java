@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -878,18 +877,8 @@ public abstract class ImageHeapScanner {
         scanningObserver = null;
     }
 
-    protected abstract Class<?> getClass(String className);
-
     public HostedValuesProvider getHostedValuesProvider() {
         return hostedValuesProvider;
-    }
-
-    protected AnalysisType lookupJavaType(String className) {
-        return metaAccess.lookupJavaType(getClass(className));
-    }
-
-    protected AnalysisField lookupJavaField(String className, String fieldName) {
-        return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
     /**
