@@ -226,6 +226,16 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
 
+    @Override
+    public boolean isDeclaredSignaturePolymorphic() {
+        throw VMError.unimplemented("isDeclaredSignaturePolymorphic");
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod createSignaturePolymorphicIntrinsic(Symbol<Signature> newSignature) {
+        throw VMError.unimplemented("createSignaturePolymorphicIntrinsic");
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public final boolean needsMethodBody() {
         return needMethodBody;

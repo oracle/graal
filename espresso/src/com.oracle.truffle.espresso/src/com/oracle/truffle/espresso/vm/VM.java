@@ -152,9 +152,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -2813,10 +2813,21 @@ public final class VM extends NativeEnv {
         if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holderKlass)) {
             return true;
         }
-        if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
+        if (isMethodHandleIntrinsic(m) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
             return true;
         }
         return false;
+    }
+
+    public static boolean isMethodHandleIntrinsic(Method m) {
+        SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(m);
+        /*
+         * Contrary to HotSpot implementation, Espresso pushes the MH.invoke_ frames on the stack.
+         * Thus, we need to explicitly ignore them, and can't copy the HotSpot implementation here.
+         *
+         * HotSpot: return isSignaturePolymorphic(id) && isSignaturePolymorphicIntrinsic(id);
+         */
+        return id != null;
     }
 
     private boolean isAuthorized(StaticObject context, Klass klass) {
