@@ -495,8 +495,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Bench specific options :::");
             if (evalResult.value instanceof Value) {
                 Value value = (Value) evalResult.value;
-                if (value.hasMember("setup")) {
-                    value.getMember("setup").execute();
+                Value setup = tryLookup(context, evalResult.languageId, value, "setup");
+                if (setup != null && setup.canExecute()) {
+                    setup.execute();
                 }
                 config.parseBenchSpecificDefaults(value);
                 config.metric.parseBenchSpecificOptions(value);
@@ -571,6 +572,22 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         } finally {
             context.leave();
         }
+    }
+
+    private static Value tryLookup(Context context, String languageId, Value evalSourceValue, String memberName) {
+        // language-specific lookup
+        return switch (languageId) {
+            case "wasm" -> evalSourceValue.getMember(memberName);
+            default -> {
+                // first try the memberName directly
+                if (evalSourceValue.hasMember(memberName)) {
+                    yield evalSourceValue.getMember(memberName);
+                } else {
+                    // Fallback for other languages: Look for 'memberName' in global scope.
+                    yield context.getBindings(languageId).getMember(memberName);
+                }
+            }
+        };
     }
 
     private Workload lookup(Context context, String languageId, Object evalSource, String memberName) {
