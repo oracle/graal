@@ -679,16 +679,7 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.requireDeclaredField(Names.flags, Types._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Types.java_lang_invoke_MethodHandle);
-        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeExact, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invoke, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeBasic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeWithArguments, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToInterface, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToSpecial, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToStatic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToVirtual, Signatures.Object_Object_array);
         java_lang_invoke_MethodHandle_asFixedArity = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.asFixedArity, Signatures.MethodHandle);
-        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.requireDeclaredField(Names.type, Types.java_lang_invoke_MethodType);
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Names.form, Types.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Types.java_lang_invoke_MethodHandles);
@@ -1785,16 +1776,7 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_invoke_MemberName_flags;
 
     public final ObjectKlass java_lang_invoke_MethodHandle;
-    public final Method java_lang_invoke_MethodHandle_invoke;
-    public final Method java_lang_invoke_MethodHandle_invokeExact;
-    public final Method java_lang_invoke_MethodHandle_invokeBasic;
-    public final Method java_lang_invoke_MethodHandle_invokeWithArguments;
-    public final Method java_lang_invoke_MethodHandle_linkToInterface;
-    public final Method java_lang_invoke_MethodHandle_linkToSpecial;
-    public final Method java_lang_invoke_MethodHandle_linkToStatic;
-    public final Method java_lang_invoke_MethodHandle_linkToVirtual;
     public final Method java_lang_invoke_MethodHandle_asFixedArity;
-    public final Field java_lang_invoke_MethodHandle_type;
     public final Field java_lang_invoke_MethodHandle_form;
 
     public final ObjectKlass java_lang_invoke_DirectMethodHandle;
