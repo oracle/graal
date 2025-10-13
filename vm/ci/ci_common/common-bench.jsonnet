@@ -80,11 +80,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   polybench_vm_hpc_common(bench=false): self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape=if bench then 'x52' else 'e4_8_64') + {
-    polybench_wrap(command)::
-      super.polybench_wrap(command) + [
-        '--mx-benchmark-args',
-        '--machine-name', 'gate-' + self.machine_name
-      ],
+    # Even gate jobs should upload results, since the data is used for regression tracking.
     teardown: [self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!']],
   },
 
