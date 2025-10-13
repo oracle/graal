@@ -449,18 +449,20 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
         Thread host = getContext().getEnv().newTruffleThreadBuilder(new GuestRunnable(getContext(), guest, exit, dispatch)).build();
-        initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(isDaemon(guest));
         host.setPriority(getPriority(guest));
+        String guestName = getContext().getThreadAccess().getThreadName(guest);
+        host.setName(guestName);
         if (isInterrupted(guest, false)) {
             host.interrupt();
         }
-        String guestName = getContext().getThreadAccess().getThreadName(guest);
-        host.setName(guestName);
+        // Prepare guest thread
+        initializeHiddenFields(guest, host, true);
         getThreadAccess().setEETopAlive(guest);
-        // Make the thread known to the context
-        getContext().registerThread(host, guest);
+        // Associate host and guest
+        getContext().registerJavaThread(host, guest);
+
         // Thread must be runnable on returning from 'start', so we set it preemptively
         // here.
         getThreadAccess().initializeState(guest, ThreadState.DefaultStates.DEFAULT_RUNNABLE_STATE);
