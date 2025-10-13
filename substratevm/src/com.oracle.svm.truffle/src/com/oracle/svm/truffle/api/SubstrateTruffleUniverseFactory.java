@@ -91,7 +91,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method,
                     KnownTruffleTypes types) {
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        List<AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) method);
+        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) method);
         var info = PartialEvaluator.computePartialEvaluationMethodInfo(method, annotations, types);
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);

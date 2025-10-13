@@ -539,6 +539,13 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                 throw new NoClassDefFoundError(className);
             }
         }
+        String className = "jdk.internal.event.Event";
+        try {
+            Class<?> c = Class.forName(className);
+            m.put(className, c);
+        } catch (ClassNotFoundException e) {
+            throw new NoClassDefFoundError(className);
+        }
         return m;
     }
 

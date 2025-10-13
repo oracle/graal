@@ -83,6 +83,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
+import static jdk.graal.compiler.annotation.AnnotationValueSupport.getDeclaredAnnotationValues;
+
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
  */
@@ -202,22 +204,21 @@ public abstract class PartialEvaluator {
     }
 
     public static PartialEvaluationMethodInfo computePartialEvaluationMethodInfo(ResolvedJavaMethod method,
-                    Collection<AnnotationValue> annotationValues,
+                    Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
                     KnownTruffleTypes types) {
-        AnnotationValue truffleBoundary = getAnnotationValue(types.CompilerDirectives_TruffleBoundary, annotationValues);
-        AnnotationValue truffleCallBoundary = getAnnotationValue(types.TruffleCallBoundary, annotationValues);
-        boolean specialization = hasAnnotationValue(types.Specialization, annotationValues);
+        AnnotationValue truffleBoundary = declaredAnnotationValues.get(types.CompilerDirectives_TruffleBoundary);
+        AnnotationValue truffleCallBoundary = declaredAnnotationValues.get(types.TruffleCallBoundary);
+        boolean specialization = declaredAnnotationValues.get(types.Specialization) != null;
+        AnnotationValue explodeLoop = declaredAnnotationValues.get(types.ExplodeLoop);
 
-        return new PartialEvaluationMethodInfo(getLoopExplosionKind(annotationValues, types),
+        return new PartialEvaluationMethodInfo(getLoopExplosionKind(explodeLoop),
                         getInlineKind(truffleBoundary, truffleCallBoundary, method, true, types),
                         getInlineKind(truffleBoundary, truffleCallBoundary, method, false, types),
                         method.canBeInlined(),
                         specialization);
     }
 
-    private static LoopExplosionKind getLoopExplosionKind(Collection<AnnotationValue> annotationValues,
-                    KnownTruffleTypes types) {
-        AnnotationValue value = getAnnotationValue(types.ExplodeLoop, annotationValues);
+    private static LoopExplosionKind getLoopExplosionKind(AnnotationValue value) {
         if (value == null) {
             return LoopExplosionKind.NONE;
         }
