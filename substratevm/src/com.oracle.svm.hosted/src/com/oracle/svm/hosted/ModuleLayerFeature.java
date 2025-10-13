@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.module.Configuration;
@@ -56,7 +58,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.encoder.SymbolEncoder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
@@ -139,6 +141,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class ModuleLayerFeature implements InternalFeature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
     private ModuleLayer bootLayer;
+
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ModuleLayerFeature.class);
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -287,7 +291,7 @@ public class ModuleLayerFeature implements InternalFeature {
         Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
         /* Only scan the value if module support is enabled and bootLayer field is reachable. */
-        accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
+        accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer, scanReason), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
     }
 
     @Override
@@ -589,7 +593,7 @@ public class ModuleLayerFeature implements InternalFeature {
             }
             ServicesCatalog servicesCatalog = synthesizeRuntimeModuleLayerServicesCatalog(nameToModule);
             patchRuntimeModuleLayer(accessImpl, runtimeModuleLayer, nameToModule, parentLayers, servicesCatalog);
-            accessImpl.rescanField(runtimeModuleLayer, moduleLayerFeatureUtils.moduleLayerModulesField);
+            accessImpl.rescanField(runtimeModuleLayer, moduleLayerFeatureUtils.moduleLayerModulesField, scanReason);
             return runtimeModuleLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime module layer: " + runtimeModuleLayer, ex);
@@ -1026,7 +1030,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 Module m = getOrCreateRuntimeModuleForHostedModule(loader, name, descriptor, access, nativeAccess);
                 if (!descriptor.equals(m.getDescriptor())) {
                     moduleDescriptorField.set(m, descriptor);
-                    access.rescanField(m, moduleDescriptorField);
+                    access.rescanField(m, moduleDescriptorField, scanReason);
                 }
                 patchModuleLayerField(access, m, runtimeModuleLayer);
                 nameToModule.put(name, m);
@@ -1055,7 +1059,7 @@ public class ModuleLayerFeature implements InternalFeature {
                     reads.add(allUnnamedModule);
                 }
                 moduleReadsField.set(m, reads);
-                access.rescanField(m, moduleReadsField);
+                access.rescanField(m, moduleReadsField, scanReason);
 
                 if (!descriptor.isOpen() && !descriptor.isAutomatic()) {
                     if (descriptor.opens().isEmpty()) {
@@ -1142,7 +1146,7 @@ public class ModuleLayerFeature implements InternalFeature {
                         rescan(access, exportedPackages, m, moduleExportedPackagesField);
                     }
                 }
-                access.rescanObject(m);
+                access.rescanObject(m, scanReason);
             }
 
             return nameToModule;
@@ -1150,9 +1154,9 @@ public class ModuleLayerFeature implements InternalFeature {
 
         private void rescan(AnalysisAccessBase access, Map<String, Set<Module>> packages, Module m, Field modulePackagesField) {
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                access.rescanObject(packages);
+                access.rescanObject(packages, scanReason);
             } else {
-                access.rescanField(m, modulePackagesField);
+                access.rescanField(m, modulePackagesField, scanReason);
             }
         }
 
@@ -1184,7 +1188,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 moduleReadsField.set(module, reads);
             }
             reads.add(other == null ? allUnnamedModule : other);
-            accessImpl.rescanField(module, moduleReadsField);
+            accessImpl.rescanField(module, moduleReadsField, scanReason);
         }
 
         @SuppressWarnings("unchecked")
@@ -1238,9 +1242,9 @@ public class ModuleLayerFeature implements InternalFeature {
                                             Map.Entry::getValue));
             field.set(module, encodedFieldValue);
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                accessImpl.rescanObject(encodedFieldValue);
+                accessImpl.rescanObject(encodedFieldValue, scanReason);
             } else {
-                accessImpl.rescanField(module, field);
+                accessImpl.rescanField(module, field, scanReason);
             }
         }
 
@@ -1297,7 +1301,7 @@ public class ModuleLayerFeature implements InternalFeature {
 
         void patchModuleLayerField(AnalysisAccessBase accessImpl, Module module, ModuleLayer runtimeBootLayer) throws IllegalAccessException {
             moduleLayerField.set(module, runtimeBootLayer);
-            accessImpl.rescanField(module, moduleLayerField);
+            accessImpl.rescanField(module, moduleLayerField, scanReason);
         }
 
         void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
@@ -1310,17 +1314,17 @@ public class ModuleLayerFeature implements InternalFeature {
 
         void patchModuleLayerNameToModuleField(AnalysisAccessBase accessImpl, ModuleLayer moduleLayer, Map<String, Module> nameToModule) throws IllegalAccessException {
             moduleLayerNameToModuleField.set(moduleLayer, nameToModule);
-            accessImpl.rescanField(moduleLayer, moduleLayerNameToModuleField);
+            accessImpl.rescanField(moduleLayer, moduleLayerNameToModuleField, scanReason);
         }
 
         void patchModuleLayerParentsField(AnalysisAccessBase accessImpl, ModuleLayer moduleLayer, List<ModuleLayer> parents) throws IllegalAccessException {
             moduleLayerParentsField.set(moduleLayer, parents);
-            accessImpl.rescanField(moduleLayer, moduleLayerParentsField);
+            accessImpl.rescanField(moduleLayer, moduleLayerParentsField, scanReason);
         }
 
         void patchModuleLayerServicesCatalogField(AnalysisAccessBase accessImpl, ModuleLayer moduleLayer, ServicesCatalog servicesCatalog) throws IllegalAccessException {
             moduleLayerServicesCatalogField.set(moduleLayer, servicesCatalog);
-            accessImpl.rescanField(moduleLayer, moduleLayerServicesCatalogField);
+            accessImpl.rescanField(moduleLayer, moduleLayerServicesCatalogField, scanReason);
         }
 
         ClassLoader getClassLoaderForBootLayerModule(String name) {
@@ -1397,7 +1401,7 @@ public class ModuleLayerFeature implements InternalFeature {
             assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
             try {
                 moduleEnableNativeAccessField.set(module, true);
-                access.rescanField(module, moduleEnableNativeAccessField);
+                access.rescanField(module, moduleEnableNativeAccessField, scanReason);
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
             }

@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -114,7 +116,8 @@ public final class ClassValueFeature implements InternalFeature {
         }
 
         int numTypes = impl.getUniverse().getTypes().size();
-        mapsToRescan.forEach(impl::rescanObject);
+        ScanReason reason = new OtherReason("Manual rescan triggered from " + ClassValueFeature.class);
+        mapsToRescan.forEach(obj -> impl.rescanObject(obj, reason));
         if (numTypes != impl.getUniverse().getTypes().size()) {
             access.requireAnalysisIteration();
         }

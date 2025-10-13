@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -149,7 +151,8 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             JVM.retransformClasses(new Class<?>[]{newEventClass});
 
             // make sure the EventConfiguration object is fully scanned
-            heapScanner.rescanObject(JVM.getConfiguration(newEventClass));
+            ScanReason reason = new OtherReason("Manual rescan for " + newEventClass + " triggered from " + JfrEventSubstitution.class);
+            heapScanner.rescanObject(JVM.getConfiguration(newEventClass), reason);
 
             return Boolean.TRUE;
         } catch (Throwable ex) {

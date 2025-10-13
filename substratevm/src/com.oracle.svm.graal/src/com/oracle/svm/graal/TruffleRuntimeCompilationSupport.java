@@ -37,6 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -79,6 +81,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Truffle compilation.
  */
 public class TruffleRuntimeCompilationSupport {
+
+    private static final ScanReason scanReason = new OtherReason("Manual rescan of Graal objects triggered from " + TruffleRuntimeCompilationSupport.class);
 
     private RuntimeConfiguration runtimeConfig;
 
@@ -237,7 +241,7 @@ public class TruffleRuntimeCompilationSupport {
      * and patches the shadow heap.
      */
     public static void rescan(AnalysisUniverse universe, Object object) {
-        universe.getHeapScanner().rescanObject(object);
+        universe.getHeapScanner().rescanObject(object, scanReason);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
