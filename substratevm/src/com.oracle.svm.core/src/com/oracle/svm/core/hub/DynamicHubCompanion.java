@@ -158,17 +158,17 @@ public final class DynamicHubCompanion {
     @Platforms(Platform.HOSTED_ONLY.class)
     static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
                     Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData) {
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, null);
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, String simpleBinaryName, Object declaringClass, String signature, ClassDefinitionInfo info) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, info.dynamicNest, simpleBinaryName, declaringClass, signature, info.classData);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, info.dynamicNest, simpleBinaryName, declaringClass, signature, info.classData, info.protectionDomain);
     }
 
     private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData) {
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, ProtectionDomain protectionDomain) {
         this.module = module;
         this.superHub = superHub;
         this.sourceFileName = sourceFileName;
@@ -180,6 +180,7 @@ public final class DynamicHubCompanion {
 
         this.classLoader = classLoader;
         this.classData = classData;
+        this.protectionDomain = protectionDomain;
     }
 
     public void setHubMetadata(RuntimeDynamicHubMetadata hubMetadata) {

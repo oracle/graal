@@ -1976,7 +1976,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public ProtectionDomain getProtectionDomain() {
         if (companion.protectionDomain == null) {
-            companion.protectionDomain = ProtectionDomainSupport.allPermDomain();
+            if (getClassLoader() == null) {
+                companion.protectionDomain = ProtectionDomainSupport.bootAllPermDomain();
+            } else {
+                companion.protectionDomain = ProtectionDomainSupport.allPermDomain();
+            }
         }
         return companion.protectionDomain;
     }
