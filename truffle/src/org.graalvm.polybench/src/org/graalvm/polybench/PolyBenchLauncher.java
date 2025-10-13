@@ -498,6 +498,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 if (evalResult.languageId.equals("wasm")) {
                     value = value.getMember("exports");
                 }
+                if (value.hasMember("setup")) {
+                    value.getMember("setup").execute();
+                }
                 config.parseBenchSpecificDefaults(value);
                 config.metric.parseBenchSpecificOptions(value);
             }
