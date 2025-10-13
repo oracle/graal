@@ -39,10 +39,10 @@ import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public interface CremaSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -88,7 +88,7 @@ public interface CremaSupport {
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 
-    default Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+    default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
         return resolveOrThrow(symbolicType, accessingClass);
@@ -96,7 +96,7 @@ public interface CremaSupport {
 
     Class<?> resolveOrThrow(Symbol<Type> type, ResolvedJavaType accessingClass);
 
-    default Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+    default Class<?> resolveOrNull(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
         return resolveOrNull(symbolicType, accessingClass);
@@ -104,7 +104,7 @@ public interface CremaSupport {
 
     Class<?> resolveOrNull(Symbol<Type> type, ResolvedJavaType accessingClass);
 
-    default Class<?> findLoadedClass(JavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+    default Class<?> findLoadedClass(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
         return findLoadedClass(symbolicType, accessingClass);

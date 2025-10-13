@@ -69,13 +69,38 @@ public final class ClassLoading {
         if (!isSupported()) {
             throw new IllegalStateException("Runtime class loading is not supported. It must be enabled at build-time with -H:+RuntimeClassLoading.");
         }
-        return new ArbitraryClassLoadingScope();
+        return new RealArbitraryClassLoadingScope();
     }
 
-    public static final class ArbitraryClassLoadingScope implements AutoCloseable {
+    /**
+     * Conditionally opens a scope in which class loading is not constrained by the reflection
+     * configuration. If {@code allowArbitraryClassLoading} is true, behaves like
+     * {@link #allowArbitraryClassLoading()}. Otherwise, it has no effect.
+     *
+     * @throws IllegalStateException if class loading is not {@linkplain #isSupported() supported}
+     *             and {@code allowArbitraryClassLoading} is true.
+     *
+     * @see #allowArbitraryClassLoading()
+     */
+    public static ArbitraryClassLoadingScope allowArbitraryClassLoading(boolean allowArbitraryClassLoading) {
+        if (allowArbitraryClassLoading) {
+            return allowArbitraryClassLoading();
+        }
+        return NoopScope.INSTANCE;
+    }
+
+    public abstract static class ArbitraryClassLoadingScope implements AutoCloseable {
+        private ArbitraryClassLoadingScope() {
+        }
+
+        @Override
+        public abstract void close();
+    }
+
+    public static final class RealArbitraryClassLoadingScope extends ArbitraryClassLoadingScope {
         private boolean closed;
 
-        ArbitraryClassLoadingScope() {
+        RealArbitraryClassLoadingScope() {
             if (!ImageInfo.inImageRuntimeCode()) {
                 return;
             }
@@ -92,6 +117,14 @@ public final class ClassLoading {
                 return;
             }
             ClassLoadingSupport.singleton().endIgnoreReflectionConfigurationScope();
+        }
+    }
+
+    private static final class NoopScope extends ArbitraryClassLoadingScope {
+        private static final NoopScope INSTANCE = new NoopScope();
+
+        @Override
+        public void close() {
         }
     }
 }

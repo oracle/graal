@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import org.graalvm.nativeimage.impl.ClassLoading;
+
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -78,8 +80,10 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
     @Override
     public InterpreterResolvedJavaType getResolvedType() {
         if (resolvedType == null) {
-            Class<?> cls = CremaSupport.singleton().resolveOrThrow(getSymbolicType(), getDeclaringClass());
-            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+            try (var _ = ClassLoading.allowArbitraryClassLoading()) {
+                Class<?> cls = CremaSupport.singleton().resolveOrThrow(getSymbolicType(), getDeclaringClass());
+                resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+            }
         }
         return resolvedType;
     }

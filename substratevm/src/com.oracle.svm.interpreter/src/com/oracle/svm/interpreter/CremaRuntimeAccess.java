@@ -27,6 +27,8 @@ package com.oracle.svm.interpreter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
+import org.graalvm.nativeimage.impl.ClassLoading;
+
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -94,9 +96,11 @@ public final class CremaRuntimeAccess implements RuntimeAccess<InterpreterResolv
 
     @Override
     public InterpreterResolvedObjectType lookupOrLoadType(Symbol<Type> type, InterpreterResolvedJavaType accessingClass) {
-        Class<?> result = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-        assert !result.isPrimitive();
-        return (InterpreterResolvedObjectType) DynamicHub.fromClass(result).getInterpreterType();
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
+            Class<?> result = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+            assert !result.isPrimitive();
+            return (InterpreterResolvedObjectType) DynamicHub.fromClass(result).getInterpreterType();
+        }
     }
 
     @Override
