@@ -779,6 +779,9 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                 clusterNode.delete();
             }
         }
+
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before running final canonicalization");
+
         canonicalizer.apply(graph, context);
         scheduleVerify(graph);
 
@@ -878,21 +881,48 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
 
             @Override
             public Integer enter(HIRBlock b) {
-                int newDominatingValues = 0;
-                int newScopesToPop = 0;
+                // all new nodes for checking arenas, pop if we go out of scope of this block again
+                int newArinaValidInScopeNodes = 0;
+                // all scopes that are closed in this block that have been open before already
                 Deque<ScopedMethodNode> scopesToRepush = new ArrayDeque<>();
+
+                EconomicSet<ScopedMethodNode> newOpenedScopes = EconomicSet.create();
 
                 for (FixedNode f : b.getNodes()) {
                     if (f instanceof MemoryArenaValidInScopeNode mas) {
                         defs.push(new ReachingDefScope(mas));
-                        newDominatingValues++;
+                        newArinaValidInScopeNodes++;
                     } else if (f instanceof ScopedMethodNode scope) {
+                        /*
+                         * When we process scope nodes we have 3 major situations to deal with.
+                         *
+                         * no open scope, no scopes openend in "this" block -> do nothing
+                         * 
+                         * we open a new scope s, we do not close it -> pop it when exit() is called
+                         * 
+                         * we close a scope that we have not opened -> pop it and repush on exit()
+                         * 
+                         * we open and close the same new scope in this block -> do nothing on
+                         * exit()
+                         */
+
                         if (scope.getType() == ScopedMethodNode.Type.START) {
                             scopes.push(scope);
-                            newScopesToPop++;
+                            // we open a new scope, we have to pop it again if this block goes out
+                            // of scope
+                            newOpenedScopes.add(scope);
                         } else if (scope.getType() == ScopedMethodNode.Type.END) {
                             ScopedMethodNode start = scopes.pop();
-                            scopesToRepush.push(start);
+                            // we close a scope, we only have to repush it again in the dom tree
+                            // traversal if it is a scope that was open upon the enter call to the
+                            // current block
+                            if (!newOpenedScopes.contains(start)) {
+                                scopesToRepush.push(start);
+                            } else {
+                                // remove it again from the opened scopes, it is already closed
+                                // again
+                                newOpenedScopes.remove(start);
+                            }
                             assert scope.getStart() == start : Assertions.errorMessage("Must match", start, scope, scope.getStart());
                         } else {
                             throw GraalError.shouldNotReachHere("Unknown type " + scope.getType());
@@ -902,8 +932,10 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                     }
                 }
 
-                final int finalNewDominatingValues = newDominatingValues;
-                final int finalNewScopesToPop = newScopesToPop;
+                final int finalNewDominatingValues = newArinaValidInScopeNodes;
+                // all new scopes that have not been closed already need to be removed again when we
+                // go out of this block
+                final int finalNewScopesToPop = newOpenedScopes.size();
 
                 actions.push(new Runnable() {
 
@@ -925,8 +957,20 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                 return 1;
             }
 
+            @Override
+            public void exit(HIRBlock b, Integer pushedForBlock) {
+                for (int i = 0; i < pushedForBlock; i++) {
+                    actions.pop().run();
+                }
+            }
+
             private void processNode(FixedNode f) {
-                if (!scopes.isEmpty() && f instanceof Invoke i) {
+                if (scopes.isEmpty()) {
+                    // no open scopes, nothing to check, we are not inside an SharedArena access
+                    // method.
+                    return;
+                }
+                if (f instanceof Invoke i) {
                     if (i.getTargetMethod() != null && !config.isSafeCallee(i.getTargetMethod())) {
                         if (!defs.isEmpty()) {
                             dominatedCalls.add(new DominatedCall(defs.peek().defNode, i));
@@ -1055,15 +1099,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                 return loopsToCheck;
             }
 
-            @Override
-            public void exit(HIRBlock b, Integer pushedForBlock) {
-                for (int i = 0; i < pushedForBlock; i++) {
-                    actions.pop().run();
-                }
-            }
-
         };
-
         cfg.visitDominatorTreeDefault(visitor);
         return nodeAccesses.size() > 0 ? nodeAccesses : null;
     }
