@@ -486,6 +486,66 @@ public class SimdStamp extends ArithmeticStamp {
     }
 
     /**
+     * Returns {@code true} if this SIMD stamp can be interpreted as a logic mask. This is the case
+     * if its components are {@link LogicValueStamp} on platform that use opmasks, or if its
+     * components are integers in the range [-1..0], i.e., only either all-ones or all-zeros.
+     */
+    public boolean isMask() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp) {
+                return true;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() >= -1 && integerStamp.upperBound() <= 0) {
+                /* OK so far. */
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this stamp is constant, with only logic false or integer zero
+     * entries.
+     */
+    public boolean isAllZeros() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp logicValueStamp && logicValueStamp.equals(LogicValueStamp.FALSE)) {
+                continue;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() == 0 && integerStamp.upperBound() == 0) {
+                continue;
+            } else if (s instanceof FloatStamp floatStamp && !floatStamp.canBeNaN() &&
+                            Double.doubleToRawLongBits(floatStamp.lowerBound()) == 0 && Double.doubleToRawLongBits(floatStamp.upperBound()) == 0) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this stamp is constant, with only logic true or integer -1 (all bits
+     * set) entries.
+     */
+    public boolean isAllOnes() {
+        for (Stamp s : components) {
+            if (s instanceof LogicValueStamp logicValueStamp && logicValueStamp.equals(LogicValueStamp.TRUE)) {
+                continue;
+            } else if (s instanceof IntegerStamp integerStamp && integerStamp.lowerBound() == -1 && integerStamp.upperBound() == -1) {
+                continue;
+            } else {
+                /*
+                 * No float case: all-1 bits is a non-canonical NaN that won't appear as a constant
+                 * stamp.
+                 */
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Returns a SIMD stamp representing the lower half of this stamp. This stamp's length must be a
      * power of 2 greater than 1. The resulting stamp contains this stamp's elements at indices 0 to
      * {@code length/2}.

@@ -154,6 +154,18 @@ public class SimdConstant implements SerializableConstant {
         };
     }
 
+    /** Returns {@code true} if all bits in this constant are 0. */
+    public boolean isAllZeros() {
+        return allSame && getValue(0).isDefaultForKind();
+    }
+
+    /** Returns {@code true} if all bits in this constant are 1. */
+    public boolean isAllOnes() {
+        return allSame &&
+                        ((getValue(0) instanceof LogicValueConstant logicValueConstant && logicValueConstant.value() == true) ||
+                                        (getValue(0) instanceof JavaConstant javaConstant && javaConstant.asLong() == -1));
+    }
+
     @Override
     public boolean isDefaultForKind() {
         for (Constant v : values) {
