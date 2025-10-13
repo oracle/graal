@@ -25,14 +25,9 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
@@ -41,6 +36,7 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNativeNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 
 /**
  * This class manages MethodHandle polymorphic methods dispatch. It creates and records dummy
@@ -70,14 +66,14 @@ public final class MethodHandleIntrinsics {
     }
 
     public static MethodHandleIntrinsicNode createIntrinsicNode(Meta meta, Method method, MethodHandleInvoker invoker) {
-        PolySigIntrinsics id = getId(method);
-        assert (invoker != null) == (id == PolySigIntrinsics.InvokeGeneric);
+        SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(method);
+        assert id != null;
+        assert (invoker != null) == (id == SignaturePolymorphicIntrinsic.InvokeGeneric);
         return switch (id) {
             case InvokeBasic -> MHInvokeBasicNodeGen.create(method);
             case InvokeGeneric -> MHInvokeGenericNode.create(method, invoker);
             case LinkToVirtual, LinkToStatic, LinkToSpecial, LinkToInterface -> MHLinkToNodeGen.create(method, id);
             case LinkToNative -> MHLinkToNativeNode.create(method, meta);
-            case None -> throw EspressoError.shouldNotReachHere();
         };
     }
 
@@ -86,48 +82,14 @@ public final class MethodHandleIntrinsics {
     }
 
     public static boolean isMethodHandleIntrinsic(Method m) {
-        PolySigIntrinsics id = getId(m);
+        SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(m);
         /*
          * Contrary to HotSpot implementation, Espresso pushes the MH.invoke_ frames on the stack.
          * Thus, we need to explicitly ignore them, and can't copy the HotSpot implementation here.
          *
          * HotSpot: return isSignaturePolymorphic(id) && isSignaturePolymorphicIntrinsic(id);
          */
-        return id.isSignaturePolymorphic();
-    }
-
-    public static PolySigIntrinsics getId(Method m) {
-        return getId(m.getName(), m.getDeclaringKlass());
-    }
-
-    public static PolySigIntrinsics getId(Symbol<Name> name, Klass declaringKlass) {
-        if (!Meta.isSignaturePolymorphicHolderType(declaringKlass.getType())) {
-            return PolySigIntrinsics.None;
-        }
-        if (Types.java_lang_invoke_MethodHandle.equals(declaringKlass.getType())) {
-            if (name == Names.linkToStatic) {
-                return PolySigIntrinsics.LinkToStatic;
-            }
-            if (name == Names.linkToVirtual) {
-                return PolySigIntrinsics.LinkToVirtual;
-            }
-            if (name == Names.linkToSpecial) {
-                return PolySigIntrinsics.LinkToSpecial;
-            }
-            if (name == Names.linkToInterface) {
-                return PolySigIntrinsics.LinkToInterface;
-            }
-            if (name == Names.linkToNative) {
-                return PolySigIntrinsics.LinkToNative;
-            }
-            if (name == Names.invokeBasic) {
-                return PolySigIntrinsics.InvokeBasic;
-            }
-        }
-        if (declaringKlass.lookupPolysignatureDeclaredMethod(name, Klass.LookupMode.INSTANCE_ONLY) != null) {
-            return PolySigIntrinsics.InvokeGeneric;
-        }
-        return PolySigIntrinsics.None;
+        return id != null;
     }
 
     private Method findIntrinsic(Method m, MethodKey methodRef) {
@@ -151,57 +113,4 @@ public final class MethodHandleIntrinsics {
     private Method putIntrinsic(MethodKey methodRef, Method m) {
         return intrinsics.putIfAbsent(methodRef, m);
     }
-
-    public enum PolySigIntrinsics {
-        None(false, false),
-        InvokeGeneric(false, false),
-        InvokeBasic(false, true),
-        LinkToVirtual(true, true),
-        LinkToStatic(true, true),
-        LinkToSpecial(true, true),
-        LinkToInterface(true, true),
-        LinkToNative(true, true);
-
-        public final boolean isSignaturePolymorphicIntrinsic;
-        public final boolean isStatic;
-
-        PolySigIntrinsics(boolean isStatic, boolean isSignaturePolymorphic) {
-            this.isStatic = isStatic;
-            this.isSignaturePolymorphicIntrinsic = isSignaturePolymorphic;
-        }
-
-        /**
-         * Indicates that the given ID represent a static polymorphic signature method. As of Java
-         * 11, there exists only 4 such methods.
-         *
-         * @see "java.lang.invoke.MethodHandle.linkToInterface(Object...)"
-         * @see "java.lang.invoke.MethodHandle.linkToSpecial(Object...)"
-         * @see "java.lang.invoke.MethodHandle.linkToStatic(Object...)"
-         * @see "java.lang.invoke.MethodHandle.linkToVirtual(Object...)"
-         */
-        public final boolean isStaticPolymorphicSignature() {
-            return isStatic;
-        }
-
-        /**
-         * Indicates whether or not a given PolymorphicSignature ID has its behavior entirely
-         * implemented in the VM.
-         * <p>
-         * For example, invokeBasic's behavior is implemented in the VM (see
-         * {@link com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNode}). In particular,
-         * target extraction and payload invocation is entirely done in Espresso.
-         * <p>
-         * On the contrary, methods with IDs represented by {@link PolySigIntrinsics#InvokeGeneric}
-         * are managed by the VM, their behavior is implemented through Java code, which is then
-         * simply called by the VM.
-         */
-        public final boolean isSignaturePolymorphicIntrinsic() {
-            return isSignaturePolymorphicIntrinsic;
-        }
-
-        private boolean isSignaturePolymorphic() {
-            return this != None;
-        }
-    }
-
 }

@@ -178,6 +178,12 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     M lookupVTableEntry(int vtableIndex);
 
     /**
+     * Attempts to find a signature polymorphic method declared in this class as described in
+     * JVMS-5.4.3.3 & 2.9.3. If no such method is found, returns null.
+     */
+    M lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> name);
+
+    /**
      * @return {@code true} if {@code other} is a subtype of {@code this}, {@code false} otherwise.
      */
     boolean isAssignableFrom(C other);

@@ -3110,10 +3110,6 @@ public final class Meta extends ContextAccessImpl
         return object;
     }
 
-    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
-        return type == Types.java_lang_invoke_MethodHandle || type == Types.java_lang_invoke_VarHandle;
-    }
-
     // region Guest Unboxing
 
     public boolean isNumber(Klass klass) {

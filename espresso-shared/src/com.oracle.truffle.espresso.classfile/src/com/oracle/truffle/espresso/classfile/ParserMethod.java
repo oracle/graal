@@ -24,18 +24,22 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Immutable raw representation of methods in Espresso, this is the output of the parser.
  */
 public final class ParserMethod implements AttributedElement {
-
     public static final ParserMethod[] EMPTY_ARRAY = new ParserMethod[0];
 
     private final int flags;
@@ -71,5 +75,32 @@ public final class ParserMethod implements AttributedElement {
         this.name = name;
         this.signature = signature;
         this.attributes = attributes;
+    }
+
+    /**
+     * Checks whether the declared method denoted by those arguments is a signature polymorphic
+     * method according to JVMS-2.9.3.
+     */
+    public static boolean isDeclaredSignaturePolymorphic(Symbol<Type> declaringType, Symbol<Signature> symbolicSignature, int modifiers, JavaVersion javaVersion) {
+        // JVMS 2.9.3 Special Methods:
+        // A method is signature polymorphic if and only if all of the following conditions hold :
+        // * It is declared in the java.lang.invoke.MethodHandle or java.lang.invoke.VarHandle
+        // class.
+        // * It has a single formal parameter of type Object[].
+        // * It has the ACC_VARARGS and ACC_NATIVE flags set.
+        // * ONLY JAVA <= 8: It has a return type of Object.
+        if (!ParserKlass.isSignaturePolymorphicHolderType(declaringType)) {
+            return false;
+        }
+        int required = ACC_NATIVE | ACC_VARARGS;
+        if ((modifiers & required) != required) {
+            return false;
+        }
+        if (javaVersion.java8OrEarlier()) {
+            return symbolicSignature == ParserSymbols.ParserSignatures.Object_Object_array;
+        } else {
+            int paramsEnd = symbolicSignature.indexOf((byte) ')');
+            return symbolicSignature.subSequence(1, paramsEnd).contentEquals(ParserSymbols.ParserTypes.java_lang_Object_array);
+        }
     }
 }
