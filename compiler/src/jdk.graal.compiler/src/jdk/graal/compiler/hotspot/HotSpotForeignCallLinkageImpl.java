@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import java.util.Arrays;
-
 import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -40,6 +38,7 @@ import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
@@ -151,6 +150,10 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      * The registers and stack slots defined/killed by the call.
      */
     private Value[] temporaries = AllocatableValue.NONE;
+    /**
+     * The registers and stack slots defined by the call.
+     */
+    private Value[] additionalReturns = AllocatableValue.NONE;
 
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
@@ -261,6 +264,11 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
+    public Value[] getAdditionalReturns() {
+        return additionalReturns;
+    }
+
+    @Override
     public long getMaxCallTargetOffset(CodeCacheProvider codeCache) {
         return codeCache.getMaxCallTargetOffset(address);
     }
@@ -302,14 +310,25 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
             CodeInfo codeInfo = HotSpotForeignCallLinkage.Stubs.getCodeInfo(stub, backend);
 
             EconomicSet<Register> killedRegisters = codeInfo.killedRegisters();
+
+            if (stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
+                GraalError.guarantee(killedRegisters.isEmpty(), "no registers are expected to be killed: %s %s", this, killedRegisters);
+            }
+
+            additionalReturns = stub.getAdditionalReturns(outgoingCallingConvention);
+
+            // avoid duplicated kills
+            for (Value value : additionalReturns) {
+                if (value instanceof RegisterValue registerValue) {
+                    killedRegisters.remove(registerValue.getRegister());
+                }
+            }
+
             if (!killedRegisters.isEmpty()) {
                 AllocatableValue[] temporaryLocations = new AllocatableValue[killedRegisters.size()];
                 int i = 0;
                 for (Register reg : killedRegisters) {
                     temporaryLocations[i++] = reg.asValue();
-                }
-                if (stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
-                    GraalError.guarantee(temporaryLocations.length == 0, "no registers are expected to be killed: %s %s", this, Arrays.toString(temporaryLocations));
                 }
                 temporaries = temporaryLocations;
             }

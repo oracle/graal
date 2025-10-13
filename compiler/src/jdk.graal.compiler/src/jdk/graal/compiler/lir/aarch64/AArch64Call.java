@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,22 +25,21 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
@@ -56,10 +55,14 @@ public class AArch64Call {
         @Temp({REG, STACK}) protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected CallOp(LIRInstructionClass<? extends CallOp> c, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        @Def({OperandFlag.REG, OperandFlag.STACK}) protected Value[] additionalReturns;
+
+        protected CallOp(LIRInstructionClass<? extends CallOp> c, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state) {
             super(c);
             this.result = result;
             this.parameters = parameters;
+            this.additionalReturns = additionalReturns;
             this.state = state;
             this.temps = addStackSlotsToTemporaries(parameters, temps);
             assert temps != null;
@@ -74,8 +77,9 @@ public class AArch64Call {
     public abstract static class MethodCallOp extends CallOp {
         protected final ResolvedJavaMethod callTarget;
 
-        protected MethodCallOp(LIRInstructionClass<? extends MethodCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c, result, parameters, temps, state);
+        protected MethodCallOp(LIRInstructionClass<? extends MethodCallOp> c, ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state) {
+            super(c, result, parameters, temps, additionalReturns, state);
             this.callTarget = callTarget;
         }
     }
@@ -86,13 +90,9 @@ public class AArch64Call {
 
         @Use({REG}) protected Value targetAddress;
 
-        public IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
-            this(TYPE, callTarget, result, parameters, temps, targetAddress, state);
-        }
-
-        protected IndirectCallOp(LIRInstructionClass<? extends IndirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state) {
-            super(c, callTarget, result, parameters, temps, state);
+        protected IndirectCallOp(LIRInstructionClass<? extends IndirectCallOp> c, ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
+            super(c, callTarget, result, parameters, temps, Value.NO_VALUES, state);
             this.targetAddress = targetAddress;
         }
 
@@ -113,12 +113,14 @@ public class AArch64Call {
     public abstract static class DirectCallOp extends MethodCallOp {
         public static final LIRInstructionClass<DirectCallOp> TYPE = LIRInstructionClass.create(DirectCallOp.class);
 
-        public DirectCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(TYPE, target, result, parameters, temps, state);
+        protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state) {
+            super(c, callTarget, result, parameters, temps, additionalReturns, state);
         }
 
-        protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c, callTarget, result, parameters, temps, state);
+        protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result,
+                        Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, callTarget, result, parameters, temps, Value.NO_VALUES, state);
         }
 
         @Override
@@ -131,8 +133,9 @@ public class AArch64Call {
         protected final ForeignCallLinkage callTarget;
         protected final Label label;
 
-        protected ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
-            super(c, result, parameters, temps, state);
+        protected ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state, Label label) {
+            super(c, result, parameters, temps, additionalReturns, state);
             this.callTarget = callTarget;
             this.label = label;
         }
@@ -159,8 +162,9 @@ public class AArch64Call {
     public static class DirectNearForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectNearForeignCallOp> TYPE = LIRInstructionClass.create(DirectNearForeignCallOp.class);
 
-        public DirectNearForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
-            super(TYPE, callTarget, result, parameters, temps, state, label);
+        public DirectNearForeignCallOp(ForeignCallLinkage callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state, Label label) {
+            super(TYPE, callTarget, result, parameters, temps, additionalReturns, state, label);
         }
 
         @Override
@@ -173,8 +177,9 @@ public class AArch64Call {
     public static class DirectFarForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectFarForeignCallOp> TYPE = LIRInstructionClass.create(DirectFarForeignCallOp.class);
 
-        public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state, Label label) {
-            super(TYPE, callTarget, result, parameters, temps, state, label);
+        public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result,
+                        Value[] parameters, Value[] temps, Value[] additionalReturns, LIRFrameState state, Label label) {
+            super(TYPE, callTarget, result, parameters, temps, additionalReturns, state, label);
         }
 
         @Override

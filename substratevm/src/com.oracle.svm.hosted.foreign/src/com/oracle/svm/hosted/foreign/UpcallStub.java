@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -155,10 +154,10 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     private LowLevelUpcallStub(AnalysisMethod highLevelStubMethod, JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess, boolean direct) {
         super(jep, adapted.callType(), metaAccess, false, direct);
         this.highLevelStub = highLevelStubMethod;
-        this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
+        this.savedRegisters = SubstrateRegisterConfigFactory.singleton()
                         .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
                         .getCalleeSaveRegisters();
-        this.parametersAssignment = adapted.parametersAssignment().toArray(new AssignedLocation[0]);
+        this.parametersAssignment = adapted.parametersAssignment().toArray(AssignedLocation.EMPTY_ARRAY);
     }
 
     /**

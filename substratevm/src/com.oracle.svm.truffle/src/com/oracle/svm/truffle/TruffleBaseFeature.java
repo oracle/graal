@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,6 +73,7 @@ import org.graalvm.home.Version;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -213,6 +215,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
         public static final HostedOptionKey<Boolean> TruffleCheckPreinitializedFiles = new HostedOptionKey<>(true);
+
+        @Option(help = "Enable tail call threading on Truffle interpreter bytecode handlers.", stability = EXPERIMENTAL) //
+        public static final HostedOptionKey<Boolean> TruffleInterpreterTailCallThreading = new HostedOptionKey<>(true);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -472,6 +477,11 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     public void setProfilingEnabled(boolean profilingEnabled) {
         this.profilingEnabled = profilingEnabled;
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(TruffleBytecodeInterpreterFeature.class);
     }
 
     @Override

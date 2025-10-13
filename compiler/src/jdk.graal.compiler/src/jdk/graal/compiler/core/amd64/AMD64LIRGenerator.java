@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -727,9 +727,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset(getCodeCache());
         if (maxOffset != (int) maxOffset) {
-            append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, linkage.getAdditionalReturns(), info));
         } else {
-            append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, linkage.getAdditionalReturns(), info));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -365,18 +365,6 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         return new StackOverflowError();
     }
 
-    public static boolean needStackOverflowCheck(SharedMethod method) {
-        if (method.isUninterruptible()) {
-            /*
-             * Uninterruptible methods are allowed to use the yellow and red zones of the stack.
-             * Also, the thread register and stack boundary might not be set up. We cannot do a
-             * stack overflow check.
-             */
-            return false;
-        }
-        return true;
-    }
-
     public static long computeDeoptFrameSize(StructuredGraph graph) {
         long deoptFrameSize = 0;
         if (ImageInfo.inImageRuntimeCode()) {
@@ -439,7 +427,7 @@ final class InsertStackOverflowCheckPhase extends BasePhase<MidTierContext> {
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
         SharedMethod method = (SharedMethod) graph.method();
-        if (((SubstrateBackend) context.getTargetProvider()).stackOverflowCheckedInPrologue(method) || !StackOverflowCheckImpl.needStackOverflowCheck(method)) {
+        if (((SubstrateBackend) context.getTargetProvider()).stackOverflowCheckedInPrologue(method) || !method.needStackOverflowCheck()) {
             return;
         }
         /*

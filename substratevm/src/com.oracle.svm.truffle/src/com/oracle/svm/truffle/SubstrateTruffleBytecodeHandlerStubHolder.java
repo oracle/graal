@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.truffle;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
-
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
-public interface SubstrateRegisterConfigFactory {
-    RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer);
-
-    static SubstrateRegisterConfigFactory singleton() {
-        return ImageSingletons.lookup(SubstrateRegisterConfigFactory.class);
-    }
+/**
+ * This class is used to manage the bytecode handlers stubs for Truffle, providing a way to
+ * initialize and retrieve the handlers.
+ */
+public final class SubstrateTruffleBytecodeHandlerStubHolder {
 }

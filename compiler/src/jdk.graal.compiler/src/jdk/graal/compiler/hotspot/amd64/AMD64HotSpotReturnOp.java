@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.amd64;
 
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.amd64.AMD64.r15;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
@@ -62,9 +63,13 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp implemen
     private final GraalHotSpotVMConfig config;
     private final boolean requiresReservedStackAccessCheck;
 
-    AMD64HotSpotReturnOp(Value value, boolean isStub, Register thread, Register scratchForSafepointOnReturn, GraalHotSpotVMConfig config, boolean requiresReservedStackAccessCheck) {
+    @Use({REG, STACK}) protected Value[] additionalReturns;
+
+    AMD64HotSpotReturnOp(Value value, Value[] additionalReturns, boolean isStub, Register thread, Register scratchForSafepointOnReturn, GraalHotSpotVMConfig config,
+                    boolean requiresReservedStackAccessCheck) {
         super(TYPE);
         this.value = value;
+        this.additionalReturns = additionalReturns;
         this.isStub = isStub;
         this.thread = thread;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,18 @@ public interface SharedMethod extends ResolvedJavaMethod {
     boolean isUninterruptible();
 
     boolean needSafepointCheck();
+
+    /**
+     * @return true if the stack overflow check in the method's prologue cannot be omitted.
+     */
+    default boolean needStackOverflowCheck() {
+        /*
+         * Uninterruptible methods are allowed to use the yellow and red zones of the stack. Also,
+         * the thread register and stack boundary might not be set up. We cannot do a stack overflow
+         * check.
+         */
+        return !isUninterruptible();
+    }
 
     /**
      * Returns true if this method is a native entry point, i.e., called from C code. The method

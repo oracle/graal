@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -284,6 +284,13 @@ public abstract class HostVM {
     public boolean hasNeverInlineDirective(ResolvedJavaMethod method) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
         return true;
+    }
+
+    /**
+     * @return true if method must never apply constant folding based on the type flow analysis.
+     */
+    public boolean hasNeverStrengthenGraphWithConstantsDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
     }
 
     /**

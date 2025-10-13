@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1329,6 +1329,13 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return;
         }
         HostInliningPhase phase = new HostInliningPhase(CanonicalizerPhase.create());
+        insertBeforeInlining(highTier, phase);
+    }
+
+    /**
+     * Insert {@code phase} before any {@code AbstractInliningPhase} in {@code highTier}.
+     */
+    public static void insertBeforeInlining(HighTier highTier, BasePhase<HighTierContext> phase) {
         ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
         if (insertionPoint == null) {
             highTier.prependPhase(phase);

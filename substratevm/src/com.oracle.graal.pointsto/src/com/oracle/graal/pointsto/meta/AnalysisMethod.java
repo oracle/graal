@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,6 +141,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /** Marks a method analyzed in a prior layer. */
     private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
+    private final boolean hasNeverStrengthenGraphWithConstantsDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
     private final String name;
@@ -228,6 +229,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
         }
         hasNeverInlineDirective = hostVM.hasNeverInlineDirective(wrapped);
+        hasNeverStrengthenGraphWithConstantsDirective = hostVM.hasNeverStrengthenGraphWithConstantsDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
@@ -314,6 +316,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         declaringClass = original.declaringClass;
         signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
+        hasNeverStrengthenGraphWithConstantsDirective = original.hasNeverStrengthenGraphWithConstantsDirective;
         exceptionHandlers = original.exceptionHandlers;
         localVariableTable = original.localVariableTable;
         parsingContextMaxDepth = original.parsingContextMaxDepth;
@@ -788,6 +791,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return graphProvider.allowRuntimeCompilation();
         }
         return true;
+    }
+
+    @Override
+    public boolean allowStrengthenGraphWithConstants() {
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.allowStrengthenGraphWithConstants();
+        }
+        return !hasNeverStrengthenGraphWithConstantsDirective;
     }
 
     @Override

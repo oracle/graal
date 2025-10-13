@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package com.oracle.svm.core.graal.amd64;
 
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -33,21 +35,29 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 @Opcode("RETURN")
 public class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.BlockEndOp {
     public static final LIRInstructionClass<AMD64ReturnOp> TYPE = LIRInstructionClass.create(AMD64ReturnOp.class);
     @Use({REG, ILLEGAL}) protected Value x;
+    @Use({REG, ILLEGAL}) protected AllocatableValue tailCallTarget;
+    @Use({REG, STACK}) private AllocatableValue[] additionalReturns;
 
     protected AMD64ReturnOp(LIRInstructionClass<? extends AMD64BlockEndOp> type, Value x) {
-        super(type);
-        this.x = x;
+        this(type, x, Value.ILLEGAL, AllocatableValue.NONE);
     }
 
-    public AMD64ReturnOp(Value x) {
-        this(TYPE, x);
+    protected AMD64ReturnOp(LIRInstructionClass<? extends AMD64BlockEndOp> type, Value x, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
+        super(type);
+        this.x = x;
+        this.tailCallTarget = tailCallTarget;
+        this.additionalReturns = additionalReturns;
+    }
+
+    public AMD64ReturnOp(Value x, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns) {
+        this(TYPE, x, tailCallTarget, additionalReturns);
     }
 
     @Override
@@ -66,6 +76,10 @@ public class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.BlockEn
     }
 
     protected void emitReturn(AMD64MacroAssembler masm) {
-        masm.ret(0);
+        if (tailCallTarget.equals(Value.ILLEGAL)) {
+            masm.ret(0);
+        } else {
+            masm.jmp(asRegister(tailCallTarget));
+        }
     }
 }

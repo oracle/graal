@@ -150,6 +150,9 @@ meth public static long truncateToUnsignedLong(float)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.HostCompilerDirectives
+innr public abstract interface static !annotation BytecodeInterpreterFetchOpcode
+innr public abstract interface static !annotation BytecodeInterpreterHandler
+innr public abstract interface static !annotation BytecodeInterpreterHandlerConfig
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
 innr public abstract interface static !annotation InliningCutoff
@@ -157,6 +160,59 @@ innr public abstract interface static !annotation InliningRoot
 meth public static boolean inInterpreterFastPath()
 meth public static int markThreadedSwitch(int)
 supr java.lang.Object
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterFetchOpcode
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandler
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean safepoint()
+meth public abstract !hasdefault boolean threading()
+meth public abstract int[] value()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
+ outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+innr public abstract interface static !annotation Argument
+intf java.lang.annotation.Annotation
+meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
+meth public abstract int maximumOperationCode()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
+ outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+innr public abstract interface static !annotation Field
+innr public final static !enum ExpansionKind
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean nonNull()
+meth public abstract !hasdefault boolean returnValue()
+meth public abstract !hasdefault com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind expand()
+meth public abstract !hasdefault com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$Field[] fields()
+
+CLSS public final static !enum com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind
+ outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
+fld public final static com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind MATERIALIZED
+fld public final static com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind NONE
+fld public final static com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind VIRTUAL
+meth public static com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind[] values()
+supr java.lang.Enum<com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind>
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$Field
+ outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean nonNull()
+meth public abstract java.lang.String name()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
  outer com.oracle.truffle.api.HostCompilerDirectives
