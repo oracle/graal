@@ -486,7 +486,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/74a2c831a2af55c66317ca8aead53fde2a2a6900/src/hotspot/cpu/x86/x86.ad#L1261-L1288",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/74a2c831a2af55c66317ca8aead53fde2a2a6900/src/hotspot/cpu/x86/x86.ad#L1261-L1288",
               sha1 = "1326c5aa33296807cd6fb271150c3fcc0bfb9388")
     // @formatter:on
     private static void emitDeoptHandler(CompilationResultBuilder crb, AMD64MacroAssembler asm, ForeignCallLinkage callTarget, HotSpotMarkId deoptHandlerEntry) {

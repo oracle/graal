@@ -77,7 +77,7 @@ public class AArch64HotSpotShenandoahCompareAndSwapOp extends AArch64AtomicMove.
 
     @Override
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L471-L606",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L472-L607",
               sha1 = "553a2fb0d37f39016eda85331e8cd2421153cbfe")
     // @formatter:on
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {

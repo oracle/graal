@@ -79,8 +79,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/4994bd594299e91e804438692e068b1c5dd5cc02/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L43-L320",
-          sha1 = "1e35ec749256703493e70d96d2818be65c659756")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L43-L320",
+          sha1 = "85dbee8cb0c0f6d8f37d07da6cf8b2f9f4fc8ce8")
 // @formatter:on
 public final class AMD64SHA3Op extends AMD64LIRInstruction {
 

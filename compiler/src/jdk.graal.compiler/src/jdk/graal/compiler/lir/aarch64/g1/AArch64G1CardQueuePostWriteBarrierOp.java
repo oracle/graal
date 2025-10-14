@@ -50,9 +50,8 @@ import jdk.vm.ci.meta.Value;
  * {@link AArch64G1BarrierSetLIRTool}.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L185-L259",
-          ignore = "GR-58685, JDK-8342382",
-          sha1 = "dd42f4d351403eb99f9bd76454131e0659be1565")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L202-L274",
+          sha1 = "b6e1ebf033c07675ca3286ae91b96c29e6b98dc3")
 // @formatter:on
 public class AArch64G1CardQueuePostWriteBarrierOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64G1CardQueuePostWriteBarrierOp> TYPE = LIRInstructionClass.create(AArch64G1CardQueuePostWriteBarrierOp.class);
