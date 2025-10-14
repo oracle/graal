@@ -703,10 +703,6 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 return true;
             }
 
-            String getLanguageId() {
-                return language.id;
-            }
-
             @ExportMessage
             Class<? extends TruffleLanguage<?>> getLanguage() {
                 return language.getClass();

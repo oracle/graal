@@ -90,7 +90,7 @@ public final class TruffleStackTrace extends Exception {
     private final int lazyFrames;
 
     // contains host exception frames
-    private Throwable materializedHostException;
+    private MaterializedHostException materializedHostException;
 
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
@@ -105,9 +105,22 @@ public final class TruffleStackTrace extends Exception {
      * internal error then the exception (e.g. NullPointerException) has already captured the host
      * stack trace and this host exception stack trace is not used.
      */
-    private void materializeHostException() {
+    private void materializeHostException(Throwable throwable) {
         if (this.materializedHostException == null) {
-            this.materializedHostException = new Exception();
+            Throwable base = null;
+            boolean originatedInHostLanguage = true;
+            Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
+            if (polyglotEngine != null) {
+                AbstractHostLanguageService hostService = LanguageAccessor.ENGINE.getHostService(polyglotEngine);
+                if (hostService != null && hostService.isHostException(throwable)) {
+                    base = hostService.unboxHostException(throwable);
+                }
+            }
+            if (base == null) {
+                base = new Exception();
+                originatedInHostLanguage = false;
+            }
+            this.materializedHostException = new MaterializedHostException(LanguageAccessor.ENGINE.updateHostException(throwable, base), originatedInHostLanguage);
         }
     }
 
@@ -121,12 +134,10 @@ public final class TruffleStackTrace extends Exception {
     }
 
     StackTraceElement[] getInternalStackTrace() {
-        Throwable hostException = this.materializedHostException;
-        if (hostException == null) {
-            hostException = this;
-        }
-        StackTraceElement[] hostFrames = hostException.getStackTrace();
-        if (lazyFrames == 0) {
+        MaterializedHostException hostException = this.materializedHostException;
+        Throwable exception = hostException != null ? hostException.exception : this;
+        StackTraceElement[] hostFrames = exception.getStackTrace();
+        if (lazyFrames == 0 || (hostException != null && hostException.originatedInHostLanguage)) {
             return hostFrames;
         } else {
             StackTraceElement[] extended = new StackTraceElement[hostFrames.length + lazyFrames];
@@ -262,21 +273,11 @@ public final class TruffleStackTrace extends Exception {
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
         // internal and host language exceptions already have a stack trace attached.
-        if (isTruffleException && !isHostException(throwable)) {
-            fullStackTrace.materializeHostException();
+        if (isTruffleException) {
+            fullStackTrace.materializeHostException(throwable);
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;
-    }
-
-    private static boolean isHostException(Throwable throwable) {
-        Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
-        if (polyglotEngine == null) {
-            return false;
-        }
-        AbstractHostLanguageService hostService = LanguageAccessor.ENGINE.getHostService(polyglotEngine);
-        // hostService is null during context pre-initialization
-        return hostService != null && hostService.isHostException(throwable);
     }
 
     private static final class TracebackElement {
@@ -466,4 +467,6 @@ public final class TruffleStackTrace extends Exception {
         return LanguageAccessor.NODES.isCaptureFramesForTrace(rootNode, frame.getCompilationTier() > 0) ? frame.getFrame(FrameAccess.READ_ONLY) : null;
     }
 
+    private record MaterializedHostException(Throwable exception, boolean originatedInHostLanguage) {
+    }
 }

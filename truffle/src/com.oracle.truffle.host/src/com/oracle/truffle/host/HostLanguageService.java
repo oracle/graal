@@ -321,6 +321,16 @@ public class HostLanguageService extends AbstractHostLanguageService {
         return api.allowsPublicAccess(language.hostClassCache.hostAccess);
     }
 
+    @Override
+    public boolean isHostStackTraceVisibleToGuest() {
+        return api.allowsHostStackTrace(language.hostClassCache.hostAccess);
+    }
+
+    @Override
+    public boolean isGuestToHostRootNode(Object rootNode) {
+        return rootNode instanceof GuestToHostRootNode;
+    }
+
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
         assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
         assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
@@ -364,5 +374,4 @@ public class HostLanguageService extends AbstractHostLanguageService {
                 return false;
         }
     }
-
 }

@@ -43,6 +43,7 @@ package com.oracle.truffle.api.exception;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -52,12 +53,16 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(InteropLibrary.class)
 final class DefaultStackTraceElementObject implements TruffleObject {
 
+    static final String HOST = "host";
+
     private final RootNode rootNode;
     private final SourceSection sourceSection;
+    private final int byteCodeIndex;
 
-    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection) {
+    DefaultStackTraceElementObject(RootNode rootNode, SourceSection sourceSection, int byteCodeIndex) {
         this.rootNode = rootNode;
         this.sourceSection = sourceSection;
+        this.byteCodeIndex = byteCodeIndex;
     }
 
     @ExportMessage
@@ -101,5 +106,61 @@ final class DefaultStackTraceElementObject implements TruffleObject {
     @SuppressWarnings("static-method")
     Object getDeclaringMetaObject() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean hasLanguageId() {
+        return true;
+    }
+
+    @ExportMessage
+    String getLanguageId() {
+        return rootNode.getLanguageInfo().getId();
+    }
+
+    @ExportMessage
+    boolean hasBytecodeIndex() {
+        return byteCodeIndex != -1;
+    }
+
+    @ExportMessage
+    int getBytecodeIndex() throws UnsupportedMessageException {
+        if (hasBytecodeIndex()) {
+            return byteCodeIndex;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isInternal() {
+        return rootNode.isInternal();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method", "unused"})
+    Object getMembers(boolean includeInternal) {
+        return new InteropList(HOST);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String member) {
+        return HOST.equals(member);
+    }
+
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        if (HOST.equals(member)) {
+            return false;
+        } else {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 }
