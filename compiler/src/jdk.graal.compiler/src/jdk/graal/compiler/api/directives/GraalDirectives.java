@@ -158,6 +158,13 @@ public final class GraalDirectives {
     }
 
     /**
+     * Like {@link #controlFlowAnchor()} except this node can be optimized away if its
+     * {@code  condition} argument becomes constant {@code 0}.
+     */
+    public static void controlFlowAnchor(long condition) {
+    }
+
+    /**
      * A call to this method will disable strip mining of the enclosing loop in the compiler.
      */
     public static void neverStripMine() {
