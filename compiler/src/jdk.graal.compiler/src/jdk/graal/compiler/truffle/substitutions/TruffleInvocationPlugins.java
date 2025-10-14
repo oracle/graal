@@ -97,9 +97,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class TruffleInvocationPlugins {
 
     public static void register(Architecture architecture, InvocationPlugins plugins) {
+        register(architecture, plugins, true);
+    }
+
+    public static void register(Architecture architecture, InvocationPlugins plugins, boolean registerSIMDIntrinsics) {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
-            registerTStringPlugins(plugins, architecture);
-            registerArrayUtilsPlugins(plugins);
+            if (registerSIMDIntrinsics) {
+                registerTStringPlugins(plugins, architecture);
+                registerArrayUtilsPlugins(plugins);
+            }
             registerExactMathPlugins(plugins);
         }
         registerFramePlugins(plugins);
