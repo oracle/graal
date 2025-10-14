@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORPHIC;
@@ -42,6 +43,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -63,6 +65,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
@@ -80,6 +83,9 @@ import jdk.vm.ci.meta.SpeculationLog;
  * also abstract methods for vtable calls.
  */
 public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember {
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    @SuppressWarnings("unchecked") //
+    private static final Class<? extends Annotation> CALLER_SENSITIVE_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.reflect.CallerSensitive");
     /**
      * This flag denotes a method that was originally native but was substituted by a non-native
      * method.
@@ -305,7 +311,14 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         if (isSubstitutedNative) {
             newModifiers |= ACC_SUBSTITUTED_NATIVE;
         }
+        if (AnnotationAccess.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
+            newModifiers |= ACC_CALLER_SENSITIVE;
+        }
         return newModifiers;
+    }
+
+    public final boolean isCallerSensitive() {
+        return (flags & ACC_CALLER_SENSITIVE) != 0;
     }
 
     @Override

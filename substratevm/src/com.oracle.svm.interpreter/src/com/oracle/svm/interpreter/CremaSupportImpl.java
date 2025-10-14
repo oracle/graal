@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_CALLER_SENSITIVE;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD;
 import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD;
@@ -850,7 +851,9 @@ public class CremaSupportImpl implements CremaSupport {
     private static int getMethodFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
         InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
         int flags = resolvedMethod.getModifiers();
-        // MN_CALLER_SENSITIVE should be added for caller-sensitive methods GR-68603
+        if (resolvedMethod.isCallerSensitive()) {
+            flags |= MN_CALLER_SENSITIVE;
+        }
         if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
             flags |= MN_IS_CONSTRUCTOR;
             flags |= (REF_newInvokeSpecial << MN_REFERENCE_KIND_SHIFT);
