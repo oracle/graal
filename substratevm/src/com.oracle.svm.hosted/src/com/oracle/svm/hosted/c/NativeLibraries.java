@@ -80,6 +80,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -413,9 +414,9 @@ public final class NativeLibraries {
 
         if (!context.isInConfiguration()) {
             /* Nothing to do, all elements in context are ignored. */
-        } else if (method.getAnnotation(CConstant.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(method, CConstant.class) != null) {
             context.appendConstantAccessor(method);
-        } else if (method.getAnnotation(CFunction.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(method, CFunction.class) != null) {
             /* Nothing to do, handled elsewhere but the NativeCodeContext above is important. */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);
@@ -427,15 +428,15 @@ public final class NativeLibraries {
 
         if (!context.isInConfiguration()) {
             /* Nothing to do, all elements in context are ignored. */
-        } else if (type.getAnnotation(CStruct.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(type, CStruct.class) != null) {
             context.appendStructType(type);
-        } else if (type.getAnnotation(RawStructure.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(type, RawStructure.class) != null) {
             context.appendRawStructType(type);
-        } else if (type.getAnnotation(CPointerTo.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(type, CPointerTo.class) != null) {
             context.appendCPointerToType(type);
-        } else if (type.getAnnotation(RawPointerTo.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(type, RawPointerTo.class) != null) {
             context.appendRawPointerToType(type);
-        } else if (type.getAnnotation(CEnum.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(type, CEnum.class) != null) {
             context.appendEnumType(type);
         } else {
             addError("Type is not annotated with supported C interface annotation", type);
@@ -574,7 +575,7 @@ public final class NativeLibraries {
     }
 
     private Class<? extends CContext.Directives> getDirectives(ResolvedJavaType type) {
-        CContext useUnit = type.getAnnotation(CContext.class);
+        CContext useUnit = AnnotationUtil.getAnnotation(type, CContext.class);
         if (useUnit != null) {
             return getDirectives(useUnit);
         } else if (type.getEnclosingType() != null) {

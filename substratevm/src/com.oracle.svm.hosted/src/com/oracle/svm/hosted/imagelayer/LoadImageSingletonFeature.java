@@ -382,10 +382,10 @@ public class LoadImageSingletonFeature implements InternalFeature {
 
         /*
          * Record the id of all multilayered image singleton entries which may be referenced.
-         * 
+         *
          * In shared layers, we must add and record the id of all multilayered image singletons in
          * case they are referred to in a later layer.
-         * 
+         *
          * However, in the application layer we only need to add and record all multilayered image
          * singletons currently referred to.
          */

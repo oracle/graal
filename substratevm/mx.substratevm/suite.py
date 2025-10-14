@@ -231,6 +231,7 @@ suite = {
                 "java.base" : ["jdk.internal.module"],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.runtime"
                 ]
@@ -378,6 +379,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
@@ -1373,6 +1375,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.stack"
                 ]

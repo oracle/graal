@@ -42,8 +42,6 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -77,6 +75,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -166,7 +165,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      * this type cannot be extended outside the observable universe.</li>
      * <li>In <b>closed type world</b> all types are considered closed.</li>
      * </ul>
-     * 
+     *
      * This method is conservative, it returns false in cases where we are not sure, and further
      * refining when a type is closed will improve analysis. For example GR-59311 will also define
      * when a sealed type can be treated as a closed type.
@@ -394,7 +393,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
-        AnalysisError.guarantee(!AnnotationAccess.isAnnotationPresent(aMethod, Fold.class), "@Fold annotated method cannot be a root method.");
+        AnalysisError.guarantee(!AnnotationUtil.isAnnotationPresent(aMethod, Fold.class), "@Fold annotated method cannot be a root method.");
         boolean isStatic = aMethod.isStatic();
         int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);

@@ -28,9 +28,9 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
-import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -45,7 +45,7 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
 
     public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
         this.original = original;
-        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(injectedAnnotation);
+        this.injectedAnnotations = List.of(AnnotationUtil.asAnnotationValue(injectedAnnotation));
     }
 
     @Override

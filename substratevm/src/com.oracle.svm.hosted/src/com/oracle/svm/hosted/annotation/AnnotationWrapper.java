@@ -66,4 +66,15 @@ public interface AnnotationWrapper extends AnnotatedElement {
     default Annotation[] getDeclaredAnnotations() {
         throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
+
+    @Override
+    default <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
+    }
+
+    @Override
+    default <T extends Annotation> T[] getDeclaredAnnotationsByType(Class<T> annotationClass) {
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
+    }
+
 }

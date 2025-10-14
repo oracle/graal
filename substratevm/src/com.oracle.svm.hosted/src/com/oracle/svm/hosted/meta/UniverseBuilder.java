@@ -112,6 +112,7 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -380,8 +381,8 @@ public class UniverseBuilder {
             HostedDynamicLayerInfo.singleton().registerHostedMethod(hMethod);
         }
 
-        boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
-        boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
+        boolean isCFunction = AnnotationUtil.getAnnotation(aMethod, CFunction.class) != null;
+        boolean hasCFunctionOptions = AnnotationUtil.getAnnotation(aMethod, CFunctionOptions.class) != null;
         if (hasCFunctionOptions && !isCFunction) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
                             "Method annotated with @" + CFunctionOptions.class.getSimpleName() + " must also be annotated with @" + CFunction.class);
@@ -581,8 +582,8 @@ public class UniverseBuilder {
          * Sort so that in each group, Object fields are consecutive, and bigger types come first.
          */
         Object uncontendedSentinel = new Object();
-        Object unannotatedGroup = clazz.isAnnotationPresent(Contended.class) ? new Object() : uncontendedSentinel;
-        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class))
+        Object unannotatedGroup = AnnotationUtil.isAnnotationPresent(clazz, Contended.class) ? new Object() : uncontendedSentinel;
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(AnnotationUtil.getAnnotation(field, Contended.class))
                         .map(a -> "".equals(a.value()) ? new Object() : a.value())
                         .orElse(unannotatedGroup);
         Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
@@ -1058,7 +1059,7 @@ public class UniverseBuilder {
     }
 
     private static boolean excludeFromReferenceMap(HostedField field) {
-        ExcludeFromReferenceMap annotation = field.getAnnotation(ExcludeFromReferenceMap.class);
+        ExcludeFromReferenceMap annotation = AnnotationUtil.getAnnotation(field, ExcludeFromReferenceMap.class);
         if (annotation != null) {
             return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
         }

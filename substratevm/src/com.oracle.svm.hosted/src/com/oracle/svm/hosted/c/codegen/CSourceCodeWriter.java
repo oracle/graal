@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -257,7 +258,7 @@ public class CSourceCodeWriter {
 
     private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
         boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
-        return functionPointer && Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
+        return functionPointer && Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> AnnotationUtil.getAnnotation(v, InvokeCFunctionPointer.class) != null);
     }
 
     /**

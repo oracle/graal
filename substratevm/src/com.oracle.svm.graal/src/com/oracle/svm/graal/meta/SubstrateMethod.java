@@ -55,6 +55,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.util.TypeConversion;
@@ -123,7 +124,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         imageCodeInfo = codeInfo;
         encodedLineNumberTable = EncodedLineNumberTable.encode(original.getLineNumberTable());
 
-        assert original.getAnnotation(CEntryPoint.class) == null : "Can't compile entry point method";
+        assert AnnotationUtil.getAnnotation(original, CEntryPoint.class) == null : "Can't compile entry point method";
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);
@@ -144,8 +145,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
                         makeFlag(Uninterruptible.Utils.isUninterruptible(original), FLAG_BIT_UNINTERRUPTIBLE) |
                         makeFlag(SubstrateSafepointInsertionPhase.needSafepointCheck(original), FLAG_BIT_NEEDS_SAFEPOINT_CHECK) |
                         makeFlag(original.isNativeEntryPoint(), FLAG_BIT_ENTRY_POINT) |
-                        makeFlag(original.isAnnotationPresent(Snippet.class), FLAG_BIT_SNIPPET) |
-                        makeFlag(original.isAnnotationPresent(SubstrateForeignCallTarget.class), FLAG_BIT_FOREIGN_CALL_TARGET) |
+                        makeFlag(AnnotationUtil.isAnnotationPresent(original, Snippet.class), FLAG_BIT_SNIPPET) |
+                        makeFlag(AnnotationUtil.isAnnotationPresent(original, SubstrateForeignCallTarget.class), FLAG_BIT_FOREIGN_CALL_TARGET) |
                         makeFlag(callingConventionKind.ordinal(), FLAG_BIT_CALLING_CONVENTION_KIND, NUM_BITS_CALLING_CONVENTION_KIND) |
                         makeFlag(StubCallingConvention.Utils.hasStubCallingConvention(original), FLAG_BIT_CALLEE_SAVED_REGISTERS);
     }

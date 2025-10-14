@@ -41,17 +41,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.BaseLayerElement;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,7 +87,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
  * their dependencies.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
-public class SubstrateAnnotationExtractor implements AnnotationExtractor {
+public class SubstrateAnnotationExtractor implements AnnotationExtractor, AnnotationUtil.Access {
     private final Map<ResolvedJavaType, Map<ResolvedJavaType, AnnotationValue>> annotationCache = new ConcurrentHashMap<>();
     private final Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotationCache = new ConcurrentHashMap<>();
     private final Map<ResolvedJavaMethod, List<List<AnnotationValue>>> parameterAnnotationCache = new ConcurrentHashMap<>();
@@ -94,6 +96,17 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private final Map<AnnotationValue, Annotation> resolvedAnnotationsCache = new ConcurrentHashMap<>();
 
     private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, inherited == null);
+        AnnotationValue annotationValue = annotationValues.get(GraalAccess.lookupType(annotationType));
+        if (annotationValue != null) {
+            return asAnnotation(annotationValue, annotationType);
+        }
+        return null;
+    }
 
     /**
      * Gets the annotation of type {@code annotationType} from {@code annotated}.
@@ -264,13 +277,6 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         return type.cast(AnnotationParser.annotationForMap(type, memberValues));
     }
 
-    public static List<AnnotationValue> prepareInjectedAnnotations(Annotation... annotations) {
-        if (annotations == null || annotations.length == 0) {
-            return List.of();
-        }
-        return Stream.of(annotations).map(SubstrateAnnotationExtractor::toAnnotationValue).toList();
-    }
-
     @SuppressWarnings("unchecked")
     private <T extends Annotation> T extractAnnotation(Annotated element, Class<T> annotationType, boolean declaredOnly) {
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, declaredOnly);
@@ -279,6 +285,23 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             return (T) resolvedAnnotationsCache.computeIfAbsent(annotation, value -> toAnnotation(value, annotationType));
         }
         return null;
+    }
+
+    @Override
+    public <T extends Annotation> T asAnnotation(AnnotationValue annotationValue, Class<T> annotationType) {
+        T res = annotationType.cast(resolvedAnnotationsCache.computeIfAbsent(annotationValue, value -> toAnnotation(value, annotationType)));
+        Class<? extends Annotation> resType = res.annotationType();
+        if (!resType.equals(annotationType)) {
+            throw VMError.shouldNotReachHere("Conversion failed: expected %s (loader: %s), got %s (loader: %s)",
+                            annotationType.getName(), ReportUtils.loaderName(annotationType.getClassLoader()),
+                            resType.getName(), ReportUtils.loaderName(resType.getClassLoader()));
+        }
+        return res;
+    }
+
+    @Override
+    public AnnotationValue asAnnotationValue(Annotation annotation) {
+        return toAnnotationValue(annotation);
     }
 
     @Override
@@ -374,6 +397,11 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
 
     public Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(AnnotatedElement element) {
         return getAnnotationValues(toAnnotated(element), true);
+    }
+
+    @Override
+    public Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(Annotated element) {
+        return getAnnotationValues(element, true);
     }
 
     private Map<ResolvedJavaType, AnnotationValue> getAnnotationValues(Annotated element, boolean declaredOnly) {

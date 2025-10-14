@@ -42,6 +42,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -134,7 +135,7 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
 
-        if (method.getAnnotation(annotationClass) == null) {
+        if (AnnotationUtil.getAnnotation(method, annotationClass) == null) {
             throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + ClassUtil.getUnqualifiedName(annotationClass));
         }
         return method;

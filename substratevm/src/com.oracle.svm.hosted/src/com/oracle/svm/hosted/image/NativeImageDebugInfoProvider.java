@@ -97,6 +97,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -776,11 +777,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * RawPointerTo annotation
                      */
                     AnalysisType pointerTo = null;
-                    CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
+                    CPointerTo cPointerTo = AnnotationUtil.getAnnotation(type, CPointerTo.class);
                     if (cPointerTo != null) {
                         pointerTo = metaAccess.lookupJavaType(cPointerTo.value());
                     }
-                    RawPointerTo rawPointerTo = type.getAnnotation(RawPointerTo.class);
+                    RawPointerTo rawPointerTo = AnnotationUtil.getAnnotation(type, RawPointerTo.class);
                     if (rawPointerTo != null) {
                         pointerTo = metaAccess.lookupJavaType(rawPointerTo.value());
                     }

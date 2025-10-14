@@ -42,14 +42,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -80,6 +76,9 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -270,10 +269,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
                 try {
                     graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before instrumenting @Scoped method");
-                    if (AnnotationAccess.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
+                    if (AnnotationUtil.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
                         // substituted, only add the scoped node
                         introduceScopeNodes();
-                    } else if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    } else if (AnnotationUtil.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
                         // not substituted, also instrument
                         instrumentScopedMethod();
                     }
