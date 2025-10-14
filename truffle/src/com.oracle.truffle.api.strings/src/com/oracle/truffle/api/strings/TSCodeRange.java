@@ -75,7 +75,6 @@ final class TSCodeRange {
      */
     private static final int FLAG_IMPRECISE = 1 << 5;
     private static final int MASK_ORDINAL_MULTIBYTE = MASK_ORDINAL | FLAG_MULTIBYTE;
-    private static final int MASK_FOREIGN_ENDIAN_MULTIBYTE = FLAG_FOREIGN_ENDIAN | FLAG_MULTIBYTE;
 
     /**
      * All codepoints are ASCII (0x00 - 0x7f).
@@ -135,10 +134,6 @@ final class TSCodeRange {
 
     static boolean isForeignEndian(int codeRange) {
         return (codeRange & FLAG_FOREIGN_ENDIAN) != 0;
-    }
-
-    public static boolean isForeignEndianFixedWidth(int codeRange) {
-        return (codeRange & MASK_FOREIGN_ENDIAN_MULTIBYTE) == FLAG_FOREIGN_ENDIAN;
     }
 
     static boolean isFixedWidth(int codeRange) {
