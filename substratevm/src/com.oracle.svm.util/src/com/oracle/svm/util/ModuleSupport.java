@@ -27,6 +27,7 @@ package com.oracle.svm.util;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -141,7 +142,7 @@ public final class ModuleSupport {
                 return;
             }
             String accessor = accessingClass != null ? "class " + accessingClass.getTypeName() : "ALL-UNNAMED";
-            String message = access.name().toLowerCase() + " of packages from module " + moduleName + " to " +
+            String message = access.name().toLowerCase(Locale.ROOT) + " of packages from module " + moduleName + " to " +
                             accessor + " failed. No module named " + moduleName + " in boot layer.";
             throw new ModuleSupportError(message);
         }
