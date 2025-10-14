@@ -83,8 +83,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-import static jdk.graal.compiler.annotation.AnnotationValueSupport.getDeclaredAnnotationValues;
-
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
  */
@@ -203,7 +201,8 @@ public abstract class PartialEvaluator {
         return null;
     }
 
-    public static PartialEvaluationMethodInfo computePartialEvaluationMethodInfo(ResolvedJavaMethod method,
+    public static PartialEvaluationMethodInfo computePartialEvaluationMethodInfo(TruffleCompilerRuntime runtime,
+                    ResolvedJavaMethod method,
                     Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
                     KnownTruffleTypes types) {
         AnnotationValue truffleBoundary = declaredAnnotationValues.get(types.CompilerDirectives_TruffleBoundary);
@@ -212,8 +211,8 @@ public abstract class PartialEvaluator {
         AnnotationValue explodeLoop = declaredAnnotationValues.get(types.ExplodeLoop);
 
         return new PartialEvaluationMethodInfo(getLoopExplosionKind(explodeLoop),
-                        getInlineKind(truffleBoundary, truffleCallBoundary, method, true, types),
-                        getInlineKind(truffleBoundary, truffleCallBoundary, method, false, types),
+                        getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, true, types),
+                        getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, false, types),
                         method.canBeInlined(),
                         specialization);
     }
@@ -233,7 +232,7 @@ public abstract class PartialEvaluator {
         };
     }
 
-    private static InlineKind getInlineKind(AnnotationValue truffleBoundary, AnnotationValue truffleCallBoundary,
+    private static InlineKind getInlineKind(TruffleCompilerRuntime runtime, AnnotationValue truffleBoundary, AnnotationValue truffleCallBoundary,
                     ResolvedJavaMethod method, boolean duringPartialEvaluation,
                     KnownTruffleTypes types) {
         if (truffleBoundary != null) {
@@ -252,7 +251,7 @@ public abstract class PartialEvaluator {
             }
         } else if (truffleCallBoundary != null) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        } else if (FlightRecorderInstrumentation.isInstrumented(method, types)) {
+        } else if (FlightRecorderInstrumentation.isInstrumented(runtime, method, types)) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineKind.INLINE;

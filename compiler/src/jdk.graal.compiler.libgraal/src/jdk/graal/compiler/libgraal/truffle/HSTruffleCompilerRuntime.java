@@ -69,6 +69,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 
 public final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
@@ -78,14 +79,16 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     private static final Class<?> TRANSLATED_EXCEPTION = LibGraalFeature.lookupClass("jdk.internal.vm.TranslatedException");
 
     private final ResolvedJavaType classLoaderDelegate;
+    private final CCharPointer javaInstrumentationActive;
     final TruffleFromLibGraalCalls calls;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, JClass peer) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, JClass peer, CCharPointer javaInstrumentationActive) {
         /*
          * Note global duplicates may happen if the compiler is initialized by a host compilation.
          */
         super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
+        this.javaInstrumentationActive = javaInstrumentationActive;
         this.calls = new TruffleFromLibGraalCalls(env, peer);
     }
 
@@ -211,5 +214,10 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     @TruffleFromLibGraal(OnIsolateShutdown)
     public void notifyShutdown(JNIEnv env) {
         HSTruffleCompilerRuntimeGen.callOnIsolateShutdown(calls, env, IsolateUtil.getIsolateID());
+    }
+
+    @Override
+    public boolean isJavaInstrumentationActive() {
+        return javaInstrumentationActive.isNonNull() && javaInstrumentationActive.read() != 0;
     }
 }

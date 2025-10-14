@@ -92,7 +92,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
                     KnownTruffleTypes types) {
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
         Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) method);
-        var info = PartialEvaluator.computePartialEvaluationMethodInfo(method, annotations, types);
+        var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types);
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {

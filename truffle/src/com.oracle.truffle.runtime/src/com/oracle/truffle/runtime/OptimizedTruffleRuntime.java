@@ -1158,6 +1158,11 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
     }
 
+    @Override
+    public boolean isJavaInstrumentationActive() {
+        return JFRListener.isActive();
+    }
+
     /**
      * Allows {@link OptimizedTruffleRuntime} subclasses to suppress exceptions such as an exception
      * thrown during VM exit. Unlike {@link #isSuppressedFailure(TruffleCompilable, Supplier)} this

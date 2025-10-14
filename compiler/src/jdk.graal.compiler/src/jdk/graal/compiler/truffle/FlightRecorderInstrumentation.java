@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle;
 
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -31,7 +32,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-// TODO: Handle FlightRecorder enabling/disabling.
 final class FlightRecorderInstrumentation {
 
     private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
@@ -50,7 +50,10 @@ final class FlightRecorderInstrumentation {
     private FlightRecorderInstrumentation() {
     }
 
-    static boolean isInstrumented(ResolvedJavaMethod method, KnownTruffleTypes types) {
+    static boolean isInstrumented(TruffleCompilerRuntime runtime, ResolvedJavaMethod method, KnownTruffleTypes types) {
+        if (!runtime.isJavaInstrumentationActive()) {
+            return false;
+        }
         if (("traceThrowable".equals(method.getName()) || "traceError".equals(method.getName())) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
             return true;
         }

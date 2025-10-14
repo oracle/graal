@@ -36,6 +36,7 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.word.WordFactory;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.
@@ -54,6 +55,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
 
     private static final int NO_TRUFFLE_REGISTERED = 0;
     private static final GlobalAtomicLong WEAK_TRUFFLE_RUNTIME_INSTANCE = new GlobalAtomicLong("WEAK_TRUFFLE_RUNTIME_INSTANCE", NO_TRUFFLE_REGISTERED);
+    private static final GlobalAtomicLong JAVA_INSTRUMENTATION_ACTIVE_ADDRESS = new GlobalAtomicLong("JAVA_INSTRUMENTATION_ACTIVE_ADDRESS", NO_TRUFFLE_REGISTERED);
 
     private TruffleHostEnvironment previousRuntime;
 
@@ -89,7 +91,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
         try (TruffleRuntimeScope truffleRuntimeScope = LibGraalTruffleHostEnvironment.openTruffleRuntimeScopeImpl()) {
-            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, runtimeClass);
+            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, runtimeClass, WordFactory.pointer(JAVA_INSTRUMENTATION_ACTIVE_ADDRESS.get()));
             this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
             assert JNIUtil.IsSameObject(env, hsRuntime(environment).getHandle(), runtimeLocalRef);
             return environment;
@@ -100,8 +102,12 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         return (HSTruffleCompilerRuntime) environment.runtime();
     }
 
-    public static boolean registerRuntime(long truffleRuntimeWeakRef) {
+    public static boolean registerRuntime(long truffleRuntimeWeakRef, long javaInstrumentationActiveAddress) {
         // TODO GR-44222 support multiple runtimes.
-        return WEAK_TRUFFLE_RUNTIME_INSTANCE.compareAndSet(0, truffleRuntimeWeakRef);
+        boolean registered = WEAK_TRUFFLE_RUNTIME_INSTANCE.compareAndSet(0, truffleRuntimeWeakRef);
+        if (registered) {
+            JAVA_INSTRUMENTATION_ACTIVE_ADDRESS.set(javaInstrumentationActiveAddress);
+        }
+        return registered;
     }
 }
