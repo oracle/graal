@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -63,7 +64,7 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
     }
 
     private static boolean handleField(GraphBuilderContext b, AnalysisField field, boolean isStatic, ValueNode receiver, boolean isGet, ValueNode value) {
-        InjectAccessors injectAccesors = field.getAnnotation(InjectAccessors.class);
+        InjectAccessors injectAccesors = AnnotationUtil.getAnnotation(field, InjectAccessors.class);
         if (injectAccesors == null) {
             return false;
         }

@@ -47,7 +47,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
 import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
@@ -55,7 +55,6 @@ import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -100,6 +99,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -477,7 +477,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            assert !AnnotationUtil.isAnnotationPresent(aField, Delete.class);
             return aField.registerAsUnsafeAccessed(reason);
         }
 

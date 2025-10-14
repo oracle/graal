@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -52,6 +51,8 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippet;
 import com.oracle.svm.hosted.webimage.snippets.JSSnippets;
 import com.oracle.svm.hosted.webimage.util.metrics.MethodMetricsCollector;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -186,9 +187,9 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     public ClassWithMirrorLowerer(OptionValues options, DebugContext debug, JSCodeGenTool jsLTools, Map<HostedMethod, StructuredGraph> methodGraphs, Labeler labeler,
                     MethodMetricsCollector methodMetricsCollector, Consumer<Integer> compiledMethodBytesCounter, HostedType type) {
         super(options, debug, jsLTools, methodGraphs, labeler, methodMetricsCollector, compiledMethodBytesCounter, type);
-        this.isImportedClass = type.isAnnotationPresent(JS.Import.class);
-        this.isSourceIncluded = type.isAnnotationPresent(JS.Code.Include.class) || type.isAnnotationPresent(JS.Code.class);
-        this.isDirectSubclassOfImport = type.getSuperclass().isAnnotationPresent(JS.Import.class);
+        this.isImportedClass = AnnotationUtil.isAnnotationPresent(type, JS.Import.class);
+        this.isSourceIncluded = AnnotationUtil.isAnnotationPresent(type, JS.Code.Include.class) || AnnotationUtil.isAnnotationPresent(type, JS.Code.class);
+        this.isDirectSubclassOfImport = AnnotationUtil.isAnnotationPresent(type.getSuperclass(), JS.Import.class);
         this.isSubclassOfImport = isSubclassOfImport(type);
         this.externClassDescriptor = null;
     }
@@ -213,7 +214,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     private static boolean isSubclassOfImport(HostedType type) {
-        return type != null && (type.isAnnotationPresent(JS.Import.class) || isSubclassOfImport(type.getSuperclass()));
+        return type != null && (AnnotationUtil.isAnnotationPresent(type, JS.Import.class) || isSubclassOfImport(type.getSuperclass()));
     }
 
     public static boolean isJSObjectSubtype(Class<?> cls) {
@@ -286,7 +287,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitNewLine();
         buffer.emitNewLine();
 
-        if (type.getAnnotation(JS.Export.class) != null) {
+        if (AnnotationUtil.getAnnotation(type, JS.Export.class) != null) {
             genJavaScriptExportMirrorClassDefinition();
         }
     }
@@ -451,7 +452,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     private static String importedName(HostedType type) {
-        String importedName = type.getAnnotation(JS.Import.class).value();
+        String importedName = AnnotationUtil.getAnnotation(type, JS.Import.class).value();
         return importedName.equals(UNSPECIFIED_IMPORTED_NAME_VALUE) ? computeImportedName(type) : importedName;
     }
 

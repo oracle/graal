@@ -66,7 +66,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -116,6 +115,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -958,7 +959,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * @see #registerTruffleLibrariesAsInHeap
      */
     private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
-        if (type.isAnnotationPresent(GenerateLibrary.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
             LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
             /* Trigger computation of uncachedDispatch. */
@@ -966,7 +967,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Manually rescan the field since this is during analysis. */
             access.rescanField(factory, uncachedDispatchField, scanReason);
         }
-        if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, ExportLibrary.class) || AnnotationUtil.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */
             invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
                             Collections.singleton(Class.class), type.getJavaClass());

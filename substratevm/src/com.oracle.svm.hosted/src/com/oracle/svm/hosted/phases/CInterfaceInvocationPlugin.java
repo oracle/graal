@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -63,6 +62,7 @@ import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
 import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -94,6 +94,7 @@ import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -133,18 +134,22 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
-        } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(method, InvokeCFunctionPointer.class) != null) {
             return replaceCFunctionPointerInvoke(b, method, args);
-        } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
-            return replaceJavaFunctionPointerInvoke(b, method, args);
-        } else if (method.getAnnotation(CEntryPoint.class) != null) {
-            assert !(method.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
-            AnalysisMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(method);
-            assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";
-            b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
-            return true;
         } else {
-            return false;
+            if (AnnotationUtil.getAnnotation(method, InvokeJavaFunctionPointer.class) != null) {
+                return replaceJavaFunctionPointerInvoke(b, method, args);
+            } else {
+                if (AnnotationUtil.getAnnotation(method, CEntryPoint.class) != null) {
+                    assert !(method.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
+                    AnalysisMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(method);
+                    assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";
+                    b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
         }
     }
 

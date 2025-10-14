@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.lang.reflect.Modifier;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
@@ -44,6 +43,7 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
@@ -77,7 +77,7 @@ public final class JSBodyFeature implements InternalFeature {
         plugins.appendNodePlugin(new NodePlugin() {
             @Override
             public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
+                if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JS.Import.class)) {
                     ((AnalysisType) method.getDeclaringClass()).registerAsInstantiated("JS.Import classes might be allocated in JavaScript. We need to tell the static analysis about that");
                 }
                 return false;

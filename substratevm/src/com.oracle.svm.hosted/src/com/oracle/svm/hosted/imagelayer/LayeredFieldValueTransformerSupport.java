@@ -59,6 +59,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -137,7 +138,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
             for (var fieldId : fieldsWithUpdatableValues) {
                 var aField = loader.getAnalysisFieldForBaseLayerId(fieldId);
                 List<Integer> receiverIds = loader.getUpdatableFieldReceiverIds(fieldId);
-                var proxy = createTransformer(aField, aField.getAnnotation(LayeredFieldValue.class), Set.copyOf(receiverIds));
+                var proxy = createTransformer(aField, AnnotationUtil.getAnnotation(aField, LayeredFieldValue.class), Set.copyOf(receiverIds));
 
                 for (int receiverId : receiverIds) {
                     ImageHeapConstant constant = loader.getConstant(receiverId);
@@ -235,7 +236,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
      * Called on all field values before heap layout. Note, that because we cannot fold updatable
      * values, we need to have an explicit call to signal that it is safe to expose updatable
      * values.
-     * 
+     *
      * @return whether this receiver needs to be patched.
      */
     public boolean finalizeFieldValue(HostedField hField, JavaConstant receiver) {

@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -405,16 +404,6 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     @Override
     public boolean isConcrete() {
         return original.isConcrete();
-    }
-
-    @Override
-    public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
-        return original.getAnnotationsByType(annotationClass);
-    }
-
-    @Override
-    public <T extends Annotation> T[] getDeclaredAnnotationsByType(Class<T> annotationClass) {
-        return original.getDeclaredAnnotationsByType(annotationClass);
     }
 
     public ResolvedJavaType getOriginal() {

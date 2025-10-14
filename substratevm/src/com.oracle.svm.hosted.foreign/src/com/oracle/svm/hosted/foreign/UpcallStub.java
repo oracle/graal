@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.foreign;
 
 import static com.oracle.graal.pointsto.infrastructure.ResolvedSignature.fromMethodType;
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 import java.lang.invoke.MethodHandle;
@@ -33,7 +34,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
@@ -63,7 +63,6 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -259,16 +258,12 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
         return kit.finalizeGraph();
     }
 
-    @Uninterruptible(reason = "Directly accesses registers and IsolateThread might not be correctly set up", calleeMustBe = false)
-    @ExplicitCallingConvention(SubstrateCallingConventionKind.Custom)
-    private static void annotationsHolder() {
-    }
-
-    private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(LowLevelUpcallStub.class, "annotationsHolder");
-
-    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    AnnotationAccess.getAnnotation(ANNOTATIONS_HOLDER, ExplicitCallingConvention.class),
-                    Uninterruptible.Utils.getAnnotation(ANNOTATIONS_HOLDER));
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
+                    newAnnotationValue(ExplicitCallingConvention.class,
+                                    "value", SubstrateCallingConventionKind.Custom),
+                    newAnnotationValue(Uninterruptible.class,
+                                    "calleeMustBe", false,
+                                    "reason", "Directly accesses registers and IsolateThread might not be correctly set up"));
 
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
