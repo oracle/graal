@@ -161,7 +161,7 @@ public final class GraalDirectives {
      * Like {@link #controlFlowAnchor()} except this node can be optimized away if its
      * {@code  condition} argument becomes constant {@code 0}.
      */
-    public static void controlFlowAnchor(long condition) {
+    public static void controlFlowAnchor(@SuppressWarnings("unused") long condition) {
     }
 
     /**
