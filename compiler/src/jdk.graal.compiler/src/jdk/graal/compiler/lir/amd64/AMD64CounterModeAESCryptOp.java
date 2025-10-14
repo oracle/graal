@@ -69,8 +69,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/4994bd594299e91e804438692e068b1c5dd5cc02/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L475-L783",
-          sha1 = "a9c4637b2bab6cf0e58895414dce82a005f55711")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L475-L783",
+          sha1 = "ba72f6253ff69eab9af3f23bba0225b0f706a520")
 // @formatter:on
 public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 

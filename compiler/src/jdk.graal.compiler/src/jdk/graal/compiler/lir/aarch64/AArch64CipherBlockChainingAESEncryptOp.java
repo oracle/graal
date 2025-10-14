@@ -66,8 +66,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0ad919c1e54895b000b58f6a1b54d79f76970845/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2896-L2999",
-          sha1 = "e60f3b417e67558f6ac292600cd4a5e0f34295bf")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2893-L2996",
+          sha1 = "bd1bf7594f6100eaf60b16c225cf40a394d9317d")
 // @formatter:on
 public final class AArch64CipherBlockChainingAESEncryptOp extends AArch64LIRInstruction {
 
