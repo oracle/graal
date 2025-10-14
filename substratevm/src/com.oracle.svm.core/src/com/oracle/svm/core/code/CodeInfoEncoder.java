@@ -28,7 +28,6 @@ import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.BitSet;
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -70,12 +69,18 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -909,7 +914,8 @@ class CodeInfoVerifier {
 }
 
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-class MethodTableFirstIDTracker implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MethodTableFirstIDTracker.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class MethodTableFirstIDTracker {
     public final int startingID;
     public int nextStartingId = -1;
 
@@ -925,21 +931,31 @@ class MethodTableFirstIDTracker implements LayeredImageSingleton {
         startingID = id;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<MethodTableFirstIDTracker>() {
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, MethodTableFirstIDTracker singleton) {
+                    int nextStartingId = singleton.nextStartingId;
+                    assert nextStartingId > 0 : nextStartingId;
+                    writer.writeInt("startingID", nextStartingId);
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
+        }
     }
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        assert nextStartingId > 0 : nextStartingId;
-        writer.writeInt("startingID", nextStartingId);
-        return PersistFlags.CREATE;
-    }
-
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        return new MethodTableFirstIDTracker(loader.readInt("startingID"));
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<MethodTableFirstIDTracker> {
+        @Override
+        public MethodTableFirstIDTracker createFromLoader(ImageSingletonLoader loader) {
+            return new MethodTableFirstIDTracker(loader.readInt("startingID"));
+        }
     }
 }
 

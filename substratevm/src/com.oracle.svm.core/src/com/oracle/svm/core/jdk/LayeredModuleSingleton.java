@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.util.UserError;
 
 /**
@@ -42,7 +41,7 @@ import com.oracle.svm.core.util.UserError;
  * from all image layers.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public abstract class LayeredModuleSingleton implements LayeredImageSingleton {
+public abstract class LayeredModuleSingleton {
     public static final String ALL_UNNAMED_MODULE_NAME = "native-image-all-unnamed";
     public static final String EVERYONE_MODULE_NAME = "native-image-everyone";
 

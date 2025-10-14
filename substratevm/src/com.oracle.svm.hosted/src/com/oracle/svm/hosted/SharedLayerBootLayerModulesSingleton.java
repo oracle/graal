@@ -26,11 +26,9 @@ package com.oracle.svm.hosted;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,13 +38,21 @@ import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingInitialLayerPredicate.class)
-public class SharedLayerBootLayerModulesSingleton implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SharedLayerBootLayerModulesSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class SharedLayerBootLayerModulesSingleton {
     private final Collection<String> sharedBootLayerModules;
     private ModuleLayer bootLayer;
 
@@ -70,29 +76,40 @@ public class SharedLayerBootLayerModulesSingleton implements LayeredImageSinglet
         return sharedBootLayerModules;
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
-        Stream<String> moduleNames = bootLayer.modules().stream().map(Module::getName);
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<SharedLayerBootLayerModulesSingleton>() {
 
-        if (sharedBootLayerModules != null) {
-            moduleNames = Stream.concat(moduleNames, sharedBootLayerModules.stream());
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, SharedLayerBootLayerModulesSingleton singleton) {
+                    SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
+                    Stream<String> moduleNames = singleton.bootLayer.modules().stream().map(Module::getName);
+
+                    if (singleton.sharedBootLayerModules != null) {
+                        moduleNames = Stream.concat(moduleNames, singleton.sharedBootLayerModules.stream());
+                    }
+
+                    SVMImageLayerWriter.initStringList(writerImpl.getSnapshotBuilder()::initSharedLayerBootLayerModules, moduleNames);
+
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
         }
-
-        SVMImageLayerWriter.initStringList(writerImpl.getSnapshotBuilder()::initSharedLayerBootLayerModules, moduleNames);
-
-        return PersistFlags.CREATE;
     }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
-        List<String> moduleNames = CapnProtoAdapters.toCollection(loaderImpl.getSnapshotReader().getSharedLayerBootLayerModules(), ArrayList::new);
-        return new SharedLayerBootLayerModulesSingleton(moduleNames);
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<SharedLayerBootLayerModulesSingleton> {
+        @Override
+        public SharedLayerBootLayerModulesSingleton createFromLoader(ImageSingletonLoader loader) {
+            SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
+            List<String> moduleNames = CapnProtoAdapters.toCollection(loaderImpl.getSnapshotReader().getSharedLayerBootLayerModules(), ArrayList::new);
+            return new SharedLayerBootLayerModulesSingleton(moduleNames);
+        }
     }
 }
