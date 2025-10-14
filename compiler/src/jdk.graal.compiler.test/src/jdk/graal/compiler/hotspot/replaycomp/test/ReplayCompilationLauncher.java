@@ -42,7 +42,8 @@ public class ReplayCompilationLauncher {
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.graal.compiler");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci");
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.compiler", false);
     }
 
     /**

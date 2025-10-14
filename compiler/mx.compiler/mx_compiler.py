@@ -1582,23 +1582,26 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
-def replaycomp_vm_args():
-    """Returns the VM arguments required to run the replay compilation launcher."""
-    vm_args = [
+def replaycomp_vm_args(distributions):
+    """Returns the VM arguments required to run the replay compilation launcher.
+
+    :param distributions the distributions to add to the classpath
+    :return the list of VM arguments
+    """
+    return [
         '-XX:-UseJVMCICompiler',
         '--enable-native-access=org.graalvm.truffle',
         '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-        '-Djdk.graal.CompilationFailureAction=Print'
+        '-Djdk.graal.CompilationFailureAction=Print',
+        '-cp',
+        mx.classpath(distributions, jdk=jdk),
     ]
-    _, dists = mx.defaultDependencies(opt_limit_to_suite=True)
-    dists = [d for d in dists if d.isJARDistribution() and os.path.exists(d.classpath_repr(resolve=False))]
-    return mx.get_runtime_jvm_args(dists) + vm_args
 
 def replaycomp_main_class():
     """Returns the main class name for the replay compilation launcher."""
     return 'jdk.graal.compiler.hotspot.replaycomp.test.ReplayCompilationLauncher'
 
-def replaycomp(args):
+def replaycomp(args, distributions = 'GRAAL_TEST'):
     """Runs the replay compilation launcher with the provided launcher and VM arguments."""
     extra_vm_args = []
     launcher_args = []
@@ -1615,7 +1618,7 @@ def replaycomp(args):
             ])
         else:
             launcher_args.append(arg)
-    return run_vm([*replaycomp_vm_args(), *extra_vm_args, replaycomp_main_class(), *launcher_args], nonZeroIsFatal=False)
+    return run_vm([*replaycomp_vm_args(distributions), *extra_vm_args, replaycomp_main_class(), *launcher_args], nonZeroIsFatal=False)
 
 def igvutil(args):
     """various utilities to inspect and modify IGV graphs"""
