@@ -93,6 +93,7 @@ import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
@@ -209,7 +210,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
         this.rawFlags = rawFlags;
-        this.methodVersion = new MethodVersion(klassVersion, pool, parserMethod, false, (CodeAttribute) parserMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(klassVersion, pool, parserMethod, false, parserMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class));
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -276,8 +277,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public Attribute getAttribute(Symbol<Name> attrName) {
-        return getParserMethod().getAttribute(attrName);
+    public Attribute[] getAttributes() {
+        return getParserMethod().getAttributes();
     }
 
     @Override
@@ -989,7 +990,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass) {
         // install the new method version immediately
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(newKlass.getConstantPool(), klassVersion.getKlass());
-        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
+        CodeAttribute newCodeAttribute = newMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class);
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newMethod, newCodeAttribute);
         return new SharedRedefinitionContent(methodVersion, newMethod, runtimePool, newCodeAttribute);
@@ -1151,7 +1152,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             }
         });
 
-        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Names.Signature);
+        SignatureAttribute signatureAttribute = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
         StaticObject guestGenericSignature = StaticObject.NULL;
         if (signatureAttribute != null) {
             String sig = getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
@@ -1307,7 +1308,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            SignatureAttribute attr = (SignatureAttribute) getParserMethod().getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getParserMethod().getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
@@ -1425,7 +1426,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     @Override
     public boolean hasSourceFileAttribute() {
-        return declaringKlass.getAttribute(Names.SourceFile) != null;
+        return declaringKlass.getAttribute(SourceFileAttribute.NAME, SourceFileAttribute.class) != null;
     }
 
     @Override
@@ -1630,7 +1631,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             this.pool = pool;
             this.parserMethod = parserMethod;
             this.codeAttribute = codeAttribute;
-            this.exceptionsAttribute = (ExceptionsAttribute) parserMethod.getAttribute(ExceptionsAttribute.NAME);
+            this.exceptionsAttribute = parserMethod.getAttribute(ExceptionsAttribute.NAME, ExceptionsAttribute.class);
             this.poisonPill = poisonPill;
             if (klassVersion.isInterface()) {
                 methodFlags |= METHOD_FLAGS_IS_INTERFACE_METHOD;

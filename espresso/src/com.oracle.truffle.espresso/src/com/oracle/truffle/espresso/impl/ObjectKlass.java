@@ -178,31 +178,32 @@ public final class ObjectKlass extends Klass implements AttributedElement {
     // endregion
 
     @Override
-    public Attribute getAttribute(Symbol<Name> attrName) {
-        return getLinkedKlass().getAttribute(attrName);
+    public Attribute[] getAttributes() {
+        return getKlassVersion().getAttributes();
     }
 
     @SuppressWarnings("this-escape")
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), linkedKlass.getParserKlass().getHiddenKlassId());
 
+        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
+
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
-        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
-        definingClassLoader = classLoader;
-        this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
+        this.definingClassLoader = classLoader;
         this.klassVersion = new KlassVersion(pool, linkedKlass, superKlass, superInterfaces);
+        this.enclosingMethod = getAttribute(EnclosingMethodAttribute.NAME, EnclosingMethodAttribute.class);
 
         Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : Field.EMPTY_ARRAY;
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
-        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
-        staticFieldTable = new Field[lkStaticFields.length];
+        this.fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        this.staticFieldTable = new Field[lkStaticFields.length];
 
         assert fieldTable.length == linkedKlass.getFieldTableLength();
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
-        localFieldTableIndex = skFieldTable.length;
+        this.localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
             Field instanceField = new Field(klassVersion, lkInstanceFields[i], pool);
             fieldTable[localFieldTableIndex + i] = instanceField;
@@ -860,7 +861,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
     public Klass nest() {
         if (nest == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NestHostAttribute nestHost = (NestHostAttribute) getAttribute(NestHostAttribute.NAME);
+            NestHostAttribute nestHost = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
             if (nestHost == null) {
                 nest = this;
             } else {
@@ -896,7 +897,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
 
     @Override
     public boolean nestMembersCheck(Klass k) {
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null) {
             return false;
         }
@@ -913,7 +914,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
     }
 
     public boolean isSealed() {
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
@@ -922,7 +923,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
         }
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         if (permittedSubclasses == null) {
             return true;
         }
@@ -948,7 +949,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         if (this != nest()) {
             return nest().getNestMembers();
         }
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null || nestMembers.getClasses().length == 0) {
             return new Klass[]{nest()};
         }
@@ -1340,13 +1341,13 @@ public final class ObjectKlass extends Klass implements AttributedElement {
     }
 
     public boolean isRecord() {
-        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME) != null;
+        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME, RecordAttribute.class) != null;
     }
 
     @Override
     public String getGenericTypeAsString() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) getLinkedKlass().getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
@@ -1368,7 +1369,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
 
     @Override
     public String getSourceDebugExtension() {
-        SourceDebugExtensionAttribute attribute = (SourceDebugExtensionAttribute) getAttribute(SourceDebugExtensionAttribute.NAME);
+        SourceDebugExtensionAttribute attribute = getAttribute(SourceDebugExtensionAttribute.NAME, SourceDebugExtensionAttribute.class);
         return attribute != null ? attribute.getDebugExtension() : null;
     }
 
@@ -1660,7 +1661,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return size;
     }
 
-    public final class KlassVersion {
+    public final class KlassVersion implements AttributedElement {
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1689,7 +1690,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             ParserMethod[] parserMethods = linkedKlass.getParserKlass().getMethods();
 
@@ -1732,7 +1733,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             DetectedChange change = packet.detectedChange;
             this.superKlass = change.getSuperKlass();
@@ -1900,10 +1901,6 @@ public final class ObjectKlass extends Klass implements AttributedElement {
             return implementor;
         }
 
-        Object getAttribute(Symbol<Name> attrName) {
-            return linkedKlass.getAttribute(attrName);
-        }
-
         ConstantPool getConstantPool() {
             return pool;
         }
@@ -2001,7 +1998,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         }
 
         public String getSourceFile() {
-            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Names.SourceFile);
+            SourceFileAttribute sfa = getAttribute(SourceFileAttribute.NAME, SourceFileAttribute.class);
             if (sfa == null) {
                 return null;
             }
@@ -2013,6 +2010,11 @@ public final class ObjectKlass extends Klass implements AttributedElement {
                 source = getContext().findOrCreateSource(ObjectKlass.this);
             }
             return source;
+        }
+
+        @Override
+        public Attribute[] getAttributes() {
+            return linkedKlass.getParserKlass().getAttributes();
         }
 
         @Override

@@ -1075,7 +1075,7 @@ public final class VM extends NativeEnv {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
-        InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
+        InnerClassesAttribute innerClasses = instanceKlass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
         if (innerClasses == null || innerClasses.entryCount() == 0) {
             return meta.java_lang_Class.allocateReferenceArray(0);
@@ -1120,7 +1120,7 @@ public final class VM extends NativeEnv {
      * inside methods).
      */
     private static Klass computeEnclosingClass(ObjectKlass klass) {
-        InnerClassesAttribute innerClasses = (InnerClassesAttribute) klass.getAttribute(InnerClassesAttribute.NAME);
+        InnerClassesAttribute innerClasses = klass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
         if (innerClasses == null) {
             return null;
         }
@@ -1197,7 +1197,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetClassSignature(@JavaType(Class.class) StaticObject self) {
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
-            SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Names.Signature);
+            SignatureAttribute signature = klass.getAttribute(Names.Signature, SignatureAttribute.class);
             if (signature != null) {
                 String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex()).toString();
                 return getMeta().toGuestString(sig);
@@ -1303,7 +1303,7 @@ public final class VM extends NativeEnv {
         meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror(meta) : StaticObject.NULL);
 
         // Find and set generic signature
-        SignatureAttribute genericSignatureAttribute = (SignatureAttribute) recordInfo.getAttribute(SignatureAttribute.NAME);
+        SignatureAttribute genericSignatureAttribute = recordInfo.getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
         meta.java_lang_reflect_RecordComponent_signature.setObject(component,
                         genericSignatureAttribute != null ? meta.toGuestString(pool.utf8At(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
 
@@ -1326,7 +1326,7 @@ public final class VM extends NativeEnv {
         if (!(k instanceof ObjectKlass klass)) {
             return StaticObject.NULL;
         }
-        RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
+        RecordAttribute record = klass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
         if (record == null) {
             return StaticObject.NULL;
         }
@@ -1353,7 +1353,7 @@ public final class VM extends NativeEnv {
         if (!klass.isSealed()) {
             return StaticObject.NULL;
         }
-        char[] classes = ((PermittedSubclassesAttribute) klass.getAttribute(PermittedSubclassesAttribute.NAME)).getClasses();
+        char[] classes = klass.getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class).getClasses();
         StaticObject[] permittedSubclasses = new StaticObject[classes.length];
         RuntimeConstantPool pool = klass.getConstantPool();
         int nClasses = 0;
@@ -3395,7 +3395,7 @@ public final class VM extends NativeEnv {
             throw EspressoError.shouldNotReachHere();
         }
 
-        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Names.MethodParameters);
+        MethodParametersAttribute methodParameters = method.getAttribute(MethodParametersAttribute.NAME, MethodParametersAttribute.class);
 
         if (methodParameters == null) {
             return StaticObject.NULL;

@@ -653,7 +653,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
         ConstantPool.Tag tag = safeTagAt(constantPool, index, meta);
         if (tag == ConstantPool.Tag.DYNAMIC || tag == ConstantPool.Tag.INVOKEDYNAMIC) {
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) cpHolderKlass.getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = cpHolderKlass.getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
             int bsmAttrIndex = constantPool.bsmBootstrapMethodAttrIndex(index);
             BootstrapMethodsAttribute.Entry bsmEntry = bms.at(bsmAttrIndex);
             StaticObject methodHandle = constantPool.getMethodHandle(bsmEntry, cpHolderKlass);

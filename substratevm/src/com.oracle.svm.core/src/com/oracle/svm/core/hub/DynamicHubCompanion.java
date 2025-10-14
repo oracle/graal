@@ -72,8 +72,8 @@ public final class DynamicHubCompanion {
     final int modifiers;
 
     /**
-     * The class that serves as the host for the nest. All nestmates have the same host. Always
-     * encoded with null for Dynamic hubs allocated at runtime.
+     * The class that serves as the host for the nest. All nestmates have the same host. Initially
+     * set to {@code null} for runtime-loaded classes.
      */
     @Stable Class<?> nestHost;
 

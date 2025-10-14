@@ -62,13 +62,8 @@ public final class RecordAttribute extends Attribute {
         }
 
         @Override
-        public Attribute getAttribute(Symbol<Name> attributeName) {
-            for (Attribute attr : attributes) {
-                if (attr.getName().equals(attributeName)) {
-                    return attr;
-                }
-            }
-            return null;
+        public Attribute[] getAttributes() {
+            return attributes;
         }
 
         public boolean isSame(RecordComponentInfo otherComponent, ConstantPool pool, ConstantPool otherPool) {

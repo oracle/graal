@@ -34,7 +34,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
@@ -99,7 +98,7 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     private String[] fetchNames() {
-        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Names.MethodParameters);
+        MethodParametersAttribute methodParameters = method.getAttribute(MethodParametersAttribute.NAME, MethodParametersAttribute.class);
 
         if (methodParameters == null) {
             return new String[0];

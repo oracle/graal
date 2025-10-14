@@ -714,7 +714,7 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public ResolvedConstant resolveInvokeDynamicConstant(int invokeDynamicIndex, ObjectKlass accessingKlass) {
         CompilerAsserts.neverPartOfCompilation();
-        BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
+        BootstrapMethodsAttribute bms = accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
         int bootstrapMethodAttrIndex = this.invokeDynamicBootstrapMethodAttrIndex(invokeDynamicIndex);
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(bootstrapMethodAttrIndex);
 
@@ -760,7 +760,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         Meta meta = accessingKlass.getMeta();
 
         // Condy constant resolving.
-        BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
+        BootstrapMethodsAttribute bms = accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
 
         assert (bms != null);
         // TODO(garcia) cache bootstrap method resolution

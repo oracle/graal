@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -33,7 +34,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 /**
  * Immutable raw representation of methods in Espresso, this is the output of the parser.
  */
-public final class ParserMethod {
+public final class ParserMethod implements AttributedElement {
 
     public static final ParserMethod[] EMPTY_ARRAY = new ParserMethod[0];
 
@@ -60,13 +61,9 @@ public final class ParserMethod {
         return signature;
     }
 
-    public Attribute getAttribute(Symbol<Name> attributeName) {
-        for (Attribute attribute : attributes) {
-            if (attributeName.equals(attribute.getName())) {
-                return attribute;
-            }
-        }
-        return null;
+    @Override
+    public Attribute[] getAttributes() {
+        return attributes;
     }
 
     ParserMethod(int flags, Symbol<Name> name, Symbol<Signature> signature, Attribute[] attributes) {
