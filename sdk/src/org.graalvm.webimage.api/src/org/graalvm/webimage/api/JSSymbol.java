@@ -93,7 +93,7 @@ public final class JSSymbol extends JSValue {
 
     public static String keyFor(JSSymbol sym) {
         JSValue result = keyForRaw(sym);
-        return result.typeof().equals("undefined") ? null : result.asString();
+        return result instanceof JSUndefined ? null : result.asString();
     }
 
     @JS.Coerce

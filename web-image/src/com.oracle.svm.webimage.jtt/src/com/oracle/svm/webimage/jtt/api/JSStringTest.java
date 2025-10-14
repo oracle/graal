@@ -514,7 +514,6 @@ public class JSStringTest {
         assertEquals("   To be, or not to be", padded.trimEnd().asString());
     }
 
-
     public static void testSubstring() {
         JSString text = JSString.of("JavaScript");
 

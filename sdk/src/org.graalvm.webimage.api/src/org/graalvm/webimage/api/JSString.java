@@ -88,13 +88,15 @@ public final class JSString extends JSValue {
     public static native JSString fromCharCode(int... codeUnits);
 
     @JS.Coerce
+    @JS(value = "return String.fromCharCode(...codeUnits);")
+    public static native JSString fromCharCode(char... codeUnits);
+
+
+    @JS.Coerce
     @JS(value = "return String.fromCodePoint(...codePoints);")
     public static native JSString fromCodePoint(int... codePoints);
 
-    @JS(value = """
-            const sub = Array.from(substitutions);
-            console.log(sub);
-            return String.raw(template, ...sub);""")
+    @JS(value = "return String.raw(template, ...Array.from(substitutions));")
     public static native JSString raw(JSObject template, Object... substitutions);
 
     @JS.Coerce

@@ -529,7 +529,7 @@ class Conversion {
         const facades = runtime.findFacadesFor(obj.constructor);
         const rawJavaHub = cls[runtime.symbol.javaNative];
         const internalJavaClass = rawJavaHub[runtime.symbol.jsClass];
-        if (facades.has(internalJavaClass)) {
+        if (obj.constructor === ({}).constructor || facades.has(internalJavaClass)) {
             const rawJavaMirror = new internalJavaClass();
             // Note: only one-way handshake, since the JavaScript object could be recast to a different Java facade class.
             this.setJavaScriptNative(rawJavaMirror, obj);
