@@ -31,6 +31,8 @@ import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
 import com.oracle.objectfile.pecoff.PECoffRelocationTable.PECoffRelocationMethod;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
+
 /**
  * PECoff machine type (incomplete). Each machine type also defines its set of relocation types.
  */
@@ -87,7 +89,7 @@ public enum PECoffMachine/* implements Integral */ {
     }
 
     public static PECoffMachine getSystemNativeValue() {
-        String arch = System.getProperty("os.arch");
+        String arch = GraalServices.getSavedProperty("os.arch");
         return switch (arch) {
             case "amd64", "x86_64" -> X86_64;
             default -> throw new IllegalArgumentException("Unsupported PECoff machine type: " + arch);
