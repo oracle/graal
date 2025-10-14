@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.phases;
+package jdk.graal.compiler.core.test;
 
 import java.util.Optional;
 
@@ -30,13 +30,13 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
-
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/***
+/**
  * Verifies a {@linkplain #verify graph} or {@linkplain #verifyClass class} against one or more
- * invariants.
+ * invariants in {@link CheckGraalInvariants}.
  */
 public abstract class VerifyPhase<C> extends BasePhase<C> {
 
@@ -88,5 +88,11 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
      * @throws VerificationError if the class violates some invariant
      */
     public void verifyClass(Class<?> clazz, MetaAccessProvider metaAccess) {
+    }
+
+    /**
+     * Called after all verifiers in {@link CheckGraalInvariants} are finished.
+     */
+    public void finish() {
     }
 }

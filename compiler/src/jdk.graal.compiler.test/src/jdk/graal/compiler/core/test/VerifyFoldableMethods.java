@@ -35,7 +35,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -99,6 +98,7 @@ public class VerifyFoldableMethods extends VerifyPhase<CoreProviders> {
         }
     }
 
+    @Override
     public void finish() {
         String uncalled = foldableCallers.entrySet().stream()//
                         .filter(e -> e.getValue() == e.getKey())//
