@@ -300,6 +300,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
 
         final DynamicObject.GetNode getNode;
         final DynamicObject.PutNode putNode;
+        final DynamicObject.PutConstantNode putConstantNode;
         final DynamicObject.RemoveKeyNode removeKeyNode;
         final DynamicObject.SetDynamicTypeNode setDynamicTypeNode;
         final DynamicObject.GetDynamicTypeNode getDynamicTypeNode;
@@ -318,6 +319,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
         NodesFakeDynamicObjectLibrary() {
             getNode = DynamicObject.GetNode.create();
             putNode = DynamicObject.PutNode.create();
+            putConstantNode = DynamicObject.PutConstantNode.create();
             removeKeyNode = DynamicObject.RemoveKeyNode.create();
             setDynamicTypeNode = DynamicObject.SetDynamicTypeNode.create();
             getDynamicTypeNode = DynamicObject.GetDynamicTypeNode.create();
@@ -337,6 +339,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
         NodesFakeDynamicObjectLibrary(@SuppressWarnings("unused") String uncached) {
             getNode = DynamicObject.GetNode.getUncached();
             putNode = DynamicObject.PutNode.getUncached();
+            putConstantNode = DynamicObject.PutConstantNode.getUncached();
             removeKeyNode = DynamicObject.RemoveKeyNode.getUncached();
             setDynamicTypeNode = DynamicObject.SetDynamicTypeNode.getUncached();
             getDynamicTypeNode = DynamicObject.GetDynamicTypeNode.getUncached();
@@ -385,7 +388,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
 
         @Override
         public void putConstant(DynamicObject object, Object key, Object value, int flags) {
-            putNode.putConstantWithFlags(object, key, value, flags);
+            putConstantNode.putConstantWithFlags(object, key, value, flags);
         }
 
         @Override

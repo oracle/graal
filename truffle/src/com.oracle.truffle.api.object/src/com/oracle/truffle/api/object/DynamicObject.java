@@ -71,6 +71,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibraryImpl.RemovePlan;
 import com.oracle.truffle.api.object.DynamicObjectFactory.GetNodeGen;
+import com.oracle.truffle.api.object.DynamicObjectFactory.PutConstantNodeGen;
 import com.oracle.truffle.api.object.DynamicObjectFactory.PutNodeGen;
 
 import sun.misc.Unsafe;
@@ -588,12 +589,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @see #putWithFlags(DynamicObject, Object, Object, int)
      * @see #putWithFlagsIfAbsent(DynamicObject, Object, Object, int)
      * @see #putWithFlagsIfPresent(DynamicObject, Object, Object, int)
-     * @see #putConstant(DynamicObject, Object, Object)
-     * @see #putConstantIfAbsent(DynamicObject, Object, Object)
-     * @see #putConstantIfPresent(DynamicObject, Object, Object)
-     * @see #putConstantWithFlags(DynamicObject, Object, Object, int)
-     * @see #putConstantWithFlagsIfAbsent(DynamicObject, Object, Object, int)
-     * @see #putConstantWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @see PutConstantNode
      * @since 25.1
      */
     @GeneratePackagePrivate
@@ -646,7 +642,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         // @formatter:on
         public final void put(DynamicObject receiver, Object key, Object value) {
-            executeImpl(receiver, key, value, DEFAULT, 0);
+            executeImpl(receiver, key, value, Flags.DEFAULT, 0);
         }
 
         /**
@@ -659,7 +655,7 @@ public abstract class DynamicObject implements TruffleObject {
          * @see #put(DynamicObject, Object, Object)
          */
         public final boolean putIfPresent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, IF_PRESENT, 0);
+            return executeImpl(receiver, key, value, Flags.IF_PRESENT, 0);
         }
 
         /**
@@ -672,30 +668,7 @@ public abstract class DynamicObject implements TruffleObject {
          * @see #put(DynamicObject, Object, Object)
          */
         public final boolean putIfAbsent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, IF_ABSENT, 0);
-        }
-
-        /**
-         * Same as {@link #putConstantWithFlags} with propertyFlags 0.
-         */
-        public final void putConstant(DynamicObject receiver, Object key, Object value) {
-            executeImpl(receiver, key, value, DEFAULT | CONST_VALUE, 0);
-        }
-
-        /**
-         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
-         * present.
-         */
-        public final boolean putConstantIfPresent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, IF_PRESENT | CONST_VALUE, 0);
-        }
-
-        /**
-         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
-         * absent.
-         */
-        public final boolean putConstantIfAbsent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, IF_ABSENT | CONST_VALUE, 0);
+            return executeImpl(receiver, key, value, Flags.IF_ABSENT, 0);
         }
 
         /**
@@ -709,88 +682,24 @@ public abstract class DynamicObject implements TruffleObject {
          * @see #put(DynamicObject, Object, Object)
          */
         public final void putWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            executeImpl(receiver, key, value, DEFAULT | UPDATE_FLAGS, propertyFlags);
+            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
          * Like {@link #putIfPresent(DynamicObject, Object, Object)} but also sets property flags.
          */
         public final boolean putWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, IF_PRESENT | UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
          * Like {@link #putIfAbsent(DynamicObject, Object, Object)} but also sets property flags.
          */
         public final boolean putWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, IF_ABSENT | UPDATE_FLAGS, propertyFlags);
-        }
-
-        // @formatter:off
-        /**
-         * Adds a property with a constant value or replaces an existing one. If the property already
-         * exists, its flags will be updated.
-         *
-         * The constant value is stored in the shape rather than the object instance and a new shape
-         * will be allocated if it does not already exist.
-         *
-         * A typical use case for this method is setting the initial default value of a declared, but
-         * yet uninitialized, property. This defers storage allocation and type speculation until the
-         * first actual value is set.
-         *
-         * <p>
-         * Warning: this method will lead to a shape transition every time a new value is set and should
-         * be used sparingly (with at most one constant value per property) since it could cause an
-         * excessive amount of shapes to be created.
-         * <p>
-         * Note: the value is strongly referenced from the shape property map. It should ideally be a
-         * value type or light-weight object without any references to guest language objects in order
-         * to prevent potential memory leaks from holding onto the Shape in inline caches. The Shape
-         * transition itself is weak, so the previous shapes will not hold strongly on the value.
-         *
-         * <h3>Usage example:</h3>
-         *
-         * {@snippet :
-         * // declare property
-         * objLib.putConstant(receiver, key, NULL_VALUE, 0);
-         *
-         * // initialize property
-         * objLib.put(receiver, key, value);
-         * }
-         *
-         * @param key property identifier
-         * @param value the constant value to be set
-         * @param propertyFlags property flags or 0
-         * @see #put(DynamicObject, Object, Object)
-         */
-        // @formatter:on
-        public void putConstantWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            executeImpl(receiver, key, value, DEFAULT | CONST_VALUE | UPDATE_FLAGS, propertyFlags);
-        }
-
-        /**
-         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
-         * property is present.
-         */
-        public final boolean putConstantWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, IF_PRESENT | CONST_VALUE | UPDATE_FLAGS, propertyFlags);
-        }
-
-        /**
-         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
-         * property is absent.
-         */
-        public final boolean putConstantWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, IF_ABSENT | CONST_VALUE | UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         // private
-
-        static final int DEFAULT = Flags.DEFAULT;
-        static final int IF_PRESENT = Flags.IF_PRESENT;
-        static final int IF_ABSENT = Flags.IF_ABSENT;
-        static final int UPDATE_FLAGS = Flags.UPDATE_FLAGS;
-        static final int CONST_VALUE = Flags.CONST;
 
         abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags);
 
@@ -816,10 +725,10 @@ public abstract class DynamicObject implements TruffleObject {
             // We use mode instead of cachedMode to fold it during host inlining
             CompilerAsserts.partialEvaluationConstant(mode);
             if (newLocation == null) {
-                assert (mode & IF_PRESENT) != 0;
+                assert (mode & Flags.IF_PRESENT) != 0;
                 return false;
             }
-            if ((mode & IF_ABSENT) != 0) {
+            if ((mode & Flags.IF_ABSENT) != 0) {
                 return true;
             } else {
                 boolean addingNewProperty = newShape != oldShape;
@@ -857,51 +766,242 @@ public abstract class DynamicObject implements TruffleObject {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
-        static boolean canStore(Location newLocation, Object value) {
-            return newLocation instanceof ExtLocations.AbstractObjectLocation || newLocation.canStore(value);
+    }
+
+    /**
+     * Sets the value of an existing property or adds a new property if no such property exists.
+     * Additional variants allow setting property flags, only setting the property if it's either
+     * absent or present, and setting constant properties stored in the shape.
+     *
+     * @see #putConstant(DynamicObject, Object, Object)
+     * @see #putConstantIfAbsent(DynamicObject, Object, Object)
+     * @see #putConstantIfPresent(DynamicObject, Object, Object)
+     * @see #putConstantWithFlags(DynamicObject, Object, Object, int)
+     * @see #putConstantWithFlagsIfAbsent(DynamicObject, Object, Object, int)
+     * @see #putConstantWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @see PutNode
+     * @since 25.1
+     */
+    @GeneratePackagePrivate
+    @ImportStatic(DynamicObject.class)
+    @GenerateUncached
+    @GenerateCached(true)
+    @GenerateInline(false)
+    public abstract static class PutConstantNode extends Node {
+
+        PutConstantNode() {
         }
 
-        static Shape getNewShape(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {
-            if (existingProperty == null) {
-                if ((putFlags & IF_PRESENT) != 0) {
-                    return oldShape;
-                } else {
-                    return oldShape.defineProperty(cachedKey, value, newPropertyFlags, putFlags);
+        /**
+         * @since 25.1
+         */
+        @NeverDefault
+        public static PutConstantNode create() {
+            return PutConstantNodeGen.create();
+        }
+
+        /**
+         * @since 25.1
+         */
+        @NeverDefault
+        public static PutConstantNode getUncached() {
+            return PutConstantNodeGen.getUncached();
+        }
+
+        /**
+         * Same as {@link #putConstantWithFlags}, except the property is added with 0 flags, and if
+         * the property already exists, its flags will <em>not</em> be updated.
+         */
+        public final void putConstant(DynamicObject receiver, Object key, Object value) {
+            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST, 0);
+        }
+
+        /**
+         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
+         * present.
+         */
+        public final boolean putConstantIfPresent(DynamicObject receiver, Object key, Object value) {
+            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST, 0);
+        }
+
+        /**
+         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
+         * absent.
+         */
+        public final boolean putConstantIfAbsent(DynamicObject receiver, Object key, Object value) {
+            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST, 0);
+        }
+
+        // @formatter:off
+        /**
+         * Adds a property with a constant value or replaces an existing one. If the property already
+         * exists, its flags will be updated.
+         *
+         * The constant value is stored in the shape rather than the object instance and a new shape
+         * will be allocated if it does not already exist.
+         *
+         * A typical use case for this method is setting the initial default value of a declared, but
+         * yet uninitialized, property. This defers storage allocation and type speculation until the
+         * first actual value is set.
+         *
+         * <p>
+         * Warning: this method will lead to a shape transition every time a new value is set and should
+         * be used sparingly (with at most one constant value per property) since it could cause an
+         * excessive amount of shapes to be created.
+         * <p>
+         * Note: the value is strongly referenced from the shape property map. It should ideally be a
+         * value type or light-weight object without any references to guest language objects in order
+         * to prevent potential memory leaks from holding onto the Shape in inline caches. The Shape
+         * transition itself is weak, so the previous shapes will not hold strongly on the value.
+         *
+         * <h3>Usage example:</h3>
+         *
+         * {@snippet :
+         * // declare property
+         * putConstantNode.putConstant(receiver, key, NULL_VALUE);
+         *
+         * // initialize property
+         * putNode.put(receiver, key, value);
+         * }
+         *
+         * @param key property identifier
+         * @param value the constant value to be set
+         * @param propertyFlags property flags or 0
+         * @see #putConstant(DynamicObject, Object, Object)
+         */
+        // @formatter:on
+        public void putConstantWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+        }
+
+        /**
+         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
+         * property is present.
+         */
+        public final boolean putConstantWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+        }
+
+        /**
+         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
+         * property is absent.
+         */
+        public final boolean putConstantWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+        }
+
+        // private
+
+        abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {
+                        "guard",
+                        "key == cachedKey",
+                        "mode == cachedMode",
+                        "propertyFlags == cachedPropertyFlags",
+                        "newLocation == null || canStore(newLocation, value)",
+        }, assumptions = "newShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
+        static boolean doCached(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags,
+                        @Bind("receiver.getShape()") Shape shape,
+                        @Cached("shape") Shape oldShape,
+                        @Bind("shape == oldShape") boolean guard,
+                        @Cached("key") Object cachedKey,
+                        @Cached("mode") int cachedMode,
+                        @Cached("propertyFlags") int cachedPropertyFlags,
+                        @Cached("oldShape.getProperty(key)") Property oldProperty,
+                        @Cached("getNewShapeAndCheckOldShapeStillValid(key, value, cachedPropertyFlags, cachedMode, oldProperty, oldShape)") Shape newShape,
+                        @Cached("getNewLocation(oldShape, newShape, key, oldProperty)") Location newLocation,
+                        @Cached("newShape.getValidAbstractAssumption()") AbstractAssumption newShapeValidAssumption) {
+            // We use mode instead of cachedMode to fold it during host inlining
+            CompilerAsserts.partialEvaluationConstant(mode);
+            if (newLocation == null) {
+                assert (mode & Flags.IF_PRESENT) != 0;
+                return false;
+            }
+            if ((mode & Flags.IF_ABSENT) != 0) {
+                return true;
+            } else {
+                boolean addingNewProperty = newShape != oldShape;
+                if (addingNewProperty) {
+                    DynamicObjectSupport.grow(receiver, oldShape, newShape);
                 }
-            } else if ((putFlags & IF_ABSENT) != 0) {
+
+                if (newLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
+                    objectArrayLocation.set(receiver, value, guard, addingNewProperty);
+                } else {
+                    newLocation.set(receiver, value, guard, addingNewProperty);
+                }
+
+                if (addingNewProperty) {
+                    DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
+                }
+                return true;
+            }
+        }
+
+        /*
+         * This specialization is necessary because we don't want to remove doCached specialization
+         * instances with valid shapes. Yet we have to handle obsolete shapes, and we prefer to do
+         * that here than inside the doCached method. This also means new shapes being seen can
+         * still create new doCached instances, which is important once we see objects with the new
+         * non-obsolete shape.
+         */
+        @Specialization(guards = "!receiver.getShape().isValid()")
+        static boolean doInvalid(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+            return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
+        }
+
+        @Specialization(replaces = {"doCached", "doInvalid"})
+        static boolean doGeneric(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+            return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
+        }
+
+    }
+
+    static boolean canStore(Location newLocation, Object value) {
+        return newLocation instanceof ExtLocations.AbstractObjectLocation || newLocation.canStore(value);
+    }
+
+    static Shape getNewShape(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {
+        if (existingProperty == null) {
+            if ((putFlags & Flags.IF_PRESENT) != 0) {
                 return oldShape;
-            } else if ((putFlags & UPDATE_FLAGS) != 0 && newPropertyFlags != existingProperty.getFlags()) {
+            } else {
                 return oldShape.defineProperty(cachedKey, value, newPropertyFlags, putFlags);
             }
-            if (existingProperty.getLocation().canStore(value)) {
-                // set existing
-                return oldShape;
-            } else {
-                // generalize
-                Shape newShape = oldShape.defineProperty(oldShape, value, existingProperty.getFlags(), putFlags, existingProperty);
-                assert newShape != oldShape;
-                return newShape;
-            }
+        } else if ((putFlags & Flags.IF_ABSENT) != 0) {
+            return oldShape;
+        } else if ((putFlags & Flags.UPDATE_FLAGS) != 0 && newPropertyFlags != existingProperty.getFlags()) {
+            return oldShape.defineProperty(cachedKey, value, newPropertyFlags, putFlags);
         }
-
-        // defineProperty() might obsolete the oldShape and we don't handle invalid shape -> valid
-        // shape transitions on the fast path (in doCached)
-        static Shape getNewShapeAndCheckOldShapeStillValid(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {
-            Shape newShape = getNewShape(cachedKey, value, newPropertyFlags, putFlags, existingProperty, oldShape);
-            if (!oldShape.isValid()) {
-                return oldShape; // return an invalid shape to not use this specialization
-            }
+        if (existingProperty.getLocation().canStore(value)) {
+            // set existing
+            return oldShape;
+        } else {
+            // generalize
+            Shape newShape = oldShape.defineProperty(oldShape, value, existingProperty.getFlags(), putFlags, existingProperty);
+            assert newShape != oldShape;
             return newShape;
         }
+    }
 
-        static Location getNewLocation(Shape oldShape, Shape newShape, Object cachedKey, Property oldProperty) {
-            if (newShape == oldShape) {
-                return oldProperty == null ? null : oldProperty.getLocation();
-            } else {
-                return newShape.getLocation(cachedKey);
-            }
+    // defineProperty() might obsolete the oldShape and we don't handle invalid shape -> valid
+    // shape transitions on the fast path (in doCached)
+    static Shape getNewShapeAndCheckOldShapeStillValid(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {
+        Shape newShape = getNewShape(cachedKey, value, newPropertyFlags, putFlags, existingProperty, oldShape);
+        if (!oldShape.isValid()) {
+            return oldShape; // return an invalid shape to not use this specialization
         }
+        return newShape;
+    }
 
+    static Location getNewLocation(Shape oldShape, Shape newShape, Object cachedKey, Property oldProperty) {
+        if (newShape == oldShape) {
+            return oldProperty == null ? null : oldProperty.getLocation();
+        } else {
+            return newShape.getLocation(cachedKey);
+        }
     }
 
     /**

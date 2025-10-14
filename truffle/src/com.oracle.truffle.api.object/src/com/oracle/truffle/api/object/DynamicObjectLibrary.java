@@ -346,7 +346,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param value the constant value to be set
      * @param flags property flags or 0
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutNode#putConstant(DynamicObject, Object, Object)
+     * @see DynamicObject.PutConstantNode#putConstant(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract void putConstant(DynamicObject object, Object key, Object value, int flags);

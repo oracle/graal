@@ -126,6 +126,13 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
+    private DynamicObject.PutConstantNode createPutConstantNode() {
+        return switch (run) {
+            case CACHED -> DynamicObject.PutConstantNode.create();
+            case UNCACHED -> DynamicObject.PutConstantNode.getUncached();
+        };
+    }
+
     private DynamicObject.CopyPropertiesNode createCopyPropertiesNode() {
         return switch (run) {
             case CACHED -> DynamicObject.CopyPropertiesNode.create();
@@ -876,19 +883,20 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         int v2 = 43;
         int flags = 0xf;
 
-        var setNode1 = createPutNode();
+        var putConstantNode = createPutConstantNode();
+        var putNode = createPutNode();
 
-        setNode1.putConstantWithFlags(o1, k1, v1, 0);
+        putConstantNode.putConstantWithFlags(o1, k1, v1, 0);
         assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(0, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v1, uncachedGet(o1, k1));
 
-        setNode1.putConstantWithFlags(o1, k1, v1, flags);
+        putConstantNode.putConstantWithFlags(o1, k1, v1, flags);
         assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v1, uncachedGet(o1, k1));
 
-        setNode1.put(o1, k1, v2);
+        putNode.put(o1, k1, v2);
         assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v2, uncachedGet(o1, k1));
@@ -902,14 +910,15 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         int v2 = 43;
         int flags = 0xf;
 
-        var setNode1 = createPutNode();
+        var putConstantNode = createPutConstantNode();
+        var putNode = createPutNode();
 
-        setNode1.putConstantWithFlags(o1, k1, v1, 0);
+        putConstantNode.putConstantWithFlags(o1, k1, v1, 0);
         assertTrue(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(0, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v1, uncachedGet(o1, k1));
 
-        setNode1.putWithFlags(o1, k1, v2, flags);
+        putNode.putWithFlags(o1, k1, v2, flags);
         if (isNewLayout()) {
             assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
         }
