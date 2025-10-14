@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.nativeimage.IsolateThread;
@@ -52,12 +53,16 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
 
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -111,6 +116,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
     private final Space space = new Space("Old", "O", false, getAge());
     private final MarkStack markStack = new MarkStack();
+    private final MarkStack arrayMarkStack = new MarkStack();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
     private final PlanningVisitor planningVisitor = new PlanningVisitor();
@@ -158,15 +164,54 @@ final class CompactingOldGeneration extends OldGeneration {
             }
             toGreyObjectsWalker.walkGreyObjects();
         } else {
-            if (markStack.isEmpty()) {
+            if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
                 return false;
             }
             GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
             do {
-                visitor.visitObject(markStack.pop());
-            } while (!markStack.isEmpty());
+                while (!markStack.isEmpty()) {
+                    visitor.visitObject(markStack.popObject());
+                }
+
+                // Process array ranges one at a time to avoid bloating the marking stack
+                if (!arrayMarkStack.isEmpty()) {
+                    scanArrayRange(visitor);
+                }
+            } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
         }
         return true;
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void pushOntoMarkStack(Object obj) {
+        DynamicHub objHub = KnownIntrinsics.readHub(obj);
+        if (objHub.getHubType() == HubType.OBJECT_ARRAY) {
+            if (ArrayLengthNode.arrayLength(obj) != 0) {
+                arrayMarkStack.pushObject(obj);
+                arrayMarkStack.pushInt(0);
+            }
+        } else {
+            markStack.pushObject(obj);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void scanArrayRange(GreyToBlackObjectVisitor visitor) {
+        int index = arrayMarkStack.popInt();
+        Object array = arrayMarkStack.popObject();
+
+        int length = ArrayLengthNode.arrayLength(array);
+        final int stride = 2048;
+        int endIndex = index + stride;
+        if (endIndex < length) {
+            arrayMarkStack.pushObject(array);
+            arrayMarkStack.pushInt(endIndex);
+        } else {
+            endIndex = length;
+        }
+
+        visitor.visitObjectArrayRange(array, index, endIndex - index);
     }
 
     @AlwaysInline("GC performance")
@@ -196,7 +241,7 @@ final class CompactingOldGeneration extends OldGeneration {
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
-        markStack.push(result);
+        pushOntoMarkStack(result);
         return result;
     }
 
@@ -212,7 +257,7 @@ final class CompactingOldGeneration extends OldGeneration {
         assert originalSpace == space;
         if (!ObjectHeaderImpl.isMarked(original)) {
             ObjectHeaderImpl.setMarked(original);
-            markStack.push(original);
+            pushOntoMarkStack(original);
         }
         return original;
     }
@@ -238,7 +283,7 @@ final class CompactingOldGeneration extends OldGeneration {
             ((AlignedHeapChunk.AlignedHeader) originalChunk).setShouldSweepInsteadOfCompact(true);
         }
         ObjectHeaderImpl.setMarked(obj);
-        markStack.push(obj);
+        pushOntoMarkStack(obj);
         return true;
     }
 
@@ -507,17 +552,20 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     void checkSanityBeforeCollection() {
         assert markStack.isEmpty();
+        assert arrayMarkStack.isEmpty();
     }
 
     @Override
     void checkSanityAfterCollection() {
         assert markStack.isEmpty();
+        assert arrayMarkStack.isEmpty();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void tearDown() {
         markStack.tearDown();
+        arrayMarkStack.tearDown();
         space.tearDown();
     }
 }

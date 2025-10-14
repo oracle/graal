@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.function.IntConsumer;
 
 import org.graalvm.word.Pointer;
@@ -90,12 +92,23 @@ public class InteriorObjRefWalker {
                 walkStoredContinuationInline(obj, visitor);
                 return;
             case HubType.OBJECT_ARRAY:
-                walkObjectArrayInline(obj, visitor, objHub);
+                int length = ArrayLengthNode.arrayLength(obj);
+                walkObjectArrayRangeInline(obj, objHub, 0, length, visitor);
                 return;
             case HubType.OTHER:
             default:
                 throw VMError.shouldNotReachHere("Object with invalid hub type.");
         }
+    }
+
+    @AlwaysInline("De-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void walkObjectArrayRangeInline(Object obj, int firstIndex, int count, ObjectReferenceVisitor visitor) {
+        DynamicHub objHub = KnownIntrinsics.readHub(obj);
+        assert objHub.getHubType() == HubType.OBJECT_ARRAY;
+        assert firstIndex >= 0 && count >= 0 && firstIndex + count >= 0;
+        assert firstIndex + count <= ArrayLengthNode.arrayLength(obj);
+        walkObjectArrayRangeInline(obj, objHub, firstIndex, count, visitor);
     }
 
     public static void walkInstanceReferenceOffsets(DynamicHub objHub, IntConsumer offsetConsumer) {
@@ -166,11 +179,10 @@ public class InteriorObjRefWalker {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void walkObjectArrayInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
+    private static void walkObjectArrayRangeInline(Object obj, DynamicHub objHub, int firstIndex, int count, ObjectReferenceVisitor visitor) {
         Pointer objPointer = Word.objectToUntrackedPointer(obj);
-        int length = ArrayLengthNode.arrayLength(obj);
-        Pointer firstObjRef = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
-        callVisitorInline(obj, visitor, firstObjRef, length);
+        Pointer firstObjRef = objPointer.add(LayoutEncoding.getArrayElementOffset(objHub.getLayoutEncoding(), firstIndex));
+        callVisitorInline(obj, visitor, firstObjRef, count);
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
