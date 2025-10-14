@@ -88,14 +88,15 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
              */
             name = SymbolsSupport.getNames().lookup(executable.getName());
         }
+        // hidden classes and SVM stable proxy name contain a `.`, replace with a `+`
         StringBuilder sb = new StringBuilder();
         sb.append('(');
         for (Class<?> type : executable.getParameterTypes()) {
-            sb.append(type.descriptorString());
+            sb.append(type.descriptorString().replace('.', '+'));
         }
         sb.append(')');
         if (executable instanceof Method method) {
-            sb.append(method.getReturnType().descriptorString());
+            sb.append(method.getReturnType().descriptorString().replace('.', '+'));
         } else {
             assert executable instanceof Constructor;
             sb.append('V');
@@ -105,14 +106,17 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
     }
 
     static Symbol<Signature> toSymbol(InterpreterUnresolvedSignature jvmciSignature, SignatureSymbols signatures) {
+        // hidden classes and SVM stable proxy name contain a `.`, replace with a `+`
         StringBuilder sb = new StringBuilder();
         sb.append('(');
         for (int i = 0; i < jvmciSignature.getParameterCount(false); i++) {
-            sb.append(jvmciSignature.getParameterType(i, null).getName());
+            sb.append(jvmciSignature.getParameterType(i, null).getName().replace('.', '+'));
         }
         sb.append(')');
-        sb.append(jvmciSignature.getReturnType(null).getName());
-        return signatures.getOrCreateValidSignature(ByteSequence.create(sb.toString()));
+        sb.append(jvmciSignature.getReturnType(null).getName().replace('.', '+'));
+        Symbol<Signature> symbol = signatures.getOrCreateValidSignature(ByteSequence.create(sb.toString()));
+        assert symbol != null : jvmciSignature;
+        return symbol;
     }
 
     static JavaType toJavaType(Symbol<Type> typeSymbol) {
