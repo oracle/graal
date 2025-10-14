@@ -63,12 +63,14 @@ public class ReplayCompilationLauncher {
                 }
                 argString.append(arg);
             }
+            System.out.println("Running in libgraal");
             try (var stringBuffer = new LibGraalCompilationDriver.LibGraalParams.UTF8CStringBuffer(argString.toString());
                             LibGraalScope scope = new LibGraalScope()) {
                 int status = runInLibgraal(scope.getIsolateThreadAddress(), stringBuffer.getAddress());
                 System.exit(status);
             }
         } else {
+            System.out.println("Running in jargraal");
             ReplayCompilationRunner.run(args, System.out).exitVM();
         }
     }
