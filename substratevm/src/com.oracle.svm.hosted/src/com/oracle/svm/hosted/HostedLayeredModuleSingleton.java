@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -35,7 +34,14 @@ import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
 import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
@@ -43,6 +49,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.shaded.org.capnproto.StructList;
 
 @AutomaticallyRegisteredImageSingleton(value = LayeredModuleSingleton.class, onlyWith = BuildingInitialLayerPredicate.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedLayeredModuleSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class HostedLayeredModuleSingleton extends LayeredModuleSingleton {
     public HostedLayeredModuleSingleton() {
         super();
@@ -52,61 +59,72 @@ public class HostedLayeredModuleSingleton extends LayeredModuleSingleton {
         super(moduleOpenPackages, moduleExportedPackages);
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
-        var builder = writerImpl.getSnapshotBuilder().initLayeredModule();
-        persistModulePackages(builder.initOpenModulePackages(moduleOpenPackages.size()), moduleOpenPackages);
-        persistModulePackages(builder.initExportedModulePackages(moduleExportedPackages.size()), moduleExportedPackages);
-        return PersistFlags.CREATE;
-    }
-
-    private static void persistModulePackages(StructList.Builder<ModulePackages.Builder> modulePackagesBuilder, Map<String, Map<String, Set<String>>> modulePackages) {
-        int i = 0;
-        for (var entry : modulePackages.entrySet()) {
-            var entryBuilder = modulePackagesBuilder.get(i);
-            entryBuilder.setModuleKey(entry.getKey());
-            Map<String, Set<String>> value = entry.getValue();
-            var packagesBuilder = entryBuilder.initPackages(value.size());
-            int j = 0;
-            for (var packageEntry : value.entrySet()) {
-                var packageEntryBuilder = packagesBuilder.get(j);
-                packageEntryBuilder.setPackageKey(packageEntry.getKey());
-                SVMImageLayerWriter.initStringList(packageEntryBuilder::initModules, packageEntry.getValue().stream());
-                j++;
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        private static void persistModulePackages(StructList.Builder<ModulePackages.Builder> modulePackagesBuilder, Map<String, Map<String, Set<String>>> modulePackages) {
+            int i = 0;
+            for (var entry : modulePackages.entrySet()) {
+                var entryBuilder = modulePackagesBuilder.get(i);
+                entryBuilder.setModuleKey(entry.getKey());
+                Map<String, Set<String>> value = entry.getValue();
+                var packagesBuilder = entryBuilder.initPackages(value.size());
+                int j = 0;
+                for (var packageEntry : value.entrySet()) {
+                    var packageEntryBuilder = packagesBuilder.get(j);
+                    packageEntryBuilder.setPackageKey(packageEntry.getKey());
+                    SVMImageLayerWriter.initStringList(packageEntryBuilder::initModules, packageEntry.getValue().stream());
+                    j++;
+                }
+                i++;
             }
-            i++;
+        }
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedLayeredModuleSingleton>() {
+
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedLayeredModuleSingleton singleton) {
+                    SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
+                    var builder = writerImpl.getSnapshotBuilder().initLayeredModule();
+                    persistModulePackages(builder.initOpenModulePackages(singleton.moduleOpenPackages.size()), singleton.moduleOpenPackages);
+                    persistModulePackages(builder.initExportedModulePackages(singleton.moduleExportedPackages.size()), singleton.moduleExportedPackages);
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
         }
     }
 
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
-        var reader = loaderImpl.getSnapshotReader().getLayeredModule();
-
-        Map<String, Map<String, Set<String>>> moduleOpenPackages = getModulePackages(reader.getOpenModulePackages());
-        Map<String, Map<String, Set<String>>> moduleExportedPackages = getModulePackages(reader.getExportedModulePackages());
-
-        return new HostedLayeredModuleSingleton(moduleOpenPackages, moduleExportedPackages);
-    }
-
-    private static Map<String, Map<String, Set<String>>> getModulePackages(StructList.Reader<ModulePackages.Reader> modulePackagesReader) {
-        Map<String, Map<String, Set<String>>> modulePackages = new HashMap<>();
-        for (int i = 0; i < modulePackagesReader.size(); ++i) {
-            var entryReader = modulePackagesReader.get(i);
-            var packagesReader = entryReader.getPackages();
-            Map<String, Set<String>> packages = new HashMap<>();
-            for (int j = 0; j < packagesReader.size(); ++j) {
-                var packageEntryReader = packagesReader.get(j);
-                Set<String> modules = CapnProtoAdapters.toCollection(packageEntryReader.getModules(), HashSet::new);
-                packages.put(packageEntryReader.getPackageKey().toString(), modules);
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<HostedLayeredModuleSingleton> {
+        private static Map<String, Map<String, Set<String>>> getModulePackages(StructList.Reader<ModulePackages.Reader> modulePackagesReader) {
+            Map<String, Map<String, Set<String>>> modulePackages = new HashMap<>();
+            for (int i = 0; i < modulePackagesReader.size(); ++i) {
+                var entryReader = modulePackagesReader.get(i);
+                var packagesReader = entryReader.getPackages();
+                Map<String, Set<String>> packages = new HashMap<>();
+                for (int j = 0; j < packagesReader.size(); ++j) {
+                    var packageEntryReader = packagesReader.get(j);
+                    Set<String> modules = CapnProtoAdapters.toCollection(packageEntryReader.getModules(), HashSet::new);
+                    packages.put(packageEntryReader.getPackageKey().toString(), modules);
+                }
+                modulePackages.put(entryReader.getModuleKey().toString(), packages);
             }
-            modulePackages.put(entryReader.getModuleKey().toString(), packages);
+            return modulePackages;
         }
-        return modulePackages;
+
+        @Override
+        public HostedLayeredModuleSingleton createFromLoader(ImageSingletonLoader loader) {
+            SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
+            var reader = loaderImpl.getSnapshotReader().getLayeredModule();
+
+            Map<String, Map<String, Set<String>>> moduleOpenPackages = getModulePackages(reader.getOpenModulePackages());
+            Map<String, Map<String, Set<String>>> moduleExportedPackages = getModulePackages(reader.getExportedModulePackages());
+
+            return new HostedLayeredModuleSingleton(moduleOpenPackages, moduleExportedPackages);
+        }
     }
 }

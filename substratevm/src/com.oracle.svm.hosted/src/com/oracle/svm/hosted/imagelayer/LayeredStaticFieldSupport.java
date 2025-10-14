@@ -28,7 +28,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +55,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -77,7 +82,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * layer.
  */
 @AutomaticallyRegisteredImageSingleton(value = LayeredClassInitialization.class, onlyWith = BuildingImageLayerPredicate.class)
-public class LayeredStaticFieldSupport extends LayeredClassInitialization implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     /**
      * In the initial layer, this refers to fields which must wait until the app layer to be
      * installed.
@@ -397,45 +403,55 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization implem
         appLayerFields.forEach(LayeredStaticFieldSupport::getAnalysisField);
     }
 
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        writer.writeInt("appLayerPrimitiveFieldStartingOffset", appLayerStaticFieldOffsets.nextPrimitiveField);
-        writer.writeInt("appLayerObjectFieldStartingOffset", appLayerStaticFieldOffsets.nextObjectField);
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredStaticFieldSupport>() {
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredStaticFieldSupport singleton) {
+                    writer.writeInt("appLayerPrimitiveFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextPrimitiveField);
+                    writer.writeInt("appLayerObjectFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextObjectField);
 
-        HostedUniverse hUniverse = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getHostedUniverse();
-        List<Integer> knownLocations = new ArrayList<>();
-        appLayerFields.forEach(obj -> {
-            AnalysisField aField = getAnalysisField(obj);
-            HostedField hField = hUniverse.lookup(aField);
-            if (hField.hasLocation()) {
-                assert getAssignmentStatus(aField) == LayerAssignmentStatus.APP_LAYER_DEFERRED;
-                knownLocations.add(aField.getId());
-            }
-        });
+                    HostedUniverse hUniverse = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getHostedUniverse();
+                    List<Integer> knownLocations = new ArrayList<>();
+                    singleton.appLayerFields.forEach(obj -> {
+                        AnalysisField aField = getAnalysisField(obj);
+                        HostedField hField = hUniverse.lookup(aField);
+                        if (hField.hasLocation()) {
+                            assert singleton.getAssignmentStatus(aField) == LayerAssignmentStatus.APP_LAYER_DEFERRED;
+                            knownLocations.add(aField.getId());
+                        }
+                    });
 
-        writer.writeIntList("appLayerFieldsWithKnownLocations", knownLocations);
+                    writer.writeIntList("appLayerFieldsWithKnownLocations", knownLocations);
 
-        return PersistFlags.CREATE;
-    }
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-
-        Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
-        for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
-            Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
-            appLayerFieldsWithKnownLocations.add(aFieldSupplier);
+                @Override
+                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
         }
+    }
 
-        var appLayerStaticFieldsOffsets = new UniverseBuilder.StaticFieldOffsets();
-        appLayerStaticFieldsOffsets.nextPrimitiveField = loader.readInt("appLayerPrimitiveFieldStartingOffset");
-        appLayerStaticFieldsOffsets.nextObjectField = loader.readInt("appLayerObjectFieldStartingOffset");
-        return new LayeredStaticFieldSupport(Collections.unmodifiableSet(appLayerFieldsWithKnownLocations), appLayerStaticFieldsOffsets);
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredStaticFieldSupport> {
+
+        @Override
+        public LayeredStaticFieldSupport createFromLoader(ImageSingletonLoader loader) {
+            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
+            for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
+                Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
+                appLayerFieldsWithKnownLocations.add(aFieldSupplier);
+            }
+
+            var appLayerStaticFieldsOffsets = new UniverseBuilder.StaticFieldOffsets();
+            appLayerStaticFieldsOffsets.nextPrimitiveField = loader.readInt("appLayerPrimitiveFieldStartingOffset");
+            appLayerStaticFieldsOffsets.nextObjectField = loader.readInt("appLayerObjectFieldStartingOffset");
+            return new LayeredStaticFieldSupport(Collections.unmodifiableSet(appLayerFieldsWithKnownLocations), appLayerStaticFieldsOffsets);
+        }
     }
 }
 

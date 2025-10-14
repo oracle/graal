@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.meta;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -40,7 +39,13 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -157,28 +162,38 @@ public final class KnownOffsets {
         return imageCodeInfoCodeStartOffset;
     }
 
-    static class PriorKnownOffsets implements LayeredImageSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = PriorKnownOffsets.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    static class PriorKnownOffsets {
         final int[] priorValues;
 
         PriorKnownOffsets(int[] priorValues) {
             this.priorValues = priorValues;
         }
 
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+            @Override
+            public SingletonTrait getLayeredCallbacksTrait() {
+                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<PriorKnownOffsets>() {
+                    @Override
+                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, PriorKnownOffsets singleton) {
+                        writer.writeIntList("priorValues", Arrays.stream(singleton.priorValues).boxed().toList());
+                        return LayeredImageSingleton.PersistFlags.CREATE;
+                    }
+
+                    @Override
+                    public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                        return SingletonInstantiator.class;
+                    }
+                });
+            }
         }
 
-        @Override
-        public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            writer.writeIntList("priorValues", Arrays.stream(priorValues).boxed().toList());
-            return PersistFlags.CREATE;
-        }
-
-        @SuppressWarnings("unused")
-        public static Object createFromLoader(ImageSingletonLoader loader) {
-            int[] priorValues = loader.readIntList("priorValues").stream().mapToInt(e -> e).toArray();
-            return new PriorKnownOffsets(priorValues);
+        static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<PriorKnownOffsets> {
+            @Override
+            public PriorKnownOffsets createFromLoader(ImageSingletonLoader loader) {
+                int[] priorValues = loader.readIntList("priorValues").stream().mapToInt(e -> e).toArray();
+                return new PriorKnownOffsets(priorValues);
+            }
         }
     }
 }
