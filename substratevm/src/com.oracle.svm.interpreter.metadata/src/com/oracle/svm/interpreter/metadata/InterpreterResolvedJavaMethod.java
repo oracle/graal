@@ -30,6 +30,7 @@ import static com.oracle.svm.espresso.classfile.Constants.ACC_SIGNATURE_POLYMORP
 import static com.oracle.svm.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_VARARGS;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.BREAKPOINT;
 import static com.oracle.svm.interpreter.metadata.CremaMethodAccess.toJVMCI;
 
@@ -52,7 +53,6 @@ import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.CodeAttribute;
@@ -80,6 +80,12 @@ import jdk.vm.ci.meta.SpeculationLog;
  * also abstract methods for vtable calls.
  */
 public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember {
+    /**
+     * This flag denotes a method that was originally native but was substituted by a non-native
+     * method.
+     */
+    private static final int ACC_SUBSTITUTED_NATIVE = 0x80000000;
+
     public static final InterpreterResolvedJavaMethod[] EMPTY_ARRAY = new InterpreterResolvedJavaMethod[0];
     public static final LocalVariableTable EMPTY_LOCAL_VARIABLE_TABLE = new LocalVariableTable(new Local[0]);
     public static final ExceptionHandler[] EMPTY_EXCEPTION_HANDLERS = new ExceptionHandler[0];
@@ -94,9 +100,13 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     private final Symbol<Name> name;
     private final int maxLocals;
     private final int maxStackSize;
-    private final int modifiers;
-    private final boolean isSubstitutedNative;
-    private final boolean signaturePolymorphic;
+    /**
+     * Contains standard modifiers in the low 16 bits, and non-standard flags in the upper 16 bits.
+     *
+     * @see #ACC_SUBSTITUTED_NATIVE
+     * @see com.oracle.svm.espresso.classfile.Constants
+     */
+    private final int flags;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private ResolvedJavaMethod originalMethod;
@@ -125,7 +135,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         }
     }
 
-    protected InlinedBy inlinedBy;
+    protected final InlinedBy inlinedBy;
 
     public static final int VTBL_NO_ENTRY = -1;
     public static final int VTBL_ONE_IMPL = -2;
@@ -153,57 +163,90 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     // Only called during universe building
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected InterpreterResolvedJavaMethod(ResolvedJavaMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int modifiers, InterpreterResolvedObjectType declaringClass,
-                    InterpreterUnresolvedSignature signature, boolean isSubstitutedNative,
+    private InterpreterResolvedJavaMethod(ResolvedJavaMethod originalMethod, Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
+                    InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature, Symbol<Signature> signatureSymbol,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
-        this(name, maxLocals, maxStackSize, modifiers, isSubstitutedNative, declaringClass, signature, code, exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex,
-                        gotOffset,
-                        enterStubOffset, methodId, null);
-        this.originalMethod = originalMethod;
-        this.needMethodBody = false;
-        this.inlinedBy = new InterpreterResolvedJavaMethod.InlinedBy(this, new HashSet<>());
-    }
-
-    private InterpreterResolvedJavaMethod(Symbol<Name> name,
-                    int maxLocals, int maxStackSize,
-                    int modifiers, boolean isSubstitutedNative,
-                    InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature,
-                    byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
-                    ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId, SignaturePolymorphicIntrinsic intrinsic) {
         this.name = MetadataUtil.requireNonNull(name);
         this.maxLocals = maxLocals;
         this.maxStackSize = maxStackSize;
-        this.modifiers = modifiers;
-        this.isSubstitutedNative = isSubstitutedNative;
+        this.flags = flags;
         this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
         this.signature = MetadataUtil.requireNonNull(signature);
+        this.signatureSymbol = MetadataUtil.requireNonNull(signatureSymbol);
         this.interpretedCode = code;
         this.exceptionHandlers = exceptionHandlers;
         this.lineNumberTable = lineNumberTable;
         this.localVariableTable = localVariableTable;
-
         this.nativeEntryPoint = nativeEntryPoint;
         this.vtableIndex = vtableIndex;
         this.gotOffset = gotOffset;
         this.enterStubOffset = enterStubOffset;
         this.methodId = methodId;
         this.inlinedBy = new InlinedBy(this, new HashSet<>());
+        this.intrinsic = null;
 
-        this.signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
-        this.intrinsic = intrinsic;
-        this.signaturePolymorphic = ParserMethod.isDeclaredSignaturePolymorphic(declaringClass.getSymbolicType(), signatureSymbol, getOriginalModifiers(modifiers, isSubstitutedNative),
-                        JavaVersion.HOST_VERSION);
+        this.originalMethod = originalMethod;
     }
 
+    // Used at run-time for deserialization
+    private InterpreterResolvedJavaMethod(Symbol<Name> name, int maxLocals, int maxStackSize, int flags,
+                    InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature, Symbol<Signature> signatureSymbol,
+                    byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
+                    ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
+        this.name = MetadataUtil.requireNonNull(name);
+        this.maxLocals = maxLocals;
+        this.maxStackSize = maxStackSize;
+        this.flags = flags;
+        this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
+        this.signature = MetadataUtil.requireNonNull(signature);
+        this.signatureSymbol = MetadataUtil.requireNonNull(signatureSymbol);
+        this.interpretedCode = code;
+        this.exceptionHandlers = exceptionHandlers;
+        this.lineNumberTable = lineNumberTable;
+        this.localVariableTable = localVariableTable;
+        this.nativeEntryPoint = nativeEntryPoint;
+        this.vtableIndex = vtableIndex;
+        this.gotOffset = gotOffset;
+        this.enterStubOffset = enterStubOffset;
+        this.methodId = methodId;
+        this.inlinedBy = new InlinedBy(this, new HashSet<>());
+        this.intrinsic = null;
+    }
+
+    // Used at run-time for signature-polymorphic instantiation
+    private InterpreterResolvedJavaMethod(Symbol<Name> name, int maxLocals, int flags,
+                    InterpreterResolvedObjectType declaringClass, InterpreterUnresolvedSignature signature, Symbol<Signature> signatureSymbol,
+                    int vtableIndex, int gotOffset, int enterStubOffset, int methodId, SignaturePolymorphicIntrinsic intrinsic) {
+        this.name = MetadataUtil.requireNonNull(name);
+        this.maxLocals = maxLocals;
+        this.maxStackSize = 0;
+        this.flags = flags;
+        this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
+        this.signature = MetadataUtil.requireNonNull(signature);
+        this.signatureSymbol = MetadataUtil.requireNonNull(signatureSymbol);
+        // not bytecode-interpretable
+        this.interpretedCode = null;
+        this.exceptionHandlers = null;
+        this.lineNumberTable = null;
+        this.localVariableTable = null;
+        this.nativeEntryPoint = null;
+        this.vtableIndex = vtableIndex;
+        this.gotOffset = gotOffset;
+        this.enterStubOffset = enterStubOffset;
+        this.methodId = methodId;
+        this.inlinedBy = null;
+        this.intrinsic = MetadataUtil.requireNonNull(intrinsic);
+    }
+
+    // Used at run-time for the crema sub-class
     protected InterpreterResolvedJavaMethod(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
         assert RuntimeClassLoading.isSupported();
         this.name = MetadataUtil.requireNonNull(m.getName());
         this.signatureSymbol = MetadataUtil.requireNonNull(m.getSignature());
-
         this.declaringClass = MetadataUtil.requireNonNull(declaringClass);
-        this.modifiers = m.getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
-        this.signaturePolymorphic = (m.getFlags() & ACC_SIGNATURE_POLYMORPHIC) != 0;
+        this.flags = m.getFlags();
+        assert (flags & ACC_SUBSTITUTED_NATIVE) == 0;
         CodeAttribute codeAttribute = (CodeAttribute) m.getAttribute(CodeAttribute.NAME);
         if (codeAttribute != null) {
             this.maxLocals = codeAttribute.getMaxLocals();
@@ -224,37 +267,51 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         this.gotOffset = -2 /* -GOT_NO_ENTRY */;
         this.enterStubOffset = EST_NO_ENTRY;
         this.methodId = UNKNOWN_METHOD_ID;
-        this.inlinedBy = new InlinedBy(this, new HashSet<>());
-        this.isSubstitutedNative = false;
+        this.inlinedBy = null;
         this.intrinsic = null;
     }
 
     @VisibleForSerialization
-    public static InterpreterResolvedJavaMethod create(String name, int maxLocals, int maxStackSize, int modifiers, InterpreterResolvedObjectType declaringClass,
+    public static InterpreterResolvedJavaMethod createForDeserialization(String name, int maxLocals, int maxStackSize, int flags, InterpreterResolvedObjectType declaringClass,
                     InterpreterUnresolvedSignature signature,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        return new InterpreterResolvedJavaMethod(nameSymbol, maxLocals, maxStackSize, modifiers, false, declaringClass, signature, code,
-                        exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId, null);
+        Symbol<Signature> signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
+        return new InterpreterResolvedJavaMethod(nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, signatureSymbol, code,
+                        exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
 
     // Only called during universe building
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static InterpreterResolvedJavaMethod create(ResolvedJavaMethod originalMethod, String name, int maxLocals, int maxStackSize, int modifiers,
+    public static InterpreterResolvedJavaMethod createAtBuildTime(ResolvedJavaMethod originalMethod, String name, int maxLocals, int maxStackSize, int modifiers,
                     InterpreterResolvedObjectType declaringClass,
                     InterpreterUnresolvedSignature signature, boolean isSubstitutedNative,
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        return new InterpreterResolvedJavaMethod(originalMethod, nameSymbol, maxLocals, maxStackSize, modifiers, declaringClass, signature, isSubstitutedNative, code,
+        Symbol<Signature> signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
+        int flags = createFlags(modifiers, declaringClass, signatureSymbol, isSubstitutedNative, originalMethod);
+        return new InterpreterResolvedJavaMethod(originalMethod, nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, signatureSymbol, code,
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int createFlags(int modifiers, InterpreterResolvedObjectType declaringClass, Symbol<Signature> signatureSymbol, boolean isSubstitutedNative, ResolvedJavaMethod originalMethod) {
+        int newModifiers = modifiers;
+        if (ParserMethod.isDeclaredSignaturePolymorphic(declaringClass.getSymbolicType(), signatureSymbol, getOriginalModifiers(modifiers, isSubstitutedNative), JavaVersion.HOST_VERSION)) {
+            newModifiers |= ACC_SIGNATURE_POLYMORPHIC;
+        }
+        if (isSubstitutedNative) {
+            newModifiers |= ACC_SUBSTITUTED_NATIVE;
+        }
+        return newModifiers;
     }
 
     @Override
     public final boolean isDeclaredSignaturePolymorphic() {
         // Note: might not be true for the instantiation of polymorphic signature intrinsics.
-        return signaturePolymorphic;
+        return (flags & ACC_SIGNATURE_POLYMORPHIC) != 0;
     }
 
     @Override
@@ -263,8 +320,9 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         assert iid != null;
         assert intrinsic == null;
         int newModifiers;
+        boolean isSubstitutedNative = (flags & ACC_SUBSTITUTED_NATIVE) != 0;
         if (iid == SignaturePolymorphicIntrinsic.InvokeGeneric) {
-            newModifiers = getOriginalModifiers(modifiers, isSubstitutedNative) & ~ACC_VARARGS;
+            newModifiers = getOriginalModifiers(flags, isSubstitutedNative) & ~(ACC_VARARGS | ACC_SUBSTITUTED_NATIVE | ACC_SIGNATURE_POLYMORPHIC);
         } else {
             newModifiers = ACC_NATIVE | ACC_SYNTHETIC | ACC_FINAL;
             if (iid.isStaticSignaturePolymorphic()) {
@@ -273,9 +331,8 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
         }
         assert Modifier.isNative(newModifiers);
         InterpreterUnresolvedSignature jvmciSignature = CremaMethodAccess.toJVMCI(newSignature, SymbolsSupport.getTypes());
-        return new InterpreterResolvedJavaMethod(name, jvmciSignature.getParameterCount(true), 0, newModifiers, isSubstitutedNative, declaringClass, jvmciSignature,
-                        null, null, null, null, // not bytecode-interpretable
-                        null, vtableIndex, gotOffset, enterStubOffset, methodId, iid);
+        return new InterpreterResolvedJavaMethod(name, jvmciSignature.getParameterCount(true), newModifiers, declaringClass, jvmciSignature, newSignature,
+                        vtableIndex, gotOffset, enterStubOffset, methodId, iid);
     }
 
     private static int getOriginalModifiers(int modifiers, boolean isSubstitutedNative) {
@@ -424,7 +481,11 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
 
     @Override
     public final int getModifiers() {
-        return modifiers;
+        return flags & JVM_RECOGNIZED_METHOD_MODIFIERS;
+    }
+
+    public int getFlags() {
+        return flags;
     }
 
     @Override
@@ -594,6 +655,9 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     }
 
     public final Set<InterpreterResolvedJavaMethod> getInlinedBy() {
+        if (inlinedBy == null) {
+            return Set.of();
+        }
         return inlinedBy.inliners;
     }
 

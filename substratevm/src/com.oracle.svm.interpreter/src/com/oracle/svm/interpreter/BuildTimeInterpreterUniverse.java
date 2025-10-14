@@ -218,7 +218,7 @@ public final class BuildTimeInterpreterUniverse {
         }
 
         LineNumberTable lineNumberTable = originalMethod.getLineNumberTable();
-        return InterpreterResolvedJavaMethod.create(
+        return InterpreterResolvedJavaMethod.createAtBuildTime(
                         originalMethod,
                         name,
                         maxLocals,
