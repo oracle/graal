@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.gc.shenandoah;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.gc.shenandoah.nativelib.ShenandoahLibrary;
+import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+import jdk.graal.compiler.word.Word;
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
-
-    /** Human-readable name. */
-    String getName();
-
-    /** Human-readable default heap size. */
+public final class ShenandoahPinnedObjectSupport extends AbstractPinnedObjectSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
+    public ShenandoahPinnedObjectSupport() {
+    }
+
+    @Override
+    @Uninterruptible(reason = "Use untracked pointers. Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    protected void pinObject(Object object) {
+        ShenandoahLibrary.pinObject(Word.objectToUntrackedPointer(object));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Use untracked pointers. Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    protected void unpinObject(Object object) {
+        ShenandoahLibrary.unpinObject(Word.objectToUntrackedPointer(object));
+    }
 }

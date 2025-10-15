@@ -22,38 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.webimage.heap;
+package com.oracle.svm.hosted.gc.shenandoah;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.Comparator;
 
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.image.ImageHeapObject;
 
-public class WebImageJSGC implements GC {
-    @Override
-    public void collect(GCCause cause) {
+public class ShenandoahImageHeapObjectComparator implements Comparator<ImageHeapObject> {
+    private final int regionSize;
+    private final boolean humongousObjectsFirst;
 
+    public ShenandoahImageHeapObjectComparator(int regionSize, boolean humongousObjectsFirst) {
+        this.regionSize = regionSize;
+        this.humongousObjectsFirst = humongousObjectsFirst;
     }
 
     @Override
-    public void collectCompletely(GCCause cause) {
+    public int compare(ImageHeapObject a, ImageHeapObject b) {
+        boolean aIsHumongous = a.getSize() > regionSize;
+        boolean bIsHumongous = b.getSize() > regionSize;
+        if (aIsHumongous != bIsHumongous) {
+            /* Place humongous objects at the start or at the end. */
+            return aIsHumongous == humongousObjectsFirst ? -1 : 1;
+        }
 
-    }
+        boolean aIsDynamicHub = a.getObjectClass() == Class.class;
+        boolean bIsDynamicHub = b.getObjectClass() == Class.class;
+        if (aIsDynamicHub != bIsDynamicHub) {
+            /* Place DynamicHubs before other objects, regardless of size. */
+            return aIsDynamicHub ? -1 : 1;
+        }
 
-    @Override
-    public void collectionHint(boolean fullGC) {
-        /* Ignore collection hints. */
-    }
-
-    @Override
-    public String getName() {
-        return "JS-runtime-provided GC";
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public String getDefaultMaxHeapSize() {
-        return "unknown";
+        return Long.signum(b.getSize() - a.getSize());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+#ifndef SVM_SHENANDOAH_GC_STRUCTS_H
+#define SVM_SHENANDOAH_GC_STRUCTS_H
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+#include <sys/types.h>
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+#ifdef __cplusplus
+namespace svm_gc {
+#endif
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
+struct ShenandoahHeapOptions {
+  size_t max_heap_size;
+  size_t heap_address_space_size;
+  size_t physical_memory_size;
+};
 
-    /** Human-readable name. */
-    String getName();
+struct ShenandoahInitState {
+  void* card_table_address;
+  int tlab_top_offset;
+  int tlab_end_offset;
+  int card_table_shift;
+  int log_of_heap_region_grain_bytes;
+  int java_thread_size;
+  int vm_operation_data_size;
+  int vm_operation_wrapper_data_size;
+  char dirty_card_value;
+};
 
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
-}
+struct ShenandoahRegionBoundaries {
+  u_char *bottom;
+  u_char *top;
+};
+
+struct ShenandoahRegionInfo {
+  u_char *bottom;
+  u_char *top;
+  u_char *end;
+  char region_type;
+};
+
+struct ShenandoahInternalState {
+  unsigned int total_collections;
+  unsigned int full_collections;
+
+  void* card_table_start;
+  size_t card_table_size;
+};
+
+#ifdef __cplusplus
+} // namespace svm_gc
+#endif
+
+#endif // SVM_SHENANDOAH_GC_STRUCTS_H

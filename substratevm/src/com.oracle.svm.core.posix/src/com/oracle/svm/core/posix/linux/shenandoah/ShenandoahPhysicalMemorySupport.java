@@ -22,38 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.webimage.heap;
+package com.oracle.svm.core.posix.linux.shenandoah;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.gc.shenandoah.ShenandoahCommittedMemoryProvider;
+import com.oracle.svm.core.gc.shenandoah.UseShenandoahGC;
+import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.posix.linux.LinuxPhysicalMemorySupportImpl;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
-public class WebImageJSGC implements GC {
+@AutomaticallyRegisteredImageSingleton(value = PhysicalMemorySupport.class, onlyWith = UseShenandoahGC.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+public class ShenandoahPhysicalMemorySupport extends LinuxPhysicalMemorySupportImpl {
     @Override
-    public void collect(GCCause cause) {
-
-    }
-
-    @Override
-    public void collectCompletely(GCCause cause) {
-
-    }
-
-    @Override
-    public void collectionHint(boolean fullGC) {
-        /* Ignore collection hints. */
-    }
-
-    @Override
-    public String getName() {
-        return "JS-runtime-provided GC";
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public String getDefaultMaxHeapSize() {
-        return "unknown";
+    public UnsignedWord size() {
+        return ShenandoahCommittedMemoryProvider.getInstance().getPhysicalMemorySize();
     }
 }

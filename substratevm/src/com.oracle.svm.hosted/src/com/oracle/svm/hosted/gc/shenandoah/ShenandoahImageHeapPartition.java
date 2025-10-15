@@ -22,38 +22,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.webimage.heap;
+package com.oracle.svm.hosted.gc.shenandoah;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.ArrayList;
 
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapPartition;
 
-public class WebImageJSGC implements GC {
-    @Override
-    public void collect(GCCause cause) {
+public class ShenandoahImageHeapPartition implements ImageHeapPartition {
+    private final String name;
+    private final ArrayList<ImageHeapObject> objects = new ArrayList<>();
+    private final boolean writable;
 
-    }
+    private long size = -1L;
 
-    @Override
-    public void collectCompletely(GCCause cause) {
-
-    }
-
-    @Override
-    public void collectionHint(boolean fullGC) {
-        /* Ignore collection hints. */
+    ShenandoahImageHeapPartition(String name, boolean writable) {
+        this.name = name;
+        this.writable = writable;
     }
 
     @Override
     public String getName() {
-        return "JS-runtime-provided GC";
+        return name;
     }
 
     @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public String getDefaultMaxHeapSize() {
-        return "unknown";
+    public boolean isWritable() {
+        return writable;
+    }
+
+    @Override
+    public long getStartOffset() {
+        /* All image heap objects have absolute offsets. */
+        return 0;
+    }
+
+    public void add(ImageHeapObject info) {
+        objects.add(info);
+        info.setHeapPartition(this);
+    }
+
+    public ArrayList<ImageHeapObject> getObjects() {
+        return objects;
+    }
+
+    @Override
+    public long getSize() {
+        assert size >= 0 : size;
+        return size;
+    }
+
+    public void setSize(long startOffset, long endOffset) {
+        assert startOffset >= 0;
+        assert endOffset >= startOffset;
+        this.size = endOffset - startOffset;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.gc.shared;
+
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+import com.oracle.svm.core.SubstrateOptions;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+@Platforms(Platform.HOSTED_ONLY.class)
+public class UseNativeGC implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return get();
+    }
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
-
-    /** Human-readable name. */
-    String getName();
-
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
+    public static boolean get() {
+        return SubstrateOptions.useG1GC() || SubstrateOptions.useShenandoahGC();
+    }
 }

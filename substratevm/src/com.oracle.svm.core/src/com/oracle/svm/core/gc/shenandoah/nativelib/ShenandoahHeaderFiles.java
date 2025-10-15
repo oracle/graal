@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.gc.shenandoah.nativelib;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.Collections;
+import java.util.List;
 
-public interface GC {
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+import org.graalvm.nativeimage.c.CContext;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.ProjectHeaderFile;
 
-    /**
-     * Notify the GC that it might be a good time to do a collection. The final decision is up to
-     * the GC and its policy.
-     */
-    void collectionHint(boolean fullGC);
+/** Determines which header files are included when building a native image that uses Shenandoah. */
+public class ShenandoahHeaderFiles implements CContext.Directives {
+    @Override
+    public boolean isInConfiguration() {
+        return SubstrateOptions.useShenandoahGC();
+    }
 
-    /** Human-readable name. */
-    String getName();
-
-    /** Human-readable default heap size. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    String getDefaultMaxHeapSize();
+    @Override
+    public List<String> getHeaderFiles() {
+        return Collections.singletonList(ProjectHeaderFile.resolve("", "include/shenandoahGCStructs.h"));
+    }
 }
