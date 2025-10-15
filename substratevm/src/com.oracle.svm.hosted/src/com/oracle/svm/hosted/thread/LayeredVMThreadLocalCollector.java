@@ -38,6 +38,13 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -52,7 +59,8 @@ import jdk.graal.compiler.debug.Assertions;
  * multi-layered singleton and also {@link VMThreadLocalSupport} to likely be an application layer
  * only image singleton.
  */
-public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector implements LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredVMThreadLocalCollector.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
 
     record ThreadInfo(int size, int offset) {
 
@@ -117,60 +125,76 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector implem
         }
     }
 
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        /*
-         * Store the (name, offset, size) tuple of all thread locals.
-         */
-        List<String> threadLocalNames = new ArrayList<>();
-        List<Integer> threadLocalOffsets = new ArrayList<>();
-        List<Integer> threadLocalSizes = new ArrayList<>();
-        if (initialLayer) {
-            for (var threadLocal : getSortedThreadLocalInfos()) {
-                threadLocalNames.add(threadLocal.name);
-                threadLocalOffsets.add(threadLocal.offset);
-                threadLocalSizes.add(threadLocal.sizeInBytes);
-            }
-        } else {
-            for (var entry : threadLocalAssignmentMap.entrySet()) {
-                threadLocalNames.add(entry.getKey());
-                threadLocalOffsets.add(entry.getValue().offset());
-                threadLocalSizes.add(entry.getValue().size());
-            }
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredVMThreadLocalCollector>() {
+
+                @Override
+                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredVMThreadLocalCollector singleton) {
+                    /*
+                     * Store the (name, offset, size) tuple of all thread locals.
+                     */
+                    List<String> threadLocalNames = new ArrayList<>();
+                    List<Integer> threadLocalOffsets = new ArrayList<>();
+                    List<Integer> threadLocalSizes = new ArrayList<>();
+                    if (singleton.initialLayer) {
+                        for (var threadLocal : singleton.getSortedThreadLocalInfos()) {
+                            threadLocalNames.add(threadLocal.name);
+                            threadLocalOffsets.add(threadLocal.offset);
+                            threadLocalSizes.add(threadLocal.sizeInBytes);
+                        }
+                    } else {
+                        for (var entry : singleton.threadLocalAssignmentMap.entrySet()) {
+                            threadLocalNames.add(entry.getKey());
+                            threadLocalOffsets.add(entry.getValue().offset());
+                            threadLocalSizes.add(entry.getValue().size());
+                        }
+                    }
+
+                    writer.writeStringList("threadLocalNames", threadLocalNames);
+                    writer.writeIntList("threadLocalOffsets", threadLocalOffsets);
+                    writer.writeIntList("threadLocalSizes", threadLocalSizes);
+
+                    /*
+                     * Note while it is not strictly necessary to store nextOffset at the moment, if
+                     * in the future we allow multiple layers to define thread locals then this
+                     * information will need to be propagated.
+                     */
+                    writer.writeInt("nextOffset", singleton.nextOffset);
+                    return LayeredImageSingleton.PersistFlags.CREATE;
+                }
+
+                @Override
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                    return SingletonInstantiator.class;
+                }
+            });
         }
-
-        writer.writeStringList("threadLocalNames", threadLocalNames);
-        writer.writeIntList("threadLocalOffsets", threadLocalOffsets);
-        writer.writeIntList("threadLocalSizes", threadLocalSizes);
-
-        /*
-         * Note while it is not strictly necessary to store nextOffset at the moment, if in the
-         * future we allow multiple layers to define thread locals then this information will need
-         * to be propagated.
-         */
-        writer.writeInt("nextOffset", nextOffset);
-        return PersistFlags.CREATE;
     }
 
-    @SuppressWarnings("unused")
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        /*
-         * Load the (name, offset, size) tuple of all thread locals.
-         */
-        HashMap<String, ThreadInfo> threadLocalAssignmentMap = new HashMap<>();
-        Iterator<String> threadLocalNames = loader.readStringList("threadLocalNames").iterator();
-        Iterator<Integer> threadLocalOffsets = loader.readIntList("threadLocalOffsets").iterator();
-        Iterator<Integer> threadLocalSizes = loader.readIntList("threadLocalSizes").iterator();
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredVMThreadLocalCollector> {
 
-        while (threadLocalNames.hasNext()) {
-            String threadLocalName = threadLocalNames.next();
-            int threadLocalOffset = threadLocalOffsets.next();
-            int threadLocalSize = threadLocalSizes.next();
+        @Override
+        public LayeredVMThreadLocalCollector createFromLoader(ImageSingletonLoader loader) {
+            /*
+             * Load the (name, offset, size) tuple of all thread locals.
+             */
+            HashMap<String, ThreadInfo> threadLocalAssignmentMap = new HashMap<>();
+            Iterator<String> threadLocalNames = loader.readStringList("threadLocalNames").iterator();
+            Iterator<Integer> threadLocalOffsets = loader.readIntList("threadLocalOffsets").iterator();
+            Iterator<Integer> threadLocalSizes = loader.readIntList("threadLocalSizes").iterator();
 
-            var previous = threadLocalAssignmentMap.put(threadLocalName, new ThreadInfo(threadLocalSize, threadLocalOffset));
-            assert previous == null : previous;
+            while (threadLocalNames.hasNext()) {
+                String threadLocalName = threadLocalNames.next();
+                int threadLocalOffset = threadLocalOffsets.next();
+                int threadLocalSize = threadLocalSizes.next();
+
+                var previous = threadLocalAssignmentMap.put(threadLocalName, new ThreadInfo(threadLocalSize, threadLocalOffset));
+                assert previous == null : previous;
+            }
+
+            return new LayeredVMThreadLocalCollector(Map.copyOf(threadLocalAssignmentMap), loader.readInt("nextOffset"));
         }
-
-        return new LayeredVMThreadLocalCollector(Map.copyOf(threadLocalAssignmentMap), loader.readInt("nextOffset"));
     }
 }

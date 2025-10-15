@@ -57,7 +57,6 @@ import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -93,10 +92,16 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
@@ -1238,7 +1243,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      * This singleton keeps track of the methods and fields registered for reflection across layers
      * and ensure they are only registered once.
      */
-    private static final class LayeredRuntimeMetadataSingleton implements LayeredImageSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredRuntimeMetadataSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static final class LayeredRuntimeMetadataSingleton {
         /**
          * The methods registered in previous layers. The key is the {@link AnalysisMethod} id and
          * the value is {@link AccessibleObjectMetadata#complete} of the corresponding metadata. A
@@ -1316,69 +1322,80 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
         }
 
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-        }
+        static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-        @Override
-        public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
-            var builder = writerImpl.getSnapshotBuilder().getLayeredRuntimeMetadataSingleton();
+            private static void persistRegisteredElements(Map<Integer, Boolean> registeredElements, Map<Integer, Boolean> previousLayerRegisteredElements,
+                            IntFunction<PrimitiveList.Int.Builder> elementBuilderSupplier, IntFunction<PrimitiveList.Boolean.Builder> elementStatesBuilderSupplier) {
+                List<Integer> elements = new ArrayList<>();
+                List<Boolean> elementStates = new ArrayList<>();
 
-            persistRegisteredElements(registeredMethods, previousLayerRegisteredMethods, builder::initMethods, builder::initMethodStates);
-            persistRegisteredElements(registeredFields, previousLayerRegisteredFields, builder::initFields, builder::initFieldStates);
-
-            return PersistFlags.CREATE;
-        }
-
-        private static void persistRegisteredElements(Map<Integer, Boolean> registeredElements, Map<Integer, Boolean> previousLayerRegisteredElements,
-                        IntFunction<PrimitiveList.Int.Builder> elementBuilderSupplier, IntFunction<PrimitiveList.Boolean.Builder> elementStatesBuilderSupplier) {
-            List<Integer> elements = new ArrayList<>();
-            List<Boolean> elementStates = new ArrayList<>();
-
-            for (var entry : registeredElements.entrySet()) {
-                elements.add(entry.getKey());
-                elementStates.add(entry.getValue());
-            }
-
-            for (var entry : previousLayerRegisteredElements.entrySet()) {
-                if (!elements.contains(entry.getKey())) {
-                    /*
-                     * If complete metadata overwrites incomplete metadata from a previous layer,
-                     * the previous layer map entry needs to be skipped to register the new entry
-                     * for extension layers.
-                     */
+                for (var entry : registeredElements.entrySet()) {
                     elements.add(entry.getKey());
                     elementStates.add(entry.getValue());
                 }
+
+                for (var entry : previousLayerRegisteredElements.entrySet()) {
+                    if (!elements.contains(entry.getKey())) {
+                        /*
+                         * If complete metadata overwrites incomplete metadata from a previous
+                         * layer, the previous layer map entry needs to be skipped to register the
+                         * new entry for extension layers.
+                         */
+                        elements.add(entry.getKey());
+                        elementStates.add(entry.getValue());
+                    }
+                }
+
+                SVMImageLayerWriter.initInts(elementBuilderSupplier, elements.stream().mapToInt(i -> i));
+
+                PrimitiveList.Boolean.Builder elementStatesBuilder = elementStatesBuilderSupplier.apply(elementStates.size());
+                for (int i = 0; i < elementStates.size(); ++i) {
+                    elementStatesBuilder.set(i, elementStates.get(i));
+                }
             }
 
-            SVMImageLayerWriter.initInts(elementBuilderSupplier, elements.stream().mapToInt(i -> i));
+            @Override
+            public SingletonTrait getLayeredCallbacksTrait() {
+                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredRuntimeMetadataSingleton>() {
 
-            PrimitiveList.Boolean.Builder elementStatesBuilder = elementStatesBuilderSupplier.apply(elementStates.size());
-            for (int i = 0; i < elementStates.size(); ++i) {
-                elementStatesBuilder.set(i, elementStates.get(i));
+                    @Override
+                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredRuntimeMetadataSingleton singleton) {
+                        SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
+                        var builder = writerImpl.getSnapshotBuilder().getLayeredRuntimeMetadataSingleton();
+
+                        persistRegisteredElements(singleton.registeredMethods, singleton.previousLayerRegisteredMethods, builder::initMethods, builder::initMethodStates);
+                        persistRegisteredElements(singleton.registeredFields, singleton.previousLayerRegisteredFields, builder::initFields, builder::initFieldStates);
+
+                        return LayeredImageSingleton.PersistFlags.CREATE;
+                    }
+
+                    @Override
+                    public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                        return SingletonInstantiator.class;
+                    }
+                });
             }
         }
 
-        @SuppressWarnings("unused")
-        public static Object createFromLoader(ImageSingletonLoader loader) {
-            SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
-            var reader = loaderImpl.getSnapshotReader().getLayeredRuntimeMetadataSingleton();
-
-            Map<Integer, Boolean> previousLayerRegisteredMethods = getPreviousRegisteredElements(reader.getMethods(), reader.getMethodStates());
-            Map<Integer, Boolean> previousLayerRegisteredFields = getPreviousRegisteredElements(reader.getFields(), reader.getFieldStates());
-
-            return new LayeredRuntimeMetadataSingleton(previousLayerRegisteredMethods, previousLayerRegisteredFields);
-        }
-
-        private static Map<Integer, Boolean> getPreviousRegisteredElements(PrimitiveList.Int.Reader elementsReader, PrimitiveList.Boolean.Reader statesReader) {
-            Map<Integer, Boolean> registeredElements = new HashMap<>();
-            for (int i = 0; i < elementsReader.size(); ++i) {
-                registeredElements.put(elementsReader.get(i), statesReader.get(i));
+        static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredRuntimeMetadataSingleton> {
+            private static Map<Integer, Boolean> getPreviousRegisteredElements(PrimitiveList.Int.Reader elementsReader, PrimitiveList.Boolean.Reader statesReader) {
+                Map<Integer, Boolean> registeredElements = new HashMap<>();
+                for (int i = 0; i < elementsReader.size(); ++i) {
+                    registeredElements.put(elementsReader.get(i), statesReader.get(i));
+                }
+                return registeredElements;
             }
-            return registeredElements;
+
+            @Override
+            public LayeredRuntimeMetadataSingleton createFromLoader(ImageSingletonLoader loader) {
+                SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
+                var reader = loaderImpl.getSnapshotReader().getLayeredRuntimeMetadataSingleton();
+
+                Map<Integer, Boolean> previousLayerRegisteredMethods = getPreviousRegisteredElements(reader.getMethods(), reader.getMethodStates());
+                Map<Integer, Boolean> previousLayerRegisteredFields = getPreviousRegisteredElements(reader.getFields(), reader.getFieldStates());
+
+                return new LayeredRuntimeMetadataSingleton(previousLayerRegisteredMethods, previousLayerRegisteredFields);
+            }
         }
     }
 
