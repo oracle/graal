@@ -190,7 +190,8 @@ public final class JniEnv extends NativeEnv {
         popObject = nativeAccess.lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
 
         jniEnvPtr = initializeAndGetEnv(initializeNativeContext);
-        assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
+        assert jniEnvPtr != null;
+        assert !getUncached().isNull(jniEnvPtr) || !getLanguage().isNativeAvailable();
         assert getUncached().isPointer(jniEnvPtr);
     }
 

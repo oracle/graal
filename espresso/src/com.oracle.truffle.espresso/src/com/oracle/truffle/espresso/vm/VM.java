@@ -350,7 +350,7 @@ public final class VM extends NativeEnv {
             this.processHandleValue = getUncached().asPointer(getUncached().execute(mokapotGetProcessHandle));
             getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
-            assert !getUncached().isNull(this.mokapotEnvPtr);
+            assert !getUncached().isNull(this.mokapotEnvPtr) || !getLanguage().isNativeAvailable();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }

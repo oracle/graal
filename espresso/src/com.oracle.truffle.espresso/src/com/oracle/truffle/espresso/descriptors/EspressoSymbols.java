@@ -190,6 +190,10 @@ public class EspressoSymbols {
         // libnio
         public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignDirectoryStream;");
         public static final Symbol<Type> sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator = SYMBOLS.putType("Lsun/nio/fs/TruffleFilteredDirectoryStream$ForeignIterator;");
+        // libextnet
+        public static final Symbol<Type> jdk_net_ExtendedSocketOptions$PlatformSocketOptions = SYMBOLS.putType("Ljdk/net/ExtendedSocketOptions$PlatformSocketOptions;");
+        // libmanagement
+        public static final Symbol<Type> sun_management_VMManagementImpl = SYMBOLS.putType("Lsun/management/VMManagementImpl;");
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = SYMBOLS.putType("Ljava/net/URLClassLoader;");
         public static final Symbol<Type> java_net_URL = SYMBOLS.putType("Ljava/net/URL;");
@@ -835,6 +839,15 @@ public class EspressoSymbols {
         public static final Symbol<Name> totalTime = SYMBOLS.putName("totalTime");
         public static final Symbol<Name> user = SYMBOLS.putName("user");
         public static final Symbol<Name> initialized = SYMBOLS.putName("initialized");
+        // java.management
+        public static final Symbol<Name> compTimeMonitoringSupport = SYMBOLS.putName("compTimeMonitoringSupport");
+        public static final Symbol<Name> threadContentionMonitoringSupport = SYMBOLS.putName("threadContentionMonitoringSupport");
+        public static final Symbol<Name> currentThreadCpuTimeSupport = SYMBOLS.putName("currentThreadCpuTimeSupport");
+        public static final Symbol<Name> otherThreadCpuTimeSupport = SYMBOLS.putName("otherThreadCpuTimeSupport");
+        public static final Symbol<Name> threadAllocatedMemorySupport = SYMBOLS.putName("threadAllocatedMemorySupport");
+        public static final Symbol<Name> remoteDiagnosticCommandsSupport = SYMBOLS.putName("remoteDiagnosticCommandsSupport");
+        public static final Symbol<Name> objectMonitorUsageSupport = SYMBOLS.putName("objectMonitorUsageSupport");
+        public static final Symbol<Name> synchronizerUsageSupport = SYMBOLS.putName("synchronizerUsageSupport");
         // java.lang.invoke.*
         // CallSite
         public static final Symbol<Name> target = SYMBOLS.putName("target");
