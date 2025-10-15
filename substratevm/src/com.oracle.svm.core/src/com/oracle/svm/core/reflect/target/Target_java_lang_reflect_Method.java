@@ -32,6 +32,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -102,7 +103,7 @@ public final class Target_java_lang_reflect_Method {
     private Class<?>[] exceptionTypes;
 
     @Alias //
-    private int modifiers;
+    public int modifiers;
 
     @Alias //
     private transient String signature;
@@ -190,6 +191,11 @@ public final class Target_java_lang_reflect_Method {
         /* Copy the layer id too */
         res.layerId = layerId;
         return res;
+    }
+
+    @Substitute
+    public int getModifiers() {
+        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {

@@ -36,6 +36,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -108,6 +112,36 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     static List<byte[]> getEncodings() {
         return Arrays.stream(MultiLayeredImageSingleton.getAllLayers(RuntimeMetadataEncoding.class)).map(RuntimeMetadataEncoding::getEncoding).toList();
+    }
+
+    public static int clearInternalModifiers(int modifiers) {
+        return modifiers & (~ALL_FLAGS_MASK);
+    }
+
+    public static int getRawModifiers(Method m) {
+        assert m != null;
+        return SubstrateUtil.cast(m, Target_java_lang_reflect_Method.class).modifiers;
+    }
+
+    public static int getRawModifiers(Constructor<?> c) {
+        assert c != null;
+        return SubstrateUtil.cast(c, Target_java_lang_reflect_Constructor.class).modifiers;
+    }
+
+    public static int getRawModifiers(Executable ex) {
+        assert ex != null;
+        if (ex instanceof Method m) {
+            return getRawModifiers(m);
+        } else if (ex instanceof Constructor<?> c) {
+            return getRawModifiers(c);
+        } else {
+            throw VMError.shouldNotReachHere("Unexpected executable type");
+        }
+    }
+
+    public static int getRawModifiers(Field f) {
+        assert f != null;
+        return SubstrateUtil.cast(f, Target_java_lang_reflect_Field.class).modifiers;
     }
 
     /**

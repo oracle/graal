@@ -30,6 +30,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
@@ -59,6 +60,9 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class)//
     byte[] parameterAnnotations;
+
+    @Alias //
+    public int modifiers;
 
     /**
      * Value of the accessor when `this` is in the image heap. `null` for run-time constructed
@@ -97,6 +101,11 @@ public final class Target_java_lang_reflect_Constructor {
             throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessorFromMetadata;
+    }
+
+    @Substitute
+    public int getModifiers() {
+        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
