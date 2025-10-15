@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.CompressBitsNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
@@ -381,7 +382,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         ValueNode input = graph.addOrUnique(ReinterpretNode.create(byteStamp, node.getValue(), NodeView.DEFAULT));
         SimdToBitMaskNode bitmask = graph.unique(new SimdToBitMaskNode(input));
         ConstantNode compressMask = ConstantNode.forLong(0x5555555555555555L, graph);
-        ValueNode result = graph.unique(new CompressBitsNode(bitmask, compressMask));
+        ValueNode result = graph.addOrUniqueWithInputs(IntegerConvertNode.convert(new CompressBitsNode(bitmask, compressMask), node.stamp(NodeView.DEFAULT), NodeView.DEFAULT));
         node.replaceAtUsagesAndDelete(result);
     }
 
