@@ -457,7 +457,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
-                if (cachedLocation instanceof ExtLocations.IntArrayLocation intArrayLocation) {
+                if (cachedLocation instanceof ExtLocations.IntLocation intArrayLocation) {
                     return intArrayLocation.getInt(receiver, guard);
                 } else {
                     return cachedLocation.getInt(receiver, guard);
@@ -491,9 +491,9 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) {
             if (cachedLocation != null) {
-                if (cachedLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
+                if (cachedLocation instanceof ExtLocations.ObjectLocation objectArrayLocation) {
                     return objectArrayLocation.get(receiver, guard);
-                } else if (cachedLocation instanceof ExtLocations.IntArrayLocation intArrayLocation) {
+                } else if (cachedLocation instanceof ExtLocations.IntLocation intArrayLocation) {
                     return intArrayLocation.get(receiver, guard);
                 } else {
                     return cachedLocation.get(receiver, guard);
@@ -710,7 +710,7 @@ public abstract class DynamicObject implements TruffleObject {
                     DynamicObjectSupport.grow(receiver, oldShape, newShape);
                 }
 
-                if (newLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
+                if (newLocation instanceof ExtLocations.ObjectLocation objectArrayLocation) {
                     objectArrayLocation.set(receiver, value, guard, addingNewProperty);
                 } else {
                     newLocation.set(receiver, value, guard, addingNewProperty);
@@ -903,7 +903,7 @@ public abstract class DynamicObject implements TruffleObject {
                     DynamicObjectSupport.grow(receiver, oldShape, newShape);
                 }
 
-                if (newLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
+                if (newLocation instanceof ExtLocations.ObjectLocation objectArrayLocation) {
                     objectArrayLocation.set(receiver, value, guard, addingNewProperty);
                 } else {
                     newLocation.set(receiver, value, guard, addingNewProperty);
@@ -951,7 +951,7 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     static boolean canStore(Location newLocation, Object value) {
-        return newLocation instanceof ExtLocations.AbstractObjectLocation || newLocation.canStore(value);
+        return newLocation instanceof ExtLocations.ObjectLocation || newLocation.canStore(value);
     }
 
     static Shape getNewShape(Object cachedKey, Object value, int newPropertyFlags, int mode, Property existingProperty, Shape oldShape) {

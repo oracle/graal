@@ -50,10 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.AbstractAssumption;
-
-import sun.misc.Unsafe;
 
 /**
  * Property location.
@@ -64,100 +61,18 @@ import sun.misc.Unsafe;
  */
 @SuppressWarnings({"deprecation", "cast"})
 abstract class ExtLocations {
-    static final int INT_FIELD_SLOT_SIZE = 1;
     static final int INT_ARRAY_SLOT_SIZE = 1;
     static final int DOUBLE_ARRAY_SLOT_SIZE = 2;
     static final int LONG_ARRAY_SLOT_SIZE = 2;
     static final int OBJECT_SLOT_SIZE = 1;
     static final int MAX_DYNAMIC_FIELDS = 1000;
 
-    sealed interface TypedLocation {
-        Class<?> getType();
-    }
-
-    sealed interface ObjectLocation extends TypedLocation {
-        @Override
-        Class<? extends Object> getType();
-
-        /** If {@code true}, this location does not accept {@code null} values. */
-        boolean isNonNull();
-    }
-
-    sealed interface IntLocation extends TypedLocation, com.oracle.truffle.api.object.IntLocation {
-        @Override
-        int getInt(DynamicObject store, boolean guard);
-
-        @Override
-        default int getInt(DynamicObject store, Shape shape) {
-            return getInt(store, store.getShape() == shape);
-        }
-
-        void setInt(DynamicObject store, int value, boolean guard, boolean init);
-
-        @Override
-        default Class<Integer> getType() {
-            return int.class;
-        }
-
-        @Override
-        default void setInt(DynamicObject store, int value, Shape shape) {
-            setInt(store, value, store.getShape() == shape, false);
-        }
-    }
-
-    sealed interface LongLocation extends TypedLocation, com.oracle.truffle.api.object.LongLocation {
-        @Override
-        long getLong(DynamicObject store, boolean guard);
-
-        @Override
-        default long getLong(DynamicObject store, Shape shape) {
-            return getLong(store, store.getShape() == shape);
-        }
-
-        void setLong(DynamicObject store, long value, boolean guard, boolean init);
-
-        @Override
-        default Class<Long> getType() {
-            return long.class;
-        }
-
-        boolean isImplicitCastIntToLong();
-
-        @Override
-        default void setLong(DynamicObject store, long value, Shape shape) {
-            setLong(store, value, store.getShape() == shape, false);
-        }
-    }
-
-    sealed interface DoubleLocation extends TypedLocation, com.oracle.truffle.api.object.DoubleLocation {
-        @Override
-        double getDouble(DynamicObject store, boolean guard);
-
-        @Override
-        default double getDouble(DynamicObject store, Shape shape) {
-            return getDouble(store, store.getShape() == shape);
-        }
-
-        void setDouble(DynamicObject store, double value, boolean guard, boolean init);
-
-        @Override
-        default Class<Double> getType() {
-            return double.class;
-        }
-
-        boolean isImplicitCastIntToDouble();
-
-        @Override
-        default void setDouble(DynamicObject store, double value, Shape shape) {
-            setDouble(store, value, store.getShape() == shape, false);
-        }
-    }
-
     abstract static sealed class ValueLocation extends Location {
 
-        private final Object value;
+        final Object value;
 
         ValueLocation(Object value) {
+            super();
             assert !(value instanceof Location);
             this.value = value;
         }
@@ -215,11 +130,6 @@ abstract class ExtLocations {
             return true;
         }
 
-        @Override
-        protected int getOrdinal() {
-            throw CompilerDirectives.shouldNotReachHere(getClass().getName());
-        }
-
         /**
          * Boxed values need to be compared by value not by reference.
          *
@@ -236,16 +146,6 @@ abstract class ExtLocations {
         private static boolean equalsBoundary(Object val1, Object val2) {
             return val1.equals(val2);
         }
-
-        @Override
-        public int objectFieldCount() {
-            return 0;
-        }
-
-        @Override
-        public int primitiveFieldCount() {
-            return 0;
-        }
     }
 
     static final class ConstantLocation extends ValueLocation {
@@ -253,183 +153,134 @@ abstract class ExtLocations {
         ConstantLocation(Object value) {
             super(value);
         }
-
-        @Override
-        public boolean isConstant() {
-            return true;
-        }
     }
 
+    /**
+     * Array or field location.
+     */
     abstract static sealed class InstanceLocation extends Location {
 
-        protected final int index;
-
-        @CompilationFinal protected volatile AbstractAssumption finalAssumption;
-
-        private static final AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> FINAL_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                        InstanceLocation.class, AbstractAssumption.class, "finalAssumption");
-
         static final boolean LAZY_FINAL_ASSUMPTION = true;
-        private static final DebugCounter assumedFinalLocationAssumptionCount = DebugCounter.create("Final location assumptions allocated");
-        private static final DebugCounter assumedFinalLocationAssumptionInvalidationCount = DebugCounter.create("Final location assumptions invalidated");
 
-        protected InstanceLocation(int index, AbstractAssumption finalAssumption) {
-            this.index = index;
-            this.finalAssumption = finalAssumption;
-        }
-
-        final int getIndex() {
-            return index;
-        }
-
-        final AbstractAssumption getFinalAssumptionField() {
-            return finalAssumption;
-        }
-
-        static AbstractAssumption createFinalAssumption() {
-            assumedFinalLocationAssumptionCount.inc();
-            return (AbstractAssumption) Truffle.getRuntime().createAssumption("final location");
-        }
-
-        protected final void maybeInvalidateFinalAssumption() {
-            AbstractAssumption assumption = getFinalAssumptionField();
-            if (assumption == null || assumption.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                invalidateFinalAssumption(assumption);
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        private void invalidateFinalAssumption(AbstractAssumption lastAssumption) {
-            CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> updater = FINAL_ASSUMPTION_UPDATER;
-            assumedFinalLocationAssumptionInvalidationCount.inc();
-            AbstractAssumption assumption = lastAssumption;
-            if (assumption == null) {
-                while (!updater.compareAndSet(this, assumption, (AbstractAssumption) Assumption.NEVER_VALID)) {
-                    assumption = updater.get(this);
-                    if (assumption == Assumption.NEVER_VALID) {
-                        break;
-                    }
-                    assumption.invalidate();
-                }
-            } else if (assumption.isValid()) {
-                assumption.invalidate();
-                updater.set(this, (AbstractAssumption) Assumption.NEVER_VALID);
-            }
-        }
-
-        /**
-         * Needs to be implemented so that {@link Location#getFinalAssumption()} is overridden.
-         */
-        @Override
-        public final AbstractAssumption getFinalAssumption() {
-            AbstractAssumption assumption = getFinalAssumptionField();
-            if (assumption != null) {
-                return assumption;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return initializeFinalAssumption();
-        }
-
-        @SuppressWarnings("unchecked")
-        private AbstractAssumption initializeFinalAssumption() {
-            CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<InstanceLocation, AbstractAssumption> updater = FINAL_ASSUMPTION_UPDATER;
-            AbstractAssumption newAssumption = createFinalAssumption();
-            if (updater.compareAndSet(this, null, newAssumption)) {
-                return newAssumption;
-            } else {
-                // if CAS failed, assumption is already initialized; cannot be null after that.
-                return Objects.requireNonNull(updater.get(this));
-            }
-        }
-
-        /**
-         * Needs to be implemented so that {@link Location#isAssumedFinal()} is overridden.
-         */
-        @Override
-        public final boolean isAssumedFinal() {
-            AbstractAssumption assumption = getFinalAssumptionField();
-            return assumption == null || assumption.isValid();
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + index;
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            InstanceLocation other = (InstanceLocation) obj;
-            return index == other.index;
+        protected InstanceLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
+            super(index, field, finalAssumption);
         }
 
         @Override
         public String toString() {
-            return super.toString() + (this instanceof ArrayLocation ? ("[" + index + "]") : ("@" + index)) + ("[final=" + isAssumedFinal() + "]");
-        }
-
-        @Override
-        protected final int getOrdinal() {
-            boolean isPrimitive = this instanceof AbstractPrimitiveFieldLocation || this instanceof AbstractPrimitiveArrayLocation;
-            int ordinal = (isPrimitive ? -Integer.MAX_VALUE : 0) + getIndex();
-            if (this instanceof ArrayLocation) {
-                ordinal += MAX_DYNAMIC_FIELDS;
-            }
-            return ordinal;
+            return super.toString() + (isArrayLocation() ? ("[" + getIndex() + "]") : ("@" + getIndex())) + ("[final=" + isAssumedFinal() + "]");
         }
     }
 
-    sealed interface ArrayLocation {
-    }
+    /**
+     * Object array or field location with assumption-based type speculation.
+     */
+    static final class ObjectLocation extends InstanceLocation {
 
-    sealed interface FieldLocation {
-    }
+        @CompilationFinal volatile TypeAssumption typeAssumption;
 
-    abstract static sealed class AbstractObjectLocation extends InstanceLocation implements ObjectLocation {
+        private static final AtomicReferenceFieldUpdater<ObjectLocation, TypeAssumption> TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                        ObjectLocation.class, TypeAssumption.class, "typeAssumption");
 
-        @CompilationFinal protected volatile TypeAssumption typeAssumption;
+        static final boolean LAZY_TYPE_ASSUMPTION = false;
 
-        private static final AtomicReferenceFieldUpdater<AbstractObjectLocation, TypeAssumption> TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AbstractObjectLocation.class,
-                        TypeAssumption.class, "typeAssumption");
-
-        static final boolean LAZY_ASSUMPTION = false;
-        private static final DebugCounter assumedTypeLocationAssumptionCount = DebugCounter.create("Typed location assumptions allocated");
-        private static final DebugCounter assumedTypeLocationAssumptionInvalidationCount = DebugCounter.create("Typed location assumptions invalidated");
-        private static final DebugCounter assumedTypeLocationAssumptionRenewCount = DebugCounter.create("Typed location assumptions renewed");
-
-        AbstractObjectLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
-            super(index, finalAssumption);
+        /*
+         * @param typeAssumption initial value of type assumption field
+         */
+        private ObjectLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
+            super(index, null, finalAssumption);
             this.typeAssumption = typeAssumption;
         }
 
-        public final TypeAssumption getTypeAssumption() {
-            return typeAssumption;
+        /*
+         * @param typeAssumption initial value of type assumption field
+         */
+        private ObjectLocation(int index, FieldInfo field, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
+            super(index, Objects.requireNonNull(field), finalAssumption);
+            this.typeAssumption = typeAssumption;
+        }
+
+        static ObjectLocation createObjectArrayLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
+            return new ObjectLocation(index, finalAssumption, typeAssumption);
+        }
+
+        static ObjectLocation createObjectFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
+            return new ObjectLocation(index, field, finalAssumption, typeAssumption);
         }
 
         @Override
-        public final boolean canStore(Object value) {
+        public Object get(DynamicObject store, boolean guard) {
+            Object value;
+            if (field == null) {
+                value = getObjectArrayInternal(store, guard);
+            } else {
+                value = getObjectFieldInternal(store, guard);
+            }
+            return CompilerDirectives.inInterpreter() ? value : assumedTypeCast(value, guard);
+        }
+
+        private Object getObjectArrayInternal(DynamicObject store, boolean guard) {
+            return UnsafeAccess.unsafeGetObject(getObjectArray(store, guard), getObjectArrayOffset(), guard, this);
+        }
+
+        private Object getObjectFieldInternal(DynamicObject store, boolean guard) {
+            if (UseVarHandle) {
+                return field.varHandle().get(store);
+            }
+            field.receiverCheck(store);
+            return UnsafeAccess.unsafeGetObject(store, getFieldOffset(), guard, this);
+        }
+
+        @Override
+        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
+            if (!init) {
+                maybeInvalidateFinalAssumption();
+            }
+            maybeInvalidateTypeAssumption(value);
+            if (field == null) {
+                setObjectArrayInternal(store, value, guard);
+            } else {
+                setObjectFieldInternal(store, value);
+            }
+        }
+
+        private void setObjectArrayInternal(DynamicObject store, Object value, boolean guard) {
+            UnsafeAccess.unsafePutObject(getObjectArray(store, guard), getObjectArrayOffset(), value, this);
+        }
+
+        private void setObjectFieldInternal(DynamicObject store, Object value) {
+            if (UseVarHandle) {
+                field.varHandle().set(store, value);
+                return;
+            }
+            field.receiverCheck(store);
+            UnsafeAccess.unsafePutObject(store, getFieldOffset(), value, this);
+        }
+
+        @Override
+        protected void clear(DynamicObject store) {
+            if (field == null) {
+                setObjectArrayInternal(store, null, false);
+            } else {
+                setObjectFieldInternal(store, null);
+            }
+        }
+
+        @Override
+        public boolean canStore(Object value) {
             return true;
         }
 
         @Override
-        public final Class<? extends Object> getType() {
+        Class<? extends Object> getType() {
             return Object.class;
         }
 
-        @Override
-        public final boolean isNonNull() {
-            return false;
+        TypeAssumption getTypeAssumption() {
+            return typeAssumption;
         }
 
-        protected final boolean canStoreInternal(Object value) {
+        boolean canStoreInternal(Object value) {
             TypeAssumption curr = getTypeAssumption();
             if (curr == TypeAssumption.ANY) {
                 return true;
@@ -438,13 +289,13 @@ abstract class ExtLocations {
                     return !curr.nonNull;
                 }
                 Class<? extends Object> type = curr.type;
-                return type == Object.class || type.isInstance(value);
+                return type == Object.class || value.getClass() == type || type.isInstance(value);
             } else {
                 return false;
             }
         }
 
-        protected final Object assumedTypeCast(Object value, boolean condition) {
+        Object assumedTypeCast(Object value, boolean condition) {
             assert CompilerDirectives.inCompiledCode();
             TypeAssumption curr = getTypeAssumption();
             if (curr != null && curr != TypeAssumption.ANY && curr.getAssumption().isValid()) {
@@ -456,7 +307,7 @@ abstract class ExtLocations {
             }
         }
 
-        protected final Class<? extends Object> getAssumedType() {
+        Class<? extends Object> getAssumedType() {
             TypeAssumption curr = getTypeAssumption();
             if (curr != null && curr.getAssumption().isValid()) {
                 return curr.type;
@@ -465,7 +316,7 @@ abstract class ExtLocations {
             }
         }
 
-        protected final boolean isAssumedNonNull() {
+        boolean isAssumedNonNull() {
             TypeAssumption curr = getTypeAssumption();
             if (curr != null && curr.getAssumption().isValid()) {
                 return curr.nonNull;
@@ -478,8 +329,8 @@ abstract class ExtLocations {
             if (type == Object.class && !nonNull) {
                 return TypeAssumption.ANY;
             }
-            assumedTypeLocationAssumptionCount.inc();
-            return new TypeAssumption((AbstractAssumption) Truffle.getRuntime().createAssumption("typed object location"), type, nonNull);
+            DebugCounters.assumedTypeLocationAssumptionCount.inc();
+            return new TypeAssumption((AbstractAssumption) Assumption.create("typed object location"), type, nonNull);
         }
 
         static TypeAssumption createTypeAssumptionFromValue(Object value) {
@@ -488,7 +339,7 @@ abstract class ExtLocations {
             return createTypeAssumption(type, nonNull);
         }
 
-        protected final void maybeInvalidateTypeAssumption(Object value) {
+        void maybeInvalidateTypeAssumption(Object value) {
             if (canStoreInternal(value)) {
                 return;
             }
@@ -496,9 +347,9 @@ abstract class ExtLocations {
             invalidateTypeAssumption(value);
         }
 
-        private void invalidateTypeAssumption(Object value) {
+        void invalidateTypeAssumption(Object value) {
             CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<AbstractObjectLocation, TypeAssumption> updater = TYPE_ASSUMPTION_UPDATER;
+            var updater = TYPE_ASSUMPTION_UPDATER;
             for (;;) {  // TERMINATION ARGUMENT: loop will terminate once CAS succeeds
                 TypeAssumption curr = getTypeAssumption();
                 if (curr == null) {
@@ -533,13 +384,13 @@ abstract class ExtLocations {
                     if (curr.getAssumption().isValid()) {
                         break;
                     } else {
-                        assumedTypeLocationAssumptionRenewCount.inc();
+                        DebugCounters.assumedTypeLocationAssumptionRenewCount.inc();
                     }
                 } else {
                     curr.getAssumption().invalidate("generalizing object type " +
                                     TypeAssumption.toString(curr.type, curr.nonNull) + " => " +
                                     TypeAssumption.toString(type, nonNull) + " " + this);
-                    assumedTypeLocationAssumptionInvalidationCount.inc();
+                    DebugCounters.assumedTypeLocationAssumptionInvalidationCount.inc();
                 }
                 TypeAssumption next = createTypeAssumption(type, nonNull);
                 if (updater.compareAndSet(this, curr, next)) {
@@ -548,9 +399,9 @@ abstract class ExtLocations {
             }
         }
 
-        final void mergeTypeAssumption(TypeAssumption other) {
+        void mergeTypeAssumption(TypeAssumption other) {
             CompilerAsserts.neverPartOfCompilation();
-            AtomicReferenceFieldUpdater<AbstractObjectLocation, TypeAssumption> updater = TYPE_ASSUMPTION_UPDATER;
+            var updater = TYPE_ASSUMPTION_UPDATER;
             for (;;) {  // TERMINATION ARGUMENT: loop will terminate once CAS succeeds
                 TypeAssumption curr = getTypeAssumption();
                 if (curr == null) {
@@ -577,13 +428,13 @@ abstract class ExtLocations {
                     if (curr.getAssumption().isValid()) {
                         break;
                     } else {
-                        assumedTypeLocationAssumptionRenewCount.inc();
+                        DebugCounters.assumedTypeLocationAssumptionRenewCount.inc();
                     }
                 } else {
                     curr.getAssumption().invalidate("generalizing object type " +
                                     TypeAssumption.toString(curr.type, curr.nonNull) + " => " +
                                     TypeAssumption.toString(type, nonNull) + " " + this);
-                    assumedTypeLocationAssumptionInvalidationCount.inc();
+                    DebugCounters.assumedTypeLocationAssumptionInvalidationCount.inc();
                 }
                 TypeAssumption next = createTypeAssumption(type, nonNull);
                 if (updater.compareAndSet(this, curr, next)) {
@@ -593,146 +444,23 @@ abstract class ExtLocations {
         }
 
         @Override
-        public int primitiveFieldCount() {
-            return 0;
+        public int objectFieldCount() {
+            return isFieldLocation() ? OBJECT_SLOT_SIZE : 0;
+        }
+
+        @Override
+        public void accept(LocationVisitor locationVisitor) {
+            if (field == null) {
+                locationVisitor.visitObjectArray(getIndex(), OBJECT_SLOT_SIZE);
+            } else {
+                locationVisitor.visitObjectField(getIndex(), OBJECT_SLOT_SIZE);
+            }
         }
 
         @Override
         public String toString() {
             TypeAssumption assumed = getTypeAssumption();
             return super.toString() + ("[type=" + TypeAssumption.toString(assumed.type, assumed.nonNull) + "]");
-        }
-    }
-
-    /**
-     * Object array location with assumption-based type speculation.
-     */
-    static final class ObjectArrayLocation extends AbstractObjectLocation implements ArrayLocation {
-
-        ObjectArrayLocation(int index, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
-            super(index, finalAssumption, typeAssumption);
-        }
-
-        private static Object getArray(DynamicObject store, boolean condition) {
-            return UnsafeAccess.unsafeCast(store.getObjectStore(), Object[].class, condition, true, true);
-        }
-
-        private long getOffset() {
-            return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE * index;
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            Object value = UnsafeAccess.unsafeGetObject(getArray(store, guard), getOffset(), guard, this);
-            return CompilerDirectives.inInterpreter() ? value : assumedTypeCast(value, guard);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            maybeInvalidateTypeAssumption(value);
-            setObjectInternal(store, value, guard);
-        }
-
-        private void setObjectInternal(DynamicObject store, Object value, boolean guard) {
-            UnsafeAccess.unsafePutObject(getArray(store, guard), getOffset(), value, this);
-        }
-
-        @Override
-        void clear(DynamicObject store) {
-            setObjectInternal(store, null, false);
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
-        }
-
-        @Override
-        public int objectFieldCount() {
-            return 0;
-        }
-    }
-
-    /**
-     * Object field location with assumption-based type speculation.
-     */
-    static final class ObjectFieldLocation extends AbstractObjectLocation implements FieldLocation {
-        private final FieldInfo field;
-
-        ObjectFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption, TypeAssumption typeAssumption) {
-            super(index, finalAssumption, typeAssumption);
-            this.field = Objects.requireNonNull(field);
-        }
-
-        private Object getInternal(DynamicObject store, boolean guard) {
-            if (UseVarHandle) {
-                return field.varHandle().get(store);
-            }
-            field.receiverCheck(store);
-            return UnsafeAccess.unsafeGetObject(store, getOffset(), guard, this);
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            Object value = getInternal(store, guard);
-            return CompilerDirectives.inInterpreter() ? value : assumedTypeCast(value, guard);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            maybeInvalidateTypeAssumption(value);
-            setObjectInternal(store, value);
-        }
-
-        private void setObjectInternal(DynamicObject store, Object value) {
-            if (UseVarHandle) {
-                field.varHandle().set(store, value);
-                return;
-            }
-            field.receiverCheck(store);
-            UnsafeAccess.unsafePutObject(store, getOffset(), value, this);
-        }
-
-        @Override
-        void clear(DynamicObject store) {
-            setObjectInternal(store, null);
-        }
-
-        @Override
-        public int objectFieldCount() {
-            return OBJECT_SLOT_SIZE;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitObjectField(index, OBJECT_SLOT_SIZE);
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + field.hashCode();
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            ObjectFieldLocation other = (ObjectFieldLocation) obj;
-            return this.field.equals(other.field);
-        }
-
-        long getOffset() {
-            return field.offset();
         }
     }
 
@@ -746,47 +474,39 @@ abstract class ExtLocations {
      *             this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
      * </pre>
      */
-    abstract static non-sealed class AbstractPrimitiveFieldLocation extends InstanceLocation implements FieldLocation {
+    abstract static non-sealed class AbstractPrimitiveLocation extends InstanceLocation {
 
-        protected final FieldInfo field;
+        AbstractPrimitiveLocation(int index, AbstractAssumption finalAssumption) {
+            super(index, null, finalAssumption);
+        }
 
-        AbstractPrimitiveFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
-            super(index, finalAssumption);
+        AbstractPrimitiveLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
+            super(index, Objects.requireNonNull(field), finalAssumption);
             assert field.type() == long.class : field;
-            this.field = Objects.requireNonNull(field);
         }
 
         @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + field.hashCode();
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            AbstractPrimitiveFieldLocation other = (AbstractPrimitiveFieldLocation) obj;
-            return this.field.equals(other.field);
-        }
-
-        final long getOffset() {
-            return field.offset();
-        }
-
-        @Override
-        public int objectFieldCount() {
-            return 0;
+        final int primitiveFieldCount() {
+            return isFieldLocation() ? 1 : 0;
         }
     }
 
-    static final class IntFieldLocation extends AbstractPrimitiveFieldLocation implements IntLocation {
+    static final class IntLocation extends AbstractPrimitiveLocation implements com.oracle.truffle.api.object.IntLocation {
 
-        IntFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
-            super(index, field, finalAssumption);
+        private IntLocation(int index, AbstractAssumption finalAssumption) {
+            super(index, finalAssumption);
+        }
+
+        private IntLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
+            super(index, Objects.requireNonNull(field), finalAssumption);
+        }
+
+        static IntLocation createIntArrayLocation(int index, AbstractAssumption finalAssumption) {
+            return new IntLocation(index, finalAssumption);
+        }
+
+        static IntLocation createIntFieldLocation(int index, FieldInfo field, AbstractAssumption finalAssumption) {
+            return new IntLocation(index, field, finalAssumption);
         }
 
         @Override
@@ -796,11 +516,23 @@ abstract class ExtLocations {
 
         @Override
         public int getInt(DynamicObject store, boolean guard) {
+            if (field == null) {
+                return getIntArray(store, guard);
+            } else {
+                return getIntField(store, guard);
+            }
+        }
+
+        private int getIntArray(DynamicObject store, boolean guard) {
+            return UnsafeAccess.unsafeGetInt(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), guard, this);
+        }
+
+        private int getIntField(DynamicObject store, boolean guard) {
             if (UseVarHandle) {
                 return (int) (long) field.varHandle().get(store);
             }
             field.receiverCheck(store);
-            return (int) UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this);
+            return (int) UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
         }
 
         @Override
@@ -817,21 +549,29 @@ abstract class ExtLocations {
             if (!init) {
                 maybeInvalidateFinalAssumption();
             }
-            setIntInternal(store, value);
+            if (field == null) {
+                setIntArrayInternal(store, value, guard);
+            } else {
+                setIntFieldInternal(store, value);
+            }
         }
 
-        private void setIntInternal(DynamicObject store, int value) {
+        private void setIntArrayInternal(DynamicObject store, int value, boolean guard) {
+            UnsafeAccess.unsafePutInt(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), value, this);
+        }
+
+        private void setIntFieldInternal(DynamicObject store, int value) {
             if (UseVarHandle) {
                 field.varHandle().set(store, value & 0xffff_ffffL);
                 return;
             }
             field.receiverCheck(store);
-            UnsafeAccess.unsafePutLong(store, getOffset(), value & 0xffff_ffffL, this);
+            UnsafeAccess.unsafePutLong(store, getFieldOffset(), value & 0xffff_ffffL, this);
         }
 
         @Override
-        protected void clear(DynamicObject store) {
-            setIntInternal(store, 0);
+        void clear(DynamicObject store) {
+            setInt(store, 0, false, true);
         }
 
         @Override
@@ -840,27 +580,56 @@ abstract class ExtLocations {
         }
 
         @Override
-        public Class<Integer> getType() {
+        Class<Integer> getType() {
             return int.class;
         }
 
         @Override
-        public int primitiveFieldCount() {
-            return INT_FIELD_SLOT_SIZE;
+        int primitiveArrayCount() {
+            return isArrayLocation() ? INT_ARRAY_SLOT_SIZE : 0;
         }
 
         @Override
         public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), INT_FIELD_SLOT_SIZE);
+            if (field == null) {
+                locationVisitor.visitPrimitiveArray(getIndex(), INT_ARRAY_SLOT_SIZE);
+            } else {
+                locationVisitor.visitPrimitiveField(getIndex(), 1);
+            }
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public int getInt(DynamicObject store, Shape shape) {
+            return getInt(store, store.getShape() == shape);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public void setInt(DynamicObject store, int value, Shape shape) {
+            setInt(store, value, store.getShape() == shape, false);
         }
     }
 
-    static final class DoubleFieldLocation extends AbstractPrimitiveFieldLocation implements DoubleLocation {
+    static final class DoubleLocation extends AbstractPrimitiveLocation implements com.oracle.truffle.api.object.DoubleLocation {
         private final boolean allowInt;
 
-        DoubleFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
+        DoubleLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
+            super(index, finalAssumption);
+            this.allowInt = allowInt;
+        }
+
+        DoubleLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
+        }
+
+        static DoubleLocation createDoubleArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
+            return new DoubleLocation(index, allowInt, finalAssumption);
+        }
+
+        static DoubleLocation createDoubleFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
+            return new DoubleLocation(index, field, allowInt, finalAssumption);
         }
 
         @Override
@@ -870,11 +639,23 @@ abstract class ExtLocations {
 
         @Override
         public double getDouble(DynamicObject store, boolean guard) {
+            if (field == null) {
+                return getDoubleArray(store, guard);
+            } else {
+                return getDoubleField(store, guard);
+            }
+        }
+
+        private double getDoubleArray(DynamicObject store, boolean guard) {
+            return UnsafeAccess.unsafeGetDouble(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), guard, this);
+        }
+
+        private double getDoubleField(DynamicObject store, boolean guard) {
             if (UseVarHandle) {
                 return Double.longBitsToDouble((long) field.varHandle().get(store));
             }
             field.receiverCheck(store);
-            return Double.longBitsToDouble(UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this));
+            return Double.longBitsToDouble(UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this));
         }
 
         @Override
@@ -882,21 +663,29 @@ abstract class ExtLocations {
             if (!init) {
                 maybeInvalidateFinalAssumption();
             }
-            setDoubleInternal(store, value);
+            if (field == null) {
+                setDoubleArrayInternal(store, value, guard);
+            } else {
+                setDoubleFieldInternal(store, value);
+            }
         }
 
-        private void setDoubleInternal(DynamicObject store, double value) {
+        private void setDoubleArrayInternal(DynamicObject store, double value, boolean guard) {
+            UnsafeAccess.unsafePutDouble(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), value, this);
+        }
+
+        private void setDoubleFieldInternal(DynamicObject store, double value) {
             if (UseVarHandle) {
                 field.varHandle().set(store, Double.doubleToRawLongBits(value));
                 return;
             }
             field.receiverCheck(store);
-            UnsafeAccess.unsafePutLong(store, getOffset(), Double.doubleToRawLongBits(value), this);
+            UnsafeAccess.unsafePutLong(store, getFieldOffset(), Double.doubleToRawLongBits(value), this);
         }
 
         @Override
         void clear(DynamicObject store) {
-            setDoubleInternal(store, 0);
+            setDouble(store, 0, false, true);
         }
 
         @Override
@@ -908,7 +697,7 @@ abstract class ExtLocations {
             }
         }
 
-        private double doubleValue(Object value) {
+        double doubleValue(Object value) {
             if (!allowInt || value instanceof Double) {
                 return ((Double) value).doubleValue();
             } else if (value instanceof Integer) {
@@ -923,238 +712,75 @@ abstract class ExtLocations {
             return value instanceof Double || (allowInt && value instanceof Integer);
         }
 
+        @Override
+        Class<Double> getType() {
+            return double.class;
+        }
+
+        @Override
+        int primitiveArrayCount() {
+            return isArrayLocation() ? DOUBLE_ARRAY_SLOT_SIZE : 0;
+        }
+
+        @Override
+        public void accept(LocationVisitor locationVisitor) {
+            if (field == null) {
+                locationVisitor.visitPrimitiveArray(getIndex(), DOUBLE_ARRAY_SLOT_SIZE);
+            } else {
+                locationVisitor.visitPrimitiveField(getIndex(), 1);
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int hash = super.hashCode();
+            hash = hash * prime + Boolean.hashCode(allowInt);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && this.allowInt == ((DoubleLocation) obj).allowInt;
+        }
+
+        @Override
+        boolean isImplicitCastIntToDouble() {
+            return allowInt;
+        }
+
+        @SuppressWarnings("deprecation")
         @Override
         public double getDouble(DynamicObject store, Shape shape) {
             return getDouble(store, checkShape(store, shape));
         }
 
+        @SuppressWarnings("deprecation")
         @Override
-        public Class<Double> getType() {
-            return double.class;
-        }
-
-        @Override
-        public int primitiveFieldCount() {
-            return 1;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), 1);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), allowInt);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return super.equals(obj) && this.allowInt == ((DoubleFieldLocation) obj).allowInt;
-        }
-
-        @Override
-        public boolean isImplicitCastIntToDouble() {
-            return allowInt;
+        public void setDouble(DynamicObject store, double value, Shape shape) {
+            setDouble(store, value, store.getShape() == shape, false);
         }
     }
 
-    abstract static sealed class AbstractPrimitiveArrayLocation extends InstanceLocation implements ArrayLocation {
-
-        AbstractPrimitiveArrayLocation(int index, AbstractAssumption finalAssumption) {
-            super(index, finalAssumption);
-        }
-
-        protected final long getOffset() {
-            return Unsafe.ARRAY_INT_BASE_OFFSET + (long) Unsafe.ARRAY_INT_INDEX_SCALE * index;
-        }
-
-        protected abstract int getBytes();
-
-        protected static Object getArray(DynamicObject store, boolean condition) {
-            return UnsafeAccess.unsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
-        }
-
-        @Override
-        public int objectFieldCount() {
-            return 0;
-        }
-
-        @Override
-        public int primitiveFieldCount() {
-            return 0;
-        }
-    }
-
-    static final class IntArrayLocation extends AbstractPrimitiveArrayLocation implements IntLocation {
-
-        IntArrayLocation(int index, AbstractAssumption finalAssumption) {
-            super(index, finalAssumption);
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return getInt(store, guard);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (canStore(value)) {
-                setInt(store, (int) value, guard, init);
-            } else {
-                throw incompatibleLocationException();
-            }
-        }
-
-        @Override
-        public int getInt(DynamicObject store, boolean guard) {
-            return UnsafeAccess.unsafeGetInt(getArray(store, guard), getOffset(), guard, this);
-        }
-
-        private void setIntInternal(DynamicObject store, int value, boolean guard) {
-            UnsafeAccess.unsafePutInt(getArray(store, guard), getOffset(), value, this);
-        }
-
-        @Override
-        public void setInt(DynamicObject store, int value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            setIntInternal(store, value, guard);
-        }
-
-        @Override
-        void clear(DynamicObject store) {
-            setIntInternal(store, 0, false);
-        }
-
-        @Override
-        public boolean canStore(Object value) {
-            return value instanceof Integer;
-        }
-
-        @Override
-        public Class<Integer> getType() {
-            return int.class;
-        }
-
-        @Override
-        public int primitiveArrayCount() {
-            return INT_ARRAY_SLOT_SIZE;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveArray(index, INT_ARRAY_SLOT_SIZE);
-        }
-
-        @Override
-        protected int getBytes() {
-            return Integer.BYTES;
-        }
-    }
-
-    static final class DoubleArrayLocation extends AbstractPrimitiveArrayLocation implements DoubleLocation {
+    static final class LongLocation extends AbstractPrimitiveLocation implements com.oracle.truffle.api.object.LongLocation {
         private final boolean allowInt;
 
-        DoubleArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
+        LongLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, finalAssumption);
             this.allowInt = allowInt;
         }
 
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return getDouble(store, guard);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (canStore(value)) {
-                setDouble(store, doubleValue(value), guard, init);
-            } else {
-                throw incompatibleLocationException();
-            }
-        }
-
-        private double doubleValue(Object value) {
-            if (!allowInt || value instanceof Double) {
-                return ((Double) value).doubleValue();
-            } else if (value instanceof Integer) {
-                return ((Integer) value).doubleValue();
-            } else {
-                throw shouldNotReachHere();
-            }
-        }
-
-        @Override
-        public double getDouble(DynamicObject store, boolean guard) {
-            return UnsafeAccess.unsafeGetDouble(getArray(store, guard), getOffset(), guard, this);
-        }
-
-        private void setDoubleInternal(DynamicObject store, double value, boolean guard) {
-            UnsafeAccess.unsafePutDouble(getArray(store, guard), getOffset(), value, this);
-        }
-
-        @Override
-        void clear(DynamicObject store) {
-            setDoubleInternal(store, 0, false);
-        }
-
-        @Override
-        public void setDouble(DynamicObject store, double value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            setDoubleInternal(store, value, guard);
-        }
-
-        @Override
-        public boolean canStore(Object value) {
-            return value instanceof Double || (allowInt && value instanceof Integer);
-        }
-
-        @Override
-        public Class<Double> getType() {
-            return double.class;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveArray(index, DOUBLE_ARRAY_SLOT_SIZE);
-        }
-
-        @Override
-        public int primitiveArrayCount() {
-            return DOUBLE_ARRAY_SLOT_SIZE;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), allowInt);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return super.equals(obj) && this.allowInt == ((DoubleArrayLocation) obj).allowInt;
-        }
-
-        @Override
-        public boolean isImplicitCastIntToDouble() {
-            return allowInt;
-        }
-
-        @Override
-        protected int getBytes() {
-            return Double.BYTES;
-        }
-    }
-
-    static final class LongFieldLocation extends AbstractPrimitiveFieldLocation implements LongLocation {
-        private final boolean allowInt;
-
-        LongFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
+        LongLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
             super(index, field, finalAssumption);
             this.allowInt = allowInt;
+        }
+
+        static LongLocation createLongArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
+            return new LongLocation(index, allowInt, finalAssumption);
+        }
+
+        static LongLocation createLongFieldLocation(int index, FieldInfo field, boolean allowInt, AbstractAssumption finalAssumption) {
+            return new LongLocation(index, field, allowInt, finalAssumption);
         }
 
         @Override
@@ -1164,11 +790,23 @@ abstract class ExtLocations {
 
         @Override
         public long getLong(DynamicObject store, boolean guard) {
+            if (field == null) {
+                return getLongArray(store, guard);
+            } else {
+                return getLongField(store, guard);
+            }
+        }
+
+        private long getLongArray(DynamicObject store, boolean guard) {
+            return UnsafeAccess.unsafeGetLong(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), guard, this);
+        }
+
+        private long getLongField(DynamicObject store, boolean guard) {
             if (UseVarHandle) {
                 return (long) field.varHandle().get(store);
             }
             field.receiverCheck(store);
-            return UnsafeAccess.unsafeGetLong(store, getOffset(), guard, this);
+            return UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
         }
 
         @Override
@@ -1176,21 +814,29 @@ abstract class ExtLocations {
             if (!init) {
                 maybeInvalidateFinalAssumption();
             }
-            setLongInternal(store, value);
+            if (field == null) {
+                setLongArrayInternal(store, value, guard);
+            } else {
+                setLongFieldInternal(store, value);
+            }
         }
 
-        private void setLongInternal(DynamicObject store, long value) {
+        private void setLongArrayInternal(DynamicObject store, long value, boolean guard) {
+            UnsafeAccess.unsafePutLong(getPrimitiveArray(store, guard), getPrimitiveArrayOffset(), value, this);
+        }
+
+        private void setLongFieldInternal(DynamicObject store, long value) {
             if (UseVarHandle) {
                 field.varHandle().set(store, value);
                 return;
             }
             field.receiverCheck(store);
-            UnsafeAccess.unsafePutLong(store, getOffset(), value, this);
+            UnsafeAccess.unsafePutLong(store, getFieldOffset(), value, this);
         }
 
         @Override
         void clear(DynamicObject store) {
-            setLongInternal(store, 0L);
+            setLong(store, 0L, false, true);
         }
 
         @Override
@@ -1202,7 +848,7 @@ abstract class ExtLocations {
             }
         }
 
-        private long longValue(Object value) {
+        long longValue(Object value) {
             if (!allowInt || value instanceof Long) {
                 return ((Long) value).longValue();
             } else if (value instanceof Integer) {
@@ -1218,133 +864,52 @@ abstract class ExtLocations {
         }
 
         @Override
-        public Class<Long> getType() {
+        Class<Long> getType() {
             return long.class;
         }
 
         @Override
-        public int primitiveFieldCount() {
-            return 1;
+        int primitiveArrayCount() {
+            return isArrayLocation() ? LONG_ARRAY_SLOT_SIZE : 0;
         }
 
         @Override
         public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), 1);
+            if (field == null) {
+                locationVisitor.visitPrimitiveArray(getIndex(), LONG_ARRAY_SLOT_SIZE);
+            } else {
+                locationVisitor.visitPrimitiveField(getIndex(), 1);
+            }
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), allowInt);
+            final int prime = 31;
+            int hash = super.hashCode();
+            hash = hash * prime + Boolean.hashCode(allowInt);
+            return hash;
         }
 
         @Override
         public boolean equals(Object obj) {
-            return super.equals(obj) && this.allowInt == ((LongFieldLocation) obj).allowInt;
+            return super.equals(obj) && this.allowInt == ((LongLocation) obj).allowInt;
         }
 
         @Override
-        public boolean isImplicitCastIntToLong() {
+        boolean isImplicitCastIntToLong() {
             return allowInt;
         }
-    }
 
-    static final class LongArrayLocation extends AbstractPrimitiveArrayLocation implements LongLocation {
-        private final boolean allowInt;
-
-        LongArrayLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
-            super(index, finalAssumption);
-            this.allowInt = allowInt;
-        }
-
-        @Override
-        public Object get(DynamicObject store, boolean guard) {
-            return getLong(store, guard);
-        }
-
-        @Override
-        protected void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            if (canStore(value)) {
-                setLong(store, longValue(value), guard, init);
-            } else {
-                throw incompatibleLocationException();
-            }
-        }
-
-        private long longValue(Object value) {
-            if (!allowInt || value instanceof Long) {
-                return ((Long) value).longValue();
-            } else if (value instanceof Integer) {
-                return ((Integer) value).longValue();
-            } else {
-                throw shouldNotReachHere();
-            }
-        }
-
-        @Override
-        public long getLong(DynamicObject store, boolean guard) {
-            return UnsafeAccess.unsafeGetLong(getArray(store, guard), getOffset(), guard, this);
-        }
-
-        private void setLongInternal(DynamicObject store, long value, boolean guard) {
-            UnsafeAccess.unsafePutLong(getArray(store, guard), getOffset(), value, this);
-        }
-
-        @Override
-        void clear(DynamicObject store) {
-            setLongInternal(store, 0L, false);
-        }
-
-        @Override
-        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
-            if (!init) {
-                maybeInvalidateFinalAssumption();
-            }
-            setLongInternal(store, value, guard);
-        }
-
-        @Override
-        public boolean canStore(Object value) {
-            return value instanceof Long || (allowInt && value instanceof Integer);
-        }
-
+        @SuppressWarnings("deprecation")
         @Override
         public long getLong(DynamicObject store, Shape shape) {
-            return getLong(store, checkShape(store, shape));
+            return getLong(store, store.getShape() == shape);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
-        public Class<Long> getType() {
-            return long.class;
-        }
-
-        @Override
-        public int primitiveArrayCount() {
-            return LONG_ARRAY_SLOT_SIZE;
-        }
-
-        @Override
-        public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveArray(index, LONG_ARRAY_SLOT_SIZE);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), allowInt);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return super.equals(obj) && this.allowInt == ((LongArrayLocation) obj).allowInt;
-        }
-
-        @Override
-        public boolean isImplicitCastIntToLong() {
-            return allowInt;
-        }
-
-        @Override
-        protected int getBytes() {
-            return Long.BYTES;
+        public void setLong(DynamicObject store, long value, Shape shape) {
+            setLong(store, value, store.getShape() == shape, false);
         }
     }
 
