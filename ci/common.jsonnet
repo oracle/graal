@@ -59,7 +59,16 @@ local common_json = import "../common.json";
     'oraclejdk24': jdk_base + common_json.jdks["oraclejdk24"] + { jdk_version:: 24 },
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 25 }
-    for name in ["oraclejdk25"] + variants("labsjdk-ce-25") + variants("labsjdk-ee-25")
+    for name in ["oraclejdk25"]
+  } + {
+    # Synthesize labsjdk-*-25 from labsjdk-*-latest
+    # This is intended for jobs that specifically need the 25 LTS JDK (e.g., espresso for its guest).
+    # When running the compiler or the native image generator "latest" should be used instead.
+    # When latest moves past 25, jobs using 25 should be reviwed and if they are still needed labsjdk-(ce|ee)-25 should
+    # be added to common.json.
+    # Note that the assert below unfortunately doesn't work in the sjsonnet version used currently in the CI (GR-40975).
+    [std.strReplace(name, 'latest', '25')]: jdk_base + common_json.jdks[name] + { assert parse_labsjdk_version(self) == 25, jdk_version:: 25 }
+    for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
@@ -67,8 +76,9 @@ local common_json = import "../common.json";
     'graalvm-ee-21': jdk_base + common_json.jdks["graalvm-ee-21"] + { jdk_version:: 21 },
     'graalvm-ee-25-ea': jdk_base + common_json.jdks["graalvm-ee-25-ea"] + { jdk_version:: 25 },
   },
-  # We do not want to expose galahad-jdk
-  assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
+  # We do not want to expose galahad-jdk, labsjdk-(ce|ee)-25 are synthetized from latest
+  local is_labsjdk_25(x) = std.startsWith(x, "labsjdk-ee-25") || std.startsWith(x, "labsjdk-ce-25"),
+  assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], [x for x in std.objectFields(jdks_data) if !is_labsjdk_25(x)]),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];

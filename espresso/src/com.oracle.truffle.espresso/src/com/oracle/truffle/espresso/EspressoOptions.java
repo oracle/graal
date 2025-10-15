@@ -452,8 +452,14 @@ public final class EspressoOptions {
                     case "suspend":
                         suspend = yesOrNo(key, value);
                         break;
+                    case "includevirtualthreads":
+                        boolean includevirtualthreads = yesOrNo(key, value);
+                        if (includevirtualthreads) {
+                            throw new IllegalArgumentException("Invalid includevirtualthreads setting " + value + ". Espresso only supports n currently.");
+                        }
+                        break;
                     default:
-                        throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
+                        throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server', 'suspend', and 'includevirtualthreads=n'.");
                 }
             }
             return new JDWPOptions(transport, host, port, server, suspend);

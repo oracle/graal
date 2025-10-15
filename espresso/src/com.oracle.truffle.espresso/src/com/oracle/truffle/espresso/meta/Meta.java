@@ -543,6 +543,11 @@ public final class Meta extends ContextAccessImpl
         } else {
             HIDDEN_THREAD_SCOPED_VALUE_CACHE = null;
         }
+        if (getLanguage().needsInterruptedEvent()) {
+            HIDDEN_INTERRUPTED_EVENT = java_lang_Thread.requireHiddenField(Names.HIDDEN_INTERRUPTED_EVENT);
+        } else {
+            HIDDEN_INTERRUPTED_EVENT = null;
+        }
 
         if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_PENDING_MONITOR);
@@ -1707,6 +1712,7 @@ public final class Meta extends ContextAccessImpl
     public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_TO_NATIVE_LOCK;
     public final Field HIDDEN_INTERRUPTED;
+    public final Field HIDDEN_INTERRUPTED_EVENT;
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;

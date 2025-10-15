@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Provides bridges to guest world thread implementation.
@@ -361,13 +362,11 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
             return false;
         }
         boolean isInterrupted = meta.HIDDEN_INTERRUPTED.getBoolean(guest, true);
-        if (clear) {
+        if (clear && isInterrupted) {
             Thread host = getHost(guest);
             EspressoError.guarantee(host == Thread.currentThread(), "Thread#isInterrupted(true) is only supported for the current thread.");
-            if (host != null && host.isInterrupted()) {
-                Thread.interrupted();
-            }
-            clearInterruptStatus(guest);
+            clearInterruptEvent(guest);
+            meta.HIDDEN_INTERRUPTED.setBoolean(guest, false, true);
         }
         return isInterrupted;
     }
@@ -390,25 +389,22 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
     }
 
     private void doInterrupt(StaticObject guest) {
-        if (getContext().getJavaVersion().java13OrEarlier() && isAlive(guest)) {
+        if (getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
             meta.HIDDEN_INTERRUPTED.setBoolean(guest, true, true);
         }
+        VM vm = getVM();
+        if (vm.needsThreadInterruptedNotification() && isAlive(guest)) {
+            vm.notifyThreadInterrupted(guest, true);
+        }
     }
 
-    /**
-     * Implementation of {@code Thread.clearInterruptEvent} (JDK 13+).
-     */
-    public void clearInterruptEvent() {
-        assert !getContext().getJavaVersion().java13OrEarlier();
+    public void clearInterruptEvent(StaticObject guest) {
         Thread.interrupted();
-    }
-
-    /**
-     * Sets the interrupted field of the given thread to {@code false}.
-     */
-    public void clearInterruptStatus(StaticObject guest) {
-        meta.HIDDEN_INTERRUPTED.setBoolean(guest, false, true);
+        VM vm = getVM();
+        if (vm.needsThreadInterruptedNotification()) {
+            vm.notifyThreadInterrupted(guest, false);
+        }
     }
 
     /**
@@ -474,6 +470,9 @@ public final class ThreadAccess extends ContextAccessImpl implements GuestInterr
         meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, isManaged);
         meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(getContext().getBlockingSupport()));
         meta.HIDDEN_TO_NATIVE_LOCK.setHiddenObject(guest, EspressoLock.create(getContext().getBlockingSupport()));
+        if (meta.HIDDEN_INTERRUPTED_EVENT != null) {
+            meta.HIDDEN_INTERRUPTED_EVENT.setHiddenObject(guest, getVM().createInterruptedEvent());
+        }
     }
 
     // endregion thread control
