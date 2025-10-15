@@ -54,11 +54,6 @@ import jdk.internal.misc.Unsafe;
 public final class ObjectHandlesImpl implements ObjectHandles {
 
     /** Private subclass to distinguish from regular handles to {@link WeakReference} objects. */
-    private static final class HandleWeakReference<T> extends WeakReference<T> {
-        HandleWeakReference(T referent) {
-            super(referent);
-        }
-    }
 
     private static final int MAX_FIRST_BUCKET_CAPACITY = 1024;
     static { // must be a power of 2 for the arithmetic below to work
@@ -210,17 +205,10 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         }
     }
 
-    public ObjectHandle createWeak(Object obj) {
-        return create(new HandleWeakReference<>(obj));
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(ObjectHandle handle) {
         Object obj = doGet(handle);
-        if (obj instanceof HandleWeakReference) {
-            obj = ((HandleWeakReference<T>) obj).get();
-        }
         return (T) obj;
     }
 
@@ -240,10 +228,6 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         return Unsafe.getUnsafe().getReferenceVolatile(bucket, getObjectArrayByteOffset(indexInBucket));
     }
 
-    public boolean isWeak(ObjectHandle handle) {
-        return (doGet(handle) instanceof HandleWeakReference);
-    }
-
     @Override
     public void destroy(ObjectHandle handle) {
         if (handle.equal(nullHandle)) {
@@ -259,10 +243,6 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         }
         int indexInBucket = getIndexInBucket(index);
         Unsafe.getUnsafe().putReferenceRelease(bucket, getObjectArrayByteOffset(indexInBucket), null);
-    }
-
-    public void destroyWeak(ObjectHandle handle) {
-        destroy(handle);
     }
 
     public long computeCurrentCount() {
