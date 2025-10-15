@@ -232,7 +232,18 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
             }
             SubstrateOptions.UseContainerSupport.update(values, false);
+        }
+
+        if (isLayerUseOptionEnabled(hostedOptions)) {
+            SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
+            if (SubstrateOptions.imageLayerEnabledHandler != null) {
+                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
+            }
+        }
+
+        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
             enableConservativeUnsafeAccess(values);
+
             /*
              * Module needs to be initialized in the application layer because of ALL_UNNAMED_MODULE
              * and EVERYONE_MODULE. This allows to have a consistent hash code for those modules at
@@ -241,19 +252,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
 
             setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
-        }
 
-        if (isLayerUseOptionEnabled(hostedOptions)) {
-            SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
-            if (SubstrateOptions.imageLayerEnabledHandler != null) {
-                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
-            }
-            enableConservativeUnsafeAccess(values);
-            SubstrateOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
-            setOptionIfHasNotBeenSet(values, SubstrateOptions.ConcealedOptions.RelativeCodePointers, true);
-        }
-
-        if (isLayerCreateOptionEnabled(hostedOptions) || isLayerUseOptionEnabled(hostedOptions)) {
             classLoaderSupport.initializePathDigests(digestIgnorePath);
         }
     }
