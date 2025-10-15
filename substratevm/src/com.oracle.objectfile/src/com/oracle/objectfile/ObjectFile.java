@@ -52,6 +52,7 @@ import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -172,7 +173,7 @@ public abstract class ObjectFile {
     // FIXME: replace OS string with enum (or just get rid of the concept,
     // perhaps merging with getFilenameSuffix).
     private static String getHostOS() {
-        final String osName = System.getProperty("os.name");
+        final String osName = GraalServices.getSavedProperty("os.name");
         if (osName.startsWith("Linux")) {
             return "Linux";
         } else if (osName.startsWith("Mac OS X")) {
