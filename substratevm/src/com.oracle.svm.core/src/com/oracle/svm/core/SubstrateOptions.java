@@ -54,6 +54,7 @@ import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -1197,7 +1198,12 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            return ImageInfo.isExecutable();
+            /*
+             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
+             * executable application layer is currently supported on Layered Images, the current
+             * solution is to enable this by default.
+             */
+            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
         }
 
         @Override
@@ -1342,7 +1348,12 @@ public class SubstrateOptions {
             if (values.containsKey(this)) {
                 return (Boolean) values.get(this);
             }
-            return ImageInfo.isExecutable();
+            /*
+             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
+             * executable application layer is currently supported on Layered Images, the current
+             * solution is to enable this by default.
+             */
+            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
         }
 
         @Override
