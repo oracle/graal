@@ -143,6 +143,16 @@ public class MemoryArenaValidInScopeNode extends FixedWithNextNode implements Me
                     cur = (FixedNode) cur.predecessor();
                 }
 
+                if (scopeNodes.isEmpty()) {
+                    /*
+                     * Collect and delete all scope nodes in a single batch to ensure they are
+                     * optimized together. If we don't do this, the current node might be optimized
+                     * away before the scope nodes are inlined, resulting in incomplete
+                     * optimization. We wait until both are present in the graph before optimizing.
+                     */
+                    return;
+                }
+
                 // delete and replace the scope node first
                 this.delete(0);
 
