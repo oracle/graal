@@ -392,7 +392,7 @@ abstract class DynamicObjectLibraryImpl {
         }
         Location removedPropertyLoc = removedProperty.getLocation();
         if (!removedPropertyLoc.isValue()) {
-            // Use a no-op move to clear the location of the removed property. Must be first.
+            // Use a no-op move to clear the location of the removed property.
             moves.add(new Move(removedPropertyLoc, null, removedPropertyLoc.getOrdinal(), Integer.MIN_VALUE));
         }
         if (canMoveInPlace) {
@@ -484,7 +484,7 @@ abstract class DynamicObjectLibraryImpl {
         @Override
         public int compareTo(Move other) {
             int order = Integer.compare(fromOrd, other.fromOrd);
-            assert order == Integer.compare(toOrd, other.toOrd);
+            assert toLoc == null || other.toLoc == null || order == Integer.compare(toOrd, other.toOrd) : List.of(this, other);
             return -order;
         }
     }

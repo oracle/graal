@@ -55,13 +55,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.junit.Assert;
+
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import org.junit.Assert;
-
-import com.oracle.truffle.api.Assumption;
 
 public abstract class DOTestAsserts {
 
@@ -72,14 +72,19 @@ public abstract class DOTestAsserts {
     @SuppressWarnings("unchecked")
     public static <T> T invokeMethod(String methodName, Object receiver, Object... args) {
         try {
-            Method method = Stream.concat(Arrays.stream(receiver.getClass().getMethods()), Arrays.stream(receiver.getClass().getDeclaredMethods())).filter(
-                            m -> m.getName().equals(methodName)).findFirst().orElseThrow(
+            Method method = allMethods(receiver.getClass()).filter(
+                            m -> m.getName().equals(methodName) && m.getParameterCount() == args.length).findFirst().orElseThrow(
                                             () -> new NoSuchElementException("Method " + methodName + " not found in " + receiver.getClass()));
             method.setAccessible(true);
             return (T) method.invoke(receiver, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new AssertionError(e);
         }
+    }
+
+    private static Stream<Method> allMethods(Class<?> instanceClass) {
+        var superclasses = Stream.<Class<?>> iterate(instanceClass, c -> c.getSuperclass() != null, Class::getSuperclass);
+        return superclasses.flatMap(superclass -> Arrays.stream(superclass.getDeclaredMethods()));
     }
 
     public static void assertLocationFields(Location location, int prims, int objects) {
