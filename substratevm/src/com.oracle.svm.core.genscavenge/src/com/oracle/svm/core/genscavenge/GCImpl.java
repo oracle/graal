@@ -153,6 +153,7 @@ public final class GCImpl implements GC {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public String getDefaultMaxHeapSize() {
         return String.format("%s%% of RAM", SerialAndEpsilonGCOptions.MaximumHeapSizePercent.getValue());
     }
