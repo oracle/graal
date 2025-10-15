@@ -54,18 +54,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.Location.LocationVisitor;
-import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
-import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
-import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.ExtLocations.ObjectLocation;
 import com.oracle.truffle.api.object.Transition.AbstractReplacePropertyTransition;
 import com.oracle.truffle.api.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.api.object.Transition.DirectReplacePropertyTransition;
+import com.oracle.truffle.api.object.Transition.ObjectFlagsTransition;
+import com.oracle.truffle.api.object.Transition.ObjectTypeTransition;
+import com.oracle.truffle.api.object.Transition.RemovePropertyTransition;
 
 @SuppressWarnings("deprecation")
 abstract class ObsolescenceStrategy {
@@ -133,9 +133,9 @@ abstract class ObsolescenceStrategy {
         if (generalLocation == specificLocation) {
             return;
         }
-        if (generalLocation instanceof ExtLocations.AbstractObjectLocation objLocGeneral && specificLocation instanceof ExtLocations.AbstractObjectLocation objLocSpecific) {
-            ExtLocations.TypeAssumption assGeneral = objLocGeneral.getTypeAssumption();
-            ExtLocations.TypeAssumption assSpecific = objLocSpecific.getTypeAssumption();
+        if (generalLocation instanceof ObjectLocation objLocGeneral && specificLocation instanceof ObjectLocation objLocSpecific) {
+            var assGeneral = objLocGeneral.getTypeAssumption();
+            var assSpecific = objLocSpecific.getTypeAssumption();
             if (assGeneral != assSpecific) {
                 if (!assGeneral.type.isAssignableFrom(assSpecific.type) || assGeneral.nonNull && !assSpecific.nonNull) {
                     // If assignable check failed, merge type assumptions to ensure safety.
@@ -148,25 +148,13 @@ abstract class ObsolescenceStrategy {
 
     private static boolean assertLocationInRange(final Shape shape, final Location location) {
         final LayoutImpl layout = shape.getLayout();
-        location.accept(new LocationVisitor() {
-            @Override
-            public void visitPrimitiveField(int index, int count) {
-                assert index + count <= layout.getPrimitiveFieldCount();
+        if (location.isFieldLocation()) {
+            if (location.isObjectLocation()) {
+                assert location.getIndex() + location.objectFieldCount() <= layout.getObjectFieldCount() : location;
+            } else {
+                assert location.getIndex() + location.primitiveFieldCount() <= layout.getPrimitiveFieldCount() : location;
             }
-
-            @Override
-            public void visitObjectField(int index, int count) {
-                assert index + count <= layout.getObjectFieldCount();
-            }
-
-            @Override
-            public void visitPrimitiveArray(int index, int count) {
-            }
-
-            @Override
-            public void visitObjectArray(int index, int count) {
-            }
-        });
+        }
         return true;
     }
 
