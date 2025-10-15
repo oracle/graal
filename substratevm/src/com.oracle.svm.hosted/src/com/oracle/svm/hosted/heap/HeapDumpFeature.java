@@ -56,7 +56,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -316,9 +316,9 @@ class LayeredHeapDumpEncodedTypesTracker {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredHeapDumpEncodedTypesTracker>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredHeapDumpEncodedTypesTracker singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHeapDumpEncodedTypesTracker singleton) {
                     writer.writeStringList("encodedFieldNames", singleton.encodedFieldNames);
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

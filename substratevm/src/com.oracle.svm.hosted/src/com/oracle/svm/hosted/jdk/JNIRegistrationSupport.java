@@ -55,7 +55,7 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -380,10 +380,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             public SingletonTrait getLayeredCallbacksTrait() {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<JNIRegistrationSupportSingleton>() {
                     @Override
-                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, JNIRegistrationSupportSingleton singleton) {
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, JNIRegistrationSupportSingleton singleton) {
                         var snapshotWriter = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getSnapshotBuilder();
                         SVMImageLayerWriter.initStringList(snapshotWriter::initRegisteredJNILibraries, singleton.currentLayerRegisteredLibraries.stream());
-                        return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                        return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                     }
 
                     @Override

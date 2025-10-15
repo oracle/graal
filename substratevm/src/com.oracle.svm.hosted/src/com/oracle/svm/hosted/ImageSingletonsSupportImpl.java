@@ -46,13 +46,10 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
-import com.oracle.svm.core.traits.BuiltinTraits;
-import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
+import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
 import com.oracle.svm.core.traits.SingletonAccess;
 import com.oracle.svm.core.traits.SingletonAccessSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -149,8 +146,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             this.traitMap = traitMap;
 
             var accessTrait = traitMap.getTrait(SingletonTraitKind.ACCESS);
-            buildtimeAccessAllowed = accessTrait.map(singletonTrait -> SingletonAccess.getAccess(singletonTrait).contains(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS)).orElse(true);
-            runtimeAccessAllowed = accessTrait.map(singletonTrait -> SingletonAccess.getAccess(singletonTrait).contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)).orElse(true);
+            buildtimeAccessAllowed = accessTrait.map(singletonTrait -> {
+                SingletonAccessFlags access = SingletonAccess.getAccess(singletonTrait);
+                return access == SingletonAccessFlags.BUILDTIME_ACCESS_ONLY || access == SingletonAccessFlags.ALL_ACCESS;
+            }).orElse(true);
+            runtimeAccessAllowed = accessTrait.map(singletonTrait -> {
+                SingletonAccessFlags access = SingletonAccess.getAccess(singletonTrait);
+                return access == SingletonAccessFlags.RUNTIME_ACCESS_ONLY || access == SingletonAccessFlags.ALL_ACCESS;
+            }).orElse(true);
         }
 
         public Object singleton() {
@@ -252,7 +255,8 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
         /**
          * Marker for ImageSingleton keys which cannot have a value installed. This can happen when
-         * a {@link LayeredImageSingleton} specified {@link PersistFlags#FORBIDDEN}.
+         * a {@link SingletonLayeredCallbacks#doPersist} specified
+         * {@link LayeredPersistFlags#FORBIDDEN}.
          */
         private static final Object SINGLETON_INSTALLATION_FORBIDDEN = new Object();
         private static final SingletonInfo FORBIDDEN_SINGLETON_INFO_EMPTY_TRAITS;
@@ -415,37 +419,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         /**
-         * GR-66797 remove all reference to layered image singletons.
-         * <p>
-         * Temporary feature to convert the legacy {@link LayeredImageSingleton} interface into
-         * singleton traits. This will be removed once all singletons are converted to use the new
-         * {@link SingletonTraits} API.
-         */
-        private void injectLayeredInformation(Object singleton, SingletonTraitMap traitMap) {
-            if (singleton instanceof LayeredImageSingleton layeredImageSingleton) {
-                if (traitMap.getTrait(SingletonTraitKind.ACCESS).isEmpty()) {
-                    var flags = layeredImageSingleton.getImageBuilderFlags();
-                    SingletonTrait accessTrait;
-                    if (flags.equals(LayeredImageSingletonBuilderFlags.ALL_ACCESS)) {
-                        accessTrait = BuiltinTraits.ALL_ACCESS;
-                    } else if (flags.equals(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY)) {
-                        accessTrait = BuiltinTraits.BUILDTIME_ONLY;
-                    } else {
-                        VMError.guarantee(flags.equals(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY));
-                        accessTrait = BuiltinTraits.RUNTIME_ONLY;
-                    }
-                    traitMap.addTrait(accessTrait);
-                }
-                if (layeredBuild) {
-                    if (traitMap.getTrait(SingletonTraitKind.LAYERED_CALLBACKS).isEmpty()) {
-                        SingletonLayeredCallbacks<?> action = new InjectedSingletonLayeredCallbacks(layeredImageSingleton);
-                        traitMap.addTrait(new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action));
-                    }
-                }
-            }
-        }
-
-        /**
          * Creates or collects the {@link SingletonTraitMap} associated with this singleton before
          * adding the singleton to the internal map.
          */
@@ -453,7 +426,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             SingletonTraitMap traitMap = singletonToTraitMap.get(value);
             if (traitMap == null) {
                 traitMap = SingletonTraitMap.getAnnotatedTraits(value.getClass(), extractor, layeredBuild);
-                injectLayeredInformation(value, traitMap);
                 if (layeredBuild) {
                     traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
                         var kind = SingletonLayeredInstallationKind.getInstallationKind(trait);
@@ -492,7 +464,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     case MULTI_LAYER -> {
                         VMError.guarantee(key == value.getClass(), "singleton key %s must match singleton class %s", key, value);
                         boolean runtimeAccess = traitMap.getTrait(SingletonTraitKind.ACCESS)
-                                        .map(singletonTrait -> SingletonAccess.getAccess(singletonTrait).contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)).orElse(false);
+                                        .map(singletonTrait -> {
+                                            SingletonAccessFlags access = SingletonAccess.getAccess(singletonTrait);
+                                            return access == SingletonAccessFlags.RUNTIME_ACCESS_ONLY || access == SingletonAccessFlags.ALL_ACCESS;
+                                        }).orElse(false);
                         VMError.guarantee(runtimeAccess, "MultiLayer singleton must have runtime access %s %s", key, value);
                     }
                 }

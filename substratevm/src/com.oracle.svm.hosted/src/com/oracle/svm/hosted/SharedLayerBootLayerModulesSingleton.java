@@ -37,7 +37,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -83,7 +83,7 @@ public class SharedLayerBootLayerModulesSingleton {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<SharedLayerBootLayerModulesSingleton>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, SharedLayerBootLayerModulesSingleton singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, SharedLayerBootLayerModulesSingleton singleton) {
                     SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
                     Stream<String> moduleNames = singleton.bootLayer.modules().stream().map(Module::getName);
 
@@ -93,7 +93,7 @@ public class SharedLayerBootLayerModulesSingleton {
 
                     SVMImageLayerWriter.initStringList(writerImpl.getSnapshotBuilder()::initSharedLayerBootLayerModules, moduleNames);
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

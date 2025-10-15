@@ -54,8 +54,6 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -99,7 +97,8 @@ import jdk.vm.ci.meta.JavaConstant;
  * </pre>
  */
 @AutomaticallyRegisteredFeature
-public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public final class ImageLayerSectionFeature implements InternalFeature {
 
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
     private static final String LAYER_NAME_PREFIX = "__svm_vm_layer";

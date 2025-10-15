@@ -34,7 +34,7 @@ import com.oracle.svm.core.imagelayer.BuildingInitialLayerPredicate;
 import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -83,12 +83,12 @@ public class HostedLayeredModuleSingleton extends LayeredModuleSingleton {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedLayeredModuleSingleton>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedLayeredModuleSingleton singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedLayeredModuleSingleton singleton) {
                     SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
                     var builder = writerImpl.getSnapshotBuilder().initLayeredModule();
                     persistModulePackages(builder.initOpenModulePackages(singleton.moduleOpenPackages.size()), singleton.moduleOpenPackages);
                     persistModulePackages(builder.initExportedModulePackages(singleton.moduleExportedPackages.size()), singleton.moduleExportedPackages);
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

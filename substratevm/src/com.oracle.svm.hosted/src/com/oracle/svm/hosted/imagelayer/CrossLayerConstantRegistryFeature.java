@@ -44,11 +44,11 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.PriorLayerMarker;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -68,7 +68,8 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
-public class CrossLayerConstantRegistryFeature implements InternalFeature, FeatureSingleton, CrossLayerConstantRegistry {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class CrossLayerConstantRegistryFeature implements InternalFeature, CrossLayerConstantRegistry {
     static final int INVALID = -1;
     static final int NULL_CONSTANT_ID = -1;
     private static final Object NULL_CONSTANT_MARKER = new Object();
@@ -476,7 +477,7 @@ class ImageLayerIdTrackingSingleton {
                 }
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, ImageLayerIdTrackingSingleton singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ImageLayerIdTrackingSingleton singleton) {
                     ArrayList<String> priorKeys = new ArrayList<>();
                     ArrayList<Integer> priorIds = new ArrayList<>();
                     ArrayList<String> futureKeys = new ArrayList<>();
@@ -511,7 +512,7 @@ class ImageLayerIdTrackingSingleton {
                     writer.writeIntList("futureLoaderIds", futureLoaderIds);
                     writer.writeIntList("futureOffsets", futureOffsets);
 
-                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

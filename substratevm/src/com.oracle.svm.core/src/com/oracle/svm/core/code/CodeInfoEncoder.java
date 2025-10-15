@@ -68,7 +68,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -936,11 +936,11 @@ class MethodTableFirstIDTracker {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<MethodTableFirstIDTracker>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, MethodTableFirstIDTracker singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, MethodTableFirstIDTracker singleton) {
                     int nextStartingId = singleton.nextStartingId;
                     assert nextStartingId > 0 : nextStartingId;
                     writer.writeInt("startingID", nextStartingId);
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

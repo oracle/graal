@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -46,8 +46,9 @@ public abstract class SingletonLayeredCallbacks<T> {
      * To explain in more detail, consider a two-layered configuration, where "I" is the initial
      * layer and "A" is the application layer. If, while building I, singleton "S" specifies that it
      * wants to be created during startup of the next layer (via returning
-     * {@link PersistFlags#CREATE} from its {@link #doPersist} callback), then it will also provide
-     * a {@link LayeredSingletonInstantiator} "LI" to use via {@link #getSingletonInstantiator}.
+     * {@link LayeredPersistFlags#CREATE} from its {@link #doPersist} callback), then it will also
+     * provide a {@link LayeredSingletonInstantiator} "LI" to use via
+     * {@link #getSingletonInstantiator}.
      *
      * <p>
      * Now while building layer A, in order to create S in this layer, the native image generator
@@ -63,19 +64,19 @@ public abstract class SingletonLayeredCallbacks<T> {
      * at the end of native image generation to perform any needed final actions. The method's
      * return value also specifies what actions should be taken at the startup of the next layer.
      */
-    public abstract PersistFlags doPersist(ImageSingletonWriter writer, T singleton);
+    public abstract LayeredPersistFlags doPersist(ImageSingletonWriter writer, T singleton);
 
     /**
-     * If {@link #doPersist} returns {@link PersistFlags#CREATE}, then this method is called to
-     * determine how to instantiate the singleton in the next layer.
+     * If {@link #doPersist} returns {@link LayeredPersistFlags#CREATE}, then this method is called
+     * to determine how to instantiate the singleton in the next layer.
      */
     public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
         throw VMError.shouldNotReachHere("getSingletonInstantiator is not implemented. This method must be implemented if doPersist returns PersistFlag.CREATE");
     }
 
     /**
-     * See description in {@link PersistFlags#CALLBACK_ON_REGISTRATION} for more details. Note this
-     * method will be called at most once for each registered singleton object.
+     * See description in {@link LayeredPersistFlags#CALLBACK_ON_REGISTRATION} for more details.
+     * Note this method will be called at most once for each registered singleton object.
      */
     @SuppressWarnings("unused")
     public void onSingletonRegistration(ImageSingletonLoader loader, T singleton) {

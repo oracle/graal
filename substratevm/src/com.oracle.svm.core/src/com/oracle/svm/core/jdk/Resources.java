@@ -75,8 +75,8 @@ import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
@@ -755,7 +755,7 @@ public final class Resources {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<Resources>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {
                     List<String> resourceKeys = new ArrayList<>();
                     List<Boolean> resourceRegistrationStates = new ArrayList<>();
                     Set<String> patterns = new HashSet<>(singleton.previousLayerPatterns);
@@ -785,7 +785,7 @@ public final class Resources {
                     writer.writeBoolList(RESOURCE_REGISTRATION_STATES, resourceRegistrationStates);
                     writer.writeStringList(PATTERNS, patterns.stream().toList());
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

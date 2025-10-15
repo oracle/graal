@@ -56,15 +56,14 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
@@ -107,7 +106,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * referenced as needed.
  */
 @AutomaticallyRegisteredFeature
-public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class LoadImageSingletonFeature implements InternalFeature {
     public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__svm_layer_singleton_table_start";
 
     static CrossLayerSingletonMappingInfo getCrossLayerSingletonMappingInfo() {
@@ -624,7 +624,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<CrossLayerSingletonMappingInfo>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, CrossLayerSingletonMappingInfo singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, CrossLayerSingletonMappingInfo singleton) {
                     /*
                      * Write out all relevant information.
                      */
@@ -683,7 +683,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory {
                     writer.writeStringList("multiLayerClassNames", multiLayerKeyClasses);
                     writer.writeStringList("multiLayerKeyNames", multiLayerKeyNames);
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

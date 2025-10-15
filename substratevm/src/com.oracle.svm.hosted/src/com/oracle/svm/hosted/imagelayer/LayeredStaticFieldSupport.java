@@ -54,7 +54,7 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -409,7 +409,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredStaticFieldSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredStaticFieldSupport singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredStaticFieldSupport singleton) {
                     writer.writeInt("appLayerPrimitiveFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextPrimitiveField);
                     writer.writeInt("appLayerObjectFieldStartingOffset", singleton.appLayerStaticFieldOffsets.nextObjectField);
 
@@ -426,7 +426,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
                     writer.writeIntList("appLayerFieldsWithKnownLocations", knownLocations);
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

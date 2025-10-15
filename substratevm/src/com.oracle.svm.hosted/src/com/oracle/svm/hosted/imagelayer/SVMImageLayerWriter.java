@@ -36,7 +36,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -94,6 +93,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -103,18 +103,15 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.traits.SingletonTraitKind;
@@ -176,7 +173,6 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
@@ -1128,27 +1124,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, _ -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
-    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int singletonId, RecreateInfo recreateInfo, int keyStoreId, EconomicMap<String, Object> keyStore) {
-    }
-
-    // GR-66792 remove once no custom persist actions exist
-    record RecreateInfo(String clazz, String method) {
-    }
-
-    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks<?> action) {
-        if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
-            // GR-66792 remove once no custom persist actions exist
-            Class<?> singletonClass = injectAction.getSingletonClass();
-            String recreateName = "createFromLoader";
-            Method loaderMethod = ReflectionUtil.lookupMethod(true, singletonClass, recreateName, ImageSingletonLoader.class);
-            if (loaderMethod == null) {
-                throw VMError.shouldNotReachHere("Unable to find createFromLoader for %s", singletonClass);
-            }
-            return new RecreateInfo(singletonClass.getName(), recreateName);
-
-        } else {
-            return new RecreateInfo(action.getSingletonInstantiator().getName(), "");
-        }
+    record SingletonPersistInfo(LayeredPersistFlags flags, int singletonId, Class<?> singletonInstantiator, int keyStoreId, EconomicMap<String, Object> keyStore) {
     }
 
     @SuppressWarnings("unchecked")
@@ -1171,28 +1147,28 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 var action = (SingletonLayeredCallbacks<?>) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
                 var flags = SubstrateUtil.cast(action, SingletonLayeredCallbacks.class).doPersist(writer, singleton);
                 if (initialLayerOnly) {
-                    VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
+                    VMError.guarantee(flags == LayeredPersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredPersistFlags.FORBIDDEN,
                                     singleton);
                 }
                 int singletonId = SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID;
                 int keyStoreId = SVMImageLayerSnapshotUtil.UNDEFINED_KEY_STORE_ID;
-                RecreateInfo recreateInfo = null;
+                Class<?> singletonInstantiator = null;
                 EconomicMap<String, Object> keyValueStore = null;
-                if (flags == LayeredImageSingleton.PersistFlags.CREATE) {
-                    VMError.guarantee(!(singleton instanceof Feature), "Features cannot return %s. Use %s instead. Feature: %s", LayeredImageSingleton.PersistFlags.CREATE,
-                                    LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION, singleton);
+                if (flags == LayeredPersistFlags.CREATE) {
+                    VMError.guarantee(!(singleton instanceof Feature), "Features cannot return %s. Use %s instead. Feature: %s", LayeredPersistFlags.CREATE,
+                                    LayeredPersistFlags.CALLBACK_ON_REGISTRATION, singleton);
                     singletonId = nextSingletonId++;
-                    recreateInfo = createRecreateInfo(action);
+                    singletonInstantiator = action.getSingletonInstantiator();
                     keyValueStore = writer.getKeyValueStore();
                     keyStoreId = nextKeyStoreId++;
-                } else if (flags == LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION) {
+                } else if (flags == LayeredPersistFlags.CALLBACK_ON_REGISTRATION) {
                     keyValueStore = writer.getKeyValueStore();
                     keyStoreId = nextKeyStoreId++;
                 } else {
                     VMError.guarantee(writer.getKeyValueStore().isEmpty(), "ImageSingletonWriter was used, but the results will not be persisted %s %s", singletonEntry.getKey(), singleton);
                 }
 
-                var info = new SingletonPersistInfo(flags, singletonId, recreateInfo, keyStoreId, keyValueStore);
+                var info = new SingletonPersistInfo(flags, singletonId, singletonInstantiator, keyStoreId, keyValueStore);
                 singletonPersistInfoMap.put(singleton, info);
             }
             var info = singletonPersistInfoMap.get(singleton);
@@ -1215,7 +1191,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
          * Next write the singleton objects.
          */
         var sortedBySingletonIds = singletonPersistInfoMap.entrySet().stream()
-                        .filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE)
+                        .filter(e -> e.getValue().flags == LayeredPersistFlags.CREATE)
                         .sorted(Comparator.comparingInt(e -> e.getValue().singletonId))
                         .toList();
         StructList.Builder<ImageSingletonObject.Builder> objectsBuilder = snapshotBuilder.initSingletonObjects(sortedBySingletonIds.size());
@@ -1227,8 +1203,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             ImageSingletonObject.Builder ob = objectsBuilder.get(i);
             ob.setId(info.singletonId);
             ob.setClassName(entry.getKey().getClass().getName());
-            ob.setRecreateClass(info.recreateInfo().clazz());
-            ob.setRecreateMethod(info.recreateInfo().method());
+            ob.setSingletonInstantiatorClass(info.singletonInstantiator().getName());
             ob.setKeyStoreId(info.keyStoreId);
         }
 

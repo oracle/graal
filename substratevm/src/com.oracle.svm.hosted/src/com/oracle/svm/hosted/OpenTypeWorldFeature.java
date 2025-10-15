@@ -48,7 +48,7 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -361,11 +361,11 @@ public class OpenTypeWorldFeature implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
                     writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
                     writer.writeInt("maxInterfaceID", DynamicHubSupport.currentLayer().getMaxInterfaceId());
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

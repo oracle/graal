@@ -44,7 +44,7 @@ import com.oracle.svm.core.imagelayer.PriorLayerMarker;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -316,7 +316,7 @@ public class HostedClassLoaderPackageManagement {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedClassLoaderPackageManagement>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedClassLoaderPackageManagement singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedClassLoaderPackageManagement singleton) {
                     return singleton.preparePersist(writer);
                 }
 
@@ -341,12 +341,12 @@ public class HostedClassLoaderPackageManagement {
         }
     }
 
-    private LayeredImageSingleton.PersistFlags preparePersist(ImageSingletonWriter writer) {
+    private LayeredPersistFlags preparePersist(ImageSingletonWriter writer) {
         writer.writeStringList(APP_KEY, collectPackageNames(appClassLoader, priorAppPackageNames));
         writer.writeStringList(PLATFORM_KEY, collectPackageNames(platformClassLoader, priorPlatformPackageNames));
         writer.writeStringList(BOOT_KEY, collectPackageNames(bootClassLoader, priorBootPackageNames));
 
-        return LayeredImageSingleton.PersistFlags.CREATE;
+        return LayeredPersistFlags.CREATE;
     }
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<HostedClassLoaderPackageManagement> {

@@ -47,7 +47,7 @@ import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -276,12 +276,12 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredFieldValueTransformerSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
                     var fieldsWithUpdatableValues = singleton.fieldToLayeredTransformer.entrySet().stream()
                                     .filter(e -> e.getValue().currentLayerHasUpdatableValues)
                                     .map(e -> e.getKey().getId()).toList();
                     writer.writeIntList("fieldsWithUpdatableValues", fieldsWithUpdatableValues);
-                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

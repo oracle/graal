@@ -33,8 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -77,9 +76,9 @@ public class SubstrateTargetDescription extends TargetDescription {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<SubstrateTargetDescription>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, SubstrateTargetDescription singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, SubstrateTargetDescription singleton) {
                     writer.writeStringList(RUNTIME_CHECKED_CPU_FEATURES, getCPUFeaturesList(singleton));
-                    return PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

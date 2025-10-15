@@ -33,7 +33,7 @@ import java.util.Map;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -131,7 +131,7 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredVMThreadLocalCollector>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredVMThreadLocalCollector singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredVMThreadLocalCollector singleton) {
                     /*
                      * Store the (name, offset, size) tuple of all thread locals.
                      */
@@ -162,7 +162,7 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
                      * information will need to be propagated.
                      */
                     writer.writeInt("nextOffset", singleton.nextOffset);
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

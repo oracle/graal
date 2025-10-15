@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind;
 import com.oracle.svm.core.util.VMError;
 
 public final class MultiLayeredImageSingleton {
@@ -47,7 +48,7 @@ public final class MultiLayeredImageSingleton {
 
     /**
      * Returns an array containing the image singletons installed for {@code key} within all layers.
-     * See {@link LayeredImageSingleton} for full explanation.
+     * See {@link InstallationKind#MULTI_LAYER} for full explanation.
      */
     @SuppressWarnings("unused")
     public static <T> T[] getAllLayers(Class<T> key) {

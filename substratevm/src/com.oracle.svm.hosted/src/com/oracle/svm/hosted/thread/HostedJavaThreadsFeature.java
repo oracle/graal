@@ -39,7 +39,7 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -268,10 +268,10 @@ class HostedJavaThreadsMetadata {
         this.maxAutonumber = maxAutonumber;
     }
 
-    public LayeredImageSingleton.PersistFlags preparePersist(ImageSingletonWriter writer) {
+    public LayeredPersistFlags preparePersist(ImageSingletonWriter writer) {
         writer.writeLong("maxThreadId", maxThreadId);
         writer.writeInt("maxAutonumber", maxAutonumber);
-        return LayeredImageSingleton.PersistFlags.CREATE;
+        return LayeredPersistFlags.CREATE;
     }
 
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
@@ -279,7 +279,7 @@ class HostedJavaThreadsMetadata {
         public SingletonTrait getLayeredCallbacksTrait() {
             SingletonLayeredCallbacks<HostedJavaThreadsMetadata> action = new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedJavaThreadsMetadata singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedJavaThreadsMetadata singleton) {
                     return singleton.preparePersist(writer);
                 }
 

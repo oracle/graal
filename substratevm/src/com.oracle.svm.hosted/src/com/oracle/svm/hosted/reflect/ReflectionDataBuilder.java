@@ -100,7 +100,7 @@ import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -1525,11 +1525,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
 
                     @Override
-                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
                         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
                         persistRegisteredElements(writer, reflectionDataBuilder.registeredMethods, AnalysisMethod::getId, METHODS);
                         persistRegisteredElements(writer, reflectionDataBuilder.registeredFields, AnalysisField::getId, FIELDS);
-                        return LayeredImageSingleton.PersistFlags.CREATE;
+                        return LayeredPersistFlags.CREATE;
                     }
 
                     @Override

@@ -38,8 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -231,12 +230,12 @@ public final class RuntimeAssertionsSupport {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<RuntimeAssertionsSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, RuntimeAssertionsSupport singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, RuntimeAssertionsSupport singleton) {
                     persistAssertionStatus(writer, PACKAGE, singleton.packageAssertionStatus);
                     persistAssertionStatus(writer, CLASS, singleton.classAssertionStatus);
                     writer.writeInt(DEFAULT_ASSERTION_STATUS, singleton.defaultAssertionStatus ? 1 : 0);
                     writer.writeInt(SYSTEM_ASSERTION_STATUS, singleton.systemAssertionStatus ? 1 : 0);
-                    return PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 private void persistAssertionStatus(ImageSingletonWriter writer, String type, Map<String, Boolean> assertionStatus) {
