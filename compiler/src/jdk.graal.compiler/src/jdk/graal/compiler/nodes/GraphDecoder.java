@@ -368,21 +368,6 @@ public class GraphDecoder {
         }
 
         /**
-         * Sets a node in the initial nodes of this scope and sets the written status of the node
-         * orderId to {@code false}. Reads of the node orderId after calling this method will access
-         * the initial nodes instead of the created nodes.
-         *
-         * @param nodeOrderId The orderId of the node
-         * @param node The node to be set in the initial nodes
-         */
-        public void clearNode(int nodeOrderId, Node node) {
-            if (writtenNodes != null) {
-                writtenNodes.clear(nodeOrderId);
-            }
-            initialCreatedNodes[nodeOrderId] = node;
-        }
-
-        /**
          * Sets a node in the created nodes of this scope and sets the written status of the node
          * orderId to {@code true}. Reads of the node orderId after calling this method will access
          * the created nodes instead of the initial nodes.
