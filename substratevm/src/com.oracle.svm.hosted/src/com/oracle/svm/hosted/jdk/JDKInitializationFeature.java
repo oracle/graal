@@ -111,7 +111,7 @@ public class JDKInitializationFeature implements InternalFeature {
          * deadlock/fail when initialization is started at the "wrong part" of the cycle.
          * Force-initializing the correct class of the cycle here, in addition to the
          * "whole package" initialization above, breaks the cycle because it triggers immediate
-         * initilalization here before the static analysis is started.
+         * initialization here before the static analysis is started.
          */
         rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
 

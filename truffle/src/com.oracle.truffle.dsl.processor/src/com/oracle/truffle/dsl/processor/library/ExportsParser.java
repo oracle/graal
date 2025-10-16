@@ -292,7 +292,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             }
         }
-        // avoid removal of elements if errors occured.
+        // avoid removal of elements if errors occurred.
         if (model.hasErrors()) {
             return model;
         }
@@ -318,7 +318,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        // avoid removal of elements if errors occured.
+        // avoid removal of elements if errors occurred.
         if (model.hasErrors()) {
             return model;
         }
@@ -842,7 +842,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             } else {
                 if (!isSubtype(type.asType(), libraryData.getExportsReceiverType())) {
                     lib.addError("Type %s is not compatible with the receiver type '%s' of exported library '%s'. " +
-                                    "Inhert from type '%s' to resolve this.",
+                                    "Inherit from type '%s' to resolve this.",
                                     getSimpleName(type.asType()),
                                     getSimpleName(libraryData.getExportsReceiverType()),
                                     getSimpleName(libraryData.getTemplateType().asType()),
@@ -1069,7 +1069,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                         sep = " and ";
                     }
                     error = String.format("The message name '%s' is ambiguous for libraries %s. " +
-                                    "Disambiguate the library by specifying the library explicitely using @%s(library=Library.class).",
+                                    "Disambiguate the library by specifying the library explicitly using @%s(library=Library.class).",
                                     name, libBuilder.toString(), types.ExportMessage.asElement().getSimpleName().toString());
                     model.addError(member, error);
                     return Collections.emptyList();
@@ -1089,7 +1089,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 if (mirror == null) {
                     error = String.format("Class '%s' is not a library annotated with @%s.", qualifiedName, types.GenerateLibrary.asElement().getSimpleName().toString());
                 } else {
-                    error = String.format("Explicitely specified library '%s' also needs to be exported on the class using @%s(%s.class).", qualifiedName,
+                    error = String.format("Explicitly specified library '%s' also needs to be exported on the class using @%s(%s.class).", qualifiedName,
                                     types.ExportLibrary.asElement().getSimpleName().toString(),
                                     getSimpleName(library));
                 }
@@ -1327,7 +1327,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         }
 
         if (exportsLibrary.isExplicitReceiver() && !exportedMethod.getModifiers().contains(STATIC)) {
-            exportedElement.addError("Exported method must be static. @%s annotated types with explcit receiverClass must only contain static methods.",
+            exportedElement.addError("Exported method must be static. @%s annotated types with explicit receiverClass must only contain static methods.",
                             types.ExportLibrary.asElement().getSimpleName().toString());
         }
     }

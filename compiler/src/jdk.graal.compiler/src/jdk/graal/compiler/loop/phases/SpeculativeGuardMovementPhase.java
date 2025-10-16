@@ -873,7 +873,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 b = newAnchorEarliest;
             }
 
-            debug.log("earliestBlockForGuard(%s) inital anchor : %s, condition : %s condition's earliest %s", guard, anchor, guard.getCondition(), conditionEarliest.getBeginNode());
+            debug.log("earliestBlockForGuard(%s) initial anchor : %s, condition : %s condition's earliest %s", guard, anchor, guard.getCondition(), conditionEarliest.getBeginNode());
 
             double minFrequency = anchorEarliest.getRelativeFrequency();
 

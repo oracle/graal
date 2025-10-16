@@ -221,7 +221,7 @@ public class GradualInstrumentationTest {
          * materialized node has an expression as a child and the children of that expression
          * consist of only one expression, then the nested expression is connected as a child
          * directly to the materialized node in place of its parent and for each expression which is
-         * ommited this way, one child expression is added to the extra statement node.
+         * omitted this way, one child expression is added to the extra statement node.
          */
         assertEquals("+S+S+E-E-S+E-E-S", listener2.getRecording());
     }

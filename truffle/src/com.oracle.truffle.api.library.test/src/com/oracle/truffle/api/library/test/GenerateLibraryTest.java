@@ -345,7 +345,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("Type InvalidExportsTypeImpl is not compatible with the receiver type 'ExportsType' of exported library 'ExportsTypeLibrary'. Inhert from type 'ExportsType' to resolve this.")
+    @ExpectError("Type InvalidExportsTypeImpl is not compatible with the receiver type 'ExportsType' of exported library 'ExportsTypeLibrary'. Inherit from type 'ExportsType' to resolve this.")
     @ExportLibrary(value = ExportsTypeLibrary.class)
     public static class InvalidExportsTypeImpl {
         @ExportMessage

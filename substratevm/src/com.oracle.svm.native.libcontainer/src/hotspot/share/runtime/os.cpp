@@ -2037,7 +2037,7 @@ char* os::attempt_reserve_memory_between(char* min, char* max, size_t bytes, siz
 
   // Please keep the following constants in sync with the companion gtests:
 
-  // Number of mmap attemts we will undertake.
+  // Number of mmap attempts we will undertake.
   constexpr unsigned max_attempts = 32;
 
   // In randomization mode: We require a minimum number of possible attach points for
@@ -2133,7 +2133,7 @@ char* os::attempt_reserve_memory_between(char* min, char* max, size_t bytes, siz
 
     if (num_attach_points < total_shuffle_threshold) {
       // 3:
-      // The numeber of possible attach points is too low for the "wiggle" from
+      // The number of possible attach points is too low for the "wiggle" from
       // point 2 to be enough to provide randomization. In that case, shuffle
       // all attach points at the cost of possible fragmentation (e.g. if we
       // end up mapping into the middle of the range).
@@ -2144,7 +2144,7 @@ char* os::attempt_reserve_memory_between(char* min, char* max, size_t bytes, siz
       // goal without. In that case, we optimize probing by sorting the attach
       // points: We attempt outermost points first, then work ourselves up to
       // the middle. That reduces address space fragmentation. We also alternate
-      // hemispheres, which increases the chance of successfull mappings if the
+      // hemispheres, which increases the chance of successful mappings if the
       // previous mapping had been blocked by large maps.
       hemi_split(points, num_attempts);
     }
@@ -2190,7 +2190,7 @@ char* os::attempt_reserve_memory_between(char* min, char* max, size_t bytes, siz
     assert((result + bytes) <= absolute_max, "OOB vm.map max (" ERRFMT ")", ERRFMTARGS);
     assert(is_aligned(result, alignment), "alignment invalid (" ERRFMT ")", ERRFMTARGS);
     log_trace(os, map)(ERRFMT, ERRFMTARGS);
-    log_debug(os, map)("successfully attached at " PTR_FORMAT, p2i(result));
+    log_debug(os, map)("successfuly attached at " PTR_FORMAT, p2i(result));
     MemTracker::record_virtual_memory_reserve((address)result, bytes, CALLER_PC);
   } else {
     log_debug(os, map)("failed to attach anywhere in [" PTR_FORMAT "-" PTR_FORMAT ")", p2i(min), p2i(max));

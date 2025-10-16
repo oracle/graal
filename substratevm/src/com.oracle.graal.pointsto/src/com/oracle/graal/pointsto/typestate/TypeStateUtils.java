@@ -165,7 +165,7 @@ public class TypeStateUtils {
         assert a1.length > 1 || !bb.analysisPolicy().isSummaryObject(a1[0]) : a1;
         assert a2.length > 1 || !bb.analysisPolicy().isSummaryObject(a2[0]) : a2;
 
-        // TOOD check same type
+        // TODO check same type
         // assert !bb.options().extendedAsserts() || (a1.checkState(bb.options()) &&
         // a2.checkState(bb.options()));
 

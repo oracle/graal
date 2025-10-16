@@ -72,7 +72,7 @@ public final class StatementProfilerExampleTest extends AbstractInstrumentationT
     @Before
     public void setupProfiler() throws IOException {
         assureEnabled(engine.getInstruments().get(StatementProfilerExample.ID));
-        // force profiler frontend attachement
+        // force profiler frontend attachment
         run(lines(""));
     }
 

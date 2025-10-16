@@ -67,7 +67,7 @@ import com.oracle.truffle.sl.SLLanguage;
  * <p>
  * In order to assign types to guest language values, SL values implement
  * {@link InteropLibrary#getMetaObject(Object)}. The interop contracts for primitive values cannot
- * be overriden, so in order to assign meta-objects to primitive values, the primitive values are
+ * be overridden, so in order to assign meta-objects to primitive values, the primitive values are
  * assigned using language views. See {@link SLLanguage#getLanguageView}.
  */
 @ExportLibrary(InteropLibrary.class)

@@ -74,7 +74,7 @@ public interface LoopPolicies {
         private final boolean isTrivial;
 
         private UnswitchingDecision(List<ControlSplitNode> controlSplits, boolean isTrivial) {
-            assert !isTrivial || controlSplits != null : "An unswitching desision cannot be trivial but have not control split node";
+            assert !isTrivial || controlSplits != null : "An unswitching decision cannot be trivial but have not control split node";
 
             this.controlSplits = controlSplits;
             this.isTrivial = isTrivial;

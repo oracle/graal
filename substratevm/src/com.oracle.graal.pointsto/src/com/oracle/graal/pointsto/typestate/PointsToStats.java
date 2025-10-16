@@ -713,7 +713,7 @@ public class PointsToStats {
 
     /**
      * Wrapper for BufferedWriter.out to deal with checked exception. Useful for avoiding catching
-     * exceptions in lamdas.
+     * exceptions in lambdas.
      *
      * @param out the writer
      * @param str the string to write

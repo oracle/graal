@@ -417,7 +417,7 @@ public class HotSpotGraphBuilderPlugins {
                     // Primitive Class case returns null
                     PiNode klassNonNull = helper.emitNullReturnGuard(klass, nullValue, GraalDirectives.UNLIKELY_PROBABILITY);
 
-                    // if ((Klass::_access_flags & Modifer.INTERFACE) != 0) return null
+                    // if ((Klass::_access_flags & Modifier.INTERCAE) != 0) return null
                     ValueNode accessFlags = helper.readKlassAccessFlags(klassNonNull);
                     LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(Modifier.INTERFACE), NodeView.DEFAULT);
                     helper.emitReturnIfNot(test, nullValue, GraalDirectives.UNLIKELY_PROBABILITY);
@@ -804,7 +804,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/share/opto/library_call.cpp#L2986-L3040",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3013-L3067",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -853,7 +853,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/share/opto/library_call.cpp#L3805-L3889",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/016694bf74f6920f850330e353df9fd03458cca1/src/hotspot/share/opto/library_call.cpp#L3832-L3916",
               sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {

@@ -329,7 +329,7 @@ public abstract class InteropLibrary extends Library {
     // Instantiable Messages
     /**
      * Returns <code>true</code> if the receiver represents an <code>instantiable</code> value, else
-     * <code>false</code>. Contructors or {@link #isMetaObject(Object) metaobjects} are typical
+     * <code>false</code>. Constructors or {@link #isMetaObject(Object) metaobjects} are typical
      * examples of instantiable values. Invoking this message does not cause any observable
      * side-effects. Note that receiver values which are {@link #isExecutable(Object) executable}
      * might also be {@link #isInstantiable(Object) instantiable}.
@@ -2493,7 +2493,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Converts the receiver to a human readable {@link #isString(Object) string}. Each language may
-     * have special formating conventions - even primitive values may not follow the traditional
+     * have special formatting conventions - even primitive values may not follow the traditional
      * Java rules. The format of the returned string is intended to be interpreted by humans not
      * machines and should therefore not be relied upon by machines. By default the receiver class
      * name and its {@link System#identityHashCode(Object) identity hash code} is used as string

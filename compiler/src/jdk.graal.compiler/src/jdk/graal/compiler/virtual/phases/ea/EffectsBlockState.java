@@ -45,7 +45,7 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
     protected EconomicSet<HIRBlock> exceptionEdgesToKill;
 
     public EffectsBlockState() {
-        // emtpy
+        // empty
     }
 
     public EffectsBlockState(EffectsBlockState<T> other) {

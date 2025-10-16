@@ -656,12 +656,11 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return children;
     }
 
-    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> allSpecializations) {
-        Set<SpecializationData> uncached = new LinkedHashSet<>(allSpecializations);
-        for (SpecializationData current : allSpecializations) {
-            if (current.isExcludeForUncached()) {
-                uncached.remove(current);
-            }
+    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
+        Set<SpecializationData> uncached = new LinkedHashSet<>(s);
+        // remove all replaceable specializations
+        for (SpecializationData specialization : s) {
+            uncached.removeAll(specialization.getReplaces());
         }
         return uncached;
     }

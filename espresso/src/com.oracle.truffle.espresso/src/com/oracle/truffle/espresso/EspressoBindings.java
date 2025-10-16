@@ -50,7 +50,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  *
  * <p>
  * Classes cannot be enumerated; and in this implementation, not even the ones already loaded. e.g.
- * {@link InteropLibrary#getMembers(Object) Peeking all memebers} will return an empty interop
+ * {@link InteropLibrary#getMembers(Object) Peeking all members} will return an empty interop
  * collection. <br>
  * {@link InteropLibrary#readMember(Object, String) Reading a member} will trigger class loading; it
  * is equivalent to calling {@link Class#forName(String, boolean, ClassLoader)} with the provided

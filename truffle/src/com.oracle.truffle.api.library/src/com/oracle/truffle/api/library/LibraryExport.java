@@ -144,7 +144,7 @@ public abstract class LibraryExport<T extends Library> {
         if (!delegate.isAdoptable()) {
             /*
              * We force adoption for the uncached case because we need the parent pointer to
-             * implement @CachedLibrary("this"), as this should point to the parent delgate library.
+             * implement @CachedLibrary("this"), as this should point to the parent delegate library.
              * With this we can use the same parent pointer approach for cached and uncached.
              */
             LibraryAccessor.nodeAccessor().forceAdoption(parent, delegate);

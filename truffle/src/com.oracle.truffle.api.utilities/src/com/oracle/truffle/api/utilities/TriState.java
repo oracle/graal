@@ -82,7 +82,7 @@ public enum TriState {
     }
 
     /**
-     * Create a {@link TriState} from a boxed {@link Boolean} explicitely checking for
+     * Create a {@link TriState} from a boxed {@link Boolean} explicitly checking for
      * <code>null</code> and returning {@link #UNDEFINED}.
      *
      * @since 20.2

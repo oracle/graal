@@ -348,7 +348,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public static void test4Snippet(int a, int b) {
         for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); ++i) {
             if (GraalDirectives.injectBranchProbability(0.000001, a < i)) {
-                // This is an invariant but on average it is exectutes 1000 * 0.000001 = 0.001 < 1
+                // This is an invariant but on average it executes 1000 * 0.000001 = 0.001 < 1
                 // time per execution of the whole loop so it should not be unswitched.
                 if (b > 0) {
                     GraalDirectives.sideEffect(1);

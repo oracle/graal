@@ -754,7 +754,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof SignedRemNode) {
             divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
         } else {
-            throw GraalError.shouldNotReachHere("Unkown division node " + n); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("Unknown division node " + n); // ExcludeFromJacocoGeneratedReport
         }
         n.replaceAtUsages(divRem);
         graph.replaceFixedWithFloating(n, divRem);

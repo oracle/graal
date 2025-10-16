@@ -51,7 +51,7 @@ public class ScanningBuilderTest extends BinaryDataTestBase {
     Semaphore alert = new Semaphore(0);
 
     /**
-     * Complete and frozen snaphots at start of each root.
+     * Complete and frozen snapshots at start of each root.
      */
     Map<Long, ConstantPool> poolSnaphots = new LinkedHashMap<>();
 

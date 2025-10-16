@@ -383,7 +383,7 @@ function graph_help_entry(e, i, key, description) {
     box.style.stroke = "black";
     box.style["stroke-width"] = 0.5;
     box.rx.baseVal.value = 2;
-    box.ry.baseVal.vlaue = 2;
+    box.ry.baseVal.value = 2;
 
     let label = document.createElementNS("http://www.w3.org/2000/svg", "text");
     label.style.textAnchor = "middle";

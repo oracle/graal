@@ -164,7 +164,7 @@ public abstract class TruffleSafepoint {
      * TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
      * boolean prev = safepoint.setAllowSideEffects(false);
      * try {
-     *     // criticial section
+     *     // critical section
      * } finally {
      *     safepoint.setAllowSideEffects(prev);
      *     TruffleSafepoint.pollHere(this);

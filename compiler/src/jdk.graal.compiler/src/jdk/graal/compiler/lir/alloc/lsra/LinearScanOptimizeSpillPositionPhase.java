@@ -125,7 +125,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
                 spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
             }
-            debug.log(DebugContext.VERBOSE_LEVEL, "Spill block candidate (after loop optimizaton): %s", spillBlock);
+            debug.log(DebugContext.VERBOSE_LEVEL, "Spill block candidate (after loop optimization): %s", spillBlock);
 
             /*
              * The spill block is the begin of the first split child (aka the value is on the

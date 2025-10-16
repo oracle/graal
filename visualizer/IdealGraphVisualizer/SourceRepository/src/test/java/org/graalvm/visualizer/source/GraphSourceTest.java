@@ -301,7 +301,7 @@ public class GraphSourceTest extends GraphSourceTestBase {
             locsPassing.removeAll(locs);
 
             for (Location l : locsPassing) {
-                assertTrue("Passing location conrresponds to a node", src.getNodesAt(l).isEmpty());
+                assertTrue("Passing location corresponds to a node", src.getNodesAt(l).isEmpty());
             }
 
             for (Location l : locs) {
@@ -327,7 +327,7 @@ public class GraphSourceTest extends GraphSourceTestBase {
         PlatformLocationResolver.enabled = true;
         PlatformLocationResolver.enablePackage("java/util", true);
 
-        // for exmaple node #199 is in java/lang/AbstractStringBuilder.
+        // for example node #199 is in java/lang/AbstractStringBuilder.
         // node #10 is in Formatter, it will be loaded
         GraphSource src = GraphSource.getGraphSource(magnitudeGraph);
         NodeStack stack = src.getNodeStack(src.getGraph().getNode(10));

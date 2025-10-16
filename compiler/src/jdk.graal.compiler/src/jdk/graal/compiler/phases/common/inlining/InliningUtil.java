@@ -987,9 +987,9 @@ public class InliningUtil extends ValueMergeUtil {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
             } else if (method.equals(invoke.callTarget().targetMethod())) {
-                GraalError.shouldNotReachHere("method subsitutions are gone"); // ExcludeFromJacocoGeneratedReport
+                GraalError.shouldNotReachHere("method substitutions are gone"); // ExcludeFromJacocoGeneratedReport
             } else if (method.getName().equals(inlinedMethod.getName())) {
-                GraalError.shouldNotReachHere("method subsitutions are gone"); // ExcludeFromJacocoGeneratedReport
+                GraalError.shouldNotReachHere("method substitutions are gone"); // ExcludeFromJacocoGeneratedReport
             } else {
                 throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, method, frameState,
                                 invoke.callTarget().targetMethod()));

@@ -72,7 +72,7 @@ final class JImageLibrary extends ContextAccessImpl {
 
     // Cache "java.base" native module name
     private final RawBuffer javaBaseBuffer;
-    // Cache the version sting.
+    // Cache the version string.
     private final RawBuffer versionBuffer;
     // Cache the empty string
     private final RawBuffer emptyStringBuffer;

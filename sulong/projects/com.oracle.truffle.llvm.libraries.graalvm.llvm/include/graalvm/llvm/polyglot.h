@@ -398,7 +398,7 @@ bool polyglot_has_members(const polyglot_value value);
  * Check whether a polyglot value contains a given named member.
  *
  * @param object the polyglot value to test
- * @param name the name of the member to be checked for existance
+ * @param name the name of the member to be checked for existence
  * @return true if the member exists, false otherwise
  */
 bool polyglot_has_member(const polyglot_value value, const char *name);

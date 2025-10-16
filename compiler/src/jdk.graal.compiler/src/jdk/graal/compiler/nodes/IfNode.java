@@ -592,7 +592,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         }
 
                         if (color == null) {
-                            // Each of the inputs to the phi are either coming unambigously from
+                            // Each of the inputs to the phi are either coming unambiguously from
                             // true or false branch.
                             color = NodeColor.PHI_MIXED;
                             assert node instanceof PhiNode : Assertions.errorMessage(node);
@@ -645,7 +645,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 /*
                  * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
                  * conversion to guards assumes that all the required conditions are being tested.
-                 * Simplfying the condition based on context before this happens may lose a
+                 * Simplifying the condition based on context before this happens may lose a
                  * condition.
                  */
                 ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
@@ -1362,7 +1362,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (comparableCondition != null) {
                     if (conditionA.trueIsDisjoint(comparableCondition)) {
                         // The truth of the two conditions is disjoint => can reorder.
-                        debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
+                        debug.log("Can swap disjoint conditions on same values: %s and %s", conditionA, comparableCondition);
                         return true;
                     }
                 } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {

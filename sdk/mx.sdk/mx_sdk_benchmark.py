@@ -4040,7 +4040,7 @@ class NativeImageBenchmarkMixin(object):
                 return self.intercept_run(super(), benchmarks, bm_suite_args)
 
         It is fine if this implemented in a common (Native Image-specific) superclass of multiple benchmark suites, as
-        long as the method is not overriden in a subclass in an incompatible way.
+        long as the method is not overridden in a subclass in an incompatible way.
 
         :param super_delegate: A reference to the caller class' superclass in method-resolution order (MRO).
         :param benchmarks: Passed to :meth:`BenchmarkSuite.run`

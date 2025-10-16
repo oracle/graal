@@ -180,7 +180,7 @@ class SceneUpdater {
     public boolean whenDiagramShown(Runnable r) {
         synchronized (this) {
             if (isStubDiagram() || displayBlocker != null || lastDiagram != model.getDiagramToView()) {
-                LOG.log(Level.FINE, "Diagram is stub or layout is blocked, sheduling for later execution.");
+                LOG.log(Level.FINE, "Diagram is stub or layout is blocked, scheduling for later execution.");
                 doWhenLayoutCompletes.add(r);
                 return true;
             }
@@ -310,7 +310,7 @@ class SceneUpdater {
             }
             if (viewportUpdate != null) {
                 if (viewportUpdate.getPhase() != SceneUpdaterTask.Phase.OBSOLETE && viewportUpdate.getExtendedBounds().contains(viewRect)) {
-                    LOG.log(Level.FINE, "Viewport update is alredy scheduled for {0}, view bounds {1} still inside.", new Object[]{viewportUpdate.getExtendedBounds(), viewRect});
+                    LOG.log(Level.FINE, "Viewport update is already scheduled for {0}, view bounds {1} still inside.", new Object[]{viewportUpdate.getExtendedBounds(), viewRect});
                     return true;
                 }
                 // do not schedule the task

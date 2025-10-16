@@ -115,7 +115,7 @@ public final class DarwinLinker extends Driver {
                 }
             }
         }
-        // Do not call System.exit from withing the try block, otherwise finally is not executed
+        // Do not call System.exit from within the try block, otherwise finally is not executed
         System.exit(returnCode);
     }
 

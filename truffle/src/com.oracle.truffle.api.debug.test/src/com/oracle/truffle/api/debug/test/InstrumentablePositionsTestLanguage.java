@@ -122,7 +122,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     @Option(help = "Preform pre-materialization of AST nodes. (default:0, 1 - materialize in head recursion order, 2 - materialize in tail recursion order)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> PreMaterialize = new OptionKey<>(0);
 
-    @Option(help = "Set relative soure paths with respect to this source root.", category = OptionCategory.EXPERT) //
+    @Option(help = "Set relative source paths with respect to this source root.", category = OptionCategory.EXPERT) //
     static final OptionKey<String> SourceRoot = new OptionKey<>("");
 
     @Override

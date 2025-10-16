@@ -34,7 +34,7 @@ import java.util.ArrayList;
  */
 final class CVLineRecord extends CVSymbolRecord {
 
-    /* Header: addr (4 bytes):section (2 bytes) flags (2 bytes) chunck length (4 bytes). */
+    /* Header: addr (4 bytes):section (2 bytes) flags (2 bytes) chunk length (4 bytes). */
     private static final int LINE_RECORD_HEADER_SIZE = Integer.BYTES + Short.BYTES * 2 + Integer.BYTES;
 
     private static final int DEFAULT_LINE_BLOCK_COUNT = 100;

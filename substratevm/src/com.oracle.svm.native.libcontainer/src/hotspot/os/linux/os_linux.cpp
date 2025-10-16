@@ -3341,7 +3341,7 @@ size_t os::Linux::default_guard_size(os::ThreadType thr_type) {
     // The result of that sequence are thread stacks that are fully paged-in even though the
     // threads did not even start yet.
     // We prevent that by letting the glibc allocate a guard page, which causes a VMA with different
-    // permission bits to separate two ajacent thread stacks and therefore prevent merging stacks
+    // permission bits to separate two adjacent thread stacks and therefore prevent merging stacks
     // into one VMA.
     //
     // Yes, this means we have two guard sections - the glibc and the JVM one - per thread. But the
@@ -3582,7 +3582,7 @@ static address get_stack_commited_bottom(address bottom, size_t size) {
 
 // We only need this for stacks that are growable: at the time of
 // writing thread stacks don't use growable mappings (i.e. those
-// creeated with MAP_GROWSDOWN), and aren't marked "[stack]", so this
+// created with MAP_GROWSDOWN), and aren't marked "[stack]", so this
 // only applies to the main thread.
 
 // If the (growable) stack mapping already extends beyond the point

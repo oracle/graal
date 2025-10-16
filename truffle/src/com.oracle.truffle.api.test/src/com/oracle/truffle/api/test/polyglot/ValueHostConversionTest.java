@@ -654,7 +654,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("int", hierarchy.execute((float) -(Math.pow(2, 24) - 1)).asString());
         assertEquals("int", hierarchy.execute((float) +(Math.pow(2, 24) - 1)).asString());
         assertEquals("int", hierarchy.execute((float) Integer.MIN_VALUE).asString());
-        // float cannot precisely store Integer.MAX_VALUE, but the converison to float yields a
+        // float cannot precisely store Integer.MAX_VALUE, but the conversion to float yields a
         // number that can fit into long, namely Integer.MAX_VALUE + 1 = 2147483648.
         assertEquals("long", hierarchy.execute((float) Integer.MAX_VALUE).asString());
 

@@ -918,7 +918,7 @@ def _sl_native_optimized_gate_tests(force_cp):
     mx.rmtree(target_dir)
 
     # test if the enterprise compiler is in use
-    # that everything works fine if truffle-enterprise.jar is not availble
+    # that everything works fine if truffle-enterprise.jar is not available
     enterprise = _get_enterprise_truffle()
     if enterprise:
         target_dir = tempfile.mkdtemp()
@@ -1244,7 +1244,7 @@ _tckHelpSuffix = """
     TCK options:
 
       --tck-configuration                  configuration {compiler|debugger|default}
-          compile                          executes TCK tests with immediate comilation
+          compile                          executes TCK tests with immediate compilation
           debugger                         executes TCK tests with enabled debugalot instrument
           default                          executes TCK tests
 """

@@ -130,7 +130,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         return res;
     }
 
-    // Tranform sub-words to int
+    // Transform sub-words to int
     public static Object rebasic(Object obj, JavaKind rKind) {
         switch (rKind) {
             case Boolean:

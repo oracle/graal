@@ -48,7 +48,7 @@
         (local.set $ret
             (call $fd_prestat_get
                 (i32.const 3) ;; pre-opened "test" directory fd
-                (i32.const 0) ;; adress at which to write result
+                (i32.const 0) ;; address at which to write result
             )
         )
         ;; Exit in case of error

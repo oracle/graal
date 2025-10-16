@@ -29,7 +29,7 @@ import org.openide.util.Lookup;
  * A cookie to be used in {@link Lookup} to represent an implementation name
  * of a class. Useful for actions that want to jump to source code defining
  * current selected - e.g. {@code Utilities.actionsGlobalContext()} element. UI views
- * are encouraged to expose {@link ImplementationClass} instances whereever
+ * are encouraged to expose {@link ImplementationClass} instances wherever
  * a selection knows who's its implementation class.
  *
  * @since 1.5

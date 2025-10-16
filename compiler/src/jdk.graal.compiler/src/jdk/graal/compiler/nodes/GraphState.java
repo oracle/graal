@@ -615,7 +615,7 @@ public final class GraphState {
 
     /**
      * Different stages of the compilation regarding the status of various graph properties. The
-     * order used to defined theses stages corresponds to their order in a standard compilation.
+     * order used to define these stages corresponds to their order in a standard compilation.
      */
     public enum StageFlag {
         PARTIAL_EVALUATION,

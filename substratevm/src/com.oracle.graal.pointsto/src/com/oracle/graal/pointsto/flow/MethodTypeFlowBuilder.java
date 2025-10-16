@@ -1936,7 +1936,7 @@ public class MethodTypeFlowBuilder {
                      * nodes when more concrete stamp information can be inferred for example from
                      * parameter types. In that case the Graal graph optimizations may decide to
                      * remove a checkcast that would normally follow the invoke, so we need to
-                     * introduce the filter to avoid loosing precision.
+                     * introduce the filter to avoid losing precision.
                      */
                     TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), invoke, FilterTypeFlow.class, () -> {
                         FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, stampType, stamp.isExactType(), true, true);

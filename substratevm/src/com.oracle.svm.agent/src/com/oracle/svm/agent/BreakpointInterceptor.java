@@ -1194,21 +1194,22 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private record LambdaClassNameAndBytecode(String lambdaClassName, byte[] lambdaClassBytecode) {
-    }
-
-    private static LambdaClassNameAndBytecode getLambdaClassNameAndBytecodeFromThread(JNIEnvironment jni, JNIObjectHandle thread, int bytecodeArgumentIndex) {
-        LambdaClassNameAndBytecode emptyLambdaClassNameAndBytecode = new LambdaClassNameAndBytecode(null, null);
-
+    /**
+     * This method should be intercepted when we are predefining a lambda class. This is the only
+     * spot in the lambda-class creation pipeline where we can get lambda-class bytecode so the
+     * class can be predefined. We do not want to predefine all lambda classes, but only the ones
+     * that are actually created at runtime, so we have a method that checks whether the lambda
+     * should be predefined or not.
+     */
+    private static boolean onMethodHandleClassFileInit(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         String className = Support.fromJniString(jni, getObjectArgument(thread, 1));
-        assert className != null;
 
         if (LambdaUtils.isLambdaClassName(className)) {
             if (shouldIgnoreLambdaClassForPredefinition(jni)) {
-                return emptyLambdaClassNameAndBytecode;
+                return true;
             }
 
-            JNIObjectHandle bytesArray = getObjectArgument(thread, bytecodeArgumentIndex);
+            JNIObjectHandle bytesArray = getObjectArgument(thread, 3);
             int length = jniFunctions().getGetArrayLength().invoke(jni, bytesArray);
             byte[] data = new byte[length];
 
@@ -1221,29 +1222,9 @@ final class BreakpointInterceptor {
                 }
 
                 className += Digest.digest(data);
-                return new LambdaClassNameAndBytecode(className, data);
+                tracer.traceCall("classloading", "onMethodHandleClassFileInit", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
             }
         }
-
-        return emptyLambdaClassNameAndBytecode;
-    }
-
-    /**
-     * This method should be intercepted on JDK 24 or later when we are predefining a lambda class.
-     * We do not want to predefine all lambda classes, but only the ones that are actually created
-     * at runtime, so we have a method that checks whether the lambda should be predefined or not.
-     */
-    private static boolean makeHiddenClassDefiner(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        LambdaClassNameAndBytecode lambdaClassNameAndBytecode = getLambdaClassNameAndBytecodeFromThread(jni, thread, 2);
-        return lambdaPredefinition(state, lambdaClassNameAndBytecode.lambdaClassName(), lambdaClassNameAndBytecode.lambdaClassBytecode());
-    }
-
-    private static boolean lambdaPredefinition(InterceptedState state, String className, byte[] data) {
-        if (className == null) {
-            return false;
-        }
-
-        tracer.traceCall("classloading", "lambdaPredefinition", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
         return true;
     }
 
@@ -1942,8 +1923,7 @@ final class BreakpointInterceptor {
     };
 
     private static final BreakpointSpecification[] CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS = {
-                    optionalBrk("java/lang/invoke/MethodHandles$Lookup", "makeHiddenClassDefiner",
-                                    "(Ljava/lang/String;[BZLjdk/internal/util/ClassFileDumper;I)Ljava/lang/invoke/MethodHandles$Lookup$ClassDefiner;", BreakpointInterceptor::makeHiddenClassDefiner)
+                    optionalBrk("java/lang/invoke/MethodHandles$Lookup$ClassFile", "<init>", "(Ljava/lang/String;I[B)V", BreakpointInterceptor::onMethodHandleClassFileInit),
     };
 
     private static BreakpointSpecification brk(String className, String methodName, String signature, BreakpointHandler handler) {

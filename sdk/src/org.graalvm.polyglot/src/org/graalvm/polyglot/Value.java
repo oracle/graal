@@ -1957,8 +1957,8 @@ public final class Value extends AbstractValue {
     }
 
     /**
-     * Converts this value to a human readable string. Each language may have special formating
-     * conventions - even primitive values may not follow the traditional Java formating rules. The
+     * Converts this value to a human readable string. Each language may have special formatting
+     * conventions - even primitive values may not follow the traditional Java formatting rules. The
      * format of the returned string is intended to be interpreted by humans not machines and should
      * therefore not be relied upon by machines. By default this value class name and its
      * {@link System#identityHashCode(Object) identity hash code} is used as string representation.
