@@ -29,9 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -104,7 +102,7 @@ public class HostedOptionParser implements HostedOptionProvider {
 
     public List<String> parse() {
         List<String> remainingArgs = new ArrayList<>();
-        Set<String> errors = new HashSet<>();
+        EconomicSet<String> errors = EconomicSet.create();
         InterruptImageBuilding interrupt = null;
         for (String arg : arguments) {
             try {

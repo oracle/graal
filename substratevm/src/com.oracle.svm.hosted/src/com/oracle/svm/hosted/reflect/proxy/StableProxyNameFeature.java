@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.hosted.reflect.proxy;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
@@ -37,6 +35,7 @@ import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * @see ProxyRenamingSubstitutionProcessor
@@ -59,7 +58,7 @@ final class StableProxyNameFeature implements InternalFeature {
         }
 
         /* Proxy names should be unique. */
-        Set<String> proxyNames = new HashSet<>();
+        EconomicSet<String> proxyNames = EconomicSet.create();
         types.stream()
                         .filter(ProxyRenamingSubstitutionProcessor::isProxyType)
                         .map(AnalysisType::getName)

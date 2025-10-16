@@ -25,10 +25,9 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,7 +39,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
  * Repository that collects and writes used classes, packages, modules, and classloaders.
  */
 public class JfrTypeRepository implements JfrRepository {
-    private final Set<Class<?>> flushedClasses = new HashSet<>();
+    private final EconomicSet<Class<?>> flushedClasses = EconomicSet.create();
     private final Map<String, PackageInfo> flushedPackages = new HashMap<>();
     private final Map<Module, Long> flushedModules = new HashMap<>();
     private final Map<ClassLoader, Long> flushedClassLoaders = new HashMap<>();
@@ -329,7 +328,7 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private static final class TypeInfo {
-        final Set<Class<?>> classes = new HashSet<>();
+        final EconomicSet<Class<?>> classes = EconomicSet.create();
         final Map<String, PackageInfo> packages = new HashMap<>();
         final Map<Module, Long> modules = new HashMap<>();
         final Map<ClassLoader, Long> classLoaders = new HashMap<>();

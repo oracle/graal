@@ -890,7 +890,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return includeOurselfs ? Set.of(this) : Set.of();
         }
 
-        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1);
+        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1); // noEconomicSet(streaming)
         if (includeOurselfs) {
             result.add(this);
         }

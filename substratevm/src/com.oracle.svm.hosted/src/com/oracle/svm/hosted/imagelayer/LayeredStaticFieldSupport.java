@@ -441,7 +441,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
         @Override
         public LayeredStaticFieldSupport createFromLoader(ImageSingletonLoader loader) {
-            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>();
+            Set<Object> appLayerFieldsWithKnownLocations = new HashSet<>(); // noEconomicSet(concurrency)
             for (int id : loader.readIntList("appLayerFieldsWithKnownLocations")) {
                 Supplier<AnalysisField> aFieldSupplier = () -> HostedImageLayerBuildingSupport.singleton().getLoader().getAnalysisFieldForBaseLayerId(id);
                 appLayerFieldsWithKnownLocations.add(aFieldSupplier);

@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
@@ -84,17 +85,17 @@ public class RuntimeDynamicAccessMetadata {
         }
 
         Object newRuntimeCondition = createRuntimeCondition(cnd);
-        Set<Object> existingConditions = conditions == null ? new HashSet<>() : new HashSet<>(Arrays.asList(conditions));
+        Set<Object> existingConditions = conditions == null ? new HashSet<>() : new HashSet<>(Arrays.asList(conditions)); // noEconomicSet(temp)
         existingConditions.add(newRuntimeCondition);
         setConditions(existingConditions.toArray());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<Class<?>> getTypesForEncoding() {
+    public EconomicSet<Class<?>> getTypesForEncoding() {
         if (conditions == null) {
-            return Set.of();
+            return EconomicSet.emptySet();
         } else {
-            Set<Class<?>> types = new HashSet<>();
+            EconomicSet<Class<?>> types = EconomicSet.create();
             for (Object condition : conditions) {
                 types.addAll(getTypesForEncoding(condition));
             }

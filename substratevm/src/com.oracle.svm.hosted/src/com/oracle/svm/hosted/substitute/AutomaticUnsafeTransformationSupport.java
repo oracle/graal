@@ -35,13 +35,13 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inlin
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -136,8 +136,8 @@ public class AutomaticUnsafeTransformationSupport {
     private final ResolvedJavaMethod unsafeArrayIndexScaleMethod;
     private final ResolvedJavaMethod integerNumberOfLeadingZerosMethod;
 
-    private final HashSet<ResolvedJavaMethod> neverInlineSet = new HashSet<>();
-    private final HashSet<ResolvedJavaMethod> noCheckedExceptionsSet = new HashSet<>();
+    private final EconomicSet<ResolvedJavaMethod> neverInlineSet = EconomicSet.create();
+    private final EconomicSet<ResolvedJavaMethod> noCheckedExceptionsSet = EconomicSet.create();
 
     private final Plugins plugins;
 
@@ -1099,9 +1099,9 @@ public class AutomaticUnsafeTransformationSupport {
         static final int maxDepth = 1;
         static final int maxCodeSize = 500;
 
-        private final HashSet<ResolvedJavaMethod> neverInline;
+        private final EconomicSet<ResolvedJavaMethod> neverInline;
 
-        StaticInitializerInlineInvokePlugin(HashSet<ResolvedJavaMethod> neverInline) {
+        StaticInitializerInlineInvokePlugin(EconomicSet<ResolvedJavaMethod> neverInline) {
             this.neverInline = neverInline;
         }
 

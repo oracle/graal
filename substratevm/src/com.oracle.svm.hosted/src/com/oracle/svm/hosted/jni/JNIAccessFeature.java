@@ -283,7 +283,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, preserved, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
-                newNegativeFieldLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(fieldName);
+                newNegativeFieldLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(fieldName); // noEconomicSet
             }
         }
 
@@ -292,7 +292,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, preserved, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create(methodName, parameterTypes));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create(methodName, parameterTypes)); // noEconomicSet
             }
         }
 
@@ -301,7 +301,7 @@ public class JNIAccessFeature implements Feature {
             try {
                 register(condition, false, preserved, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
-                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create("<init>", parameterTypes));
+                newNegativeMethodLookups.computeIfAbsent(declaringClass, _ -> new HashSet<>()).add(Pair.create("<init>", parameterTypes)); // noEconomicSet
             }
         }
     }

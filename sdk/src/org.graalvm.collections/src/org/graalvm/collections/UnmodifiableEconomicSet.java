@@ -40,6 +40,13 @@
  */
 package org.graalvm.collections;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 /**
  * Unmodifiable memory efficient set data structure. It does not support {@linkplain #contains
  * looking up} a {@code null} element.
@@ -92,4 +99,41 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 
         return target;
     }
+
+    default HashSet<E> toHashSet() {
+        HashSet<E> set = new HashSet<>(size());
+        for (E elem : this) {
+            set.add(elem);
+        }
+        return set;
+    }
+
+    default List<E> toList() {
+        List<E> list = new ArrayList<>();
+        iterator().forEachRemaining(list::add);
+        return list;
+    }
+
+    default boolean containsAll(Iterable<? extends E> coll) {
+        for (E e : coll) {
+            if (!contains(e)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    default boolean removeIf(Predicate<? super E> filter) {
+        Objects.requireNonNull(filter);
+        boolean removed = false;
+        final Iterator<E> each = iterator();
+        while (each.hasNext()) {
+            if (filter.test(each.next())) {
+                each.remove();
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
 }

@@ -31,7 +31,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,6 +39,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -336,9 +336,9 @@ public final class ClassForNameSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<String> getKnownClassNames() {
+    public EconomicSet<String> getKnownClassNames() {
         EconomicMap<String, ?> map = respectClassLoader() ? knownClassNames : knownClasses;
-        Set<String> set = new HashSet<>(map.size());
+        EconomicSet<String> set = EconomicSet.create(map.size());
         for (String key : map.getKeys()) {
             set.add(key);
         }
@@ -556,7 +556,7 @@ public final class ClassForNameSupport {
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
                     List<String> classNames = new ArrayList<>();
                     List<Boolean> classStates = new ArrayList<>();
-                    Set<String> unsafeNames = new HashSet<>(singleton.previousLayerUnsafe);
+                    EconomicSet<String> unsafeNames = EconomicSet.create(singleton.previousLayerUnsafe);
 
                     var cursor = singleton.knownClasses.getEntries();
                     while (cursor.advance()) {
@@ -581,7 +581,7 @@ public final class ClassForNameSupport {
 
                     writer.writeStringList(CLASSES_REGISTERED, classNames);
                     writer.writeBoolList(CLASSES_REGISTERED_STATES, classStates);
-                    writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.stream().toList());
+                    writer.writeStringList(UNSAFE_REGISTERED, unsafeNames.toList());
                     /*
                      * The option is not accessible when the singleton is loaded, so the boolean
                      * needs to be persisted.

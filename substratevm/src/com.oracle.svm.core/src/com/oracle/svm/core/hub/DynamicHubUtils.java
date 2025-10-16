@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
@@ -34,6 +31,7 @@ import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Contains utilities for interacting with DynamicHubs, such as converting vtable indexes to
@@ -209,7 +207,7 @@ public final class DynamicHubUtils {
          * 2) Clear bits that are not required for injectivity. E.g., highest bit of 1010 is not
          * needed such that 0011 & 1010 != 1001 & 1010. Updated hashParam = 0010.
          */
-        HashSet<Integer> set = new HashSet<>();
+        EconomicSet<Integer> set = EconomicSet.create();
         for (int i = 31; i >= 0; i--) {
             int bitI = 1 << i;
             if ((hashParam & bitI) != 0) {
@@ -246,7 +244,7 @@ public final class DynamicHubUtils {
      * that {@link #hash(int, int)} will not produce any collisions for {@code hashParam} and
      * {@code vals}.
      */
-    private static boolean isValidHashParam(int[] vals, int hashParam, Set<Integer> tmp) {
+    private static boolean isValidHashParam(int[] vals, int hashParam, EconomicSet<Integer> tmp) {
         for (int v : vals) {
             int hash = hash(v, hashParam);
             if (tmp.contains(hash)) {

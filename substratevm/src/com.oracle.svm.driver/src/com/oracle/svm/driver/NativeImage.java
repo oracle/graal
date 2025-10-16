@@ -1931,7 +1931,7 @@ public class NativeImage {
         Map<String, ModuleReference> modules = finder.findAll().stream()
                         .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
 
-        Set<String> applicationModulePathRequiredModules = new HashSet<>();
+        Set<String> applicationModulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
         Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
 
         while (!discoveryQueue.isEmpty()) {

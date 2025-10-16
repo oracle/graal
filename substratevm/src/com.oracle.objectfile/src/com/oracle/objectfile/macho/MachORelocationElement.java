@@ -24,10 +24,8 @@
  */
 package com.oracle.objectfile.macho;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 
 import com.oracle.objectfile.BuildDependency;
@@ -46,6 +44,7 @@ import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
+import org.graalvm.collections.EconomicSet;
 
 class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     /*
@@ -68,7 +67,7 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     }
 
     private Map<MachORelocationInfo, MachORelocationInfo> infos = new TreeMap<>(MachORelocationElement::compareSectionThenOffset);
-    private Set<MachOSection> relocatedSections = new HashSet<>();
+    private EconomicSet<MachOSection> relocatedSections = EconomicSet.create();
 
     MachORelocationElement(Segment64Command segment) {
         segment.getOwner().super("MachORelocationElement", segment);
@@ -83,7 +82,7 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     }
 
     public boolean relocatesSegment(Segment64Command seg) {
-        return seg.elementsInSegment.stream().anyMatch(e -> e instanceof MachOSection && relocatedSections.contains(e));
+        return seg.elementsInSegment.stream().anyMatch(e -> e instanceof MachOSection && relocatedSections.contains((MachOSection) e));
     }
 
     @Override

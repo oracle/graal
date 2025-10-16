@@ -27,10 +27,8 @@ package com.oracle.svm.hosted.c;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.c.CGlobalData;
@@ -41,6 +39,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CodeLocation;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 
 /**
  * Discovers and links CGlobals that were also installed in a prior layer. This is needed to ensure
@@ -72,7 +72,7 @@ public class AppLayerCGlobalTracking {
      * prior layers. We use this collection to validate that these CGlobals have been registered in
      * a way which allows linking to successfully complete.
      */
-    private Set<CGlobalDataImpl<?>> cGlobalsWithPriorLayerReferences;
+    private UnmodifiableEconomicSet<CGlobalDataImpl<?>> cGlobalsWithPriorLayerReferences;
     /**
      * Tracks which CGlobals are defined in this layer that were
      * {@link CGlobalDataImpl#isSymbolReference()} in prior layers.
@@ -222,7 +222,7 @@ public class AppLayerCGlobalTracking {
         Map<String, PriorLayerCGlobal> newSymbolNameToPriorLayerCGlobals = new HashMap<>();
         Map<CodeLocation, PriorLayerCGlobal> newCodeLocationToPriorLayerCGlobals = new HashMap<>();
         ArrayList<PriorLayerCGlobal> newPriorLayerCGlobals = new ArrayList<>();
-        Set<CGlobalDataImpl<?>> newCGlobalsWithPriorLayerReferences = new HashSet<>();
+        EconomicSet<CGlobalDataImpl<?>> newCGlobalsWithPriorLayerReferences = EconomicSet.create();
         Map<CGlobalDataImpl<?>, PriorLayerCGlobal> newCGlobalToPriorLayerCGlobals = new HashMap<>();
         for (var persistedInfo : loader.getCGlobals()) {
             String symbolName = persistedInfo.getLayeredSymbolName().toString();
@@ -265,7 +265,7 @@ public class AppLayerCGlobalTracking {
         priorLayerCGlobals = Collections.unmodifiableList(newPriorLayerCGlobals);
         symbolNameToPriorLayerCGlobals = Collections.unmodifiableMap(newSymbolNameToPriorLayerCGlobals);
         codeLocationToPriorLayerCGlobals = Collections.unmodifiableMap(newCodeLocationToPriorLayerCGlobals);
-        cGlobalsWithPriorLayerReferences = Collections.unmodifiableSet(newCGlobalsWithPriorLayerReferences);
+        cGlobalsWithPriorLayerReferences = newCGlobalsWithPriorLayerReferences;
         cGlobalToPriorLayerCGlobals = Collections.unmodifiableMap(newCGlobalToPriorLayerCGlobals);
         cGlobalsWithPriorLayerReferencesMap = null; // throw on late registrations
     }

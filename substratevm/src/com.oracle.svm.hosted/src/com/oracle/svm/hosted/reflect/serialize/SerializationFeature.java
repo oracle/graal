@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,6 +51,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -307,10 +307,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
-        registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
+        registerIncludingAssociatedClasses(condition, clazz, EconomicSet.create());
     }
 
-    private void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz, Set<Class<?>> alreadyVisited) {
+    private void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz, EconomicSet<Class<?>> alreadyVisited) {
         if (alreadyVisited.contains(clazz)) {
             return;
         }

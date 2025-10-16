@@ -59,7 +59,6 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -85,6 +84,7 @@ import java.util.zip.ZipFile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
@@ -131,7 +131,7 @@ public final class NativeImageClassLoaderSupport {
     private final List<Path> imagemp;
     private final List<Path> buildmp;
 
-    private final Set<Path> imageProvidedJars;
+    private final UnmodifiableEconomicSet<Path> imageProvidedJars;
     /** Cleared by {@link #computePathEntryDigests()} on first call. */
     private PathDigests pathDigests;
     private final Class<?> explodedModuleReaderClass;
@@ -696,7 +696,7 @@ public final class NativeImageClassLoaderSupport {
     public static List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
         /** Implementation taken from {@link ModuleLayer#layers()} */
         List<ModuleLayer> allLayers = new ArrayList<>();
-        Set<ModuleLayer> visited = new HashSet<>();
+        EconomicSet<ModuleLayer> visited = EconomicSet.create();
         Deque<ModuleLayer> stack = new ArrayDeque<>();
         visited.add(moduleLayer);
         stack.push(moduleLayer);
@@ -868,8 +868,8 @@ public final class NativeImageClassLoaderSupport {
         return ((Module) module).getDescriptor().mainClass();
     }
 
-    private static Set<Path> parseImageProvidedJarsProperty() {
-        Set<Path> imageProvidedJars = new HashSet<>();
+    private static UnmodifiableEconomicSet<Path> parseImageProvidedJarsProperty() {
+        EconomicSet<Path> imageProvidedJars = EconomicSet.create();
         String args = System.getProperty(SharedConstants.IMAGE_PROVIDED_JARS_ENV_VARIABLE, "");
         if (!args.isEmpty()) {
             String[] parts = args.split(File.pathSeparator);
@@ -877,7 +877,7 @@ public final class NativeImageClassLoaderSupport {
                 imageProvidedJars.add(Path.of(part));
             }
         }
-        return Collections.unmodifiableSet(imageProvidedJars);
+        return imageProvidedJars; // unmodifiable
     }
 
     private final class LoadClassHandler {
@@ -943,7 +943,7 @@ public final class NativeImageClassLoaderSupport {
                     System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
-                var requiresInit = new HashSet<>(List.of(
+                var requiresInit = EconomicSet.create(List.of(
                                 "jdk.internal.vm.ci",
                                 "jdk.graal.compiler",
                                 "com.oracle.graal.graal_enterprise",
@@ -1379,7 +1379,7 @@ public final class NativeImageClassLoaderSupport {
          * them.
          */
         private void verifyClasspathEntriesPresentAndResolve() {
-            Set<Path> resolvedJavaPathsToInclude = new HashSet<>();
+            EconomicSet<Path> resolvedJavaPathsToInclude = EconomicSet.create();
             List<String> missingClassPathEntries = new ArrayList<>();
             classpathEntries.keySet().forEach(requestedCPEntry -> {
                 Optional<Path> optResolvedEntry = toRealPath(requestedCPEntry).findAny();

@@ -33,7 +33,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -53,6 +52,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * A feature that detects whether a native image may be vulnerable to Log4Shell.
@@ -181,7 +181,7 @@ public class Log4ShellFeature implements InternalFeature {
             return log4jUnknownVersion;
         }
 
-        Set<String> vulnerableMethods = new HashSet<>();
+        EconomicSet<String> vulnerableMethods = EconomicSet.create();
 
         if (("1".equals(components[0]) && vulnerableLog4jOne(components)) || ("2".equals(components[0]) && vulnerableLog4jTwo(components))) {
             for (AnalysisMethod method : log4jClass.getDeclaredMethods(false)) {

@@ -66,6 +66,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.collections.EconomicSet;
 
 public final class CallTreePrinter {
 
@@ -324,7 +325,7 @@ public final class CallTreePrinter {
     }
 
     public Set<String> classesSet(boolean packageNameOnly) {
-        Set<String> classSet = new HashSet<>();
+        Set<String> classSet = new HashSet<>(); // noEconomicSet(temp)
         for (AnalysisType type : usedAnalysisTypes()) {
             String name = type.toJavaName(true);
             if (packageNameOnly) {
@@ -339,8 +340,8 @@ public final class CallTreePrinter {
         return classSet;
     }
 
-    public Set<AnalysisType> usedAnalysisTypes() {
-        Set<AnalysisType> classSet = new HashSet<>();
+    public Iterable<AnalysisType> usedAnalysisTypes() {
+        EconomicSet<AnalysisType> classSet = EconomicSet.create();
         for (AnalysisMethod method : methodToNode.keySet()) {
             classSet.add(method.getDeclaringClass());
         }

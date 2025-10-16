@@ -29,12 +29,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
@@ -43,6 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -103,7 +102,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private final Map<String, HostedOptionInfo> allOptionNames;
 
     private int numberOfActiveUnlockExperimentalVMOptions = 0;
-    private Set<String> illegalExperimentalOptions = new HashSet<>(0);
+    private EconomicSet<String> illegalExperimentalOptions = EconomicSet.create(0);
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);

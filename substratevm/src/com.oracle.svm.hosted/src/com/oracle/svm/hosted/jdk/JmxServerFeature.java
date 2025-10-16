@@ -28,11 +28,11 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.management.PlatformManagedObject;
 import java.util.Map;
-import java.util.Set;
 
 import javax.management.MBeanServer;
 import javax.management.remote.JMXServiceURL;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
@@ -117,7 +117,7 @@ public class JmxServerFeature implements InternalFeature {
      * </ul>
      */
     private static void configureReflection(BeforeAnalysisAccessImpl access) {
-        Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
+        EconomicSet<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
             /*
              * The platformManagedObjects list contains some PlatformManagedObjectSupplier objects

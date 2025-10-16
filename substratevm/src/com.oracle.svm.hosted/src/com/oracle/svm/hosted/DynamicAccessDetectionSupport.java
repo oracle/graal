@@ -43,12 +43,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -88,9 +88,9 @@ public class DynamicAccessDetectionSupport {
     public record MethodInfo(DynamicAccessKind accessKind, String signature) {
     }
 
-    private final EconomicMap<ResolvedJavaType, Set<ResolvedJavaMethod>> reflectionMethods = EconomicMap.create();
-    private final EconomicMap<ResolvedJavaType, Set<ResolvedJavaMethod>> resourceMethods = EconomicMap.create();
-    private final EconomicMap<ResolvedJavaType, Set<ResolvedJavaMethod>> foreignMethods = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaType, EconomicSet<ResolvedJavaMethod>> reflectionMethods = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaType, EconomicSet<ResolvedJavaMethod>> resourceMethods = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaType, EconomicSet<ResolvedJavaMethod>> foreignMethods = EconomicMap.create();
 
     private final AnalysisMetaAccess metaAccess;
 
@@ -256,10 +256,10 @@ public class DynamicAccessDetectionSupport {
                         new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
     }
 
-    private void put(EconomicMap<ResolvedJavaType, Set<ResolvedJavaMethod>> map, Class<?> declaringClass, Set<MethodSignature> methodSignatures) {
+    private void put(EconomicMap<ResolvedJavaType, EconomicSet<ResolvedJavaMethod>> map, Class<?> declaringClass, Set<MethodSignature> methodSignatures) {
         ResolvedJavaType resolvedType = metaAccess.lookupJavaType(declaringClass);
 
-        Set<ResolvedJavaMethod> resolvedMethods = new HashSet<>();
+        EconomicSet<ResolvedJavaMethod> resolvedMethods = EconomicSet.create();
         for (MethodSignature methodSignature : methodSignatures) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(
                             ReflectionUtil.lookupMethod(
@@ -279,21 +279,21 @@ public class DynamicAccessDetectionSupport {
     public MethodInfo lookupDynamicAccessMethod(ResolvedJavaMethod method) {
         ResolvedJavaType declaringClass = method.getDeclaringClass();
 
-        Set<ResolvedJavaMethod> reflectionSignatures = reflectionMethods.get(declaringClass);
+        EconomicSet<ResolvedJavaMethod> reflectionSignatures = reflectionMethods.get(declaringClass);
         if (reflectionSignatures != null) {
             if (reflectionSignatures.contains(method)) {
                 return new MethodInfo(DynamicAccessKind.Reflection, getMethodSignature(method));
             }
         }
 
-        Set<ResolvedJavaMethod> resourceSignatures = resourceMethods.get(declaringClass);
+        EconomicSet<ResolvedJavaMethod> resourceSignatures = resourceMethods.get(declaringClass);
         if (resourceSignatures != null) {
             if (resourceSignatures.contains(method)) {
                 return new MethodInfo(DynamicAccessKind.Resource, getMethodSignature(method));
             }
         }
 
-        Set<ResolvedJavaMethod> foreignSignatures = foreignMethods.get(declaringClass);
+        EconomicSet<ResolvedJavaMethod> foreignSignatures = foreignMethods.get(declaringClass);
         if (foreignSignatures != null) {
             if (foreignSignatures.contains(method)) {
                 return new MethodInfo(DynamicAccessKind.Foreign, getMethodSignature(method));

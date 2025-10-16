@@ -26,7 +26,6 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.HashSet;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.OptionUtils.InvalidMacroException;
@@ -34,14 +33,15 @@ import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
+import org.graalvm.collections.EconomicSet;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    private final HashSet<MacroOption> addedCheck;
+    private final EconomicSet<MacroOption> addedCheck;
 
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
-        addedCheck = new HashSet<>();
+        addedCheck = EconomicSet.create();
     }
 
     @Override

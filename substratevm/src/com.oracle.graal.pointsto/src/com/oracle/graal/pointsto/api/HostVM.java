@@ -32,11 +32,11 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -472,8 +472,8 @@ public abstract class HostVM {
         return false;
     }
 
-    public Set<Module> getSharedLayerForbiddenModules() {
-        return Set.of();
+    public EconomicSet<Module> getSharedLayerForbiddenModules() {
+        return EconomicSet.create();
     }
 
     /**

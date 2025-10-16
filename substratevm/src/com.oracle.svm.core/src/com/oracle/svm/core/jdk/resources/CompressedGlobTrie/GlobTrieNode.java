@@ -65,7 +65,7 @@ public class GlobTrieNode<C> {
         isLeaf = false;
         isNewLevel = false;
         if (SubstrateUtil.HOSTED) {
-            hostedOnlyContent = new HashSet<>();
+            hostedOnlyContent = new HashSet<>(); // noEconomicSet(streaming)
         }
     }
 

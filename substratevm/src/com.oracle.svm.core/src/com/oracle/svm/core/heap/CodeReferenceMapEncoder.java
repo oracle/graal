@@ -27,12 +27,12 @@ package com.oracle.svm.core.heap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import jdk.graal.compiler.core.common.util.TypeWriter;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import org.graalvm.collections.EconomicSet;
 
 public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
 
@@ -123,7 +123,7 @@ public class CodeReferenceMapEncoder extends ReferenceMapEncoder {
         writeBuffer.putSV(compressed ? -refsCount : refsCount);
     }
 
-    private void encodeDerivedRun(boolean firstRun, int gap, int baseOffset, Set<Integer> derivedOffsets, boolean compressed, int size) {
+    private void encodeDerivedRun(boolean firstRun, int gap, int baseOffset, EconomicSet<Integer> derivedOffsets, boolean compressed, int size) {
         encodeRun(firstRun, gap, derivedOffsets.size(), compressed, true);
         for (int derivedOffset : derivedOffsets) {
             assert baseOffset % size == 0 && derivedOffset % size == 0 && derivedOffset != baseOffset;

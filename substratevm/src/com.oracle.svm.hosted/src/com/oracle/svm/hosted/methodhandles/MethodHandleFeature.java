@@ -34,12 +34,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -109,7 +108,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     private MethodHandleInvokerRenamingSubstitutionProcessor substitutionProcessor;
 
-    private Set<Object> heapSpeciesData = new HashSet<>();
+    private EconomicSet<Object> heapSpeciesData = EconomicSet.create(); // concurrent access
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -425,7 +424,9 @@ public class MethodHandleFeature implements InternalFeature {
 
     public void registerHeapSpeciesData(Object speciesData) {
         VMError.guarantee(heapSpeciesData != null, "The collected SpeciesData objects have already been processed.");
-        heapSpeciesData.add(speciesData);
+        synchronized (heapSpeciesData) {
+            heapSpeciesData.add(speciesData);
+        }
     }
 
     @Override

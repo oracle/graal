@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
@@ -154,7 +155,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private final ObjectFile objectFile;
     private final int wordSize;
-    private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>();
+    private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>(); // noEconomicSet(streaming)
     private final MethodPointerRelocationProvider relocationProvider;
 
     private ImageHeapLayoutInfo heapLayout;
@@ -913,7 +914,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private static void printHistogram(ImageHeapPartition partition, Iterable<ObjectInfo> objects) {
         HeapHistogram histogram = new HeapHistogram();
-        Set<ObjectInfo> uniqueObjectInfo = new HashSet<>();
+        EconomicSet<ObjectInfo> uniqueObjectInfo = EconomicSet.create();
 
         long uniqueCount = 0L;
         long uniqueSize = 0L;
@@ -966,8 +967,8 @@ public abstract class NativeImage extends AbstractImage {
         }
 
         @Override
-        public Set<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, getElement());
+        public EconomicSet<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, getElement());
             LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision ourVaddr = decisions.get(getElement()).getDecision(LayoutDecision.Kind.VADDR);
             LayoutDecision rodataVaddr = decisions.get(getRodataSection()).getDecision(LayoutDecision.Kind.VADDR);

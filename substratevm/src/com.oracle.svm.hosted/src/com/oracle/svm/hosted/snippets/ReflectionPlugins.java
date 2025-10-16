@@ -37,7 +37,6 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -46,6 +45,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -507,7 +507,7 @@ public final class ReflectionPlugins {
      * yet available in JDK 8 (like VarHandle methods) are silently ignored.
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, boolean subjectToStrictDynamicAccessInference, Class<?> declaringClass, String... methodNames) {
-        Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
+        EconomicSet<String> methodNamesSet = EconomicSet.create(Arrays.asList(methodNames));
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {

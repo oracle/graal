@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -47,6 +46,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -180,7 +180,7 @@ public final class NativeLibraries {
         }
 
         public List<String> sort() {
-            final Set<Dependency> discovered = new HashSet<>();
+            final EconomicSet<Dependency> discovered = EconomicSet.create();
             final Set<Dependency> processed = new LinkedHashSet<>();
 
             for (Dependency dep : allDependencies.values()) {
@@ -199,7 +199,7 @@ public final class NativeLibraries {
             return allDependencies.get(libName);
         }
 
-        private void visit(Dependency dep, Set<Dependency> discovered, Set<Dependency> processed) {
+        private void visit(Dependency dep, EconomicSet<Dependency> discovered, Set<Dependency> processed) {
             if (processed.contains(dep)) {
                 return;
             }

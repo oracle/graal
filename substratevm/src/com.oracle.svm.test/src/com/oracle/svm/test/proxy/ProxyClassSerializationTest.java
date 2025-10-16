@@ -76,8 +76,8 @@ public class ProxyClassSerializationTest {
             return false;
         }
 
-        Set<Class<?>> classSet1 = new HashSet<>(List.of(array1));
-        Set<Class<?>> classSet2 = new HashSet<>(List.of(array2));
+        Set<Class<?>> classSet1 = new HashSet<>(List.of(array1)); // noEconomicSet(Test)
+        Set<Class<?>> classSet2 = new HashSet<>(List.of(array2)); // noEconomicSet(Test)
 
         return classSet1.containsAll(classSet2);
     }

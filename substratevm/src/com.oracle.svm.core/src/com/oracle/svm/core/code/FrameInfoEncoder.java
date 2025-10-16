@@ -29,13 +29,12 @@ import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESS
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -245,7 +244,7 @@ public class FrameInfoEncoder {
         final EconomicMap<List<CompressedFrameData>, Integer> frameSliceIndexMap = EconomicMap.create(Equivalence.DEFAULT);
         final FrequencyEncoder<Integer> sliceFrequency = FrequencyEncoder.createEqualityEncoder();
         final Map<CompressedFrameData, Integer> frameSliceFrequency = new HashMap<>();
-        final Map<CompressedFrameData, Set<CompressedFrameData>> frameSuccessorMap = new HashMap<>();
+        final Map<CompressedFrameData, EconomicSet<CompressedFrameData>> frameSuccessorMap = new HashMap<>();
         final Map<CompressedFrameData, Integer> frameMaxHeight = new HashMap<>();
 
         boolean sealed = false;
@@ -277,9 +276,9 @@ public class FrameInfoEncoder {
                     frameSliceFrequency.merge(frame, 1, Integer::sum);
                     if (prevFrame != null) {
                         frameSuccessorMap.compute(prevFrame, (_, v) -> {
-                            Set<CompressedFrameData> callers;
+                            EconomicSet<CompressedFrameData> callers;
                             if (v == null) {
-                                callers = new HashSet<>();
+                                callers = EconomicSet.create();
                             } else {
                                 callers = v;
                             }
@@ -355,7 +354,7 @@ public class FrameInfoEncoder {
                  * frame can be directly pointed to.
                  */
                 boolean directlyPointToSharedFrame = slice.stream().allMatch(frame -> {
-                    Set<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
+                    EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
                     return sharedEncodedFrameIndexMap.containsKey(frame) && (frameSuccessors == null || frameSuccessors.size() == 1);
                 });
                 if (directlyPointToSharedFrame) {
@@ -397,7 +396,7 @@ public class FrameInfoEncoder {
          *         successor.
          */
         private CompressedFrameData getUniqueSuccessor(CompressedFrameData frame) {
-            Set<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
+            EconomicSet<CompressedFrameData> frameSuccessors = frameSuccessorMap.get(frame);
             if (frameSuccessors != null && frameSuccessors.size() == 1) {
                 return frameSuccessors.iterator().next();
             }

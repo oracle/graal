@@ -28,13 +28,10 @@ package com.oracle.objectfile.elf;
 import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -53,6 +50,7 @@ import com.oracle.objectfile.elf.ELFObjectFile.ELFSectionFlag;
 import com.oracle.objectfile.elf.ELFObjectFile.SectionType;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
+import org.graalvm.collections.EconomicSet;
 
 public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
@@ -407,12 +405,12 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        ArrayList<BuildDependency> ourDeps = new ArrayList<>(ObjectFile.defaultDependencies(decisions, this));
+        EconomicSet<BuildDependency> ourDeps = ObjectFile.defaultDependencies(decisions, this);
         // we depend on the contents of our strtab
         ourDeps.add(BuildDependency.createOrGet(decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT), decisions.get(strtab).getDecision(LayoutDecision.Kind.CONTENT)));
         // if we're dynamic, we also depend on vaddrs of any sections into which our symbols refer
         if (isDynamic()) {
-            Set<ELFSection> referencedSections = new HashSet<>();
+            EconomicSet<ELFSection> referencedSections = EconomicSet.create();
             for (Entry ent : entries) {
                 ELFSection es = ent.referencedSection;
                 if (es != null) {
