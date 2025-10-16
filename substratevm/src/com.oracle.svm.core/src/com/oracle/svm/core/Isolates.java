@@ -76,6 +76,7 @@ public class Isolates {
     /* Only used if SpawnIsolates is disabled. */
     private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
 
+    private static boolean startTimesAssigned;
     private static long startTimeNanos;
     private static long initDoneTimeMillis;
     private static long isolateId = -1;
@@ -110,29 +111,33 @@ public class Isolates {
     }
 
     public static void assignStartTime() {
-        assert startTimeNanos == 0 : startTimeNanos;
-        assert initDoneTimeMillis == 0 : initDoneTimeMillis;
+        assert !startTimesAssigned;
         startTimeNanos = System.nanoTime();
         initDoneTimeMillis = TimeUtils.currentTimeMillis();
+        startTimesAssigned = true;
     }
 
     /** Epoch-based timestamp. If possible, {@link #getStartTimeNanos()} should be used instead. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getInitDoneTimeMillis() {
-        assert initDoneTimeMillis != 0;
+        assert startTimesAssigned;
         return initDoneTimeMillis;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getUptimeMillis() {
-        assert startTimeNanos != 0;
-        return TimeUtils.millisSinceNanos(startTimeNanos);
+        return TimeUtils.millisSinceNanos(getStartTimeNanos());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getStartTimeNanos() {
-        assert startTimeNanos != 0;
+        assert startTimesAssigned;
         return startTimeNanos;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isStartTimeAssigned() {
+        return startTimesAssigned;
     }
 
     /**
