@@ -51,8 +51,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-
 import com.oracle.truffle.api.impl.AbstractAssumption;
+
 import sun.misc.Unsafe;
 
 /**
@@ -446,7 +446,7 @@ abstract class ExtLocations {
             if (curr != null && curr != TypeAssumption.ANY && curr.getAssumption().isValid()) {
                 Class<? extends Object> type = curr.type;
                 boolean nonNull = curr.nonNull;
-                return UnsafeAccess.unsafeCast(value, type, condition, nonNull);
+                return UnsafeAccess.unsafeCast(value, type, condition, nonNull, false);
             } else {
                 return value;
             }
