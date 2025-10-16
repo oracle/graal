@@ -59,6 +59,3 @@ Additional open source language runtimes designed for use with Oracle GraalVM 25
 Oracle GraalVM is licensed under [GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 Subject to the conditions in the license, including the License for Early Adopter Versions, the GFTC is intended to permit use by any user including commercial and production use.
 Redistribution is permitted as long as it is not for a fee.
-Oracle GraalVM is also free to use on Oracle Cloud Infrastructure.
-
-Oracle GraalVM is free to use and supported on Oracle Cloud Infrastructure.

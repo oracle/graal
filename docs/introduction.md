@@ -29,7 +29,6 @@ GraalVM's key benefits are:
 
 Oracle GraalVM is licensed under [GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 Subject to the conditions in the license, including the License for Early Adopter Versions, the GFTC is intended to permit use by any user including commercial and production use. Redistribution is permitted as long as it is not for a fee.
-Oracle GraalVM is also free to use on Oracle Cloud Infrastructure.
 GraalVM Community Edition is open-source project built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
 Check the [licenses](https://github.com/oracle/graal#license) of individual GraalVM components which are generally derivative of the license of a particular language and may differ.
 
