@@ -450,7 +450,7 @@ abstract class ExtLocations {
             if (curr != null && curr != TypeAssumption.ANY && curr.getAssumption().isValid()) {
                 Class<? extends Object> type = curr.type;
                 boolean nonNull = curr.nonNull;
-                return UnsafeAccess.unsafeCast(value, type, condition, nonNull);
+                return UnsafeAccess.unsafeCast(value, type, condition, nonNull, false);
             } else {
                 return value;
             }

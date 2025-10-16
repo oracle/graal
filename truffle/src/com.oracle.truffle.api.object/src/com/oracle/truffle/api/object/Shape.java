@@ -1056,7 +1056,7 @@ public final class Shape {
      * @since 0.8 or earlier
      */
     public Shape getRoot() {
-        return UnsafeAccess.unsafeCast(root, Shape.class, true, true);
+        return UnsafeAccess.unsafeCast(root, Shape.class, true, true, false);
     }
 
     /**
@@ -1636,7 +1636,7 @@ public final class Shape {
 
     /**
      * {@return a string representation of the object}
-     * 
+     *
      * @since 25.1
      */
     @Override

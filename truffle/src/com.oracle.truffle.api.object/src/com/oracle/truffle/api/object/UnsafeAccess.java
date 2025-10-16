@@ -90,10 +90,6 @@ final class UnsafeAccess {
         return (T) value;
     }
 
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
-        return unsafeCast(value, type, condition, nonNull, false);
-    }
-
     /**
      * Like {@link System#arraycopy}, but kills any location.
      */
