@@ -882,7 +882,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
             @Override
             public Integer enter(HIRBlock b) {
                 // all new nodes for checking arenas, pop if we go out of scope of this block again
-                int newArinaValidInScopeNodes = 0;
+                int newArenaValidInScopeNodes = 0;
                 // all scopes that are closed in this block that have been open before already
                 Deque<ScopedMethodNode> scopesToRepush = new ArrayDeque<>();
 
@@ -891,12 +891,12 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                 for (FixedNode f : b.getNodes()) {
                     if (f instanceof MemoryArenaValidInScopeNode mas) {
                         defs.push(new ReachingDefScope(mas));
-                        newArinaValidInScopeNodes++;
+                        newArenaValidInScopeNodes++;
                     } else if (f instanceof ScopedMethodNode scope) {
                         /*
                          * When we process scope nodes we have 3 major situations to deal with.
                          *
-                         * no open scope, no scopes openend in "this" block -> do nothing
+                         * no open scope, no scopes opened in "this" block -> do nothing
                          * 
                          * we open a new scope s, we do not close it -> pop it when exit() is called
                          * 
@@ -932,7 +932,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                     }
                 }
 
-                final int finalNewDominatingValues = newArinaValidInScopeNodes;
+                final int finalNewDominatingValues = newArenaValidInScopeNodes;
                 // all new scopes that have not been closed already need to be removed again when we
                 // go out of this block
                 final int finalNewScopesToPop = newOpenedScopes.size();
