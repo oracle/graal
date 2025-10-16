@@ -220,7 +220,18 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 Element existingEnclosingElement = existing.getMessageElement().getEnclosingElement();
                 Element currentEnclosingElement = exportedMessage.getMessageElement().getEnclosingElement();
                 if (ElementUtils.elementEquals(existingEnclosingElement, currentEnclosingElement)) {
-                    String error = String.format("Duplicate exported library message %s.", messageName);
+                    LibraryMessage resolvedMessage = existing.getResolvedMessage();
+                    LibraryMessage replacementFor = resolvedMessage.getReplacementFor();
+                    String error;
+                    if (replacementFor != null && resolvedMessage.getDeprecatedOverloads().contains(replacementFor)) {
+                        // Both the deprecated message and its replacement are being exported.
+                        // This configuration is not supported; only the replacement should be
+                        // exported.
+                        error = String.format("Cannot export both a deprecated message and a new message %s that declares a replacement for it. " +
+                                        "Remove the export of the deprecated message.", messageName);
+                    } else {
+                        error = String.format("Duplicate exported library message %s.", messageName);
+                    }
                     model.addError(member, error);
                     model.addError(existing.getMessageElement(), error);
                 } else if (ElementUtils.isSubtype(currentEnclosingElement.asType(), existingEnclosingElement.asType())) {

@@ -392,6 +392,44 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementLegacyAndNew {
+
+        @ExportMessage
+        final int readMember(Object name) {
+            return 100;
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message read that declares a replacement for it. " +
+                        "Remove the export of the deprecated message.")
+        @ExportMessage
+        final int read(int index) {
+            return Long.toString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message read that declares a replacement for it. " +
+                        "Remove the export of the deprecated message.")
+        @ExportMessage
+        final int read(long index) {
+            return Long.toString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message readUnsigned that declares a replacement for it. " +
+                        "Remove the export of the deprecated message.")
+        @ExportMessage
+        final int readUnsigned(int index) {
+            return Integer.toUnsignedString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message readUnsigned that declares a replacement for it. " +
+                        "Remove the export of the deprecated message.")
+        @ExportMessage
+        final int readUnsigned(long index) {
+            return Long.toUnsignedString(index).length();
+        }
+    }
+
     @Test
     @SuppressWarnings("deprecation")
     public void testReplacements() {
