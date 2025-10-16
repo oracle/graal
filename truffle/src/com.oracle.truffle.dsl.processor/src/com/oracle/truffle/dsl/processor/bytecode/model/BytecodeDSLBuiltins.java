@@ -215,13 +215,14 @@ public class BytecodeDSLBuiltins {
                         LoadNull produces a {@code null} value.
                         """) //
                         .setInstruction(m.loadNullInstruction);
+        m.loadArgumentInstruction = m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
+                        .addImmediate(ImmediateKind.SHORT, "index");
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads the argument at {@code index} from the frame.
                         Throws {@link IndexOutOfBoundsException} if the index is out of bounds.
                         """) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load (must fit into a short)")) //
-                        .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
-                                        .addImmediate(ImmediateKind.SHORT, "index"));
+                        .setInstruction(m.loadArgumentInstruction);
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
                         This operation is only permitted inside the {@code catch} operation of TryCatch and TryCatchOtherwise operations.
@@ -469,10 +470,10 @@ public class BytecodeDSLBuiltins {
     }
 
     private static String loadLocalUndefinedBehaviour(BytecodeDSLModel m) {
-        if (m.defaultLocalValue == null || m.defaultLocalValue.isEmpty()) {
-            return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
-        } else {
+        if (m.hasDefaultLocalValue()) {
             return String.format("produces the default local value (%s)", m.defaultLocalValue);
+        } else {
+            return "throws a {@link com.oracle.truffle.api.frame.FrameSlotTypeException}";
         }
     }
 

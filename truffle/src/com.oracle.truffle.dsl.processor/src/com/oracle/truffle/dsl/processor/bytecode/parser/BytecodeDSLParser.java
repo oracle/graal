@@ -254,6 +254,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
         model.enableThreadedSwitch = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableThreadedSwitch");
         model.enableInstructionTracing = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionTracing");
+        model.enableInstructionRewriting = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionRewriting");
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 

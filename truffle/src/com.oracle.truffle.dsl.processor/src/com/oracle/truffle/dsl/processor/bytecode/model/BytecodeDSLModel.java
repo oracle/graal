@@ -106,6 +106,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final List<CustomOperationModel> instrumentations = new ArrayList<>();
     private final List<CustomOperationModel> customYieldOperations = new ArrayList<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
+    public InstructionRewriterModel instructionRewriterModel;
     // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
     public InstructionModel[] invalidateInstructions;
 
@@ -137,6 +138,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public DSLExpression variadicStackLimitExpression;
 
     public boolean enableInstructionTracing;
+    public boolean enableInstructionRewriting;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement interceptControlFlowException;
@@ -182,6 +184,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel throwInstruction;
     public InstructionModel loadConstantInstruction;
     public InstructionModel loadNullInstruction;
+    public InstructionModel loadArgumentInstruction;
     public InstructionModel yieldInstruction;
     public InstructionModel loadVariadicInstruction;
     public InstructionModel splatVariadicInstruction;
@@ -278,6 +281,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public boolean hasYieldOperation() {
         return enableYield || !customYieldOperations.isEmpty();
+    }
+
+    public boolean hasDefaultLocalValue() {
+        return !(defaultLocalValue == null || defaultLocalValue.isEmpty());
     }
 
     public InstructionModel getInvalidateInstruction(int length) {
@@ -516,6 +523,43 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         this.instructions = newInstructions;
+        if (enableInstructionRewriting) {
+            this.instructionRewriterModel = createRewriterModel();
+        }
+    }
+
+    private InstructionRewriterModel createRewriterModel() {
+        return InstructionRewriterModel.create("InstructionRewriter", instructions.sequencedValues(), computeRewriteRules());
+    }
+
+    private InstructionRewriteRuleModel[] computeRewriteRules() {
+        List<InstructionRewriteRuleModel> rules = new ArrayList<>();
+
+        // load.argument, pop -> _
+        rules.add(deletionRule(p(loadArgumentInstruction), p(popInstruction)));
+        // load.constant, pop -> _
+        rules.add(deletionRule(p(loadConstantInstruction), p(popInstruction)));
+        // load.null, pop -> _
+        rules.add(deletionRule(p(loadNullInstruction), p(popInstruction)));
+
+        // TODO GR-71765 this rule can't be used if illegal local exceptions
+        // load.local x, pop -> _
+        rules.add(deletionRule(p(loadLocalOperation.instruction), p(popInstruction)));
+
+        return rules.toArray(InstructionRewriteRuleModel[]::new);
+    }
+
+    private static InstructionRewriteRuleModel deletionRule(InstructionPatternModel... lhs) {
+        return new InstructionRewriteRuleModel(lhs, new InstructionPatternModel[0]);
+    }
+
+    private static InstructionPatternModel p(InstructionModel instruction, String... immediates) {
+        String[] finalImmediates = immediates;
+        if (immediates.length == 0 && !instruction.immediates.isEmpty()) {
+            // Provide an empty array of immediates if immediates weren't provided.
+            finalImmediates = new String[instruction.immediates.size()];
+        }
+        return new InstructionPatternModel(instruction, finalImmediates);
     }
 
     public short getInstructionStartIndex() {

@@ -613,7 +613,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
     @Test
     public void testSpecializedLocalUndefined() {
-        // if (arg0) { x = 42 } else { x /* undefined */ }
+        // if (arg0) { x = 42 } else { consume(x) /* undefined */ }
         // return 123
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot();
@@ -627,7 +627,9 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endStoreLocal();
 
+            b.beginConsumer();
             b.emitLoadLocal(x);
+            b.endConsumer();
 
             b.endIfThenElse();
 
@@ -645,6 +647,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");
@@ -658,6 +661,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local$Int$Int",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");
@@ -679,6 +683,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "store.local$Int$Int",
                         "branch",
                         "load.local",
+                        "c.Consumer",
                         "pop",
                         "load.constant",
                         "return");

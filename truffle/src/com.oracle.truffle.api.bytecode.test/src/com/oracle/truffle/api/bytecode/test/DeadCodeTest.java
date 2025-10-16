@@ -175,14 +175,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
         //     <dead>
         //   }
         // } finally {
-        //   arg0
+        //   someValue
         // }
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginTryFinally(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> b.emitSomeValue());
             b.beginTryFinally(() -> {
                 b.beginBlock();
                 b.beginReturn();
@@ -204,15 +204,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "c.Throw",
                         "pop",
                         "load.constant",    // inner fallthrough handler
-                        "load.argument",    // inlined outer handler
+                        "c.SomeValue",      // inlined outer handler
                         "pop",
                         "return",
                         "load.constant",    // inner exception handler
-                        "load.argument",    // inlined outer handler
+                        "c.SomeValue",      // inlined outer handler
                         "pop",
                         "return",
                         // no outer fallthrough handler
-                        "load.argument",    // outer exception handler
+                        "c.SomeValue",      // outer exception handler
                         "pop",
                         "throw");
 
@@ -393,9 +393,9 @@ public class DeadCodeTest extends AbstractInstructionTest {
     public void testReachableTryCatchOtherwise1() {
         // @formatter:off
         // try {
-        //   41;
+        //   someValue;
         // } catch ex {
-        //   43;
+        //   someValue;
         // } otherwise {
         //   return 42;
         //   <dead>
@@ -414,9 +414,9 @@ public class DeadCodeTest extends AbstractInstructionTest {
                 b.endBlock();
             });
 
-            b.emitLoadConstant(41); // try
+            b.emitSomeValue(); // try
 
-            b.emitLoadConstant(43); // catch
+            b.emitSomeValue(); // catch
 
             b.endTryCatchOtherwise();
 
@@ -428,11 +428,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
         }).getRootNode();
 
         assertInstructions(node,
-                        "load.constant",
+                        "c.SomeValue",
                         "pop",
                         "load.constant",
                         "return",
-                        "load.constant",
+                        "c.SomeValue",
                         "pop",
                         "pop",
                         "load.constant",
@@ -450,14 +450,14 @@ public class DeadCodeTest extends AbstractInstructionTest {
         //   return 42;
         //   <dead>
         // } otherwise {
-        //   41;
+        //   someValue;
         // }
         // return 44;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot();
 
-            b.beginTryCatchOtherwise(() -> b.emitLoadConstant(41));
+            b.beginTryCatchOtherwise(() -> b.emitSomeValue());
             b.emitThrow(); // try
 
             b.beginBlock(); // catch
@@ -479,7 +479,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "c.Throw",
                         "pop",
-                        "load.constant",
+                        "c.SomeValue",
                         "pop",
                         "branch",
                         "load.constant",
@@ -824,7 +824,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // try {
         //   lbl:
         // } finally {
-        //   arg0;
+        //   someValue;
         // }
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
@@ -834,7 +834,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginTryFinally(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> b.emitSomeValue());
             b.beginBlock();
             b.emitLabel(b.createLabel());
             b.endBlock();
@@ -854,10 +854,10 @@ public class DeadCodeTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "load.constant",
                         "return",
-                        "load.argument",
+                        "c.SomeValue",
                         "pop",
                         "branch",
-                        "load.argument",
+                        "c.SomeValue",
                         "pop",
                         "throw",
                         "load.null",
@@ -877,7 +877,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
          *   return throw();
          *   branch lbl;  // dead
          * } finally {
-         *   load_argument(0);
+         *   to_boolean(load_argument(0));
          * }
          * lbl:
          * @formatter:on
@@ -887,7 +887,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
-            b.beginTryFinally(() -> b.emitLoadArgument(0));
+            b.beginTryFinally(() -> {
+                b.beginToBoolean();
+                b.emitLoadArgument(0); // wrap in toBoolean to prevent pop rewriting
+                b.endToBoolean();
+            });
 
             b.beginBlock(); // begin try
             b.beginReturn();
@@ -907,9 +911,11 @@ public class DeadCodeTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "c.Throw",
                         "load.argument",
+                        "c.ToBoolean",
                         "pop",
                         "return",
                         "load.argument",
+                        "c.ToBoolean",
                         "pop",
                         "throw",
                         "load.null",
@@ -1070,6 +1076,15 @@ public class DeadCodeTest extends AbstractInstructionTest {
             @Specialization
             public static boolean doInt(int operand, int value) {
                 return operand == value;
+            }
+        }
+
+        // Effectively a LoadNull, but when followed by a pop does not get rewritten.
+        @Operation
+        static final class SomeValue {
+            @Specialization
+            public static Object perform() {
+                return null;
             }
         }
 

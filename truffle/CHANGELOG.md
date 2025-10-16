@@ -64,7 +64,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements.
 * GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
 * GR-71402: Added `InteropLibrary#hasStaticScope` and `InteropLibrary#getStaticScope` returning the static scope representing static or class-level members associated with the given meta object.
-
+* GR-61161: Bytecode DSL: Added support for basic instruction rewriting. At bytecode build time, the builder can perform peephole optimization to remove redundant loads. This new optimization can be configured using `@GenerateBytecode(enableInstructionRewriting=true|false)`.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

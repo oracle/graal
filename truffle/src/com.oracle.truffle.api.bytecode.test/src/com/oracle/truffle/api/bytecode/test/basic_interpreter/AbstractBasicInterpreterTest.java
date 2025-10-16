@@ -135,6 +135,10 @@ public abstract class AbstractBasicInterpreterTest {
             return !hasRootScoping();
         }
 
+        public boolean hasInstructionRewriting() {
+            return interpreterClass() != BasicInterpreterBase.class;
+        }
+
         public boolean storesBciInFrame() {
             return interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
         }

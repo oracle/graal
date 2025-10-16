@@ -448,6 +448,8 @@ public class TruffleTypes {
     public static final String ByteArraySupport_Name = "com.oracle.truffle.api.memory.ByteArraySupport";
     public static final String FrameExtensions_Name = "com.oracle.truffle.api.frame.FrameExtensions";
 
+    public static final String GenerateInstructionRewriter_Name = "com.oracle.truffle.api.bytecode.test.GenerateInstructionRewriter";
+
     public final DeclaredType BytecodeBuilder = c.getDeclaredTypeOptional(BytecodeBuilder_Name);
     public final DeclaredType BytecodeConfig = c.getDeclaredTypeOptional(BytecodeConfig_Name);
     public final DeclaredType BytecodeConfigEncoder = c.getDeclaredTypeOptional(BytecodeConfigEncoder_Name);
@@ -518,6 +520,8 @@ public class TruffleTypes {
     public final DeclaredType BytecodeDSLAccess = c.getDeclaredTypeOptional(BytecodeDSLAccess_Name);
     public final DeclaredType ByteArraySupport = c.getDeclaredTypeOptional(ByteArraySupport_Name);
     public final DeclaredType FrameExtensions = c.getDeclaredTypeOptional(FrameExtensions_Name);
+
+    public final DeclaredType GenerateInstructionRewriter = c.getDeclaredTypeOptional(GenerateInstructionRewriter_Name);
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
