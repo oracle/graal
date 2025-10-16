@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
-import static com.oracle.truffle.espresso.meta.Meta.isSignaturePolymorphicHolderType;
+import static com.oracle.truffle.espresso.classfile.ParserKlass.isSignaturePolymorphicHolderType;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -1182,7 +1182,7 @@ public final class ObjectKlass extends Klass implements AttributedElement {
             method = lookupMirandas(methodName, signature);
         }
         if (method == null && isSignaturePolymorphicHolderType(getType())) {
-            method = lookupPolysigMethod(methodName, signature, lookupMode);
+            method = lookupSignaturePolymorphicMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
             CompilerAsserts.partialEvaluationConstant(this);

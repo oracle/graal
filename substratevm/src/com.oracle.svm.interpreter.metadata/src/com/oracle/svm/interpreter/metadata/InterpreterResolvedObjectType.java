@@ -423,4 +423,14 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         }
         throw VMError.unimplemented("lookupInterfaceMethod");
     }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> methodName) {
+        for (InterpreterResolvedJavaMethod m : getDeclaredMethods()) {
+            if (m.getSymbolicName() == methodName && m.isDeclaredSignaturePolymorphic()) {
+                return m;
+            }
+        }
+        return null;
+    }
 }

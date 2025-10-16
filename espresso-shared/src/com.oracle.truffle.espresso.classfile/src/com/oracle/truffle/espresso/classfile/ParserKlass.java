@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
@@ -176,5 +177,13 @@ public final class ParserKlass implements AttributedElement {
                         parserKlass.getThisKlassIndex(),
                         parserKlass.getMajorVersion(), parserKlass.getMinorVersion(),
                         parserKlass.getHiddenKlassId());
+    }
+
+    /**
+     * Checks whether if the given type name can declare signature polymorphic methods according to
+     * JVM-2.9.3.
+     */
+    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
+        return type == ParserTypes.java_lang_invoke_MethodHandle || type == ParserTypes.java_lang_invoke_VarHandle;
     }
 }
