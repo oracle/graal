@@ -98,7 +98,7 @@ public final class SimdToBitMaskNode extends UnaryNode implements VectorLIRLower
     @Override
     public void generate(NodeLIRBuilderTool builder, VectorLIRGeneratorTool gen) {
         LIRKind resultKind = builder.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        builder.setResult(this, gen.emitVectorToBitMask(resultKind, builder.operand(getValue())));
+        builder.setResult(this, gen.emitVectorToBitMask(resultKind, builder.operand(getValue()), ((SimdStamp) getValue().stamp(NodeView.DEFAULT)).isMask()));
     }
 
     private static Stamp computeStamp(Stamp stamp, JavaKind resultKind) {
