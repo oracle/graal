@@ -33,17 +33,17 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
 
 /**
@@ -105,7 +105,7 @@ public class LayeredHostedImageHeapMapCollector {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredHostedImageHeapMapCollector>() {
 
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHostedImageHeapMapCollector singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredHostedImageHeapMapCollector singleton) {
                     Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys);
                     if (singleton.previousLayerReachableMapKeys != null) {
                         reachableMapKeys.addAll(singleton.previousLayerReachableMapKeys);
@@ -125,7 +125,7 @@ public class LayeredHostedImageHeapMapCollector {
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredHostedImageHeapMapCollector> {
 
         @Override
-        public LayeredHostedImageHeapMapCollector createFromLoader(ImageSingletonLoader loader) {
+        public LayeredHostedImageHeapMapCollector createFromLoader(KeyValueLoader loader) {
             List<String> previousLayerReachableMapKeys = loader.readStringList("reachableMapKeys");
             return new LayeredHostedImageHeapMapCollector(previousLayerReachableMapKeys);
         }

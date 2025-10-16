@@ -55,23 +55,23 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.layeredimage.BuildingImageLayerPredicate;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.VMError;
 
@@ -677,7 +677,7 @@ public class IsolateArgumentParser {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredOptionInfo>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredOptionInfo singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredOptionInfo singleton) {
                     if (ImageLayerBuildingSupport.firstImageBuild()) {
                         writer.writeInt("numOptions", IsolateArgumentParser.getOptionCount());
                         writer.writeStringList("optionNames", IsolateArgumentParser.getOptions().stream().map(OptionKey::getName).toList());
@@ -698,7 +698,7 @@ public class IsolateArgumentParser {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredOptionInfo> {
         @Override
-        public LayeredOptionInfo createFromLoader(ImageSingletonLoader loader) {
+        public LayeredOptionInfo createFromLoader(KeyValueLoader loader) {
             int numOptions = loader.readInt("numOptions");
             var optionNames = Collections.unmodifiableList(loader.readStringList("optionNames"));
             return new LayeredOptionInfo(numOptions, optionNames);

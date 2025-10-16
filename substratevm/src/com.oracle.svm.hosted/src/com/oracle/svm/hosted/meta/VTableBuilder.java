@@ -41,9 +41,9 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
+import com.oracle.svm.hosted.layeredimage.LayeredDispatchTableFeature;
 
 import jdk.graal.compiler.debug.Assertions;
 

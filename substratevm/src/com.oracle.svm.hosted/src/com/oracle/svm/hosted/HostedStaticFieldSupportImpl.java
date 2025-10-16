@@ -29,16 +29,15 @@ import java.util.function.Function;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -121,7 +120,7 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
 
     private int getCurrentLayerNumber() {
         if (currentLayerCache == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED) {
-            int newLayerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
+            int newLayerNumber = ImageLayerBuildingSupport.getCurrentLayerNumber();
             assert newLayerNumber != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
             currentLayerCache = newLayerNumber;
         }

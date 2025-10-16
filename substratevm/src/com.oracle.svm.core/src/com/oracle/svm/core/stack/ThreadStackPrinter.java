@@ -40,7 +40,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;

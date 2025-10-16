@@ -25,7 +25,7 @@
 package com.oracle.svm.core.meta;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;

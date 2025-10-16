@@ -39,24 +39,24 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.imagelayer.PriorLayerMarker;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.PriorLayerMarker;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
-import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.CrossLayerConstantRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -316,7 +316,7 @@ public class HostedClassLoaderPackageManagement {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedClassLoaderPackageManagement>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedClassLoaderPackageManagement singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, HostedClassLoaderPackageManagement singleton) {
                     return singleton.preparePersist(writer);
                 }
 
@@ -341,7 +341,7 @@ public class HostedClassLoaderPackageManagement {
         }
     }
 
-    private LayeredPersistFlags preparePersist(ImageSingletonWriter writer) {
+    private LayeredPersistFlags preparePersist(KeyValueWriter writer) {
         writer.writeStringList(APP_KEY, collectPackageNames(appClassLoader, priorAppPackageNames));
         writer.writeStringList(PLATFORM_KEY, collectPackageNames(platformClassLoader, priorPlatformPackageNames));
         writer.writeStringList(BOOT_KEY, collectPackageNames(bootClassLoader, priorBootPackageNames));
@@ -351,7 +351,7 @@ public class HostedClassLoaderPackageManagement {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<HostedClassLoaderPackageManagement> {
         @Override
-        public HostedClassLoaderPackageManagement createFromLoader(ImageSingletonLoader loader) {
+        public HostedClassLoaderPackageManagement createFromLoader(KeyValueLoader loader) {
             var appSet = loader.readStringList(APP_KEY).stream().collect(Collectors.toUnmodifiableSet());
             var platformSet = loader.readStringList(PLATFORM_KEY).stream().collect(Collectors.toUnmodifiableSet());
             var bootSet = loader.readStringList(BOOT_KEY).stream().collect(Collectors.toUnmodifiableSet());

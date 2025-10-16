@@ -51,7 +51,7 @@ import jdk.graal.compiler.processor.AbstractProcessor;
 public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton";
-    static final String LAYERED_SINGLETON_INFO = "com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo";
+    static final String LAYERED_SINGLETON_INFO = "com.oracle.svm.core.layeredimage.LoadedLayeredImageSingletonInfo";
 
     private final Set<Element> processed = new HashSet<>();
 
@@ -149,10 +149,10 @@ public class AutomaticallyRegisteredImageSingletonProcessor extends AbstractProc
                             import org.graalvm.nativeimage.ImageSingletons;
 
                             import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-                            import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-                            import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-                            import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-                            import com.oracle.svm.core.traits.SingletonTraits;%3$s
+                            import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+                            import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.NoLayeredCallbacks;
+                            import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+                            import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;%3$s
 
                             @AutomaticallyRegisteredFeature%4$s
                             @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)

@@ -70,8 +70,7 @@ import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
@@ -147,7 +146,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .collect(Collectors.toSet());
 
         buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
-        layerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
+        layerNumber = ImageLayerBuildingSupport.getCurrentLayerNumber();
     }
 
     @SuppressWarnings("unused")

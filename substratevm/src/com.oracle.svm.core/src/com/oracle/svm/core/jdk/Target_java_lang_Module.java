@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 /**

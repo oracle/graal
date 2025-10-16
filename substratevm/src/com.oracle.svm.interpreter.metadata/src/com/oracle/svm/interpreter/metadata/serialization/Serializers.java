@@ -38,7 +38,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;

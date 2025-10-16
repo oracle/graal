@@ -39,10 +39,10 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 
 /**
  * A {@link LogHandler} that can use provided function pointers for each operation. If a function

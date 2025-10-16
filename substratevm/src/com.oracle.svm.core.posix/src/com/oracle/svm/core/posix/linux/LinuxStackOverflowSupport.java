@@ -33,10 +33,10 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 
 import jdk.graal.compiler.word.Word;
 

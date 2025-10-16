@@ -45,26 +45,27 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
-import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
-import com.oracle.svm.core.traits.SingletonAccess;
-import com.oracle.svm.core.traits.SingletonAccessSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKindSupplier;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.core.traits.SingletonTraitsSupplier;
+import com.oracle.svm.core.layeredimage.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimage.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerSingletonLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonAccessFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonAccessSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKindSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitsSupplier;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -307,7 +308,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                  * Create a placeholder ImageLayerBuilding support to indicate this is not a layered
                  * build.
                  */
-                singletonDuringImageBuild.addSingleton(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
+                singletonDuringImageBuild.addSingleton(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false, MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER) {
                 });
             }
             if (support != null && support.getSingletonLoader() != null) {

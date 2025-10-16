@@ -36,19 +36,19 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.VMError;
@@ -186,7 +186,7 @@ class GCCauseFeature implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<GCCauseFeature>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, GCCauseFeature singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, GCCauseFeature singleton) {
                     List<String> gcCauses;
                     if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                         gcCauses = GCCause.getGCCauses().stream().map(gcCause -> {
@@ -206,7 +206,7 @@ class GCCauseFeature implements InternalFeature {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, GCCauseFeature singleton) {
+                public void onSingletonRegistration(KeyValueLoader loader, GCCauseFeature singleton) {
                     singleton.registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
                 }
             });

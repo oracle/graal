@@ -28,10 +28,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.riscv64.RISCV64;

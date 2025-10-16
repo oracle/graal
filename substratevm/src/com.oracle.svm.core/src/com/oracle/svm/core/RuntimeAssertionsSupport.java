@@ -36,19 +36,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -230,7 +230,7 @@ public final class RuntimeAssertionsSupport {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<RuntimeAssertionsSupport>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, RuntimeAssertionsSupport singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, RuntimeAssertionsSupport singleton) {
                     persistAssertionStatus(writer, PACKAGE, singleton.packageAssertionStatus);
                     persistAssertionStatus(writer, CLASS, singleton.classAssertionStatus);
                     writer.writeInt(DEFAULT_ASSERTION_STATUS, singleton.defaultAssertionStatus ? 1 : 0);
@@ -238,7 +238,7 @@ public final class RuntimeAssertionsSupport {
                     return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
-                private void persistAssertionStatus(ImageSingletonWriter writer, String type, Map<String, Boolean> assertionStatus) {
+                private void persistAssertionStatus(KeyValueWriter writer, String type, Map<String, Boolean> assertionStatus) {
                     List<String> keys = new ArrayList<>();
                     List<Boolean> values = new ArrayList<>();
                     for (var entry : assertionStatus.entrySet()) {
@@ -250,20 +250,20 @@ public final class RuntimeAssertionsSupport {
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, RuntimeAssertionsSupport singleton) {
+                public void onSingletonRegistration(KeyValueLoader loader, RuntimeAssertionsSupport singleton) {
                     checkMaps(loadAssertionStatus(loader, PACKAGE), singleton.packageAssertionStatus);
                     checkMaps(loadAssertionStatus(loader, CLASS), singleton.classAssertionStatus);
                     checkBoolean(singleton.defaultAssertionStatus, loader, DEFAULT_ASSERTION_STATUS);
                     checkBoolean(singleton.systemAssertionStatus, loader, SYSTEM_ASSERTION_STATUS);
                 }
 
-                private void checkBoolean(boolean currentLayerAssertionStatus, ImageSingletonLoader loader, String assertionStatusKey) {
+                private void checkBoolean(boolean currentLayerAssertionStatus, KeyValueLoader loader, String assertionStatusKey) {
                     boolean previousLayerStatus = loader.readInt(assertionStatusKey) == 1;
                     VMError.guarantee(currentLayerAssertionStatus == previousLayerStatus, "The assertion status is the previous layer was %s, but the assertion status in the current layer is %s",
                                     currentLayerAssertionStatus, previousLayerStatus);
                 }
 
-                private Map<String, Boolean> loadAssertionStatus(ImageSingletonLoader loader, String type) {
+                private Map<String, Boolean> loadAssertionStatus(KeyValueLoader loader, String type) {
                     HashMap<String, Boolean> result = new HashMap<>();
                     var keys = loader.readStringList(type + ASSERTION_STATUS_KEYS);
                     var values = loader.readBoolList(type + ASSERTION_STATUS_VALUES);

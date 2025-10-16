@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.util.Set;
 
+import com.oracle.svm.hosted.jdk.ModuleLayerFeature;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;

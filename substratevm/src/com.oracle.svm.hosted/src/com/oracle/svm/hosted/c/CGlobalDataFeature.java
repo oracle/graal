@@ -53,17 +53,16 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
-import com.oracle.svm.hosted.imagelayer.CodeLocation;
-import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
+import com.oracle.svm.hosted.layeredimage.CodeLocation;
+import com.oracle.svm.hosted.layeredimage.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -323,7 +322,7 @@ public class CGlobalDataFeature implements InternalFeature {
                             "We currently do not allow CGlobalData code locations to be in a hidden class. Please adapt the code accordingly. Location: %s",
                             data.codeLocation);
         }
-        CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data, definedAsGlobalInPriorLayer, DynamicImageLayerInfo.getCurrentLayerNumber());
+        CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data, definedAsGlobalInPriorLayer, ImageLayerBuildingSupport.getCurrentLayerNumber());
         if (data.nonConstant) {
             nonConstantRegistry.registerNonConstantSymbol(cGlobalDataInfo);
         }

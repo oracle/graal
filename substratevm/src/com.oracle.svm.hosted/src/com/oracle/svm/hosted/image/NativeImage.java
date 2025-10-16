@@ -94,8 +94,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterCallback;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -117,10 +116,10 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
-import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.ImageLayerSectionFeature;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
+import com.oracle.svm.hosted.layeredimage.HostedDynamicLayerInfo;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.ImageLayerSectionFeature;
+import com.oracle.svm.hosted.layeredimage.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -417,7 +416,7 @@ public abstract class NativeImage extends AbstractImage {
 
     public static String getTextSectionStartSymbol() {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            return String.format("__svm_layer_code_section_%s", DynamicImageLayerInfo.getCurrentLayerNumber());
+            return String.format("__svm_layer_code_section_%s", ImageLayerBuildingSupport.getCurrentLayerNumber());
         } else {
             return "__svm_code_section";
         }

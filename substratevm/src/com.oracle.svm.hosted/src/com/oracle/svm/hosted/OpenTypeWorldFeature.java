@@ -45,20 +45,20 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -361,7 +361,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, Object singleton) {
                     writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
                     writer.writeInt("maxInterfaceID", DynamicHubSupport.currentLayer().getMaxInterfaceId());
 
@@ -378,7 +378,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayerTypeCheckInfo> {
         @Override
-        public LayerTypeCheckInfo createFromLoader(ImageSingletonLoader loader) {
+        public LayerTypeCheckInfo createFromLoader(KeyValueLoader loader) {
             return new LayerTypeCheckInfo(loader.readInt("maxTypeID"), loader.readInt("maxInterfaceID"));
         }
     }

@@ -41,16 +41,16 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
@@ -219,13 +219,13 @@ public class LocaleSupport {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<LocaleSupport>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LocaleSupport singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, LocaleSupport singleton) {
                     writer.writeString(LOCALE, getLocaleString(singleton.locale));
                     return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, LocaleSupport singleton) {
+                public void onSingletonRegistration(KeyValueLoader loader, LocaleSupport singleton) {
                     String previousLocale = loader.readString(LOCALE);
                     String currentLocale = getLocaleString(singleton.locale);
                     VMError.guarantee(currentLocale.equals(previousLocale),

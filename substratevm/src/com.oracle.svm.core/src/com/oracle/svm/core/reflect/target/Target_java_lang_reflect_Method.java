@@ -47,11 +47,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.hub.ConstantPoolProvider;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 
 import jdk.internal.reflect.ConstantPool;
 import sun.reflect.annotation.AnnotationParser;
@@ -216,10 +214,7 @@ public final class Target_java_lang_reflect_Method {
     static class LayerIdComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                return DynamicImageLayerInfo.getCurrentLayerNumber();
-            }
-            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+            return ImageLayerBuildingSupport.getCurrentLayerNumber();
         }
     }
 }

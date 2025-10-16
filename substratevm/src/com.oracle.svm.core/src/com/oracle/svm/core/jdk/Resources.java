@@ -65,7 +65,7 @@ import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
@@ -73,19 +73,19 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.core.layeredimage.LayeredImageSingletonSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.GlobUtils;
@@ -755,7 +755,7 @@ public final class Resources {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<Resources>() {
 
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Resources singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, Resources singleton) {
                     List<String> resourceKeys = new ArrayList<>();
                     List<Boolean> resourceRegistrationStates = new ArrayList<>();
                     Set<String> patterns = new HashSet<>(singleton.previousLayerPatterns);
@@ -798,7 +798,7 @@ public final class Resources {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<Resources> {
         @Override
-        public Resources createFromLoader(ImageSingletonLoader loader) {
+        public Resources createFromLoader(KeyValueLoader loader) {
             List<String> previousLayerResourceKeys = loader.readStringList(RESOURCE_KEYS);
             List<Boolean> previousLayerRegistrationStates = loader.readBoolList(RESOURCE_REGISTRATION_STATES);
             Map<String, Boolean> previousLayerResources = new HashMap<>();

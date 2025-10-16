@@ -30,12 +30,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.layeredimage.LayeredImageSingletonSupport;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 
 /**
  * This singleton contains the {@link CGlobalDataBasePointer} of the current layer. In layered

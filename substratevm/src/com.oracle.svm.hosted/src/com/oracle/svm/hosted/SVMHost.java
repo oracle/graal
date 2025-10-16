@@ -95,8 +95,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
@@ -120,10 +119,10 @@ import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingPhase;
 import com.oracle.svm.hosted.heap.PodSupport;
-import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.layeredimage.HostedDynamicLayerInfo;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.LayeredStaticFieldSupport;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -275,7 +274,7 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
+        layerId = buildingImageLayer ? ImageLayerBuildingSupport.getCurrentLayerNumber() : 0;
         if (buildingSharedLayer) {
             initializeSharedLayerExcludedFields();
         }

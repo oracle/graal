@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.core.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.core.util.LayeredHostedImageHeapMapCollector;

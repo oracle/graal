@@ -51,7 +51,7 @@ import jdk.graal.compiler.processor.AbstractProcessor;
  */
 @SupportedAnnotationTypes(LayeredAnnotationProcessor.ANNOTATION_CLASS_NAME)
 public class LayeredAnnotationProcessor extends AbstractProcessor {
-    static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.common.layeredimage.LayeredCompilationBehavior";
+    static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior";
     static final String PINNED_TO_INITIAL_LAYER = "PINNED_TO_INITIAL_LAYER";
     static final String METHOD_NAME_COMPONENT_SEPARATOR = "__";
     static final char OBJECT_PATH_SEPARATOR = '_';
@@ -84,14 +84,14 @@ public class LayeredAnnotationProcessor extends AbstractProcessor {
                             // Annotation: %3$s
                             // Annotation processor: com.oracle.svm.processor.LayeredAnnotationProcessor
 
-                            import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
-                            import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+                            import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+                            import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
                             import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-                            import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-                            import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-                            import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-                            import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-                            import com.oracle.svm.core.traits.SingletonTraits;
+                            import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+                            import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+                            import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.SingleLayer;
+                            import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+                            import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
                             import com.oracle.svm.util.ReflectionUtil;
 
                             @AutomaticallyRegisteredFeature

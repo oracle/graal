@@ -35,19 +35,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.traits.BuiltinTraits;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.layeredimage.BuildingImageLayerPredicate;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.core.layeredimage.LayeredImageSingletonSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 
 /**
  * This singleton stores the {@link ReflectionMetadata} of each {@link DynamicHub} across layers to
@@ -123,7 +123,7 @@ public class LayeredReflectionMetadataSingleton {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredReflectionMetadataSingleton>() {
 
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionMetadataSingleton singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredReflectionMetadataSingleton singleton) {
                     List<Integer> hubs = new ArrayList<>();
                     List<Integer> classFlagsList = new ArrayList<>();
 
@@ -161,7 +161,7 @@ public class LayeredReflectionMetadataSingleton {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionMetadataSingleton> {
         @Override
-        public LayeredReflectionMetadataSingleton createFromLoader(ImageSingletonLoader loader) {
+        public LayeredReflectionMetadataSingleton createFromLoader(KeyValueLoader loader) {
             List<Integer> hubs = loader.readIntList(LAYERED_REFLECTION_METADATA_HUBS);
             List<Integer> previousLayerClassFlags = loader.readIntList(LAYERED_REFLECTION_METADATA_CLASS_FLAGS);
 

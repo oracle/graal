@@ -52,13 +52,13 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredFieldValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerImpl;
-import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.LayeredFieldValueTransformerImpl;
+import com.oracle.svm.hosted.layeredimage.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;

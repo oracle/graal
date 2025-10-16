@@ -86,6 +86,7 @@ import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -123,8 +124,8 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimage.DynamicImageLayerInfo;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.MethodRef;
@@ -1033,9 +1034,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     /**
-     * The identifier of the {@linkplain com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport
-     * layer} that introduces this type which is an index into the array returned by
-     * {@link com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton#getAllLayers}.
+     * The identifier of the {@linkplain ImageLayerBuildingSupport layer} that introduces this type
+     * which is an index into the array returned by {@link MultiLayeredImageSingleton#getAllLayers}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getLayerId() {

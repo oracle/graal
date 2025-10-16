@@ -157,9 +157,9 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimage.LayeredImageSingletonSupport;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -229,11 +229,11 @@ import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.LoadImageSingletonFeature;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerLoader;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerSnapshotUtil;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerWriter;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -516,6 +516,7 @@ public class NativeImageGenerator {
         var tempDirectoryOptionValue = NativeImageOptions.TempDirectory.getValue(hostedOptionValues).lastValue().orElse(null);
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl(tempDirectoryOptionValue)) {
             var builderTempDir = tempDirectoryProvider.getTemporaryBuildDirectory();
+            // this one
             HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues, loader, builderTempDir);
             ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport, loader.classLoaderSupport.annotationExtractor), imageLayerSupport);
 

@@ -27,9 +27,9 @@ package com.oracle.svm.core.os;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
-import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_END;
-import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.NEXT_SECTION;
+import static com.oracle.svm.core.layeredimage.ImageLayerSection.SectionEntries.HEAP_BEGIN;
+import static com.oracle.svm.core.layeredimage.ImageLayerSection.SectionEntries.HEAP_END;
+import static com.oracle.svm.core.layeredimage.ImageLayerSection.SectionEntries.NEXT_SECTION;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -43,8 +43,8 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.imagelayer.ImageLayerSection;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimage.ImageLayerSection;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 

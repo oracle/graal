@@ -50,22 +50,22 @@ import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimage.BuildingImageLayerPredicate;
+import com.oracle.svm.core.layeredimage.DynamicImageLayerInfo;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -316,7 +316,7 @@ class LayeredHeapDumpEncodedTypesTracker {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredHeapDumpEncodedTypesTracker>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHeapDumpEncodedTypesTracker singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredHeapDumpEncodedTypesTracker singleton) {
                     writer.writeStringList("encodedFieldNames", singleton.encodedFieldNames);
                     return LayeredPersistFlags.CREATE;
                 }
@@ -331,7 +331,7 @@ class LayeredHeapDumpEncodedTypesTracker {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredHeapDumpEncodedTypesTracker> {
         @Override
-        public LayeredHeapDumpEncodedTypesTracker createFromLoader(ImageSingletonLoader loader) {
+        public LayeredHeapDumpEncodedTypesTracker createFromLoader(KeyValueLoader loader) {
             List<String> encodedFieldNames = Collections.unmodifiableList(loader.readStringList("encodedFieldNames"));
             return new LayeredHeapDumpEncodedTypesTracker(encodedFieldNames);
         }

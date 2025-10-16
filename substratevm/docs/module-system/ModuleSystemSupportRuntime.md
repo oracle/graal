@@ -1,6 +1,6 @@
 # Runtime module system support
 
-The core of the runtime module system support consists of a set of substitutions and a feature (`com.oracle.svm.hosted.ModuleLayerFeature`) that provides runtime module-graphs.
+The core of the runtime module system support consists of a set of substitutions and a feature (`com.oracle.svm.hosted.jdk.ModuleLayerFeature`) that provides runtime module-graphs.
 
 The purpose of the runtime module support:
 - Correct information when querying module instances
@@ -29,7 +29,7 @@ Why don't we reuse build-time modules/layers?
 - Module graphs are not the same – even if they were, we would like to optimize and not include modules that we do not need (as long as it does not break compatibility)
 - Hosted module instances capture state (e.g., class loader), and patching them and all relevant data structures is harder than synthesizing new instances
 
-Synthesizing runtime module layers and modules (`com.oracle.svm.hosted.ModuleLayerFeature#afterAnalysis`):
+Synthesizing runtime module layers and modules (`com.oracle.svm.hosted.jdk.ModuleLayerFeature#afterAnalysis`):
 - Calculate runtime root module set:
 - Find all reachable named modules
 - Collect all extra modules (addmods, resources)

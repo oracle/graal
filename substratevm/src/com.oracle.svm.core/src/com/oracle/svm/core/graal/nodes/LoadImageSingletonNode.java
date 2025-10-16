@@ -25,7 +25,7 @@
 package com.oracle.svm.core.graal.nodes;
 
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory.LoadImageSingletonData;
+import com.oracle.svm.core.layeredimage.LoadImageSingletonFactory.LoadImageSingletonData;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;

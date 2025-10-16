@@ -88,9 +88,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
@@ -107,9 +106,9 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
-import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
+import com.oracle.svm.hosted.layeredimage.HostedDynamicLayerInfo;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
@@ -822,7 +821,7 @@ public class UniverseBuilder {
         @SuppressWarnings("unchecked")
         List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[DynamicHubSupport.currentLayer().getMaxTypeId()];
 
-        int currentLayer = DynamicImageLayerInfo.getCurrentLayerNumber();
+        int currentLayer = ImageLayerBuildingSupport.getCurrentLayerNumber();
         boolean checkLayerNum = ImageLayerBuildingSupport.buildingImageLayer();
         for (HostedField field : staticFields) {
             if (skipStaticField(field, layeredStaticFieldSupport)) {

@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 
 import jdk.graal.compiler.api.replacements.Fold;

@@ -96,20 +96,20 @@ import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.layeredimage.BuildingImageLayerPredicate;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -1515,7 +1515,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             @Override
             public SingletonTrait getLayeredCallbacksTrait() {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredReflectionDataBuilder>() {
-                    private static <T, U> void persistRegisteredElements(ImageSingletonWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
+                    private static <T, U> void persistRegisteredElements(KeyValueWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
                         List<Integer> classes = new ArrayList<>();
                         for (var entry : registeredElements.entrySet()) {
                             classes.add(entry.getKey().getId());
@@ -1525,7 +1525,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     }
 
                     @Override
-                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
+                    public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredReflectionDataBuilder singleton) {
                         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
                         persistRegisteredElements(writer, reflectionDataBuilder.registeredMethods, AnalysisMethod::getId, METHODS);
                         persistRegisteredElements(writer, reflectionDataBuilder.registeredFields, AnalysisField::getId, FIELDS);
@@ -1541,7 +1541,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
             static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionDataBuilder> {
 
-                private static Map<Integer, Set<Integer>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
+                private static Map<Integer, Set<Integer>> loadRegisteredElements(KeyValueLoader loader, String element) {
                     Map<Integer, Set<Integer>> previousLayerRegisteredElements = new HashMap<>();
                     var classes = loader.readIntList(getClassesKeyName(element));
                     for (int key : classes) {
@@ -1552,7 +1552,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 }
 
                 @Override
-                public LayeredReflectionDataBuilder createFromLoader(ImageSingletonLoader loader) {
+                public LayeredReflectionDataBuilder createFromLoader(KeyValueLoader loader) {
                     var previousLayerRegisteredMethods = loadRegisteredElements(loader, METHODS);
                     var previousLayerRegisteredFields = loadRegisteredElements(loader, FIELDS);
                     return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields);

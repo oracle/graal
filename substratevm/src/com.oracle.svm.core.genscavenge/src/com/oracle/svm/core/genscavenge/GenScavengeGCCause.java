@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 
 final class GenScavengeGCCause extends GCCause {
     public static final GCCause OnAllocation = new GenScavengeGCCause("Collect on allocation", 10);

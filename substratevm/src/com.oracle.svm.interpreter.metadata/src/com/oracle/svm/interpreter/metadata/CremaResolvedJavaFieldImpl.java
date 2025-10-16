@@ -27,7 +27,7 @@ package com.oracle.svm.interpreter.metadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.layeredimage.DynamicImageLayerInfo;
 import com.oracle.svm.espresso.classfile.ParserField;
 
 import jdk.graal.compiler.core.common.NumUtil;

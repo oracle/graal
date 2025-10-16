@@ -36,20 +36,20 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -268,7 +268,7 @@ class HostedJavaThreadsMetadata {
         this.maxAutonumber = maxAutonumber;
     }
 
-    public LayeredPersistFlags preparePersist(ImageSingletonWriter writer) {
+    public LayeredPersistFlags preparePersist(KeyValueWriter writer) {
         writer.writeLong("maxThreadId", maxThreadId);
         writer.writeInt("maxAutonumber", maxAutonumber);
         return LayeredPersistFlags.CREATE;
@@ -279,7 +279,7 @@ class HostedJavaThreadsMetadata {
         public SingletonTrait getLayeredCallbacksTrait() {
             SingletonLayeredCallbacks<HostedJavaThreadsMetadata> action = new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedJavaThreadsMetadata singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, HostedJavaThreadsMetadata singleton) {
                     return singleton.preparePersist(writer);
                 }
 
@@ -294,7 +294,7 @@ class HostedJavaThreadsMetadata {
 
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<HostedJavaThreadsMetadata> {
         @Override
-        public HostedJavaThreadsMetadata createFromLoader(ImageSingletonLoader loader) {
+        public HostedJavaThreadsMetadata createFromLoader(KeyValueLoader loader) {
             long maxThreadId = loader.readLong("maxThreadId");
             int maxAutonumber = loader.readInt("maxAutonumber");
 

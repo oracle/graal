@@ -38,7 +38,7 @@ import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;

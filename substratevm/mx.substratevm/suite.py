@@ -244,11 +244,32 @@ suite = {
             "jacoco" : "include",
         },
 
-        "com.oracle.svm.common": {
+        "com.oracle.svm.sdk.staging": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.util"
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "javaCompliance" : "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "jacoco" : "include",
+        },
+
+        "com.oracle.svm.common": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.util",
+                "com.oracle.svm.sdk.staging"
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
@@ -596,6 +617,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.common",
+                "com.oracle.svm.sdk.staging",
             ],
             "requires" : [
                 "jdk.internal.vm.ci"
@@ -2265,6 +2287,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
                 "com.oracle.svm.util",
+                "com.oracle.svm.sdk.staging",
             ],
             "distDependencies": [
                 "compiler:GRAAL",
@@ -2313,9 +2336,11 @@ suite = {
                            org.graalvm.nativeimage.foreign,
                            org.graalvm.truffle.runtime.svm,
                            com.oracle.truffle.enterprise.svm""",
-                    """com.oracle.svm.common.hosted.layeredimage to org.graalvm.nativeimage.pointsto,
+                    """com.oracle.svm.sdk.staging.hosted.layeredimage to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder""",
-                    """com.oracle.svm.common.layeredimage to org.graalvm.nativeimage.pointsto,
+                    """com.oracle.svm.sdk.staging.layeredimage to org.graalvm.nativeimage.pointsto,
+                           org.graalvm.nativeimage.builder""",
+                    """com.oracle.svm.sdk.staging.hosted.traits to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder""",
                 ],
             },

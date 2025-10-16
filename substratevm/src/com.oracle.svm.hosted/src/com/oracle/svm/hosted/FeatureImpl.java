@@ -198,7 +198,7 @@ public class FeatureImpl {
         }
     }
 
-    abstract static class AnalysisAccessBase extends FeatureAccessImpl {
+    public abstract static class AnalysisAccessBase extends FeatureAccessImpl {
 
         protected final Inflation bb;
 

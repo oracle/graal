@@ -49,7 +49,7 @@ import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOff
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.layeredimage.DynamicImageLayerInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;

@@ -31,16 +31,16 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.RuntimeCodeCache;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
-import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
@@ -76,13 +76,13 @@ public class SubstrateTargetDescription extends TargetDescription {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<SubstrateTargetDescription>() {
                 @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, SubstrateTargetDescription singleton) {
+                public LayeredPersistFlags doPersist(KeyValueWriter writer, SubstrateTargetDescription singleton) {
                     writer.writeStringList(RUNTIME_CHECKED_CPU_FEATURES, getCPUFeaturesList(singleton));
                     return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, SubstrateTargetDescription singleton) {
+                public void onSingletonRegistration(KeyValueLoader loader, SubstrateTargetDescription singleton) {
                     List<String> previousLayerRuntimeCheckedCPUFeatures = loader.readStringList(RUNTIME_CHECKED_CPU_FEATURES);
                     List<String> currentLayerRuntimeCheckedCPUFeatures = getCPUFeaturesList(singleton);
                     VMError.guarantee(previousLayerRuntimeCheckedCPUFeatures.equals(currentLayerRuntimeCheckedCPUFeatures),

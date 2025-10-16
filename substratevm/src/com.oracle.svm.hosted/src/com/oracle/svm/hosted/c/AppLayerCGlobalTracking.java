@@ -38,9 +38,9 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.CodeLocation;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder;
+import com.oracle.svm.hosted.layeredimage.CodeLocation;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.SharedLayerSnapshotCapnProtoSchemaHolder;
 
 /**
  * Discovers and links CGlobals that were also installed in a prior layer. This is needed to ensure

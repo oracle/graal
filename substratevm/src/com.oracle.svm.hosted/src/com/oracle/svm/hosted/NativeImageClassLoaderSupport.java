@@ -105,7 +105,7 @@ import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
 import com.oracle.svm.hosted.driver.LayerOptionsSupport;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.layeredimage.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
@@ -493,7 +493,7 @@ public final class NativeImageClassLoaderSupport {
     /**
      * Creates a finder from a module path specified by the {@code prop} system property.
      */
-    static ModuleFinder finderFor(String prop) {
+    public static ModuleFinder finderFor(String prop) {
         String s = System.getProperty(prop);
         if (s == null || s.isEmpty()) {
             return null;

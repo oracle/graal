@@ -4,7 +4,7 @@
 
 @0x9eb32e19f86ee174;
 using Java = import "/capnp/java.capnp";
-$Java.package("com.oracle.svm.hosted.imagelayer");
+$Java.package("com.oracle.svm.hosted.layeredimage");
 $Java.outerClassname("SharedLayerSnapshotCapnProtoSchemaHolder");
 
 using TypeId = Int32;

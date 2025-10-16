@@ -34,8 +34,8 @@ import java.util.function.Supplier;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.CodeLocation;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder;
+import com.oracle.svm.hosted.layeredimage.CodeLocation;
+import com.oracle.svm.hosted.layeredimage.SharedLayerSnapshotCapnProtoSchemaHolder;
 
 /**
  * Tracks CGlobals installed in the initial layer. This information is used to ensure CGlobals refer

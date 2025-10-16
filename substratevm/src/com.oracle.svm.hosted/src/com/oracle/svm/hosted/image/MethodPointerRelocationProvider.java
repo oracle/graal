@@ -29,11 +29,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
+import com.oracle.svm.hosted.layeredimage.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 public class MethodPointerRelocationProvider {

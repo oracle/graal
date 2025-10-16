@@ -88,26 +88,26 @@ import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.sdk.staging.layeredimage.ImageLayerBuildingSupport;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueLoader;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.KeyValueWriter;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTrait;
-import com.oracle.svm.core.traits.SingletonTraitKind;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.sdk.staging.hosted.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTrait;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraitKind;
+import com.oracle.svm.sdk.staging.hosted.traits.SingletonTraits;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.layeredimage.SVMImageLayerWriter;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -1359,8 +1359,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredRuntimeMetadataSingleton>() {
 
                     @Override
-                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredRuntimeMetadataSingleton singleton) {
-                        SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
+                    public LayeredPersistFlags doPersist(KeyValueWriter writer, LayeredRuntimeMetadataSingleton singleton) {
+                        SVMImageLayerWriter.KeyValueWriterImpl writerImpl = (SVMImageLayerWriter.KeyValueWriterImpl) writer;
                         var builder = writerImpl.getSnapshotBuilder().getLayeredRuntimeMetadataSingleton();
 
                         persistRegisteredElements(singleton.registeredMethods, singleton.previousLayerRegisteredMethods, builder::initMethods, builder::initMethodStates);
@@ -1387,8 +1387,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
 
             @Override
-            public LayeredRuntimeMetadataSingleton createFromLoader(ImageSingletonLoader loader) {
-                SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader;
+            public LayeredRuntimeMetadataSingleton createFromLoader(KeyValueLoader loader) {
+                SVMImageLayerSingletonLoader.KeyValueLoaderImpl loaderImpl = (SVMImageLayerSingletonLoader.KeyValueLoaderImpl) loader;
                 var reader = loaderImpl.getSnapshotReader().getLayeredRuntimeMetadataSingleton();
 
                 Map<Integer, Boolean> previousLayerRegisteredMethods = getPreviousRegisteredElements(reader.getMethods(), reader.getMethodStates());
