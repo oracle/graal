@@ -1435,16 +1435,45 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isKnownLoggerId(String id) {
-            return PolyglotLoggers.getInternalIds().contains(id) || LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+        public boolean isKnownLoggerId(Object loggerCache, String id) {
+            if (PolyglotLoggers.getInternalIds().contains(id)) {
+                return true;
+            }
+            PolyglotEngineImpl polyglotEngine = lookupPolyglotEngineForLoggerCache(loggerCache);
+            if (polyglotEngine != null) {
+                return polyglotEngine.idToLanguage.containsKey(id) || polyglotEngine.idToInstrument.containsKey(id);
+            } else {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                return LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+            }
+        }
+
+        private static PolyglotEngineImpl lookupPolyglotEngineForLoggerCache(Object loggerCache) {
+            VMObject vmObject = ((PolyglotLoggers.LoggerCache) loggerCache).getOwner();
+            if (vmObject == null) {
+                vmObject = PolyglotFastThreadLocals.getContext(null);
+            }
+            return vmObject != null ? vmObject.getEngine() : null;
         }
 
         @Override
-        public Collection<String> getKnownLoggerIds() {
-            List<String> ids = new ArrayList<>();
-            ids.addAll(PolyglotLoggers.getInternalIds());
-            ids.addAll(LanguageCache.languages().keySet());
-            ids.addAll(InstrumentCache.load().keySet());
+        public Collection<String> getKnownLoggerIds(Object loggerCache) {
+            List<String> ids = new ArrayList<>(PolyglotLoggers.getInternalIds());
+            PolyglotEngineImpl polyglotEngine = lookupPolyglotEngineForLoggerCache(loggerCache);
+            if (polyglotEngine != null) {
+                ids.addAll(polyglotEngine.idToLanguage.keySet());
+                ids.addAll(polyglotEngine.idToInstrument.keySet());
+            } else {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                ids.addAll(LanguageCache.languages().keySet());
+                ids.addAll(InstrumentCache.load().keySet());
+            }
             Collections.sort(ids);
             return ids;
         }

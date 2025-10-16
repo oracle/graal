@@ -554,9 +554,9 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
-        public abstract boolean isKnownLoggerId(String id);
+        public abstract boolean isKnownLoggerId(Object loggerCache, String id);
 
-        public abstract Collection<String> getKnownLoggerIds();
+        public abstract Collection<String> getKnownLoggerIds(Object loggerCache);
 
         public abstract boolean isContextBoundLogger(Object loggerCache);
 
