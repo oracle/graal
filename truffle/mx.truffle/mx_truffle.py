@@ -321,6 +321,8 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
+        # Print only a single close on context collected error
+        vmArgs = vmArgs + ['-Dpolyglot.engine.CloseOnGCFailureAction=PrintOnce']
         enable_truffle_native_access(vmArgs)
         enable_sun_misc_unsafe(vmArgs)
         return (vmArgs, mainClass, mainClassArgs)

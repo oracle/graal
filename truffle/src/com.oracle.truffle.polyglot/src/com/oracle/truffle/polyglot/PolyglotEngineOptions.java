@@ -191,13 +191,15 @@ final class PolyglotEngineOptions {
 
     enum CloseOnGCExceptionAction {
         Ignore,
+        PrintOnce,
         Print,
         Throw;
 
-        private static final String HELP = "Specifies the action to take when closing a garbage collected engine or context fails.%n" +
+        private static final String HELP = "Specifies the action to take when closing a garbage-collected engine or context fails.%n" +
                         "The accepted values are:%n" +
-                        "    Ignore:    Do not print this warning.%n" +
-                        "    Print:     Print this warning (default value).%n" +
-                        "    Throw:     Throw an exception instead of printing this warning.";
+                        "    Ignore:     Ignore the exception that occurs during close.%n" +
+                        "    PrintOnce:  Log the failure only for the first occurrence; suppress subsequent ones.%n" +
+                        "    Print:      Log each failure (default value).%n" +
+                        "    Throw:      Throw an exception instead of logging the failure.";
     }
 }
