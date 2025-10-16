@@ -338,6 +338,28 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             }
         }
 
+        boolean hasReceiver = invokeFlow.getTargetMethod().hasReceiver();
+        /*
+         * The receiver's analysis results are complete when either:
+         *
+         * 1. We are in the closed world.
+         *
+         * 2. The receiver TypeFlow's type is a closed type, so it may be not extended in a later
+         * layer.
+         *
+         * 3. The receiver TypeFlow's type is a core type, so it may be not extended in a later
+         * layer. (GR-70846: This check condition will be merged with the previous one once core
+         * types are fully considered as closed.)
+         *
+         * 4. The receiver TypeFlow is not saturated.
+         *
+         * Otherwise, when the receiver's analysis results are incomplete, then it is possible for
+         * more types to be observed in subsequent layers.
+         */
+        boolean receiverAnalysisResultsComplete = strengthenGraphs.isClosedTypeWorld ||
+                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || analysis.getHostVM().isCoreType(invokeFlow.getReceiverType()) ||
+                                        !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
+
         if (callTarget.invokeKind().isDirect()) {
             /*
              * Note: A direct invoke doesn't necessarily imply that the analysis should have
@@ -359,40 +381,38 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             AnalysisError.guarantee(callees.size() == 1, "@Delete methods should have a single callee.");
             AnalysisMethod singleCallee = callees.iterator().next();
             devirtualizeInvoke(singleCallee, invoke);
-        } else if (targetMethod.canBeStaticallyBound() || strengthenGraphs.isClosedTypeWorld) {
+        } else if (targetMethod.canBeStaticallyBound() || (receiverAnalysisResultsComplete && callees.size() == 1)) {
             /*
-             * We only de-virtualize invokes if we run a closed type world analysis or the target
-             * method can be trivially statically bound.
+             * A method can be devirtualized if there is only one possible callee. This can be
+             * determined by the following ways:
+             *
+             * 1. The method can be trivially statically bound, as determined independently of
+             * analysis results.
+             *
+             * 2. Analysis results indicate there is only one callee. The analysis results are
+             * required to be complete, as there could be more than only one callee in subsequent
+             * layers.
              */
-            if (callees.size() == 1) {
-                AnalysisMethod singleCallee = callees.iterator().next();
-                devirtualizeInvoke(singleCallee, invoke);
-            } else {
-                TypeState receiverTypeState = null;
-                /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());
-                }
-                assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, false);
-            }
+            assert callees.size() == 1;
+            AnalysisMethod singleCallee = callees.iterator().next();
+            devirtualizeInvoke(singleCallee, invoke);
         } else {
-            /* Last resort, try to inject profiles optimistically. */
             TypeState receiverTypeState = null;
-            if (invokeFlow.getTargetMethod().hasReceiver()) {
+            if (hasReceiver) {
                 if (methodFlow.isSaturated(analysis, invokeFlow)) {
                     /*
                      * For saturated invokes use all seen instantiated subtypes of target method
-                     * declaring class. In an open world this is incomplete as new types may be seen
-                     * later, but it is an optimistic approximation.
+                     * declaring class. Note if this analysis results are not complete this is
+                     * incomplete as new types may be seen later, but it is an optimistic
+                     * approximation.
                      */
                     receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(analysis, false).getState();
                 } else {
+                    assert receiverAnalysisResultsComplete;
                     receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());
                 }
             }
-            if (receiverTypeState != null && receiverTypeState.typesCount() <= MAX_TYPES_OPTIMISTIC_PROFILES) {
-                assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, true);
-            }
+            assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, !receiverAnalysisResultsComplete);
         }
 
         if (allowOptimizeReturnParameter && (strengthenGraphs.isClosedTypeWorld || callTarget.invokeKind().isDirect() || targetMethod.canBeStaticallyBound())) {
@@ -444,15 +464,6 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         invoke.callTarget().setInvokeKind(CallTargetNode.InvokeKind.Special);
         invoke.callTarget().setTargetMethod(singleCallee);
     }
-
-    /**
-     * Maximum number of types seen in a {@link TypeState} for a virtual {@link Invoke} to consider
-     * optimistic profile injection. See {@link #handleInvoke(Invoke, SimplifierTool)} for more
-     * details. Note that this is a footprint consideration - we do not want to carry around
-     * gargantuan {@link JavaTypeProfile} in {@link MethodCallTargetNode} that cannot be used
-     * anyway.
-     */
-    private static final int MAX_TYPES_OPTIMISTIC_PROFILES = 100;
 
     private void assignInvokeProfiles(Invoke invoke, InvokeTypeFlow invokeFlow, Collection<AnalysisMethod> callees, TypeState receiverTypeState, boolean assumeNotRecorded) {
         /*
