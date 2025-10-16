@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,9 @@ import com.oracle.truffle.api.impl.Accessor;
 
 final class SomAccessor extends Accessor {
 
-    @SuppressWarnings("unused") static final SomAccessor ACCESSOR = new SomAccessor();
+    static final SomAccessor ACCESSOR = new SomAccessor();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
 
-    static final class SomImpl extends SomSupport {
-
-    }
 }
