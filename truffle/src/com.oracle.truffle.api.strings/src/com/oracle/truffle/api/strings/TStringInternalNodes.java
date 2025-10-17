@@ -415,7 +415,7 @@ final class TStringInternalNodes {
                 return StringAttributes.create(byteLength, is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr);
             } else if (isUTF16FE(encoding)) {
                 checkByteLengthUTF16(byteLength);
-                return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA, byteLength >> 1, false);
+                return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA, byteLength >> 1);
             } else if (isUTF32FE(encoding)) {
                 checkByteLengthUTF32(byteLength);
                 return StringAttributes.create(byteLength >> 2, TStringOps.calcStringAttributesUTF32FE(node, arrayA, offsetA, byteLength >> 2));
@@ -724,9 +724,9 @@ final class TStringInternalNodes {
             if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
                 assert strideA == 1;
                 if (utf16FEValidProfile.profile(node, isValid(codeRangeA))) {
-                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + byteOffset, index, true));
+                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FEAssumeValid(node, arrayA, offsetA + byteOffset, index));
                 } else {
-                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + byteOffset, index, false));
+                    return StringAttributes.getCodePointLength(TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + byteOffset, index));
                 }
             } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
                 assert strideA == 2;
@@ -1181,6 +1181,11 @@ final class TStringInternalNodes {
         return indexOfFixedWidth(node, arrayA, offsetA, strideA, codeRangeA, codepoint, getCodepointFE(encoding, codepoint), fromIndex, toIndex, indexOfNode);
     }
 
+    /**
+     * @param codepoint the codepoint to search for.
+     * @param codepointSearchValue possibly byte-swapped version of the codepoint passed by
+     *            {@link #indexOfFixedWidthFE}.
+     */
     static int indexOfFixedWidth(Node node, byte[] arrayA, long offsetA, int strideA, int codeRangeA, int codepoint, int codepointSearchValue, int fromIndex, int toIndex,
                     TStringOpsNodes.RawIndexOfCodePointNode indexOfNode) {
         if (fromIndex == toIndex || !TSCodeRange.isInCodeRange(codepoint, codeRangeA)) {
@@ -2035,9 +2040,9 @@ final class TStringInternalNodes {
                 return StringAttributes.create(length, is8Bit(codeRange) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : codeRange);
             } else if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
                 if (utf16FEValidProfile.profile(node, isValid(knownCodeRange))) {
-                    return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + ((long) fromIndex << 1), length, true);
+                    return TStringOps.calcStringAttributesUTF16FEAssumeValid(node, arrayA, offsetA + ((long) fromIndex << 1), length);
                 } else {
-                    return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + ((long) fromIndex << 1), length, false);
+                    return TStringOps.calcStringAttributesUTF16FE(node, arrayA, offsetA + ((long) fromIndex << 1), length);
                 }
             } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
                 return StringAttributes.create(length, TStringOps.calcStringAttributesUTF32FE(node, arrayA, offsetA + ((long) fromIndex << 2), length));
@@ -2822,7 +2827,7 @@ final class TStringInternalNodes {
                 TStringConstants.truffleSafePointPoll(node, ++loopCount);
             }
             if (isBroken(codeRange)) {
-                long attrs = TStringOps.calcStringAttributesUTF16FE(node, buffer, byteArrayBaseOffset(), length, false);
+                long attrs = TStringOps.calcStringAttributesUTF16FE(node, buffer, byteArrayBaseOffset(), length);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
                 codeRange = StringAttributes.getCodeRange(attrs);
             }

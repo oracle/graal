@@ -873,12 +873,12 @@ public final class RegexOptions {
                             return expectEncodingValue(Encoding.UTF_8);
                         case '1':
                             if (lookAheadInKey(6) == 'B') {
-                                return expectEncodingValue(Encoding.UTF_16FE);
+                                return expectEncodingValue(Encoding.UTF_16BE);
                             }
                             return expectEncodingValue(Encoding.UTF_16);
                         case '3':
                             if (lookAheadInKey(6) == 'B') {
-                                return expectEncodingValue(Encoding.UTF_32FE);
+                                return expectEncodingValue(Encoding.UTF_32BE);
                             }
                             return expectEncodingValue(Encoding.UTF_32);
                         default:

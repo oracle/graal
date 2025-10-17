@@ -49,7 +49,7 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
 
     public StringBufferUTF32(int capacity, Encoding encoding) {
         super(capacity);
-        assert encoding == Encoding.UTF_32 || encoding == Encoding.UTF_32FE;
+        assert encoding.isUTF32();
         this.encoding = encoding;
     }
 
@@ -87,7 +87,7 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
 
     @Override
     public TruffleString asTString() {
-        if (encoding == Encoding.UTF_32FE) {
+        if (encoding == Encoding.UTF_32BE) {
             return TruffleString.fromByteArrayUncached(toByteSwappedByteArray(), encoding.getTStringEncoding(), false);
         }
         return TruffleString.fromIntArrayUTF32Uncached(toArray());
@@ -95,7 +95,7 @@ public final class StringBufferUTF32 extends IntArrayBuffer implements AbstractS
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        if (encoding == Encoding.UTF_32FE) {
+        if (encoding == Encoding.UTF_32BE) {
             return TruffleString.WithMask.createUncached(pattern, toByteSwappedByteArray(), encoding.getTStringEncoding());
         }
         return TruffleString.WithMask.createUTF32Uncached(pattern, toArray());

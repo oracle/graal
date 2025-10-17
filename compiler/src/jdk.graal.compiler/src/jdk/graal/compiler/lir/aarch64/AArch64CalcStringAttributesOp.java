@@ -1471,10 +1471,11 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.orrVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
         asm.bind(tailLessThan64Continue);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
-        // convert mask to 0xffffff00
         if (foreignEndian) {
+            // convert mask to 0x00ffffff
             asm.neon.moveVI(FullReg, Word, vecMask, 0x00ffffff);
         } else {
+            // convert mask to 0xffffff00
             asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
         }
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, latinFoundTail);
@@ -1483,10 +1484,11 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(latinFound);
-        // convert mask to 0xffffff00
         if (foreignEndian) {
+            // convert mask to 0x00ffffff
             asm.neon.moveVI(FullReg, Word, vecMask, 0x00ffffff);
         } else {
+            // convert mask to 0xffffff00
             asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
         }
         asm.jmp(latinContinue);
@@ -1514,10 +1516,11 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.orrVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
         asm.bind(latinFoundTail);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
-        // convert mask to 0xffff0000
         if (foreignEndian) {
+            // convert mask to 0x0000ffff
             asm.neon.ushrVVI(FullReg, Word, vecMask, vecMask, 8);
         } else {
+            // convert mask to 0xffff0000
             asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
         }
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, bmpFoundTail);
@@ -1526,10 +1529,11 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(bmpFound);
-        // convert mask to 0xffff0000
         if (foreignEndian) {
+            // convert mask to 0x0000ffff
             asm.neon.ushrVVI(FullReg, Word, vecMask, vecMask, 8);
         } else {
+            // convert mask to 0xffff0000
             asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
         }
         asm.mov(ret, 0);
