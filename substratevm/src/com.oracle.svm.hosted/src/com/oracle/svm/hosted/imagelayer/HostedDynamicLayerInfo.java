@@ -50,7 +50,7 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -243,7 +243,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<HostedDynamicLayerInfo>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, HostedDynamicLayerInfo singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, HostedDynamicLayerInfo singleton) {
                     /*
                      * When there are multiple shared layers we will need to store the starting code
                      * offset of each layer.
@@ -271,7 +271,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
                     nextLayerDelayedMethodIds.addAll(singleton.delayedMethodIds);
                     writer.writeIntList("delayedMethodIds", nextLayerDelayedMethodIds.stream().toList());
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -105,13 +105,13 @@ public class LayeredHostedImageHeapMapCollector {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredHostedImageHeapMapCollector>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredHostedImageHeapMapCollector singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHostedImageHeapMapCollector singleton) {
                     Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys);
                     if (singleton.previousLayerReachableMapKeys != null) {
                         reachableMapKeys.addAll(singleton.previousLayerReachableMapKeys);
                     }
                     writer.writeStringList("reachableMapKeys", reachableMapKeys.stream().toList());
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

@@ -38,7 +38,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout.LayeredCallbacks;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -342,10 +342,10 @@ public final class ObjectLayout {
         public SingletonTrait getLayeredCallbacksTrait() {
             var action = new SingletonLayeredCallbacks<ObjectLayout>() {
                 @Override
-                public PersistFlags doPersist(ImageSingletonWriter writer, ObjectLayout singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ObjectLayout singleton) {
                     List<Integer> currentValues = singleton.getCurrentValues();
                     writer.writeIntList("priorValues", currentValues);
-                    return PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

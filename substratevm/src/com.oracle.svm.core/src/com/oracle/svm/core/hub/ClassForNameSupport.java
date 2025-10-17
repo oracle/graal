@@ -52,8 +52,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -514,7 +514,7 @@ public final class ClassForNameSupport {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<ClassForNameSupport>() {
 
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ClassForNameSupport singleton) {
                     List<String> classNames = new ArrayList<>();
                     List<Boolean> classStates = new ArrayList<>();
                     Set<String> unsafeNames = new HashSet<>(singleton.previousLayerUnsafe);
@@ -549,7 +549,7 @@ public final class ClassForNameSupport {
                      */
                     writer.writeInt(RESPECTS_CLASS_LOADER, respectClassLoader() ? 1 : 0);
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override

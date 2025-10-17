@@ -4154,7 +4154,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class ImageSingletonObject {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)3);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)1,(short)2);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4210,35 +4210,20 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(1, value);
       }
 
-      public final boolean hasRecreateClass() {
+      public final boolean hasSingletonInstantiatorClass() {
         return !_pointerFieldIsNull(1);
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateClass() {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getSingletonInstantiatorClass() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
       }
-      public final void setRecreateClass(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+      public final void setSingletonInstantiatorClass(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, value);
       }
-      public final void setRecreateClass(String value) {
+      public final void setSingletonInstantiatorClass(String value) {
         _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
       }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateClass(int size) {
+      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initSingletonInstantiatorClass(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, size);
-      }
-      public final boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(2);
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
-      }
-      public final void setRecreateMethod(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, value);
-      }
-      public final void setRecreateMethod(String value) {
-        _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
-      }
-      public final com.oracle.svm.shaded.org.capnproto.Text.Builder initRecreateMethod(int size) {
-        return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, size);
       }
     }
 
@@ -4262,18 +4247,11 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getIntField(1);
       }
 
-      public boolean hasRecreateClass() {
+      public boolean hasSingletonInstantiatorClass() {
         return !_pointerFieldIsNull(1);
       }
-      public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateClass() {
+      public com.oracle.svm.shaded.org.capnproto.Text.Reader getSingletonInstantiatorClass() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 1, null, 0, 0);
-      }
-
-      public boolean hasRecreateMethod() {
-        return !_pointerFieldIsNull(2);
-      }
-      public com.oracle.svm.shaded.org.capnproto.Text.Reader getRecreateMethod() {
-        return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 2, null, 0, 0);
       }
 
     }

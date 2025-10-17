@@ -48,8 +48,8 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.traits.BuiltinTraits;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
@@ -79,7 +79,7 @@ import jdk.vm.ci.meta.JavaKind;
  * </ol>
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuiltinTraits.BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = CrossLayerFieldUpdaterFeature.LayeredCallbacks.class, layeredInstallationKind = SingletonLayeredInstallationKind.Independent.class)
 public class CrossLayerFieldUpdaterFeature implements InternalFeature {
     private static final int INVALID = -1;
 
@@ -370,7 +370,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<CrossLayerFieldUpdaterFeature>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, CrossLayerFieldUpdaterFeature singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, CrossLayerFieldUpdaterFeature singleton) {
                     var updateInfoMap = singleton.updateInfoMap;
                     ArrayList<Integer> fieldIds = new ArrayList<>();
                     ArrayList<Integer> receiverIds = new ArrayList<>();
@@ -386,7 +386,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
                     writer.writeIntList("receiverIds", receiverIds);
                     writer.writeIntList("offsets", offsets);
                     writer.writeIntList("javaKindOrdinals", javaKindOrdinals);
-                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

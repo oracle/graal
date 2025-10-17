@@ -37,7 +37,10 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
 import jdk.internal.access.SharedSecrets;
@@ -50,7 +53,8 @@ import jdk.vm.ci.meta.JavaConstant;
  * {@link RecomputeFieldValue} annotations.
  */
 @AutomaticallyRegisteredFeature
-public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class SystemInOutErrFeature implements InternalFeature {
     private final InputStream hostedIn;
     private final PrintStream hostedOut;
     private final PrintStream hostedErr;

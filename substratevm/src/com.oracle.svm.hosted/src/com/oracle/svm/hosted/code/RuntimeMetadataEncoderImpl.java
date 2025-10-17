@@ -91,7 +91,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
@@ -1359,14 +1359,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredRuntimeMetadataSingleton>() {
 
                     @Override
-                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredRuntimeMetadataSingleton singleton) {
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredRuntimeMetadataSingleton singleton) {
                         SVMImageLayerWriter.ImageSingletonWriterImpl writerImpl = (SVMImageLayerWriter.ImageSingletonWriterImpl) writer;
                         var builder = writerImpl.getSnapshotBuilder().getLayeredRuntimeMetadataSingleton();
 
                         persistRegisteredElements(singleton.registeredMethods, singleton.previousLayerRegisteredMethods, builder::initMethods, builder::initMethodStates);
                         persistRegisteredElements(singleton.registeredFields, singleton.previousLayerRegisteredFields, builder::initFields, builder::initFieldStates);
 
-                        return LayeredImageSingleton.PersistFlags.CREATE;
+                        return LayeredPersistFlags.CREATE;
                     }
 
                     @Override

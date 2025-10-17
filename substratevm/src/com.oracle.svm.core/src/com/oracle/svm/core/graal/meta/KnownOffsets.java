@@ -38,7 +38,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -175,9 +175,9 @@ public final class KnownOffsets {
             public SingletonTrait getLayeredCallbacksTrait() {
                 return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<PriorKnownOffsets>() {
                     @Override
-                    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, PriorKnownOffsets singleton) {
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, PriorKnownOffsets singleton) {
                         writer.writeIntList("priorValues", Arrays.stream(singleton.priorValues).boxed().toList());
-                        return LayeredImageSingleton.PersistFlags.CREATE;
+                        return LayeredPersistFlags.CREATE;
                     }
 
                     @Override
