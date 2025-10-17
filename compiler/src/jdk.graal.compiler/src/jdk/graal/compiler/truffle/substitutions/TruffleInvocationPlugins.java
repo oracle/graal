@@ -107,6 +107,7 @@ public class TruffleInvocationPlugins {
         registerFramePlugins(plugins);
         registerBytecodePlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
+        registerDynamicObjectPlugins(plugins);
     }
 
     private static void registerFramePlugins(InvocationPlugins plugins) {
@@ -822,5 +823,11 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/object/UnsafeAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.object.UnsafeAccess");
+        r.register(new UnsafeCastPlugin("hostUnsafeCast", false));
     }
 }
