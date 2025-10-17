@@ -23,8 +23,10 @@ public class AbstractInterpretationDriver {
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
     private final Inflation inflation;
+    private final AnalysisMethod root;
 
-    public AbstractInterpretationDriver(DebugContext debug, Inflation inflation) {
+    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod root, Inflation inflation) {
+        this.root = root;
         this.inflation = inflation;
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
