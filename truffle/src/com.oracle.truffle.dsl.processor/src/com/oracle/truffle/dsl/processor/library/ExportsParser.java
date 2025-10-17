@@ -224,9 +224,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     LibraryMessage replacementFor = resolvedMessage.getReplacementFor();
                     String error;
                     if (replacementFor != null && resolvedMessage.getDeprecatedOverloads().contains(replacementFor)) {
-                        // Both the deprecated message and its replacement are being exported.
-                        // This configuration is not supported; only the replacement should be
-                        // exported.
+                        /*
+                         * Both the deprecated message and its replacement are being exported. This
+                         * configuration is not supported; only the replacement should be exported.
+                         */
                         error = String.format("Cannot export both a deprecated message and a new message %s that declares a replacement for it. " +
                                         "Remove the export of the deprecated message.", messageName);
                     } else {
@@ -250,11 +251,27 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         Map<ExportsLibrary, Set<LibraryMessage>> generatedLibraryMessages = new HashMap<>();
 
         for (ExportsLibrary library : model.getExportedLibraries().values()) {
+            Map<String, ExportMessageData> exportedMessages = library.getExportedMessages();
+            for (ExportMessageData exportedMessage : exportedMessages.values()) {
+                LibraryMessage libraryMessage = exportedMessage.getResolvedMessage();
+                LibraryMessage replacementFor = libraryMessage.getReplacementFor();
+                ExportMessageData replacedExport;
+                if (replacementFor != null && !libraryMessage.getDeprecatedOverloads().contains(replacementFor) && (replacedExport = exportedMessages.get(replacementFor.getName())) != null) {
+                    /*
+                     * Both the deprecated message and its replacement are being exported. This
+                     * configuration is not supported; only the replacement should be exported. The
+                     * check for replacementFor with the same message name is performed above to
+                     * avoid reporting a misleading duplicate message error.
+                     */
+                    String error = String.format("Cannot export both a deprecated message %s and a new message %s that declares a replacement for it. " +
+                                    "Remove the export of the deprecated message.", replacementFor.getName(), exportedMessage.getResolvedMessage().getName());
+                    replacedExport.addError(error);
+                }
+            }
             for (LibraryMessage message : library.getLibrary().getAllMethods()) {
                 ExecutableElement replaceWith = message.getReplaceWith();
                 if (replaceWith != null && message.getReplacementFor() == null) {
                     // Replacing this message, if not exported
-                    Map<String, ExportMessageData> exportedMessages = library.getExportedMessages();
                     if (!exportedMessages.containsKey(message.getName())) {
                         // Exported messages do not contain this message
                         // We'll generate the replacement when some message from isExported is
@@ -506,7 +523,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 }
                             }
                         } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
-                            isAbstract = !exportLib.hasExportDelegation();
+                            isAbstract = !exportLib.hasExportDelegation() && message.getReplacementFor() == null;
                         } else {
                             isAbstract = false;
                         }

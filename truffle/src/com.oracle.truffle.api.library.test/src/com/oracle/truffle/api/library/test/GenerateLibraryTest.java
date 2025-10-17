@@ -43,6 +43,7 @@ package com.oracle.truffle.api.library.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -450,6 +451,71 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         assertEquals(2, lib.read(newObj, 10L));
         assertEquals(10, lib.readUnsigned(newObj, -10));
         assertEquals(20, lib.readUnsigned(newObj, -10L));
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibrary2 extends Library {
+
+        @Deprecated
+        public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "getLanguage(Object)", replaceWith = "getLanguageImpl")
+        public String getLanguageId(Object receiver) {
+            return TestLanguage.ID;
+        }
+
+        @SuppressWarnings("static-method")
+        protected final Class<? extends TruffleLanguage<?>> getLanguageImpl(Object receiver) {
+            return TestLanguage.class;
+        }
+    }
+
+    private static final class TestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        static final String ID = "test-language-id";
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacy2 {
+
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return TestLanguage.class;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementNew2 {
+
+        @ExportMessage
+        public String getLanguageId() {
+            return TestLanguage.ID;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacyAndNew2 {
+
+        @ExpectError("Cannot export both a deprecated message getLanguage and a new message getLanguageId that declares a replacement for it. " +
+                        "Remove the export of the deprecated message.")
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return TestLanguage.class;
+        }
+
+        @ExportMessage
+        public String getLanguageId() {
+            return TestLanguage.ID;
+        }
     }
 
     @GenerateLibrary
