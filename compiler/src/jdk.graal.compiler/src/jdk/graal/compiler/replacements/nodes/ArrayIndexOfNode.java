@@ -198,10 +198,6 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         return EnumSet.of(AMD64.CPUFeature.SSE2, AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.SSE4_1);
     }
 
-    public static EnumSet<AArch64.CPUFeature> aarch64FeaturesNone() {
-        return EnumSet.noneOf(AArch64.CPUFeature.class);
-    }
-
     public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
         return EnumSet.noneOf(AArch64.CPUFeature.class);
     }
@@ -436,8 +432,8 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOf2S2", parameters = {"S2", "MatchAny"})
     @GenerateStub(name = "indexOf2S4", parameters = {"S4", "MatchAny"})
     @GenerateStub(name = "indexOfRange1S1", parameters = {"S1", "MatchRange"})
-    @GenerateStub(name = "indexOfRange1S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfRange1S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange1S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfRange1S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     @GenerateStub(name = "indexOfWithMaskS1", parameters = {"S1", "WithMask"})
     @GenerateStub(name = "indexOfWithMaskS2", parameters = {"S2", "WithMask"})
     @GenerateStub(name = "indexOfWithMaskS4", parameters = {"S4", "WithMask"})
@@ -445,9 +441,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"S2", "FindTwoConsecutive"})
     @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"S4", "FindTwoConsecutive"})
     @GenerateStub(name = "indexOfRangeForeignEndian1S2", parameters = {"S2",
-                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     @GenerateStub(name = "indexOfRangeForeignEndian1S4", parameters = {"S4",
-                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -481,15 +477,15 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     @GenerateStub(name = "indexOf4S2", parameters = {"S2", "MatchAny"})
     @GenerateStub(name = "indexOf4S4", parameters = {"S4", "MatchAny"})
     @GenerateStub(name = "indexOfRange2S1", parameters = {"S1", "MatchRange"})
-    @GenerateStub(name = "indexOfRange2S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfRange2S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange2S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfRange2S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"S1", "FindTwoConsecutiveWithMask"})
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"S2", "FindTwoConsecutiveWithMask"})
     @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"S4", "FindTwoConsecutiveWithMask"})
     @GenerateStub(name = "indexOfRangeForeignEndian2S2", parameters = {"S2",
-                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     @GenerateStub(name = "indexOfRangeForeignEndian2S4", parameters = {"S4",
-                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+                    "MatchRangeForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -503,11 +499,11 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableForeignEndianS2", parameters = {"S2", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableForeignEndianS4", parameters = {"S4", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfTableForeignEndianS2", parameters = {"S2", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
+    @GenerateStub(name = "indexOfTableForeignEndianS4", parameters = {"S4", "TableForeignEndian"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41")
     public static native int optimizedArrayIndexOfTable(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,

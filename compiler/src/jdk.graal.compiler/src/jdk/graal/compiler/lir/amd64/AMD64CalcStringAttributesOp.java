@@ -1407,7 +1407,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         }
         // identify codepoints in the forbidden UTF-16 surrogate range [0xd800-0xdfff]
         // native endian: ((codepoint >> 11) == 0x1b)
-        // foreign endian: ((codepoint & 0x00d80000) == 0x00f80000)
+        // foreign endian: ((codepoint & 0x00f80000) == 0x00d80000)
         asm.pcmpeqd(vectorSize, vecArray, vecMaskSurrogate);
         // check if a surrogate character was present
         asm.ptest(vectorSize, vecArray, vecArray);

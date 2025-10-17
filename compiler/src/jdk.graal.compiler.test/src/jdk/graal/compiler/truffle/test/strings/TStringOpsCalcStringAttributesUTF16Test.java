@@ -212,12 +212,12 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
 
     @Test
     public void testForeignEndianValid() {
-        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length, true);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FEAssumeValid", byte[].class, long.class, int.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length);
     }
 
     @Test
     public void testForeignEndianUnknown() {
-        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length, false);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, byteSwapArray(array, 1), offset, length);
     }
 
     @Test

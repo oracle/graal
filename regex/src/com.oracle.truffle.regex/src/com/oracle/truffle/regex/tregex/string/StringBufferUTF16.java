@@ -49,7 +49,7 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
 
     public StringBufferUTF16(int capacity, Encoding encoding) {
         super(capacity);
-        assert encoding == Encoding.UTF_16 || encoding == Encoding.UTF_16_RAW || encoding == Encoding.UTF_16FE;
+        assert encoding == Encoding.UTF_16 || encoding == Encoding.UTF_16_RAW || encoding == Encoding.UTF_16BE;
         this.encoding = encoding;
     }
 
@@ -115,7 +115,7 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
 
     @Override
     public TruffleString asTString() {
-        if (encoding == Encoding.UTF_16FE) {
+        if (encoding == Encoding.UTF_16BE) {
             return TruffleString.fromByteArrayUncached(toByteSwappedByteArray(), encoding.getTStringEncoding(), false);
         }
         return TruffleString.fromCharArrayUTF16Uncached(toArray());
@@ -123,7 +123,7 @@ public final class StringBufferUTF16 extends CharArrayBuffer implements Abstract
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        if (encoding == Encoding.UTF_16FE) {
+        if (encoding == Encoding.UTF_16BE) {
             return TruffleString.WithMask.createUncached(pattern, toByteSwappedByteArray(), encoding.getTStringEncoding());
         }
         return TruffleString.WithMask.createUTF16Uncached(pattern, toArray());

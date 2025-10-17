@@ -83,11 +83,11 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
     }
 
     public final boolean isUTF16() {
-        return getEncoding() == Encoding.UTF_16 || getEncoding() == Encoding.UTF_16FE;
+        return getEncoding().isUTF16();
     }
 
     public final boolean isUTF32() {
-        return getEncoding() == Encoding.UTF_32 || getEncoding() == Encoding.UTF_32FE;
+        return getEncoding().isUTF32();
     }
 
     public final boolean isBooleanMatch() {

@@ -60,12 +60,13 @@ public class StringTest {
     }
 
     static void testEncodingsRange(int lo, int hi) {
+        int capacity = hi - lo + 1;
         AbstractStringBuffer[] sbs = {
-                        new StringBufferUTF8(hi - lo),
-                        new StringBufferUTF16(hi - lo, Encoding.UTF_16),
-                        new StringBufferUTF16(hi - lo, Encoding.UTF_16FE),
-                        new StringBufferUTF32(hi - lo, Encoding.UTF_32),
-                        new StringBufferUTF32(hi - lo, Encoding.UTF_32FE)
+                        new StringBufferUTF8(capacity),
+                        new StringBufferUTF16(capacity, Encoding.UTF_16),
+                        new StringBufferUTF16(capacity, Encoding.UTF_16BE),
+                        new StringBufferUTF32(capacity, Encoding.UTF_32),
+                        new StringBufferUTF32(capacity, Encoding.UTF_32BE)
         };
 
         for (AbstractStringBuffer sb : sbs) {

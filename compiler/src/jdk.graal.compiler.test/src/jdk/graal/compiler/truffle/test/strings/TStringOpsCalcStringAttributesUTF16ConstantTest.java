@@ -60,15 +60,15 @@ public class TStringOpsCalcStringAttributesUTF16ConstantTest extends TStringOpsC
     @Test
     public void testForeignEndianValid() {
         byte[] swappedArray = byteSwapArray(arrayA, 1);
-        setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA, true);
-        test(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA, true);
+        setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF16FEAssumeValid", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
     }
 
     @Test
     public void testForeignEndianUnknown() {
         byte[] swappedArray = byteSwapArray(arrayA, 1);
-        setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA, false);
-        test(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class, boolean.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA, false);
+        setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF16FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
     }
 
     @Test
