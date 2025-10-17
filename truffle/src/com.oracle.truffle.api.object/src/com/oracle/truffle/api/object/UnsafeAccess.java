@@ -74,8 +74,8 @@ final class UnsafeAccess {
     }
 
     /**
-     * Casts the given value to the value of the given type without any checks. The type, nonNull,
-     * and exact must evaluate to a constant. The condition parameter gives a hint to the compiler
+     * Casts the given value to the given type without any checks. The type, nonNull, and exact
+     * parameters must evaluate to a constant. The condition parameter gives a hint to the compiler
      * under which circumstances this cast can be moved to an earlier location in the program.
      *
      * @param value the value that is known to have the specified type
@@ -87,6 +87,22 @@ final class UnsafeAccess {
      */
     @SuppressWarnings("unchecked")
     static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
+        return (T) value;
+    }
+
+    /**
+     * Casts the given value to the given type without any checks during host compilation. The type,
+     * nonNull, and exact parameters must evaluate to a constant for the cast to have any effect.
+     *
+     * @param value the value that is known to have the specified type
+     * @param type the specified new type of the value
+     * @param condition the condition that makes this cast safe also at an earlier location
+     * @param nonNull whether value is known to never be null
+     * @param exact whether the value is known to be of exactly the specified class
+     * @return the value to be cast to the new type
+     */
+    @SuppressWarnings("unchecked")
+    static <T> T hostUnsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 

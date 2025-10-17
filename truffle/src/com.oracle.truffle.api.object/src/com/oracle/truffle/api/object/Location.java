@@ -756,11 +756,11 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
     }
 
     static Object getObjectArray(DynamicObject store, boolean condition) {
-        return UnsafeAccess.unsafeCast(store.getObjectStore(), Object[].class, condition, true, true);
+        return UnsafeAccess.hostUnsafeCast(store.getObjectStore(), Object[].class, condition, true, true);
     }
 
     static Object getPrimitiveArray(DynamicObject store, boolean condition) {
-        return UnsafeAccess.unsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
+        return UnsafeAccess.hostUnsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
     }
 
     static RuntimeException incompatibleLocationException() {
