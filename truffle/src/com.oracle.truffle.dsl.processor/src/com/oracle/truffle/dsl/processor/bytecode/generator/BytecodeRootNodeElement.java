@@ -18981,6 +18981,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // RootNode overrides.
             this.add(createIsCloningAllowed());
             this.add(createIsCloneUninitializedSupported());
+            this.add(createFindBytecodeIndex());
             this.addOptional(createPrepareForCompilation());
         }
 
@@ -19127,6 +19128,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn();
             b.string("false");
             b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createFindBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "findBytecodeIndex", new String[]{"node", "frame"});
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startCall("root", "findBytecodeIndex");
+            b.string("node");
+            // unwrap the frame from the continuation frame
+            b.startGroup().string("frame == null ? null : ");
+            b.startCall("findFrame").string("frame").end();
+            b.end();
+            b.end(2);
             return ex;
         }
 
