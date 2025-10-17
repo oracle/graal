@@ -92,10 +92,13 @@ public abstract class SymbolTable {
             Number,
             Vector,
             Reference,
-            Bottom
+            Bottom,
+            Top
         }
 
-        public abstract boolean matchesType(ClosedValueType valueSubType);
+        public abstract boolean isSupertypeOf(ClosedValueType valueSubType);
+
+        public abstract boolean isSubtypeOf(ClosedValueType valueSuperType);
 
         public abstract boolean matchesValue(Object value);
 
@@ -109,7 +112,9 @@ public abstract class SymbolTable {
             Function
         }
 
-        public abstract boolean matchesType(ClosedHeapType heapSubType);
+        public abstract boolean isSupertypeOf(ClosedHeapType heapSubType);
+
+        public abstract boolean isSubtypeOf(ClosedHeapType heapSuperType);
 
         public abstract boolean matchesValue(Object value);
 
@@ -133,8 +138,13 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedValueType valueSubType) {
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
             return valueSubType == BottomType.BOTTOM || valueSubType == this;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == TopType.TOP || valueSuperType == this;
         }
 
         @Override
@@ -168,8 +178,13 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedValueType valueSubType) {
-            return valueSubType == BottomType.BOTTOM || valueSubType == this;
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return valueSubType == BottomType.BOTTOM || valueSubType == V128;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == TopType.TOP || valueSuperType == V128;
         }
 
         @Override
@@ -208,9 +223,15 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedValueType valueSubType) {
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
             return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
-                            this.closedHeapType.matchesType(referenceSubType.closedHeapType);
+                            this.closedHeapType.isSupertypeOf(referenceSubType.closedHeapType);
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == TopType.TOP || valueSuperType instanceof ClosedReferenceType referencedSuperType && (!this.nullable || referencedSuperType.nullable) &&
+                    this.closedHeapType.isSubtypeOf(referencedSuperType.closedHeapType);
         }
 
         @Override
@@ -240,13 +261,18 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedHeapType heapSubType) {
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
             return switch (this.value) {
                 case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedFunctionType;
                 case WasmType.EXTERN_HEAPTYPE -> heapSubType == EXTERN;
                 case WasmType.EXN_HEAPTYPE -> heapSubType == EXN;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            return heapSuperType == this;
         }
 
         @Override
@@ -283,7 +309,7 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedHeapType heapSubType) {
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
             if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
                 return false;
             }
@@ -291,7 +317,8 @@ public abstract class SymbolTable {
                 return false;
             }
             for (int i = 0; i < this.paramTypes.length; i++) {
-                if (!functionSubType.paramTypes[i].matchesType(this.paramTypes[i])) {
+                CompilerAsserts.partialEvaluationConstant(this.paramTypes[i]);
+                if (!this.paramTypes[i].isSubtypeOf(functionSubType.paramTypes[i])) {
                     return false;
                 }
             }
@@ -299,7 +326,37 @@ public abstract class SymbolTable {
                 return false;
             }
             for (int i = 0; i < this.resultTypes.length; i++) {
-                if (!this.resultTypes[i].matchesType(functionSubType.resultTypes[i])) {
+                CompilerAsserts.partialEvaluationConstant(this.resultTypes[i]);
+                if (!this.resultTypes[i].isSupertypeOf(functionSubType.resultTypes[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            if (heapSuperType == AbstractHeapType.FUNC) {
+                return true;
+            }
+            if (!(heapSuperType instanceof ClosedFunctionType functionSuperType)) {
+                return false;
+            }
+            if (this.paramTypes.length != functionSuperType.paramTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.paramTypes.length; i++) {
+                CompilerAsserts.partialEvaluationConstant(this.paramTypes[i]);
+                if (!this.paramTypes[i].isSupertypeOf(functionSuperType.paramTypes[i])) {
+                    return false;
+                }
+            }
+            if (this.resultTypes.length != functionSuperType.resultTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.resultTypes.length; i++) {
+                CompilerAsserts.partialEvaluationConstant(this.resultTypes[i]);
+                if (!this.resultTypes[i].isSubtypeOf(functionSuperType.resultTypes[i])) {
                     return false;
                 }
             }
@@ -308,7 +365,7 @@ public abstract class SymbolTable {
 
         @Override
         public boolean matchesValue(Object value) {
-            return value instanceof WasmFunctionInstance instance && matchesType(instance.function().closedType());
+            return value instanceof WasmFunctionInstance instance && isSupertypeOf(instance.function().closedType());
         }
 
         @Override
@@ -324,8 +381,13 @@ public abstract class SymbolTable {
         }
 
         @Override
-        public boolean matchesType(ClosedValueType valueSubType) {
-            return valueSubType instanceof BottomType;
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return valueSubType == BOTTOM;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return true;
         }
 
         @Override
@@ -336,6 +398,33 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Bottom;
+        }
+    }
+
+    public static final class TopType extends ClosedValueType {
+        public static final TopType TOP = new TopType();
+
+        private TopType() {
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedValueType valueSubType) {
+            return true;
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
+            return valueSuperType == TOP;
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return false;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.Top;
         }
     }
 
@@ -910,7 +999,7 @@ public abstract class SymbolTable {
     }
 
     public boolean matches(int expectedType, int actualType) {
-        return makeClosedType(expectedType).matchesType(makeClosedType(actualType));
+        return makeClosedType(expectedType).isSupertypeOf(makeClosedType(actualType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {

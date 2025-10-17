@@ -183,7 +183,7 @@ public final class InteropCallAdapterNode extends RootNode {
                 objectMultiValueStack[i] = null;
                 yield obj;
             }
-            case Bottom -> throw CompilerDirectives.shouldNotReachHere();
+            case Bottom, Top -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 

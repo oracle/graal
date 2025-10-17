@@ -334,7 +334,7 @@ public class Linker {
 
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            if (instance.symbolTable().makeClosedType(valueType).matchesType(exportedClosedValueType)) {
+            if (instance.symbolTable().makeClosedType(valueType).isSupertypeOf(exportedClosedValueType)) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the type " + WasmType.toString(valueType) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
@@ -403,7 +403,7 @@ public class Linker {
             Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
-                    if (!function.closedType().matchesType(functionInstance.function().closedType())) {
+                    if (!function.closedType().isSupertypeOf(functionInstance.function().closedType())) {
                         throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
                     }
                     instance.setTarget(function.index(), functionInstance.target());
@@ -436,7 +436,7 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            if (!function.closedType().matchesType(importedFunction.closedType())) {
+            if (!function.closedType().isSupertypeOf(importedFunction.closedType())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
@@ -542,7 +542,7 @@ public class Linker {
             }
             // matching for tag types does not work by subtyping, but requires equivalent types,
             // A <= B and B <= A
-            Assert.assertTrue(type.matchesType(importedTag.type()) && importedTag.type().matchesType(type), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            Assert.assertTrue(type.isSupertypeOf(importedTag.type()) && importedTag.type().isSupertypeOf(type), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTag(tagIndex, importedTag);
         };
         resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);
@@ -853,7 +853,7 @@ public class Linker {
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
             assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertTrue(instance.symbolTable().makeClosedType(elemType).matchesType(importedTable.closedValueType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            assertTrue(instance.symbolTable().makeClosedType(elemType).isSupertypeOf(importedTable.closedValueType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);

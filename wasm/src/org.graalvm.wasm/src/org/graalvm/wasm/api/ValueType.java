@@ -132,6 +132,7 @@ public enum ValueType {
                 };
             }
             case Bottom -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: bottom");
+            case Top -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: top");
         };
     }
 }
