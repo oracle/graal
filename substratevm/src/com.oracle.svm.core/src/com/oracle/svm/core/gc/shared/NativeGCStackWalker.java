@@ -98,8 +98,8 @@ public final class NativeGCStackWalker {
         funcFreeThreadStackFrames = CEntryPointLiteral.create(NativeGCStackWalker.class, "freeThreadStackFrames", Isolate.class, IsolateThread.class, StackFramesPerThread.class);
 
         if (ContinuationSupport.isSupported()) {
-            funcFetchContinuationStackFrames = CEntryPointLiteral.create(NativeGCStackWalker.class, "fetchContinuationStackFrames", Isolate.class, PointerBase.class, Pointer.class);
-            funcFreeContinuationStackFrames = CEntryPointLiteral.create(NativeGCStackWalker.class, "freeContinuationStackFrames", Isolate.class, PointerBase.class, StackFrames.class);
+            funcFetchContinuationStackFrames = CEntryPointLiteral.create(NativeGCStackWalker.class, "fetchContinuationStackFrames", Isolate.class, Pointer.class);
+            funcFreeContinuationStackFrames = CEntryPointLiteral.create(NativeGCStackWalker.class, "freeContinuationStackFrames", Isolate.class, StackFrames.class);
         } else {
             funcFetchContinuationStackFrames = null;
             funcFreeContinuationStackFrames = null;
@@ -134,7 +134,7 @@ public final class NativeGCStackWalker {
     @Uninterruptible(reason = "GC may only call uninterruptible code.")
     @CEntryPoint(include = UseNativeGCAndContinuations.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = InitializeReservedRegistersForUnattachedThread.class, epilogue = CEntryPointOptions.NoEpilogue.class)
-    public static StackFrames fetchContinuationStackFrames(@SuppressWarnings("unused") Isolate isolate, @SuppressWarnings("unused") PointerBase heapBase, Pointer storedContinuation) {
+    public static StackFrames fetchContinuationStackFrames(@SuppressWarnings("unused") Isolate isolate, Pointer storedContinuation) {
         StoredContinuation s = (StoredContinuation) storedContinuation.toObject();
         ContinuationStackFrameCollectorData data = StackValue.get(ContinuationStackFrameCollectorData.class);
         ContinuationStackFrameCollector.initialize(data);
@@ -145,7 +145,7 @@ public final class NativeGCStackWalker {
     @Uninterruptible(reason = "May be called by an unattached thread (during or outside of a safepoint).")
     @CEntryPoint(include = UseNativeGCAndContinuations.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = InitializeReservedRegistersForUnattachedThread.class, epilogue = CEntryPointOptions.NoEpilogue.class)
-    public static void freeContinuationStackFrames(@SuppressWarnings("unused") Isolate isolate, @SuppressWarnings("unused") PointerBase heapBase, StackFrames stackFrames) {
+    public static void freeContinuationStackFrames(@SuppressWarnings("unused") Isolate isolate, StackFrames stackFrames) {
         NullableNativeMemory.free(stackFrames);
     }
 
