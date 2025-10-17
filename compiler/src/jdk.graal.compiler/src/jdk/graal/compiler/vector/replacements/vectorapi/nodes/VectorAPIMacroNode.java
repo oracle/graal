@@ -70,6 +70,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIType;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -330,6 +331,20 @@ public abstract class VectorAPIMacroNode extends MacroWithExceptionNode implemen
         } else {
             return null;
         }
+    }
+
+    /**
+     * If {@code constantValue} is not {@code null} and contains {@link JavaConstant}s, returns a
+     * stamp derived from it; returns {@code vectorStamp} otherwise.
+     */
+    protected static SimdStamp maybeConstantVectorStamp(SimdStamp vectorStamp, SimdConstant constantValue) {
+        if (constantValue != null) {
+            JavaConstant[] constantEntries = constantValue.asJavaConstants();
+            if (constantEntries != null) {
+                return SimdStamp.forConstants(constantEntries);
+            }
+        }
+        return vectorStamp;
     }
 
     @Override

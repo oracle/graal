@@ -993,7 +993,7 @@ public class AMD64SSEAVXArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
     }
 
     @Override
-    public Value emitVectorToBitMask(LIRKind resultKind, Value vector) {
+    public Value emitVectorToBitMask(LIRKind resultKind, Value vector, boolean inputIsMask) {
         Variable result = getLIRGen().newVariable(resultKind);
         AMD64Kind vKind = (AMD64Kind) vector.getPlatformKind();
         AMD64Kind eKind = vKind.getScalar();

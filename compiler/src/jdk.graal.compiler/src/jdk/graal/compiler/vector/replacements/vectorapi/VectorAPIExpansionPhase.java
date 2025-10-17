@@ -880,7 +880,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             /* This node and all of its inputs have now been expanded. */
             stack.pop();
             if (!expansion.isAlive()) {
-                graph.addWithoutUniqueWithInputs(expansion);
+                expansion = graph.addOrUniqueWithInputs(expansion);
             }
             expanded.put(node, expansion);
             graph.getOptimizationLog().withProperty("expansion", expansion).report(VectorAPIExpansionPhase.class, "SIMD expansion", node);
