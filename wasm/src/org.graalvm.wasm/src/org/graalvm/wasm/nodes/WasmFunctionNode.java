@@ -326,7 +326,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         break;
                     }
                     case Bytecode.LABEL_U16: {
-                        final int value = rawPeekU16(bytecode, offset);
+                        final int value = rawPeekU8(bytecode, offset);
                         final int stackSize = rawPeekU8(bytecode, offset + 1);
                         offset += 2;
                         final int resultCount = (value & BytecodeBitEncoding.LABEL_U16_RESULT_VALUE);
