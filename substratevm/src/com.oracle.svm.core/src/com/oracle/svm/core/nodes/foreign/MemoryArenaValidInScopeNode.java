@@ -111,7 +111,7 @@ public class MemoryArenaValidInScopeNode extends FixedWithNextNode implements Me
     public void simplify(SimplifierTool tool) {
         if (tool.allUsagesAvailable() && graph() != null) {
             final ValueNode session = value;
-            if (session.isConstant() && session.isNullConstant()) {
+            if (session.isNullConstant()) {
                 FixedNode predecessor = (FixedNode) this.predecessor();
 
                 EconomicSet<ScopedMethodNode> scopeNodes = EconomicSet.create();

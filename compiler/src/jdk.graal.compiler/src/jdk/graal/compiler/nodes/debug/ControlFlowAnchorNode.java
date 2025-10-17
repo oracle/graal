@@ -74,7 +74,7 @@ public final class ControlFlowAnchorNode extends FixedWithNextNode implements LI
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (tool.allUsagesAvailable() && numericCondition != null) {
+        if (numericCondition != null) {
             // if we have a condition that evals to 0
             if (numericCondition.isConstant() && numericCondition.asJavaConstant().asLong() == 0L) {
                 // delete this node
