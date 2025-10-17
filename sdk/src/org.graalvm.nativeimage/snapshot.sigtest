@@ -1021,6 +1021,10 @@ meth public abstract java.nio.file.Path getImagePath()
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterRegistrationAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
+meth public abstract org.graalvm.nativeimage.dynamicaccess.JNIAccess getJNIAccess()
+meth public abstract org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess getReflectiveAccess()
+meth public abstract org.graalvm.nativeimage.dynamicaccess.ResourceAccess getResourceAccess()
+meth public abstract org.graalvm.nativeimage.dynamicaccess.ForeignAccess getForeignAccess()
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -1160,6 +1164,30 @@ meth public static void addResource(java.lang.Module,java.lang.String,byte[])
 meth public static void addResourceBundle(java.lang.Module,java.lang.String)
 meth public static void addResourceBundle(java.lang.Module,java.lang.String,java.util.Locale[])
 supr java.lang.Object
+
+CLSS public abstract interface org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Class<?>[])
+meth public !varargs abstract void registerForUnsafeAllocation(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Class<?>[])
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.reflect.Executable[])
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.reflect.Field[])
+meth public !varargs abstract void registerForSerialization(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Class<?>[])
+meth public !varargs abstract java.lang.Class<?> registerProxy(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Class<?>[])
+
+CLSS public abstract interface org.graalvm.nativeimage.dynamicaccess.ResourceAccess
+meth public abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Module,java.lang.String)
+meth public void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.String)
+meth public abstract void registerResourceBundle(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.util.ResourceBundle)
+
+CLSS public abstract interface org.graalvm.nativeimage.dynamicaccess.JNIAccess
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Class<?>[])
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.reflect.Executable[])
+meth public !varargs abstract void register(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.reflect.Field[])
+
+CLSS public abstract interface org.graalvm.nativeimage.dynamicaccess.ForeignAccess
+meth public !varargs abstract void registerForDirectUpcall(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.invoke.MethodHandle,java.lang.Object,java.lang.Object[])
+meth public !varargs abstract void registerForDowncall(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Object,java.lang.Object[])
+meth public !varargs abstract void registerForUpcall(org.graalvm.nativeimage.dynamicaccess.AccessCondition,java.lang.Object,java.lang.Object[])
+
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
