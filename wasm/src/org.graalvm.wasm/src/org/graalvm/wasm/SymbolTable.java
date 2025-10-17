@@ -50,6 +50,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -309,6 +310,7 @@ public abstract class SymbolTable {
         }
 
         @Override
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
         public boolean isSupertypeOf(ClosedHeapType heapSubType) {
             if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
                 return false;
@@ -335,6 +337,7 @@ public abstract class SymbolTable {
         }
 
         @Override
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
         public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
             if (heapSuperType == AbstractHeapType.FUNC) {
                 return true;
