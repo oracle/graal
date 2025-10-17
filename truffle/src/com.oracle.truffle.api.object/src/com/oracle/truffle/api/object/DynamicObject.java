@@ -49,6 +49,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -196,9 +197,9 @@ public abstract class DynamicObject implements TruffleObject {
     private Shape shape;
 
     /** Object extension array. */
-    @DynamicField private Object[] extRef = EMPTY_OBJECT_ARRAY;
+    private Object[] extRef = EMPTY_OBJECT_ARRAY;
     /** Primitive extension array. */
-    @DynamicField private int[] extVal = EMPTY_INT_ARRAY;
+    private int[] extVal = EMPTY_INT_ARRAY;
 
     /**
      * Constructor for {@link DynamicObject} subclasses. Initializes the object with the provided
@@ -321,19 +322,25 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     final Object[] getObjectStore() {
+        if (CompilerDirectives.inInterpreter()) {
+            return UnsafeAccess.hostUnsafeCast(extRef, Object[].class, false, true, true);
+        }
         return extRef;
     }
 
     final void setObjectStore(Object[] newArray) {
-        extRef = newArray;
+        extRef = Objects.requireNonNull(newArray);
     }
 
     final int[] getPrimitiveStore() {
+        if (CompilerDirectives.inInterpreter()) {
+            return UnsafeAccess.hostUnsafeCast(extVal, int[].class, false, true, true);
+        }
         return extVal;
     }
 
     final void setPrimitiveStore(int[] newArray) {
-        extVal = newArray;
+        extVal = Objects.requireNonNull(newArray);
     }
 
     static Class<? extends Annotation> getDynamicFieldAnnotation() {
