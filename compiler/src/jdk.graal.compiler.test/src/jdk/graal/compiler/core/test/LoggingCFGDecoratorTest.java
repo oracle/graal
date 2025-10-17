@@ -44,7 +44,6 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
             result = 2;
         }
         GraalDirectives.controlFlowAnchor();
-        ;
         return result;
     }
 
