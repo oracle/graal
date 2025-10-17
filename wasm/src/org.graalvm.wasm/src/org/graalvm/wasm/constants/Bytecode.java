@@ -355,35 +355,34 @@ public class Bytecode {
     public static final int MEMORY_INIT = 0x08;
     public static final int MEMORY64_INIT = 0x0A;
     public static final int DATA_DROP = 0x0C;
-    public static final int DATA_DROP_UNSAFE = 0x0D;
-    public static final int MEMORY_COPY = 0x0E;
-    public static final int MEMORY64_COPY_D32_S64 = 0x0F;
-    public static final int MEMORY64_COPY_D64_S32 = 0x10;
-    public static final int MEMORY64_COPY_D64_S64 = 0x11;
-    public static final int MEMORY_FILL = 0x12;
-    public static final int MEMORY64_FILL = 0x13;
+    public static final int MEMORY_COPY = 0x0D;
+    public static final int MEMORY64_COPY_D32_S64 = 0x0E;
+    public static final int MEMORY64_COPY_D64_S32 = 0x0F;
+    public static final int MEMORY64_COPY_D64_S64 = 0x10;
+    public static final int MEMORY_FILL = 0x11;
+    public static final int MEMORY64_FILL = 0x12;
 
-    public static final int MEMORY64_SIZE = 0x14;
-    public static final int MEMORY64_GROW = 0x15;
-    public static final int TABLE_INIT = 0x16;
-    public static final int ELEM_DROP = 0x17;
-    public static final int TABLE_COPY = 0x18;
-    public static final int TABLE_GROW = 0x19;
-    public static final int TABLE_SIZE = 0x1A;
-    public static final int TABLE_FILL = 0x1B;
+    public static final int MEMORY64_SIZE = 0x13;
+    public static final int MEMORY64_GROW = 0x14;
+    public static final int TABLE_INIT = 0x15;
+    public static final int ELEM_DROP = 0x16;
+    public static final int TABLE_COPY = 0x17;
+    public static final int TABLE_GROW = 0x18;
+    public static final int TABLE_SIZE = 0x19;
+    public static final int TABLE_FILL = 0x1A;
 
     // Exception opcodes
-    public static final int THROW = 0x1C;
-    public static final int THROW_REF = 0x1D;
+    public static final int THROW = 0x1B;
+    public static final int THROW_REF = 0x1C;
 
     // Typed function references opcodes
-    public static final int CALL_REF_U8 = 0x1E;
-    public static final int CALL_REF_I32 = 0x1F;
-    public static final int REF_AS_NON_NULL = 0x20;
-    public static final int BR_ON_NULL_U8 = 0x21;
-    public static final int BR_ON_NULL_I32 = 0x22;
-    public static final int BR_ON_NON_NULL_U8 = 0x23;
-    public static final int BR_ON_NON_NULL_I32 = 0x24;
+    public static final int CALL_REF_U8 = 0x1D;
+    public static final int CALL_REF_I32 = 0x1E;
+    public static final int REF_AS_NON_NULL = 0x1F;
+    public static final int BR_ON_NULL_U8 = 0x20;
+    public static final int BR_ON_NULL_I32 = 0x21;
+    public static final int BR_ON_NON_NULL_U8 = 0x22;
+    public static final int BR_ON_NON_NULL_I32 = 0x23;
 
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;

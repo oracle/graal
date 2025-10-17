@@ -828,7 +828,6 @@ public abstract class BytecodeParser {
                         case Bytecode.MEMORY64_SIZE:
                         case Bytecode.MEMORY64_GROW:
                         case Bytecode.DATA_DROP:
-                        case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.ELEM_DROP:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
