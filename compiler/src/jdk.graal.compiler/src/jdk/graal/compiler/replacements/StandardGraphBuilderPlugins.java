@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -213,6 +212,7 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import jdk.graal.compiler.replacements.nodes.ProfileBooleanNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBitsNode;
 import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -1785,6 +1785,13 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new ControlFlowAnchorNode());
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("controlFlowAnchor", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condition) {
+                b.add(new ControlFlowAnchorNode(condition));
                 return true;
             }
         });

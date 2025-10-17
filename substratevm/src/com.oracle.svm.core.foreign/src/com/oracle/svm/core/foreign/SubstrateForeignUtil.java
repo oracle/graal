@@ -117,6 +117,6 @@ public class SubstrateForeignUtil {
         }
         // avoid any optimization based code duplication in the cluster, it disrupts later matching
         // of control flow when searching for this pattern
-        GraalDirectives.controlFlowAnchor();
+        GraalDirectives.controlFlowAnchor(scope);
     }
 }
