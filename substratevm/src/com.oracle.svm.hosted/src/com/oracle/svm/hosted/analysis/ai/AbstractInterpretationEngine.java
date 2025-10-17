@@ -33,9 +33,10 @@ public class AbstractInterpretationEngine {
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(universe);
         this.invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
 
-        /* TODO: what if I have multiple of public static void main(String[] args) ? */
         inflation.getUniverse().getMethods().forEach(method -> {
-            if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
+            if (method.getName().equals("main") && method.getParameters().length == 1
+                    && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
+                System.out.println("Found main method: " + method);
                 this.root = method;
             }
         });

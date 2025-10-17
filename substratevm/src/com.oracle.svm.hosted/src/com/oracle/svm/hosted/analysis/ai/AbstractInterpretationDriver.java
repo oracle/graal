@@ -22,10 +22,8 @@ public class AbstractInterpretationDriver {
     private final DebugContext debug;
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
-    private final Inflation inflation;
 
     public AbstractInterpretationDriver(DebugContext debug, Inflation inflation) {
-        this.inflation = inflation;
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
         this.engine = new AbstractInterpretationEngine(analyzerManager, inflation);
@@ -35,7 +33,6 @@ public class AbstractInterpretationDriver {
     @SuppressWarnings("try")
     public void run() {
         try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
-            /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 setupFramework();
                 engine.execute();
@@ -55,17 +52,13 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void setupFramework() throws IOException {
-         /** We can creat the {@link AbstractInterpretationLogger} instance here. */
+        /** We can creat the {@link AbstractInterpretationLogger} instance here. */
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
         logger.log("Hello from the abstract interpretation", LoggerVerbosity.INFO);
-
-        /* We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
-         * If we wish to use analyzers during the native image build, we must register them here.
-         * To get started quickly, we can use the sample analyzer wrappers provided in {@link com.oracle.svm.hosted.analysis.ai.example}.
-         * */
         var analyzer = new LeaksIdSetIntraAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
 
+        // TODO: this kinda smells iffy
         /* We can set what methods we want to analyze by engine.setAnalyzeMainOnly(); */
         engine.setAnalyzeMainOnly(true);
     }

@@ -54,6 +54,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -570,7 +571,11 @@ public class NativeImageGenerator {
             if (returnAfterAnalysis) {
                 return;
             }
-            runAbstractInterpretation(debug);
+
+
+            runAbstractInterpretation(entryPoints, debug);
+
+
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             RuntimeConfiguration runtimeConfiguration;
@@ -767,11 +772,11 @@ public class NativeImageGenerator {
         }
     }
 
-    private void runAbstractInterpretation(DebugContext debug) {
-        bb.getMetaAccess().getUniverse();
-        System.out.println("Main entry point: " + mainEntryPoint);
-        System.out.println(mainEntryPoint);
-        var driver = new AbstractInterpretationDriver(debug, bb);
+    private void runAbstractInterpretation(Map<Method, CEntryPointData> entryPoints, DebugContext debug) {
+        AnalysisError.guarantee(mainEntryPoint.getLeft() != null, "Main method not available");
+        AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
+        System.out.println("root method: " + root.format("%H.%n(%p)"));
+        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, bb);
         driver.run();
     }
 

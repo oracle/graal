@@ -20,7 +20,7 @@ import java.io.IOException;
  * To create an intra-procedural analyzer, it is sufficient to provide the initial domain, and the node interpreter.
  * To create an inter-procedural analyzer, we need to also add an implementation of {@link Summary}, as well as logic
  * for creating the summary from an abstract context, which is handled by {@link SummaryFactory}.
- * We can also add additional parameters, like list of checkers to be used during the analysis, or method filters,
+ * We can also add additional parameters, like a list of checkers to be used during the analysis, or method filters,
  * to restrict the analysis of specific methods, extrapolation limits such as join/widen limits, etc.
  *
  * @param <Domain> the type of the abstract domain used for the analysis.
