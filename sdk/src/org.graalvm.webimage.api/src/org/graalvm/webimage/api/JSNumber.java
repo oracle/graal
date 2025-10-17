@@ -119,4 +119,140 @@ public final class JSNumber extends JSValue {
     public int hashCode() {
         return javaDouble().hashCode();
     }
+
+    @JS.Coerce
+    @JS(value = "return isFinite(number);")
+    public native static boolean isFinite(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return isFinite(number);")
+    public native static boolean isFinite(double number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isInteger(number);")
+    public native static boolean isInteger(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isInteger(number);")
+    public native static boolean isInteger(double number);
+
+    @JS.Coerce
+    @JS(value = "return isNaN(number);")
+    public native static boolean isNaN(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return isNaN(number);")
+    public native static boolean isNaN(double number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isSafeInteger(number);")
+    public native static boolean isSafeInteger(JSNumber number);
+
+    @JS.Coerce
+    @JS(value = "return Number.isSafeInteger(number);")
+    public native static boolean isSafeInteger(double number);
+
+    @JS.Coerce
+    @JS(value = "return Number.parseFloat(number);")
+    public native static double parseFloat(String number);
+
+    @JS.Coerce
+    @JS(value = "return Number.parseInt(number);")
+    private static native double parseIntRaw(String number);
+
+    @JS.Coerce
+    @JS(value = "return Number.parseInt(number, radix);")
+    private static native double parseIntRaw(String number, int radix);
+
+    public static long parseInt(String number) {
+        double result = parseIntRaw(number);
+        if (Double.isNaN(result)) {
+            throw new IllegalArgumentException("Invalid integer: " + number);
+        }
+        return (long) result;
+    }
+
+    public static long parseInt(String number, int radix) {
+        double result = parseIntRaw(number, radix);
+        if (Double.isNaN(result)) {
+            throw new IllegalArgumentException("Invalid integer: " + number + " with radix " + radix);
+        }
+        return (long) result;
+    }
+
+    @JS.Coerce
+    @JS(value = "return Number.EPSILON;")
+    public native static double EPSILON();
+
+    @JS.Coerce
+    @JS(value = "return Number.MAX_SAFE_INTEGER;")
+    public native static long MAX_SAFE_INTEGER();
+
+    @JS.Coerce
+    @JS(value = "return Number.MAX_VALUE;")
+    public native static double MAX_VALUE();
+
+    @JS.Coerce
+    @JS(value = "return Number.MIN_SAFE_INTEGER;")
+    public native static long MIN_SAFE_INTEGER();
+
+    @JS.Coerce
+    @JS(value = "return Number.MIN_VALUE;")
+    public native static double MIN_VALUE();
+
+    @JS.Coerce
+    @JS(value = "return Number.NaN;")
+    public native static double NaN();
+
+    @JS.Coerce
+    @JS(value = "return Number.NEGATIVE_INFINITY;")
+    public native static double NEGATIVE_INFINITY();
+
+    @JS.Coerce
+    @JS(value = "return Number.POSITIVE_INFINITY;")
+    public native static double POSITIVE_INFINITY();
+
+    @JS.Coerce
+    @JS(value = "return this.toExponential();")
+    public native String toExponential();
+
+    @JS.Coerce
+    @JS(value = "return this.toExponential(fractionDigits);")
+    public native String toExponential(int fractionDigits);
+
+    @JS.Coerce
+    @JS(value = "return this.toFixed();")
+    public native String toFixed();
+
+    @JS.Coerce
+    @JS(value = "return this.toFixed(digits);")
+    public native String toFixed(int digits);
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString();")
+    public native String toLocaleString();
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString(locales);")
+    public native String toLocaleString(String locales);
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString(locales, options);")
+    public native String toLocaleString(String locales, JSObject options);
+
+    @JS.Coerce
+    @JS(value = "return this.toPrecision();")
+    public native String toPrecision();
+
+    @JS.Coerce
+    @JS(value = "return this.toPrecision(precision);")
+    public native String toPrecision(int precision);
+
+    @JS.Coerce
+    @JS(value = "return this.toString(radix);")
+    public native String toString(int radix);
+
+    @JS.Coerce
+    @JS(value = "return this.valueOf();")
+    public native double valueOf();
 }

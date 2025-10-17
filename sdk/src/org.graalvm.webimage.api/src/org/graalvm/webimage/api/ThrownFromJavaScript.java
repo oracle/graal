@@ -45,10 +45,10 @@ package org.graalvm.webimage.api;
  * Represents the error value thrown in JavaScript.
  * <p>
  * Must not pass a {@link Throwable} instance, these should be thrown directly instead of being
- * wrapped in a {@link JSError}.
+ * wrapped in a {@link ThrownFromJavaScript}.
  */
 @SuppressWarnings("serial")
-public final class JSError extends RuntimeException {
+public final class ThrownFromJavaScript extends RuntimeException {
 
     private static final long serialVersionUID = -2343564169271174471L;
 
@@ -57,7 +57,7 @@ public final class JSError extends RuntimeException {
      */
     private final Object thrownObject;
 
-    public JSError(Object thrownObject) {
+    public ThrownFromJavaScript(Object thrownObject) {
         super(thrownObject.toString());
         this.thrownObject = thrownObject;
         assert !(thrownObject instanceof Throwable) : "Tried creating JSError for a throwable: " + thrownObject;

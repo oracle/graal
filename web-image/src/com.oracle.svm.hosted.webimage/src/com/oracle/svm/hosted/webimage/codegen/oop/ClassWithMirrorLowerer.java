@@ -558,7 +558,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
 
         // Store the mapping from the imported JavaScript class constructor to the Java facade class
         // under which the JavaScript class was imported.
-        if (isImportedClass) {
+//        if (isImportedClass) {
             buffer.emitScopeBegin();
             buffer.emitLetDeclPrefix("facades");
             buffer.emitText("runtime.ensureFacadeSetFor(" + internalMirrorClassName(codeGenTool, type) + ");");
@@ -570,6 +570,6 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
             buffer.emitScopeEnd();
             buffer.emitNewLine();
             buffer.emitNewLine();
-        }
+//        }
     }
 }
