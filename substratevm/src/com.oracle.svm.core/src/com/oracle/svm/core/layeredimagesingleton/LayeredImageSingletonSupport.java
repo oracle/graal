@@ -48,7 +48,7 @@ public interface LayeredImageSingletonSupport {
     /**
      * This method is intended to be used in special situations during the building process to
      * access singletons which (1) are only allowed to be accessed at runtime
-     * ({@link LayeredImageSingletonBuilderFlags#RUNTIME_ACCESS}) and/or (2) are annotated with
+     * ({@link SingletonAccessFlags#RUNTIME_ACCESS_ONLY}) and/or (2) are annotated with
      * {@link InstallationKind#MULTI_LAYER}.
      */
     <T> T lookup(Class<T> key, boolean accessRuntimeOnly, boolean accessMultiLayer);

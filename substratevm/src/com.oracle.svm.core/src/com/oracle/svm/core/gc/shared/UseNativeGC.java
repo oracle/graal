@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.gc.shared;
+
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.EnumSet;
+import com.oracle.svm.core.SubstrateOptions;
 
-/**
- * Feature singletons are hosted only and can only be accessed during build time. Further, we
- * currently do not allow features to save information across layers.
- */
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface FeatureSingleton extends UnsavedSingleton {
-
+public class UseNativeGC implements BooleanSupplier {
     @Override
-    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    public boolean getAsBoolean() {
+        return get();
+    }
+
+    public static boolean get() {
+        return SubstrateOptions.useG1GC();
     }
 }

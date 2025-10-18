@@ -154,11 +154,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
     }
 
-    public static String relativeFileName(String absolutePath) {
-        int lastFileSeparatorIndex = absolutePath.lastIndexOf(File.separator);
-        return absolutePath.substring(Math.max(lastFileSeparatorIndex, 0));
-    }
-
     public static class InvariantsTool {
 
         protected boolean shouldProcess(String classpathEntry) {

@@ -157,7 +157,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     public static CremaResolvedObjectType createForCrema(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces, Class<?> javaClass,
                     int staticReferenceFields, int staticPrimitiveFieldsSize) {
-        return new CremaResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, false, staticReferenceFields, staticPrimitiveFieldsSize);
+        return new CremaResolvedObjectType(parserKlass, modifiers, componentType, superclass, interfaces, null, javaClass, false, staticReferenceFields, staticPrimitiveFieldsSize);
     }
 
     @VisibleForSerialization
@@ -422,5 +422,15 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
             }
         }
         throw VMError.unimplemented("lookupInterfaceMethod");
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> methodName) {
+        for (InterpreterResolvedJavaMethod m : getDeclaredMethods()) {
+            if (m.getSymbolicName() == methodName && m.isDeclaredSignaturePolymorphic()) {
+                return m;
+            }
+        }
+        return null;
     }
 }

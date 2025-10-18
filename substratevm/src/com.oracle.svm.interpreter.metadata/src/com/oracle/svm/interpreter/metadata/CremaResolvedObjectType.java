@@ -32,23 +32,33 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.espresso.classfile.descriptors.Symbol;
-import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.attributes.Attribute;
+import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
+import com.oracle.svm.espresso.classfile.attributes.NestHostAttribute;
+import com.oracle.svm.espresso.classfile.attributes.NestMembersAttribute;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType {
+public final class CremaResolvedObjectType extends InterpreterResolvedObjectType implements CremaResolvedJavaType, AttributedElement {
+    // GR-70288: Only keep a subset of the parsed attributes.
+    private final Attribute[] attributes;
+
     private final byte[] primitiveStatics;
     private final Object[] referenceStatics;
 
-    public CremaResolvedObjectType(Symbol<Type> type, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass, InterpreterResolvedObjectType[] interfaces,
+    // GR-70720: Allow AOT types as nest host.
+    private CremaResolvedObjectType host;
+
+    public CremaResolvedObjectType(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
+                    InterpreterResolvedObjectType[] interfaces,
                     InterpreterConstantPool constantPool, Class<?> javaClass, boolean isWordType,
                     int staticReferenceFields, int staticPrimitiveFieldsSize) {
-        super(type, modifiers, componentType, superclass, interfaces, constantPool, javaClass, isWordType);
+        super(parserKlass.getType(), modifiers, componentType, superclass, interfaces, constantPool, javaClass, isWordType);
         this.primitiveStatics = new byte[staticPrimitiveFieldsSize];
         this.referenceStatics = new Object[staticReferenceFields];
+        this.attributes = parserKlass.getAttributes();
     }
 
     @Override
@@ -138,14 +148,116 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     }
 
     @Override
-    public ResolvedJavaType[] getNestMembers() {
-        // (GR-69095)
-        throw VMError.unimplemented("getNestMembers");
+    public CremaResolvedObjectType getNestHost() {
+        if (host == null) {
+            host = resolveHost();
+        }
+        return host;
     }
 
     @Override
-    public ResolvedJavaType getNestHost() {
-        // (GR-69095)
-        throw VMError.unimplemented("getNestHost");
+    public InterpreterResolvedObjectType[] getNestMembers() {
+        /*
+         * This method is not called for VM operations, only for reflection. No need to cache the
+         * result as this is a rare operation.
+         */
+        CremaResolvedObjectType nestHost = getNestHost();
+        if (this != nestHost) {
+            return resolveNestMembers(nestHost);
+        }
+        return resolveNestMembers(this);
+    }
+
+    private CremaResolvedObjectType resolveHost() {
+        NestHostAttribute nestHostAttribute = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
+        if (nestHostAttribute == null) {
+            return this;
+        }
+        try {
+            InterpreterResolvedObjectType declaredHost = getConstantPool().resolvedTypeAt(this, nestHostAttribute.hostClassIndex);
+            if (!(declaredHost instanceof CremaResolvedObjectType cremaHost)) {
+                throw VMError.unimplemented("Specifying an AOT type as nest host is currently unsupported in runtime-loaded classes.");
+            }
+            if (cremaHost == this || !sameRuntimePackage(cremaHost) || !nestMemberCheck(cremaHost, this)) {
+                /*
+                 * Let H be the class named in the NestHostAttribute of the current class M. If any
+                 * of the following is true, then M is its own nest host:
+                 *
+                 * - H is not in the same run-time package as M.
+                 *
+                 * - H lacks a NestMembers attribute. (checked above)
+                 *
+                 * - H has a NestMembers attribute, but there is no entry in its classes array that
+                 * refers to a class or interface with the name N, where N is the name of M.
+                 */
+                return this;
+            }
+            return cremaHost;
+        } catch (Throwable e) {
+            /*
+             * JVMS sect. 5.4.4: Any exception thrown as a result of failure of class or interface
+             * resolution is not rethrown.
+             */
+            return this;
+        }
+    }
+
+    private boolean sameRuntimePackage(InterpreterResolvedJavaType other) {
+        // GR-62339 true package access checks
+        return this.getJavaClass().getClassLoader() == other.getJavaClass().getClassLoader() && this.getSymbolicRuntimePackage() == other.getSymbolicRuntimePackage();
+    }
+
+    /**
+     * Returns whether the given nest {@code host} class declares {@code member} as one of its nest
+     * members.
+     */
+    private static boolean nestMemberCheck(CremaResolvedObjectType host, InterpreterResolvedJavaType member) {
+        NestMembersAttribute members = host.getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
+        if (members == null) {
+            return false;
+        }
+        for (int clsIndex : members.getClasses()) {
+            if (host.getConstantPool().className(clsIndex) == member.getSymbolicName()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static InterpreterResolvedObjectType[] resolveNestMembers(CremaResolvedObjectType host) {
+        NestMembersAttribute nestMembersAttribute = host.getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
+        if (nestMembersAttribute == null || nestMembersAttribute.getClasses().length == 0) {
+            return new InterpreterResolvedObjectType[]{host};
+        }
+        ArrayList<InterpreterResolvedObjectType> members = new ArrayList<>(nestMembersAttribute.getClasses().length + 1);
+        members.add(host);
+        InterpreterConstantPool pool = host.getConstantPool();
+        for (int memberIndex : nestMembersAttribute.getClasses()) {
+            InterpreterResolvedObjectType member = null;
+            try {
+                member = pool.resolvedTypeAt(host, memberIndex);
+            } catch (Throwable e) {
+                /*
+                 * Don't allow badly constructed nest members to break execution here, only report
+                 * well-constructed entries.
+                 */
+                continue;
+            }
+            if (!(member instanceof CremaResolvedObjectType cremaMember)) {
+                // Specifying an AOT type as nest member is currently unsupported in crema.
+                continue;
+            }
+            if (host != cremaMember.getNestHost()) {
+                // Skip nest members that do not declare 'this' as their host.
+                continue;
+            }
+            members.add(member);
+        }
+        return members.toArray(new InterpreterResolvedObjectType[0]);
+    }
+
+    @Override
+    public Attribute[] getAttributes() {
+        return attributes;
     }
 }

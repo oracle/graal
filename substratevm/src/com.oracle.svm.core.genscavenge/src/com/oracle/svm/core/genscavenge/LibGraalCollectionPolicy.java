@@ -110,9 +110,9 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
+    public void onCollectionBegin(boolean completeCollection, long beginNanoTime) {
         sizeBefore = GCImpl.getChunkBytes();
-        super.onCollectionBegin(completeCollection, requestingNanoTime);
+        super.onCollectionBegin(completeCollection, beginNanoTime);
     }
 
     @Override

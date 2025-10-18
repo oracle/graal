@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -95,6 +94,9 @@ public abstract class ImageHeapScanner {
     protected ObjectScanningObserver scanningObserver;
 
     private boolean sealed;
+
+    /** Reserved for constants that are only known late, e.g., like interned strings array. */
+    public static final ScanReason LATE_SCAN = new OtherReason("Constant scanned manually after sealing the heap.");
 
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider aHostedValuesProvider) {
@@ -299,7 +301,7 @@ public abstract class ImageHeapScanner {
     }
 
     private void checkSealed(ScanReason reason, String format, Object... args) {
-        if (sealed && reason != OtherReason.LATE_SCAN) {
+        if (sealed && reason != LATE_SCAN) {
             throw AnalysisError.sealedHeapError(HeapSnapshotVerifier.formatReason(bb, reason, format, args));
         }
     }
@@ -678,25 +680,37 @@ public abstract class ImageHeapScanner {
         return hostedValuesProvider.readFieldValue(field, receiver);
     }
 
-    public void rescanRoot(Field reflectionField) {
+    /**
+     * Trigger rescanning of a root field. If the value was not scanned before it will first be
+     * scanned and added to the shadow heap, then it will be linked to the field. If the value is
+     * already in the shadow heap it will not be rescanned, i.e., it's fields will not be followed,
+     * with an exception: if the value is a known collection type ({@code Object[]},
+     * {{@link Collection}, {@link Map} or {@link EconomicMap}} then its elements will be rescanned
+     * too.
+     */
+    public void rescanRoot(Field reflectionField, ScanReason rescanReason) {
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
                 JavaConstant fieldValue = readHostedFieldValue(field, null).get();
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
-                AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, OtherReason.RESCAN, null);
+                AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, rescanReason, null);
                 if (field.isRead() || field.isFolded()) {
-                    rescanCollectionElements(fieldTask.ensureDone());
+                    rescanCollectionElements(fieldTask.ensureDone(), new FieldScan(field, null, rescanReason));
                 }
             }
         });
     }
 
-    public void rescanField(Object receiver, Field reflectionField) {
-        rescanField(receiver, reflectionField, OtherReason.RESCAN);
-    }
-
+    /**
+     * Trigger rescanning of an instance field. If the receiver value or field value were not
+     * scanned before they will first be scanned and added to the shadow heap, then the value will
+     * be linked to the field. If the value is already in the shadow heap it will not be rescanned,
+     * i.e., it's fields will not be followed, with an exception: if the value is a known collection
+     * type ({@code Object[]}, {{@link Collection}, {@link Map} or {@link EconomicMap}} then its
+     * elements will be rescanned too.
+     */
     public void rescanField(Object receiver, Field reflectionField, ScanReason reason) {
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
@@ -736,7 +750,7 @@ public abstract class ImageHeapScanner {
                         if (field.isRead() || field.isFolded()) {
                             JavaConstant constant = fieldTask.ensureDone();
                             ensureReaderInstalled(constant);
-                            rescanCollectionElements(constant);
+                            rescanCollectionElements(constant, reason);
                         }
                     } else {
                         ScanningObserver.patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue);
@@ -808,13 +822,6 @@ public abstract class ImageHeapScanner {
     /**
      * Add the object to the image heap and, if the object is a collection, rescan its elements.
      */
-    public void rescanObject(Object object) {
-        rescanObject(object, OtherReason.RESCAN);
-    }
-
-    /**
-     * Add the object to the image heap.
-     */
     public void rescanObject(Object object, ScanReason reason) {
         if (object == null) {
             return;
@@ -822,49 +829,42 @@ public abstract class ImageHeapScanner {
 
         maybeRunInExecutor(unused -> {
             doScan(asConstant(object), reason);
-            rescanCollectionElements(object);
+            rescanCollectionElements(object, reason);
         });
     }
 
-    private void rescanCollectionElements(JavaConstant constant) {
+    private void rescanCollectionElements(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
-            rescanCollectionElements(snippetReflection.asObject(Object.class, constant));
+            rescanCollectionElements(snippetReflection.asObject(Object.class, constant), reason);
         }
     }
 
-    private void rescanCollectionElements(Object object) {
-        if (object instanceof Object[]) {
-            Object[] array = (Object[]) object;
+    private void rescanCollectionElements(Object object, ScanReason reason) {
+        if (object instanceof Object[] array) {
             for (Object element : array) {
-                doScan(asConstant(element));
+                doScan(asConstant(element), reason);
             }
-        } else if (object instanceof Collection) {
-            Collection<?> collection = (Collection<?>) object;
-            collection.forEach(e -> doScan(asConstant(e)));
-        } else if (object instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) object;
+        } else if (object instanceof Collection<?> collection) {
+            collection.forEach(e -> doScan(asConstant(e), reason));
+        } else if (object instanceof Map<?, ?> map) {
             map.forEach((k, v) -> {
-                doScan(asConstant(k));
-                doScan(asConstant(v));
+                doScan(asConstant(k), reason);
+                doScan(asConstant(v), reason);
             });
         } else if (object instanceof EconomicMap) {
-            rescanEconomicMap((EconomicMap<?, ?>) object);
+            rescanEconomicMap((EconomicMap<?, ?>) object, reason);
         }
     }
 
-    protected void rescanEconomicMap(EconomicMap<?, ?> object) {
+    protected void rescanEconomicMap(EconomicMap<?, ?> object, ScanReason reason) {
         MapCursor<?, ?> cursor = object.getEntries();
         while (cursor.advance()) {
-            doScan(asConstant(cursor.getKey()));
-            doScan(asConstant(cursor.getValue()));
+            doScan(asConstant(cursor.getKey()), reason);
+            doScan(asConstant(cursor.getValue()), reason);
         }
     }
 
-    public void doScan(JavaConstant constant) {
-        doScan(constant, OtherReason.RESCAN);
-    }
-
-    void doScan(JavaConstant constant, ScanReason reason) {
+    public void doScan(JavaConstant constant, ScanReason reason) {
         JavaConstant value = createImageHeapConstant(constant, reason);
         markReachable(value, reason, null);
     }
@@ -877,18 +877,8 @@ public abstract class ImageHeapScanner {
         scanningObserver = null;
     }
 
-    protected abstract Class<?> getClass(String className);
-
     public HostedValuesProvider getHostedValuesProvider() {
         return hostedValuesProvider;
-    }
-
-    protected AnalysisType lookupJavaType(String className) {
-        return metaAccess.lookupJavaType(getClass(className));
-    }
-
-    protected AnalysisField lookupJavaField(String className, String fieldName) {
-        return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
     /**

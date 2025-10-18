@@ -68,6 +68,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8Symbols;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
+import com.oracle.truffle.espresso.ffi.NoNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
@@ -328,10 +329,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     private static String setNativeBackendId(final TruffleLanguage.Env env) {
-        String nativeBackend;
+        boolean isAllowed = env.isNativeAccessAllowed();
+        // if the Env allows, this might be overwritten.
+        String nativeBackend = NoNativeAccess.Provider.ID;
         if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
-            nativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
-        } else {
+            String userNativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
+            if (!isAllowed && !userNativeBackend.equals(nativeBackend)) {
+                throw EspressoError.fatal("trying to set NativeBackend even though NativeAccess is disabled");
+            }
+            return userNativeBackend;
+
+        } else if (isAllowed) {
             // Pick a sane "default" native backend depending on the platform.
             boolean isInPreInit = (boolean) env.getConfig().getOrDefault("preinit", false);
             if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
@@ -631,6 +639,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return nativeBackendId;
     }
 
+    public boolean isNativeAvailable() {
+        return !nativeBackendId.equals("no-native");
+    }
+
     public boolean isContinuumEnabled() {
         return continuum;
     }
@@ -787,6 +799,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public int getMaxStackTraceDepth() {
         return maxStackTraceDepth;
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean needsInterruptedEvent() {
+        return OS.getCurrent() == OS.Windows;
     }
 
     public final class DisableSingleStepping implements AutoCloseable {

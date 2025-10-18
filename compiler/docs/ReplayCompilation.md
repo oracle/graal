@@ -74,6 +74,14 @@ mx -p ../vm --env libgraal build
 mx replaycomp --libgraal ./replay-files
 ```
 
+It is possible to specify a different JDK for the replay with the `--jdk-home` argument. The below command runs replay
+using the libgraal image that is part of the built JDK in `$GRAALVM_HOME`.
+
+```shell
+GRAALVM_HOME=$(mx -p ../vm --env libgraal graalvm-home)
+mx replaycomp --jdk-home $GRAALVM_HOME ./replay-files
+```
+
 ## Replay Options
 
 `--compare-graphs=true` compares the final canonical graph of the replayed compilation to the recorded one, which is

@@ -1253,13 +1253,12 @@ def _check_latest_jvmci_version():
                     # only compare the same major versions
                     if latest == 'not found':
                         latest = current
-                    # [GR-69961] temporarily disable until labsjdk-ce|ee-25 is gone from common.json
-                    # elif latest != current:
-                    #     # All JVMCI JDKs in common.json with the same major version
-                    #     # are expected to have the same JVMCI version.
-                    #     # If they don't then the repo is in some transitionary state
-                    #     # (e.g. making a JVMCI release) so skip the check.
-                    #     return False, distribution
+                    elif latest != current:
+                        # All JVMCI JDKs in common.json with the same major version
+                        # are expected to have the same JVMCI version.
+                        # If they don't then the repo is in some transitionary state
+                        # (e.g. making a JVMCI release) so skip the check.
+                        return False, distribution
         return not isinstance(latest, str), latest
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
@@ -1582,40 +1581,56 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
-def replaycomp_vm_args():
-    """Returns the VM arguments required to run the replay compilation launcher."""
-    vm_args = [
+def replaycomp_vm_args(distributions):
+    """Returns the VM arguments required to run the replay compilation launcher.
+
+    :param distributions the distributions to add to the classpath
+    :return the list of VM arguments
+    """
+    return [
         '-XX:-UseJVMCICompiler',
-        '--enable-native-access=org.graalvm.truffle',
+        '--enable-native-access=ALL-UNNAMED',
+        '--illegal-native-access=allow',
         '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-        '-Djdk.graal.CompilationFailureAction=Print'
+        '-Djdk.graal.CompilationFailureAction=Print',
+        '-cp',
+        mx.classpath(distributions, jdk=jdk),
     ]
-    _, dists = mx.defaultDependencies(opt_limit_to_suite=True)
-    dists = [d for d in dists if d.isJARDistribution() and os.path.exists(d.classpath_repr(resolve=False))]
-    return mx.get_runtime_jvm_args(dists) + vm_args
 
 def replaycomp_main_class():
     """Returns the main class name for the replay compilation launcher."""
     return 'jdk.graal.compiler.hotspot.replaycomp.test.ReplayCompilationLauncher'
 
-def replaycomp(args):
+def replaycomp(args, distributions = 'GRAAL_TEST'):
     """Runs the replay compilation launcher with the provided launcher and VM arguments."""
     extra_vm_args = []
-    launcher_args = []
+    non_vm_args = []
+    vm_arg_prefixes = ['-X', '-D', '-ea', '-enableassertions', '-esa', '-enablesystemassertions']
     for arg in args:
-        vm_arg_prefixes = ['-X', '-D', '-ea', '-enableassertions', '-esa', '-enablesystemassertions']
         if any(map(arg.startswith, vm_arg_prefixes)):
             extra_vm_args.append(arg)
-        elif arg == '--libgraal':
-            jvmci_lib_path = os.path.join(mx.suite('sdk').get_output_root(platformDependent=True, jdkDependent=False),
-                                          mx.add_lib_suffix(mx.add_lib_prefix('jvmcicompiler')) + '.image')
-            extra_vm_args.extend([
-                '-XX:+UseJVMCINativeLibrary',
-                f'-XX:JVMCILibPath={jvmci_lib_path}'
-            ])
         else:
-            launcher_args.append(arg)
-    return run_vm([*replaycomp_vm_args(), *extra_vm_args, replaycomp_main_class(), *launcher_args], nonZeroIsFatal=False)
+            non_vm_args.append(arg)
+    parser = ArgumentParser(add_help=False)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--libgraal', action='store_true')
+    group.add_argument('--jdk-home', type=str)
+    mx_args, launcher_args = parser.parse_known_args(non_vm_args)
+    selected_jdk = None
+    if mx_args.jdk_home:
+        selected_jdk = mx.JDKConfig(mx_args.jdk_home)
+    elif mx_args.libgraal:
+        jvmci_lib_path = os.path.join(mx.suite('sdk').get_output_root(platformDependent=True, jdkDependent=False),
+                                      mx.add_lib_suffix(mx.add_lib_prefix('jvmcicompiler')) + '.image')
+        extra_vm_args.extend([
+            '-XX:+UseJVMCINativeLibrary',
+            f'-XX:JVMCILibPath={jvmci_lib_path}'
+        ])
+    return run_java([
+        *replaycomp_vm_args(distributions),
+        *extra_vm_args,
+        replaycomp_main_class(),
+        *launcher_args], nonZeroIsFatal=False, jdk=selected_jdk)
 
 def igvutil(args):
     """various utilities to inspect and modify IGV graphs"""

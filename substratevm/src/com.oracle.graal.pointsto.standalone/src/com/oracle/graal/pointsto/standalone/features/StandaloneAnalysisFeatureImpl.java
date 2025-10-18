@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -48,7 +48,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -56,26 +58,19 @@ public class StandaloneAnalysisFeatureImpl {
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
 
         protected final StandaloneAnalysisFeatureManager featureManager;
-        protected final ClassLoader analysisClassLoader;
+        protected final PointsToAnalyzer.ClassLoaderAccess classLoaderAccess;
         protected final DebugContext debugContext;
 
-        FeatureAccessImpl(StandaloneAnalysisFeatureManager featureManager, ClassLoader classLoader, DebugContext debugContext) {
+        FeatureAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, DebugContext debugContext) {
             this.featureManager = featureManager;
-            this.analysisClassLoader = classLoader;
+            this.classLoaderAccess = classLoaderAccess;
             this.debugContext = debugContext;
         }
 
+        @Deprecated
         @Override
         public Class<?> findClassByName(String className) {
-            try {
-                return Class.forName(className, false, analysisClassLoader);
-            } catch (ClassNotFoundException e) {
-                return null;
-            }
-        }
-
-        public DebugContext getDebugContext() {
-            return debugContext;
+            throw AnalysisError.shouldNotReachHere("Standalone analysis does not expose direct class references. Use ResolvedJavaType instead.");
         }
 
         @Override
@@ -89,8 +84,9 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         @Override
+        @Deprecated
         public ClassLoader getApplicationClassLoader() {
-            return analysisClassLoader;
+            throw AnalysisError.shouldNotReachHere("Standalone analysis does not expose class loaders.");
         }
     }
 
@@ -98,8 +94,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         protected final BigBang bb;
 
-        AnalysisAccessBase(StandaloneAnalysisFeatureManager featureManager, ClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
-            super(featureManager, imageClassLoader, debugContext);
+        AnalysisAccessBase(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
+            super(featureManager, classLoaderAccess, debugContext);
             this.bb = bb;
         }
 
@@ -139,6 +135,7 @@ public class StandaloneAnalysisFeatureImpl {
             return method.isReachable();
         }
 
+        @Deprecated
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
             return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
                             .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
@@ -164,8 +161,8 @@ public class StandaloneAnalysisFeatureImpl {
 
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
-        public BeforeAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, ClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
-            super(featureManager, imageClassLoader, bb, debugContext);
+        public BeforeAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
+            super(featureManager, classLoaderAccess, bb, debugContext);
         }
 
         @Override
@@ -266,8 +263,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        public DuringAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, ClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
-            super(featureManager, imageClassLoader, bb, debugContext);
+        public DuringAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
+            super(featureManager, classLoaderAccess, bb, debugContext);
         }
 
         @Override
@@ -286,8 +283,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         private final Map<Class<? extends Feature>, Object> analysisResults = new HashMap<>();
 
-        public OnAnalysisExitAccessImpl(StandaloneAnalysisFeatureManager featureManager, ClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
-            super(featureManager, imageClassLoader, bb, debugContext);
+        public OnAnalysisExitAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
+            super(featureManager, classLoaderAccess, bb, debugContext);
         }
 
         public void setAnalysisResult(Class<? extends Feature> feature, Object result) {

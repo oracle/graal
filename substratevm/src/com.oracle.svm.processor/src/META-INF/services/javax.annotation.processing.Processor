@@ -1,3 +1,4 @@
 com.oracle.svm.processor.AutomaticallyRegisteredFeatureProcessor
 com.oracle.svm.processor.AutomaticallyRegisteredImageSingletonProcessor
 com.oracle.svm.processor.BasedOnJDKFileProcessor
+com.oracle.svm.processor.LayeredAnnotationProcessor

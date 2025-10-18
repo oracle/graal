@@ -59,7 +59,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -73,7 +72,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -81,6 +79,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -101,13 +100,20 @@ import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -175,6 +181,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnnotatedElement, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
     private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
+
+    // Reason tracking for manually triggered rescans
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ReflectionDataBuilder.class);
 
     public ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
         this.annotationExtractor = annotationExtractor;
@@ -527,7 +536,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!queriedOnly) {
             methodAccessors.computeIfAbsent(analysisMethod, _ -> {
                 SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(reflectExecutable);
-                universe.getHeapScanner().rescanObject(accessor);
+                universe.getHeapScanner().rescanObject(accessor, scanReason);
                 return accessor;
             });
         }
@@ -1206,7 +1215,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             throw error;
         } else {
             var registeredError = errorMap.computeIfAbsent(clazz, _ -> {
-                universe.getHeapScanner().rescanObject(error);
+                universe.getHeapScanner().rescanObject(error, scanReason);
                 return error;
             });
             assert registeredError.toString().equals(error.toString()) : "Attempting to replace " + registeredError + " with " + error;
@@ -1447,7 +1456,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-    public static class LayeredReflectionDataBuilder implements LayeredImageSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredReflectionDataBuilder.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    public static class LayeredReflectionDataBuilder {
         public static final String METHODS = "methods";
         public static final String FIELDS = "fields";
         public static final String REFLECTION_DATA_BUILDER = "reflection data builder";
@@ -1492,51 +1502,62 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return false;
         }
 
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-        }
-
-        @Override
-        public PersistFlags preparePersist(ImageSingletonWriter writer) {
-            ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
-            persistRegisteredElements(writer, reflectionDataBuilder.registeredMethods, AnalysisMethod::getId, METHODS);
-            persistRegisteredElements(writer, reflectionDataBuilder.registeredFields, AnalysisField::getId, FIELDS);
-            return PersistFlags.CREATE;
-        }
-
-        private static <T, U> void persistRegisteredElements(ImageSingletonWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
-            List<Integer> classes = new ArrayList<>();
-            for (var entry : registeredElements.entrySet()) {
-                classes.add(entry.getKey().getId());
-                writer.writeIntList(getElementKeyName(element, entry.getKey().getId()), entry.getValue().keySet().stream().map(getId).toList());
-            }
-            writer.writeIntList(getClassesKeyName(element), classes);
-        }
-
-        @SuppressWarnings("unused")
-        public static Object createFromLoader(ImageSingletonLoader loader) {
-            var previousLayerRegisteredMethods = loadRegisteredElements(loader, METHODS);
-            var previousLayerRegisteredFields = loadRegisteredElements(loader, FIELDS);
-            return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields);
-        }
-
-        private static Map<Integer, Set<Integer>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
-            Map<Integer, Set<Integer>> previousLayerRegisteredElements = new HashMap<>();
-            var classes = loader.readIntList(getClassesKeyName(element));
-            for (int key : classes) {
-                var elements = loader.readIntList(getElementKeyName(element, key)).stream().collect(Collectors.toUnmodifiableSet());
-                previousLayerRegisteredElements.put(key, elements);
-            }
-            return Collections.unmodifiableMap(previousLayerRegisteredElements);
-        }
-
         private static String getClassesKeyName(String element) {
             return REFLECTION_DATA_BUILDER_CLASSES + " " + element;
         }
 
         private static String getElementKeyName(String element, int typeId) {
             return REFLECTION_DATA_BUILDER + " " + element + " " + typeId;
+        }
+
+        static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+
+            @Override
+            public SingletonTrait getLayeredCallbacksTrait() {
+                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredReflectionDataBuilder>() {
+                    private static <T, U> void persistRegisteredElements(ImageSingletonWriter writer, Map<AnalysisType, Map<T, U>> registeredElements, Function<T, Integer> getId, String element) {
+                        List<Integer> classes = new ArrayList<>();
+                        for (var entry : registeredElements.entrySet()) {
+                            classes.add(entry.getKey().getId());
+                            writer.writeIntList(getElementKeyName(element, entry.getKey().getId()), entry.getValue().keySet().stream().map(getId).toList());
+                        }
+                        writer.writeIntList(getClassesKeyName(element), classes);
+                    }
+
+                    @Override
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredReflectionDataBuilder singleton) {
+                        ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
+                        persistRegisteredElements(writer, reflectionDataBuilder.registeredMethods, AnalysisMethod::getId, METHODS);
+                        persistRegisteredElements(writer, reflectionDataBuilder.registeredFields, AnalysisField::getId, FIELDS);
+                        return LayeredPersistFlags.CREATE;
+                    }
+
+                    @Override
+                    public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                        return SingletonInstantiator.class;
+                    }
+                });
+            }
+
+            static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayeredReflectionDataBuilder> {
+
+                private static Map<Integer, Set<Integer>> loadRegisteredElements(ImageSingletonLoader loader, String element) {
+                    Map<Integer, Set<Integer>> previousLayerRegisteredElements = new HashMap<>();
+                    var classes = loader.readIntList(getClassesKeyName(element));
+                    for (int key : classes) {
+                        var elements = loader.readIntList(getElementKeyName(element, key)).stream().collect(Collectors.toUnmodifiableSet());
+                        previousLayerRegisteredElements.put(key, elements);
+                    }
+                    return Collections.unmodifiableMap(previousLayerRegisteredElements);
+                }
+
+                @Override
+                public LayeredReflectionDataBuilder createFromLoader(ImageSingletonLoader loader) {
+                    var previousLayerRegisteredMethods = loadRegisteredElements(loader, METHODS);
+                    var previousLayerRegisteredFields = loadRegisteredElements(loader, FIELDS);
+                    return new LayeredReflectionDataBuilder(previousLayerRegisteredMethods, previousLayerRegisteredFields);
+                }
+            }
         }
     }
 }

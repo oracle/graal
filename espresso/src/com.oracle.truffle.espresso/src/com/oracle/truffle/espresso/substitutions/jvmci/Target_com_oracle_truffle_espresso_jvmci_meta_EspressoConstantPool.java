@@ -53,6 +53,7 @@ import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
@@ -79,8 +80,8 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
@@ -459,11 +460,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             case INVOKEINTERFACE: {
                 Klass klass = constantPool.resolvedKlassAt(cpHolderKlass, constantPool.memberClassIndex(cpi));
                 LOGGER.finer(() -> "ECP.loadReferencedType0(" + Bytecodes.nameOf(opcode) + ") found " + klass);
-                if ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && Meta.isSignaturePolymorphicHolderType(klass.getType())) {
+                if ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && ParserKlass.isSignaturePolymorphicHolderType(klass.getType())) {
                     ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(cpi, meta);
                     if (resolvedConstant == null) {
                         Symbol<Name> methodName = constantPool.memberName(cpi);
-                        if (MethodHandleIntrinsics.getId(methodName, klass) != MethodHandleIntrinsics.PolySigIntrinsics.None) {
+                        if (SignaturePolymorphicIntrinsic.getId(methodName, klass) != null) {
                             // trigger resolution for method handle intrinsics
                             Method method = constantPool.resolvedMethodAt(cpHolderKlass, cpi);
                             LOGGER.finer(() -> "ECP.loadReferencedType0(" + Bytecodes.nameOf(opcode) + ") resolved MH intrinsic to " + method);
@@ -653,7 +654,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
         ConstantPool.Tag tag = safeTagAt(constantPool, index, meta);
         if (tag == ConstantPool.Tag.DYNAMIC || tag == ConstantPool.Tag.INVOKEDYNAMIC) {
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) cpHolderKlass.getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = cpHolderKlass.getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
             int bsmAttrIndex = constantPool.bsmBootstrapMethodAttrIndex(index);
             BootstrapMethodsAttribute.Entry bsmEntry = bms.at(bsmAttrIndex);
             StaticObject methodHandle = constantPool.getMethodHandle(bsmEntry, cpHolderKlass);

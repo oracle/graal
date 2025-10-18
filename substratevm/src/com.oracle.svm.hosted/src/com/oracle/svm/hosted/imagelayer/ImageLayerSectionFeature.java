@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,9 +54,10 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -97,7 +97,8 @@ import jdk.vm.ci.meta.JavaConstant;
  * </pre>
  */
 @AutomaticallyRegisteredFeature
-public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public final class ImageLayerSectionFeature implements InternalFeature {
 
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
     private static final String LAYER_NAME_PREFIX = "__svm_vm_layer";
@@ -356,7 +357,8 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         buffer.position(buffer.position() + longsCount * Long.BYTES);
     }
 
-    private static class ImageLayerSectionImpl extends ImageLayerSection implements UnsavedSingleton {
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static class ImageLayerSectionImpl extends ImageLayerSection {
 
         ImageLayerSectionImpl(CGlobalData<Pointer> initialSectionStart, CGlobalData<WordPointer> cachedImageFDs, CGlobalData<WordPointer> cachedImageHeapOffsets,
                         CGlobalData<WordPointer> cachedImageHeapRelocations) {
@@ -379,11 +381,6 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
                 case VARIABLY_SIZED_DATA -> VARIABLY_SIZED_DATA_OFFSET;
                 case FIRST_SINGLETON -> FIRST_SINGLETON_OFFSET;
             };
-        }
-
-        @Override
-        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
         }
     }
 }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,7 +47,7 @@ import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
@@ -182,6 +185,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
     public boolean processUpdatableValues(FeatureImpl.DuringAnalysisAccessImpl access) {
         SVMImageLayerLoader loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         boolean updated = false;
+        ScanReason reason = new OtherReason("Manual rescan triggered from " + LayeredFieldValueTransformerSupport.class);
         for (var updatableValue : priorUpdatableValues) {
             if (!updatableValue.updated) {
                 if (updatableValue.receiver == null) {
@@ -200,7 +204,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                         var newValue = result.value();
                         getFieldUpdater().updateField(updatableValue.receiver, updatableValue.transformer.aField, newValue);
                         if (access != null) {
-                            access.rescanObject(newValue);
+                            access.rescanObject(newValue, reason);
                         }
                         updated = true;
                     }
@@ -272,12 +276,12 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
         public SingletonTrait getLayeredCallbacksTrait() {
             return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredFieldValueTransformerSupport>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredFieldValueTransformerSupport singleton) {
                     var fieldsWithUpdatableValues = singleton.fieldToLayeredTransformer.entrySet().stream()
                                     .filter(e -> e.getValue().currentLayerHasUpdatableValues)
                                     .map(e -> e.getKey().getId()).toList();
                     writer.writeIntList("fieldsWithUpdatableValues", fieldsWithUpdatableValues);
-                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override

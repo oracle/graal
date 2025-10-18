@@ -25,8 +25,8 @@
 package com.oracle.svm.core.traits;
 
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
 
 /**
  * Commonly used {@link SingletonTrait}s.
@@ -37,7 +37,7 @@ public class BuiltinTraits {
      * Trait indicating this singleton should only be accessed from code executed at runtime.
      */
     public static final SingletonTrait RUNTIME_ONLY = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY);
+                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.RUNTIME_ACCESS_ONLY);
 
     public static final class RuntimeAccessOnly extends SingletonAccessSupplier {
         @Override
@@ -51,7 +51,7 @@ public class BuiltinTraits {
      * process and not at runtime.
      */
     public static final SingletonTrait BUILDTIME_ONLY = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY);
+                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.BUILDTIME_ACCESS_ONLY);
 
     public static final class BuildtimeAccessOnly extends SingletonAccessSupplier {
         @Override
@@ -65,7 +65,7 @@ public class BuiltinTraits {
      * process and at runtime.
      */
     public static final SingletonTrait ALL_ACCESS = new SingletonTrait(SingletonTraitKind.ACCESS,
-                    (SingletonAccess.Supplier) () -> LayeredImageSingletonBuilderFlags.ALL_ACCESS);
+                    (SingletonAccess.Supplier) () -> SingletonAccessFlags.ALL_ACCESS);
 
     public static final class AllAccess extends SingletonAccessSupplier {
         @Override
@@ -79,8 +79,8 @@ public class BuiltinTraits {
      */
     public static final SingletonTrait NO_LAYERED_CALLBACKS = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
         @Override
-        public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-            return LayeredImageSingleton.PersistFlags.NOTHING;
+        public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+            return LayeredPersistFlags.NOTHING;
         }
     });
 
@@ -98,8 +98,8 @@ public class BuiltinTraits {
      */
     public static final SingletonTrait SINGLE_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
         @Override
-        public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
-            return LayeredImageSingleton.PersistFlags.FORBIDDEN;
+        public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+            return LayeredPersistFlags.FORBIDDEN;
         }
     });
 

@@ -22,7 +22,7 @@
 #
 
 suite = {
-    "mxversion": "7.58.0",
+    "mxversion": "7.59.0",
     "name": "espresso",
     "version" : "25.1.0",
     "release" : False,
@@ -175,6 +175,7 @@ suite = {
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
                 "java.management",
+                "jdk.management",
             ],
             "uses": [
                 "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
@@ -229,7 +230,7 @@ suite = {
             "requires": [
                 "java.logging",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -288,7 +289,7 @@ suite = {
             "os_arch": {
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall"],
                         "multitarget": {
                             "libc": ["default"],
                         },
@@ -395,7 +396,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-g", "-O3", "-Wall"],
+                        "cflags": ["-Zi", "-O2", "-Wall", "-std:c11"],
                         "multitarget": {
                             "libc": ["default"],
                         },

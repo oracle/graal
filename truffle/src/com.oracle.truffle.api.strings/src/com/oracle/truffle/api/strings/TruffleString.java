@@ -3167,8 +3167,7 @@ public final class TruffleString extends AbstractTruffleString {
         static int maskZero(int rawHashCode) {
             int h = rawHashCode;
             if (h == 0) {
-                h--;
-                assert h == MASKED_ZERO_HASH_CODE;
+                h = MASKED_ZERO_HASH_CODE;
             }
             return h;
         }

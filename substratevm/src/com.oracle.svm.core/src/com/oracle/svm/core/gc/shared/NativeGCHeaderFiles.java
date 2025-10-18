@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.traits;
+package com.oracle.svm.core.gc.shared;
 
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import java.util.Collections;
+import java.util.List;
 
-import jdk.graal.compiler.debug.Assertions;
+import org.graalvm.nativeimage.c.CContext;
 
-// GR-66792 remove once no custom persist actions exist
+import com.oracle.svm.core.c.ProjectHeaderFile;
 
 /**
- * Temporarily used to convert {@link LayeredImageSingleton} callbacks into {@link SingletonTrait}
- * information.
+ * Determines which header files must be included when building a native-image that uses a GC such
+ * as G1.
  */
-public final class InjectedSingletonLayeredCallbacks extends SingletonLayeredCallbacks<LayeredImageSingleton> {
-    final LayeredImageSingleton singleton;
-
-    public InjectedSingletonLayeredCallbacks(LayeredImageSingleton singleton) {
-        this.singleton = singleton;
+public class NativeGCHeaderFiles implements CContext.Directives {
+    @Override
+    public boolean isInConfiguration() {
+        return UseNativeGC.get();
     }
 
     @Override
-    public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, LayeredImageSingleton obj) {
-        assert singleton == obj : Assertions.errorMessage(singleton, obj);
-
-        return singleton.preparePersist(writer);
-    }
-
-    public Class<?> getSingletonClass() {
-        return singleton.getClass();
+    public List<String> getHeaderFiles() {
+        return Collections.singletonList(ProjectHeaderFile.resolve("", "include/sharedGCStructs.h"));
     }
 }

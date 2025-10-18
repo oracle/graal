@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -76,7 +78,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -265,6 +266,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     private boolean copyLanguageResources;
     private boolean includeLanguageResources;
 
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + TruffleBaseFeature.class);
+
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "initializeNativeImageState",
@@ -316,7 +319,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * unsafe accessed, which is necessary for correctness of the static analysis.
      */
     @SuppressWarnings("unused")
-    private void processInlinedField(DuringAnalysisAccess access, InlinableField inlinableField, ObjectScanner.ScanReason reason) {
+    private void processInlinedField(DuringAnalysisAccess access, InlinableField inlinableField, ScanReason reason) {
         if (processedInlinedFields.putIfAbsent(inlinableField, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
             try {
@@ -486,8 +489,10 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
                         Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
-                        Collections.singletonList(ClassLoader.class), imageClassLoader);
+        if (System.getProperty("substratevm.svmtest") == null) {
+            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
+                            Collections.singletonList(ClassLoader.class), imageClassLoader);
+        }
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
     }
 
@@ -782,9 +787,9 @@ public final class TruffleBaseFeature implements InternalFeature {
             initializeTruffleLibrariesAtBuildTime(access, type);
             initializeDynamicObjectLayouts(type);
         }
-        access.rescanRoot(layoutInfoMapField);
-        access.rescanRoot(layoutMapField);
-        access.rescanRoot(libraryFactoryCacheField);
+        access.rescanRoot(layoutInfoMapField, scanReason);
+        access.rescanRoot(layoutMapField, scanReason);
+        access.rescanRoot(libraryFactoryCacheField, scanReason);
     }
 
     @Override
@@ -952,7 +957,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Trigger computation of uncachedDispatch. */
             factory.getUncached();
             /* Manually rescan the field since this is during analysis. */
-            access.rescanField(factory, uncachedDispatchField);
+            access.rescanField(factory, uncachedDispatchField, scanReason);
         }
         if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */

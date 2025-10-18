@@ -37,8 +37,11 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -46,7 +49,8 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Class containing hooks which can only be registered and executed during layered image builds.
  */
 @AutomaticallyRegisteredFeature
-public class LayeredImageHooks implements InternalFeature, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class LayeredImageHooks implements InternalFeature {
     private final Set<DynamicHubWrittenCallback> hubWrittenCallbacks = ConcurrentHashMap.newKeySet();
     private final Set<PatchedWordWrittenCallback> patchedWordWrittenCallbacks = ConcurrentHashMap.newKeySet();
 

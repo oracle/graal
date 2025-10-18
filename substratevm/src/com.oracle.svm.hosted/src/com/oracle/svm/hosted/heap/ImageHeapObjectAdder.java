@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -32,8 +31,10 @@ import java.util.function.BiConsumer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -44,7 +45,8 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
  * analysis, and it has been added to the shadow heap, e.g., by triggering a shadow heap re-scan.
  */
 @AutomaticallyRegisteredImageSingleton
-public class ImageHeapObjectAdder implements UnsavedSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class ImageHeapObjectAdder {
     private final Set<BiConsumer<NativeImageHeap, HostedUniverse>> objectAdders = new HashSet<>();
     private boolean sealed = false;
 
@@ -60,10 +62,5 @@ public class ImageHeapObjectAdder implements UnsavedSingleton {
     public void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
         sealed = true;
         objectAdders.forEach(adder -> adder.accept(heap, hUniverse));
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
     }
 }

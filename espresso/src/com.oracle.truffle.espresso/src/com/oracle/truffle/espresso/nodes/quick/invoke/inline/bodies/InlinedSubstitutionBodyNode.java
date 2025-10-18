@@ -23,10 +23,13 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.GuardedInlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNode {
@@ -37,13 +40,13 @@ public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNod
         this.substitution = insert(substitution);
     }
 
-    public static InlinedMethodNode create(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution.Factory factory) {
-        Method.MethodVersion methodVersion = inlinedMethod.getMethodVersion();
+    public static InlinedMethodNode create(ResolvedCall<Klass, Method, Field> inlinedCall, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution.Factory factory) {
+        Method.MethodVersion methodVersion = inlinedCall.getResolvedMethod().getMethodVersion();
         InlinedSubstitutionBodyNode bodyNode = new InlinedSubstitutionBodyNode(methodVersion, factory.create());
         if (factory.guard() != null) {
-            return new GuardedInlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode, factory.guard());
+            return new GuardedInlinedMethodNode(inlinedCall, top, opcode, callerBCI, statementIndex, bodyNode, factory.guard());
         } else {
-            return new InlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode);
+            return new InlinedMethodNode(inlinedCall, top, opcode, callerBCI, statementIndex, bodyNode);
         }
     }
 

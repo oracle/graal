@@ -543,6 +543,11 @@ public final class Meta extends ContextAccessImpl
         } else {
             HIDDEN_THREAD_SCOPED_VALUE_CACHE = null;
         }
+        if (getLanguage().needsInterruptedEvent()) {
+            HIDDEN_INTERRUPTED_EVENT = java_lang_Thread.requireHiddenField(Names.HIDDEN_INTERRUPTED_EVENT);
+        } else {
+            HIDDEN_INTERRUPTED_EVENT = null;
+        }
 
         if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Names.HIDDEN_THREAD_PENDING_MONITOR);
@@ -674,16 +679,7 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.requireDeclaredField(Names.flags, Types._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Types.java_lang_invoke_MethodHandle);
-        java_lang_invoke_MethodHandle_invokeExact = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeExact, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invoke = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invoke, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeBasic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeBasic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_invokeWithArguments = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.invokeWithArguments, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToInterface = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToInterface, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToSpecial, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToStatic, Signatures.Object_Object_array);
-        java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.linkToVirtual, Signatures.Object_Object_array);
         java_lang_invoke_MethodHandle_asFixedArity = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.asFixedArity, Signatures.MethodHandle);
-        java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.requireDeclaredField(Names.type, Types.java_lang_invoke_MethodType);
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Names.form, Types.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Types.java_lang_invoke_MethodHandles);
@@ -1707,6 +1703,7 @@ public final class Meta extends ContextAccessImpl
     public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_TO_NATIVE_LOCK;
     public final Field HIDDEN_INTERRUPTED;
+    public final Field HIDDEN_INTERRUPTED_EVENT;
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
@@ -1779,16 +1776,7 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_invoke_MemberName_flags;
 
     public final ObjectKlass java_lang_invoke_MethodHandle;
-    public final Method java_lang_invoke_MethodHandle_invoke;
-    public final Method java_lang_invoke_MethodHandle_invokeExact;
-    public final Method java_lang_invoke_MethodHandle_invokeBasic;
-    public final Method java_lang_invoke_MethodHandle_invokeWithArguments;
-    public final Method java_lang_invoke_MethodHandle_linkToInterface;
-    public final Method java_lang_invoke_MethodHandle_linkToSpecial;
-    public final Method java_lang_invoke_MethodHandle_linkToStatic;
-    public final Method java_lang_invoke_MethodHandle_linkToVirtual;
     public final Method java_lang_invoke_MethodHandle_asFixedArity;
-    public final Field java_lang_invoke_MethodHandle_type;
     public final Field java_lang_invoke_MethodHandle_form;
 
     public final ObjectKlass java_lang_invoke_DirectMethodHandle;
@@ -3009,7 +2997,28 @@ public final class Meta extends ContextAccessImpl
         return klass;
     }
 
+    /**
+     * Works as specified by {@link Meta#getIntConstant(ObjectKlass, Symbol, boolean)} with
+     * allowClassInit set to true.
+     */
     public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant) {
+        return getIntConstant(klass, constant, true);
+    }
+
+    /**
+     * Retrieves the int constant from the given guest class. Used for synchronizing constants
+     * between the host and guest world.
+     * </p>
+     * First the method tries to retrieve the constant from the constantPool (which does not trigger
+     * class initialization). If this fails and allowClassInit is true, it triggers class
+     * initialization and gets the constant from the loaded class.
+     *
+     * @param klass the guest class which has the constant as a field.
+     * @param constant the symbol of the int constant to retrieve.
+     * @param allowClassInit whether to allow class initialization
+     * @return the int constant
+     */
+    public static int getIntConstant(ObjectKlass klass, Symbol<Name> constant, boolean allowClassInit) {
         Field f = klass.lookupDeclaredField(constant, Types._int);
         if (f == null || !f.isStatic() || !f.isFinalFlagSet()) {
             throw EspressoError.fatal("Cannot find " + constant + " int constant in class " + klass.getName());
@@ -3017,6 +3026,9 @@ public final class Meta extends ContextAccessImpl
         int constantValueIndex = f.getConstantValueIndex();
         if (constantValueIndex != 0) {
             return klass.getConstantPool().intAt(constantValueIndex);
+        }
+        if (!allowClassInit) {
+            throw EspressoError.shouldNotReachHere("Without classInit, cannot find " + constant + " int constant in class " + klass.getName());
         }
         return f.getInt(klass.tryInitializeAndGetStatics());
     }
@@ -3108,10 +3120,6 @@ public final class Meta extends ContextAccessImpl
             return unboxGuest((StaticObject) object);
         }
         return object;
-    }
-
-    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
-        return type == Types.java_lang_invoke_MethodHandle || type == Types.java_lang_invoke_VarHandle;
     }
 
     // region Guest Unboxing

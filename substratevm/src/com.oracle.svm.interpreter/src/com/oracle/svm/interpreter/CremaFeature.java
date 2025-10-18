@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -129,8 +132,9 @@ public class CremaFeature implements InternalFeature {
             }
         }
 
+        ScanReason reason = new OtherReason("Manual rescan triggered before compilation from " + CremaFeature.class);
         for (HostedType hType : hUniverse.getTypes()) {
-            iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
+            iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField, reason));
         }
     }
 

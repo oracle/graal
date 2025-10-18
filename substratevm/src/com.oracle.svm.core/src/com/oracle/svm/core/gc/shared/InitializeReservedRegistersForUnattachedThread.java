@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.gc.shared;
+
+import org.graalvm.nativeimage.Isolate;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions.Prologue;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+
+import jdk.graal.compiler.word.Word;
 
 /**
- * A Duplicable ImageSingleton can have multiple instances of the object installed in the Image Heap
- * (at most one per a layer). The specific instance referred to from a given piece of code is
- * dependent on the layer in which the code was installed in.
- *
- * It is expected that either the installed objects (1) have no instance fields or (2) have instance
- * fields which have been made layer-aware through other means (e.g. using a layered ImageHeapMap).
- *
- * Note this is a temporary marker and eventually all instances of {@link DuplicableImageSingleton}s
- * should be removed. This marker should only be used when there is not a correctness issue with
- * installing multiple instances of the singleton. Instead, the marker indicates there is merely a
- * performance/memory overhead due to having multiple copies of this singleton installed (via
- * different layers) within the image heap.
+ * Prologue that only initializes the base registers so that an unattached thread can execute SVM
+ * code.
  */
-public interface DuplicableImageSingleton extends LayeredImageSingleton {
+public final class InitializeReservedRegistersForUnattachedThread implements Prologue {
+    @Uninterruptible(reason = "prologue")
+    @SuppressWarnings("unused")
+    public static void enter(Isolate heapBase) {
+        CEntryPointSnippets.initBaseRegisters(heapBase);
+        WriteCurrentVMThreadNode.writeCurrentVMThread(Word.nullPointer());
+    }
 }

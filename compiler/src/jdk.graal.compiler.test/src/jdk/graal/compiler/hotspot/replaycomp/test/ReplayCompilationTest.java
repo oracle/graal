@@ -144,7 +144,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
             Path replayFile = findReplayCompFile(temp.path);
             String[][] argumentLists = new String[][]{
                             new String[]{"--compare-graphs=true", replayFile.toString()},
-                            new String[]{"--compare-graphs=false", "--benchmark=true", "--iterations=1", temp.path.toString()}
+                            new String[]{"--compare-graphs=false", temp.path.toString(), "--benchmark", "--iterations=1"}
             };
             for (String[] arguments : argumentLists) {
                 ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out());

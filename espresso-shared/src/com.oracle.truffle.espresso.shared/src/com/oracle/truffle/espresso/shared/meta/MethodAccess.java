@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
@@ -72,4 +73,18 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * The {@link ExceptionHandler exception handlers} associated with this method.
      */
     ExceptionHandler[] getSymbolicExceptionHandlers();
+
+    /**
+     * Checks whether this method is a signature polymorphic method (JVMS-2.9.3).
+     * <p>
+     * Note that this may return false for instantiations of such signature polymorphic method
+     * returned by {@link #createSignaturePolymorphicIntrinsic(Symbol)}.
+     */
+    boolean isDeclaredSignaturePolymorphic();
+
+    /**
+     * Instantiates a {@linkplain #isDeclaredSignaturePolymorphic() signature polymorphic} method
+     * for a specific signature.
+     */
+    M createSignaturePolymorphicIntrinsic(Symbol<Signature> newSignature);
 }

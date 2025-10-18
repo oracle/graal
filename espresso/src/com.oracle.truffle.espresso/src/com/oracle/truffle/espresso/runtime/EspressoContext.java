@@ -119,6 +119,7 @@ import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.KnownTypes;
+import com.oracle.truffle.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -150,7 +151,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     private final StringTable strings;
     @CompilationFinal private ClassRegistries registries;
     private final Substitutions substitutions;
-    private final MethodHandleIntrinsics methodHandleIntrinsics;
+    private final MethodHandleIntrinsics<Klass, Method, Field> methodHandleIntrinsics;
     // endregion Runtime
 
     // region Helpers
@@ -229,7 +230,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
-        this.methodHandleIntrinsics = new MethodHandleIntrinsics();
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics<>();
 
         this.espressoEnv = new EspressoEnv(this, env);
         this.classLoadingEnv = new ClassLoadingEnv(getLanguage(), getLogger(), getTimers());
@@ -596,7 +597,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
 
             meta.postSystemInit();
             if (language.useEspressoLibs()) {
-                truffleIO.postSystemInit();
+                libsMeta.postSystemInit();
             }
 
             // class redefinition will be enabled if debug mode or if any redefine or retransform
@@ -966,7 +967,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return getLanguage().getNames();
     }
 
-    public MethodHandleIntrinsics getMethodHandleIntrinsics() {
+    public MethodHandleIntrinsics<Klass, Method, Field> getMethodHandleIntrinsics() {
         return methodHandleIntrinsics;
     }
 
@@ -1104,8 +1105,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return espressoEnv.getThreadRegistry().activeThreads();
     }
 
-    public void registerThread(Thread host, StaticObject self) {
-        espressoEnv.getThreadRegistry().registerThread(host, self);
+    public void registerJavaThread(Thread host, StaticObject self) {
+        StaticObject guest = espressoEnv.getThreadRegistry().registerThread(host, self);
+        assert self == guest;
         if (shouldReportVMEvents()) {
             espressoEnv.getEventListener().threadStarted(self);
         }

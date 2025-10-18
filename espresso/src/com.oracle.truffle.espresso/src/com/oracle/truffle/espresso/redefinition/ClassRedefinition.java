@@ -764,8 +764,8 @@ public final class ClassRedefinition {
     }
 
     private static boolean isObsolete(ParserMethod oldMethod, ParserMethod newMethod, ConstantPool oldPool, ConstantPool newPool) {
-        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Names.Code);
-        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
+        CodeAttribute oldCodeAttribute = oldMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class);
+        CodeAttribute newCodeAttribute = newMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class);
         if (oldCodeAttribute == null) {
             return newCodeAttribute != null;
         } else if (newCodeAttribute == null) {
@@ -806,8 +806,8 @@ public final class ClassRedefinition {
 
     private static ClassChange detectMethodChanges(ParserMethod oldMethod, ParserMethod newMethod) {
         // check code attribute
-        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Names.Code);
-        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
+        CodeAttribute oldCodeAttribute = oldMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class);
+        CodeAttribute newCodeAttribute = newMethod.getAttribute(CodeAttribute.NAME, CodeAttribute.class);
 
         if (oldCodeAttribute == null) {
             return newCodeAttribute != null ? ClassChange.METHOD_BODY_CHANGE : ClassChange.NO_CHANGE;

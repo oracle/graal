@@ -166,7 +166,6 @@ abstract class HostExecuteNode extends Node {
                             null, hostContext, HostToTypeNode.COERCE,
                             varArgsMappingInterop, varArgsMappingNode);
         } else {
-            assert args.length != parameterCount;
             asVarArgs = true;
         }
         int minArity = parameterCount - 1;
@@ -514,7 +513,6 @@ abstract class HostExecuteNode extends Node {
                                 null, hostContext, HostToTypeNode.COERCE,
                                 InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached());
             } else {
-                assert args.length != parameterCount;
                 return true;
             }
         } else {

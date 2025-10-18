@@ -75,9 +75,9 @@ public class LibLoaderAPI {
 
     /** Loads the specified module into the address space of the calling process. */
     @CFunction(transition = NO_TRANSITION)
-    public static native HMODULE LoadLibraryA(CCharPointer lpLibFileName);
+    public static native HMODULE LoadLibraryW(WCharPointer lpLibFileName);
 
     /** Loads the specified module into the address space of the calling process. */
     @CFunction(transition = NO_TRANSITION)
-    public static native HMODULE LoadLibraryExA(CCharPointer lpLibFileName, HANDLE hFile, int dwFlags);
+    public static native HMODULE LoadLibraryExW(WCharPointer lpLibFileName, HANDLE hFile, int dwFlags);
 }

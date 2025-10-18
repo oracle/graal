@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -38,7 +37,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * contains the addresses of various important locations and information about values to patch at
  * runtime. See {@code ImageLayerSectionFeature} for details.
  */
-public abstract class ImageLayerSection implements LayeredImageSingleton {
+public abstract class ImageLayerSection {
 
     protected final CGlobalData<Pointer> initialSectionStart;
     protected final CGlobalData<WordPointer> cachedImageFDs;

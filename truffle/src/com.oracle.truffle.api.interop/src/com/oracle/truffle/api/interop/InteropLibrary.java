@@ -5125,7 +5125,6 @@ public abstract class InteropLibrary extends Library {
                 assert assertMetaObject(receiver);
             } else {
                 assert assertNoMetaObject(receiver);
-                assert !result || notOtherType(receiver, Type.META_OBJECT);
             }
             assert validProtocolReturn(receiver, result);
             return result;

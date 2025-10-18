@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,15 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.truffle.espresso.libs.libmanagement_ext;
 
-/**
- * This singleton does not allow a singleton with its key(s) to be created in subsequent layers.
- */
-public interface FinalSingleton extends LayeredImageSingleton {
+import com.oracle.truffle.espresso.libs.Lib;
+import com.oracle.truffle.espresso.libs.Libs;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.Collect;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+
+@Collect(Libs.class)
+public final class LibManagementExt implements Lib.Factory {
+    @Override
+    public String name() {
+        return "management_ext";
+    }
 
     @Override
-    default PersistFlags preparePersist(ImageSingletonWriter writer) {
-        return PersistFlags.FORBIDDEN;
+    public Lib create(EspressoContext ctx) {
+        return new Lib(ctx, LibManagementExtCollector.getInstances(JavaSubstitution.Factory.class), name());
     }
 }

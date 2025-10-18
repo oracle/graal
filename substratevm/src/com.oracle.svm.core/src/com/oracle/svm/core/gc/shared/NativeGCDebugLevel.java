@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.gc.shared;
 
-import java.util.EnumSet;
+/** Defines which debug-levels are supported for GCs such as G1. */
+public enum NativeGCDebugLevel {
+    Product("", 0),
+    FastDebug("-fastdebug", 1),
+    Debug("-debug", 2);
 
-/**
- * Flags used during build time to determine how the native image generator handles the layered
- * image singleton.
- */
-public enum LayeredImageSingletonBuilderFlags {
-    /**
-     * This singleton can be accessed from the runtime.
-     */
-    RUNTIME_ACCESS,
-    /**
-     * This singleton can be accessed from the buildtime.
-     */
-    BUILDTIME_ACCESS;
+    private final String libSuffix;
+    private final int index;
 
-    /*
-     * Below are some common flag patterns.
-     */
+    NativeGCDebugLevel(String libSuffix, int index) {
+        this.libSuffix = libSuffix;
+        this.index = index;
+    }
 
-    public static final EnumSet<LayeredImageSingletonBuilderFlags> BUILDTIME_ACCESS_ONLY = EnumSet.of(BUILDTIME_ACCESS);
+    public String getLibSuffix() {
+        return libSuffix;
+    }
 
-    public static final EnumSet<LayeredImageSingletonBuilderFlags> RUNTIME_ACCESS_ONLY = EnumSet.of(RUNTIME_ACCESS);
+    public int getIndex() {
+        return index;
+    }
 
-    public static final EnumSet<LayeredImageSingletonBuilderFlags> ALL_ACCESS = EnumSet.of(RUNTIME_ACCESS, BUILDTIME_ACCESS);
+    public static NativeGCDebugLevel fromString(String value) {
+        return switch (value) {
+            case "product" -> Product;
+            case "fastdebug" -> FastDebug;
+            case "debug" -> Debug;
+            default -> null;
+        };
+    }
 }

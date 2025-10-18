@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -99,7 +100,7 @@ public class LoggingFeature implements InternalFeature {
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
-        access.rescanRoot(loggersField);
+        access.rescanRoot(loggersField, new OtherReason("Manual rescan triggered during analysis from " + LoggingFeature.class));
     }
 
     private void registerForReflection(Class<?> clazz) {

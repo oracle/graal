@@ -37,6 +37,10 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -54,7 +58,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * builds have at most exactly one singleton, so we can optimize these calls accordingly.
  */
 @AutomaticallyRegisteredFeature
-public class NonLayeredImageSingletonFeature implements InternalFeature, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class NonLayeredImageSingletonFeature implements InternalFeature {
 
     ConcurrentHashMap<Class<?>, Object> multiLayeredArrays = new ConcurrentHashMap<>();
 

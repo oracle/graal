@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.NotNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -119,9 +120,9 @@ public class SimdPrimitiveCompareNode extends BinaryNode implements Canonicaliza
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (x.isConstant() && y.isConstant()) {
-            SimdConstant simdX = (SimdConstant) x.asConstant();
-            SimdConstant simdY = (SimdConstant) y.asConstant();
+        if (forX.isConstant() && forY.isConstant()) {
+            SimdConstant simdX = (SimdConstant) forX.asConstant();
+            SimdConstant simdY = (SimdConstant) forY.asConstant();
             GraalError.guarantee(simdX.getVectorLength() == simdY.getVectorLength(), "incompatible constants: %s, %s", simdX, simdY);
             boolean[] results = new boolean[simdX.getVectorLength()];
             for (int i = 0; i < simdX.getVectorLength(); i++) {
@@ -139,6 +140,12 @@ public class SimdPrimitiveCompareNode extends BinaryNode implements Canonicaliza
                 mask = SimdConstant.forBitmaskBlendSelector(results, maskKind);
             }
             return new ConstantNode(mask, stamp(NodeView.DEFAULT).constant(mask, null));
+        }
+        SimdStamp simdX = (SimdStamp) forX.stamp(NodeView.from(tool));
+        SimdStamp simdY = (SimdStamp) forY.stamp(NodeView.from(tool));
+        if (condition == CanonicalCondition.EQ && simdX.isMask() && simdY.isAllZeros()) {
+            /* A comparison `mask == allZeros` is a logical not of the mask. */
+            return NotNode.create(forX);
         }
 
         return this;

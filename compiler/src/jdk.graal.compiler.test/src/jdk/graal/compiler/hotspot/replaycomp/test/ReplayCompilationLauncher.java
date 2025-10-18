@@ -42,7 +42,8 @@ public class ReplayCompilationLauncher {
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.graal.compiler");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci");
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.compiler", false);
     }
 
     /**
@@ -62,12 +63,14 @@ public class ReplayCompilationLauncher {
                 }
                 argString.append(arg);
             }
+            System.out.println("Running in libgraal");
             try (var stringBuffer = new LibGraalCompilationDriver.LibGraalParams.UTF8CStringBuffer(argString.toString());
                             LibGraalScope scope = new LibGraalScope()) {
                 int status = runInLibgraal(scope.getIsolateThreadAddress(), stringBuffer.getAddress());
                 System.exit(status);
             }
         } else {
+            System.out.println("Running in jargraal");
             ReplayCompilationRunner.run(args, System.out).exitVM();
         }
     }

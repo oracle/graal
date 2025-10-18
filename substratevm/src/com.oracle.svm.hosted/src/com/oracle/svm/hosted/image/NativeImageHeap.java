@@ -46,12 +46,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -278,7 +278,7 @@ public final class NativeImageHeap implements ImageHeap {
                 StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
-            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
+            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, ImageHeapScanner.LATE_SCAN);
 
             addObject(imageInternedStrings, true, HeapInclusionReason.InternedStringsTable);
 
@@ -803,7 +803,7 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addLateToImageHeap(Object object, Object reason) {
         assert !(object instanceof DynamicHub) : "needs a different identity hashcode";
         assert !(object instanceof String) : "needs String interning";
-        aUniverse.getHeapScanner().rescanObject(object, OtherReason.LATE_SCAN);
+        aUniverse.getHeapScanner().rescanObject(object, ImageHeapScanner.LATE_SCAN);
 
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
@@ -813,7 +813,7 @@ public final class NativeImageHeap implements ImageHeap {
     /**
      * Dumps metadata for every object in the image heap.
      */
-    public void dumpMetadata() {
+    public void dumpMetadata(ImageHeapLayoutInfo heapLayout) {
         String metadataFileName = SubstrateOptions.ImageHeapMetadataDumpFileName.getValue();
         if (metadataFileName == null || metadataFileName.isEmpty()) {
             // Do not dump metadata if the file name isn't set
@@ -827,11 +827,13 @@ public final class NativeImageHeap implements ImageHeap {
             throw VMError.shouldNotReachHere("Image heap metadata directory does not exist: " + metadataDir);
         }
 
+        long heapLayoutStartOffset = heapLayout.getStartOffset();
+
         try (FileWriter metadataOut = new FileWriter(metadataFile);
                         BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
             metadataBw.write("class-name,partition,offset-in-heap,size\n");
             for (ObjectInfo info : getObjects()) {
-                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + info.getOffset() + "," + info.getSize() + System.lineSeparator();
+                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + (info.getOffset() - heapLayoutStartOffset) + "," + info.getSize() + System.lineSeparator();
                 metadataBw.write(csvLine);
             }
         } catch (IOException ex) {
