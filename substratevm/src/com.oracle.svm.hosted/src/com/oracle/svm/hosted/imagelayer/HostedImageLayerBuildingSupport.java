@@ -423,4 +423,16 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     public static void registerBaseLayerTypes(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
         classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
     }
+
+    /**
+     * Native libraries can keep track of a state in C variables. Since native libraries are linked
+     * statically against each layer, the state is kept in a separate space for each layer. This
+     * means that if two methods access the same variable, but they are in a different layer, they
+     * will access to different instances. For this reason, all the native methods from a single
+     * native library need to be in the same layer. This method iterate through all native methods
+     * and try to include them in the current layer.
+     */
+    public static void registerNativeMethodsForBaseImage(BigBang bb, MetaAccessProvider originalMetaAccess, ImageClassLoader loader) {
+        loader.getApplicationClasses().forEach(clazz -> bb.tryRegisterNativeMethodsForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+    }
 }

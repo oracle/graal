@@ -463,4 +463,8 @@ public final class ImageClassLoader {
         Module m1 = SVMHost.class.getModule();
         builderModules = m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
     }
+
+    public EconomicSet<Class<?>> getApplicationClasses() {
+        return applicationClasses;
+    }
 }

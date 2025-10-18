@@ -1109,6 +1109,7 @@ public class NativeImageGenerator {
 
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     HostedImageLayerBuildingSupport.registerBaseLayerTypes(bb, originalMetaAccess, loader.classLoaderSupport);
+                    HostedImageLayerBuildingSupport.registerNativeMethodsForBaseImage(bb, originalMetaAccess, loader);
                 }
 
                 if (loader.classLoaderSupport.isPreserveMode()) {

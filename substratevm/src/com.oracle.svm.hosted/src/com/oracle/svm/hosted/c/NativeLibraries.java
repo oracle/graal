@@ -48,6 +48,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -402,6 +403,10 @@ public final class NativeLibraries {
         }
     }
 
+    public boolean isMethodInConfiguration(ResolvedJavaMethod method) {
+        return makeContext(getDirectives(method)).isInConfiguration();
+    }
+
     public void loadJavaMethod(ResolvedJavaMethod method) {
         Class<? extends CContext.Directives> directives = getDirectives(method);
         NativeCodeContext context = makeContext(directives);
@@ -493,6 +498,10 @@ public final class NativeLibraries {
         return allStaticLibs.get(Paths.get(getStaticLibraryName(staticLibraryName)));
     }
 
+    public Collection<Path> getAllStaticLibNames() {
+        return getAllStaticLibs().keySet();
+    }
+
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
@@ -572,6 +581,25 @@ public final class NativeLibraries {
             return getDirectives(type.getEnclosingType());
         } else {
             return BuiltinDirectives.class;
+        }
+    }
+
+    public CLibrary getCLibrary(ResolvedJavaMethod method) {
+        CLibrary cLibrary = AnnotationAccess.getAnnotation(method, CLibrary.class);
+        if (cLibrary == null) {
+            return getCLibrary(method.getDeclaringClass());
+        }
+        return cLibrary;
+    }
+
+    public CLibrary getCLibrary(ResolvedJavaType type) {
+        CLibrary cLibrary = AnnotationAccess.getAnnotation(type, CLibrary.class);
+        if (cLibrary != null) {
+            return cLibrary;
+        } else if (type.getEnclosingType() != null) {
+            return getCLibrary(type.getEnclosingType());
+        } else {
+            return null;
         }
     }
 
