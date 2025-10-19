@@ -8,7 +8,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.vm.ci.meta.ResolvedJavaType;
-// TODO: REMOVE THIS SHIT ASAP
 /**
  * This is a singleton class that provides utility methods for working with {@link ResolvedJavaType}.
  * Fundamentally, its purpose is to act as a wrapper around {@link BigBang} to
