@@ -161,7 +161,7 @@ public abstract class NativeImage extends AbstractImage {
     private Section heapSection;
 
     public NativeImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+                       List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
@@ -206,9 +206,9 @@ public abstract class NativeImage extends AbstractImage {
     void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
         /* Group methods by header files. */
         Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream() //
-                        .filter(this::shouldWriteHeader) //
-                        .map(m -> Pair.create(cHeader(m), m)) //
-                        .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
+                .filter(this::shouldWriteHeader) //
+                .map(m -> Pair.create(cHeader(m), m)) //
+                .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
 
         hostedMethods.forEach((headerClass, methods) -> {
             methods.sort(NativeImage::sortMethodsByFileNameAndPosition);
@@ -230,8 +230,8 @@ public abstract class NativeImage extends AbstractImage {
         writer.writeCStandardHeaders();
 
         List<String> dependencies = header.dependsOn().stream() //
-                        .map(NativeImage::instantiateCHeader) //
-                        .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
+                .map(NativeImage::instantiateCHeader) //
+                .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
         writer.includeFiles(dependencies);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -393,7 +393,7 @@ public abstract class NativeImage extends AbstractImage {
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub(((CEntryPointCallStubMethod) hostedMethod.wrapped.wrapped));
         try {
             return entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
-                            MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
+                    MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere(e);
         }
@@ -493,9 +493,9 @@ public abstract class NativeImage extends AbstractImage {
             RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(imageHeapSize, objectFile.getByteOrder());
 
             VMError.guarantee(NumUtil.isInt(imageHeapSize),
-                            "The size of the image heap is %s and therefore too large. It must be smaller than %s. This can happen when very large resource files are included in the image or a build time initialized class creates a large cache.",
-                            ByteFormattingUtil.bytesToHuman(imageHeapSize),
-                            ByteFormattingUtil.bytesToHuman(Integer.MAX_VALUE));
+                    "The size of the image heap is %s and therefore too large. It must be smaller than %s. This can happen when very large resource files are included in the image or a build time initialized class creates a large cache.",
+                    ByteFormattingUtil.bytesToHuman(imageHeapSize),
+                    ByteFormattingUtil.bytesToHuman(Integer.MAX_VALUE));
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), pageSize, true, false, heapSectionImpl);
@@ -527,7 +527,7 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
-                            heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
+                    heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
             if (!ImageLayerBuildingSupport.buildingImageLayer()) {
                 /* Layered native-image builds do not use this symbol. */
                 defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
@@ -536,7 +536,7 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritablePatchedOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME, heapSection,
-                            heapLayout.getWritablePatchedOffset() + heapLayout.getWritablePatchedSize() - heapLayout.getStartOffset());
+                    heapLayout.getWritablePatchedOffset() + heapLayout.getWritablePatchedSize() - heapLayout.getStartOffset());
 
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                 HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
@@ -715,7 +715,7 @@ public abstract class NativeImage extends AbstractImage {
     private void markDataRelocationSiteFromText(RelocatableBuffer buffer, final ProgbitsSectionImpl sectionImpl, final int offset, final Info info) {
         Architecture arch = ConfigurationValues.getTarget().arch;
         assert arch instanceof AArch64 || ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "AMD64 Data relocation size should be 4 or 8 bytes. Got size: " +
-                        info.getRelocationSize();
+                info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
             validateNoDirectRelocationsInTextSection(info);
@@ -938,10 +938,10 @@ public abstract class NativeImage extends AbstractImage {
         double sizePercent = 100.0D * ((double) uniqueSize / (double) nonuniqueSize);
         double sizeOverheadPercent = 100.0D * (1.0D - ((double) partition.getSize() / (double) nonuniqueSize));
         histogram.printHeadings(String.format("=== Partition: %s   count: %d / %d = %.1f%%  object size: %d / %d = %.1f%%  total size: %d (%.1f%% overhead) ===", //
-                        partition.getName(), //
-                        uniqueCount, nonuniqueCount, countPercent, //
-                        uniqueSize, nonuniqueSize, sizePercent, //
-                        partition.getSize(), sizeOverheadPercent));
+                partition.getName(), //
+                uniqueCount, nonuniqueCount, countPercent, //
+                uniqueSize, nonuniqueSize, sizePercent, //
+                partition.getSize(), sizeOverheadPercent));
         histogram.print();
     }
 
@@ -1072,7 +1072,7 @@ public abstract class NativeImage extends AbstractImage {
         }
 
         private void defineMethodSymbol(Section textSection, HostedMethod current, Map<String, HostedMethod> methodsBySignature,
-                        String signatureString, String symName, boolean global, CompilationResult compilationResult) {
+                                        String signatureString, String symName, boolean global, CompilationResult compilationResult) {
             final HostedMethod existing = methodsBySignature.get(signatureString);
             if (existing != null) {
                 /*
