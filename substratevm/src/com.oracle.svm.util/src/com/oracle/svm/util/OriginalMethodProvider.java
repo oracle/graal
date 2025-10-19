@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.util;
 
 import java.lang.reflect.Executable;
-
-import com.oracle.graal.pointsto.meta.BaseLayerMethod;
-import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A wrapper method that can be unwrapped to an original host VM method.
+ *
+ * @see GraalAccess
  */
 public interface OriginalMethodProvider {
 
@@ -60,17 +59,13 @@ public interface OriginalMethodProvider {
      */
     static Executable getJavaMethod(ResolvedJavaMethod method) {
         ResolvedJavaMethod originalMethod = getOriginalMethod(method);
-        if (originalMethod instanceof BaseLayerMethod) {
-            /* We don't know corresponding java.lang.reflect.Method. */
-            return null;
-        }
         if (originalMethod != null) {
             try {
                 return GraalAccess.getOriginalSnippetReflection().originalMethod(originalMethod);
-            } catch (LinkageError ignored) {
+            } catch (IllegalArgumentException | LinkageError ignored) {
                 /*
-                 * Ignore any linking problems and incompatible class change errors. Looking up a
-                 * reflective representation of a JVMCI method is always a best-effort operation.
+                 * Ignore any linking problems and unsupported method types. Looking up a reflective
+                 * representation of a JVMCI method is always a best-effort operation.
                  */
             }
         }

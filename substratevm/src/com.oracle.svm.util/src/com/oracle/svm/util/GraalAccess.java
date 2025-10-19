@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.util;
+package com.oracle.svm.util;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -45,6 +45,13 @@ import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
+/**
+ * This class provides methods for converting core reflection objects into their JVMCI counterparts
+ * using the host VM implementation of JVMCI (e.g. converts {@link Class} to
+ * {@code HotSpotResolvedObjectTypeImpl} when running on HotSpot). There are methods for going in
+ * the opposite direction in {@link OriginalClassProvider}, {@link OriginalMethodProvider} and
+ * {@link OriginalFieldProvider}.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class GraalAccess {
 

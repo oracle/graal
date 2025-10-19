@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.util;
 
 import java.util.Objects;
-
-import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A wrapper type that can be unwrapped to an original host VM type.
+ *
+ * @see GraalAccess
  */
 public interface OriginalClassProvider {
 
