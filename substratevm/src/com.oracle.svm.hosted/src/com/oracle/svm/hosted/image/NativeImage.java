@@ -484,9 +484,9 @@ public abstract class NativeImage extends AbstractImage {
             codeCache.writeConstants(writer, roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer,
-                    (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
-                            isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
-                    (offset, symbolName, _) -> defineRelocationForSymbol(symbolName, offset));
+                            (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
+                                            isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
+                            (offset, symbolName, _) -> defineRelocationForSymbol(symbolName, offset));
 
             // - Write the heap to its own section.
             long imageHeapSize = getImageHeapSize();

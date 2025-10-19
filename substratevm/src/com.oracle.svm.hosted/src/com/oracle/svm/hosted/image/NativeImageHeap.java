@@ -830,7 +830,7 @@ public final class NativeImageHeap implements ImageHeap {
         long heapLayoutStartOffset = heapLayout.getStartOffset();
 
         try (FileWriter metadataOut = new FileWriter(metadataFile);
-             BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
+                        BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
             metadataBw.write("class-name,partition,offset-in-heap,size\n");
             for (ObjectInfo info : getObjects()) {
                 String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + (info.getOffset() - heapLayoutStartOffset) + "," + info.getSize() + System.lineSeparator();

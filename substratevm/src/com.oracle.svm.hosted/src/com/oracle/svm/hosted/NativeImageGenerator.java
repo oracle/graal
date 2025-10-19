@@ -562,7 +562,7 @@ public class NativeImageGenerator {
         OptionValues options = HostedOptionValues.singleton();
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-             DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
+                        DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
@@ -928,7 +928,7 @@ public class NativeImageGenerator {
     }
 
     protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
-                                    String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
+                    String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent _ = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
                 installDefaultExceptionHandler(options, imageName);
@@ -1121,6 +1121,10 @@ public class NativeImageGenerator {
                     HostedImageLayerBuildingSupport.registerBaseLayerTypes(bb, originalMetaAccess, loader.classLoaderSupport);
                 }
 
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.registerBaseLayerTypes(bb, originalMetaAccess, loader.classLoaderSupport);
+                }
+
                 if (loader.classLoaderSupport.isPreserveMode()) {
                     PreserveOptionsSupport.registerPreservedClasses(bb, originalMetaAccess, loader.classLoaderSupport);
                 }
@@ -1294,7 +1298,7 @@ public class NativeImageGenerator {
         }
 
         bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy",
-                Object.class, int.class, Object.class, int.class, int.class), true, rootMethodReason);
+                        Object.class, int.class, Object.class, int.class, int.class), true, rootMethodReason);
         bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootMethodReason);
 
         for (JavaKind kind : JavaKind.values()) {
@@ -1406,7 +1410,7 @@ public class NativeImageGenerator {
     }
 
     protected NativeLibraries setupNativeLibraries(HostedProviders providers, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport,
-                                                   DebugContext debug) {
+                    DebugContext debug) {
         try (StopTimer _ = TimerCollection.createTimerAndStart("(cap)")) {
             NativeLibraries nativeLibs = new NativeLibraries(providers, ConfigurationValues.getTarget(), classInitializationSupport,
                     ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
@@ -1619,7 +1623,7 @@ public class NativeImageGenerator {
     }
 
     private static Suites modifySuites(SubstrateBackend backend, Suites suites, FeatureHandler featureHandler,
-                                       boolean hosted, boolean firstTier, boolean fallback) {
+                    boolean hosted, boolean firstTier, boolean fallback) {
         Providers runtimeCallProviders = backend.getProviders();
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
