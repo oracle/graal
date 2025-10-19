@@ -94,7 +94,7 @@ class IfFrame extends ControlFrame {
             }
             if (!isUnreachable()) {
                 for (int i = 0; i < resultTypes().length; i++) {
-                    if (!getSymbolTable().matches(resultTypes()[i], paramTypes()[i])) {
+                    if (!getSymbolTable().matchesType(resultTypes()[i], paramTypes()[i])) {
                         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
                     }
                 }

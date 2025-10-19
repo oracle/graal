@@ -220,13 +220,13 @@ public class ValidationSuite extends WasmFileSuite {
                         // The type `C.types[x]` must be defined in the context.
                         stringCase(
                                         "Function - invalid type index",
-                                        "unknown type: 1 should be < 1",
+                                        "Function type variable 1 out of range. (max 0)",
                                         "(type (func (result i32))) (func (export \"f\") (type 1))",
                                         Failure.Type.INVALID),
                         stringCase(
                                         "Function - invalid type index",
-                                        "unknown type: 4294967254 should be < 1",
-                                        "(type (func (result i32))) (func (export \"f\") (type 4294967254))",
+                                        "Function type variable 1073741823 out of range. (max 0)",
+                                        "(type (func (result i32))) (func (export \"f\") (type 1073741823))",
                                         Failure.Type.INVALID),
 
                         // Under the context `C'`, the expression `express` must be valid with type

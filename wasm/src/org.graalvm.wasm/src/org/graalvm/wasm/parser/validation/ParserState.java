@@ -151,7 +151,7 @@ public class ParserState {
             return false;
         }
         for (int i = 0; i < expectedTypes.length; i++) {
-            if (!symbolTable.matches(expectedTypes[i], actualTypes[i])) {
+            if (!symbolTable.matchesType(expectedTypes[i], actualTypes[i])) {
                 return true;
             }
         }
@@ -198,7 +198,7 @@ public class ParserState {
      */
     public int popChecked(int expectedValueType) {
         final int actualValueType = popInternal(expectedValueType);
-        if (!WasmType.isBottomType(actualValueType) && !WasmType.isBottomType(expectedValueType) && !symbolTable.matches(expectedValueType, actualValueType)) {
+        if (!symbolTable.matchesType(expectedValueType, actualValueType)) {
             throw ValidationErrors.createTypeMismatch(expectedValueType, actualValueType);
         }
         return actualValueType;
@@ -434,7 +434,7 @@ public class ParserState {
         if (labelTypes.length < 1) {
             throw ValidationErrors.createLabelTypesMismatch(labelTypes, new int[]{referenceType});
         }
-        if (!symbolTable.matches(labelTypes[labelTypes.length - 1], referenceType)) {
+        if (!symbolTable.matchesType(labelTypes[labelTypes.length - 1], referenceType)) {
             throw ValidationErrors.createTypeMismatch(labelTypes[labelTypes.length - 1], referenceType);
         }
         for (int i = labelTypes.length - 2; i >= 0; i--) {

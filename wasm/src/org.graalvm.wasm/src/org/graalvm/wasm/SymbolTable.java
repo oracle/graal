@@ -46,7 +46,6 @@ import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -95,9 +94,7 @@ public abstract class SymbolTable {
         public enum Kind {
             Number,
             Vector,
-            Reference,
-            Bottom,
-            Top
+            Reference
         }
 
         public abstract boolean isSupertypeOf(ClosedValueType valueSubType);
@@ -107,11 +104,6 @@ public abstract class SymbolTable {
         public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof ClosedValueType otherValueType && isSubtypeOf(otherValueType) && isSupertypeOf(otherValueType);
-        }
     }
 
     public abstract static sealed class ClosedHeapType {
@@ -128,11 +120,6 @@ public abstract class SymbolTable {
         public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof ClosedHeapType otherHeapType && isSubtypeOf(otherHeapType) && isSupertypeOf(otherHeapType);
-        }
     }
 
     public static final class NumberType extends ClosedValueType {
@@ -153,12 +140,12 @@ public abstract class SymbolTable {
 
         @Override
         public boolean isSupertypeOf(ClosedValueType valueSubType) {
-            return valueSubType == BottomType.BOTTOM || valueSubType == this;
+            return valueSubType == this;
         }
 
         @Override
         public boolean isSubtypeOf(ClosedValueType valueSuperType) {
-            return valueSuperType == TopType.TOP || valueSuperType == this;
+            return valueSuperType == this;
         }
 
         @Override
@@ -175,6 +162,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Number;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
         }
 
         @Override
@@ -198,12 +190,12 @@ public abstract class SymbolTable {
 
         @Override
         public boolean isSupertypeOf(ClosedValueType valueSubType) {
-            return valueSubType == BottomType.BOTTOM || valueSubType == V128;
+            return valueSubType == V128;
         }
 
         @Override
         public boolean isSubtypeOf(ClosedValueType valueSuperType) {
-            return valueSuperType == TopType.TOP || valueSuperType == V128;
+            return valueSuperType == V128;
         }
 
         @Override
@@ -214,6 +206,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Vector;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
         }
 
         @Override
@@ -248,14 +245,14 @@ public abstract class SymbolTable {
 
         @Override
         public boolean isSupertypeOf(ClosedValueType valueSubType) {
-            return valueSubType == BottomType.BOTTOM || valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
+            return valueSubType instanceof ClosedReferenceType referenceSubType && (!referenceSubType.nullable || this.nullable) &&
                             this.closedHeapType.isSupertypeOf(referenceSubType.closedHeapType);
         }
 
         @Override
         public boolean isSubtypeOf(ClosedValueType valueSuperType) {
-            return valueSuperType == TopType.TOP || valueSuperType instanceof ClosedReferenceType referencedSuperType && (!this.nullable || referencedSuperType.nullable) &&
-                    this.closedHeapType.isSubtypeOf(referencedSuperType.closedHeapType);
+            return valueSuperType instanceof ClosedReferenceType referencedSuperType && (!this.nullable || referencedSuperType.nullable) &&
+                            this.closedHeapType.isSubtypeOf(referencedSuperType.closedHeapType);
         }
 
         @Override
@@ -266,6 +263,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Reference;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedReferenceType that && this.nullable == that.nullable && this.closedHeapType.equals(that.closedHeapType);
         }
 
         @Override
@@ -317,6 +319,11 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Abstract;
+        }
+
+        @Override
+        public boolean equals(Object that) {
+            return this == that;
         }
 
         @Override
@@ -410,72 +417,13 @@ public abstract class SymbolTable {
         }
 
         @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedFunctionType that && Arrays.equals(this.paramTypes, that.paramTypes) && Arrays.equals(this.resultTypes, that.resultTypes);
+        }
+
+        @Override
         public int hashCode() {
             return Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
-        }
-    }
-
-    public static final class BottomType extends ClosedValueType {
-        public static final BottomType BOTTOM = new BottomType();
-
-        private BottomType() {
-        }
-
-        @Override
-        public boolean isSupertypeOf(ClosedValueType valueSubType) {
-            return valueSubType == BOTTOM;
-        }
-
-        @Override
-        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
-            return true;
-        }
-
-        @Override
-        public boolean matchesValue(Object value) {
-            return false;
-        }
-
-        @Override
-        public Kind kind() {
-            return Kind.Bottom;
-        }
-
-        @Override
-        public int hashCode() {
-            return Integer.MIN_VALUE;
-        }
-    }
-
-    public static final class TopType extends ClosedValueType {
-        public static final TopType TOP = new TopType();
-
-        private TopType() {
-        }
-
-        @Override
-        public boolean isSupertypeOf(ClosedValueType valueSubType) {
-            return true;
-        }
-
-        @Override
-        public boolean isSubtypeOf(ClosedValueType valueSuperType) {
-            return valueSuperType == TOP;
-        }
-
-        @Override
-        public boolean matchesValue(Object value) {
-            return false;
-        }
-
-        @Override
-        public Kind kind() {
-            return Kind.Top;
-        }
-
-        @Override
-        public int hashCode() {
-            return Integer.MAX_VALUE;
         }
     }
 
@@ -543,7 +491,13 @@ public abstract class SymbolTable {
      */
     @CompilationFinal(dimensions = 1) private int[] typeOffsets;
 
-    @CompilationFinal(dimensions = 1) private ClosedValueType[] closedTypes;
+    /**
+     * Stores the closed forms of all the types defined in this module. Closed forms replace type
+     * indices with the definitions of the referenced types, resulting in a tree-like data
+     * structure.
+     */
+    @CompilationFinal(dimensions = 1) private ClosedHeapType[] closedTypes;
+
     /**
      * Stores the type equivalence class.
      * <p>
@@ -760,7 +714,7 @@ public abstract class SymbolTable {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
-        this.closedTypes = new ClosedValueType[INITIAL_TYPE_SIZE];
+        this.closedTypes = new ClosedHeapType[INITIAL_TYPE_SIZE];
         this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
@@ -818,18 +772,6 @@ public abstract class SymbolTable {
         assertUnsignedIntLess(funcIndex, numFunctions, Failure.UNKNOWN_FUNCTION);
     }
 
-    private static int[] reallocate(int[] array, int currentSize, int newLength) {
-        int[] newArray = new int[newLength];
-        System.arraycopy(array, 0, newArray, 0, currentSize);
-        return newArray;
-    }
-
-    private static <T> T[] reallocate(T[] array, int currentSize, int newLength) {
-        T[] newArray = (T[]) Array.newInstance(array.getClass().getComponentType(), newLength);
-        System.arraycopy(array, 0, newArray, 0, currentSize);
-        return newArray;
-    }
-
     /**
      * Ensure that the {@link #typeData} array has enough space to store {@code index}. If there is
      * no enough space, then a reallocation of the array takes place, doubling its capacity.
@@ -840,7 +782,7 @@ public abstract class SymbolTable {
     private void ensureTypeDataCapacity(int index) {
         if (typeData.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeData.length);
-            typeData = reallocate(typeData, typeDataSize, newLength);
+            typeData = Arrays.copyOf(typeData, newLength);
         }
     }
 
@@ -855,9 +797,9 @@ public abstract class SymbolTable {
     private void ensureTypeCapacity(int index) {
         if (typeOffsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
-            typeOffsets = reallocate(typeOffsets, typeCount, newLength);
-            closedTypes = reallocate(closedTypes, typeCount, newLength);
-            typeEquivalenceClasses = reallocate(typeEquivalenceClasses, typeCount, newLength);
+            typeOffsets = Arrays.copyOf(typeOffsets, newLength);
+            closedTypes = Arrays.copyOf(closedTypes, newLength);
+            typeEquivalenceClasses = Arrays.copyOf(typeEquivalenceClasses, newLength);
         }
     }
 
@@ -905,7 +847,15 @@ public abstract class SymbolTable {
     }
 
     void finishFunctionType(int funcTypeIdx) {
-        closedTypes[funcTypeIdx] = makeClosedType(funcTypeIdx);
+        ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(funcTypeIdx)];
+        for (int i = 0; i < paramTypes.length; i++) {
+            paramTypes[i] = closedTypeOf(functionTypeParamTypeAt(funcTypeIdx, i));
+        }
+        ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(funcTypeIdx)];
+        for (int i = 0; i < resultTypes.length; i++) {
+            resultTypes[i] = closedTypeOf(functionTypeResultTypeAt(funcTypeIdx, i));
+        }
+        closedTypes[funcTypeIdx] = new ClosedFunctionType(paramTypes, resultTypes);
     }
 
     public int equivalenceClass(int typeIndex) {
@@ -923,7 +873,7 @@ public abstract class SymbolTable {
     private void ensureFunctionsCapacity(int index) {
         if (functions.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * functions.length);
-            functions = reallocate(functions, numFunctions, newLength);
+            functions = Arrays.copyOf(functions, newLength);
         }
     }
 
@@ -1030,23 +980,49 @@ public abstract class SymbolTable {
         return typeCount;
     }
 
+    /**
+     * Convenience function for calling {@link #closedTypeAt(int)} when the defined type at index
+     * {@code typeIndex} is known to be a function type.
+     * 
+     * @see #closedTypeAt(int)
+     */
     public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
-        ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(typeIndex)];
-        for (int i = 0; i < paramTypes.length; i++) {
-            paramTypes[i] = makeClosedType(functionTypeParamTypeAt(typeIndex, i));
-        }
-        ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(typeIndex)];
-        for (int i = 0; i < resultTypes.length; i++) {
-            resultTypes[i] = makeClosedType(functionTypeResultTypeAt(typeIndex, i));
-        }
-        return new ClosedFunctionType(paramTypes, resultTypes);
+        return (ClosedFunctionType) closedTypeAt(typeIndex);
     }
 
-    public ClosedValueType closedTypeAt(int typeIndex) {
+    /**
+     * Fetches the closed form of a type defined in this module at index {@code typeIndex}.
+     * 
+     * @param typeIndex index of a type defined in this module
+     */
+    public ClosedHeapType closedTypeAt(int typeIndex) {
         return closedTypes[typeIndex];
     }
 
-    public static ClosedValueType closedTypeOfPredefined(int type) {
+    /**
+     * A convenient way of calling {@link #closedTypeOf(int, SymbolTable)} when a
+     * {@link SymbolTable} is present.
+     * 
+     * @see #closedTypeOf(int, SymbolTable)
+     */
+    public ClosedValueType closedTypeOf(int type) {
+        return SymbolTable.closedTypeOf(type, this);
+    }
+
+    /**
+     * Maps a type encoded as an {@code int} (as per {@link WasmType}) into its closed form,
+     * represented as a {@link ClosedValueType}. Any type indices in the type are resolved using the
+     * provided symbol table.
+     * <p>
+     * It is legal to call this function with a null {@code symbolTable}. This is used in cases
+     * where we need to map a predefined value type to the closed type data representation (i.e. we
+     * know the type is already closed anyway and so it does not contain any type indices).
+     * </p>
+     *
+     * @param type the {@code int}-encoded Wasm type to be expanded
+     * @param symbolTable used for lookup of type definitions when expanding type indices
+     */
+    public static ClosedValueType closedTypeOf(int type, SymbolTable symbolTable) {
         return switch (type) {
             case WasmType.I32_TYPE -> NumberType.I32;
             case WasmType.I64_TYPE -> NumberType.I64;
@@ -1054,9 +1030,6 @@ public abstract class SymbolTable {
             case WasmType.F64_TYPE -> NumberType.F64;
             case WasmType.V128_TYPE -> VectorType.V128;
             default -> {
-                if (WasmType.isBottomType(type)) {
-                    yield BottomType.BOTTOM;
-                }
                 assert WasmType.isReferenceType(type);
                 boolean nullable = WasmType.isNullable(type);
                 yield switch (WasmType.getAbstractHeapType(type)) {
@@ -1065,41 +1038,38 @@ public abstract class SymbolTable {
                     case WasmType.EXN_HEAPTYPE -> nullable ? ClosedReferenceType.EXNREF : ClosedReferenceType.NONNULL_EXNREF;
                     default -> {
                         assert WasmType.isConcreteReferenceType(type);
-                        throw new IllegalArgumentException();
+                        assert symbolTable != null;
+                        int typeIndex = WasmType.getTypeIndex(type);
+                        ClosedHeapType heapType = symbolTable.closedTypeAt(typeIndex);
+                        yield new ClosedReferenceType(nullable, heapType);
                     }
                 };
             }
         };
     }
 
-    public ClosedValueType makeClosedType(int type) {
-        return switch (type) {
-            case WasmType.I32_TYPE -> NumberType.I32;
-            case WasmType.I64_TYPE -> NumberType.I64;
-            case WasmType.F32_TYPE -> NumberType.F32;
-            case WasmType.F64_TYPE -> NumberType.F64;
-            case WasmType.V128_TYPE -> VectorType.V128;
-            default -> {
-                if (WasmType.isBottomType(type)) {
-                    yield BottomType.BOTTOM;
-                }
-                assert WasmType.isReferenceType(type);
-                boolean nullable = WasmType.isNullable(type);
-                yield switch (WasmType.getAbstractHeapType(type)) {
-                    case WasmType.FUNC_HEAPTYPE -> nullable ? ClosedReferenceType.FUNCREF : ClosedReferenceType.NONNULL_FUNCREF;
-                    case WasmType.EXTERN_HEAPTYPE -> nullable ? ClosedReferenceType.EXTERNREF : ClosedReferenceType.NONNULL_EXTERNREF;
-                    case WasmType.EXN_HEAPTYPE -> nullable ? ClosedReferenceType.EXNREF : ClosedReferenceType.NONNULL_EXNREF;
-                    default -> {
-                        assert WasmType.isConcreteReferenceType(type);
-                        yield new ClosedReferenceType(nullable, closedFunctionTypeAt(WasmType.getTypeIndex(type)));
-                    }
-                };
+    /**
+     * Checks whether the type {@code actualType} matches the type {@code expectedType}. This is the
+     * case when {@code actualType} is a subtype of {@code expectedType}.
+     */
+    public boolean matchesType(int expectedType, int actualType) {
+        switch (expectedType) {
+            case WasmType.BOT -> {
+                return false;
             }
-        };
-    }
-
-    public boolean matches(int expectedType, int actualType) {
-        return makeClosedType(expectedType).isSupertypeOf(makeClosedType(actualType));
+            case WasmType.TOP -> {
+                return true;
+            }
+        }
+        switch (actualType) {
+            case WasmType.BOT -> {
+                return true;
+            }
+            case WasmType.TOP -> {
+                return false;
+            }
+        }
+        return closedTypeOf(expectedType).isSupertypeOf(closedTypeOf(actualType));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -1296,7 +1266,7 @@ public abstract class SymbolTable {
     }
 
     public ClosedValueType globalClosedValueType(int index) {
-        return makeClosedType(globalTypes[index]);
+        return closedTypeOf(globalTypes[index]);
     }
 
     private byte globalFlags(int index) {
@@ -1745,7 +1715,7 @@ public abstract class SymbolTable {
     }
 
     public void checkElemType(int elemIndex, int expectedType) {
-        Assert.assertTrue(matches(expectedType, (int) elemInstances[elemIndex]), Failure.TYPE_MISMATCH);
+        Assert.assertTrue(matchesType(expectedType, (int) elemInstances[elemIndex]), Failure.TYPE_MISMATCH);
     }
 
     private void ensureElemInstanceCapacity(int index) {

@@ -198,27 +198,22 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isNumberType(int type) {
-        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || isBottomType(type);
+        return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || type == BOT;
     }
 
     public static boolean isVectorType(int type) {
-        return type == V128_TYPE || isBottomType(type);
+        return type == V128_TYPE || type == BOT;
     }
 
     public static boolean isReferenceType(int type) {
-        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE ||
-                        isBottomType(type);
-    }
-
-    public static boolean isBottomType(int type) {
-        return withNullable(true, type) == BOT;
+        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE || type == BOT;
     }
 
     /**
      * Indicates whether this is a user-defined reference type.
      */
     public static boolean isConcreteReferenceType(int type) {
-        return type >= 0 || isBottomType(type);
+        return type >= 0 || type == BOT;
     }
 
     /**
@@ -258,6 +253,9 @@ public class WasmType implements TruffleObject {
      *            type index)
      */
     public static int withNullable(boolean nullable, int type) {
+        if (type == BOT) {
+            return BOT;
+        }
         return nullable ? type | TYPE_NULLABLE_MASK : type & ~TYPE_NULLABLE_MASK;
     }
 

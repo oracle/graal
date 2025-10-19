@@ -110,21 +110,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
     }
 
     public SymbolTable.ClosedValueType getClosedValueType() {
-        if (symbolTable != null) {
-            return symbolTable.makeClosedType(getType());
-        } else {
-            // Global was created by WebAssembly#global_alloc
-            return switch (ValueType.fromValue(getType())) {
-                case i32 -> SymbolTable.NumberType.I32;
-                case i64 -> SymbolTable.NumberType.I64;
-                case f32 -> SymbolTable.NumberType.F32;
-                case f64 -> SymbolTable.NumberType.F64;
-                case v128 -> SymbolTable.VectorType.V128;
-                case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
-                case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
-                case exnref -> SymbolTable.ClosedReferenceType.EXNREF;
-            };
-        }
+        return SymbolTable.closedTypeOf(getType(), symbolTable);
     }
 
     public boolean isMutable() {

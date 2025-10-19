@@ -592,7 +592,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         // equivalence classes. If they are not equivalent, we run the full subtype
                         // matching procedure.
                         if (expectedTypeEquivalenceClass != function.typeEquivalenceClass() &&
-                                        !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(new SymbolTable.ClosedReferenceType(false, function.closedType()))) {
+                                        !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
                             enterErrorBranch();
                             failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                         }

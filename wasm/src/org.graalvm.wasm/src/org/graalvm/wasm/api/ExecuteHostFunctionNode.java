@@ -128,7 +128,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
      */
     private Object convertResult(Object result, int resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
-        SymbolTable.ClosedValueType closedResultType = module.closedTypeAt(resultType);
+        SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
         CompilerAsserts.partialEvaluationConstant(closedResultType);
         return switch (resultType) {
             case WasmType.I32_TYPE -> asInt(result);
@@ -166,7 +166,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             for (int i = 0; i < resultCount; i++) {
                 int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
-                SymbolTable.ClosedValueType closedResultType = module.closedTypeAt(resultType);
+                SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
                 CompilerAsserts.partialEvaluationConstant(closedResultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {
@@ -176,7 +176,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
                     case WasmType.F64_TYPE -> primitiveMultiValueStack[i] = Double.doubleToRawLongBits(asDouble(value));
                     default -> {
                         assert WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType);
-                        if (!closedResultType.matchesValue(result)) {
+                        if (!closedResultType.matchesValue(value)) {
                             errorBranch.enter();
                             throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
                         }

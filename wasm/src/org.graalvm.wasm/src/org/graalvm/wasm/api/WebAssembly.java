@@ -509,7 +509,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public Object tableWrite(WasmTable table, int index, Object element) {
-        if (!table.closedValueType().matchesValue(element)) {
+        if (!table.closedElemType().matchesValue(element)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
         }
 
@@ -812,7 +812,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOfPredefined(WasmType.EXNREF_TYPE).isSupertypeOf(global.getClosedValueType())) {
+                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedValueType())) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 yield global.loadAsReference();
@@ -846,7 +846,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOfPredefined(WasmType.EXNREF_TYPE).isSupertypeOf(global.getClosedValueType())) {
+                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedValueType())) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 global.storeReference(value);

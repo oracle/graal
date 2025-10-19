@@ -96,6 +96,11 @@ public class ValidationErrors {
     }
 
     @TruffleBoundary
+    public static WasmException createMissingFunctionType(int expected) {
+        return WasmException.format(Failure.UNKNOWN_TYPE, "Function type variable %d out of range.", expected);
+    }
+
+    @TruffleBoundary
     public static WasmException createMissingFunctionType(int expected, int max) {
         return WasmException.format(Failure.UNKNOWN_TYPE, "Function type variable %d out of range. (max %d)", expected, max);
     }

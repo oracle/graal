@@ -68,7 +68,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     private final int elemType;
 
     /**
-     * For resolving {@link #elemType} in {@link #closedValueType()}. Can be {@code null} for tables
+     * For resolving {@link #elemType} in {@link #closedElemType()}. Can be {@code null} for tables
      * allocated from JS.
      */
     private final SymbolTable symbolTable;
@@ -170,8 +170,11 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         return elemType;
     }
 
-    public SymbolTable.ClosedValueType closedValueType() {
-        return symbolTable.makeClosedType(elemType);
+    /**
+     * The closed form of the type of the elements in the table.
+     */
+    public SymbolTable.ClosedValueType closedElemType() {
+        return SymbolTable.closedTypeOf(elemType, symbolTable);
     }
 
     /**

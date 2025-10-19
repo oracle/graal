@@ -689,7 +689,7 @@ public class BytecodeSuite {
 
     @Test
     public void testElemHeaderExnref() {
-        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 8, WasmType.EXNREF_TYPE, 0, null, -1), new byte[]{0x40, 0x30, 0x08});
+        test(b -> b.addElemHeader(SegmentMode.ACTIVE, 8, WasmType.EXNREF_TYPE, 0, null, -1), new byte[]{0x40, 0x10, WasmType.EXNREF_TYPE, 0x08});
     }
 
     @Test

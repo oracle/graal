@@ -49,6 +49,7 @@ import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
+import static org.graalvm.wasm.WasmType.BOT;
 import static org.graalvm.wasm.WasmType.EXNREF_TYPE;
 import static org.graalvm.wasm.WasmType.EXN_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
@@ -817,7 +818,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int tableIndex = readTableIndex();
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
-                    Assert.assertTrue(module.matches(FUNCREF_TYPE, module.tableElementType(tableIndex)), Failure.TYPE_MISMATCH);
+                    Assert.assertTrue(module.matchesType(FUNCREF_TYPE, module.tableElementType(tableIndex)), Failure.TYPE_MISMATCH);
 
                     // Pop parameters
                     for (int i = module.functionTypeParamCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
@@ -850,8 +851,8 @@ public class BinaryParser extends BinaryStreamParser {
                     final int t1 = state.pop(); // first operand
                     final int t2 = state.pop(); // second operand
                     assertTrue((WasmType.isNumberType(t1) || WasmType.isVectorType(t1)) && (WasmType.isNumberType(t2) || WasmType.isVectorType(t2)), Failure.TYPE_MISMATCH);
-                    assertTrue(t1 == t2 || WasmType.isBottomType(t1) || WasmType.isBottomType(t2), Failure.TYPE_MISMATCH);
-                    final int t = WasmType.isBottomType(t1) ? t2 : t1;
+                    assertTrue(t1 == t2 || t1 == BOT || t2 == BOT, Failure.TYPE_MISMATCH);
+                    final int t = t1 == BOT ? t2 : t1;
                     state.push(t);
                     if (WasmType.isNumberType(t)) {
                         state.addSelectInstruction(Bytecode.SELECT);
@@ -1655,7 +1656,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int destinationElementType = module.tableElementType(destinationTableIndex);
                         final int sourceTableIndex = readTableIndex();
                         final int sourceElementType = module.tableElementType(sourceTableIndex);
-                        Assert.assertTrue(module.matches(destinationElementType, sourceElementType), Failure.TYPE_MISMATCH);
+                        Assert.assertTrue(module.matchesType(destinationElementType, sourceElementType), Failure.TYPE_MISMATCH);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
@@ -2838,7 +2839,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int functionIndex = readDeclaredFunctionIndex();
             module.addFunctionReference(functionIndex);
             final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
-            Assert.assertTrue(module.matches(elemType, functionReferenceType), Failure.TYPE_MISMATCH);
+            Assert.assertTrue(module.matchesType(elemType, functionReferenceType), Failure.TYPE_MISMATCH);
             functionIndices[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
         }
         return functionIndices;
@@ -2877,21 +2878,21 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.REF_NULL:
                     final int heapType = readHeapType();
                     final int nullableReferenceType = WasmType.withNullable(true, heapType);
-                    Assert.assertTrue(module.matches(elemType, nullableReferenceType), "Invalid ref.null type: 0x%02X", Failure.TYPE_MISMATCH);
+                    Assert.assertTrue(module.matchesType(elemType, nullableReferenceType), "Invalid ref.null type: 0x%02X", Failure.TYPE_MISMATCH);
                     elements[index] = ((long) ELEM_ITEM_REF_NULL_ENTRY_PREFIX << 32);
                     break;
                 case Instructions.REF_FUNC:
                     final int functionIndex = readDeclaredFunctionIndex();
                     module.addFunctionReference(functionIndex);
                     final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
-                    Assert.assertTrue(module.matches(elemType, functionReferenceType), "Invalid element type: 0x%02X", Failure.TYPE_MISMATCH);
+                    Assert.assertTrue(module.matchesType(elemType, functionReferenceType), "Invalid element type: 0x%02X", Failure.TYPE_MISMATCH);
                     elements[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
                     break;
                 case Instructions.GLOBAL_GET:
                     final int globalIndex = readGlobalIndex();
                     assertIntEqual(module.globalMutability(globalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     final int valueType = module.globalValueType(globalIndex);
-                    Assert.assertTrue(module.matches(elemType, valueType), Failure.TYPE_MISMATCH);
+                    Assert.assertTrue(module.matchesType(elemType, valueType), Failure.TYPE_MISMATCH);
                     elements[index] = ((long) ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX << 32) | globalIndex;
                     break;
                 case Instructions.VECTOR:
@@ -3335,7 +3336,11 @@ public class BinaryParser extends BinaryStreamParser {
      */
     public void checkFunctionTypeExists(int typeIndex) {
         if (compareUnsigned(typeIndex, module.typeCount()) >= 0) {
-            throw ValidationErrors.createMissingFunctionType(typeIndex, module.tableCount() - 1);
+            if (module.typeCount() > 0) {
+                throw ValidationErrors.createMissingFunctionType(typeIndex, module.typeCount() - 1);
+            } else {
+                throw ValidationErrors.createMissingFunctionType(typeIndex);
+            }
         }
     }
 
