@@ -19,35 +19,21 @@ import java.util.List;
  */
 public class AbstractInterpretationEngine {
 
-    private final AnalyzerManager analyzerManager; /* Wrapper for used analyzers */
-    private final List<AnalysisMethod> rootMethods; /* Roots of the call-graph */
-    private final List<AnalysisMethod> invokedMethods; /* Methods that may-be invoked according to points-to analysis */
-    private boolean analyzeMainOnly; /* If true, only the main method will be analyzed */
-    private AnalysisMethod root = null; /* The main method, if present */
+    private final AnalyzerManager analyzerManager;
+    private final List<AnalysisMethod> rootMethods;
+    private final List<AnalysisMethod> invokedMethods;
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Inflation inflation) {
-
-        AnalysisUniverse universe = inflation.getUniverse();
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisUniverse universe) {
         this.analyzerManager = analyzerManager;
-        this.analyzeMainOnly = true;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(universe);
         this.invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
-
-        /* TODO: what if I have multiple of public static void main(String[] args) ? */
-        inflation.getUniverse().getMethods().forEach(method -> {
-            if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
-                this.root = method;
-            }
-        });
-
-        SvmUtility.getInstance(inflation);
     }
 
-    public void setAnalyzeMainOnly(boolean analyzeMainOnly) {
-        this.analyzeMainOnly = analyzeMainOnly;
+    public void execute(AnalysisMethod root, Inflation bb, AbsintMode mode) {
+
     }
 
-    public void execute() throws IOException {
+    public void execute(AnalysisMethod root, Inflation bb) throws IOException {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         if (analyzeMainOnly && root == null) {
             logger.log("Analysis terminated: Main method not provided in 'main-only' mode.", LoggerVerbosity.CHECKER_ERR);
