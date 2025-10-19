@@ -266,16 +266,16 @@ public final class Instructions {
     public static final int REF_IS_NULL = 0xD1;
     public static final int REF_FUNC = 0xD2;
 
-    public static final int MEMORY_INIT = 8;
-    public static final int DATA_DROP = 9;
-    public static final int MEMORY_COPY = 10;
-    public static final int MEMORY_FILL = 11;
-    public static final int TABLE_INIT = 12;
-    public static final int ELEM_DROP = 13;
-    public static final int TABLE_COPY = 14;
-    public static final int TABLE_GROW = 15;
-    public static final int TABLE_SIZE = 16;
-    public static final int TABLE_FILL = 17;
+    public static final int MEMORY_INIT = 0x08;
+    public static final int DATA_DROP = 0x09;
+    public static final int MEMORY_COPY = 0x0A;
+    public static final int MEMORY_FILL = 0x0B;
+    public static final int TABLE_INIT = 0x0C;
+    public static final int ELEM_DROP = 0x0D;
+    public static final int TABLE_COPY = 0x0E;
+    public static final int TABLE_GROW = 0x0F;
+    public static final int TABLE_SIZE = 0x10;
+    public static final int TABLE_FILL = 0x11;
 
     public static final int CALL_REF = 0x14;
     public static final int REF_AS_NON_NULL = 0xD4;
