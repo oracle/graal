@@ -55,6 +55,8 @@ import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public abstract class AnalysisElement implements AnnotatedElement {
 
@@ -73,6 +75,14 @@ public abstract class AnalysisElement implements AnnotatedElement {
     public abstract AnnotatedElement getWrapped();
 
     protected abstract AnalysisUniverse getUniverse();
+
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
+    }
+
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
+    }
 
     @Override
     public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {

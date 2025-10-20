@@ -201,6 +201,143 @@ public final class AnnotationValue {
     }
 
     /**
+     * Gets the byte element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a byte
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public byte getByte(String name) {
+        return get(name, Byte.class);
+    }
+
+    /**
+     * Gets the boolean element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a boolean
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public boolean getBoolean(String name) {
+        return get(name, Boolean.class);
+    }
+
+    /**
+     * Gets the char element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a char
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public char getChar(String name) {
+        return get(name, Character.class);
+    }
+
+    /**
+     * Gets the short element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a short
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public short getShort(String name) {
+        return get(name, Short.class);
+    }
+
+    /**
+     * Gets the int element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not an int
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public int getInt(String name) {
+        return get(name, Integer.class);
+    }
+
+    /**
+     * Gets the float element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a float
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public float getFloat(String name) {
+        return get(name, Float.class);
+    }
+
+    /**
+     * Gets the long element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a long
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public long getLong(String name) {
+        return get(name, Long.class);
+    }
+
+    /**
+     * Gets the double element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a double
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public double getDouble(String name) {
+        return get(name, Double.class);
+    }
+
+    /**
+     * Gets the string element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a string
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public String getString(String name) {
+        return get(name, String.class);
+    }
+
+    /**
+     * Gets the {@link ResolvedJavaType} element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not a {@link ResolvedJavaType}
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public ResolvedJavaType getType(String name) {
+        return get(name, ResolvedJavaType.class);
+    }
+
+    /**
+     * Gets the annotation element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not an annotation
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public AnnotationValue getAnnotation(String name) {
+        return get(name, AnnotationValue.class);
+    }
+
+    /**
+     * Gets the enum element denoted by {@code name}.
+     *
+     * @throws ClassCastException if the element is not an enum
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}
+     */
+    public EnumElement getEnum(String name) {
+        return get(name, EnumElement.class);
+    }
+
+    /**
+     * Gets the enum element denoted by {@code name}, resolved to an {@code enumClass} constant.
+     *
+     * @throws ClassCastException if the element is not an enum
+     * @throws IllegalArgumentException if this annotation has no element named {@code name}, if
+     *             {@code enumClass} does not match the expected enum type or {@code enumClass} has
+     *             no constant with the specified name
+     */
+    public <T extends Enum<T>> T getEnum(Class<T> enumClass, String name) {
+        EnumElement enumElement = getEnum(name);
+        String foundType = enumElement.enumType.toClassName();
+        if (!foundType.equals(enumClass.getName())) {
+            throw new IllegalArgumentException("Unexpected enum type: " + foundType);
+        }
+        return Enum.valueOf(enumClass, enumElement.name);
+    }
+
+    /**
      * Gets an unmodifiable view of the elements in this annotation value. The type for each value
      * in the returned map is specified by {@link #get(String, Class)}.
      */

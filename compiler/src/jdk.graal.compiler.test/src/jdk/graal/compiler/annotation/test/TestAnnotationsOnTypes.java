@@ -102,7 +102,7 @@ public class TestAnnotationsOnTypes extends TestAnnotationsBase {
         // Test that inherited annotations are handled properly.
         ResolvedJavaType namedType = metaAccess.lookupJavaType(AnnotationTestInput.Named.class);
         AnnotationValue av = AnnotationValueSupport.getDeclaredAnnotationValue(namedType, metaAccess.lookupJavaType(AnnotationTestInput.OwnName.class));
-        Assert.assertEquals("NonInheritedValue", av.get("value", String.class));
+        Assert.assertEquals("NonInheritedValue", av.getString("value"));
         av = getDeclaredAnnotationValue(namedType, metaAccess.lookupJavaType(AnnotationTestInput.InheritedName1.class));
         Assert.assertNull(av);
         av = getDeclaredAnnotationValue(namedType, metaAccess.lookupJavaType(AnnotationTestInput.InheritedName2.class));

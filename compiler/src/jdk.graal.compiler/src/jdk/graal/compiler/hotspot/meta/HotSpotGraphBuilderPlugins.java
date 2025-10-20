@@ -72,7 +72,6 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Vector
 import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin.T_LONG;
 import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 
-import java.lang.annotation.Annotation;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
@@ -85,6 +84,7 @@ import java.util.zip.CRC32;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -698,9 +698,10 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
+    @LibGraalSupport.HostedOnly
     private static boolean isAnnotatedByChangesCurrentThread(ResolvedJavaMethod method) {
-        for (Annotation annotation : method.getAnnotations()) {
-            if ("jdk.internal.vm.annotation.ChangesCurrentThread".equals(annotation.annotationType().getName())) {
+        for (ResolvedJavaType annotationType : AnnotationValueSupport.getDeclaredAnnotationValues(method).keySet()) {
+            if ("jdk.internal.vm.annotation.ChangesCurrentThread".equals(annotationType.toClassName())) {
                 return true;
             }
         }

@@ -32,6 +32,7 @@ import java.util.BitSet;
 
 import org.graalvm.collections.EconomicSet;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
@@ -106,7 +107,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     @Override
     public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
         if (!inLibGraalRuntime()) {
-            if (method.getAnnotation(HotSpotOperation.class) != null) {
+            if (AnnotationValueSupport.getAnnotationValue(method, HotSpotOperation.class) != null) {
                 return HotSpotWordOperationPlugin.class;
             }
         }

@@ -30,8 +30,10 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -63,6 +65,8 @@ import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.match.MatchRuleRegistry;
@@ -92,6 +96,8 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 @TargetClass(value = InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
@@ -207,6 +213,18 @@ final class Target_jdk_graal_compiler_debug_TTY {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias)//
     private static PrintStream out = Log.logStream();
+}
+
+@TargetClass(value = AnnotationValueSupport.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_annotation_AnnotationValueSupport {
+
+    @Alias//
+    @RecomputeFieldValue(kind = Reset)//
+    private static Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotations;
+
+    @Alias//
+    @RecomputeFieldValue(kind = Reset)//
+    private static Map<Class<? extends Annotation>, ResolvedJavaType> resolvedAnnotationTypeCache;
 }
 
 @TargetClass(className = "jdk.graal.compiler.serviceprovider.IsolateUtil", onlyWith = GraalCompilerFeature.IsEnabled.class)

@@ -606,6 +606,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.runtime"
@@ -618,6 +619,10 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "include",
+
+            # Direct reference to jdk.vm.ci.meta.annotation.Annotated
+            # causes spotbugs analysis to fail with "missing class" error.
+            "spotbugs": "false",
         },
 
         "com.oracle.graal.pointsto.standalone": {
@@ -634,7 +639,8 @@ suite = {
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -682,6 +688,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                 ]
             },
@@ -1275,7 +1282,8 @@ suite = {
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
