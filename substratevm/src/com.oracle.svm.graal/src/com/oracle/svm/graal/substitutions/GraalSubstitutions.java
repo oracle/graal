@@ -46,6 +46,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -237,6 +238,25 @@ final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
         }
         VMRuntime.dumpHeap(outputFile, live);
     }
+}
+
+/**
+ * These field and methods make HotSpot types reachable when
+ * {@code jdk.graal.compiler.management.JMXServiceProvider} is registered for reflection.
+ */
+@TargetClass(className = "jdk.graal.compiler.management.JMXServiceProvider", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_management_JMXServiceProvider {
+    @Delete private Target_com_sun_management_HotSpotDiagnosticMXBean hotspotMXBean;
+
+    @Delete
+    private static native Target_com_sun_management_HotSpotDiagnosticMXBean getHotSpotMXBean();
+
+    @Delete
+    private native void initHotSpotMXBean();
+}
+
+@TargetClass(className = "com.sun.management.HotSpotDiagnosticMXBean", onlyWith = GraalCompilerFeature.IsEnabled.class)
+final class Target_com_sun_management_HotSpotDiagnosticMXBean {
 }
 
 @TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = GraalCompilerFeature.IsEnabled.class)
