@@ -10,9 +10,11 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class is responsible for running the abstract interpretation analyses,
@@ -26,11 +28,21 @@ public class AbstractInterpretationEngine {
     private final AnalysisMethod root;
     private final Inflation bb;
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod root, Inflation bb) {
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Inflation bb) {
+        SvmUtility.getInstance(bb); // Initialize SvmUtility singleton
         this.analyzerManager = analyzerManager;
-        this.root = root;
         this.bb = bb;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
+
+        // Todo: think about whether or not we want to have multiple main methods
+        AtomicReference<AnalysisMethod> tempRoot = new AtomicReference<>();
+        bb.getUniverse().getMethods().forEach(method -> {
+            if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
+                System.out.println("Found main method: " + method);
+                tempRoot.set(method);
+            }
+        });
+        this.root = tempRoot.get();
         this.invokedMethods = bb.getUniverse().getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
     }
 
@@ -44,10 +56,10 @@ public class AbstractInterpretationEngine {
             case INTRA_ANALYZE_ALL_INVOKED_METHODS -> {
                 logger.log("Running intra-procedural analysis on all potentially invoked methods.", LoggerVerbosity.INFO);
             }
-            case INTER_ANALYZE_MAIN_ONLY -> {
+            case INTER_ANALYZE_FROM_MAIN_ONLY -> {
                 logger.log("Running inter-procedural analysis from main method only.", LoggerVerbosity.INFO);
             }
-            case INTER_ANALYZE_ALL_ENTRY_POINTS -> {
+            case INTER_ANALYZE_FROM_ALL_ENTRY_POINTS -> {
                 logger.log("Running inter-procedural analysis from all entry points of the call graph.", LoggerVerbosity.INFO);
             }
         }

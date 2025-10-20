@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -768,10 +769,7 @@ public class NativeImageGenerator {
     }
 
     private void runAbstractInterpretation(DebugContext debug) {
-        AnalysisError.guarantee(mainEntryPoint.getLeft() != null, "Main method not available");
-        AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
-        System.out.println("root method: " + root.format("%H.%n(%p)"));
-        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
+        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, bb);
         driver.run();
     }
 
