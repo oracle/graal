@@ -2445,12 +2445,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         switch (engine.getEngineOptionValues().get(PolyglotEngineOptions.CloseOnGCFailureAction)) {
             case Ignore -> {
             }
-            case PrintOnce -> {
+            case Print -> {
                 if (closeOnCollectedErrorLogged.compareAndSet(false, true)) {
                     logCloseOnCollectedError(reason, exception);
                 }
             }
-            case Print -> logCloseOnCollectedError(reason, exception);
+            case PrintAll -> logCloseOnCollectedError(reason, exception);
             case Throw -> throw new RuntimeException(reason, exception);
         }
     }
@@ -2465,8 +2465,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                             To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
                             The accepted values are:
                               - Ignore:    Do not print this warning.
-                              - PrintOnce: Print this warning only for the first occurrence; suppress subsequent ones.
-                              - Print:     Print this warning (default value).
+                              - Print:     Print this warning only for the first occurrence; suppress subsequent ones (default value).
+                              - PrintAll:  Print this warning.
                               - Throw:     Throw an exception instead of printing this warning.
                             """, reason);
             exception.printStackTrace(errWriter);
