@@ -92,7 +92,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1], OptionOrigin.originDriver);
                 }
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0], OptionOrigin.originDriver);
-                nativeImage.setModuleOptionMode(true);
+                nativeImage.enableModuleOption();
                 return true;
             case addModulesOption:
                 args.poll();

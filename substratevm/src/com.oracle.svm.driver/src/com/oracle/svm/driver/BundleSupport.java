@@ -89,7 +89,6 @@ final class BundleSupport {
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
-    private final boolean forceBuilderOnClasspath;
     private final List<String> nativeImageArgs;
     private List<String> updatedNativeImageArgs;
     final ArrayList<String> bundleLauncherArgs = new ArrayList<>();
@@ -313,7 +312,6 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
-        forceBuilderOnClasspath = !nativeImage.config.modulePathBuild;
         nativeImageArgs = nativeImage.getNativeImageArgs();
     }
 
@@ -342,8 +340,10 @@ final class BundleSupport {
         }
 
         bundleProperties.loadAndVerify();
-        forceBuilderOnClasspath = bundleProperties.forceBuilderOnClasspath();
-        nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
+        if (bundleProperties.forceBuilderOnClasspath()) {
+            throw NativeImage.showError("The given bundle file " + bundleFilePath + " uses the BuilderOnClasspath property which is not supported anymore. " +
+                            "To build this bundle use the latest bugfix release of the GraalVM version that was used to build the bundle.");
+        }
 
         try {
             inputDir = rootDir.resolve("input");
@@ -983,7 +983,6 @@ final class BundleSupport {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ArchiveSupport.currentTime());
-            properties.put(PROPERTY_KEY_BUILDER_ON_CLASSPATH, String.valueOf(forceBuilderOnClasspath));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {
