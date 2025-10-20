@@ -132,6 +132,8 @@ public class ReplayCompilationTest extends GraalCompilerTest {
 
     @Test
     public void recordAndExecuteReplayRunner() throws Throwable {
+        // The management library is needed for "--benchmark" to measure thread time and memory.
+        assumeManagementLibraryIsLoadable();
         wordCount(List.of("first test sentence", "second test sentence"));
         runTest((temp) -> {
             String methodName = "wordCount";
