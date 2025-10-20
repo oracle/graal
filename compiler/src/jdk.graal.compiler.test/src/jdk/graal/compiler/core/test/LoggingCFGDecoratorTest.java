@@ -87,17 +87,17 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
         return true;
     }
 
-    private static final String ExpectedOutput = "B0 [dom null, post dom null]\n" +
-                    "\tB1 [dom B0, post dom null]\n" +
-                    "\tB2 [dom B0, post dom null]\n" +
-                    "\tB3 [dom B0, post dom null]\n" +
-                    "Enter block B0 for TestIterator\n" +
-                    "\tEnter block B1 for TestIterator\n" +
-                    "\tExit block B1 with value 1 for TestIterator\n" +
-                    "\tEnter block B2 for TestIterator\n" +
-                    "\tExit block B2 with value 1 for TestIterator\n" +
-                    "\tEnter block B3 for TestIterator\n" +
-                    "\tExit block B3 with value 1 for TestIterator\n" +
+    private static final String ExpectedOutput = "B0 [dom null, post dom null]" + System.lineSeparator() +
+                    "\tB1 [dom B0, post dom null]" + System.lineSeparator() +
+                    "\tB2 [dom B0, post dom null]" + System.lineSeparator() +
+                    "\tB3 [dom B0, post dom null]" + System.lineSeparator() +
+                    "Enter block B0 for TestIterator" + System.lineSeparator() +
+                    "\tEnter block B1 for TestIterator" + System.lineSeparator() +
+                    "\tExit block B1 with value 1 for TestIterator" + System.lineSeparator() +
+                    "\tEnter block B2 for TestIterator" + System.lineSeparator() +
+                    "\tExit block B2 with value 1 for TestIterator" + System.lineSeparator() +
+                    "\tEnter block B3 for TestIterator" + System.lineSeparator() +
+                    "\tExit block B3 with value 1 for TestIterator" + System.lineSeparator() +
                     "Exit block B0 with value 1 for TestIterator";
 
 }
