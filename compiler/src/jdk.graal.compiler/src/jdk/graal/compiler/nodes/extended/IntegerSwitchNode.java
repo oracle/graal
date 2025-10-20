@@ -103,8 +103,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         this.mayEmitThreadedCode = mayEmitThreadedCode;
     }
 
-    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData) {
-        this(value, new AbstractBeginNode[successorCount], keys, keySuccessors, profileData, false);
+    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData, boolean mayEmitThreadedCode) {
+        this(value, new AbstractBeginNode[successorCount], keys, keySuccessors, profileData, mayEmitThreadedCode);
     }
 
     private boolean assertSorted() {
