@@ -260,6 +260,8 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("java.lang.Math$RandomNumberGeneratorHolder", "Contains random seeds");
         rci.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
+        rci.initializeAtRunTime("java.lang.ProcessImpl", "launchMechanism and helperpath for jspawnhelper should be computed at run-time");
+
         rci.initializeAtRunTime("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
         rci.initializeAtRunTime("jdk.internal.util.StaticProperty", "Contains run time specific values.");
 
