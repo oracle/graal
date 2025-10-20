@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -38,7 +39,7 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
 
     public static int foo(int a) {
         int result = 0;
-        if (a == 0) {
+        if (GraalDirectives.injectBranchProbability(0.99, a == 0)) {
             result = 1;
         } else {
             result = 2;
@@ -76,7 +77,14 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
         ControlFlowGraph.LoggingCFGDecorator<?> dec = new ControlFlowGraph.LoggingCFGDecorator<>(o, visitor, cfg);
         cfg.visitDominatorTreeDefault(dec);
         String result = baos.toString();
-        assert result.contains(ExpectedOutput);
+        Assert.assertTrue(assertStringContains(result, ExpectedOutput));
+    }
+
+    private static boolean assertStringContains(String set, String key) {
+        if (!set.contains(key)) {
+            throw new AssertionError(String.format("String %s does not contain %s", set, key));
+        }
+        return true;
     }
 
     private static final String ExpectedOutput = "B0 [dom null, post dom null]\n" +
