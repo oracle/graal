@@ -95,6 +95,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.LookupHelper;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -1099,6 +1100,18 @@ public final class ObjectKlass extends Klass implements AttributedElement {
 
     @TruffleBoundary
     public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        try {
+            return LookupHelper.lookupInterfaceMethod(this, methodName, signature);
+        } catch (LookupHelper.ResolutionSuccessInvocationFailure e) {
+            Method resolved = e.getResult();
+            Method result = new Method(resolved);
+            result.setPoisonPill().setITableIndex(resolved.getITableIndex());
+            return result;
+        }
+    }
+
+    @TruffleBoundary
+    public Method resolveInterfaceMethodOld(Symbol<Name> methodName, Symbol<Signature> signature) {
         assert isInterface();
         /*
          * 2. Otherwise, if C declares a method with the name and descriptor specified by the

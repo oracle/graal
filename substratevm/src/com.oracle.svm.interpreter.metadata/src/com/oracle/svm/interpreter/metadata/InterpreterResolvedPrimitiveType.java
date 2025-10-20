@@ -121,8 +121,13 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
-    public ResolvedJavaType[] getInterfaces() {
-        return new ResolvedJavaType[0];
+    public InterpreterResolvedJavaType[] getInterfaces() {
+        return InterpreterResolvedJavaType.EMPTY_ARRAY;
+    }
+
+    @Override
+    public InterpreterResolvedJavaType[] getSuperInterfaces() {
+        return getInterfaces();
     }
 
     @Override

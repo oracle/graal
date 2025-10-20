@@ -54,6 +54,7 @@ import static com.oracle.truffle.espresso.threads.ThreadState.IN_ESPRESSO;
 import java.io.PrintStream;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Modifier;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -226,6 +227,20 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
         this.proxy = this;
         this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
+    }
+
+    public static List<Method> versionsToMethodList(Method.MethodVersion[] versions) {
+        return new AbstractList<>() {
+            @Override
+            public Method get(int index) {
+                return versions[index].getMethod();
+            }
+
+            @Override
+            public int size() {
+                return versions.length;
+            }
+        };
     }
 
     public Method identity() {

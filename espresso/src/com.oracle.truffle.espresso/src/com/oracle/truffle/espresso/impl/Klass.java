@@ -26,7 +26,10 @@ import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLAS
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicSet;
@@ -1889,6 +1892,24 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             return ((ObjectKlass) this).resolveInterfaceMethod(methodName, methodSignature);
         }
         return null;
+    }
+
+    @Override
+    public List<Klass> getSuperInterfacesList() {
+        return Arrays.asList(getSuperInterfaces());
+    }
+
+    @Override
+    public List<Method> getDeclaredMethodsList() {
+        return Method.versionsToMethodList(this.getDeclaredMethodVersions());
+    }
+
+    @Override
+    public List<Method> getImplicitInterfaceMethodsList() {
+        if (this instanceof ObjectKlass) {
+            return Method.versionsToMethodList(((ObjectKlass) this).getMirandaMethods());
+        }
+        return Collections.emptyList();
     }
 
     @Override
