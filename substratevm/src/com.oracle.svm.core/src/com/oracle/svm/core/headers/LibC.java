@@ -120,6 +120,11 @@ public class LibC {
         return libc().strcmp(s1, s2);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static int strncmp(CCharPointer s1, CCharPointer s2, UnsignedWord n) {
+        return libc().strncmp(s1, s2, n);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int isdigit(int c) {
         return libc().isdigit(c);

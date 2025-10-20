@@ -2,6 +2,8 @@ Usage: -XX:FlightRecorderOptions=[option[=value][,...]]
 
 This option expects a comma separated list of key-value pairs. None of the options are mandatory. Possible option keys are as follows:
 
+dumppath=...      		   (Optional) Path to where emergency dumps should be written.
+
 globalbuffersize=512k      (Optional) Size of each global JFR buffer.
                            This value cannot be changed once JFR has been initialized.
                            The default value is determined by the value for memorysize.
