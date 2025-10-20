@@ -58,6 +58,7 @@ class LinearScanWalker extends IntervalWalker {
     private static final CountingTimerKey spillCollectInactiveAny = countingTimer("spillCollectInactiveAny");
     private static final CountingTimerKey spillCollectActiveAny = countingTimer("spillCollectActiveAny");
     private static final CountingTimerKey spillExcludeActiveFixed = countingTimer("spillExcludeActiveFixed");
+    private static final CountingTimerKey spillExcludeThreadedBlock = countingTimer("spillExcludeThreadedBlock");
     private static final CountingTimerKey spillBlockInactiveFixed = countingTimer("spillBlockInactiveFixed");
     private static final CountingTimerKey freeCollectInactiveAny = countingTimer("freeCollectInactiveAny");
     private static final CountingTimerKey freeCollectInactiveFixed = countingTimer("freeCollectInactiveFixed");
@@ -295,6 +296,35 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
+    /*
+     * Excludes all active intervals defined or used in the current block marked as a threaded
+     * switch candidate. These intervals are already in registers, so excluding them prevents
+     * unnecessary spilling within the current block.
+     */
+    @SuppressWarnings("try")
+    void spillExcludeIntervalsDefinedOrUsedAtCurrentThreadedBlock() {
+        try (DebugCloseable t = allocator.start(spillExcludeThreadedBlock)) {
+            var block = allocator.blockForId(currentPosition);
+            if (block.mayEmitThreadedCode()) {
+                Interval interval = activeLists.get(RegisterBinding.Any);
+                while (!interval.isEndMarker()) {
+                    if (allocator.blockForId(interval.from() - 1) == block) {
+                        // defined in the current block
+                        excludeFromUse(interval);
+                    } else {
+                        int from = allocator.getLIR().getLIRforBlock(block).get(0).id();
+                        int usage = interval.nextUsage(RegisterPriority.None, from);
+                        if (usage <= allocator.maxOpId() && allocator.blockForId(usage) == block) {
+                            // used in the current block
+                            excludeFromUse(interval);
+                        }
+                    }
+                    interval = interval.next;
+                }
+            }
+        }
+    }
+
     @SuppressWarnings("try")
     void spillBlockInactiveFixed(Interval current) {
         try (DebugCloseable t = allocator.start(spillBlockInactiveFixed)) {
@@ -454,7 +484,7 @@ class LinearScanWalker extends IntervalWalker {
                     optimalSplitPos = maxSplitPos;
 
                 } else {
-                    // seach optimal block boundary between minSplitPos and maxSplitPos
+                    // search optimal block boundary between minSplitPos and maxSplitPos
                     if (debug.isLogEnabled()) {
                         debug.log("moving split pos to optimal block boundary between block B%d and B%d", minBlock.getId(), maxBlock.getId());
                     }
@@ -975,6 +1005,11 @@ class LinearScanWalker extends IntervalWalker {
                 // collect current usage of registers
                 initUseLists(false);
                 spillExcludeActiveFixed();
+                if (registerPriority == RegisterPriority.LiveAtLoopEnd) {
+                    // try to avoid registers used/defined in the current block in the first
+                    // iteration
+                    spillExcludeIntervalsDefinedOrUsedAtCurrentThreadedBlock();
+                }
                 // spillBlockUnhandledFixed(cur);
                 assert unhandledLists.get(RegisterBinding.Fixed).isEndMarker() : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
                 spillBlockInactiveFixed(interval);
@@ -1056,7 +1091,6 @@ class LinearScanWalker extends IntervalWalker {
 
             // perform splitting and spilling for all affected intervals
             splitAndSpillIntersectingIntervals(reg);
-            return;
         }
     }
 
@@ -1082,7 +1116,7 @@ class LinearScanWalker extends IntervalWalker {
 
     boolean noAllocationPossible(Interval interval) {
         if (allocator.callKillsRegisters()) {
-            // fast calculation of intervals that can never get a register because the
+            // fast calculation of intervals that can never get a register because
             // the next instruction is a call that blocks all registers
             // Note: this only works if a call kills all registers
 

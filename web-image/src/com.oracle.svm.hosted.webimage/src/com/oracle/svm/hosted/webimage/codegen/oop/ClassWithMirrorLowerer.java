@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;

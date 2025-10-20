@@ -65,9 +65,9 @@ import com.oracle.graal.pointsto.standalone.plugins.StandaloneReplacementsImpl;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 

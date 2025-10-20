@@ -32,7 +32,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;

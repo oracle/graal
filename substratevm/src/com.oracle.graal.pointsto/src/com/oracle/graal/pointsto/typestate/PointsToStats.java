@@ -79,8 +79,8 @@ import com.oracle.graal.pointsto.flow.context.bytecode.ContextSensitiveSingleTyp
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.ValueNode;

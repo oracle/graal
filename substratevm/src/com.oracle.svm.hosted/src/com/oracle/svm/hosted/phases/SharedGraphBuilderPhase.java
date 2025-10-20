@@ -48,8 +48,8 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -510,7 +510,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * For all patterns involving a vmClass the following holds: session is always
                      * p[0], and vmClass is always p[1]. However, in between we can have Class<E> e,
                      * int length, V v, M m then msp, offset, M m, S s, offsetInRange etc.
-                     * 
+                     *
                      * We always map AbstractMemorySegmentImpl msp to base and offset to offset
                      * (which always comes after). There can be arguments after offset which we
                      * ignore. And we skip all arguments between vmClass and msp. So any arg between

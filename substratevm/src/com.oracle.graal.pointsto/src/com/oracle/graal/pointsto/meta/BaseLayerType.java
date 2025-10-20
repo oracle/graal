@@ -27,8 +27,8 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.annotation.Annotation;
 import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;

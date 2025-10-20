@@ -85,7 +85,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -597,7 +597,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
 
         String methodDescriptor = imageLayerSnapshotUtil.getMethodDescriptor(method);
-        if (methodDescriptors.put(methodDescriptor, method) != null) {
+        if (methodDescriptors.putIfAbsent(methodDescriptor, method) != null) {
             throw GraalError.shouldNotReachHere("The method descriptor should be unique, but %s got added twice.\nThe first method is %s and the second is %s."
                             .formatted(methodDescriptor, methodDescriptors.get(methodDescriptor), method));
         }

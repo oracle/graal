@@ -30,13 +30,13 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaType;

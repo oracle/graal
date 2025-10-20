@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -150,7 +150,7 @@ public class VarHandleFeature implements InternalFeature {
      * {@link #eagerlyInitializeVarForm(Object)}. Folding the registered {@link Stable} fields is
      * important for our intrinsification of {@link VarHandle}s to work properly. See the items
      * below for more details:
-     * 
+     *
      * @see VarHandleFeature
      * @see #duringSetup
      * @see #eagerlyInitializeVarHandle(VarHandle)

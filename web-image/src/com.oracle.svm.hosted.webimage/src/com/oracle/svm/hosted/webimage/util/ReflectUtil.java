@@ -37,8 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.webimage.api.JS;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
 

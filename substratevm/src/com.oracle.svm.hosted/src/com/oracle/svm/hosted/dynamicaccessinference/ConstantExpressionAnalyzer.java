@@ -39,8 +39,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.hub.ClassForNameSupport;

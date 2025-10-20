@@ -79,30 +79,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         BuildConfiguration config = nativeImage.config;
-        boolean ignoreIfBuilderOnClasspath = Boolean.parseBoolean(enabledOption.getProperty(config, "IgnoreIfBuilderOnClasspath"));
-        if (ignoreIfBuilderOnClasspath && !config.modulePathBuild) {
-            return;
-        }
-
-        String propertyName = "BuilderOnClasspath";
-        String propertyValue = enabledOption.getProperty(config, propertyName);
-        if (propertyValue != null) {
-            boolean modulePathBuild = !Boolean.valueOf(propertyValue);
-            String imageBuilderModeEnforcer = enabledOption.getOption().toString();
-            if (config.imageBuilderModeEnforcer != null && modulePathBuild != config.modulePathBuild) {
-                NativeImage.showError(String.format("Conflicting %s property values. %s (%b) vs %s (%b)", propertyName,
-                                imageBuilderModeEnforcer, modulePathBuild, config.imageBuilderModeEnforcer, config.modulePathBuild));
-            }
-            config.imageBuilderModeEnforcer = imageBuilderModeEnforcer;
-            config.modulePathBuild = modulePathBuild;
-        }
 
         enabledOption.forEachPropertyValue(config,
                         "ProvidedHostedOptions", nativeImage.apiOptionHandler::injectKnownHostedOption, NativeImage.MANY_SPACES_REGEX);
         enabledOption.forEachPropertyValue(config,
                         "ImageProvidedJars", entry -> nativeImage.addImageProvidedJars(Path.of(entry)), PATH_SEPARATOR_REGEX);
-        enabledOption.forEachPropertyValue(config,
-                        "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Path.of(entry)), PATH_SEPARATOR_REGEX);
         enabledOption.forEachPropertyValue(config,
                         "ImageBuilderModulePath", entry -> nativeImage.addImageBuilderModulePath(Path.of(entry)), PATH_SEPARATOR_REGEX);
         boolean explicitImageModulePath = enabledOption.forEachPropertyValue(config,

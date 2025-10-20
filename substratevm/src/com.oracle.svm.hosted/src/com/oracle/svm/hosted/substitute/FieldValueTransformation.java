@@ -32,9 +32,9 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.core.util.UserError;

@@ -22,33 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.common.option;
+package com.oracle.svm.core.posix.headers.darwin;
 
-import jdk.graal.compiler.core.common.util.CompilationAlarm;
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
-import jdk.graal.compiler.options.OptionKey;
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.Platform;
 
-/**
- * Native image uses its own mechanisms to handle certain options, resulting in some Graal options
- * being completely unused in native image. Being unused results in the options being silently
- * ignored if set by the user. All such options should be listed here so that the native image
- * options processing can reject them as unsupported.
- */
-public final class IntentionallyUnsupportedOptions {
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-    private static final EconomicSet<OptionKey<?>> unsupportedOptions = EconomicSet.create();
-
-    static {
-        unsupportedOptions.add(CompilerConfigurationFactory.Options.CompilerConfiguration);
-        unsupportedOptions.add(CompilationAlarm.Options.CompilationNoProgressPeriod);
-    }
-
-    private IntentionallyUnsupportedOptions() {
-        throw new IllegalStateException("Should not be initialized");
-    }
-
-    public static boolean contains(OptionKey<?> optionKey) {
-        return unsupportedOptions.contains(optionKey);
+public class DarwinDirectives extends PosixDirectives {
+    @Override
+    public boolean isInConfiguration() {
+        return Platform.includedIn(Platform.DARWIN.class);
     }
 }

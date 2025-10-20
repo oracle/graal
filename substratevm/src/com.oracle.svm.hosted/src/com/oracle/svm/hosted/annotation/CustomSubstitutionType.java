@@ -28,7 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;

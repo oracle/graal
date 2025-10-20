@@ -46,14 +46,14 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.BaseLayerElement;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;

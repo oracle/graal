@@ -100,12 +100,10 @@ public class LLVMFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (ModuleSupport.modulePathBuild) {
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
 
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LLVMFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.meta");
-        }
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LLVMFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.meta");
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override

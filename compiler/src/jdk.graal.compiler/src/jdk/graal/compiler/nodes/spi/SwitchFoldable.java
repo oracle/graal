@@ -405,6 +405,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
         iteratingNode = topMostSwitchNode;
         SwitchFoldable lowestSwitchNode = topMostSwitchNode;
         ProfileSource profileSource = topMostSwitchNode.profileSource();
+        boolean mayEmitThreadedCode = topMostSwitchNode instanceof IntegerSwitchNode integerSwitchNode && integerSwitchNode.mayEmitThreadedCode();
 
         // If this stays true, we will need to spawn an uniform distribution.
         boolean uninitializedProfiles = true;
@@ -472,7 +473,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
         }
 
         // Spawn the switch node
-        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keySuccessors, SwitchProbabilityData.create(keyProbabilities, profileSource));
+        IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keySuccessors, SwitchProbabilityData.create(keyProbabilities, profileSource), mayEmitThreadedCode);
         graph.add(toInsert);
 
         // Detach the cascade from the graph

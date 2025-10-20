@@ -30,6 +30,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -49,6 +51,9 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 
@@ -57,9 +62,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -70,7 +72,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
@@ -113,6 +114,7 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -141,7 +143,11 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -151,12 +157,15 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.hotspot.word.HotSpotOperation;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -164,6 +173,7 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.graal.compiler.word.Word.Operation;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
@@ -174,6 +184,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
 
 public class SVMHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
@@ -225,6 +236,9 @@ public class SVMHost extends HostVM {
 
     private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
+    private com.oracle.svm.hosted.c.NativeLibraries nativeLibraries;
+    private Collection<Path> allStaticLibNames;
+
     private final int layerId;
     private final boolean buildingImageLayer = ImageLayerBuildingSupport.buildingImageLayer();
     private final boolean buildingInitialLayer = ImageLayerBuildingSupport.buildingInitialLayer();
@@ -245,6 +259,12 @@ public class SVMHost extends HostVM {
 
     private final boolean trackDynamicAccess;
     private DynamicAccessDetectionSupport dynamicAccessDetectionSupport = null;
+
+    /**
+     * Some modules contain native methods that should never be in the image, as they are either
+     * hosted only, or currently unsupported in layered images.
+     */
+    private final Set<Module> forbiddenModules = new HashSet<>();
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -1082,12 +1102,7 @@ public class SVMHost extends HostVM {
         if (!platformSupported(method)) {
             return false;
         }
-        /*
-         * Methods annotated with @Fold should not be included in the base image as they are
-         * replaced by the invocation plugin with a constant. If reachable in an extension image,
-         * the plugin will replace it again.
-         */
-        if (AnnotationAccess.isAnnotationPresent(method, Fold.class)) {
+        if (!isSupportedMethod(bb, method)) {
             return false;
         }
         return super.isSupportedAnalysisMethod(bb, method);
@@ -1113,10 +1128,68 @@ public class SVMHost extends HostVM {
 
         /* If the method is substituted we need to check the substitution layer for @Fold. */
         ResolvedJavaMethod substitutionMethod = bb.getUniverse().getSubstitutions().lookup(method);
-        if (AnnotationAccess.isAnnotationPresent(substitutionMethod, Fold.class)) {
+        if (!isSupportedMethod(bb, method) || !isSupportedMethod(bb, substitutionMethod)) {
             return false;
         }
         return super.isSupportedOriginalMethod(bb, method);
+    }
+
+    private boolean isSupportedMethod(BigBang bb, ResolvedJavaMethod method) {
+        /*
+         * Methods annotated with @Fold should not be included in the base image as they are
+         * replaced by the invocation plugin with a constant. If reachable in an extension image,
+         * the plugin will replace it again.
+         */
+        if (AnnotationAccess.isAnnotationPresent(method, Fold.class)) {
+            return false;
+        }
+
+        /* Deleted methods should not be included in the image. */
+        if (AnnotationAccess.isAnnotationPresent(method, Delete.class)) {
+            return false;
+        }
+
+        /*
+         * Methods whose graph cannot be created should not be in the image. Those methods are
+         * compiled in a different way and cannot be included in the same way as normal methods.
+         */
+        if (AnnotationAccess.isAnnotationPresent(method, CConstant.class) || AnnotationAccess.isAnnotationPresent(method, Operation.class) ||
+                        AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || AnnotationAccess.isAnnotationPresent(method, HotSpotOperation.class)) {
+            return false;
+        }
+
+        /* Methods that are not provided in the current Libc should not be included. */
+        if (OriginalMethodProvider.getJavaMethod(method) instanceof Method m && !HostedLibCBase.isMethodProvidedInCurrentLibc(m)) {
+            return false;
+        }
+
+        /* Methods that are not in the native libraries configuration should not be included. */
+        if (nativeLibraries == null) {
+            nativeLibraries = com.oracle.svm.hosted.c.NativeLibraries.singleton();
+            allStaticLibNames = nativeLibraries.getAllStaticLibNames();
+        }
+        if (!nativeLibraries.isMethodInConfiguration(method)) {
+            return false;
+        }
+
+        /*
+         * Methods from a CLibrary that is not included in the static libraries of the image should
+         * not be included.
+         */
+        CLibrary cLibrary = nativeLibraries.getCLibrary(method);
+        if (cLibrary != null && allStaticLibNames.stream().noneMatch(lib -> lib.toString().contains(cLibrary.value()))) {
+            return false;
+        }
+
+        /* Methods with an invocation plugin should not be included. */
+        InvocationPlugins invocationPlugins = getProviders(MultiMethod.ORIGINAL_METHOD).getGraphBuilderPlugins().getInvocationPlugins();
+        if (invocationPlugins.lookupInvocation(method, bb.getOptions()) != null) {
+            return false;
+        }
+
+        /* CEntryPoint methods should not be included according to their predicate. */
+        CEntryPoint cEntryPoint = AnnotationAccess.getAnnotation(method, CEntryPoint.class);
+        return cEntryPoint == null || ReflectionUtil.newInstance(cEntryPoint.include()).getAsBoolean();
     }
 
     /**
@@ -1326,9 +1399,9 @@ public class SVMHost extends HostVM {
      * (has a non-default value), allow its constant folding. This method should be called <b>before
      * analysis</b> but after all {@link Feature#beforeAnalysis} callbacks finished to give features
      * a chance to initialize the {@link Stable} fields.
-     * 
+     *
      * @see #stableFieldsToFoldBeforeAnalysis
-     * 
+     *
      * @implNote The "set" is currently only a single field {@code Unsafe.memoryAccessWarned}, but
      *           we may extend that in the future.
      */
@@ -1473,5 +1546,29 @@ public class SVMHost extends HostVM {
 
     public ConstantExpressionRegistry getConstantExpressionRegistry() {
         return constantExpressionRegistry;
+    }
+
+    @Override
+    public Set<Module> getForbiddenModules() {
+        if (forbiddenModules.isEmpty()) {
+            forbiddenModules.add(JVMCI.class.getModule());
+            Class<?> llvm = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
+            if (llvm != null) {
+                forbiddenModules.add(llvm.getModule());
+            }
+            Class<?> javacpp = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
+            if (javacpp != null) {
+                forbiddenModules.add(javacpp.getModule());
+            }
+            Class<?> truffle = ReflectionUtil.lookupClass(true, "com.oracle.truffle.polyglot.JDKSupport");
+            if (truffle != null) {
+                forbiddenModules.add(truffle.getModule());
+            }
+            Class<?> libGraal = ReflectionUtil.lookupClass(true, "com.oracle.truffle.runtime.hotspot.libgraal.LibGraal");
+            if (libGraal != null) {
+                forbiddenModules.add(libGraal.getModule());
+            }
+        }
+        return forbiddenModules;
     }
 }

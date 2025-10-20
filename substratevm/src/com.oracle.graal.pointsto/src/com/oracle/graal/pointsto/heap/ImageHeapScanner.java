@@ -56,7 +56,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -147,7 +147,7 @@ public abstract class ImageHeapScanner {
              * For non-installable static fields we do not scan the constant value, but instead
              * inject its type state in the field flow. This will be propagated to any corresponding
              * field loads.
-             * 
+             *
              * GR-52421: the field state needs to be serialized from the base layer analysis
              */
             if (field.getStorageKind().isObject()) {
