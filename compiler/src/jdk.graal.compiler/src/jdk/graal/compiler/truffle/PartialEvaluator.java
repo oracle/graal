@@ -210,26 +210,22 @@ public abstract class PartialEvaluator {
         boolean specialization = declaredAnnotationValues.get(types.Specialization) != null;
         AnnotationValue explodeLoop = declaredAnnotationValues.get(types.ExplodeLoop);
 
-        return new PartialEvaluationMethodInfo(getLoopExplosionKind(explodeLoop),
+        return new PartialEvaluationMethodInfo(getLoopExplosionKind(explodeLoop, types),
                         getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, true, types),
                         getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, false, types),
                         method.canBeInlined(),
                         specialization);
     }
 
-    private static LoopExplosionKind getLoopExplosionKind(AnnotationValue value) {
+    private static LoopExplosionKind getLoopExplosionKind(AnnotationValue value, KnownTruffleTypes types) {
         if (value == null) {
             return LoopExplosionKind.NONE;
         }
-        String kind = value.get("kind", EnumElement.class).name;
-        return switch (kind) {
-            case "FULL_UNROLL" -> LoopExplosionKind.FULL_UNROLL;
-            case "FULL_UNROLL_UNTIL_RETURN" -> LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
-            case "FULL_EXPLODE" -> LoopExplosionKind.FULL_EXPLODE;
-            case "FULL_EXPLODE_UNTIL_RETURN" -> LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
-            case "MERGE_EXPLODE" -> LoopExplosionKind.MERGE_EXPLODE;
-            default -> throw new InternalError(String.format("Unknown Truffle LoopExplosionKind %s", kind));
-        };
+        EnumElement enumElement = value.get("kind", EnumElement.class);
+        if (!types.ExplodeLoop_LoopExplosionKind.equals(enumElement.enumType)) {
+            throw new IllegalStateException("Incompatible ExplodeLoop change. ExplodeLoop.kind must be LoopExplosionKind.");
+        }
+        return Enum.valueOf(LoopExplosionKind.class, enumElement.name);
     }
 
     private static InlineKind getInlineKind(TruffleCompilerRuntime runtime, AnnotationValue truffleBoundary, AnnotationValue truffleCallBoundary,

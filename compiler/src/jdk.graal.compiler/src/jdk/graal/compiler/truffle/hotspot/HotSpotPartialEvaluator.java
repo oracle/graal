@@ -123,6 +123,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
             cache = graphCacheRef.get();
         } while (cache == null &&
                         !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(new ConcurrentHashMap<>())));
+        assert cache != null;
         return cache;
     }
 

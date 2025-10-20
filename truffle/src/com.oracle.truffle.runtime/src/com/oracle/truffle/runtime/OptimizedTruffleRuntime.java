@@ -189,6 +189,18 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
 
         private static MethodHandle findGetAnnotation() {
+            /*
+             * In JDK versions prior to 25.1, ResolvedJavaType implemented AnnotatedElement, and the
+             * Graal compiler queried the Truffle runtime to retrieve annotation values.
+             *
+             * Starting with JDK 25.1, ResolvedJavaType no longer implements AnnotatedElement.
+             * Instead, the Graal compiler directly reads annotation values using the
+             * jdk.graal.compiler.annotation API.
+             *
+             * As a result, on JDK 25.1 and later, the Truffle runtime is never queried by the Graal
+             * compiler to obtain annotation values. For compatibility, getAnnotation is still
+             * supported when Truffle runs on GraalVM versions older than 25.1.
+             */
             if (AnnotatedElement.class.isAssignableFrom(ResolvedJavaType.class)) {
                 try {
                     Method method = AnnotatedElement.class.getDeclaredMethod("getAnnotation", Class.class);
@@ -488,6 +500,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
                         InlineSupport.DoubleField.class,
                         InlineSupport.ReferenceField.class,
                         ExplodeLoop.class,
+                        ExplodeLoop.LoopExplosionKind.class,
                         Specialization.class,
                         TruffleCallBoundary.class,
         }) {

@@ -41,7 +41,7 @@ public abstract class TruffleElementCache<K, V> {
     /**
      * Value representing a null value in the cache.
      */
-    private final Object NULL_VALUE = new Object();
+    private static final Object NULL_VALUE = new Object();
 
     @SuppressWarnings("serial")
     protected TruffleElementCache(int maxSize) {

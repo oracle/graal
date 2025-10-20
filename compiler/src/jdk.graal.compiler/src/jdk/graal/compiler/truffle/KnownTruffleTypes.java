@@ -106,6 +106,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType UnexpectedResultException = lookupType("com.oracle.truffle.api.nodes.UnexpectedResultException");
     public final ResolvedJavaType SlowPathException = lookupType("com.oracle.truffle.api.nodes.SlowPathException");
     public final ResolvedJavaType ExplodeLoop = lookupType("com.oracle.truffle.api.nodes.ExplodeLoop");
+    public final ResolvedJavaType ExplodeLoop_LoopExplosionKind = lookupType("com.oracle.truffle.api.nodes.ExplodeLoop$LoopExplosionKind");
 
     // truffle.api.frame
     public final ResolvedJavaType VirtualFrame = lookupType("com.oracle.truffle.api.frame.VirtualFrame");
