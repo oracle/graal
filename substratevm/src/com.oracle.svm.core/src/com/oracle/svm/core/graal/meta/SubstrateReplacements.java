@@ -35,14 +35,13 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import jdk.graal.compiler.nodes.NodeClassMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -112,15 +111,15 @@ public class SubstrateReplacements extends ReplacementsImpl {
         protected final GraphMakerFactory graphMakerFactory;
         protected final Map<ResolvedJavaMethod, StructuredGraph> graphs;
         protected final Deque<Runnable> deferred;
-        protected final HashSet<ResolvedJavaMethod> registered;
-        protected final Set<ResolvedJavaMethod> delayedInvocationPluginMethods;
+        protected final EconomicSet<ResolvedJavaMethod> registered;
+        protected final EconomicSet<ResolvedJavaMethod> delayedInvocationPluginMethods;
 
         protected Builder(GraphMakerFactory graphMakerFactory) {
             this.graphMakerFactory = graphMakerFactory;
             this.graphs = new HashMap<>();
             this.deferred = new ArrayDeque<>();
-            this.registered = new HashSet<>();
-            this.delayedInvocationPluginMethods = new HashSet<>();
+            this.registered = EconomicSet.create();
+            this.delayedInvocationPluginMethods = EconomicSet.create();
         }
     }
 
@@ -301,7 +300,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<ResolvedJavaMethod> getDelayedInvocationPluginMethods() {
+    public EconomicSet<ResolvedJavaMethod> getDelayedInvocationPluginMethods() {
         return builder.delayedInvocationPluginMethods;
     }
 
