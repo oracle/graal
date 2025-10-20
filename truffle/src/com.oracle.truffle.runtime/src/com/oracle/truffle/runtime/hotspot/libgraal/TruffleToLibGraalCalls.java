@@ -70,8 +70,6 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 
-import java.nio.ByteBuffer;
-
 /**
  * Native methods linked to libgraal entry points.
  */
@@ -89,10 +87,10 @@ final class TruffleToLibGraalCalls {
      * {@link #registerRuntime(long, Object)}.
      */
     @TruffleToLibGraal(RegisterRuntime)
-    static native boolean registerRuntime(long isolateThreadAddress, Object truffleRuntime, ByteBuffer javaInstrumentationActive);
+    static native boolean registerRuntime(long isolateThreadAddress, Object truffleRuntime);
 
     @TruffleToLibGraal(InitializeRuntime)
-    static native long initializeRuntime(long isolateThreadAddress, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate, ByteBuffer javaInstrumentationActive);
+    static native long initializeRuntime(long isolateThreadAddress, TruffleCompilerRuntime truffleRuntime, Class<?> classLoaderDelegate);
 
     @TruffleToLibGraal(Id.ListCompilerOptions)
     static native byte[] listCompilerOptions(long isolateThreadAddress);
