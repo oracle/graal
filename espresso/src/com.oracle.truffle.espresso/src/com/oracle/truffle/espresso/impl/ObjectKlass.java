@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
-import static com.oracle.truffle.espresso.classfile.ParserKlass.isSignaturePolymorphicHolderType;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -83,7 +82,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -95,7 +93,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.meta.LookupHelper;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -1098,112 +1095,6 @@ public final class ObjectKlass extends Klass implements AttributedElement {
         return -1;
     }
 
-    @TruffleBoundary
-    public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        try {
-            return LookupHelper.lookupInterfaceMethod(this, methodName, signature);
-        } catch (LookupHelper.ResolutionSuccessInvocationFailure e) {
-            Method resolved = e.getResult();
-            Method result = new Method(resolved);
-            result.setPoisonPill().setITableIndex(resolved.getITableIndex());
-            return result;
-        }
-    }
-
-    @TruffleBoundary
-    public Method resolveInterfaceMethodOld(Symbol<Name> methodName, Symbol<Signature> signature) {
-        assert isInterface();
-        /*
-         * 2. Otherwise, if C declares a method with the name and descriptor specified by the
-         * interface method reference, method lookup succeeds.
-         */
-        for (Method m : getDeclaredMethods()) {
-            if (methodName == m.getName() && signature == m.getRawSignature()) {
-                return m;
-            }
-        }
-        /*
-         * 3. Otherwise, if the class Object declares a method with the name and descriptor
-         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
-         * not have its ACC_STATIC flag set, method lookup succeeds.
-         */
-        assert getSuperKlass().getType() == Types.java_lang_Object;
-        Method m = getSuperKlass().lookupDeclaredMethod(methodName, signature);
-        if (m != null && m.isPublic() && !m.isStatic()) {
-            return m;
-        }
-
-        Method resolved = null;
-        /*
-         * Interfaces are sorted, superinterfaces first; traverse in reverse order to get
-         * maximally-specific first.
-         */
-        for (int i = getiKlassTable().length - 1; i >= 0; i--) {
-            ObjectKlass superInterf = getiKlassTable()[i].getKlass();
-            for (Method.MethodVersion superMVersion : superInterf.getInterfaceMethodsTable()) {
-                Method superM = superMVersion.getMethod();
-                /*
-                 * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
-                 * methods declared in superInterf.
-                 */
-                if (methodName == superM.getName() && signature == superM.getRawSignature()) {
-                    if (resolved == null) {
-                        resolved = superM;
-                    } else {
-                        /*
-                         * 4. Otherwise, if the maximally-specific superinterface methods
-                         * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
-                         * reference include exactly one method that does not have its ACC_ABSTRACT
-                         * flag set, then this method is chosen and method lookup succeeds.
-                         *
-                         * 5. Otherwise, if any superinterface of C declares a method with the name
-                         * and descriptor specified by the method reference that has neither its
-                         * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
-                         * chosen and method lookup succeeds.
-                         */
-                        resolved = Method.resolveMaximallySpecific(resolved, superM).getMethod();
-                        if (resolved.getITableIndex() == -1) {
-                            /*
-                             * Multiple maximally specific: this method has a poison pill.
-                             *
-                             * NOTE: Since java 9, we can invokespecial interface methods (ie: a
-                             * call directly to the resolved method, rather than after an interface
-                             * lookup). We are looking up a method taken from the implemented
-                             * interface (and not from a currently non-existing itable of the
-                             * implementing interface). This difference, and the possibility of
-                             * invokespecial, means that we cannot return the looked up method
-                             * directly in case of multiple maximally specific method. thus, we
-                             * spawn a new proxy method, attached to no method table, just to fail
-                             * if invokespecial.
-                             */
-                            assert (resolved.identity() == superM.identity());
-                            resolved.setITableIndex(superM.getITableIndex());
-                        }
-                    }
-                }
-            }
-        }
-        return resolved;
-    }
-
-    @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        KLASS_LOOKUP_METHOD_COUNT.inc();
-        Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
-        if (method == null) {
-            // Implicit interface methods.
-            method = lookupMirandas(methodName, signature);
-        }
-        if (method == null && isSignaturePolymorphicHolderType(getType())) {
-            method = lookupSignaturePolymorphicMethod(methodName, signature, lookupMode);
-        }
-        if (method == null && getSuperKlass() != null) {
-            CompilerAsserts.partialEvaluationConstant(this);
-            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
-        }
-        return method;
-    }
-
     public Field[] getFieldTable() {
         if (!getContext().advancedRedefinitionEnabled()) {
             return fieldTable;
@@ -1246,19 +1137,6 @@ public final class ObjectKlass extends Klass implements AttributedElement {
             // Note that caller is responsible for filtering out removed fields
             return staticFieldTable;
         }
-    }
-
-    private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
-        if (getMirandaMethods() == null) {
-            return null;
-        }
-        for (Method.MethodVersion miranda : getMirandaMethods()) {
-            Method method = miranda.getMethod();
-            if (method.getName() == methodName && method.getRawSignature() == signature) {
-                return method;
-            }
-        }
-        return null;
     }
 
     void print(PrintStream out) {

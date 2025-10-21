@@ -57,6 +57,7 @@ import java.lang.reflect.Modifier;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -136,6 +137,7 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.lookup.LookupMode;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
@@ -230,6 +232,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public static List<Method> versionsToMethodList(Method.MethodVersion[] versions) {
+        if (versions == null) {
+            return Collections.emptyList();
+        }
         return new AbstractList<>() {
             @Override
             public Method get(int index) {
@@ -768,7 +773,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         Klass holder = meta.java_lang_reflect_Constructor_clazz.getObject(rootMethod).getMirrorKlass(meta);
         Symbol<Signature> signature = rebuildConstructorSignature(meta, rootMethod);
         assert signature != null;
-        Method method = holder.lookupDeclaredMethod(Names._init_, signature, Klass.LookupMode.INSTANCE_ONLY);
+        Method method = holder.lookupDeclaredMethod(Names._init_, signature, LookupMode.INSTANCE_ONLY);
         assert method != null;
         // remember the mapping for the next query
         meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(rootMethod, method);
@@ -806,21 +811,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     // Polymorphic signature method 'creation'
 
-    Method findIntrinsic(Symbol<Signature> signature) {
-        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, getContext());
-    }
-
-    @Override
-    public boolean isDeclaredSignaturePolymorphic() {
-        return (getModifiers() & ACC_SIGNATURE_POLYMORPHIC) != 0;
-    }
-
     public int getVTableIndex() {
         return getMethodVersion().getVTableIndex();
-    }
-
-    void setITableIndex(int i) {
-        getMethodVersion().setITableIndex(i);
     }
 
     public int getITableIndex() {
@@ -835,9 +827,19 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
     }
 
-    public Method setPoisonPill() {
-        getMethodVersion().setPoisonPill();
-        return this;
+    public Method forFailing() {
+        if (isProxy()) {
+            getMethodVersion().setPoisonPill();
+            return this;
+        }
+        Method m = new Method(this);
+        m.getMethodVersion().setPoisonPill();
+        if (this.hasVTableIndex()) {
+            m.getMethodVersion().setVTableIndex(this.getVTableIndex());
+        } else {
+            m.getMethodVersion().setITableIndex(this.getITableIndex());
+        }
+        return m;
     }
 
     public String report(int curBCI) {
@@ -1194,45 +1196,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return instance;
     }
 
-    /**
-     * Returns the maximally specific method between the two given methods. If they are both
-     * maximally-specific, returns a proxy of the second, to which a poison pill has been set.
-     * <p>
-     * Determining maximally specific method works as follow:
-     * <li>If both methods are abstract, return any of the two.
-     * <li>If exactly one is non-abstract, return it.
-     * <li>If both are non-abstract, check if one of the declaring class subclasses the other. If
-     * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
-     * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
-     */
-    public static MethodVersion resolveMaximallySpecific(Method m1, Method m2) {
-        ObjectKlass k1 = m1.getDeclaringKlass();
-        ObjectKlass k2 = m2.getDeclaringKlass();
-        if (k1.isAssignableFrom(k2)) {
-            return m2.getMethodVersion();
-        } else if (k2.isAssignableFrom(k1)) {
-            return m1.getMethodVersion();
-        } else {
-            boolean b1 = m1.isAbstract();
-            boolean b2 = m2.isAbstract();
-            if (b1 && b2) {
-                return m1.getMethodVersion();
-            }
-            if (b1) {
-                return m2.getMethodVersion();
-            }
-            if (b2) {
-                return m1.getMethodVersion();
-            }
-            // JVM specs:
-            // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
-            // it). (5.4.3.3.)
-            //
-            // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
-            return new Method(m2).setPoisonPill().getMethodVersion();
-        }
-    }
-
     // region MethodAccess impl
 
     @Override
@@ -1250,6 +1213,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
     public boolean isAbstract() {
         return super.isAbstract();
+    }
+
+    @Override
+    public boolean isDeclaredSignaturePolymorphic() {
+        return ((rawFlags & ACC_SIGNATURE_POLYMORPHIC)) != 0;
     }
 
     @Override
@@ -1287,6 +1255,12 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     public boolean hasPoisonPill() {
         return getMethodVersion().poisonPill;
+    }
+
+    @Override
+    @TruffleBoundary
+    public Method findSignaturePolymorphicIntrinsic(Symbol<Signature> signature) {
+        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, getContext());
     }
 
     // endregion MethodAccess impl
@@ -1781,9 +1755,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return itableIndex;
         }
 
-        public Method.MethodVersion setPoisonPill() {
+        private void setPoisonPill() {
             poisonPill = true;
-            return this;
         }
 
         public ExceptionHandler[] getExceptionHandlers() {
@@ -1916,7 +1889,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                      * The method was obtained through a regular lookup (since it is in the declared
                      * methods). Delegate it to a polysignature method lookup.
                      */
-                    target = declaringKlass.lookupSignaturePolymorphicMethod(getName(), getRawSignature(), Klass.LookupMode.ALL).getCallTarget();
+                    target = getMethod().findSignaturePolymorphicIntrinsic(getRawSignature()).getCallTarget();
                 }
 
                 if (target == null) {
@@ -1943,7 +1916,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             }
             // before using the prefix-stripped method name, make sure we have a
             // non-native wrapper method, if not we can't link
-            Method wrapperMethod = getDeclaringKlass().lookupDeclaredMethod(resolvedName, getRawSignature(), isStatic() ? Klass.LookupMode.STATIC_ONLY : Klass.LookupMode.INSTANCE_ONLY);
+            Method wrapperMethod = getDeclaringKlass().lookupDeclaredMethod(resolvedName, getRawSignature(), isStatic() ? LookupMode.STATIC_ONLY : LookupMode.INSTANCE_ONLY);
             if (wrapperMethod == null || wrapperMethod.isNative()) {
                 return null;
             }
