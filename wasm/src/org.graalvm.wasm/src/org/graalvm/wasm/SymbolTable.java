@@ -184,6 +184,17 @@ public abstract class SymbolTable {
         public int hashCode() {
             return value;
         }
+
+        @Override
+        public String toString() {
+            return switch (value()) {
+                case WasmType.I32_TYPE -> "i32";
+                case WasmType.I64_TYPE -> "i64";
+                case WasmType.F32_TYPE -> "f32";
+                case WasmType.F64_TYPE -> "f64";
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
     }
 
     public static final class VectorType extends ClosedValueType {
@@ -227,6 +238,11 @@ public abstract class SymbolTable {
         @Override
         public int hashCode() {
             return value;
+        }
+
+        @Override
+        public String toString() {
+            return "v128";
         }
     }
 
@@ -285,6 +301,27 @@ public abstract class SymbolTable {
         public int hashCode() {
             return Boolean.hashCode(nullable) ^ closedHeapType.hashCode();
         }
+
+        @Override
+        public String toString() {
+            CompilerAsserts.neverPartOfCompilation();
+            if (this == FUNCREF) {
+                return "funcref";
+            } else if (this == EXTERNREF) {
+                return "externref";
+            } else if (this == EXNREF) {
+                return "exnref";
+            } else {
+                StringBuilder buf = new StringBuilder();
+                buf.append("(ref ");
+                if (nullable) {
+                    buf.append("null ");
+                }
+                buf.append(closedHeapType.toString());
+                buf.append(")");
+                return buf.toString();
+            }
+        }
     }
 
     public static final class AbstractHeapType extends ClosedHeapType {
@@ -340,6 +377,16 @@ public abstract class SymbolTable {
         @Override
         public int hashCode() {
             return value;
+        }
+
+        @Override
+        public String toString() {
+            return switch (this.value) {
+                case WasmType.FUNC_HEAPTYPE -> "func";
+                case WasmType.EXTERN_HEAPTYPE -> "extern";
+                case WasmType.EXN_HEAPTYPE -> "exn";
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
         }
     }
 
@@ -435,6 +482,20 @@ public abstract class SymbolTable {
         @Override
         public int hashCode() {
             return Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
+        }
+
+        @Override
+        public String toString() {
+            CompilerAsserts.neverPartOfCompilation();
+            String[] paramNames = new String[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                paramNames[i] = paramTypes[i].toString();
+            }
+            String[] resultNames = new String[resultTypes.length];
+            for (int i = 0; i < resultTypes.length; i++) {
+                resultNames[i] = resultTypes[i].toString();
+            }
+            return "(" + String.join(" ", paramNames) + ")->(" + String.join(" ", resultNames) + ")";
         }
     }
 

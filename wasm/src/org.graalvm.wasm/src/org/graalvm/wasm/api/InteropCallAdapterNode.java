@@ -186,7 +186,6 @@ public final class InteropCallAdapterNode extends RootNode {
         };
     }
 
-    // TODO: Do we need the 3 overrides below?
     @Override
     public String getName() {
         return "wasm-function-interop:" + functionType;
