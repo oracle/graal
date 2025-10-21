@@ -38,10 +38,7 @@ import jdk.internal.misc.Unsafe;
  * This class implements {@link ObjectHandle word}-sized integer handles that refer to Java objects.
  * {@link #create(Object) Creating}, {@link #get(ObjectHandle) dereferencing} and
  * {@link #destroy(ObjectHandle) destroying} handles is thread-safe and the handles themselves are
- * valid across threads. This class also supports weak handles, with which the referenced object may
- * be garbage-collected, after which {@link #get(ObjectHandle)} returns {@code null}. Still, weak
- * handles must also be {@link #destroyWeak(ObjectHandle) explicitly destroyed} to reclaim their
- * handle value.
+ * valid across threads.
  * <p>
  * The implementation uses a variable number of object arrays, in which each array element
  * represents a handle. The array element's index determines the handle's integer value, and the
@@ -52,8 +49,6 @@ import jdk.internal.misc.Unsafe;
  * significant role in how indexing is implemented.
  */
 public final class ObjectHandlesImpl implements ObjectHandles {
-
-    /** Private subclass to distinguish from regular handles to {@link WeakReference} objects. */
 
     private static final int MAX_FIRST_BUCKET_CAPACITY = 1024;
     static { // must be a power of 2 for the arithmetic below to work

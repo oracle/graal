@@ -65,7 +65,7 @@ import jdk.graal.compiler.word.Word;
  * </ul>
  */
 public final class JNIObjectHandles {
-    @Fold // replaces with true/false at compile time and removes unnecessary runtime checks
+    @Fold
     static boolean haveAssertions() {
         return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(JNIObjectHandles.class);
     }
@@ -219,6 +219,7 @@ public final class JNIObjectHandles {
             getOrCreateLocals().delete(decodeLocal(localRef));
         }
     }
+
     // in frames are local handles stored
     public static int pushLocalFrame(int capacity) {
         return getOrCreateLocals().pushFrame(capacity);
@@ -227,6 +228,7 @@ public final class JNIObjectHandles {
     public static void popLocalFrame() {
         getExistingLocals().popFrame();
     }
+
     // pops frames down to a specific starting point identified by the int frame
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void popLocalFramesIncluding(int frame) {
@@ -295,6 +297,7 @@ public final class JNIObjectHandles {
 final class JNIGlobalHandles {
     static final SignedWord MIN_VALUE = Word.signed(Long.MIN_VALUE); // -2^63
     static final SignedWord MAX_VALUE = JNIObjectHandles.nullHandle().subtract(1); // -1
+
     static {
         assert JNIObjectHandles.nullHandle().equal(Word.zero());
     }
@@ -307,6 +310,23 @@ final class JNIGlobalHandles {
     private static final SignedWord VALIDATION_BITS_MASK = Word.signed((1L << VALIDATION_BITS_COUNT) - 1).shiftLeft(VALIDATION_BITS_SHIFT);
     private static final SignedWord WEAK_HANDLE_FLAG = Word.signed(1L << 62);
     private static final SignedWord MSB = Word.signed(1L << 63);
+
+    // Define the mid-point to split the range in half
+    private static final SignedWord HANDLE_RANGE_SPLIT_POINT = Word.signed(1L << 30);
+
+    // Strong global handles will occupy the lower half of the global handles range
+    public static final SignedWord STRONG_GLOBAL_RANGE_MIN = JNIObjectHandles.nullHandle().add(1);
+    ;
+    public static final SignedWord STRONG_GLOBAL_RANGE_MAX = HANDLE_RANGE_SPLIT_POINT.subtract(1);
+
+    // Weak global handles will occupy the upper half of the global handles range
+    public static final SignedWord WEAK_GLOBAL_RANGE_MIN = HANDLE_RANGE_SPLIT_POINT;
+    public static final SignedWord WEAK_GLOBAL_RANGE_MAX = HANDLE_BITS_MASK;
+
+    private static final ObjectHandlesImpl strongGlobalHandles
+            = new ObjectHandlesImpl(STRONG_GLOBAL_RANGE_MIN, STRONG_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
+    private static final ObjectHandlesImpl weakGlobalHandles
+            = new ObjectHandlesImpl(WEAK_GLOBAL_RANGE_MIN, WEAK_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
 
     // Define the mid-point to split the range in half
     private static final SignedWord HANDLE_RANGE_SPLIT_POINT = Word.signed(1L << 30);
@@ -334,6 +354,19 @@ final class JNIGlobalHandles {
         return Word.unsigned(isolateHash);
     }
 
+    /**
+     * Encodes a raw {@code ObjectHandle} into a strong {@code JNIObjectHandle}.
+     * * A strong handle guarantees the referenced object remains alive as long as
+     * the handle itself exists.
+     * * The handle is encoded by:
+     * 1. Asserting the handle fits within the available bit range.
+     * 2. Inserting validation bits (derived from the isolate hash) for security.
+     * 3. Setting the Most Significant Bit (MSB, bit 63) to mark it as an encoded handle.
+     * 4. The WEAK_HANDLE_FLAG bit (bit 62) remains 0.
+     *
+     * @param handle The raw, unencoded handle to the Java object.
+     * @return The resulting strong JNI object handle with embedded metadata.
+     */
     private static JNIObjectHandle encodeStrong(ObjectHandle handle) {
         SignedWord h = (Word) handle;
         if (JNIObjectHandles.haveAssertions()) {
@@ -347,16 +380,20 @@ final class JNIGlobalHandles {
         return (JNIObjectHandle) h;
     }
 
+    /**
+     * Encodes a raw {@code ObjectHandle} into a weak {@code JNIObjectHandle}.
+     * * A weak handle allows the referenced object to be garbage collected even
+     * if the handle exists. The handle will be cleared when the object dies.
+     * * This method calls {@link #encodeStrong(ObjectHandle)} to perform all
+     * common encoding steps, and then explicitly sets the {@code WEAK_HANDLE_FLAG}
+     * bit (bit 62) to mark the handle as weak.
+     *
+     * @param handle The raw, unencoded handle to the Java object.
+     * @return The resulting weak JNI object handle with embedded metadata.
+     */
     private static JNIObjectHandle encodeWeak(ObjectHandle handle) {
-        SignedWord h = (Word) handle;
-        if (JNIObjectHandles.haveAssertions()) {
-            assert h.and(HANDLE_BITS_MASK).equal(h) : "unencoded handle must fit in range";
-            Word v = isolateHash().shiftLeft(VALIDATION_BITS_SHIFT);
-            assert v.and(VALIDATION_BITS_MASK).equal(v) : "validation value must fit in its range";
-            h = h.or(v);
-        }
-        h = h.or(MSB);
-        h = h.or(WEAK_HANDLE_FLAG); // Set bit 62 to mark it as weak
+        SignedWord h = (Word) encodeStrong(handle);
+        h = h.or(WEAK_HANDLE_FLAG);
         assert isInRange((JNIObjectHandle) h);
         return (JNIObjectHandle) h;
     }
@@ -364,17 +401,17 @@ final class JNIGlobalHandles {
     private static ObjectHandle decode(JNIObjectHandle handle) {
         assert isInRange(handle);
         assert ((Word) handle).and(VALIDATION_BITS_MASK).unsignedShiftRight(VALIDATION_BITS_SHIFT)
-                        .equal(isolateHash()) : "mismatching validation value -- passed a handle from a different isolate?";
+                .equal(isolateHash()) : "mismatching validation value -- passed a handle from a different isolate?";
         return (ObjectHandle) HANDLE_BITS_MASK.and((Word) handle);
     }
 
     static <T> T getObject(JNIObjectHandle handle) {
         SignedWord handleValue = (Word) handle;
-        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) && handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
             return strongGlobalHandles.get(decode(handle));
         }
 
-        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) && handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
             return weakGlobalHandles.get(decode((handle)));
         }
 
@@ -383,11 +420,11 @@ final class JNIGlobalHandles {
 
     static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
         SignedWord handleValue = (Word) handle;
-        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) && handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
             return JNIObjectRefType.Global;
         }
 
-        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) && handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
             return JNIObjectRefType.WeakGlobal;
         }
         return JNIObjectRefType.Invalid;
@@ -419,7 +456,7 @@ final class JNIGlobalHandles {
  * move and are not garbage-collected, so the handle just contains an object's offset in the image
  * heap. This approach has the major benefit that handles are valid across isolates that are created
  * from the same image, which helps with native code that is unaware of multiple isolates.
- *
+ * <p>
  * Although this type of handle doesn't need explicit management, we still distinguish between
  * local, global and weak-global references by means of a bit pattern in order to comply with the
  * JNI specification (in particular, for function {@code GetObjectRefType}).
