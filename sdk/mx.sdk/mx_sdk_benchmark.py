@@ -1108,28 +1108,28 @@ class NativeImageVM(StageAwareGraalVm):
                 self.pgo_instrumentation = True
 
                 def generate_profiling_package_prefixes():
-                    # run the native-image-configure tool to gather the jdk package prefixes
+                    # run the native-image-utils tool to gather the jdk package prefixes
                     graalvm_home_bin = os.path.join(mx_sdk_vm.graalvm_home(), 'bin')
-                    native_image_configure_command = mx.cmd_suffix(
-                        os.path.join(graalvm_home_bin, 'native-image-configure'))
-                    if not exists(native_image_configure_command):
-                        mx.abort('Failed to find the native-image-configure command at {}. \nContent {}: \n\t{}'.format(
-                            native_image_configure_command, graalvm_home_bin,
+                    native_image_utils_command = mx.cmd_suffix(
+                        os.path.join(graalvm_home_bin, 'native-image-utils'))
+                    if not exists(native_image_utils_command):
+                        mx.abort('Failed to find the native-image-utils command at {}. \nContent {}: \n\t{}'.format(
+                            native_image_utils_command, graalvm_home_bin,
                             '\n\t'.join(os.listdir(graalvm_home_bin))))
                     tmp = tempfile.NamedTemporaryFile()
-                    ret = mx.run([native_image_configure_command, 'generate-filters',
+                    ret = mx.run([native_image_utils_command, 'generate-filters',
                                   '--include-packages-from-modules=java.base',
                                   '--exclude-classes=org.graalvm.**', '--exclude-classes=com.oracle.**',
                                   # remove internal packages
                                   f'--output-file={tmp.name}'], nonZeroIsFatal=True)
                     if ret != 0:
-                        mx.abort('Native image configure command failed.')
+                        mx.abort('Native image utils command failed.')
 
                     # format the profiling package prefixes
                     with open(tmp.name, 'r') as f:
                         prefixes = json.loads(f.read())
                         if 'rules' not in prefixes:
-                            mx.abort('Native image configure command failed. Can not generate rules.')
+                            mx.abort('Native image utils command failed. Can not generate rules.')
                         rules = prefixes['rules']
                         rules = map(lambda r: r['includeClasses'][:-2], filter(lambda r: 'includeClasses' in r, rules))
                         return ','.join(rules)
@@ -1695,7 +1695,7 @@ class NativeImageVM(StageAwareGraalVm):
             else:
                 mx.abort(f"Perf script failed with exit code: {exit_code}")
         mx.log(f"Started generating iprof at {self.get_stage_runner().get_timestamp()}")
-        nic_command = [os.path.join(self.home(), 'bin', 'native-image-configure'), 'generate-iprof-from-perf', f'--perf={self.config.perf_script_path}', f'--source-mappings={self.config.source_mappings_path}', f'--output-file={self.config.profile_path}']
+        nic_command = [os.path.join(self.home(), 'bin', 'native-image-utils'), 'generate-iprof-from-perf', f'--perf={self.config.perf_script_path}', f'--source-mappings={self.config.source_mappings_path}', f'--output-file={self.config.profile_path}']
         if self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.ALL:
             nic_command += ["--enable-experimental-option=SampledVirtualInvokeProfilesAll"]
         elif self.pgo_perf_invoke_profile_collection_strategy == PerfInvokeProfileCollectionStrategy.MULTIPLE_CALLEES:

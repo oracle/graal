@@ -49,7 +49,7 @@ public abstract class ConfigurationCommand {
     public abstract void apply(Iterator<String> argumentsIterator) throws IOException;
 
     public String getUsage() {
-        return "native-image-configure " + getName() + " [options]";
+        return "native-image-utils " + getName() + " [options]";
     }
 
     public final String getDescription() {

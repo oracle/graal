@@ -343,7 +343,7 @@ Advanced obfuscation is applied to your application code and third-party depende
 * Names of annotations, lambdas, and proxies
 
 To export a mapping from original to obfuscated names, use `-H:AdvancedObfuscation=export-mapping`.
-Use the mapping file and the `native-image-configure deobfuscate` command to deobfuscate stack traces.
+Use the mapping file and the `native-image-utils deobfuscate` command to deobfuscate stack traces.
 See the [build report](BuildReport.md) for summary statistics, such as the percentage of class and method names that were obfuscated.
 
 For more information, see [Advanced Obfuscation in Native Image](../../security/Obfuscation.md).

@@ -84,7 +84,7 @@ public class ConfigurationTool {
             commands.getOrDefault(command, unknownCommand).apply(argumentsIterator);
         } catch (ConfigurationUsageException e) {
             System.err.println(e.getMessage() + System.lineSeparator() +
-                            "Use 'native-image-configure help' for usage.");
+                            "Use 'native-image-utils help' for usage.");
             System.exit(USAGE_ERROR_CODE);
         } catch (Throwable e) {
             e.printStackTrace();

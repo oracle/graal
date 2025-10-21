@@ -1020,6 +1020,6 @@ mx.update_commands(_suite, {
 })
 
 # CE with some skipped native images
-ce_unchained_components = ['bnative-image', 'bnative-image-configure', 'cmp', 'gvm', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'snative-image-agent', 'snative-image-diagnostics-agent', 'ssvmjdwp', 'svm', 'svmjdwp', 'svmsl', 'svmt', 'tflc', 'tflsm']
+ce_unchained_components = ['bnative-image', 'bnative-image-utils', 'cmp', 'gvm', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'snative-image-agent', 'snative-image-diagnostics-agent', 'ssvmjdwp', 'svm', 'svmjdwp', 'svmsl', 'svmt', 'tflc', 'tflsm']
 mx_sdk_vm.register_vm_config('ce', ce_unchained_components, _suite, env_file='jvm-ce')
 mx_sdk_vm.register_vm_config('ce', ce_unchained_components, _suite, env_file='jvm-ce-llvm')
