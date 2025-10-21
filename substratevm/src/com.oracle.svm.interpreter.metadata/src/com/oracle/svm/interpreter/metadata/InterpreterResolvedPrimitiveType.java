@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.metadata;
 
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -126,8 +127,8 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
-    public InterpreterResolvedJavaType[] getSuperInterfaces() {
-        return getInterfaces();
+    public List<InterpreterResolvedJavaType> getSuperInterfacesList() {
+        return Collections.emptyList();
     }
 
     @Override
@@ -138,6 +139,16 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     @Override
     public InterpreterResolvedJavaMethod[] getDeclaredMethods(boolean link) {
         return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
+    }
+
+    @Override
+    public List<InterpreterResolvedJavaMethod> getDeclaredMethodsList() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<InterpreterResolvedJavaMethod> getImplicitInterfaceMethodsList() {
+        return null;
     }
 
     @Override

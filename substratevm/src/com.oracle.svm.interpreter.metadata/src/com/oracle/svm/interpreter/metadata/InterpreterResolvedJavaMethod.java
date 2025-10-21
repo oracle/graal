@@ -337,6 +337,11 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
     }
 
     @Override
+    public InterpreterResolvedJavaMethod findSignaturePolymorphicIntrinsic(Symbol<Signature> methodSignature) {
+        return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(this, methodSignature);
+    }
+
+    @Override
     public final boolean isDeclaredSignaturePolymorphic() {
         // Note: might not be true for the instantiation of polymorphic signature intrinsics.
         return (flags & ACC_SIGNATURE_POLYMORPHIC) != 0;
