@@ -89,6 +89,17 @@ public abstract class SymbolTable {
     public static final int NO_EQUIVALENCE_CLASS = 0;
     public static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
+    /**
+     * Represents a WebAssembly value type in its closed form, with all type indices replaced with
+     * their definitions. You can query the subtyping relation on types using the predicates
+     * {@link #isSupertypeOf(ClosedValueType)} and {@link #isSubtypeOf(ClosedValueType)}, both of
+     * which are written to be PE-friendly provided the receiver type is a PE constant.
+     * <p>
+     * If you need to check whether two types are equivalent, instead of checking
+     * {@code A.isSupertypeOf(B) && A.isSubtypeOf(B)}, you can use {@code A.equals(B)}, since, in
+     * the WebAssembly type system, type equivalence corresponds to structural equality.
+     * </p>
+     */
     public abstract static sealed class ClosedValueType {
         // This is a workaround until we can use pattern matching in JDK 21+.
         public enum Kind {
@@ -1263,10 +1274,6 @@ public abstract class SymbolTable {
 
     public int globalValueType(int index) {
         return globalTypes[index];
-    }
-
-    public ClosedValueType globalClosedValueType(int index) {
-        return closedTypeOf(globalTypes[index]);
     }
 
     private byte globalFlags(int index) {

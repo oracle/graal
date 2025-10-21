@@ -93,8 +93,9 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
         return result;
     }
 
-    public WasmGlobal(int type, boolean mutable, SymbolTable symbolTable, Object value) {
-        this(type, mutable, symbolTable);
+    public WasmGlobal(int globalIndex, SymbolTable symbolTable, Object value) {
+        this(symbolTable.globalValueType(globalIndex), symbolTable.isGlobalMutable(globalIndex), symbolTable);
+        assert symbolTable.globalExternal(globalIndex);
         this.globalValue = switch (type) {
             case WasmType.I32_TYPE -> (int) value;
             case WasmType.I64_TYPE -> (long) value;
@@ -109,7 +110,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
         return type;
     }
 
-    public SymbolTable.ClosedValueType getClosedValueType() {
+    public SymbolTable.ClosedValueType getClosedType() {
         return SymbolTable.closedTypeOf(getType(), symbolTable);
     }
 
@@ -225,14 +226,14 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
             case WasmType.F32_TYPE -> storeInt(Float.floatToRawIntBits(valueLibrary.asFloat(value)));
             case WasmType.F64_TYPE -> storeLong(Double.doubleToRawLongBits(valueLibrary.asDouble(value)));
             case WasmType.V128_TYPE -> {
-                if (!getClosedValueType().matchesValue(value)) {
+                if (!getClosedType().matchesValue(value)) {
                     throw UnsupportedMessageException.create();
                 }
                 storeVector128((Vector128) value);
             }
             default -> {
                 assert WasmType.isReferenceType(type);
-                if (!getClosedValueType().matchesValue(value)) {
+                if (!getClosedType().matchesValue(value)) {
                     throw UnsupportedMessageException.create();
                 }
                 storeReference(value);

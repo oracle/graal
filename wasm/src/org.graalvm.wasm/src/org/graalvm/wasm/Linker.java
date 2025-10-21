@@ -327,22 +327,14 @@ public class Linker {
         }
     }
 
-    void resolveGlobalImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, int valueType, byte mutability,
-                    ImportValueSupplier imports) {
+    void resolveGlobalImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, int valueType, byte mutability, ImportValueSupplier imports) {
         instance.globals().setInitialized(globalIndex, false);
         final String importedGlobalName = importDescriptor.memberName();
         final String importedModuleName = importDescriptor.moduleName();
         final Runnable resolveAction = () -> {
             assert instance.module().globalImported(globalIndex) && globalIndex == importDescriptor.targetIndex() : importDescriptor;
             WasmGlobal externalGlobal = lookupImportObject(instance, importDescriptor, imports, WasmGlobal.class);
-            final int exportedValueType;
-            final SymbolTable.ClosedValueType exportedClosedValueType;
-            final byte exportedMutability;
-            if (externalGlobal != null) {
-                exportedValueType = externalGlobal.getType();
-                exportedClosedValueType = externalGlobal.getClosedValueType();
-                exportedMutability = externalGlobal.getMutability();
-            } else {
+            if (externalGlobal == null) {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importedModuleName);
                 if (importedInstance == null) {
                     throw WasmException.create(Failure.UNKNOWN_IMPORT, "Module '" + importedModuleName + "', referenced in the import of global variable '" +
@@ -356,21 +348,22 @@ public class Linker {
                                     "', was not exported in the module '" + importedModuleName + "'.");
                 }
 
-                exportedValueType = importedInstance.symbolTable().globalValueType(exportedGlobalIndex);
-                exportedClosedValueType = importedInstance.symbolTable().globalClosedValueType(exportedGlobalIndex);
-                exportedMutability = importedInstance.symbolTable().globalMutability(exportedGlobalIndex);
-
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            if (!instance.symbolTable().closedTypeOf(valueType).isSupertypeOf(exportedClosedValueType)) {
-                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the type " + WasmType.toString(valueType) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the type " + WasmType.toString(exportedValueType) + ".");
-            }
-            if (exportedMutability != mutability) {
+            SymbolTable.ClosedValueType importType = instance.symbolTable().closedTypeOf(valueType);
+            SymbolTable.ClosedValueType exportType = externalGlobal.getClosedType();
+            if (mutability != externalGlobal.getMutability()) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
                                 "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(exportedMutability) + ".");
+                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(externalGlobal.getMutability()) + ".");
+            }
+            // matching for mutable globals does not work by subtyping, but requires equivalent
+            // types
+            if (!(externalGlobal.isMutable() ? importType.equals(exportType) : importType.isSupertypeOf(exportType))) {
+                throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
+                                "' with the type " + GlobalModifier.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
+                                "but it was exported in the module '" + importedModuleName + "' with the type " + GlobalModifier.asString(externalGlobal.getMutability()) + " " +
+                                WasmType.toString(externalGlobal.getType()) + ".");
             }
             instance.setExternalGlobal(globalIndex, externalGlobal);
             instance.globals().setInitialized(globalIndex, true);
@@ -391,7 +384,7 @@ public class Linker {
         assert !instance.globals().isInitialized(globalIndex) : globalIndex;
         SymbolTable symbolTable = instance.symbolTable();
         if (symbolTable.globalExternal(globalIndex)) {
-            var global = new WasmGlobal(symbolTable.globalValueType(globalIndex), symbolTable.isGlobalMutable(globalIndex), instance.symbolTable(), initValue);
+            var global = new WasmGlobal(globalIndex, symbolTable, initValue);
             instance.setExternalGlobal(globalIndex, global);
         } else {
             instance.globals().store(symbolTable.globalValueType(globalIndex), symbolTable.globalAddress(globalIndex), initValue);
@@ -568,9 +561,8 @@ public class Linker {
                 }
                 importedTag = importedInstance.tag(exportedTagIndex);
             }
-            // matching for tag types does not work by subtyping, but requires equivalent types,
-            // A <= B and B <= A
-            Assert.assertTrue(type.isSupertypeOf(importedTag.type()) && importedTag.type().isSupertypeOf(type), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            // matching for tag types does not work by subtyping, but requires equivalent types
+            Assert.assertTrue(type.equals(importedTag.type()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTag(tagIndex, importedTag);
         };
         resolutionDag.resolveLater(new ImportTagSym(instance.name(), importDescriptor, tagIndex), new Sym[]{new ExportTagSym(importedModuleName, importedTagName)}, resolveAction);

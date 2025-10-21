@@ -812,7 +812,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedValueType())) {
+                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedType())) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 yield global.loadAsReference();
@@ -832,7 +832,7 @@ public class WebAssembly extends Dictionary {
         if (!global.isMutable()) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
         }
-        if (!global.getClosedValueType().matchesValue(value)) {
+        if (!global.getClosedType().matchesValue(value)) {
             throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", ValueType.fromValue(global.getType()), value);
         }
         switch (global.getType()) {
@@ -846,7 +846,7 @@ public class WebAssembly extends Dictionary {
                 if (!refTypes) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled.");
                 }
-                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedValueType())) {
+                if (SymbolTable.closedTypeOf(WasmType.EXNREF_TYPE, null).isSupertypeOf(global.getClosedType())) {
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, WasmJsApiException.EXNREF_VALUE_ACCESS);
                 }
                 global.storeReference(value);
