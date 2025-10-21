@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="OptionsDialog">
+        <file name="BCOptions.instance">
+            <attr name="instanceClass" stringvalue="at.ssw.visualizer.bc.options.BCOptions"/>
+            <attr name="position" intvalue="2"/>
+        </file>
+    </folder>
+    
+    <folder name="at-ssw-visualizer-bc">
+        <file name="classpaths"/>
+        <!-- url="options/BC-classpaths"--> 
+    </folder>
+</filesystem>

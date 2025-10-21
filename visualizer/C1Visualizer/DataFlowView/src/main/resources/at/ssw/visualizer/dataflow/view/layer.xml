@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-dataflow-view-ShowDataflowViewAction.instance"/>
+        </folder>
+    </folder>
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="DataflowViewAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-dataflow-view-ShowDataflowViewAction.instance"/>
+                <attr name="position" intvalue="700"/>
+            </file>
+        </folder>
+    </folder>
+    <folder name="Windows2">
+        <folder name="Components">
+            <file name="DataflowViewTopComponent.settings" url="DataflowViewTopComponentSettings.xml"/>
+        </folder>
+        <folder name="Modes">
+            <folder name="bottomRight">
+                <file name="DataflowViewTopComponent.wstcref" url="DataflowViewTopComponentWstcref.xml">
+                    <attr name="position" intvalue="600"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

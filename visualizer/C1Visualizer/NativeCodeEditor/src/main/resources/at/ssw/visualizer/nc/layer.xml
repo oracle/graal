@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="View">
+            <folder name="NCFolding">
+                <file name="at-ssw-visualizer-nc-action-CollapseCommentsAction.instance"/>
+                <file name="at-ssw-visualizer-nc-action-ExpandCommentsAction.instance"/>
+            </folder>
+        </folder>
+        <folder name="Window">
+            <file name="at-ssw-visualizer-nc-action-ShowNCEditorAction.instance"/>
+        </folder>
+    </folder>
+    <folder name="OptionsDialog">
+        <folder name="PreviewExamples">
+            <folder name="text">
+                <file name="x-compilation-nc" url="model/NCExample"/>
+            </folder>
+        </folder>
+    </folder>
+    <folder name="Editors">
+        <folder name="text">
+            <folder name="x-compilation-nc">
+                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.nc.Bundle"/>
+                <file name="at-ssw-visualizer-nc-NCEditorKit.instance"/>
+
+                <folder name="FoldManager">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$FoldManagerFactory.instance"/>
+                </folder>
+                <folder name="SideBar">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$SideBarFactory.instance">
+                        <attr name="position" intvalue="2000"/>
+                    </file>
+                </folder>
+                <folder name="HyperlinkProviders">
+                    <file name="at-ssw-visualizer-texteditor-hyperlink-HyperlinkProvider.instance"/>
+                </folder>
+                <file name="at-ssw-visualizer-texteditor-highlight-HighlightsContainer$HighlightsLayerFactory.instance"/>
+                <folder name="FontsColors">
+                    <folder name="NetBeans">
+                        <folder name="Defaults">
+                            <file name="at-ssw-visualizer-nc-token-colorings.xml" url="model/NetBeans-NC-fontsColors.xml">
+                                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.nc.Bundle"/>
+                            </file>
+                        </folder>
+                    </folder>
+                </folder>
+                <folder name="Toolbars">
+                    <folder name="Default">
+                        <file name="Separator-after-expand-all.instance">
+                            <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                            <attr name="position" intvalue="50215"/>
+                        </file>
+                        <file name="at-ssw-visualizer-nc-action-ExpandCommentsAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/NCFolding/at-ssw-visualizer-nc-action-ExpandCommentsAction.instance"/>
+                            <attr name="position" intvalue="50237"/>
+                        </file>
+                        <file name="at-ssw-visualizer-nc-action-CollapsCommentsAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/NCFolding/at-ssw-visualizer-nc-action-CollapseCommentsAction.instance"/>
+                            <attr name="position" intvalue="50275"/>
+                        </file>
+                    </folder>
+                </folder>
+            </folder>
+        </folder>
+    </folder>
+    <folder name="Menu">
+    <folder name="File"/>
+        <folder name="Window">
+            <file name="at-ssw-visualizer-nc-action-ShowNCEditorAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-nc-action-ShowNCEditorAction.instance"/>
+                <attr name="position" intvalue="1650"/>
+            </file>
+        </folder>
+    </folder>
+    <folder name="at-ssw-visualizer-actions-cfg">
+        <file name="ShowNCEditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-nc-action-ShowNCEditorAction.instance"/>
+            <attr name="position" intvalue="450"/>
+        </file>
+    </folder>
+</filesystem>

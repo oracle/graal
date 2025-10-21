@@ -1,0 +1,13 @@
+B0 <- B6 -> B7,B1 dom B6 [0, 6] std
+  Locals size 6 [virtual jint java.lang.String.hashCode()]
+    0    a6   
+  __bci__use__tid__result___instr___________________________ (HIR)
+  . 1    4    i7   [R58|I]  a6._20 (I)
+    6    2    i8            0
+  . 6    0    v9            if i7 != i8 then B7 else B1
+  __nr___instr______________________________________________ (LIR)
+    8    label [label:0x2d692b4]
+    10   move [Base:[R57|L] Disp: 20|I] [R58|I]
+    12   cmp [R58|I] [int:0|I]
+    14   branch [NE] [B7]
+    16   branch [AL] [B1]

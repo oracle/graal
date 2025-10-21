@@ -80,7 +80,7 @@
                             <configuration>
                                 <rules>
                                     <requireJavaVersion>
-                                        <version>[17,24)</version>
+                                        <version>[17,24]</version>
                                         <message>The IGV Netbeans platform requires a JDK version between 17 and 24</message>
                                     </requireJavaVersion>
                                 </rules>

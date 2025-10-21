@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Windows2">
+        <folder name="Modes">
+            <file name="code_evaluator.wsmode_hidden"/>
+            <file name="explorer.wsmode_hidden"/>
+            <file name="left.wsmode" url="leftWsmode.xml"/>
+            <file name="bottomLeft.wsmode" url="bottomLeftWsmode.xml"/>
+            <file name="bottomRight.wsmode" url="bottomRightWsmode.xml"/>
+            <file name="output.wsmode_hidden"/>
+            <file name="properties.wsmode_hidden"/>
+        </folder>
+    </folder>
+    
+    <folder name="Menu">
+        <file name="BuildProject_hidden"/>
+        <folder name="Edit">
+            <file name="Separator1.instance_hidden"/>
+            <file name="Separator3.instance_hidden"/>
+            <file name="SeparatorAfterProjectsSearch.instance_hidden"/>
+            <file name="WhereUsedAction.shadow_hidden"/>
+            <file name="org-netbeans-core-actions-JumpNextAction.shadow_hidden"/>
+            <file name="org-netbeans-core-actions-JumpPrevAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-editor-MainMenuAction$PasteFormattedAction.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-MainMenuAction$SelectIdentifierAction.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-MainMenuAction$StartMacroRecordingAction.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-MainMenuAction$StopMacroRecordingAction.instance_hidden"/>
+            <file name="org-netbeans-modules-search-FindInFilesAction-separatorBefore.instance_hidden"/>
+            <file name="org-netbeans-modules-search-FindInFilesAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-search-ReplaceInFilesAction.shadow_hidden"/>
+            <file name="org-openide-actions-CutAction.instance_hidden"/>
+            <file name="org-openide-actions-DeleteAction.instance_hidden"/>
+            <file name="org-openide-actions-PasteAction.instance_hidden"/>
+            <file name="org-openide-actions-RedoAction.instance_hidden"/>
+            <file name="org-openide-actions-ReplaceAction.instance_hidden"/>
+            <file name="org-openide-actions-ReplaceAction.shadow_hidden"/>
+            <file name="org-openide-actions-UndoAction.instance_hidden"/>
+        </folder>
+        <folder name="File">
+            <file name="Export_hidden"/>
+            <file name="Import_hidden"/>
+            <file name="ImporterSeparator1.instance_hidden"/>
+            <file name="Separator2.instance_hidden"/>
+            <file name="Separator3.instance_hidden"/>
+            <file name="Separator4.instance_hidden"/>
+            <file name="SeparatorNew.instance_hidden"/>
+            <file name="SeparatorOpen.instance_hidden"/>
+            <file name="import-export-sep.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-ExportHtmlAction.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-ExportHtmlAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-openfile-OpenFileAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-openfile-RecentFileAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-print-action-PageSetupAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-print-action-PrintAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-CloseProject.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-CustomizeProject.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-NewFile.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-NewProject.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-OpenProject.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-RecentProjects.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-groups-GroupsMenu.shadow_hidden"/>
+            <file name="org-openide-actions-PageSetupAction.instance_hidden"/>
+            <file name="org-openide-actions-PrintAction.instance_hidden"/>
+            <file name="org-openide-actions-SaveAction.instance_hidden"/>
+            <file name="org-openide-actions-SaveAction.shadow_hidden"/>
+            <file name="org-openide-actions-SaveAllAction.instance_hidden"/>
+            <file name="org-openide-actions-SaveAllAction.shadow_hidden"/>
+            <file name="org-openide-actions-SaveAsAction.shadow_hidden"/>
+        </folder>
+        <file name="GoTo_hidden"/>
+        <folder name="Help">
+            <file name="Separator1.instance_hidden"/>
+            <file name="SeparatorAfterJavadoc.instance_hidden"/>
+            <file name="org-netbeans-modules-javadoc-search-IndexOverviewAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-javadoc-search-SearchDocAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-registration-RegisterAction.instance_hidden"/>
+            <file name="org-netbeans-modules-welcome-ShowWelcomeAction.instance_hidden"/>
+        </folder>
+        <file name="Profile_hidden"/>
+        <file name="RunProject_hidden"/>
+        <file name="Source_hidden"/>
+        <folder name="Tools">
+            <file name="JavaPlatformsCustomizerAction.instance_hidden"/>
+            <file name="PaletteManager_hidden"/>
+            <file name="Separator1.instance_hidden"/>
+            <file name="Separator2.instance_hidden"/>
+            <file name="Separator3.instance_hidden"/>
+            <file name="org-netbeans-modules-apisupport-project-ui-platform-NbPlatformCustomizerAction.instance_hidden"/>
+            <file name="org-netbeans-modules-favorites-templates-TemplatesAction.instance_hidden"/>
+            <file name="org-openide-actions-ToolsAction.instance_hidden"/>
+        </folder>
+        <folder name="View">
+            <file name="Separator2.instance_hidden"/>
+            <file name="Separator3.instance_hidden"/>
+            <file name="org-netbeans-core-actions-HTMLViewAction.instance_hidden"/>
+            <file name="org-netbeans-core-actions-HTMLViewAction.shadow_hidden"/>
+            <file name="org-netbeans-core-actions-LogAction.instance_hidden"/>
+            <file name="org-netbeans-core-actions-LogAction.shadow_hidden"/>
+            <file name="org-netbeans-core-windows-actions-ToolbarsListAction.instance_hidden"/>
+            <file name="org-netbeans-modules-editor-MainMenuAction$ShowToolBarAction.instance_hidden"/>
+            <file name="org-netbeans-modules-project-ui-SyncEditorWithViewsAction.shadow_hidden"/>
+            </folder>
+        <folder name="Window">
+            <file name="Other_hidden"/>
+            <file name="Output_hidden"/>
+            <file name="Profile_hidden"/>
+            <file name="SwitchToRecentDocumentAction.shadow_hidden"/>
+            <file name="ViewFavoritesTabAction.shadow_hidden"/>
+            <file name="at-ssw-visualizer-core-Separator01.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="999"/>
+            </file>
+            <file name="ProgressListAction.shadow_hidden"/>
+            <file name="ViewRuntimeTabAction.shadow_hidden"/>
+            <file name="org-netbeans-core-actions-GlobalPropertiesAction.shadow_hidden"/>
+            <file name="org-netbeans-core-windows-actions-GlobalPropertiesAction.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-logical-tab-action.shadow_hidden"/>
+            <file name="org-netbeans-modules-project-ui-physical-tab-action.shadow_hidden"/>
+        </folder>
+    </folder>
+    
+    <folder name="Toolbars">
+        <file name="Build_hidden"/>
+        <file name="Clipboard_hidden"/>
+        <file name="Edit_hidden"/>
+        <file name="File_hidden"/>
+        <file name="Memory_hidden"/>
+        <file name="QuickSearch_hidden"/>
+        <file name="Standard.xml_hidden"/>
+            <file name="UndoRedo_hidden"/>
+    </folder>
+    
+    <folder name="OptionsDialog">
+        <file name="Advanced.instance_hidden"/>
+        <file name="Editor.instance_hidden"/>
+        <file name="General.instance_hidden"/>
+        <folder name="PreviewExamples">
+            <file name="Defaults" url="DefaultExample"/>
+        </folder>
+    </folder>
+    
+    <folder name="Editors">
+        <folder name="FontsColors">
+            <folder name="NetBeans">
+                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.Bundle"/>
+                
+                <folder name="Defaults">
+                    <file name="at-ssw-visualizer-token-colorings.xml" url="NetBeans-fontsColors.xml">
+                        <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.Bundle"/>
+                    </file>
+                    <file name="at-ssw-visualizer-token-highlight-colorings.xml" url="NetBeans-editor.xml">
+                        <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.Bundle"/>
+                        <attr name="nbeditor-settings-ColoringType" stringvalue="highlight"/>
+                    </file>
+                </folder>
+            </folder>
+        </folder>
+        
+        <folder name="Popup">
+            <file name="org-netbeans-modules-editor-NbSelectInPopupAction.instance_hidden"/>
+            <file name="org-openide-actions-CutAction.instance_hidden"/>
+            <file name="org-openide-actions-PasteAction.instance_hidden"/>
+        </folder>
+        
+        <folder name="Toolbars">
+            <folder name="Default">
+                <file name="Separator-after-shift-line.instance_hidden"/>
+                <file name="Separator-after-toggle-highlight-search.instance_hidden"/>
+                <file name="Separator-before-find-previous.instance_hidden"/>
+                <file name="Separator0.instance_hidden"/>
+                <file name="jump-list-last-edit_hidden"/>
+                <file name="jump-list-next_hidden"/>
+                <file name="jump-list-prev_hidden"/>
+                <file name="shift-line-left_hidden"/>
+                <file name="shift-line-right_hidden"/>
+                <file name="start-macro-recording_hidden"/>
+                <file name="stop-macro-recording_hidden"/>
+            </folder>
+        </folder>
+        
+        <folder name="text">
+            <folder name="plain">
+                <file name="FontsColors_hidden"/>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

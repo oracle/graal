@@ -1,0 +1,9 @@
+[Entry Point]
+B0 <- B6 -> B2,B1 dom B6 [0, 6] std
+  ;;    8 label [label:0x9ea954]
+  ;;   10 move [Base:[ecx|L] Disp: 20|I] [eax|I] 
+  0x00b0087f: movl   0x14(%ecx),%eax
+  ;;   12 cmp [eax|I] [int:0|I] 
+  0x00b00882: cmpl   $0x0,%eax
+  ;;   14 branch [NE] [B2] 
+  0x00b00885: jne    0xb008ce

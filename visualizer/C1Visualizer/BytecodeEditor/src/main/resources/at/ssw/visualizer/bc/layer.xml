@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-bc-action-ShowBCEditorAction.instance"/>
+        </folder>
+    </folder>
+    
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="ShowBCEditor.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-bc-action-ShowBCEditorAction.instance"/>
+                <attr name="position" intvalue="1200"/>
+            </file>
+        </folder>
+    </folder>
+    
+    <folder name="at-ssw-visualizer-actions-cfg">
+        <file name="ShowBCEditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-bc-action-ShowBCEditorAction.instance"/>
+            <attr name="position" intvalue="200"/>
+        </file>
+    </folder>
+    
+    <folder name="OptionsDialog">
+        <folder name="PreviewExamples">
+            <folder name="text">
+                <file name="x-compilation-bc" url="model/BCExample"/>
+            </folder>
+        </folder>
+    </folder>
+    
+    <folder name="Editors">
+        <folder name="text">
+            <folder name="x-compilation-bc">
+                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.bc.Bundle"/>
+                
+                <file name="at-ssw-visualizer-bc-BCEditorKit.instance"/>
+                
+                <folder name="FontsColors">
+                    <folder name="NetBeans">
+                        <folder name="Defaults">
+                            <file name="coloring.xml" url="model/NetBeans-BC-fontsColors.xml">
+                                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.bc.Bundle"/>
+                            </file>
+                        </folder>
+                    </folder>
+                </folder>
+                
+                <folder name="FoldManager">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$FoldManagerFactory.instance"/>
+                </folder>
+                <folder name="SideBar">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$SideBarFactory.instance">
+                        <attr name="position" intvalue="1500"/>
+                    </file>
+                </folder>
+                
+                <folder name="HyperlinkProviders">
+                    <file name="at-ssw-visualizer-texteditor-hyperlink-HyperlinkProvider.instance"/>
+                </folder>
+                
+                <file name="at-ssw-visualizer-texteditor-highlight-HighlightsContainer$HighlightsLayerFactory.instance"/>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

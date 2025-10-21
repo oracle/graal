@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.visualizer.dataflow.view
+OpenIDE-Module-Layer: at/ssw/visualizer/dataflow/view/layer.xml
+OpenIDE-Module-Localizing-Bundle: at/ssw/visualizer/dataflow/view/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

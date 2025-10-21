@@ -1,0 +1,18 @@
+Code(max_stack = 3, max_locals = 6, code_length = 60)
+
+B0 -> B1,B2 std
+0:    aload_0
+1:    getfield		java.lang.String.hash I (349)
+4:    istore_1
+5:    iload_1
+6:    ifne		#58
+B3 <- B1,B4 -> B4,B5 plh
+28:   iload		%5
+30:   iload		%4
+32:   if_icmpge		#53
+B4 <- B3 -> B3
+41:   iinc		%2	1
+
+
+Attribute(s) = 
+LineNumber(0, 1483), LineNumber(5, 1484), LineNumber(9, 1485), LineNumber(14, 1486)

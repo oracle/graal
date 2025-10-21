@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="View">
+            <folder name="IRFolding">
+                <file name="at-ssw-visualizer-ir-action-CollapseAllAction.instance"/>
+                <file name="at-ssw-visualizer-ir-action-ExpandHIRAction.instance"/>
+                <file name="at-ssw-visualizer-ir-action-ExpandLIRAction.instance"/>
+                <file name="at-ssw-visualizer-ir-action-ExpandAllAction.instance"/>
+            </folder>
+        </folder>
+        <folder name="Window">
+            <file name="at-ssw-visualizer-ir-action-ShowIREditorAction.instance"/>
+        </folder>
+    </folder>
+    
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-ir-action-ShowIREditorAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-ir-action-ShowIREditorAction.instance"/>
+                <attr name="position" intvalue="1100"/>
+            </file>
+        </folder>
+    </folder>
+    
+    <folder name="at-ssw-visualizer-actions-cfg">
+        <file name="ShowIREditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-ir-action-ShowIREditorAction.instance"/>
+            <attr name="position" intvalue="100"/>
+        </file>
+    </folder>
+    
+    <folder name="OptionsDialog">
+        <folder name="PreviewExamples">
+            <folder name="text">
+                <file name="x-compilation-ir" url="model/IRExample"/>
+            </folder>
+        </folder>
+    </folder>
+    
+    <folder name="Editors">
+        <folder name="text">           
+            <folder name="x-compilation-ir">
+                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.ir.Bundle"/>
+                
+                <file name="at-ssw-visualizer-ir-IREditorKit.instance"/>
+                
+                <folder name="FontsColors">
+                    <folder name="NetBeans">
+                        <folder name="Defaults">
+                            <file name="at-ssw-visualizer-ir-token-colorings.xml" url="model/NetBeans-IR-fontsColors.xml">
+                                <attr name="SystemFileSystem.localizingBundle" stringvalue="at.ssw.visualizer.ir.Bundle"/>
+                            </file>
+                        </folder>
+                    </folder>
+                </folder>
+                
+                <folder name="FoldManager">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$FoldManagerFactory.instance"/>
+                </folder>
+                <folder name="SideBar">
+                    <file name="at-ssw-visualizer-texteditor-fold-FoldManager$SideBarFactory.instance">
+                        <attr name="position" intvalue="1500"/>
+                    </file>
+                </folder>
+                
+                <folder name="HyperlinkProviders">
+                    <file name="at-ssw-visualizer-texteditor-hyperlink-HyperlinkProvider.instance"/>
+                </folder>
+                
+                <file name="at-ssw-visualizer-texteditor-highlight-HighlightsContainer$HighlightsLayerFactory.instance"/>
+                
+                <folder name="Toolbars">
+                    <folder name="Default">
+                        <file name="Separator-after-expand-all.instance">
+                            <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                            <attr name="position" intvalue="50000"/>
+                        </file>
+                        <file name="CollapseAllAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-CollapseAllAction.instance"/>
+                            <attr name="position" intvalue="50100"/>
+                        </file>
+                        <file name="ExpandHIRAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-ExpandHIRAction.instance"/>
+                            <attr name="position" intvalue="50200"/>
+                        </file>
+                        <file name="ExpandLIRAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-ExpandLIRAction.instance"/>
+                            <attr name="position" intvalue="50300"/>
+                        </file>
+                        <file name="ExpandAllAction.shadow">
+                            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-ExpandAllAction.instance"/>
+                            <attr name="position" intvalue="50400"/>
+                        </file>
+                    </folder>
+                </folder>
+            </folder>
+        </folder>
+    </folder>
+    
+    <folder name="IREditorFolding">
+        <file name="ExpandHIRAction.shadow">
+            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-ExpandHIRAction.instance"/>
+            <attr name="position" intvalue="50200"/>
+        </file>
+        <file name="ExpandLIRAction.shadow">
+            <attr name="originalFile" stringvalue="Actions/View/IRFolding/at-ssw-visualizer-ir-action-ExpandLIRAction.instance"/>
+            <attr name="position" intvalue="50300"/>
+        </file>
+    </folder>
+</filesystem>
