@@ -873,7 +873,9 @@ public class Linker {
             // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
             assertUnsignedIntLessOrEqual(declaredMinSize, importedTable.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
             assertUnsignedIntGreaterOrEqual(declaredMaxSize, importedTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertTrue(instance.symbolTable().closedTypeOf(elemType).isSupertypeOf(importedTable.closedElemType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            // when matching element types of imported tables, we need to check for type equivalence
+            // instead of subtyping, as tables have read/write access
+            assertTrue(instance.symbolTable().closedTypeOf(elemType).equals(importedTable.closedElemType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
             instance.setTableAddress(tableIndex, tableAddress);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);
