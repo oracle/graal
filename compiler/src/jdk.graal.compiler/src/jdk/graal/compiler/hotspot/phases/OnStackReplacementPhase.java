@@ -379,7 +379,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             throw new GraalError("Multiple OnStackReplacementNodes generated");
         }
         if (osr.stateAfter().stackSize() != 0) {
-            throw new PermanentBailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
+            throw new PermanentBailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.All));
         }
         return osr;
     }
