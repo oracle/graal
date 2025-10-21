@@ -1357,7 +1357,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import memory %s from %s into %s)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName);
+                return String.format("(import table %s from %s into %s)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName);
             }
 
             @Override
@@ -1435,7 +1435,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format(Locale.ROOT, "(data %d in %s)", elemSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(elem %d in %s)", elemSegmentId, moduleName);
             }
 
             @Override

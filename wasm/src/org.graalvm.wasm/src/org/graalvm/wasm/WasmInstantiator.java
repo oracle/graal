@@ -229,108 +229,6 @@ public class WasmInstantiator {
 
         final byte[] bytecode = module.bytecode();
 
-        for (int i = 0; i < module.dataInstanceCount(); i++) {
-            final int dataIndex = i;
-            final int dataOffset = module.dataInstanceOffset(dataIndex);
-            final int encoding = bytecode[dataOffset];
-            int effectiveOffset = dataOffset + 1;
-
-            final int dataMode = encoding & BytecodeBitEncoding.DATA_SEG_MODE_VALUE;
-            final int dataLength;
-            switch (encoding & BytecodeBitEncoding.DATA_SEG_LENGTH_MASK) {
-                case BytecodeBitEncoding.DATA_SEG_LENGTH_U8:
-                    dataLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeBitEncoding.DATA_SEG_LENGTH_U16:
-                    dataLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeBitEncoding.DATA_SEG_LENGTH_I32:
-                    dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            if (dataMode == SegmentMode.ACTIVE) {
-                final long value;
-                switch (encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED:
-                        value = -1;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_VALUE_U8:
-                        value = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_VALUE_U16:
-                        value = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
-                        value = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
-                        value = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
-                        effectiveOffset += 8;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                final byte[] dataOffsetBytecode;
-                final long dataOffsetAddress;
-                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE &&
-                                ((encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) != BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED)) {
-                    int dataOffsetBytecodeLength = (int) value;
-                    dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
-                    effectiveOffset += dataOffsetBytecodeLength;
-                    dataOffsetAddress = -1;
-                } else {
-                    dataOffsetBytecode = null;
-                    dataOffsetAddress = value;
-                }
-
-                final int memoryIndex;
-                if ((encoding & BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO) != 0) {
-                    memoryIndex = 0;
-                } else {
-                    final int memoryIndexEncoding = bytecode[effectiveOffset];
-                    effectiveOffset++;
-                    switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
-                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
-                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
-                            break;
-                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
-                            memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                            effectiveOffset++;
-                            break;
-                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
-                            memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                            effectiveOffset += 2;
-                            break;
-                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
-                            memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                            effectiveOffset += 4;
-                            break;
-                        default:
-                            throw CompilerDirectives.shouldNotReachHere();
-                    }
-                }
-
-                final int dataBytecodeOffset = effectiveOffset;
-                linkActions.add((context, store, instance, imports) -> {
-                    store.linker().resolveDataSegment(store, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
-                                    dataBytecodeOffset, instance.droppedDataInstanceOffset());
-                });
-            } else {
-                final int dataBytecodeOffset = effectiveOffset;
-                linkActions.add((context, store, instance, imports) -> {
-                    store.linker().resolvePassiveDataSegment(store, instance, dataIndex, dataBytecodeOffset);
-                });
-            }
-        }
-
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemIndex = i;
             final int elemOffset = module.elemInstanceOffset(elemIndex);
@@ -446,6 +344,108 @@ public class WasmInstantiator {
                 final int bytecodeOffset = effectiveOffset;
                 linkActions.add((context, store, instance, imports) -> {
                     store.linker().resolvePassiveElemSegment(store, instance, elemIndex, bytecodeOffset, elemCount);
+                });
+            }
+        }
+
+        for (int i = 0; i < module.dataInstanceCount(); i++) {
+            final int dataIndex = i;
+            final int dataOffset = module.dataInstanceOffset(dataIndex);
+            final int encoding = bytecode[dataOffset];
+            int effectiveOffset = dataOffset + 1;
+
+            final int dataMode = encoding & BytecodeBitEncoding.DATA_SEG_MODE_VALUE;
+            final int dataLength;
+            switch (encoding & BytecodeBitEncoding.DATA_SEG_LENGTH_MASK) {
+                case BytecodeBitEncoding.DATA_SEG_LENGTH_U8:
+                    dataLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    effectiveOffset++;
+                    break;
+                case BytecodeBitEncoding.DATA_SEG_LENGTH_U16:
+                    dataLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    effectiveOffset += 2;
+                    break;
+                case BytecodeBitEncoding.DATA_SEG_LENGTH_I32:
+                    dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                    effectiveOffset += 4;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            if (dataMode == SegmentMode.ACTIVE) {
+                final long value;
+                switch (encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED:
+                        value = -1;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U8:
+                        value = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U16:
+                        value = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
+                        value = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
+                        value = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
+                        effectiveOffset += 8;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final byte[] dataOffsetBytecode;
+                final long dataOffsetAddress;
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE &&
+                                ((encoding & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) != BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED)) {
+                    int dataOffsetBytecodeLength = (int) value;
+                    dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
+                    effectiveOffset += dataOffsetBytecodeLength;
+                    dataOffsetAddress = -1;
+                } else {
+                    dataOffsetBytecode = null;
+                    dataOffsetAddress = value;
+                }
+
+                final int memoryIndex;
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO) != 0) {
+                    memoryIndex = 0;
+                } else {
+                    final int memoryIndexEncoding = bytecode[effectiveOffset];
+                    effectiveOffset++;
+                    switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
+                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                            memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                            effectiveOffset++;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                            memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                            effectiveOffset += 2;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                            memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                            effectiveOffset += 4;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                }
+
+                final int dataBytecodeOffset = effectiveOffset;
+                linkActions.add((context, store, instance, imports) -> {
+                    store.linker().resolveDataSegment(store, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
+                                    dataBytecodeOffset, instance.droppedDataInstanceOffset());
+                });
+            } else {
+                final int dataBytecodeOffset = effectiveOffset;
+                linkActions.add((context, store, instance, imports) -> {
+                    store.linker().resolvePassiveDataSegment(store, instance, dataIndex, dataBytecodeOffset);
                 });
             }
         }
