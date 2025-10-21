@@ -46,6 +46,7 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 import jdk.graal.compiler.vector.lir.VectorLIRLowerable;
 import jdk.vm.ci.code.CodeUtil;
@@ -143,7 +144,7 @@ public class SimdPrimitiveCompareNode extends BinaryNode implements Canonicaliza
         }
         SimdStamp simdX = (SimdStamp) forX.stamp(NodeView.from(tool));
         SimdStamp simdY = (SimdStamp) forY.stamp(NodeView.from(tool));
-        if (condition == CanonicalCondition.EQ && simdX.isMask() && simdY.isAllZeros()) {
+        if (condition == CanonicalCondition.EQ && simdX.isMask() && simdY.isAllZeros() && ((VectorLoweringProvider) tool.getLowerer()).getVectorArchitecture().logicVectorsAreBitmasks()) {
             /* A comparison `mask == allZeros` is a logical not of the mask. */
             return NotNode.create(forX);
         }
