@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
-import com.oracle.svm.hosted.analysis.ai.example.leaks.set.ResourceId;
+import com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.ResourceId;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;

@@ -4,7 +4,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
-import com.oracle.svm.hosted.analysis.ai.example.access.inter.AccessPathIntervalInterAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.analyses.access.inter.AccessPathIntervalInterAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
