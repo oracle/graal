@@ -106,6 +106,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.initMultiEngine().sharedEngine = Boolean.parseBoolean(value)));
             this.consumers.add(new ArgumentConsumer("--eval-source-only", (value, config) -> config.evalSourceOnlyDefault = Boolean.parseBoolean(value)));
             this.consumers.add(new ArgumentConsumer("--multi-context-runs", (value, config) -> config.initMultiEngine().numberOfRuns = Integer.parseInt(value)));
+            this.consumers.add(new ArgumentConsumer("--stage-to-language", (value, config) -> config.stagingLanguage = Language.valueOf(value.toUpperCase())));
+            this.consumers.add(new ArgumentConsumer("--stage-to-file", (value, config) -> config.stagingFilePath = value));
+            this.consumers.add(new ArgumentConsumer("--log-staged-program", (value, config) -> config.logStagedProgram = Boolean.parseBoolean(value)));
+            this.consumers.add(new ArgumentConsumer("--run-staged-program-with", (value, config) -> config.stagedProgramLauncher = value));
         }
 
         Config parse(List<String> arguments) {
@@ -166,6 +170,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     public static void main(String[] args) {
         new PolyBenchLauncher().launch(args);
+    }
+
+    public Config getConfig() {
+        return config;
     }
 
     @Override
@@ -260,7 +268,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     @Override
     protected void launch(Context.Builder contextBuilder) {
         if (config.isSingleEngine()) {
-            runHarness(contextBuilder, config.evalSourceOnlyDefault, 0);
+            runOrStageHarness(contextBuilder, config.evalSourceOnlyDefault, 0);
         } else {
             multiEngineLaunch(contextBuilder);
         }
@@ -279,7 +287,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             if (perRunOptions != null) {
                 contextBuilder.options(perRunOptions);
             }
-            runHarness(contextBuilder, config.isEvalSourceOnly(i), i);
+            runOrStageHarness(contextBuilder, config.isEvalSourceOnly(i), i);
         }
     }
 
@@ -349,7 +357,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private EvalResult evalSource(Context context) {
+    EvalResult evalSource(Context context) {
         final String path = config.path;
         final String language = getLanguageId(config.path);
 
@@ -425,6 +433,15 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.isBinarySource = isBinarySource;
             this.sourceLength = sourceLength;
             this.value = value;
+        }
+    }
+
+    private void runOrStageHarness(Context.Builder contextBuilder, boolean evalSourceOnly, int run) {
+        if (config.stagingLanguage != null) {
+            PolyBenchStager stager = new PolyBenchStager(this);
+            stager.execute(contextBuilder, evalSourceOnly, run);
+        } else {
+            runHarness(contextBuilder, evalSourceOnly, run);
         }
     }
 
