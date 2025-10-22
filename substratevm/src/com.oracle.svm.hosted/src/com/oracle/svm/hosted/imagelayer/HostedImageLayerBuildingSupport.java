@@ -69,6 +69,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -324,8 +325,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(values);
                 String layerCreateValue = getLayerCreateValue(valueWithOrigin);
                 String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                throw UserError.abort("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
+                String message = String.format("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
                                 layerCreateArg, valueWithOrigin.origin(), platform.getOS(), platform.getArchitecture());
+                if (SubstrateOptions.LayerOptionVerification.getValue(values)) {
+                    throw UserError.abort("%s", message);
+                }
+                LogUtils.warning(message);
             }
         }
 
