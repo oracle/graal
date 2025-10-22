@@ -42,8 +42,11 @@ package org.graalvm.nativeimage;
 
 import java.io.Serial;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+
+import org.graalvm.nativeimage.impl.ReflectionIntrospector;
 
 /**
  * This exception is thrown when a reflective query (such as
@@ -151,5 +154,15 @@ public final class MissingReflectionRegistrationError extends LinkageError {
      */
     public Class<?>[] getParameterTypes() {
         return parameterTypes;
+    }
+
+    /**
+     * @return Whether the executable can be invoked without throwing a
+     *         {@link MissingReflectionRegistrationError}.
+     *
+     * @since 25.1
+     */
+    public static boolean isInvocable(Executable executable) {
+        return !ImageSingletons.contains(ReflectionIntrospector.class) || ImageSingletons.lookup(ReflectionIntrospector.class).isInvocable(executable);
     }
 }
