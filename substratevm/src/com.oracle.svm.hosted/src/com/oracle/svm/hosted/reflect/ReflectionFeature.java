@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.ReflectionIntrospector;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -71,6 +72,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
+import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -309,6 +311,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
+
+        ImageSingletons.add(ReflectionIntrospector.class, new ReflectionIntrospectorImpl());
 
         /*
          * Querying Object members is allowed to enable these accesses on array classes, since those

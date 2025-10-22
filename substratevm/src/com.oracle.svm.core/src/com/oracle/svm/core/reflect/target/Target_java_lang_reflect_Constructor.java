@@ -78,7 +78,7 @@ public final class Target_java_lang_reflect_Constructor {
      */
     @Inject //
     @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_jdk_internal_reflect_ConstructorAccessor constructorAccessorFromMetadata;
+    public Target_jdk_internal_reflect_ConstructorAccessor constructorAccessorFromMetadata;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)

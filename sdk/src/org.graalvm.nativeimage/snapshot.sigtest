@@ -257,6 +257,7 @@ meth public java.lang.Class<?> getDeclaringClass()
 meth public java.lang.Class<?> getElementType()
 meth public java.lang.Class<?>[] getParameterTypes()
 meth public java.lang.String getElementName()
+meth public static boolean isInvocable(java.lang.reflect.Executable)
 supr java.lang.LinkageError
 hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
 
