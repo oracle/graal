@@ -393,7 +393,7 @@ public class EncodedSnippets {
                     replacement = result.unique(replacement);
                     constant.replace(result, replacement);
                 } else {
-                    throw new InternalError(constant.toString(Verbosity.Debugger));
+                    throw new InternalError(constant.toString(Verbosity.All));
                 }
             }
         }
