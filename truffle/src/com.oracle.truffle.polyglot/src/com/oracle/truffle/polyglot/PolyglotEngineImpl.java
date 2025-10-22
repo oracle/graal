@@ -480,6 +480,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         switch (layer.getContextPolicy()) {
             case EXCLUSIVE:
+                layer.close();
                 break;
             case REUSE:
                 sharedLayers.add(layer);
@@ -1398,6 +1399,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
                 getEngineLogger().log(Level.INFO, String.format("Specialization histogram: %n%s", logMessage.toString()));
+            }
+            for (PolyglotSharingLayer layer : sharedLayers) {
+                layer.close();
             }
 
             RUNTIME.onEngineClosed(this.runtimeData);

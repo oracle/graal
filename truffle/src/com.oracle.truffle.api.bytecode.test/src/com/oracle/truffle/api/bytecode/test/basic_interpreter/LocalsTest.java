@@ -804,7 +804,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
     }
 
-    private <T extends BasicInterpreterBuilder> void assertParseFailure(BytecodeParser<T> parser) {
+    private void assertParseFailure(BytecodeParser<BasicInterpreterBuilder> parser) {
         assertThrows(IllegalArgumentException.class, () -> parseNode("invalid", parser));
     }
 

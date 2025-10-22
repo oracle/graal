@@ -89,6 +89,7 @@ import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -96,20 +97,24 @@ import com.oracle.truffle.api.source.Source;
 @RunWith(Parameterized.class)
 public abstract class AbstractBasicInterpreterTest {
 
-    public record TestRun(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize) {
+    public record TestRun(BytecodeVariant bytecode, boolean testSerialize) {
+
+        public Class<? extends BasicInterpreter> interpreterClass() {
+            return bytecode.getGeneratedClass();
+        }
 
         public boolean hasBoxingElimination() {
-            return interpreterClass == BasicInterpreterWithBE.class ||
-                            interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
-                            interpreterClass == BasicInterpreterProductionBlockScoping.class ||
-                            interpreterClass == BasicInterpreterProductionRootScoping.class;
+            return interpreterClass() == BasicInterpreterWithBE.class ||
+                            interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
+                            interpreterClass() == BasicInterpreterProductionBlockScoping.class ||
+                            interpreterClass() == BasicInterpreterProductionRootScoping.class;
         }
 
         public boolean hasUncachedInterpreter() {
-            return interpreterClass == BasicInterpreterWithUncached.class ||
-                            interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
-                            interpreterClass == BasicInterpreterProductionBlockScoping.class ||
-                            interpreterClass == BasicInterpreterProductionRootScoping.class;
+            return interpreterClass() == BasicInterpreterWithUncached.class ||
+                            interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
+                            interpreterClass() == BasicInterpreterProductionBlockScoping.class ||
+                            interpreterClass() == BasicInterpreterProductionRootScoping.class;
         }
 
         @SuppressWarnings("static-method")
@@ -118,8 +123,8 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public boolean hasRootScoping() {
-            return interpreterClass == BasicInterpreterWithRootScoping.class ||
-                            interpreterClass == BasicInterpreterProductionRootScoping.class;
+            return interpreterClass() == BasicInterpreterWithRootScoping.class ||
+                            interpreterClass() == BasicInterpreterProductionRootScoping.class;
         }
 
         public boolean hasBlockScoping() {
@@ -127,12 +132,12 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public boolean storesBciInFrame() {
-            return interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
+            return interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class;
         }
 
         @Override
         public String toString() {
-            return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";
+            return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + "]";
         }
 
         public int getFrameBaseSlots() {
@@ -148,17 +153,17 @@ public abstract class AbstractBasicInterpreterTest {
 
         @SuppressWarnings("static-method")
         public int getVariadicsLimit() {
-            if (interpreterClass == BasicInterpreterBase.class //
-                            || interpreterClass == BasicInterpreterWithBE.class //
-                            || interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class) {
+            if (interpreterClass() == BasicInterpreterBase.class //
+                            || interpreterClass() == BasicInterpreterWithBE.class //
+                            || interpreterClass() == BasicInterpreterWithStoreBytecodeIndexInFrame.class) {
                 return 4;
-            } else if (interpreterClass == BasicInterpreterUnsafe.class //
-                            || interpreterClass == BasicInterpreterWithOptimizations.class //
-                            || interpreterClass == BasicInterpreterProductionBlockScoping.class) {
+            } else if (interpreterClass() == BasicInterpreterUnsafe.class //
+                            || interpreterClass() == BasicInterpreterWithOptimizations.class //
+                            || interpreterClass() == BasicInterpreterProductionBlockScoping.class) {
                 return 8;
-            } else if (interpreterClass == BasicInterpreterWithUncached.class //
-                            || interpreterClass == BasicInterpreterWithRootScoping.class //
-                            || interpreterClass == BasicInterpreterProductionRootScoping.class) {
+            } else if (interpreterClass() == BasicInterpreterWithUncached.class //
+                            || interpreterClass() == BasicInterpreterWithRootScoping.class //
+                            || interpreterClass() == BasicInterpreterProductionRootScoping.class) {
                 return 16;
             }
 
@@ -166,7 +171,7 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public Object getDefaultLocalValue() {
-            if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithRootScoping.class) {
+            if (interpreterClass() == BasicInterpreterWithOptimizations.class || interpreterClass() == BasicInterpreterWithRootScoping.class) {
                 return BasicInterpreter.LOCAL_DEFAULT_VALUE;
             }
             return null;
@@ -255,9 +260,9 @@ public abstract class AbstractBasicInterpreterTest {
     @Parameters(name = "{0}")
     public static List<TestRun> getParameters() {
         List<TestRun> result = new ArrayList<>();
-        for (Class<? extends BasicInterpreter> interpreterClass : allInterpreters()) {
-            result.add(new TestRun(interpreterClass, false));
-            result.add(new TestRun(interpreterClass, true));
+        for (BytecodeVariant bc : allVariants()) {
+            result.add(new TestRun(bc, false));
+            result.add(new TestRun(bc, true));
         }
         return result;
     }
@@ -268,25 +273,34 @@ public abstract class AbstractBasicInterpreterTest {
         this.run = run;
     }
 
-    public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNode rootNode = parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
+    public RootCallTarget parse(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+        BytecodeRootNode rootNode = parseNode(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
-    public <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(String rootName, BytecodeParser<T> builder) {
-        return parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
+    public BasicInterpreter parseNode(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+        return parseNode(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
     }
 
-    public <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
-        return parseNodeWithSource(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
+    public BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+        return parseNodeWithSource(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
     }
 
-    public <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
-        return createNodes(run.interpreterClass, LANGUAGE, run.testSerialize, config, builder);
+    public BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<BasicInterpreterBuilder> builder) {
+        return createNodes(run.bytecode(), LANGUAGE, run.testSerialize, config, builder);
     }
 
     public BytecodeConfig.Builder createBytecodeConfigBuilder() {
-        return BasicInterpreterBuilder.invokeNewConfigBuilder(run.interpreterClass);
+        return run.bytecode().newConfigBuilder();
+    }
+
+    public static BytecodeVariant lookupVariant(BasicInterpreter interpreter) {
+        for (BasicInterpreterBuilder.BytecodeVariant variant : BasicInterpreterBuilder.variants()) {
+            if (variant.getGeneratedClass() == interpreter.getClass()) {
+                return variant;
+            }
+        }
+        return null;
     }
 
     /**
@@ -298,13 +312,11 @@ public abstract class AbstractBasicInterpreterTest {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass,
-                    BytecodeDSLTestLanguage language, boolean testSerialize, BytecodeConfig config, BytecodeParser<T> builder) {
-
-        BytecodeRootNodes<BasicInterpreter> result = BasicInterpreterBuilder.invokeCreate((Class<? extends BasicInterpreter>) interpreterClass,
-                        language, config, (BytecodeParser<? extends BasicInterpreterBuilder>) builder);
+    public static BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeVariant bytecode,
+                    BytecodeDSLTestLanguage language, boolean testSerialize, BytecodeConfig config, BytecodeParser<BasicInterpreterBuilder> builder) {
+        BytecodeRootNodes<BasicInterpreter> result = bytecode.create(language, config, builder);
         if (testSerialize) {
-            assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, language, config, result));
+            assertBytecodeNodesEqual(result, doRoundTrip(bytecode, language, config, result));
         }
 
         for (BasicInterpreter interpreter : result.getNodes()) {
@@ -507,7 +519,9 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
-    public static <T extends BasicInterpreter> BytecodeRootNodes<T> doRoundTrip(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, BytecodeConfig config,
+    public static BytecodeRootNodes<BasicInterpreter> doRoundTrip(
+                    BytecodeVariant bytecode,
+                    BytecodeDSLTestLanguage language, BytecodeConfig config,
                     BytecodeRootNodes<BasicInterpreter> nodes) {
         // Perform a serialize-deserialize round trip.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -517,30 +531,41 @@ public abstract class AbstractBasicInterpreterTest {
             throw new AssertionError(ex);
         }
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-        return BasicInterpreterBuilder.invokeDeserialize((Class<? extends BasicInterpreter>) interpreterClass, language, config, input, DESERIALIZER);
+        try {
+            return bytecode.deserialize(language, config, input, DESERIALIZER);
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
     }
 
     public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
-        return AbstractBasicInterpreterTest.doRoundTrip(run.interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, nodes);
+        return AbstractBasicInterpreterTest.doRoundTrip(run.bytecode(), LANGUAGE, BytecodeConfig.DEFAULT, nodes);
     }
 
-    public static <T extends BasicInterpreterBuilder> RootCallTarget parse(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize, String rootName,
-                    BytecodeParser<T> builder) {
-        BytecodeRootNode rootNode = parseNode(interpreterClass, language, testSerialize, rootName, builder);
+    public static RootCallTarget parse(
+                    BytecodeVariant bytecode,
+                    BytecodeDSLTestLanguage language, boolean testSerialize, String rootName,
+                    BytecodeParser<BasicInterpreterBuilder> builder) {
+        BytecodeRootNode rootNode = parseNode(bytecode, language, testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
-    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize,
-                    String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, language, testSerialize, BytecodeConfig.DEFAULT, builder);
+    public static BasicInterpreter parseNode(
+                    BytecodeVariant bytecode,
+                    BytecodeDSLTestLanguage language, boolean testSerialize,
+                    String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(bytecode, language, testSerialize, BytecodeConfig.DEFAULT, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
     }
 
-    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize,
-                    String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, language, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+    public static BasicInterpreter parseNodeWithSource(
+                    BytecodeVariant bytecode,
+                    BytecodeDSLTestLanguage language, boolean testSerialize,
+                    String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(bytecode, language, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
@@ -631,10 +656,9 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
-    public static List<Class<? extends BasicInterpreter>> allInterpreters() {
-        return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
-                        BasicInterpreterWithStoreBytecodeIndexInFrame.class,
-                        BasicInterpreterWithRootScoping.class, BasicInterpreterProductionRootScoping.class, BasicInterpreterProductionBlockScoping.class);
+    @SuppressWarnings("unchecked")
+    public static List<BytecodeVariant> allVariants() {
+        return BasicInterpreterBuilder.variants();
     }
 
     /// Code gen helpers

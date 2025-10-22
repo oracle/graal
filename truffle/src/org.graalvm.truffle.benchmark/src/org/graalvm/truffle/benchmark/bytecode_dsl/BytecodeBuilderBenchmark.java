@@ -43,7 +43,6 @@ package org.graalvm.truffle.benchmark.bytecode_dsl;
 import java.util.function.Consumer;
 
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
-import org.graalvm.truffle.benchmark.bytecode_dsl.BytecodeDSLBenchmarkRootNodeAllOpts.Builder;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
@@ -59,7 +58,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 @Measurement(iterations = 5, time = 1)
 public class BytecodeBuilderBenchmark extends TruffleBenchmark {
 
-    private static void parse(Builder b, Consumer<Builder> inner) {
+    private static void parse(BytecodeDSLBenchmarkRootNodeBuilder b, Consumer<BytecodeDSLBenchmarkRootNodeBuilder> inner) {
         b.beginRoot();
 
         BytecodeLocal iLoc = b.createLocal();
@@ -221,7 +220,7 @@ public class BytecodeBuilderBenchmark extends TruffleBenchmark {
         }).getNode(0);
     }
 
-    private void decrementAndParse(Builder b, int count) {
+    private void decrementAndParse(BytecodeDSLBenchmarkRootNodeBuilder b, int count) {
         if (count == 0) {
             return;
         }

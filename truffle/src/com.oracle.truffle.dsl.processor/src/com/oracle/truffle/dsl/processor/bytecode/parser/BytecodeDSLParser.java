@@ -71,7 +71,6 @@ import javax.lang.model.util.ElementFilter;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
@@ -137,7 +136,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
             topLevelAnnotationMirror = generateBytecodeMirror;
 
-            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", types.BytecodeBuilder));
+            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen"));
         }
 
         BytecodeDSLModels modelList = new BytecodeDSLModels(context, typeElement, topLevelAnnotationMirror, models);
@@ -167,8 +166,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         boolean enableMaterializedLocalAccessors = false;
         boolean enableTagInstrumentation = false;
 
-        TypeMirror abstractBuilderType = BytecodeDSLCodeGenerator.createAbstractBuilderType(typeElement).asType();
-
         List<BytecodeDSLModel> result = new ArrayList<>();
 
         for (AnnotationMirror variant : variants) {
@@ -178,7 +175,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue generateBytecodeMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
             AnnotationMirror generateBytecodeMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateBytecodeMirrorValue);
 
-            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix, abstractBuilderType);
+            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix);
 
             if (!first && suffixes.contains(suffix)) {
                 model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
@@ -225,8 +222,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return result;
     }
 
-    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, TypeMirror abstractBuilderType) {
-        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, typeElement.getSimpleName() + suffix, abstractBuilderType);
+    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix) {
+        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror,
+                        typeElement.getSimpleName() + suffix);
     }
 
     @SuppressWarnings("unchecked")
@@ -252,6 +250,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
                         ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
         model.enableThreadedSwitch = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableThreadedSwitch");
+        model.enableInstructionTracing = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionTracing");
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 

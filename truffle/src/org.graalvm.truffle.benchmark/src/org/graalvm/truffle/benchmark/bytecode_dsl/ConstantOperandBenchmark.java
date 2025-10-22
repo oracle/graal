@@ -41,6 +41,7 @@
 package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import org.graalvm.truffle.benchmark.TruffleBenchmark;
+import org.graalvm.truffle.benchmark.bytecode_dsl.ConstantOperandBenchmarkRootNodeBuilder.BytecodeVariant;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Param;
@@ -71,17 +72,17 @@ public class ConstantOperandBenchmark extends TruffleBenchmark {
     @Param({"ConstantOperandBenchmarkRootNodeRegular", "ConstantOperandBenchmarkRootNodeInlined"}) private String implClassName;
 
     @SuppressWarnings("unchecked")
-    private Class<? extends ConstantOperandBenchmarkRootNode> getImplClass() {
+    private BytecodeVariant getVariant() {
         try {
-            return (Class<? extends ConstantOperandBenchmarkRootNode>) Class.forName(ConstantOperandBenchmark.class.getPackageName() + "." + implClassName);
-        } catch (ClassNotFoundException e) {
+            return (BytecodeVariant) Class.forName(ConstantOperandBenchmark.class.getPackageName() + "." + implClassName).getField("BYTECODE").get(null);
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException("Could not load bytecode class " + implClassName, e);
         }
     }
 
     @Setup
     public void parseRootNode() {
-        rootCallTarget = ConstantOperandBenchmarkRootNodeBuilder.invokeCreate(getImplClass(), null, BytecodeConfig.DEFAULT, b -> {
+        rootCallTarget = getVariant().create(null, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             b.beginBlock();
 

@@ -61,9 +61,9 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
@@ -100,34 +100,18 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 @RunWith(Parameterized.class)
 public class LocalHelpersTest {
     @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeNodeWithLocalIntrospection>> getInterpreterClasses() {
-        return List.of(BytecodeNodeWithLocalIntrospectionBase.class,
-                        BytecodeNodeWithLocalIntrospectionBaseDefault.class,
-                        BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class,
-                        BytecodeNodeWithLocalIntrospectionWithBENullDefault.class,
-                        BytecodeNodeWithLocalIntrospectionWithBEIllegal.class,
-                        BytecodeNodeWithLocalIntrospectionWithBEIllegalRootScoped.class);
+    public static List<BytecodeNodeWithLocalIntrospectionBuilder.BytecodeVariant> getVariants() {
+        return BytecodeNodeWithLocalIntrospectionBuilder.variants();
     }
 
-    @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
+    @Parameter(0) public BytecodeNodeWithLocalIntrospectionBuilder.BytecodeVariant bytecode;
 
     public static BytecodeLocal makeLocal(BytecodeNodeWithLocalIntrospectionBuilder b, String name) {
         return b.createLocal(name, null);
     }
 
-    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> parseNodes(
-                    Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
-                    BytecodeParser<T> builder) {
-        return BytecodeNodeWithLocalIntrospectionBuilder.invokeCreate((Class<? extends BytecodeNodeWithLocalIntrospection>) interpreterClass,
-                        null, BytecodeConfig.DEFAULT, builder);
-    }
-
-    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
-                    BytecodeParser<T> builder) {
-        return parseNodes(interpreterClass, builder).getNode(0);
-    }
-
     private Object getLocalDefaultValue() {
+        Class<?> interpreterClass = bytecode.getGeneratedClass();
         if (interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class) {
             return BytecodeNodeWithLocalIntrospection.DEFAULT;
         }
@@ -138,17 +122,23 @@ public class LocalHelpersTest {
     }
 
     private boolean hasLocalDefaultValue() {
+        Class<?> interpreterClass = bytecode.getGeneratedClass();
         return interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class ||
                         interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class;
     }
 
     private boolean hasBoxingElimination() {
+        Class<?> interpreterClass = bytecode.getGeneratedClass();
         return interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class ||
                         interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class;
     }
 
-    public <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
-        return parseNode(interpreterClass, builder);
+    public BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> parseNodes(BytecodeParser<BytecodeNodeWithLocalIntrospectionBuilder> builder) {
+        return bytecode.create(null, BytecodeConfig.DEFAULT, builder);
+    }
+
+    public BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<BytecodeNodeWithLocalIntrospectionBuilder> builder) {
+        return parseNodes(builder).getNode(0);
     }
 
     @Test
@@ -463,7 +453,7 @@ public class LocalHelpersTest {
          * return foo
          * @formatter:on
          */
-        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(interpreterClass, b -> {
+        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(b -> {
             b.beginRoot();
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -1468,7 +1458,7 @@ public class LocalHelpersTest {
         // return isCleared l0
         // @formatter:on
 
-        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(interpreterClass, b -> {
+        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(b -> {
             b.beginRoot();
 
             BytecodeLocal l = makeLocal(b, "l0");
@@ -1606,7 +1596,7 @@ public class LocalHelpersTest {
         // }
         // @formatter:on
 
-        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(interpreterClass, b -> {
+        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(b -> {
             b.beginRoot();
 
             b.beginBlock();

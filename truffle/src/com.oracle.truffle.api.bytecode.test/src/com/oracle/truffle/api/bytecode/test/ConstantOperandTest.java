@@ -104,10 +104,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class ConstantOperandTest {
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
-    private record TestRun(Class<? extends ConstantOperandTestRootNode> interpreterClass, boolean testSerialize) {
+    private record TestRun(ConstantOperandTestRootNodeBuilder.BytecodeVariant variant, boolean testSerialize) {
+
+        private Class<?> interpreterClass() {
+            return variant.getGeneratedClass();
+        }
 
         private boolean inlinesConstants() {
-            return interpreterClass == ConstantOperandTestRootNodeCached.class || interpreterClass == ConstantOperandTestRootNodeUncached.class;
+            return interpreterClass() == ConstantOperandTestRootNodeCached.class || interpreterClass() == ConstantOperandTestRootNodeUncached.class;
         }
 
         private BytecodeSerializer getSerializer() {
@@ -216,10 +220,9 @@ public class ConstantOperandTest {
     @Parameters(name = "{0}")
     public static List<TestRun> getParameters() {
         List<TestRun> result = new ArrayList<>();
-        for (var interpreterClass : List.of(ConstantOperandTestRootNodeCached.class, ConstantOperandTestRootNodeUncached.class, ConstantOperandTestRootNodeCachedNoInlining.class,
-                        ConstantOperandTestRootNodeUncachedNoInlining.class)) {
-            result.add(new TestRun(interpreterClass, false));
-            result.add(new TestRun(interpreterClass, true));
+        for (var bc : ConstantOperandTestRootNodeBuilder.variants()) {
+            result.add(new TestRun(bc, false));
+            result.add(new TestRun(bc, true));
         }
         return result;
     }
@@ -227,25 +230,25 @@ public class ConstantOperandTest {
     @Parameter(0) public TestRun testRun;
 
     @SuppressWarnings("unchecked")
-    private <T extends ConstantOperandTestRootNodeBuilder> ConstantOperandTestRootNode parse(BytecodeParser<? extends T> parser) {
-        BytecodeRootNodes<ConstantOperandTestRootNode> rootNodes = ConstantOperandTestRootNodeBuilder.invokeCreate(testRun.interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, parser);
+    private ConstantOperandTestRootNode parse(BytecodeParser<ConstantOperandTestRootNodeBuilder> parser) {
+        BytecodeRootNodes<ConstantOperandTestRootNode> rootNodes = testRun.variant.create(LANGUAGE, BytecodeConfig.DEFAULT, parser);
         if (testRun.testSerialize) {
-            rootNodes = doRoundTrip(testRun.interpreterClass, rootNodes, testRun.getSerializer(), testRun.getDeserializer());
+            rootNodes = doRoundTrip(testRun.variant, rootNodes, testRun.getSerializer(), testRun.getDeserializer());
         }
         return rootNodes.getNode(0);
     }
 
-    private static <T extends ConstantOperandTestRootNode> BytecodeRootNodes<T> doRoundTrip(Class<? extends ConstantOperandTestRootNode> interpreterClass,
+    private static BytecodeRootNodes<ConstantOperandTestRootNode> doRoundTrip(ConstantOperandTestRootNodeBuilder.BytecodeVariant variant,
                     BytecodeRootNodes<ConstantOperandTestRootNode> nodes, BytecodeSerializer serializer, BytecodeDeserializer deserializer) {
         // Perform a serialize-deserialize round trip.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
             nodes.serialize(new DataOutputStream(output), serializer);
+            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+            return variant.deserialize(LANGUAGE, BytecodeConfig.DEFAULT, input, deserializer);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
-        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-        return ConstantOperandTestRootNodeBuilder.invokeDeserialize(interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, input, deserializer);
     }
 
     @Test
@@ -320,7 +323,7 @@ public class ConstantOperandTest {
         });
         assertEquals(123, root.getCallTarget().call(123));
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(testRun.interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(testRun.variant.newConfigBuilder().addInstrumentation(ReplaceValue.class).build());
         assertEquals(42, root.getCallTarget().call(123));
     }
 
@@ -343,7 +346,7 @@ public class ConstantOperandTest {
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals("hello", cont.getResult());
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(testRun.interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(testRun.variant.newConfigBuilder().addInstrumentation(ReplaceValue.class).build());
         cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(123, cont.getResult());
     }

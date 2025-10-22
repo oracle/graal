@@ -62,6 +62,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
+import com.oracle.truffle.api.bytecode.test.SetTraceFuncTest.SetTraceFuncRootNode.TraceFun;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -183,14 +184,14 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         }
     }
 
+    private static final BytecodeConfig TRACE_FUN = SetTraceFuncRootNodeGen.BYTECODE.newConfigBuilder().addInstrumentation(TraceFun.class).build();
+
     @GenerateBytecode(languageClass = TraceFunLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
     public abstract static class SetTraceFuncRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
-
-        private static final BytecodeConfig TRACE_FUN = SetTraceFuncRootNodeGen.newConfigBuilder().addInstrumentation(TraceFun.class).build();
 
         protected SetTraceFuncRootNode(TraceFunLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
