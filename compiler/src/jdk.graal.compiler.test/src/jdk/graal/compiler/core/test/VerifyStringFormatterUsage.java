@@ -30,6 +30,7 @@ import java.util.IllegalFormatException;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -46,8 +47,6 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.VerifyPhase;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

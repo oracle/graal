@@ -71,6 +71,7 @@ import jdk.graal.compiler.core.CompilerThreadFactory;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.test.VerifyPhase.VerificationError;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -100,8 +101,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
-import jdk.graal.compiler.phases.VerifyPhase;
-import jdk.graal.compiler.phases.VerifyPhase.VerificationError;
 import jdk.graal.compiler.phases.contract.VerifyNodeCosts;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
@@ -492,12 +491,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 throw new RuntimeException(e1);
             }
 
-            if (tool.shouldVerifyFoldableMethods()) {
-                try {
-                    foldableMethodsVerifier.finish();
-                } catch (Throwable e) {
-                    errors.add(e.getMessage());
-                }
+            try {
+                verifiers.forEach(VerifyPhase<CoreProviders>::finish);
+            } catch (Throwable e) {
+                errors.add(e.getMessage());
             }
         }
 
