@@ -339,7 +339,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -461,7 +461,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "getLanguage(Object)", replaceWith = "getLanguageImpl")
+        @Abstract(replacementFor = "getLanguage(Object)", replacementWith = "getLanguageImpl")
         public String getLanguageId(Object receiver) {
             return TestLanguage.ID;
         }
@@ -546,7 +546,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -569,7 +569,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) throws Exception {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -592,7 +592,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -613,13 +613,13 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return false;
         }
 
-        @Abstract(replaceWith = "isType")
+        @Abstract(replacementWith = "isType")
         public Object replacedErr(Object receiver) {
             return receiver;
         }
 
         @ExpectError("The replacement method doReplaceNone does not exist.")
-        @Abstract(replacementFor = "isType", replaceWith = "doReplaceNone")
+        @Abstract(replacementFor = "isType", replacementWith = "doReplaceNone")
         public boolean replaceWithNonexisting(Object receiver) {
             return receiver != null;
         }
@@ -646,7 +646,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replaceWith = "factorialFixed")
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
         public double factorial(Object receiver, int n) {
             return n;
         }
@@ -674,7 +674,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replaceWith = "factorialFixed")
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
         public double factorial(Object receiver, int n) {
             return n;
         }

@@ -26,7 +26,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-69649: Bytecode DSL now encodes primitive constant operands directly in the bytecode, reducing memory indirections in the interpreter. This optimization is enabled by default; you can configure it with `@GenerateBytecode(inlinePrimitiveConstants = true)`.
 * GR-68993: Added `HostCompilerDirectives.markThreadedSwitch(int)` to mark a switch statement within a loop as a candidate for threaded switch optimization.
 * GR-68993: Bytecode DSL: All bytecode interpreters are now using the threaded switch optimization by default. This new optimization can be configured using `@GenerateBytecode(enableThreadedSwitch=true|false)`.
-* GR-70086: Added `replacementFor` and `replaceWith` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
+* GR-70086: Added `replacementFor` and `replacementWith` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

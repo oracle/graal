@@ -316,7 +316,7 @@ public @interface GenerateLibrary {
          * message is not implemented, a default implementation is generated that delegates to this
          * message. The message specification can include argument types in parentheses. When
          * necessary, a custom implementation can be provided by a method specified in
-         * {@link #replaceWith()}.
+         * {@link #replacementWith()}.
          * <p>
          * The primary use case is to manage transitions from one message to another during the
          * evolution of a library, where the new message is annotated as a replacement for an older,
@@ -352,19 +352,29 @@ public @interface GenerateLibrary {
          * Legacy code can still call the generated message, while implementations only need to
          * provide the read message with the long argument.
          *
-         * @see #replaceWith()
+         * @see #replacementWith()
          * @since 25.1
          */
         String replacementFor() default "";
 
         /**
-         * Provides the name of a method that implements the replacement specified by
-         * {@link #replacementFor()}. Use this when automatic trivial delegation cannot be used.
-         * This may be specified only when {@link #replacementFor()} is set.
+         * Specifies the name of a method that provides the replacement implementation.
          * <p>
-         * In the context of the {@link #replacementFor()} example, the following replacement method
-         * can be provided:
+         * The {@link #replacementWith()} attribute can be used in two distinct modes:
+         * <ol>
+         * <li><b>Custom replacement for {@link #replacementFor()}:</b> Use this mode when the
+         * message specified by {@link #replacementFor()} cannot be automatically delegated due to
+         * differences in argument semantics or conversion requirements. The specified replacement
+         * method will be used instead of a generated trivial delegation.</li>
+         * <li><b>Self-replacement method:</b> Use this mode to provide a fallback implementation
+         * for the annotated message itself. The self-replacement method is only used when the
+         * annotated message is not exported, but one of the messages listed in
+         * {@link #ifExported()} or {@link #ifExportedAsWarning()} is exported.</li>
+         * </ol>
          *
+         * <p>
+         * <b>Example - Custom replacement for {@link #replacementFor()}:</b>
+         * 
          * <pre>
          * &#64;Abstract(ifExported = "isArray", replacementFor = "read(Object, int)", replacementWith = "readLegacy")
          * public int read(Object receiver, long unsignedIndex) {
@@ -377,13 +387,45 @@ public @interface GenerateLibrary {
          * }
          * </pre>
          *
-         * When the int and long indices are treated as unsigned, the automatic conversion produces
-         * an incorrect result and a customized replacement method is necessary.
+         * When the {@code int} and {@code long} indices are treated as unsigned, the automatic
+         * conversion would yield incorrect results, so a custom replacement method is required.
+         *
+         * <p>
+         * <b>Example - Self-replacement method:</b>
+         * 
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract static class SelfReplacementLibrary extends Library {
+         *
+         *     public boolean canComputeFactorial(Object receiver) {
+         *         return false;
+         *     }
+         *
+         *     &#64;Abstract(ifExported = "canComputeFactorial")
+         *     public double multiply(Object receiver, double a, double b) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         *
+         *     &#64;Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
+         *     public double factorial(Object receiver, int n) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         *
+         *     // Used only when factorial() is not exported but canComputeFactorial() is exported.
+         *     protected final double factorialFixed(Object receiver, int n) {
+         *         double f = n;
+         *         for (int i = 2; i &lt; n; i++) {
+         *             f = multiply(receiver, f, i);
+         *         }
+         *         return f;
+         *     }
+         * }
+         * </pre>
          *
          * @see #replacementFor()
          * @since 25.1
          */
-        String replaceWith() default "";
+        String replacementWith() default "";
     }
 
     /**
