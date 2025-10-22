@@ -225,17 +225,6 @@ public final class VectorAMD64 extends VectorArchitecture {
             return 1;
         }
 
-        if (op.getCategory().equals(FloatConvertCategory.FloatingPointToInteger)) {
-            ArithmeticOpTable.FloatConvertOp stampChecks = ArithmeticOpTable.forStamp(input).getFloatConvert(op);
-            if (stampChecks.inputCanBeNaN(input) || stampChecks.canOverflowInteger(input)) {
-                /*
-                 * This instruction is not supported yet because we would need fixup code to map
-                 * AMD64 semantics to Java semantics (GR-51421).
-                 */
-                return 1;
-            }
-        }
-
         AVXSize avxSize = convertOps.getSupportedAVXSize(op.getCategory(), ((PrimitiveStamp) input).getBits(), ((PrimitiveStamp) result).getBits(), maxLength);
         if (avxSize == null) {
             /* No vectorized conversion found. */
@@ -712,16 +701,10 @@ public final class VectorAMD64 extends VectorArchitecture {
                                             // AMD64VectorLoweringPhase)
                                             op(QWORD_BITS, DOUBLE_BITS, VectorFeatureAssertion.AVX1_AVX2_AVX512DQ_VL)),
 
-                            /*
-                             * The instructions in this category don't match Java semantics. At the
-                             * moment they can only be used when we know that input is not NaN and
-                             * will not overflow the result. As in the scalar case, we will want to
-                             * emit the required fixup code for these special cases (GR-51421).
-                             */
                             entry(FloatConvertCategory.FloatingPointToInteger,
-                                            op(SINGLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX1_AVX512F_VL),
+                                            op(SINGLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX2_AVX512F_VL),
                                             op(SINGLE_BITS, QWORD_BITS, VectorFeatureAssertion.AVX512DQ_VL),
-                                            op(DOUBLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX1_AVX512F_VL),
+                                            op(DOUBLE_BITS, DWORD_BITS, VectorFeatureAssertion.AVX2_AVX512F_VL),
                                             op(DOUBLE_BITS, QWORD_BITS, VectorFeatureAssertion.AVX512DQ_VL)),
 
                             entry(FloatConvertCategory.FloatingPointToFloatingPoint,

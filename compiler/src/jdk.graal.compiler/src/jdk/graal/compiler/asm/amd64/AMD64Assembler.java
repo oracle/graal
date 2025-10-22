@@ -2021,8 +2021,10 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
      */
     public static final class EvexRMIOp extends VexRMIOp {
         // @formatter:off
-        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
-        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final EvexRMIOp EVFPCLASSSS = new EvexRMIOp("EVFPCLASSSS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_32BIT, VEXPrefixConfig.W0);
+        public static final EvexRMIOp EVFPCLASSSD = new EvexRMIOp("EVFPCLASSSD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x67, VEXOpAssertion.MASK_XMM_AVX512DQ_128, EVEXTuple.T1S_64BIT, VEXPrefixConfig.W1);
+        public static final EvexRMIOp EVFPCLASSPS = new EvexRMIOp("EVFPCLASSPS", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W0, 0x66, VEXOpAssertion.MASK_XMM_AVX512DQ_VL, EVEXTuple.T1F_32BIT, VEXPrefixConfig.W0);
+        public static final EvexRMIOp EVFPCLASSPD = new EvexRMIOp("EVFPCLASSPD", VEXPrefixConfig.P_66, VEXPrefixConfig.M_0F3A, VEXPrefixConfig.W1, 0x66, VEXOpAssertion.MASK_XMM_AVX512DQ_VL, EVEXTuple.T1F_64BIT, VEXPrefixConfig.W1);
         // @formatter:on
 
         private EvexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
@@ -6271,6 +6273,14 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
 
     public final void kshiftrw(Register dst, Register src, int imm8) {
         VexMaskRRIOp.KSHIFTRW.emit(this, AVXSize.XMM, dst, src, imm8);
+    }
+
+    public final void ktestb(Register src1, Register src2) {
+        VexRROp.KTESTB.emit(this, AVXSize.XMM, src1, src2);
+    }
+
+    public final void ktestw(Register src1, Register src2) {
+        VexRROp.KTESTW.emit(this, AVXSize.XMM, src1, src2);
     }
 
     public final void ktestd(Register src1, Register src2) {
