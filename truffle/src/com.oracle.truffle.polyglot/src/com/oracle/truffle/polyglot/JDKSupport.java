@@ -54,6 +54,7 @@ import java.lang.module.ModuleReference;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -83,6 +84,7 @@ import com.oracle.truffle.api.impl.asm.Opcodes;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
+import org.graalvm.collections.Pair;
 
 final class JDKSupport {
 
@@ -108,36 +110,57 @@ final class JDKSupport {
         }
     }
 
-    private static final ModulesAccessor MODULES_ACCESSOR = initializeModuleAccessor();
+    /**
+     * Represents either a {@code ModuleAccessor} or an error message.
+     * <p>
+     * The following combinations are valid:
+     * <ul>
+     * <li>{@code {moduleAccessor, null}} - a successful result with a module accessor.</li>
+     * <li>{@code {null, errorMessage}} - a failure with an error message.</li>
+     * </ul>
+     */
+    private static final Pair<ModulesAccessor, String> MODULES_ACCESSOR = initializeModuleAccessor();
 
     @SuppressWarnings("restricted")
-    private static ModulesAccessor initializeModuleAccessor() {
+    private static Pair<ModulesAccessor, String> initializeModuleAccessor() {
         String attachLibPath = System.getProperty("truffle.attach.library");
         if (attachLibPath == null) {
             if (isUnsupportedPlatform()) {
-                performTruffleAttachLoadFailureAction("Truffle is running on an unsupported platform where the TruffleAttach library is unavailable.", null);
-                return null;
+                String errorMessage = "Truffle is running on an unsupported platform where the TruffleAttach library is unavailable.";
+                performTruffleAttachLoadFailureAction(errorMessage, null);
+                return Pair.create(null, errorMessage);
             }
+            InternalResource libTruffleAttachResource = new LibTruffleAttachResource();
             try {
-                Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(new LibTruffleAttachResource(), LibTruffleAttachResource.ID);
+                Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(libTruffleAttachResource, LibTruffleAttachResource.ID);
                 Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
                 attachLibPath = libAttach.toString();
             } catch (IOException ioe) {
-                performTruffleAttachLoadFailureAction("The Truffle API JAR is missing the 'truffleattach' resource, likely due to issues when Truffle was repackaged into a fat JAR.", ioe);
-                return null;
+                String errorMessage;
+                InternalResourceCache cache = InternalResourceCache.createRuntimeResourceCache(libTruffleAttachResource, LibTruffleAttachResource.ID);
+                Path root = cache.getOwningRoot();
+                if (root == null || !Files.isDirectory(root) || !Files.isReadable(root) || !Files.isWritable(root)) {
+                    errorMessage = String.format("Failed to install the 'truffleattach' resource: the resource cache folder %s is not a readable and writable directory.", root);
+                } else {
+                    errorMessage = "The Truffle API JAR is missing the 'truffleattach' resource, likely due to issues when Truffle was repackaged into a fat JAR.";
+                }
+                performTruffleAttachLoadFailureAction(errorMessage, ioe);
+                return Pair.create(null, errorMessage);
             }
         }
         try {
             try {
                 System.load(attachLibPath);
             } catch (UnsatisfiedLinkError failedToLoad) {
-                performTruffleAttachLoadFailureAction("Unable to load the TruffleAttach library.", failedToLoad);
-                return null;
+                String errorMessage = String.format("Unable to load the TruffleAttach library %s", attachLibPath);
+                performTruffleAttachLoadFailureAction(errorMessage, failedToLoad);
+                return Pair.create(null, errorMessage);
             } catch (IllegalCallerException illegalCaller) {
                 String vmOption = "--enable-native-access=" + (JDKSupport.class.getModule().isNamed() ? "org.graalvm.truffle" : "ALL-UNNAMED");
-                performTruffleAttachLoadFailureAction(String.format("Failed to load the TruffleAttach library. The Truffle module does not have native access enabled. " +
-                                "To resolve this, pass the following VM option: %s.", vmOption), illegalCaller);
-                return null;
+                String errorMessage = String.format("Failed to load the TruffleAttach library. The Truffle module does not have native access enabled. " +
+                                "To resolve this, pass the following VM option: %s.", vmOption);
+                performTruffleAttachLoadFailureAction(errorMessage, illegalCaller);
+                return Pair.create(null, errorMessage);
             }
             ModulesAccessor accessor;
             if (ModulesAccessor.class.getModule().isNamed()) {
@@ -148,7 +171,7 @@ final class JDKSupport {
             Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
             addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
             addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
-            return accessor;
+            return Pair.create(accessor, null);
         } catch (ReflectiveOperationException re) {
             throw new InternalError(re);
         }
@@ -235,7 +258,11 @@ final class JDKSupport {
 
     @SuppressWarnings("restricted")
     static ModulesAccessor getModulesAccessor() {
-        return MODULES_ACCESSOR;
+        return MODULES_ACCESSOR.getLeft();
+    }
+
+    static String getInitializationErrorMessage() {
+        return MODULES_ACCESSOR.getRight();
     }
 
     private static void forEach(Module rootModule, Set<Edge> edges, Predicate<? super Module> filter, Consumer<? super Module> action) {
@@ -699,10 +726,10 @@ final class JDKSupport {
             static {
                 if (JDKSupport.MODULES_ACCESSOR == null) {
                     throw new IllegalStateException("JavaLangAccessorImpl initialized before JDKSupport.");
-                } else if (!(JDKSupport.MODULES_ACCESSOR instanceof IsolatedImpl)) {
+                } else if (!(JDKSupport.MODULES_ACCESSOR.getLeft() instanceof IsolatedImpl)) {
                     throw new IllegalStateException("JDKSupport.MODULES_ACCESSOR initialized with wrong type " + JDKSupport.MODULES_ACCESSOR.getClass());
                 } else {
-                    CURRENT_CARRIER_THREAD = ((IsolatedImpl) JDKSupport.MODULES_ACCESSOR).currentCarrierThread;
+                    CURRENT_CARRIER_THREAD = ((IsolatedImpl) JDKSupport.MODULES_ACCESSOR.getLeft()).currentCarrierThread;
                 }
             }
 
