@@ -100,6 +100,7 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -276,7 +277,16 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
+        TruffleRuntime runtime = Truffle.getRuntime();
+        if (runtime instanceof DefaultTruffleRuntime defaultTruffleRuntime) {
+            String errorMessage = defaultTruffleRuntime.getFallbackReason();
+            throw UserError.abort("""
+                            Failed to create the optimized Truffle runtime: %s
+                            Either fix the problem above or enable the fallback Truffle runtime by setting the system property `-Dtruffle.UseFallbackRuntime=true`.
+                            Execution without runtime compilation will negatively impact the guest application performance.
+                            """, errorMessage);
+        }
+        UserError.guarantee(runtime instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         truffleRuntime.resetHosted();
         RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));

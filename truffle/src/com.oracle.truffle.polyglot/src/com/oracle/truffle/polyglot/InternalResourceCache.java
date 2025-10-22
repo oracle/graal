@@ -128,6 +128,10 @@ final class InternalResourceCache {
         return resourceId;
     }
 
+    Path getOwningRoot() {
+        return owningRoot == null ? null : owningRoot.path();
+    }
+
     Path getPathOrNull() {
         return path;
     }
@@ -202,10 +206,10 @@ final class InternalResourceCache {
     }
 
     /**
-     * Installs truffleattach library. Used reflectively by
-     * {@code com.oracle.truffle.runtime.JDKSupport}. The {@code JDKSupport} is initialized before
-     * the Truffle runtime is created and accessor classes are initialized. For this reason, it
-     * cannot use {@code EngineSupport} to call this method, nor can this method use any accessor.
+     * Installs {@code truffleattach} library. Used by{@link JDKSupport}. The {@code JDKSupport} is
+     * initialized before the Truffle runtime is created and accessor classes are initialized. For
+     * this reason, it cannot use {@code EngineSupport} to call this method, nor can this method use
+     * any accessor.
      */
     static Path installRuntimeResource(InternalResource resource, String id) throws IOException {
         InternalResourceCache cache = createRuntimeResourceCache(resource, id);
@@ -219,7 +223,12 @@ final class InternalResourceCache {
         }
     }
 
-    private static InternalResourceCache createRuntimeResourceCache(InternalResource resource, String id) {
+    /**
+     * Creates an {@link InternalResourceCache} for the {@code truffleattach} library. This method
+     * is used by {@link JDKSupport} to diagnose the cause of {@code truffleattach} library
+     * installation failure.
+     */
+    static InternalResourceCache createRuntimeResourceCache(InternalResource resource, String id) {
         assert verifyAnnotationConsistency(resource, id) : resource.getClass() + " must be annotated by @InternalResource.Id(\"" + id + "\"";
         InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id, () -> resource);
         InternalResourceRoots.initializeRuntimeResource(cache);
