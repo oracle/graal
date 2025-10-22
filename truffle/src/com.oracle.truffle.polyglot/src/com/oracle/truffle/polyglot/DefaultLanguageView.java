@@ -56,16 +56,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 final class DefaultLanguageView<C> implements TruffleObject {
 
     private final String languageId;
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    private final Class<? extends TruffleLanguage<?>> language;
     protected final Object delegate;
 
-    DefaultLanguageView(String languageId, Class<? extends TruffleLanguage<?>> language, Object delegate) {
+    DefaultLanguageView(String languageId, Object delegate) {
         this.languageId = languageId;
-        this.language = language;
         this.delegate = delegate;
     }
 
@@ -77,26 +71,6 @@ final class DefaultLanguageView<C> implements TruffleObject {
     @ExportMessage
     String getLanguageId() {
         return languageId;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return language;
     }
 
     @ExportMessage

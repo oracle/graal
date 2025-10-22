@@ -694,33 +694,6 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Determines whether the given receiver provides a language identifier. For example, a stack
-     * frame object may provide a language identifier to indicate the language of the method it
-     * represents. Calling this message does not produce any observable side effects. The default
-     * implementation returns {@code false}.
-     *
-     * @see #getLanguageId(Object)
-     * @since 26.0
-     */
-    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"})
-    public boolean hasLanguageId(Object receiver) {
-        return hasLanguage(receiver);
-    }
-
-    /**
-     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
-     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
-     *
-     * @see #hasLanguageId(Object)
-     * @since 26.0
-     */
-    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"})
-    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
-        Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
-        return InteropAccessor.ENGINE.getLanguageId(language);
-    }
-
-    /**
      * Returns an array of member name strings. The returned value must return <code>true</code> for
      * {@link #hasArrayElements(Object)} and every array element must be of type
      * {@link #isString(Object) string}. The member elements may also provide additional information
@@ -2464,6 +2437,50 @@ public abstract class InteropLibrary extends Library {
     @Deprecated
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Determines whether the given receiver provides a language identifier. For example, a stack
+     * frame object may provide a language identifier to indicate the language of the method it
+     * represents. Calling this message does not produce any observable side effects. The default
+     * implementation returns {@code false}.
+     *
+     * @see #getLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementFor = "hasLanguage(Object)", replaceWith = "hasLanguageLegacy")
+    public boolean hasLanguageId(Object receiver) {
+        return hasLanguage(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine() != null;
+    }
+
+    protected final boolean hasLanguageLegacy(Object receiver) {
+        return hasLanguageId(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine() != null;
+    }
+
+    /**
+     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
+     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
+     *
+     * @see #hasLanguageId(Object)
+     * @since 26.0
+     */
+    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementFor = "getLanguage(Object)", replaceWith = "getLanguageLegacy")
+    public String getLanguageId(Object receiver) throws UnsupportedMessageException {
+        Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
+        String id = InteropAccessor.ENGINE.getLanguageId(language);
+        if (id == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return id;
+    }
+
+    protected final Class<? extends TruffleLanguage<?>> getLanguageLegacy(Object receiver) throws UnsupportedMessageException {
+        String id = getLanguageId(receiver);
+        Class<? extends TruffleLanguage<?>> clz = InteropAccessor.ENGINE.getLanguageClass(id);
+        if (clz == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return clz;
     }
 
     /**

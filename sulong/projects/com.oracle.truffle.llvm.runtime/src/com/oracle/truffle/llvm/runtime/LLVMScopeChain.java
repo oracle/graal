@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -134,26 +133,6 @@ public class LLVMScopeChain implements TruffleObject {
     @ExportMessage
     final String getLanguageId() {
         return LLVMLanguage.ID;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    final boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
     }
 
     @ExportMessage

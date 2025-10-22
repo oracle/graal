@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -68,26 +67,6 @@ public abstract class AbstractRegexObject implements TruffleObject {
     @SuppressWarnings("static-method")
     public String getLanguageId() {
         return RegexLanguage.ID;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"static-method", "deprecation"})
-    public final boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"static-method", "deprecation"})
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return RegexLanguage.class;
     }
 
     @SuppressWarnings("static-method")

@@ -41,7 +41,6 @@
 package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -85,26 +84,6 @@ abstract class AbstractNativePointer implements TruffleObject {
     @ExportMessage
     String getLanguageId() {
         return LibFFILanguage.ID;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LibFFILanguage.class;
     }
 
     @ExportMessage

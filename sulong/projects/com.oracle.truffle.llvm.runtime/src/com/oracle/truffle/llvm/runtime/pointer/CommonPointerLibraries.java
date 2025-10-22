@@ -36,7 +36,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -515,26 +514,6 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static String getLanguageId(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
         return LLVMLanguage.ID;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    static boolean hasLanguage(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
-        return LLVMLanguage.class;
     }
 
     @ExportMessage

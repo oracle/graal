@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -116,26 +115,6 @@ final class NFISymbol implements TruffleObject {
     @ExportMessage
     void toNative(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
         library.toNative(nativeSymbol);
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"deprecation", "static-method"})
-    boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"deprecation", "static-method"})
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return NFILanguage.class;
     }
 
     @ExportMessage

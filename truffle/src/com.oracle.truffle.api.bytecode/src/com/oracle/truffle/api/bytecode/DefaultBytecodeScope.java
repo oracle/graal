@@ -44,7 +44,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -96,27 +95,6 @@ final class DefaultBytecodeScope implements TruffleObject {
                     @Shared @Cached("this.bci") int cachedBci,
                     @Shared @Cached(value = "this.getCache()", allowUncached = true) NameToIndexCache cache) {
         return this.bytecode == cachedBytecode && this.bci == cachedBci && this.node == cachedNode;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings("deprecation")
-    Class<? extends TruffleLanguage<?>> getLanguage(
-                    @Shared @Cached("this.node") TagTreeNode cachedNode) {
-        return cachedNode.getLanguage();
     }
 
     @ExportMessage

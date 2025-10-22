@@ -201,7 +201,7 @@ final class LanguageAccessor extends Accessor {
             } else {
                 Object result = env.getSpi().getLanguageView(c, value);
                 if (result == null) {
-                    return LanguageAccessor.engineAccess().getDefaultLanguageView(env.polyglotLanguageContext, env.spi, value);
+                    return LanguageAccessor.engineAccess().getDefaultLanguageView(env.polyglotLanguageContext, value);
                 } else {
                     return result;
                 }

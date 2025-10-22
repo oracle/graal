@@ -41,7 +41,6 @@
 package com.oracle.truffle.host;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -87,26 +86,6 @@ final class HostFunction implements TruffleObject {
                     @Bind Node node,
                     @Cached HostExecuteNode execute) throws UnsupportedTypeException, ArityException {
         return execute.execute(node, method, obj, args, context);
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @SuppressWarnings({"static-method", "deprecation"})
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @SuppressWarnings({"static-method", "deprecation"})
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return HostLanguage.class;
     }
 
     @SuppressWarnings("static-method")

@@ -45,7 +45,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
@@ -136,26 +135,6 @@ final class NFILibrary implements TruffleObject {
         return executables.execute(preBound, args);
     }
 
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"unused", "deprecation"})
-    static boolean hasLanguage(NFILibrary lib) {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"unused", "deprecation"})
-    static Class<? extends TruffleLanguage<?>> getLanguage(NFILibrary receiver) {
-        return NFILanguage.class;
-    }
-
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasLanguageId(NFILibrary lib) {
@@ -223,26 +202,6 @@ final class NFILibrary implements TruffleObject {
                 throw InvalidArrayIndexException.create(idx);
             }
             return keys[(int) idx];
-        }
-
-        /**
-         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-         * messages.
-         */
-        @ExportMessage
-        @SuppressWarnings("deprecation")
-        static boolean hasLanguage(@SuppressWarnings("unused") Keys receiver) {
-            return true;
-        }
-
-        /**
-         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-         * messages.
-         */
-        @ExportMessage
-        @SuppressWarnings("deprecation")
-        static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Keys receiver) {
-            return NFILanguage.class;
         }
 
         @ExportMessage

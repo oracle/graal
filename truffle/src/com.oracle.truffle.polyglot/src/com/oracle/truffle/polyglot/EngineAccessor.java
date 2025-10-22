@@ -265,9 +265,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public Object getDefaultLanguageView(Object polyglotLanguageContext, TruffleLanguage<?> spi, Object value) {
-            return new DefaultLanguageView<>(((PolyglotLanguageContext) polyglotLanguageContext).language.getId(), (Class<? extends TruffleLanguage<?>>) spi.getClass(), value);
+        public Object getDefaultLanguageView(Object polyglotLanguageContext, Object value) {
+            return new DefaultLanguageView<>(((PolyglotLanguageContext) polyglotLanguageContext).language.getId(), value);
         }
 
         @Override
@@ -277,6 +276,17 @@ final class EngineAccessor extends Accessor {
                 return null;
             }
             return context.engine.getLanguage(languageClass, false).getId();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(String languageId) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+            if (context == null) {
+                return null;
+            }
+            PolyglotLanguage language = context.engine.getLanguage(languageId, false);
+            return (Class<? extends TruffleLanguage<?>>) context.contexts[language.engineIndex].getLanguageInstance().spi.getClass();
         }
 
         @TruffleBoundary

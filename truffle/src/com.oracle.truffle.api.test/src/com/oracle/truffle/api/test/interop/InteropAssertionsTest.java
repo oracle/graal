@@ -192,34 +192,23 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"deprecation", "truffle-abstract-export"})
     static class GetLanguageTest implements TruffleObject {
 
         Supplier<Class<? extends TruffleLanguage<?>>> getLanguage;
         boolean hasLanguage;
 
         @ExportMessage
-        @SuppressWarnings("deprecation")
         boolean hasLanguage() {
             return hasLanguage;
         }
 
         @ExportMessage
-        @SuppressWarnings("deprecation")
         Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
             if (getLanguage == null) {
                 throw UnsupportedMessageException.create();
             }
             return getLanguage.get();
-        }
-
-        @ExportMessage
-        boolean hasLanguageId() {
-            return hasLanguage();
-        }
-
-        @ExportMessage
-        String getLanguageId() throws UnsupportedMessageException {
-            return TestAPIAccessor.engineAccess().getLanguageId(getLanguage());
         }
 
         @SuppressWarnings("static-method")
@@ -823,18 +812,6 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         Supplier<Class<? extends TruffleLanguage<?>>> getLanguage;
         Supplier<Object> getScopeParent;
         Supplier<Object> getMembers;
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return hasLanguage;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return getLanguage.get();
-        }
 
         @ExportMessage
         @SuppressWarnings("static-method")

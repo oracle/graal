@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -53,26 +52,6 @@ public abstract class LLVMInternalTruffleObject implements TruffleObject {
     @SuppressWarnings({"static-method"})
     public final String getLanguageId() {
         return LLVMLanguage.ID;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"static-method", "deprecation"})
-    public final boolean hasLanguage() {
-        return true;
-    }
-
-    /**
-     * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-     * messages.
-     */
-    @ExportMessage
-    @SuppressWarnings({"static-method", "deprecation"})
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
     }
 
     @ExportMessage

@@ -90,7 +90,7 @@ final class DefaultNodeExports {
         TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
         LanguageInfo languageInfo = root.getLanguageInfo();
         if (language != null && languageInfo != null && (node == root || InteropAccessor.INSTRUMENT.isInstrumentable(node))) {
-            return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass(), languageInfo.getId());
+            return createDefaultScope(root, frame, languageInfo.getId());
         }
         throw UnsupportedMessageException.create();
     }
@@ -106,7 +106,7 @@ final class DefaultNodeExports {
     }
 
     @TruffleBoundary
-    private static Object createDefaultScope(RootNode root, MaterializedFrame frame, Class<? extends TruffleLanguage<?>> language, String languageId) {
+    private static Object createDefaultScope(RootNode root, MaterializedFrame frame, String languageId) {
         LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
@@ -114,7 +114,7 @@ final class DefaultNodeExports {
                 slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
             }
         }
-        return new DefaultScope(slotsMap, root, frame, language, languageId);
+        return new DefaultScope(slotsMap, root, frame, languageId);
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -123,19 +123,12 @@ final class DefaultNodeExports {
         private final Map<String, Object> slots;
         private final RootNode root;
         private final Frame frame;
-        /**
-         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-         * messages.
-         */
-        private final Class<? extends TruffleLanguage<?>> language;
         private final String languageId;
 
-        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame,
-                        Class<? extends TruffleLanguage<?>> language, String languageId) {
+        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame, String languageId) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
-            this.language = language;
             this.languageId = languageId;
         }
 
@@ -154,29 +147,6 @@ final class DefaultNodeExports {
                 throw UnsupportedMessageException.create();
             }
             return languageId;
-        }
-
-        /**
-         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-         * messages.
-         */
-        @ExportMessage
-        @SuppressWarnings("deprecation")
-        boolean hasLanguage() {
-            return language != null;
-        }
-
-        /**
-         * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-         * messages.
-         */
-        @ExportMessage
-        @SuppressWarnings("deprecation")
-        Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
-            if (language == null) {
-                throw UnsupportedMessageException.create();
-            }
-            return language;
         }
 
         @ExportMessage
