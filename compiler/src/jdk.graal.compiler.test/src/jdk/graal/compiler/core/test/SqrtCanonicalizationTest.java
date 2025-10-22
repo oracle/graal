@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,30 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.aarch64.test;
 
-import jdk.graal.compiler.lir.LIRInstruction;
+package jdk.graal.compiler.core.test;
+
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.function.Predicate;
+import jdk.graal.compiler.jtt.lang.Math_copySign;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 
-public class AArch64FloatSqrtTest extends AArch64MatchRuleTest {
-
-    private static final Predicate<LIRInstruction> p1 = op -> op.name().equals("FSQRT");
-    private static final Predicate<LIRInstruction> p2 = op -> op.name().equals("AArch64Convert$FloatConvertOp");
-
-    public float floatSqrt(float f) {
-        return (float) Math.sqrt(f);
+public class SqrtCanonicalizationTest extends GraalCompilerTest {
+    public static float floatSqrt(float x) {
+        return (float) Math.sqrt((double) x);
     }
 
-    private float[] input = {-1, 0f, -0f, Float.MAX_VALUE, Float.MIN_NORMAL, Float.MIN_VALUE, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY};
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        super.checkHighTierGraph(graph);
+        Assert.assertEquals("float conversions", 0, graph.getNodes().filter(FloatConvertNode.class).count());
+    }
 
     @Test
     public void testFloatSqrt() {
-        for (float f : input) {
+        for (float f : Math_copySign.FLOAT_VALUES) {
             test("floatSqrt", f);
-            checkLIR("floatSqrt", p1, 1);
-            checkLIR("floatSqrt", p2, 0);
         }
     }
 }
