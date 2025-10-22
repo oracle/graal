@@ -620,13 +620,16 @@ public final class EspressoOptions {
                     usageSyntax = "<argument>") //
     public static final OptionKey<OptionMap<String>> VMArguments = OptionKey.mapOf(String.class);
 
-    @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.", //
+    @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.\\n" +
+                    "If native access is disabled, native methods will be emulated in Java with limited functionality.\\n" +
+                    "For example there will be no access to LibAWT.", //
                     category = OptionCategory.EXPERT,  //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "<nativeBackend>") //
     public static final OptionKey<String> NativeBackend = new OptionKey<>("");
 
     @Option(help = "Enable use of a custom Espresso implementation of boot libraries, which allows for not entering native code.\\n" +
+                    "Will be automatically enabled if there is NO native access.\\n" +
                     "For example, this will replace the usual 'libjava'. Missing implementations will thus fail with 'UnsatifiedLinkError'.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

@@ -139,6 +139,20 @@ $ mx espresso --java.JavaHome=/path/to/java/8/home -version
 $ mx espresso --java.JavaHome=/path/to/java/11/home -version
 ```
 
+## No-Native Espresso
+
+To run Espresso without native access, use the experimental option `java.NativeBackend=no-native` via the command line:
+```bash
+$ mx espresso --experimental-options --java.NativeBackend=no-native 
+```
+
+or on the context builder: 
+```java
+builder.allowExperimentalOptions(true).option("java.NativeBackend", "no-native") 
+```
+
+Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory will be provided (GR-70643). However, some functionality might be limited (e.g. you will have no access to LibAWT).
+
 ## Limitations
 
 ### Linux
