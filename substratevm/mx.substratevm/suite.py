@@ -793,6 +793,7 @@ suite = {
                     "jdk.internal.foreign.abi.aarch64",
                     "jdk.internal.foreign.abi.aarch64.macos",
                     "jdk.internal.foreign.abi.aarch64.linux",
+                    "jdk.internal.foreign.layout",
                     "jdk.internal.loader",
                     "jdk.internal.reflect",
                 ],
