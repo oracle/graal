@@ -155,14 +155,20 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleClass addClassIfAbsent(Class<?> classObj, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
-        if (!classesByClassObject.containsKey(classObj)) {
+    public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
+        JNIAccessibleClass existing = classesByClassObject.get(classObj);
+        if (existing == null) {
             JNIAccessibleClass instance = mappingFunction.apply(classObj);
             classesByClassObject.put(classObj, instance);
             String name = instance.getJNIName();
             classesByName.put(name, instance);
+            return instance;
+        } else {
+            if (!updatedPreserved) {
+                existing.setNotPreserved();
+            }
+            return existing;
         }
-        return classesByClassObject.get(classObj);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -181,6 +187,15 @@ public final class JNIReflectionDictionary {
     }
 
     public static Class<?> getClassObjectByName(CharSequence name) {
+        JNIAccessibleClass clazz = getJniAccessibleClass(name);
+        if (clazz != null) {
+            return clazz.getClassObject();
+        }
+        dump(true, "getClassObjectByName");
+        return null;
+    }
+
+    public static JNIAccessibleClass getJniAccessibleClass(CharSequence name) {
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
             if (clazz == null && !ClassNameSupport.isValidJNIName(name.toString())) {
@@ -189,12 +204,8 @@ public final class JNIReflectionDictionary {
                 // trace if class exists (positive query) or name is valid (negative query)
                 MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
             }
-            clazz = checkClass(clazz, name.toString());
-            if (clazz != null) {
-                return clazz.getClassObject();
-            }
+            return checkClass(clazz, name.toString());
         }
-        dump(true, "getClassObjectByName");
         return null;
     }
 

@@ -148,11 +148,11 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
 
     @Override
     public void registerIncludingAssociatedClasses(UnresolvedAccessCondition condition, Class<?> clazz) {
-        register(condition, clazz);
+        register(condition, false, clazz);
     }
 
     @Override
-    public void register(UnresolvedAccessCondition condition, Class<?> clazz) {
+    public void register(UnresolvedAccessCondition condition, boolean preserved, Class<?> clazz) {
         register(condition, clazz.getName());
     }
 

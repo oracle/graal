@@ -47,12 +47,12 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     public final Set<Executable> entryPoints = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Override
-    public void register(AccessCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+    public void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz) {
         // Do nothing for types
     }
 
     @Override
-    public void register(AccessCondition condition, boolean queriedOnly, Executable... methods) {
+    public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods) {
         if (!AccessCondition.unconditional().equals(condition)) {
             System.err.println("Conditional specification in entry points configuration is not supported and is ignored");
         }
@@ -65,27 +65,27 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     }
 
     @Override
-    public void register(AccessCondition condition, boolean finalIsWritable, Field... fields) {
+    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
         System.err.println("The specification for fields in entry points configuration is not supported and is ignored.");
     }
 
     @Override
-    public void registerClassLookup(AccessCondition condition, String typeName) {
+    public void registerClassLookup(AccessCondition condition, boolean preserved, String typeName) {
 
     }
 
     @Override
-    public void registerFieldLookup(AccessCondition condition, Class<?> declaringClass, String fieldName) {
+    public void registerFieldLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String fieldName) {
 
     }
 
     @Override
-    public void registerMethodLookup(AccessCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+    public void registerMethodLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
 
     }
 
     @Override
-    public void registerConstructorLookup(AccessCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+    public void registerConstructorLookup(AccessCondition condition, boolean preserved, Class<?> declaringClass, Class<?>... parameterTypes) {
 
     }
 }

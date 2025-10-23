@@ -99,7 +99,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
         }
         if (locales == null && classNames == null) {
             /* If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundles(resolvedAccessCondition.get(), basename);
+            registry.addResourceBundles(resolvedAccessCondition.get(), false, basename);
         }
     }
 

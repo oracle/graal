@@ -44,27 +44,27 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
-    void registerAllMethodsQuery(AccessCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredMethodsQuery(AccessCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredMethodsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllFields(AccessCondition condition, Class<?> clazz);
+    void registerAllFields(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredFields(AccessCondition condition, Class<?> clazz);
+    void registerAllDeclaredFields(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllConstructorsQuery(AccessCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredConstructorsQuery(AccessCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredConstructorsQuery(AccessCondition condition, boolean queriedOnly, boolean preserved, Class<?> clazz);
 
-    void registerAllClassesQuery(AccessCondition condition, Class<?> clazz);
+    void registerAllClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllDeclaredClassesQuery(AccessCondition condition, Class<?> clazz);
+    void registerAllDeclaredClassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
     void registerAllRecordComponentsQuery(AccessCondition condition, Class<?> clazz);
 
-    void registerAllPermittedSubclassesQuery(AccessCondition condition, Class<?> clazz);
+    void registerAllPermittedSubclassesQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
-    void registerAllNestMembersQuery(AccessCondition condition, Class<?> clazz);
+    void registerAllNestMembersQuery(AccessCondition condition, boolean preserved, Class<?> clazz);
 
     void registerAllSignersQuery(AccessCondition condition, Class<?> clazz);
 

@@ -59,7 +59,7 @@ public interface RuntimeResourceSupport<C> {
 
     void ignoreResources(C condition, String pattern, Object origin);
 
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, boolean preserved, String name);
 
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
 

@@ -99,7 +99,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResourceBundles(UnresolvedAccessCondition condition, String baseName) {
+        public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String baseName) {
             configuration.addBundle(condition, baseName);
         }
 

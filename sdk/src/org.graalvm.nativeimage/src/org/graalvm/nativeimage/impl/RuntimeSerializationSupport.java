@@ -56,7 +56,7 @@ public interface RuntimeSerializationSupport<C> {
 
     void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
 
-    void register(C condition, Class<?> clazz);
+    void register(C condition, boolean preserved, Class<?> clazz);
 
     void register(C condition, String clazz);
 

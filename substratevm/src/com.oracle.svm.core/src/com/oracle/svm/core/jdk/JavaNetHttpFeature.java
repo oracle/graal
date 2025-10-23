@@ -94,7 +94,7 @@ class SimpleWebServerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(_ -> {
-            ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), "sun.net.httpserver.simpleserver.resources.simpleserver");
+            ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "sun.net.httpserver.simpleserver.resources.simpleserver");
         }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }
