@@ -273,7 +273,7 @@ private String longName(String name) {
 	String  StringValue() {
 		String  res;
 		Expect(53);
-		int beg = la.pos; 
+		long beg = la.pos;
 		while (StartOf(2)) {
 			Get();
 		}
@@ -500,7 +500,7 @@ private String longName(String name) {
 
 	String  FreeValue() {
 		String  res;
-		int beg = la.pos; 
+		long beg = la.pos;
 		while (StartOf(3)) {
 			Get();
 		}
@@ -582,7 +582,7 @@ private String longName(String name) {
 
 	String  NoTrimFreeValue() {
 		String  res;
-		int beg = la.pos; 
+		long beg = la.pos;
 		while (StartOf(3)) {
 			Get();
 		}

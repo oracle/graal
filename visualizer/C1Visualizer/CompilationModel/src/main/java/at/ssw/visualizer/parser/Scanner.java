@@ -32,8 +32,8 @@ import org.netbeans.api.progress.ProgressHandle;
 
 class Token {
 	public int kind;    // token kind
-	public int pos;     // token position in bytes in the source text (starting at 0)
-	public int charPos; // token position in characters in the source text (starting at 0)
+	public long pos;     // token position in bytes in the source text (starting at 0)
+	public long charPos; // token position in characters in the source text (starting at 0)
 	public int col;     // token column (starting at 1)
 	public int line;    // token line (starting at 1)
 	public String val;  // token value
@@ -54,9 +54,9 @@ class Buffer {
 	private static final int MIN_BUFFER_LENGTH = 1024; // 1KB
 	private static final int MAX_BUFFER_LENGTH = MIN_BUFFER_LENGTH * 64; // 64KB
 	private byte[] buf;   // input buffer
-	private int bufStart; // position of first byte in buffer relative to input stream
+	private long bufStart; // position of first byte in buffer relative to input stream
 	private int bufLen;   // length of buffer
-	private int fileLen;  // length of input stream (may change if stream is no file)
+	private long fileLen;  // length of input stream (may change if stream is no file)
 	private int bufPos;      // current position in buffer
 	private RandomAccessFile file; // input stream (seekable)
 	private InputStream stream; // growing input stream (e.g.: console, network)
@@ -65,7 +65,10 @@ class Buffer {
 
 	public Buffer(InputStream s) {
 		stream = s;
-		fileLen = bufLen = bufStart = bufPos = 0;
+		fileLen = 0;
+                bufLen = 0;
+                bufStart = 0;
+                bufPos = 0;
 		buf = new byte[MIN_BUFFER_LENGTH];
 	}
 
@@ -73,13 +76,13 @@ class Buffer {
                 this.progressHandle = progressHandle;
 		try {
 			file = new RandomAccessFile(fileName, "r");
-			fileLen = (int) file.length();
+			fileLen = file.length();
                         if (progressHandle != null) {
                                 progressHandle.start((int)(fileLen / MAX_BUFFER_LENGTH));
                         }
-			bufLen = Math.min(fileLen, MAX_BUFFER_LENGTH);
+			bufLen = (int) Math.min(fileLen, MAX_BUFFER_LENGTH);
 			buf = new byte[bufLen];
-			bufStart = Integer.MAX_VALUE; // nothing in buffer so far
+			bufStart = Long.MAX_VALUE; // nothing in buffer so far
 			if (fileLen > 0) setPos(0); // setup buffer to position 0 (start)
 			else bufPos = 0; // index 0 is already after the file, thus setPos(0) is invalid
 			if (bufLen == fileLen) Close();
@@ -132,7 +135,7 @@ class Buffer {
 	}
 
 	public int Peek() {
-		int curPos = getPos();
+		long curPos = getPos();
 		int ch = Read();
 		setPos(curPos);
 		return ch;
@@ -140,21 +143,21 @@ class Buffer {
 
 	// beg .. begin, zero-based, inclusive, in byte
 	// end .. end, zero-based, exclusive, in byte
-	public String GetString(int beg, int end) {
+	public String GetString(long beg, long end) {
 		int len = 0;
-		char[] buf = new char[end - beg];
-		int oldPos = getPos();
+		char[] buf = new char[(int) (end - beg)];
+		long oldPos = getPos();
 		setPos(beg);
 		while (getPos() < end) buf[len++] = (char) Read();
 		setPos(oldPos);
 		return new String(buf, 0, len);
 	}
 
-	public int getPos() {
+	public long getPos() {
 		return bufPos + bufStart;
 	}
 
-	public void setPos(int value) {
+	public void setPos(long value) {
 		if (value >= fileLen && stream != null) {
 			// Wanted position is after buffer and the stream
 			// is not seek-able e.g. network or console,
@@ -168,7 +171,7 @@ class Buffer {
 		}
 
 		if (value >= bufStart && value < bufStart + bufLen) { // already in buffer
-			bufPos = value - bufStart;
+                        bufPos = (int) (value - bufStart);
 		} else if (file != null) { // must be swapped in
 			try {
 				file.seek(value);
@@ -184,7 +187,7 @@ class Buffer {
                         }
 		} else {
 			// set the position to the end of the file, Pos will return fileLen.
-			bufPos = fileLen - bufStart;
+                    throw new InternalError();
 		}
 	}
 	
@@ -294,8 +297,8 @@ public class Scanner {
 
 	Token t;           // current token
 	int ch;            // current input character
-	int pos;           // byte position of current character
-	int charPos;       // position by unicode characters starting with 0
+	long pos;           // byte position of current character
+	long charPos;       // position by unicode characters starting with 0
 	int col;           // column number of current character
 	int line;          // line number of current character
 	int oldEols;       // EOLs that appeared in a comment;
@@ -328,52 +331,52 @@ public class Scanner {
 		start.set(44, 8); 
 		start.set(34, 9); 
 		start.set(Buffer.EOF, -1);
-		literals.put("begin_compilation", new Integer(2));
-		literals.put("name", new Integer(3));
-		literals.put("method", new Integer(4));
-		literals.put("date", new Integer(5));
-		literals.put("end_compilation", new Integer(6));
-		literals.put("begin_cfg", new Integer(7));
-		literals.put("id", new Integer(8));
-		literals.put("caller_id", new Integer(9));
-		literals.put("end_cfg", new Integer(10));
-		literals.put("begin_block", new Integer(11));
-		literals.put("from_bci", new Integer(12));
-		literals.put("to_bci", new Integer(13));
-		literals.put("predecessors", new Integer(14));
-		literals.put("successors", new Integer(15));
-		literals.put("xhandlers", new Integer(16));
-		literals.put("flags", new Integer(17));
-		literals.put("dominator", new Integer(18));
-		literals.put("loop_index", new Integer(19));
-		literals.put("loop_depth", new Integer(20));
-		literals.put("first_lir_id", new Integer(21));
-		literals.put("last_lir_id", new Integer(22));
-		literals.put("probability", new Integer(23));
-		literals.put("end_block", new Integer(24));
-		literals.put("begin_states", new Integer(25));
-		literals.put("begin_stack", new Integer(26));
-		literals.put("end_stack", new Integer(27));
-		literals.put("begin_locks", new Integer(28));
-		literals.put("end_locks", new Integer(29));
-		literals.put("begin_locals", new Integer(30));
-		literals.put("end_locals", new Integer(31));
-		literals.put("end_states", new Integer(32));
-		literals.put("size", new Integer(33));
-		literals.put("begin_HIR", new Integer(36));
-		literals.put("end_HIR", new Integer(37));
-		literals.put("begin_LIR", new Integer(39));
-		literals.put("end_LIR", new Integer(40));
-		literals.put("begin_IR", new Integer(41));
-		literals.put("HIR", new Integer(42));
-		literals.put("LIR", new Integer(43));
-		literals.put("end_IR", new Integer(44));
-		literals.put("begin_intervals", new Integer(46));
-		literals.put("end_intervals", new Integer(47));
-		literals.put("begin_nmethod", new Integer(49));
-		literals.put("end_nmethod", new Integer(50));
-		literals.put("begin_bytecodes", new Integer(51));
-		literals.put("end_bytecodes", new Integer(52));
+		literals.put("begin_compilation", 2);
+		literals.put("name", 3);
+		literals.put("method", 4);
+		literals.put("date", 5);
+		literals.put("end_compilation", 6);
+		literals.put("begin_cfg", 7);
+		literals.put("id", 8);
+		literals.put("caller_id", 9);
+		literals.put("end_cfg", 10);
+		literals.put("begin_block", 11);
+		literals.put("from_bci", 12);
+		literals.put("to_bci", 13);
+		literals.put("predecessors", 14);
+		literals.put("successors", 15);
+		literals.put("xhandlers", 16);
+		literals.put("flags", 17);
+		literals.put("dominator", 18);
+		literals.put("loop_index", 19);
+		literals.put("loop_depth", 20);
+		literals.put("first_lir_id", 21);
+		literals.put("last_lir_id", 22);
+		literals.put("probability", 23);
+		literals.put("end_block", 24);
+		literals.put("begin_states", 25);
+		literals.put("begin_stack", 26);
+		literals.put("end_stack", 27);
+		literals.put("begin_locks", 28);
+		literals.put("end_locks", 29);
+		literals.put("begin_locals", 30);
+		literals.put("end_locals", 31);
+		literals.put("end_states", 32);
+		literals.put("size", 33);
+		literals.put("begin_HIR", 36);
+		literals.put("end_HIR", 37);
+		literals.put("begin_LIR", 39);
+		literals.put("end_LIR", 40);
+		literals.put("begin_IR", 41);
+		literals.put("HIR", 42);
+		literals.put("LIR", 43);
+		literals.put("end_IR", 44);
+		literals.put("begin_intervals", 46);
+		literals.put("end_intervals", 47);
+		literals.put("begin_nmethod", 49);
+		literals.put("end_nmethod", 50);
+		literals.put("begin_bytecodes", 51);
+		literals.put("end_bytecodes", 52);
 
                 literalFirstChar = new boolean[0];
                 for (String literal : literals.keySet()) {
@@ -464,7 +467,7 @@ public class Scanner {
 		) NextCh();
 
 		int recKind = noSym;
-		int recEnd = pos;
+		long recEnd = pos;
 		t = new Token();
 		t.pos = pos; t.col = col; t.line = line; t.charPos = charPos;
 		int state = start.state(ch);
@@ -475,7 +478,7 @@ public class Scanner {
 				case -1: { t.kind = eofSym; break loop; } // NextCh already done 
 				case 0: {
 					if (recKind != noSym) {
-						tlen = recEnd - t.pos;
+                                                tlen = Math.toIntExact(recEnd - t.pos);
 						SetScannerBehindT();
 					}
 					t.kind = recKind; break loop;
