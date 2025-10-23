@@ -777,10 +777,6 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.netbeans.modules</groupId>
-                    <artifactId>org-netbeans-modules-utilities</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.netbeans.modules</groupId>
                     <artifactId>org-netbeans-modules-versioning-core</artifactId>
                 </exclusion>
                 <exclusion>
