@@ -742,24 +742,29 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     public void initializeBaseLayerType(AnalysisType type) {
         VMError.guarantee(type.isInBaseLayer());
         PersistedAnalysisType.Reader td = findType(getBaseLayerTypeId(type));
-        registerFlag(td.getIsInstantiated(), _ -> type.registerAsInstantiated(PERSISTED));
-        registerFlag(td.getIsUnsafeAllocated(), _ -> type.registerAsUnsafeAllocated(PERSISTED));
-        registerFlag(td.getIsReachable(), _ -> type.registerAsReachable(PERSISTED));
+        postTask(td.getIsInstantiated(), _ -> type.registerAsInstantiated(PERSISTED));
+        postTask(td.getIsUnsafeAllocated(), _ -> type.registerAsUnsafeAllocated(PERSISTED));
+        postTask(td.getIsReachable(), _ -> type.registerAsReachable(PERSISTED));
 
-        if (!td.getIsInstantiated() && td.getIsAnySubtypeInstantiated()) {
+        if (td.getIsAnySubtypeInstantiated()) {
+            /*
+             * Once a base layer type is loaded, loading all its instantiated subtypes ensures that
+             * the application layer typestate is coherent with the base layer typestate. Otherwise,
+             * unwanted optimizations could occur as the typestate would not contain some missed
+             * types from the base layer.
+             */
             var subTypesReader = td.getSubTypes();
             for (int i = 0; i < subTypesReader.size(); ++i) {
                 int tid = subTypesReader.get(i);
                 var subTypeReader = findType(tid);
-                if (subTypeReader.getIsInstantiated()) {
-                    registerFlag(true, _ -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
-                }
+                /* Only load instantiated subtypes. */
+                postTask(subTypeReader.getIsInstantiated(), _ -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
             }
         }
     }
 
-    private void registerFlag(boolean flag, DebugContextRunnable task) {
-        if (flag) {
+    private void postTask(boolean condition, DebugContextRunnable task) {
+        if (condition) {
             if (universe.getBigbang() != null) {
                 universe.getBigbang().postTask(task);
             } else {
@@ -1025,11 +1030,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         methods.putIfAbsent(analysisMethod.getId(), analysisMethod);
 
         PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
-        registerFlag(md.getIsVirtualRootMethod(), _ -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
-        registerFlag(md.getIsDirectRootMethod(), _ -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
-        registerFlag(md.getIsInvoked(), _ -> analysisMethod.registerAsInvoked(PERSISTED));
-        registerFlag(md.getIsImplementationInvoked(), _ -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
-        registerFlag(md.getIsIntrinsicMethod(), _ -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+        postTask(md.getIsVirtualRootMethod(), _ -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
+        postTask(md.getIsDirectRootMethod(), _ -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
+        postTask(md.getIsInvoked(), _ -> analysisMethod.registerAsInvoked(PERSISTED));
+        postTask(md.getIsImplementationInvoked(), _ -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
+        postTask(md.getIsIntrinsicMethod(), _ -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
 
         LayeredCompilationBehavior.Behavior compilationBehavior = LayeredCompilationBehavior.Behavior.values()[md.getCompilationBehaviorOrdinal()];
         analysisMethod.setCompilationBehavior(compilationBehavior);
@@ -1312,17 +1317,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, _ -> {
+        postTask(isAccessed, _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsAccessed(PERSISTED);
         });
-        registerFlag(isRead, _ -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), _ -> {
+        postTask(isRead, _ -> analysisField.registerAsRead(PERSISTED));
+        postTask(fieldData.getIsWritten(), _ -> {
             analysisField.injectDeclaredType();
             analysisField.registerAsWritten(PERSISTED);
         });
-        registerFlag(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));
-        registerFlag(fieldData.getIsUnsafeAccessed(), _ -> analysisField.registerAsUnsafeAccessed(PERSISTED));
+        postTask(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));
+        postTask(fieldData.getIsUnsafeAccessed(), _ -> analysisField.registerAsUnsafeAccessed(PERSISTED));
 
         /*
          * Inject the base layer position. If the position computed for this layer, either before
