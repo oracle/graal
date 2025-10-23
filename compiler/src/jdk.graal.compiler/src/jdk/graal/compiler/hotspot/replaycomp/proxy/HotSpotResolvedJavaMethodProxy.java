@@ -132,7 +132,7 @@ public final class HotSpotResolvedJavaMethodProxy extends CompilationProxyBase.C
         return (boolean) handle(isVarArgsMethod, isVarArgsInvokable);
     }
 
-    private static final SymbolicMethod isBridgeMethod = method("isBridge");
+    public static final SymbolicMethod isBridgeMethod = method("isBridge");
     private static final InvokableMethod isBridgeInvokable = (receiver, args) -> ((HotSpotResolvedJavaMethod) receiver).isBridge();
 
     @Override

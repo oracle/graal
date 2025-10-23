@@ -283,8 +283,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (HotSpotResolvedObjectType) handle(getSuperclassMethod, getSuperclassInvokable);
     }
 
-    private static final SymbolicMethod getInterfacesMethod = method("getInterfaces");
-    private static final InvokableMethod getInterfacesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getInterfaces();
+    public static final SymbolicMethod getInterfacesMethod = method("getInterfaces");
+    public static final InvokableMethod getInterfacesInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getInterfaces();
 
     @Override
     public final HotSpotResolvedObjectType[] getInterfaces() {
@@ -414,8 +414,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (List<ResolvedJavaRecordComponent>) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
-    private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
-    private static final InvokableMethod getDeclaredConstructorsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors();
+    public static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
+    public static final InvokableMethod getDeclaredConstructorsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors();
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredConstructors() {
@@ -447,8 +447,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (List<ResolvedJavaMethod>) handle(getAllMethodsMethod, getAllMethodsInvokable, forceLink);
     }
 
-    private static final SymbolicMethod getDeclaredMethodsBooleanMethod = method("getDeclaredMethods", boolean.class);
-    private static final InvokableMethod getDeclaredMethodsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods((boolean) args[0]);
+    public static final SymbolicMethod getDeclaredMethodsBooleanMethod = method("getDeclaredMethods", boolean.class);
+    public static final InvokableMethod getDeclaredMethodsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredMethods((boolean) args[0]);
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {

@@ -33,7 +33,6 @@ import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy.wrapInvocationExceptions;
-import static jdk.graal.compiler.java.StableMethodNameFormatter.isMethodHandle;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,7 +68,6 @@ import jdk.graal.compiler.hotspot.replaycomp.proxy.MetaAccessProviderProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.ProfilingInfoProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.SignatureProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.SpeculationLogProxy;
-import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -78,6 +76,7 @@ import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMemoryAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.hotspot.HotSpotModifiers;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotProfilingInfo;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
@@ -792,8 +791,12 @@ public final class CompilerInterfaceDeclarations {
                     // Record calls to be able to format stable lambda names during replay (using StableMethodNameFormatter).
                     HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) receiver;
                     List<MethodCallToRecord> calls = new ArrayList<>();
-                    if (LambdaUtils.isLambdaType(method.getDeclaringClass()) || isMethodHandle(method.getDeclaringClass())) {
+                    ResolvedJavaType holder = method.getDeclaringClass();
+                    if (holder.isHidden()) {
                         ConstantPool constantPool = method.getConstantPool();
+                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsMethod, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsInvokable, null));
+                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getInterfacesMethod, HotSpotResolvedObjectTypeProxy.getInterfacesInvokable, null));
+                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getDeclaredMethodsBooleanMethod, HotSpotResolvedObjectTypeProxy.getDeclaredMethodsBooleanInvokable, new Object[]{false}));
                         calls.add(new MethodCallToRecord(method, HotSpotResolvedJavaMethodProxy.getConstantPoolMethod, HotSpotResolvedJavaMethodProxy.getConstantPoolInvokable, null));
                         for (BytecodeStream stream = new BytecodeStream(method.getCode()); stream.currentBCI() < stream.endBCI(); stream.next()) {
                             int opcode = stream.currentBC();
@@ -816,6 +819,11 @@ public final class CompilerInterfaceDeclarations {
                         }
                     }
                     return calls;
+                })
+                .setStrategy(HotSpotResolvedJavaMethodProxy.isBridgeMethod, MethodStrategy.DefaultValue)
+                .setDefaultValueSupplier(HotSpotResolvedJavaMethodProxy.isBridgeMethod, (proxy, method, args, metaAccess) -> {
+                    ResolvedJavaMethod javaMethod = (ResolvedJavaMethod) proxy;
+                    return (javaMethod.getModifiers() & HotSpotModifiers.BRIDGE) != 0;
                 })
                 .register(declarations);
 
