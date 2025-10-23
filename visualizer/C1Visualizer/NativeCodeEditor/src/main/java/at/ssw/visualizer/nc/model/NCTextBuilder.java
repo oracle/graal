@@ -96,7 +96,7 @@ public class NCTextBuilder extends TextBuilder {
             }
         }
         if (codeBlock != null) {
-            foldingRegions.add(new FoldingRegion(KIND_BLOCK, codeBlock.codeStart + 1, codeBlock.start + codeBlock.length - 1, true));
+            foldingRegions.add(new FoldingRegion(KIND_BLOCK, codeBlock.codeStart + 1, codeBlock.start + codeBlock.length - 1, false));
         }
 
         return buildText(cfg, NCEditorSupport.MIME_TYPE);
@@ -231,7 +231,7 @@ public class NCTextBuilder extends TextBuilder {
 
     private void checkComment() {
         if (commentBlock != null) {
-            foldingRegions.add(new FoldingRegion(LIR_BLOCK, commentBlock.start, commentBlock.start + commentBlock.length + 1, true));
+            foldingRegions.add(new FoldingRegion(LIR_BLOCK, commentBlock.start, commentBlock.start + commentBlock.length + 1, false));
             commentBlock = null;
         }
     }

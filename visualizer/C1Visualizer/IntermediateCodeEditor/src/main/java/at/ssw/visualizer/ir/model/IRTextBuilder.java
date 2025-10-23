@@ -23,11 +23,6 @@
 package at.ssw.visualizer.ir.model;
 
 import at.ssw.visualizer.ir.IREditorSupport;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import at.ssw.visualizer.model.Compilation;
 import at.ssw.visualizer.model.cfg.BasicBlock;
 import at.ssw.visualizer.model.cfg.ControlFlowGraph;
@@ -40,13 +35,18 @@ import at.ssw.visualizer.texteditor.model.HoverParser;
 import at.ssw.visualizer.texteditor.model.Text;
 import at.ssw.visualizer.texteditor.model.TextBuilder;
 import at.ssw.visualizer.texteditor.model.TextRegion;
-import java.text.DateFormat;
-import java.util.Arrays;
 import org.netbeans.api.editor.fold.FoldType;
 import org.netbeans.editor.TokenID;
 
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
- *
  * @author Christian Wimmer
  */
 public class IRTextBuilder extends TextBuilder {
@@ -239,7 +239,7 @@ public class IRTextBuilder extends TextBuilder {
         // record foldings (no nested foldings if only one detail block is present)
         if (blockFoldings.size() > 0) {
             text.append("  \n");
-            foldingRegions.add(new FoldingRegion(KIND_BLOCK, bodyStart, text.length() - 1, true));
+            foldingRegions.add(new FoldingRegion(KIND_BLOCK, bodyStart, text.length() - 1, false));
             if (blockFoldings.size() > 1) {
                 for (FoldingRegion folding : blockFoldings) {
                     foldingRegions.add(folding);
@@ -389,7 +389,7 @@ public class IRTextBuilder extends TextBuilder {
             }
         }
         if (foldStart != -1) {
-            foldingRegions.add(new FoldingRegion(KIND_MULTILINE, foldStart, text.length(), true));
+            foldingRegions.add(new FoldingRegion(KIND_MULTILINE, foldStart, text.length(), false));
         }
         text.append("\n");
     }
@@ -425,7 +425,7 @@ public class IRTextBuilder extends TextBuilder {
             recordLir(block, instruction);
         }
 
-        return new FoldingRegion(KIND_LIR, start, text.length() - 1, true);
+        return new FoldingRegion(KIND_LIR, start, text.length() - 1, false);
     }
 
     private void recordLir(BasicBlock block, IRInstruction lir) {
