@@ -2447,22 +2447,32 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             case Ignore -> {
             }
             case Print -> {
-                StringWriter message = new StringWriter();
-                try (PrintWriter errWriter = new PrintWriter(message)) {
-                    errWriter.printf("""
-                                    [engine] WARNING: %s
-                                    To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
-                                    The accepted values are:
-                                      - Ignore:    Do not print this warning.
-                                      - Print:     Print this warning (default value).
-                                      - Throw:     Throw an exception instead of printing this warning.
-                                    """, reason);
-                    exception.printStackTrace(errWriter);
+                if (closeOnCollectedErrorLogged.compareAndSet(false, true)) {
+                    logCloseOnCollectedError(reason, exception);
                 }
-                logFallback(message.toString());
             }
+            case PrintAll -> logCloseOnCollectedError(reason, exception);
             case Throw -> throw new RuntimeException(reason, exception);
         }
+    }
+
+    private static final AtomicBoolean closeOnCollectedErrorLogged = new AtomicBoolean();
+
+    private static void logCloseOnCollectedError(String reason, Throwable exception) {
+        StringWriter message = new StringWriter();
+        try (PrintWriter errWriter = new PrintWriter(message)) {
+            errWriter.printf("""
+                            [engine] WARNING: %s
+                            To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
+                            The accepted values are:
+                              - Ignore:    Do not print this warning.
+                              - Print:     Print this warning only for the first occurrence; suppress subsequent ones (default value).
+                              - PrintAll:  Print this warning.
+                              - Throw:     Throw an exception instead of printing this warning.
+                            """, reason);
+            exception.printStackTrace(errWriter);
+        }
+        logFallback(message.toString());
     }
 
     static final class StableLocalLocations {

@@ -9,6 +9,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-66817 Make `--polyglot` the default for language launchers, so there is no need to specify it anymore to use other languages in standalones. As a result, `AbstractLanguageLauncher#getDefaultLanguages()` and `Launcher#canPolyglot()` have been deprecated.
 * GR-65404 Remove `PolyglotLauncher` as it is no longer used.
 * GR-68613: JavaScript polyglot isolate now includes support for the WebAssembly (Wasm) language.
+* GR-69590: Closing a garbage-collected engine or context now logs only the first failure by default. To log all failures, use `engine.CloseOnGCFailureAction.PrintAll`.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
