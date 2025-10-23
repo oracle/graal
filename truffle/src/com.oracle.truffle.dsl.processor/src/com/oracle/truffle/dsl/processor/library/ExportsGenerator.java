@@ -813,16 +813,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
                 CodeTree cachedReceiverAccess = createReceiverCast(libraryExports, messages, modelReceiverType, cachedExportReceiverType, CodeTreeBuilder.singleString("receiver"), true);
                 cachedReceiverAccess = CodeTreeBuilder.createBuilder().startParantheses().tree(cachedReceiverAccess).end().build();
-                cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod, export.isForcedStatic()));
+                cachedExecute = cacheClass.add(createDirectCall(cachedReceiverAccess, message, exportMethod));
             } else {
                 CodeTypeElement dummyNodeClass = sharedNodes.get(cachedSpecializedNode);
                 boolean shared = true;
                 if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(),
                                     constants, nodeConstants, NodeGeneratorPlugs.DEFAULT);
-                    if (export.isForcedStatic()) {
-                        factory.forceInstanceCall();
-                    }
                     dummyNodeClass = createClass(libraryExports, null, modifiers(), "Cached", types.Node);
                     factory.create(dummyNodeClass);
                     sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
@@ -1375,7 +1372,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     throw new AssertionError("Missing method export. Missed validation for " + export.getResolvedMessage().getSimpleName());
                 }
                 ExecutableElement exportMethod = (ExecutableElement) export.getMessageElement();
-                CodeExecutableElement directCall = createDirectCall(uncachedReceiverExport, message, exportMethod, export.isForcedStatic());
+                CodeExecutableElement directCall = createDirectCall(uncachedReceiverExport, message, exportMethod);
                 uncachedExecute = uncachedClass.add(directCall);
                 if (message.getName().equals(ACCEPTS)) {
                     directCall.getModifiers().add(Modifier.STATIC);
@@ -1383,9 +1380,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             } else {
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants,
                                 nodeConstants, NodeGeneratorPlugs.DEFAULT);
-                if (export.isForcedStatic()) {
-                    factory.forceInstanceCall();
-                }
                 CodeExecutableElement generatedUncached = factory.createUncached();
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());
@@ -1455,7 +1449,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         builder.tree(body);
     }
 
-    private CodeExecutableElement createDirectCall(CodeTree receiverAccess, LibraryMessage message, ExecutableElement targetMethod, boolean forceInstanceCall) {
+    private CodeExecutableElement createDirectCall(CodeTree receiverAccess, LibraryMessage message, ExecutableElement targetMethod) {
         CodeTreeBuilder builder;
         CodeExecutableElement cachedExecute = CodeExecutableElement.cloneNoAnnotations(message.getExecutable());
         cachedExecute.renameArguments("receiver");
@@ -1482,7 +1476,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             if (targetMethod == null) {
                 builder.startCall("super", message.getName());
                 builder.tree(receiverAccess);
-            } else if (targetMethod.getModifiers().contains(Modifier.STATIC) && !forceInstanceCall) {
+            } else if (targetMethod.getModifiers().contains(Modifier.STATIC)) {
                 builder.startStaticCall(targetMethod);
                 builder.tree(receiverAccess);
             } else {

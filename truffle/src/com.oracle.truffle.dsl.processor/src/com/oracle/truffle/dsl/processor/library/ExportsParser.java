@@ -295,12 +295,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                             replaceWithClone.setEnclosingElement(enclosing);
                             replaceWith = replaceWithClone;
                             ExportMessageData exportData = new ExportMessageData(library, message, replaceWith, exportAnnotation);
-                            // The correct receiver is the exported library's receiver
-                            // not where the replace method was declared.
-                            exportData.setPreferredReceiverType(library.getReceiverType());
-                            // The replace method takes the receiver as the first argument,
-                            // like if it'd be static even though it's not.
-                            exportData.setForcedStatic();
+                            exportData.setSelfReplacement();
                             exportedElements.add(exportData);
                             exportedMessages.put(message.getName(), exportData);
                             Set<LibraryMessage> generatedNames = generatedLibraryMessages.computeIfAbsent(library, (lib) -> new HashSet<>());
@@ -1379,13 +1374,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
             }
 
-            boolean isStatic = element.getModifiers().contains(Modifier.STATIC) || exportedElement.isForcedStatic();
+            boolean isStaticMethod = element.getModifiers().contains(Modifier.STATIC);
+            boolean isForcedStatic = exportedElement.isSelfReplacement();
+            boolean isStatic = isStaticMethod || isForcedStatic;
             if (!isStatic) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
-            } else if (exportedElement.isForcedStatic()) {
+            } else if (exportedElement.isSelfReplacement()) {
                 element.getParameters().set(0, new CodeVariableElement(exportedElement.getReceiverType(), "receiver"));
-                element.getModifiers().add(Modifier.STATIC);
             }
 
             if (message.getName().equals("accepts")) {
@@ -1490,7 +1486,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         NodeData parsedNodeData = NodeParser.createExportParser(
                         exportedMessage.getExportsLibrary().getLibrary().getTemplateType().asType(),
                         exportedMessage.getExportsLibrary().getTemplateType(),
-                        exportedMessage.getExportsLibrary().hasExportDelegation()).parse(clonedType, false);
+                        exportedMessage.getExportsLibrary().hasExportDelegation(),
+                        !exportedMessage.isSelfReplacement()).parse(clonedType, false);
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
 
@@ -1538,7 +1535,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return false;
         }
 
-        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC) || exportedMessage.isForcedStatic();
+        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC) || exportedMessage.isSelfReplacement();
         int paramOffset = !explicitReceiver ? 1 : 0;
         List<? extends VariableElement> expectedParameters = libraryMethod.getParameters().subList(paramOffset, libraryMethod.getParameters().size());
         List<? extends VariableElement> exportedParameters = exportedMethod.getParameters().subList(0, realParameterCount);
@@ -1569,7 +1566,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             VariableElement exportedArg = exportedParameters.get(i);
             VariableElement libraryArg = expectedParameters.get(i);
             TypeMirror exportedArgType = exportedArg.asType();
-            TypeMirror libraryArgType = (explicitReceiver && !exportedMessage.isForcedStatic() && i == 0) ? receiverType : libraryArg.asType();
+            TypeMirror libraryArgType = (explicitReceiver && !exportedMessage.isSelfReplacement() && i == 0) ? receiverType : libraryArg.asType();
             if (!typeEquals(exportedArgType, libraryArgType)) {
                 if (emitErrors) {
                     exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:%n    %s",

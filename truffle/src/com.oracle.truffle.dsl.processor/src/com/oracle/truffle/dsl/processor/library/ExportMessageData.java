@@ -62,8 +62,10 @@ public class ExportMessageData extends MessageContainer {
 
     private final Element element;
     private final AnnotationMirror annotation;
-    private TypeMirror preferredReceiverType;
-    private boolean forcedStatic;
+    /**
+     * The type that serves as the target of a self replacement.
+     */
+    private TypeMirror selfReplacementTarget;
     private NodeData specializedNode;
 
     private boolean overriden;
@@ -124,21 +126,24 @@ public class ExportMessageData extends MessageContainer {
         return !isClass();
     }
 
-    void setForcedStatic() {
-        this.forcedStatic = true;
+    public boolean isSelfReplacement() {
+        return selfReplacementTarget != null;
     }
 
-    public boolean isForcedStatic() {
-        return forcedStatic;
-    }
-
-    void setPreferredReceiverType(TypeMirror type) {
-        this.preferredReceiverType = type;
+    /**
+     * Marks this {@link ExportMessageData} as a self replacement.
+     * <p>
+     * The corresponding self replacement method is invoked as if it were static: the receiver is
+     * passed as the first argument, even though the method itself is not static. The target method
+     * owner is the <em>exported library instance</em>, not to the object that exports the library.
+     */
+    void setSelfReplacement() {
+        this.selfReplacementTarget = exports.getReceiverType();
     }
 
     public TypeMirror getReceiverType() {
-        if (preferredReceiverType != null) {
-            return preferredReceiverType;
+        if (selfReplacementTarget != null) {
+            return selfReplacementTarget;
         }
         if (element == null || exports.isExplicitReceiver()) {
             return exports.getReceiverType();
