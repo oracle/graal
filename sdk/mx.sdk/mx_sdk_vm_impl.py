@@ -2994,7 +2994,7 @@ def graalvm_version(version_type):
         if version_type == 'vendor':
             graalvm_suffix = ''
             if java_pre:
-                graalvm_suffix += '.' if graalvm_version.endsWith('dev') else '-'
+                graalvm_suffix += '.' if graalvm_version.endswith('dev') else '-'
                 graalvm_suffix += java_pre
         else:
             assert version_type == 'base-dir', version_type
