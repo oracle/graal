@@ -46,7 +46,6 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
-                            "jio_snprintf",
                             "JVM_IsStaticallyLinked");
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_CallMethodByName",
@@ -62,7 +61,8 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                             "JNU_ThrowIllegalArgumentException",
                             "JNU_ThrowInternalError",
                             "JNU_ThrowNullPointerException",
-                            "JNU_ThrowOutOfMemoryError");
+                            "JNU_ThrowOutOfMemoryError",
+                            "jio_snprintf");
             if (isWindows()) {
                 jniRegistrationSupport.addJvmShimExports(
                                 "JVM_CurrentTimeMillis",
@@ -94,14 +94,8 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
-                            "JNU_ThrowNullPointerException");
-            if (isWindows()) {
-                jniRegistrationSupport.addJavaShimExports(
-                                "jio_snprintf");
-            } else {
-                jniRegistrationSupport.addJvmShimExports(
-                                "jio_snprintf");
-            }
+                            "JNU_ThrowNullPointerException",
+                            "jio_snprintf");
         }
     }
 
