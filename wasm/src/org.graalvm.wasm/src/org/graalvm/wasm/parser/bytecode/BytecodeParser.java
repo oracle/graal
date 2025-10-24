@@ -483,12 +483,14 @@ public abstract class BytecodeParser {
                     offset += 8;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_U8: {
+                case Bytecode.CALL_INDIRECT_U8:
+                case Bytecode.CALL_REF_U8: {
                     callNodes.add(new CallNode(originalOffset));
                     offset += 3;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_I32: {
+                case Bytecode.CALL_INDIRECT_I32:
+                case Bytecode.CALL_REF_I32: {
                     callNodes.add(new CallNode(originalOffset));
                     offset += 12;
                     break;
@@ -722,9 +724,7 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_STORE_32_I32:
                 case Bytecode.I32_CONST_I32:
                 case Bytecode.F32_CONST:
-                case Bytecode.REF_FUNC:
-                case Bytecode.TABLE_GET:
-                case Bytecode.TABLE_SET: {
+                case Bytecode.REF_FUNC: {
                     offset += 4;
                     break;
                 }
@@ -797,16 +797,6 @@ public abstract class BytecodeParser {
                     int miscOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (miscOpcode) {
-                        case Bytecode.CALL_REF_U8: {
-                            callNodes.add(new CallNode(originalOffset));
-                            offset += 3;
-                            break;
-                        }
-                        case Bytecode.CALL_REF_I32: {
-                            callNodes.add(new CallNode(originalOffset));
-                            offset += 12;
-                            break;
-                        }
                         case Bytecode.I32_TRUNC_SAT_F32_S:
                         case Bytecode.I32_TRUNC_SAT_F32_U:
                         case Bytecode.I32_TRUNC_SAT_F64_S:
@@ -832,7 +822,9 @@ public abstract class BytecodeParser {
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
                         case Bytecode.TABLE_FILL:
-                        case Bytecode.THROW: {
+                        case Bytecode.THROW:
+                        case Bytecode.TABLE_GET:
+                        case Bytecode.TABLE_SET: {
                             offset += 4;
                             break;
                         }

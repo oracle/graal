@@ -333,8 +333,8 @@ public class Bytecode {
     public static final int REF_IS_NULL = 0xF7;
     public static final int REF_FUNC = 0xF8;
 
-    public static final int TABLE_GET = 0xF9;
-    public static final int TABLE_SET = 0xFA;
+    public static final int CALL_REF_U8 = 0xF9;
+    public static final int CALL_REF_I32 = 0xFA;
 
     public static final int MISC = 0xFB;
 
@@ -376,8 +376,8 @@ public class Bytecode {
     public static final int THROW_REF = 0x1C;
 
     // Typed function references opcodes
-    public static final int CALL_REF_U8 = 0x1D;
-    public static final int CALL_REF_I32 = 0x1E;
+    public static final int TABLE_GET = 0x1D;
+    public static final int TABLE_SET = 0x1E;
     public static final int REF_AS_NON_NULL = 0x1F;
     public static final int BR_ON_NULL_U8 = 0x20;
     public static final int BR_ON_NULL_I32 = 0x21;

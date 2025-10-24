@@ -574,12 +574,10 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      */
     public void addRefCall(int nodeIndex, int typeIndex) {
         if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex)) {
-            add1(Bytecode.MISC);
             add1(Bytecode.CALL_REF_U8);
             add1(nodeIndex);
             add1(typeIndex);
         } else {
-            add1(Bytecode.MISC);
             add1(Bytecode.CALL_REF_I32);
             add4(nodeIndex);
             add4(typeIndex);

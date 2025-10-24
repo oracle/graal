@@ -987,6 +987,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int elementType = module.tableElementType(index);
                     state.popChecked(I32_TYPE);
                     state.push(elementType);
+                    state.addMiscFlag();
                     state.addInstruction(Bytecode.TABLE_GET, index);
                     break;
                 }
@@ -996,6 +997,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int elementType = module.tableElementType(index);
                     state.popChecked(elementType);
                     state.popChecked(I32_TYPE);
+                    state.addMiscFlag();
                     state.addInstruction(Bytecode.TABLE_SET, index);
                     break;
                 }

@@ -535,9 +535,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         break;
                     }
                     case Bytecode.CALL_INDIRECT_U8:
-                    case Bytecode.CALL_INDIRECT_I32: {
-                        // Extract the function object.
-                        stackPointer--;
+                    case Bytecode.CALL_INDIRECT_I32:
+                    case Bytecode.CALL_REF_U8:
+                    case Bytecode.CALL_REF_I32: {
                         final SymbolTable symtab = module.symbolTable();
 
                         final int callNodeIndex;
@@ -548,53 +548,83 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
                             tableIndex = rawPeekU8(bytecode, offset + 2);
                             offset += 3;
-                        } else {
+                        } else if (opcode == Bytecode.CALL_INDIRECT_I32) {
                             callNodeIndex = rawPeekI32(bytecode, offset);
                             expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
                             tableIndex = rawPeekI32(bytecode, offset + 8);
                             offset += 12;
+                        } else if (opcode == Bytecode.CALL_REF_U8) {
+                            callNodeIndex = rawPeekU8(bytecode, offset);
+                            expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
+                            tableIndex = -1;
+                            offset += 2;
+                        } else {
+                            assert opcode == Bytecode.CALL_REF_I32;
+                            callNodeIndex = rawPeekI32(bytecode, offset);
+                            expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
+                            tableIndex = -1;
+                            offset += 8;
                         }
-                        final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
-                        final Object[] elements = table.elements();
-                        final int elementIndex = popInt(frame, stackPointer);
-                        if (elementIndex < 0 || elementIndex >= elements.length) {
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
-                        }
-                        // Currently, table elements may only be functions.
-                        // We can add a check here when this changes in the future.
-                        final Object element = elements[elementIndex];
-                        if (element == WasmConstant.NULL) {
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+
+                        // Extract the function object.
+                        final Object functionCandidate;
+                        final int elementIndex;
+                        if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                            final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
+                            final Object[] elements = table.elements();
+                            elementIndex = popInt(frame, --stackPointer);
+                            if (elementIndex < 0 || elementIndex >= elements.length) {
+                                enterErrorBranch();
+                                throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
+                            }
+                            // Currently, table elements may only be functions.
+                            // We can add a check here when this changes in the future.
+                            functionCandidate = elements[elementIndex];
+                        } else {
+                            assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                            functionCandidate = popReference(frame, --stackPointer);
+                            elementIndex = -1;
                         }
                         final WasmFunctionInstance functionInstance;
                         final WasmFunction function;
                         final CallTarget target;
                         final WasmContext functionInstanceContext;
-                        if (element instanceof WasmFunctionInstance) {
-                            functionInstance = (WasmFunctionInstance) element;
+                        if (functionCandidate == WasmConstant.NULL) {
+                            enterErrorBranch();
+                            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                                throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+                            } else {
+                                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                                throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
+                            }
+                        } else if (functionCandidate instanceof WasmFunctionInstance) {
+                            functionInstance = (WasmFunctionInstance) functionCandidate;
                             function = functionInstance.function();
                             target = functionInstance.target();
                             functionInstanceContext = functionInstance.context();
                         } else {
                             enterErrorBranch();
-                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
+                            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", functionCandidate);
+                            } else {
+                                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionCandidate);
+                            }
                         }
-
-                        int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
 
                         // Target function instance must be from the same context.
                         assert functionInstanceContext == WasmContext.get(this);
 
-                        // Validate that the target function type matches the expected type of the
-                        // indirect call. We first try if the types are equivalent using the
-                        // equivalence classes. If they are not equivalent, we run the full subtype
-                        // matching procedure.
-                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass() &&
-                                        !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
-                            enterErrorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                        if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                            // Validate that the target function type matches the expected type of
+                            // the indirect call. We first try if the types are equivalent using the
+                            // equivalence classes. If they are not equivalent, we run the full
+                            // subtype matching procedure.
+                            if (symtab.equivalenceClass(expectedFunctionTypeIndex) != function.typeEquivalenceClass() &&
+                                            !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
+                                enterErrorBranch();
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            }
                         }
 
                         // Invoke the resolved function.
@@ -1509,19 +1539,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         offset += 4;
                         break;
                     }
-                    case Bytecode.TABLE_GET: {
-                        final int tableIndex = rawPeekI32(bytecode, offset);
-                        table_get(instance, frame, stackPointer, tableIndex);
-                        offset += 4;
-                        break;
-                    }
-                    case Bytecode.TABLE_SET: {
-                        final int tableIndex = rawPeekI32(bytecode, offset);
-                        table_set(instance, frame, stackPointer, tableIndex);
-                        stackPointer -= 2;
-                        offset += 4;
-                        break;
-                    }
                     case Bytecode.MISC: {
                         final int miscOpcode = rawPeekU8(bytecode, offset);
                         offset++;
@@ -1547,51 +1564,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 }
                                 assert exception instanceof WasmRuntimeException : "Only wasm exceptions can be thrown by throw_ref";
                                 throw (WasmRuntimeException) exception;
-                            }
-                            case Bytecode.CALL_REF_U8:
-                            case Bytecode.CALL_REF_I32: {
-                                final int callNodeIndex;
-                                final int expectedFunctionTypeIndex;
-                                if (miscOpcode == Bytecode.CALL_REF_U8) {
-                                    callNodeIndex = rawPeekU8(bytecode, offset);
-                                    expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
-                                    offset += 2;
-                                } else {
-                                    callNodeIndex = rawPeekI32(bytecode, offset);
-                                    expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
-                                    offset += 8;
-                                }
-
-                                // Extract the function object.
-                                final WasmFunctionInstance functionInstance;
-                                final CallTarget target;
-                                final WasmContext functionInstanceContext;
-                                final Object functionOrNull = popReference(frame, --stackPointer);
-                                if (functionOrNull == WasmConstant.NULL) {
-                                    enterErrorBranch();
-                                    throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
-                                } else if (functionOrNull instanceof WasmFunctionInstance) {
-                                    functionInstance = (WasmFunctionInstance) functionOrNull;
-                                    target = functionInstance.target();
-                                    functionInstanceContext = functionInstance.context();
-                                } else {
-                                    enterErrorBranch();
-                                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionOrNull);
-                                }
-
-                                // Target function instance must be from the same context.
-                                assert functionInstanceContext == WasmContext.get(this);
-
-                                // Invoke the resolved function.
-                                int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
-                                Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
-                                stackPointer -= paramCount;
-                                WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
-
-                                final Object result = executeIndirectCallNode(callNodeIndex, target, args);
-                                stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, WasmLanguage.get(this));
-                                CompilerAsserts.partialEvaluationConstant(stackPointer);
-                                break;
                             }
                             case Bytecode.BR_ON_NULL_U8: {
                                 Object reference = popReference(frame, --stackPointer);
@@ -2269,6 +2241,19 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 long extraSize = popLong(frame, stackPointer - 1);
                 long previousSize = memoryLib(memoryIndex).grow(memory, extraSize);
                 pushLong(frame, stackPointer - 1, previousSize);
+                break;
+            }
+            case Bytecode.TABLE_GET: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+                table_get(instance, frame, stackPointer, tableIndex);
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_SET: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+                table_set(instance, frame, stackPointer, tableIndex);
+                stackPointer -= 2;
+                offset += 4;
                 break;
             }
             case Bytecode.REF_AS_NON_NULL: {

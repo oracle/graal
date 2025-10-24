@@ -91,10 +91,8 @@ public final class StackEffects {
                                                           // followed by throw
         miscOpStackEffects[Bytecode.THROW_REF] = UNREACHABLE; // unused, because stack effect is
                                                               // followed by throw
-        miscOpStackEffects[Bytecode.CALL_REF_U8] = UNREACHABLE; // unused, because stack effect is
-                                                                // variable
-        miscOpStackEffects[Bytecode.CALL_REF_I32] = UNREACHABLE; // unused, because stack effect is
-                                                                 // variable
+        miscOpStackEffects[Bytecode.TABLE_GET] = NO_EFFECT;
+        miscOpStackEffects[Bytecode.TABLE_SET] = POP_2;
         miscOpStackEffects[Bytecode.REF_AS_NON_NULL] = NO_EFFECT;
         miscOpStackEffects[Bytecode.BR_ON_NULL_U8] = UNREACHABLE; // unused, because stack effect is
                                                                   // dynamic
