@@ -54,7 +54,6 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
 import com.oracle.svm.hosted.webimage.util.BenchmarkLogger;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
-import com.oracle.svm.hosted.webimage.wasm.codegen.BinaryenCompat;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
@@ -168,11 +167,6 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         if (backend == CompilerBackend.WASM || backend == CompilerBackend.WASMGC) {
             // For the Wasm backends, turn off closure compiler
             optionProvider.getHostedValues().put(WebImageOptions.ClosureCompiler, false);
-
-            if (backend == CompilerBackend.WASMGC && !optionProvider.getHostedValues().containsKey(BinaryenCompat.Options.UseBinaryen)) {
-                // For WasmGC backend, use binaryen by default
-                optionProvider.getHostedValues().put(BinaryenCompat.Options.UseBinaryen, true);
-            }
 
             if (!optionProvider.getHostedValues().containsKey(WebImageOptions.NamingConvention)) {
                 // The naming convention does not affect the binary image (unless debug information
