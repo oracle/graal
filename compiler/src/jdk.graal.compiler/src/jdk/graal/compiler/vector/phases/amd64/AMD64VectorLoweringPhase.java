@@ -381,7 +381,11 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
         SimdStamp byteStamp = SimdStamp.broadcast(IntegerStamp.create(Byte.SIZE), inputStamp.getVectorLength() * 2);
         ValueNode input = graph.addOrUnique(ReinterpretNode.create(byteStamp, node.getValue(), NodeView.DEFAULT));
         SimdToBitMaskNode bitmask = graph.unique(new SimdToBitMaskNode(input));
-        ConstantNode compressMask = ConstantNode.forLong(0x5555555555555555L, graph);
+        /*
+         * Extract the higher bit out of each two-bit pair. The compress mask for this is
+         * 0b...10_10_10_10, i.e., 0x...AA.
+         */
+        ConstantNode compressMask = ConstantNode.forLong(0xAAAAAAAAAAAAAAAAL, graph);
         ValueNode result = graph.addOrUniqueWithInputs(IntegerConvertNode.convert(new CompressBitsNode(bitmask, compressMask), node.stamp(NodeView.DEFAULT), NodeView.DEFAULT));
         node.replaceAtUsagesAndDelete(result);
     }
