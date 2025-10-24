@@ -32,6 +32,8 @@ CLSS public abstract com.oracle.truffle.api.interop.InteropLibrary
 cons protected init()
 meth protected com.oracle.truffle.api.utilities.TriState isIdenticalOrUndefined(java.lang.Object,java.lang.Object)
 meth protected final boolean assertAdopted()
+meth protected final boolean hasLanguageLegacy(java.lang.Object)
+meth protected final java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguageLegacy(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public !varargs java.lang.Object execute(java.lang.Object,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public !varargs java.lang.Object instantiate(java.lang.Object,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public !varargs java.lang.Object invokeMember(java.lang.Object,java.lang.String,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
