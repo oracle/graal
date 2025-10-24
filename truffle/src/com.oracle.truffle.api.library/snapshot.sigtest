@@ -175,9 +175,9 @@ meth public final java.lang.String getSimpleName()
 meth public final java.lang.String toString()
 meth public final java.util.List<java.lang.Class<?>> getParameterTypes()
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,boolean)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 supr java.lang.Object
 hfds deprecated,id,library,libraryClass,parameterCount,parameterTypesArray,qualifiedName,returnType,simpleName
 
