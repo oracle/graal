@@ -376,8 +376,13 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def extra_image_build_argument(self, benchmark, args):
         extra_image_build_args = []
         if benchmark == "quarkus-tika":
-            # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
-            extra_image_build_args += ["-H:NumberOfThreads=1"]
+            extra_image_build_args += [
+                # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
+                "-H:NumberOfThreads=1",
+                # Prevents build-time initialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
+                # This class is made reachable through DragSource.<init>, which is reachable because XToolkit.createDragGestureRecognizer is registered for reflective querying
+                "--initialize-at-run-time=sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
+            ]
         return extra_image_build_args + super().extra_image_build_argument(benchmark, args)
 
     def build_assertions(self, benchmark: str, is_gate: bool) -> List[str]:
