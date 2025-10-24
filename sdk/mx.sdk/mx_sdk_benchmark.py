@@ -5714,8 +5714,13 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
             "org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder",
             "org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder"
         ]
+        tika_run_time_init = [
+            # Prevents build-time ininitialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
+            "sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
+        ]
         return [
             f"--initialize-at-build-time={','.join(tika_build_time_init)}",
+            f"--initialize-at-run-time={','.join(tika_run_time_init)}",
         ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
