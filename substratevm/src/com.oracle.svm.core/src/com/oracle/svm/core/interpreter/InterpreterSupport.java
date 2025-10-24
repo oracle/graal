@@ -70,6 +70,12 @@ public abstract class InterpreterSupport {
      */
     public abstract boolean isInterpreterRoot(Class<?> clazz);
 
+    /*
+     * Check if a given argument matches the inner class Interpreter.InstrinsicRoot (holder of the
+     * interpreter intrinsic implementation).
+     */
+    public abstract boolean isIntrinsicRoot(Class<?> clazz);
+
     /**
      * Transforms an interpreter (root) frame into a frame of the interpreted method. The passed
      * frame must be an interpreter root e.g. {@code isInterpreterRoot(frameInfo.getSourceClass())}
@@ -80,6 +86,17 @@ public abstract class InterpreterSupport {
      * @return a frame representing the interpreted method
      */
     public abstract FrameSourceInfo getInterpretedMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp);
+
+    /**
+     * Transforms an instrinsic (root) frame into a frame of the interpreted intrinsic method. The
+     * passed frame must be an intrinsic root e.g.
+     * {@code isIntrinsicRoot(frameInfo.getSourceClass())} otherwise a fatal exception is thrown.
+     *
+     * @param frameInfo interpreter root frame
+     * @param sp stack pointer of the interpreter frame
+     * @return a frame representing the interpreted method
+     */
+    public abstract FrameSourceInfo getIntrinsicMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLeaveStubPointer(CFunctionPointer leaveStubPointer, int length) {

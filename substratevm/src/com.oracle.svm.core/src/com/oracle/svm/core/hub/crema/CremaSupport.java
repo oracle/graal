@@ -32,12 +32,15 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -46,6 +49,20 @@ public interface CremaSupport {
     ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
 
     int getAfterFieldsOffset(DynamicHub hub);
+
+    Target_java_lang_invoke_MemberName resolveMemberName(Target_java_lang_invoke_MemberName mn, Class<?> caller);
+
+    Object invokeBasic(Target_java_lang_invoke_MemberName memberName, Object methodHandle, Object[] args);
+
+    Object linkToVirtual(Object[] args);
+
+    Object linkToStatic(Object[] args);
+
+    Object linkToSpecial(Object[] args);
+
+    Object linkToInterface(Object[] args);
+
+    Object getStaticStorage(ResolvedJavaField resolved);
 
     interface CremaDispatchTable {
         int vtableLength();
@@ -96,6 +113,8 @@ public interface CremaSupport {
     Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass);
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
+
+    ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);

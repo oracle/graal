@@ -752,7 +752,7 @@ public final class InterpreterToVM {
     }
 
     public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, boolean isVirtual0, boolean forceStayInInterpreter, boolean preferStayInInterpreter,
-                    boolean isInvokeInterface)
+                    boolean isInvokeInterface, boolean quiet)
                     throws SemanticJavaException {
         boolean goThroughPLT;
         boolean isVirtual = isVirtual0;
@@ -779,7 +779,9 @@ public final class InterpreterToVM {
         if (goThroughPLT) {
             if (seedMethod.hasNativeEntryPoint()) {
                 calleeFtnPtr = seedMethod.getNativeEntryPoint();
-                traceInterpreter("got native entry point: ").hex(calleeFtnPtr).newline();
+                if (!quiet) {
+                    traceInterpreter("got native entry point: ").hex(calleeFtnPtr).newline();
+                }
             } else if (seedMethod.getVTableIndex() == VTBL_NO_ENTRY) {
                 /*
                  * does not always hold. Counter example: j.io.BufferedWriter::min, because it gets
@@ -790,7 +792,7 @@ public final class InterpreterToVM {
                 goThroughPLT = false;
 
                 /* arguments to Log methods might have side-effects */
-                if (InterpreterTraceSupport.getValue()) {
+                if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter("fall back to interp for compile entry ").string(seedMethod.toString()).string(" because it has not been compiled.").newline();
                 }
             } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
@@ -798,7 +800,7 @@ public final class InterpreterToVM {
             } else if (!isVirtual && seedMethod.hasVTableIndex()) {
                 goThroughPLT = false;
                 /* arguments to Log methods might have side-effects */
-                if (InterpreterTraceSupport.getValue()) {
+                if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter("invokespecial: ").string(seedMethod.toString()).newline();
                 }
             } else if (isVirtual && !seedMethod.hasVTableIndex()) {
@@ -810,7 +812,7 @@ public final class InterpreterToVM {
         if (isVirtual && (seedMethod.isFinalFlagSet() || calleeArgs[0].getClass().isArray() || seedDeclaringClass.isLeaf() || seedMethod.isPrivate())) {
             isVirtual = false;
             /* arguments to Log methods might have side-effects */
-            if (InterpreterTraceSupport.getValue()) {
+            if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("reverting virtual call to invokespecial: ").string(seedMethod.toString()).newline();
             }
         }
@@ -835,7 +837,7 @@ public final class InterpreterToVM {
                     goThroughPLT = false;
 
                     /* arguments to Log methods might have side-effects */
-                    if (InterpreterTraceSupport.getValue()) {
+                    if (InterpreterTraceSupport.getValue() && !quiet) {
                         traceInterpreter("fall back to interp (vtable entry) for compile entry ").string(seedMethod.toString()).string(" because it has not been compiled.").newline();
                     }
                 }
@@ -846,7 +848,7 @@ public final class InterpreterToVM {
         } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
             targetMethod = seedMethod.getOneImplementation();
             /* arguments to Log methods might have side-effects */
-            if (InterpreterTraceSupport.getValue()) {
+            if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("found oneImpl: ").string(targetMethod.toString());
                 if (goThroughPLT) {
                     calleeFtnPtr = targetMethod.getNativeEntryPoint();
@@ -860,14 +862,13 @@ public final class InterpreterToVM {
         if (!targetMethod.hasBytecodes() && !goThroughPLT && calleeFtnPtr.isNonNull()) {
             goThroughPLT = true;
             /* arguments to Log methods might have side-effects */
-            if (InterpreterTraceSupport.getValue()) {
+            if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("cannot interpret ").string(targetMethod.toString()).string(" falling back to compiled version ").hex(calleeFtnPtr).newline();
             }
         }
 
-        if (!goThroughPLT && targetMethod.isNative()) {
+        if (!goThroughPLT && (targetMethod.isNative() && targetMethod.getSignaturePolymorphicIntrinsic() == null)) {
             /* no way to execute target in interpreter, fall back to compiled code */
-            /* example: MethodHandle.invokeBasic */
             VMError.guarantee(targetMethod.hasNativeEntryPoint());
             calleeFtnPtr = targetMethod.getNativeEntryPoint();
             VMError.guarantee(calleeFtnPtr.isNonNull());
@@ -875,7 +876,7 @@ public final class InterpreterToVM {
         }
 
         /* arguments to Log methods might have side-effects */
-        if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
+        if (InterpreterOptions.InterpreterTraceSupport.getValue() && !quiet) {
             traceInterpreter(" ".repeat(Interpreter.logIndent.get()))
                             .string(" -> calling (")
                             .string(goThroughPLT ? "plt" : "interp").string(") ")

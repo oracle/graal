@@ -261,6 +261,16 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads a 2-byte constant pool index for the current instruction, reading each byte with
+     * volatile semantics. Note that this does not read the 2 bytes atomically.
+     *
+     * @return the constant pool index
+     */
+    public static char readCPI2Volatile(byte[] code, int curBCI) {
+        return (char) (((ByteUtils.volatileBeU1(code, curBCI + 1) & 0xff) << 8) | (ByteUtils.volatileBeU1(code, curBCI + 1 + 1) & 0xff));
+    }
+
+    /**
      * Reads a constant pool index for the current instruction.
      *
      * @return the constant pool index
@@ -368,6 +378,18 @@ public final class BytecodeStream {
             case INVOKEDYNAMIC:
                 code[curBCI + 3] = (byte) ((appendixCPI >> 8) & 0xFF);
                 code[curBCI + 4] = (byte) (appendixCPI & 0xFF);
+                break;
+            default:
+                throw VMError.shouldNotReachHereAtRuntime();
+        }
+    }
+
+    public static void patchIndyExtraCPI(byte[] code, int curBCI, int extraCPI) {
+        int opcode = opcode(code, curBCI);
+        switch (opcode) {
+            case INVOKEDYNAMIC:
+                code[curBCI + 1] = (byte) ((extraCPI >> 8) & 0xFF);
+                code[curBCI + 2] = (byte) (extraCPI & 0xFF);
                 break;
             default:
                 throw VMError.shouldNotReachHereAtRuntime();

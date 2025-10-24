@@ -32,6 +32,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.AttributedElement;
@@ -65,6 +66,10 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
     public Object getStaticStorage(boolean primitives, int layerNum) {
         assert layerNum != MultiLayeredImageSingleton.NONSTATIC_FIELD_LAYER_NUMBER;
         return primitives ? primitiveStatics : referenceStatics;
+    }
+
+    public BootstrapMethodsAttribute getBootstrapMethodsAttribute() {
+        return getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
     }
 
     @Override

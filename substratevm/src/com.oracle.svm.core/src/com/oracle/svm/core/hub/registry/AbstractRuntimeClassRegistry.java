@@ -175,20 +175,17 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     protected abstract boolean loaderIsBootOrPlatform();
 
     public final Class<?> defineClass(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader()) {
+        // GR-62338: for parallel class loaders this synchronization should be skipped.
+        Object syncObject = getClassLoader();
+        if (syncObject == null) {
+            syncObject = this;
+        }
+        synchronized (syncObject) {
             return defineClassInner(typeOrNull, b, off, len, info);
-        } else {
-            synchronized (getClassLoader()) {
-                return defineClassInner(typeOrNull, b, off, len, info);
-            }
         }
     }
 
     private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
-        if (isParallelClassLoader() || getClassLoader() == null) {
-            // GR-62338
-            throw VMError.unimplemented("Parallel class loading:" + getClassLoader());
-        }
         byte[] data = b;
         if (off != 0 || b.length != len) {
             if (len < 0) {
@@ -201,7 +198,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
-        assert typeOrNull == null || type == parsed.getType();
+        assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;
             if (Modifier.isInterface(parsed.getFlags())) {

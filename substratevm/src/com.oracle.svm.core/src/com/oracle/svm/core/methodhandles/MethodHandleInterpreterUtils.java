@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.methodhandles;
 
-package com.oracle.svm.interpreter;
+import java.lang.invoke.MethodHandle;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
-/**
- * Wraps exceptions thrown by the interpreted code or by compiled code. This is a way to
- * differentiate between exceptions caused by interpreter itself vs. the code it executes.
- */
-@InternalVMMethod
-public final class SemanticJavaException extends RuntimeException {
-    @java.io.Serial static final long serialVersionUID = 8271499373291031203L;
-
-    private SemanticJavaException(Throwable cause) {
-        super(cause);
+public final class MethodHandleInterpreterUtils {
+    private MethodHandleInterpreterUtils() {
     }
 
-    @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        return this;
-    }
-
-    public static RuntimeException raise(Throwable cause) {
-        InterpreterUtil.assertion(cause != null && !(cause instanceof SemanticJavaException), "bad SemanticJavaException nesting");
-        throw new SemanticJavaException(cause);
+    public static Target_java_lang_invoke_MemberName extractVMEntry(MethodHandle handle) {
+        Target_java_lang_invoke_LambdaForm lform = SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class).internalForm();
+        return lform.vmentry;
     }
 }

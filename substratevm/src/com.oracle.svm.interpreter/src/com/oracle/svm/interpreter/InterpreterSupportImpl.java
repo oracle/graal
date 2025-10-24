@@ -25,6 +25,8 @@
 
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,16 +49,25 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     private final int bciSlot;
     private final int interpretedMethodSlot;
     private final int interpretedFrameSlot;
+    private final int intrinsicMethodSlot;
+    private final int intrinsicFrameSlot;
 
-    InterpreterSupportImpl(int bciSlot, int interpretedMethodSlot, int interpretedFrameSlot) {
+    InterpreterSupportImpl(int bciSlot, int interpretedMethodSlot, int interpretedFrameSlot, int intrinsicMethodSlot, int intrinsicFrameSlot) {
         this.bciSlot = bciSlot;
         this.interpretedMethodSlot = interpretedMethodSlot;
         this.interpretedFrameSlot = interpretedFrameSlot;
+        this.intrinsicMethodSlot = intrinsicMethodSlot;
+        this.intrinsicFrameSlot = intrinsicFrameSlot;
     }
 
     @Override
     public boolean isInterpreterRoot(Class<?> clazz) {
         return Interpreter.Root.class.equals(clazz);
+    }
+
+    @Override
+    public boolean isIntrinsicRoot(Class<?> clazz) {
+        return Interpreter.IntrinsicRoot.class.equals(clazz);
     }
 
     private static int readInt(Pointer addr, SignedWord offset) {
@@ -75,6 +86,11 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
+    private InterpreterResolvedJavaMethod readIntrinsicMethod(FrameInfoQueryResult frameInfo, Pointer sp) {
+        FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[intrinsicMethodSlot];
+        return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
+    }
+
     private int readBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[bciSlot];
         return readInt(sp, Word.signed(valueInfo.getData()));
@@ -82,6 +98,11 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     private InterpreterFrame readInterpreterFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
         FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[interpretedFrameSlot];
+        return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
+    }
+
+    private InterpreterFrame readIntrinsicFrame(FrameInfoQueryResult frameInfo, Pointer sp) {
+        FrameInfoQueryResult.ValueInfo valueInfo = frameInfo.getValueInfos()[intrinsicFrameSlot];
         return readObject(sp, Word.signed(valueInfo.getData()), valueInfo.isCompressedReference());
     }
 
@@ -102,6 +123,16 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             sourceLineNumber = lineNumberTable.getLineNumber(bci);
         }
         return new InterpreterFrameSourceInfo(interpretedClass, sourceMethodName, sourceLineNumber, bci, interpretedMethod, interpreterFrame);
+    }
+
+    @Override
+    public FrameSourceInfo getIntrinsicMethodFrameInfo(FrameInfoQueryResult frameInfo, Pointer sp) {
+        VMError.guarantee(isIntrinsicRoot(frameInfo.getSourceClass()));
+        InterpreterResolvedJavaMethod intrinsicMethod = readIntrinsicMethod(frameInfo, sp);
+        InterpreterFrame interpreterFrame = readIntrinsicFrame(frameInfo, sp);
+        Class<?> intrinsicClass = intrinsicMethod.getDeclaringClass().getJavaClass();
+        String sourceMethodName = intrinsicMethod.getName();
+        return new InterpreterFrameSourceInfo(intrinsicClass, sourceMethodName, LINENUMBER_NATIVE, -1, intrinsicMethod, interpreterFrame);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
