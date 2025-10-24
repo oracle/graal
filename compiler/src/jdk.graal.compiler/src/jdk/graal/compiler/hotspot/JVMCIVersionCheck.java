@@ -55,8 +55,8 @@ public final class JVMCIVersionCheck {
      */
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25.0.1+8", 1),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.1+8", 1)));
+                                    "Oracle Corporation", createLabsJDKVersion("25.0.2+2", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.2+2", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -275,7 +275,7 @@ public final class JVMCIVersionCheck {
      * {@code props}:
      * <ul>
      * <li>{@code java.specification.version}: Java specification version, e.g., {@code "21"}</li>
-     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "21+35"}</li>
+     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "25.0.2+2"}</li>
      * <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g., {@code "GraalVM Community"}</li>
      * </ul>
      */
@@ -332,7 +332,7 @@ public final class JVMCIVersionCheck {
      *            <li>{@code java.specification.version}: Java specification version, e.g.,
      *            {@code "21"}</li>
      *            <li>{@code java.vm.version}: Full Java VM version string, e.g.,
-     *            {@code "21+35"}</li>
+     *            {@code "25.0.2+2"}</li>
      *            <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g.,
      *            {@code "GraalVM Community"}</li>
      *            </ul>
