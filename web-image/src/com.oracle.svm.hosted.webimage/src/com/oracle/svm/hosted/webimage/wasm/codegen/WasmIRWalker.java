@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
+import com.oracle.svm.hosted.webimage.wasm.ast.id.WebImageWasmIds;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
@@ -184,13 +186,16 @@ public class WasmIRWalker extends StackifierIRWalker {
      *
      * @param currentBlock block from which to jump from
      * @param successor target of the jump
+     * @return Whether a jump was generated
      */
-    private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
+    private boolean generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
         WasmId.Label id = getForwardJumpTarget(currentBlock, successor);
 
         if (id != null) {
             masm.genInst(new Break(id), "forward jump");
+            return true;
         }
+        return false;
     }
 
     private WasmId.Label getForwardJumpTarget(HIRBlock currentBlock, HIRBlock successor) {
@@ -278,6 +283,85 @@ public class WasmIRWalker extends StackifierIRWalker {
     /**
      * Lower a WithExceptionNode.
      *
+     * @param currentBlock basic block that ends with {@link WithExceptionNode}
+     * @param lastNode the {@link WithExceptionNode}
+     * @see #lowerWithExceptionExnRef(HIRBlock, WithExceptionNode)
+     * @see #lowerWithExceptionLegacy(HIRBlock, WithExceptionNode)
+     */
+    @Override
+    protected void lowerWithException(HIRBlock currentBlock, WithExceptionNode lastNode) {
+        assert currentBlock.getEndNode() == lastNode : currentBlock.toString(Verbosity.Name);
+        if (WebImageWasmOptions.LegacyExceptions.getValue()) {
+            lowerWithExceptionLegacy(currentBlock, lastNode);
+        } else {
+            lowerWithExceptionExnRef(currentBlock, lastNode);
+        }
+    }
+
+    /**
+     * Lower a WithExceptionNode using the exnref exception handling proposal.
+     *
+     * <pre>
+     * {@code
+     * (block $exnBlock (result $throwable)
+     *     (try_table (catch $exc_tag $exnBlock)
+     *         WithExceptionNode();
+     *         br Successor
+     *     )
+     * )
+     * (local.set $exc_var)
+     * ExceptionEdge();
+     * }
+     * </pre>
+     *
+     * The {@link WithExceptionNode} is wrapped in a {@code try_table} block, which is surrounded by
+     * a block that's the target of the catch scope. After the block around the {@code try_table}
+     * instruction, the thrown value is already on the stack, we store it in a dedicated local
+     * variable ({@link WebImageWasmNodeLowerer#exceptionObjectVariable}) so that it can be read
+     * later by {@link ReadExceptionObjectNode}. The
+     * {@link com.oracle.svm.hosted.webimage.wasm.phases.WasmLabeledBlockGeneration} ensures that
+     * the regular successor always requires a forward jump.
+     *
+     * @see #lowerWithException(HIRBlock, WithExceptionNode)
+     */
+    protected void lowerWithExceptionExnRef(HIRBlock currentBlock, WithExceptionNode lastNode) {
+        WebImageWasmIds.InternalLabel exceptionHandlerLabel = masm.idFactory.newInternalLabel("exn" + currentBlock.getId());
+        Instruction.Block exceptionTargetBlock = new Instruction.Block(exceptionHandlerLabel, masm.getWasmProviders().util().getThrowableType());
+        masm.genInst(exceptionTargetBlock);
+
+        masm.childScope(exceptionTargetBlock.instructions, exceptionTargetBlock);
+        Instruction.TryTable tryBlock = new Instruction.TryTable(null);
+        tryBlock.addCatch(masm.getKnownIds().getJavaThrowableTag(), exceptionHandlerLabel);
+        masm.genInst(tryBlock, lastNode);
+
+        masm.childScope(tryBlock.instructions, tryBlock);
+        lowerNode(lastNode);
+        HIRBlock normSucc = cfg.blockFor(lastNode.next());
+        boolean didJump = generateForwardJump(currentBlock, normSucc);
+        GraalError.guarantee(didJump, "No jump was inserted after a WithExceptionNode");
+        masm.parentScope(tryBlock);
+
+        masm.parentScope(exceptionTargetBlock);
+
+        masm.genInst(masm.nodeLowerer().exceptionObjectVariable.setter(new Instruction.Nop()), "Store exception object");
+        masm.lowerCatchPreamble();
+
+        CatchScopeContainer scopeEntry = (CatchScopeContainer) stackifierData.getScopeEntry(lastNode);
+        Scope catchScope = scopeEntry.getCatchScope();
+        if (catchScope != null) {
+            lowerBlocks(catchScope.getSortedBlocks(stackifierData));
+            // Just a sanity check
+            masm.genInst(new Unreachable(), "End of catch block is unreachable, it must break out");
+        } else {
+            HIRBlock excpSucc = cfg.blockFor(lastNode.exceptionEdge());
+            boolean didJumpAfterCatch = generateForwardJump(currentBlock, excpSucc);
+            GraalError.guarantee(didJumpAfterCatch, "No jump was inserted in catch block");
+        }
+    }
+
+    /**
+     * Lower a WithExceptionNode using the legacy exception handling proposal.
+     *
      * <pre>
      * {@code
      * (try
@@ -301,13 +385,9 @@ public class WasmIRWalker extends StackifierIRWalker {
      * ({@link WebImageWasmNodeLowerer#exceptionObjectVariable}) so that it can be read later by
      * {@link ReadExceptionObjectNode}.
      *
-     * @param currentBlock basic block that ends with {@link WithExceptionNode}
-     * @param lastNode the {@link WithExceptionNode}
+     * @see #lowerWithException(HIRBlock, WithExceptionNode)
      */
-    @Override
-    protected void lowerWithException(HIRBlock currentBlock, WithExceptionNode lastNode) {
-        assert currentBlock.getEndNode() == lastNode : currentBlock.toString(Verbosity.Name);
-
+    protected void lowerWithExceptionLegacy(HIRBlock currentBlock, WithExceptionNode lastNode) {
         Instruction.Try tryBlock = new Instruction.Try(null);
         masm.genInst(tryBlock, lastNode);
 

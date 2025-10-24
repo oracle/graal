@@ -63,7 +63,7 @@ web_image_builder_jars = [
     "web-image:WEBIMAGE_CLOSURE_SUPPORT",
     "web-image:WEBIMAGE_GOOGLE_CLOSURE",
 ]
-# Hosted options defined in the web-image-enterprise suite
+# Hosted options defined in the web-image suite
 # This list has to be kept in sync with the code (the 'webimageoptions' gate tag checks this)
 # See also WebImageConfiguration.hosted_options
 web_image_hosted_options = [
@@ -92,6 +92,7 @@ web_image_hosted_options = [
     "GrowthTriggerThreshold=",
     "HeapGrowthFactor=",
     "ImageHeapObjectsPerFunction=",
+    "LegacyExceptions",
     "JSComments=",
     "JSRuntime=",
     "LogFilter=",
