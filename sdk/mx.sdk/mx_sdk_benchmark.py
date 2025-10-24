@@ -5728,8 +5728,14 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
             "org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder",
             "org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder"
         ]
+        tika_run_time_init = [
+            # Prevents build-time initialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
+            # This class is made reachable through DragSource.<init>, which is reachable because XToolkit.createDragGestureRecognizer is registered for reflective querying
+            "sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
+        ]
         return [
             f"--initialize-at-build-time={','.join(tika_build_time_init)}",
+            f"--initialize-at-run-time={','.join(tika_run_time_init)}",
         ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
