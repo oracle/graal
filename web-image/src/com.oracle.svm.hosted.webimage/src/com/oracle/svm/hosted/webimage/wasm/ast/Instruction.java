@@ -609,6 +609,11 @@ public abstract class Instruction {
             // TODO GR-42105 Use forInt
             return forLong(word.rawValue());
         }
+
+        @Override
+        protected String toInnerString() {
+            return literal.type + ", " + literal.asText();
+        }
     }
 
     /**
