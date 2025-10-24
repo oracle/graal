@@ -32,8 +32,10 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -264,9 +266,10 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalError {
         JavaKind returnKind = wordMethod.getSignature().getReturnKind();
-        WordFactoryOperation factoryOperation = BridgeMethodUtils.getAnnotation(WordFactoryOperation.class, wordMethod);
+        AnnotationValue factoryOperation = BridgeMethodUtils.getAnnotation(WordFactoryOperation.class, wordMethod);
         if (factoryOperation != null) {
-            switch (factoryOperation.opcode()) {
+            WordFactoryOpcode opcode = factoryOperation.getEnum(WordFactoryOpcode.class, "opcode");
+            switch (opcode) {
                 case ZERO:
                     assert NumUtil.assertArrayLength(args, 0);
                     b.addPush(returnKind, forIntegerKind(wordKind, 0L));
@@ -284,23 +287,25 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             }
         }
 
-        Word.Operation operation = BridgeMethodUtils.getAnnotation(Word.Operation.class, wordMethod);
+        AnnotationValue operation = BridgeMethodUtils.getAnnotation(Word.Operation.class, wordMethod);
         if (operation == null) {
             throw bailout(b, "Cannot call method on a word value: " + wordMethod.format("%H.%n(%p)"));
         }
-        switch (operation.opcode()) {
+        Opcode opcode = operation.getEnum(Opcode.class, "opcode");
+        switch (opcode) {
             case NODE_CLASS:
             case INTEGER_DIVISION_NODE_CLASS:
                 assert NumUtil.assertArrayLength(args, 2);
                 ValueNode left = args[0];
-                ValueNode right = operation.rightOperandIsInt() ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
-
-                b.addPush(returnKind, createBinaryNodeInstance(b, operation.node(), left, right, operation.opcode() == Word.Opcode.INTEGER_DIVISION_NODE_CLASS));
+                ValueNode right = operation.getBoolean("rightOperandIsInt") ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
+                ResolvedJavaType nodeType = operation.getType("node");
+                b.addPush(returnKind, createBinaryNodeInstance(b, nodeType, left, right, opcode == Word.Opcode.INTEGER_DIVISION_NODE_CLASS));
                 break;
 
             case COMPARISON:
                 assert NumUtil.assertArrayLength(args, 2);
-                b.push(returnKind, comparisonOp(b, operation.condition(), args[0], fromSigned(b, args[1])));
+                Condition condition = operation.getEnum(Condition.class, "condition");
+                b.push(returnKind, comparisonOp(b, condition, args[0], fromSigned(b, args[1])));
                 break;
 
             case IS_NULL:
@@ -332,7 +337,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                     assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
-                b.push(returnKind, readOp(b, readKind, address, location, operation.opcode()));
+                b.push(returnKind, readOp(b, readKind, address, location, opcode));
                 break;
             }
 
@@ -349,7 +354,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                     assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
-                b.push(returnKind, readVolatileOp(b, readKind, address, location, operation.opcode()));
+                b.push(returnKind, readVolatileOp(b, readKind, address, location, opcode));
                 break;
             }
             case READ_HEAP: {
@@ -384,7 +389,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                     assert GraphUtil.assertIsConstant(args[3]);
                     location = snippetReflection.asObject(LocationIdentity.class, args[3].asJavaConstant());
                 }
-                writeOp(b, writeKind, address, location, args[2], operation.opcode());
+                writeOp(b, writeKind, address, location, args[2], opcode);
                 break;
             }
 
@@ -446,7 +451,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.addPush(returnKind, casOp(valueKind, wordTypes.asKind(returnType), address, location, args[2], args[3]));
                 break;
             default:
-                throw new GraalError("Unknown opcode: %s", operation.opcode());
+                throw new GraalError("Unknown opcode: %s", opcode);
         }
     }
 
@@ -455,15 +460,17 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
      * method is called for all {@link Word} operations which are annotated with @Operation(node =
      * ...) and encapsulates the reflective allocation of the node.
      */
-    private static ValueNode createBinaryNodeInstance(GraphBuilderContext b, Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right, boolean isIntegerDivision) {
+    @SuppressWarnings("unchecked")
+    private static ValueNode createBinaryNodeInstance(GraphBuilderContext b, ResolvedJavaType nodeType, ValueNode left, ValueNode right, boolean isIntegerDivision) {
         try {
+            Class<? extends ValueNode> nodeClass = (Class<? extends ValueNode>) Class.forName(nodeType.toClassName());
             GuardingNode zeroCheck = isIntegerDivision ? b.maybeEmitExplicitDivisionByZeroCheck(right) : null;
             Class<?>[] parameterTypes = isIntegerDivision ? new Class<?>[]{ValueNode.class, ValueNode.class, GuardingNode.class} : new Class<?>[]{ValueNode.class, ValueNode.class};
             Constructor<?> cons = nodeClass.getDeclaredConstructor(parameterTypes);
             Object[] initargs = isIntegerDivision ? new Object[]{left, right, zeroCheck} : new Object[]{left, right};
             return (ValueNode) cons.newInstance(initargs);
         } catch (Throwable ex) {
-            throw new GraalError(ex).addContext(nodeClass.getName());
+            throw new GraalError(ex).addContext(nodeType.toClassName());
         }
     }
 

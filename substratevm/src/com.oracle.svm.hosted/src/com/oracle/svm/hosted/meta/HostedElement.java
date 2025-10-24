@@ -29,9 +29,20 @@ import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
+
 public abstract class HostedElement implements AnnotatedElement {
 
     protected abstract AnnotatedElement getWrapped();
+
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
+    }
+
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
+    }
 
     @Override
     public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {

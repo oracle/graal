@@ -29,6 +29,7 @@ import static jdk.graal.compiler.annotation.AnnotationValueSupport.getDeclaredAn
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -209,6 +210,13 @@ public class TestAnnotationsBase extends Universe {
         }
     }
 
+    /**
+     * Used to test error handling in {@link AnnotationValue#getEnum(Class, String)}.
+     */
+    enum MyEnum {
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static void assertAnnotationsEquals(Annotation a, AnnotationValue av) {
         Map<String, Object> values = AnnotationSupport.memberValues(a);
         for (Map.Entry<String, Object> e : values.entrySet()) {
@@ -224,6 +232,46 @@ public class TestAnnotationsBase extends Universe {
             if (!(aElement instanceof ExceptionProxy)) {
                 Class<?> elementType = toAnnotationValueElementType(aElement.getClass());
                 av.get(name, elementType);
+
+                Object actual;
+                if (elementType == Byte.class) {
+                    actual = av.getByte(name);
+                } else if (elementType == Boolean.class) {
+                    actual = av.getBoolean(name);
+                } else if (elementType == Short.class) {
+                    actual = av.getShort(name);
+                } else if (elementType == Character.class) {
+                    actual = av.getChar(name);
+                } else if (elementType == Integer.class) {
+                    actual = av.getInt(name);
+                } else if (elementType == Float.class) {
+                    actual = av.getFloat(name);
+                } else if (elementType == Long.class) {
+                    actual = av.getLong(name);
+                } else if (elementType == Double.class) {
+                    actual = av.getDouble(name);
+                } else if (elementType == String.class) {
+                    actual = av.getString(name);
+                } else if (elementType == ResolvedJavaType.class) {
+                    actual = av.getType(name);
+                } else if (elementType == EnumElement.class) {
+                    actual = av.getEnum(name);
+                    Class<? extends Enum> enumClass = (Class<? extends Enum>) aElement.getClass();
+                    var avEnumConstant = av.getEnum(enumClass, name);
+                    assertEquals(aElement, avEnumConstant);
+                    try {
+                        av.getEnum(MyEnum.class, name);
+                        fail("expected " + IllegalArgumentException.class.getName());
+                    } catch (IllegalArgumentException iae) {
+                        // expected
+                    }
+                } else if (elementType == AnnotationValue.class) {
+                    actual = av.getAnnotation(name);
+                } else {
+                    assert elementType == List.class : aElement + " // " + elementType;
+                    actual = avElement;
+                }
+                assertAnnotationElementsEqual(aElement, actual);
             }
         }
     }

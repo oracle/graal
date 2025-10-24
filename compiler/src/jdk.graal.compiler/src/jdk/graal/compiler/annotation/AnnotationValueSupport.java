@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.annotation;
 
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
+
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
@@ -31,9 +35,14 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
@@ -69,15 +78,11 @@ public class AnnotationValueSupport {
      *         present on this element
      */
     public static Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(Annotated annotated) {
-        AnnotationsInfo info = getDeclaredAnnotationInfo(annotated);
+        AnnotationsInfo info = annotated.getDeclaredAnnotationInfo();
         if (info == null) {
             return Collections.emptyMap();
         }
         return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), info.container());
-    }
-
-    private static AnnotationsInfo getDeclaredAnnotationInfo(Annotated annotated) {
-        return annotated.getDeclaredAnnotationInfo();
     }
 
     /**
@@ -130,5 +135,77 @@ public class AnnotationValueSupport {
         ResolvedJavaType container = info.container();
         ResolvedJavaType memberType = method.getSignature().getReturnType(container).resolve(container);
         return AnnotationValueParser.parseMemberValue(memberType, ByteBuffer.wrap(info.bytes()), info.constPool(), container);
+    }
+
+    /**
+     * Gets the annotation value of type {@code annotationType} present on {@code annotated}. This
+     * method must only be called in jargraal as it requires the ability convert a {@link Class}
+     * value to a {@link ResolvedJavaType} value.
+     */
+    @LibGraalSupport.HostedOnly
+    public static AnnotationValue getAnnotationValue(Annotated annotated, Class<? extends Annotation> annotationType) {
+        if (inRuntimeCode()) {
+            throw new GraalError("Cannot look up %s annotation at Native Image runtime", annotationType.getName());
+        }
+        boolean inherited = annotationType.getAnnotation(Inherited.class) != null;
+        return getAnnotationValue0(annotated, annotationType, inherited);
+    }
+
+    /**
+     * Cache for {@link #getAnnotationValue}. Building libgraal-ee shows that this cache grows to
+     * about 3K entries and there are about 30K accesses so no need to optimize further with an LRU
+     * cache.
+     */
+    @LibGraalSupport.HostedOnly //
+    private static final Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotations = LibGraalSupport.INSTANCE == null ? Collections.synchronizedMap(new EconomicHashMap<>()) : null;
+
+    @LibGraalSupport.HostedOnly
+    private static AnnotationValue getAnnotationValue0(Annotated annotated, Class<? extends Annotation> annotationType, boolean inherited) {
+        AnnotationsInfo info = annotated.getDeclaredAnnotationInfo();
+        if (info == null && !inherited) {
+            return null;
+        }
+        Map<ResolvedJavaType, AnnotationValue> map = declaredAnnotations.get(annotated);
+        if (map == null) {
+            /*
+             * Do not use Map#computeIfAbsent as Collections.SynchronizedMap#computeIfAbsent blocks
+             * readers during the creation of the cached value.
+             */
+            map = AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), info.container());
+            var existing = declaredAnnotations.putIfAbsent(annotated, map);
+            if (existing != null) {
+                map = existing;
+            }
+        }
+
+        AnnotationValue res = lookup(annotationType, map, info);
+        if (res != null) {
+            return res;
+        }
+        if (inherited && annotated instanceof ResolvedJavaType type && !type.isJavaLangObject()) {
+            ResolvedJavaType superclass = type.getSuperclass();
+            return getAnnotationValue0(superclass, annotationType, true);
+        }
+        return null;
+    }
+
+    @LibGraalSupport.HostedOnly //
+    private static final Map<Class<? extends Annotation>, ResolvedJavaType> resolvedAnnotationTypeCache = LibGraalSupport.INSTANCE != null ? null
+                    : new ConcurrentHashMap<>();
+
+    @LibGraalSupport.HostedOnly
+    private static AnnotationValue lookup(Class<? extends Annotation> annotationType, Map<ResolvedJavaType, AnnotationValue> map, AnnotationsInfo info) {
+        String internalName = "L" + annotationType.getName().replace(".", "/") + ";";
+        for (var e : map.entrySet()) {
+            ResolvedJavaType type = e.getKey();
+            if (type.getName().equals(internalName)) {
+                // The name matches so now double-check the resolved type matches
+                ResolvedJavaType resolved = resolvedAnnotationTypeCache.computeIfAbsent(annotationType, a -> UnresolvedJavaType.create(internalName).resolve(info.container()));
+                if (resolved.equals(type)) {
+                    return e.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

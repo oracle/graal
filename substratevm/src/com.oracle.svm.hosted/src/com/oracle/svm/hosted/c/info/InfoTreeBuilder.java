@@ -56,7 +56,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
@@ -68,6 +67,8 @@ import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
 import jdk.graal.compiler.phases.util.Providers;
@@ -767,6 +768,13 @@ public class InfoTreeBuilder {
          * when overwriting a method with covariant return types. As a workaround, we look up the
          * original method and use the annotations of the original method.
          */
-        return BridgeMethodUtils.getAnnotation(annotationClass, method);
+        T annotation = OriginalMethodProvider.getJavaMethod(method).getAnnotation(annotationClass);
+        if (annotation == null && method.isBridge()) {
+            ResolvedJavaMethod bridged = BridgeMethodUtils.getBridgedMethod(method);
+            if (bridged != null) {
+                annotation = OriginalMethodProvider.getJavaMethod(bridged).getAnnotation(annotationClass);
+            }
+        }
+        return annotation;
     }
 }

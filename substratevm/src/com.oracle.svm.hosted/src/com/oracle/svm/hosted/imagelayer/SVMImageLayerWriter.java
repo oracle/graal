@@ -85,7 +85,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -173,11 +172,13 @@ import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;
+import jdk.graal.compiler.annotation.ErrorElement;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -449,7 +450,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         ClassInitializationInfo info = hub.getClassInitializationInfo();
         if (info == null) {
             /* Type metadata was not initialized. */
-            assert !type.isReachable();
+            assert !type.isReachable() : type;
             builder.setHasClassInitInfo(false);
         } else {
             builder.setHasClassInitInfo(true);
@@ -766,25 +767,37 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private void persistAnnotationElements(AnnotationValue annotation,
                     IntFunction<StructList.Builder<PersistedAnnotationElement.Builder>> builder) {
+        EconomicMap<String, Object> persistedMembers = EconomicMap.create();
         Map<String, Object> members = annotation.getElements();
         Map<String, ResolvedJavaType> memberTypes = AnnotationValueType.getInstance(annotation.getAnnotationType()).memberTypes();
         if (!members.isEmpty()) {
-            var list = builder.apply(members.size());
-            int i = 0;
             for (var e : members.entrySet()) {
-                var b = list.get(i++);
-                b.setName(e.getKey());
                 Object v = e.getValue();
-                persistAnnotationElement(v, memberTypes.get(e.getKey()), b);
+                if (v instanceof ErrorElement) {
+                    /* GR-70978 will add support for error elements */
+                    return;
+                }
+                persistedMembers.put(e.getKey(), v);
+            }
+        }
+        if (!persistedMembers.isEmpty()) {
+            var list = builder.apply(persistedMembers.size());
+            MapCursor<String, Object> cursor = persistedMembers.getEntries();
+            for (int i = 0; cursor.advance(); i++) {
+                var b = list.get(i);
+                String name = cursor.getKey();
+                b.setName(name);
+                Object v = cursor.getValue();
+                persistAnnotationElement(v, memberTypes.get(name), b);
             }
         }
     }
 
     private void persistAnnotationElement(Object v, ResolvedJavaType memberType, PersistedAnnotationElement.Builder b) {
         if (memberType.isArray()) {
-            List<?> list = (List<?>) v;
             ResolvedJavaType componentType = memberType.getComponentType();
             if (!componentType.isPrimitive()) {
+                List<?> list = (List<?>) v;
                 var ba = b.initMembers();
                 ba.setClassName(componentType.toJavaName());
                 var bav = ba.initMemberValues(list.size());
@@ -814,7 +827,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                     ba.setClassName(e.enumType.toJavaName());
                     ba.setName(e.name);
                 }
-                default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v + ", " + v.getClass());
+                default -> throw AnalysisError.shouldNotReachHere("Unsupported value for annotation element: " + v + ", " + v.getClass());
             }
         }
     }
@@ -933,23 +946,46 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static void persistConstantPrimitiveArray(PrimitiveArray.Builder builder, JavaKind componentKind, Object array) {
-        assert componentKind.toJavaClass().equals(array.getClass().getComponentType());
-        switch (array) {
-            case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
-            case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));
-            case short[] a -> persistArray(a, builder::initS, (b, i) -> b.set(i, a[i]));
-            case char[] a -> persistArray(a, builder::initC, (b, i) -> b.set(i, (short) a[i]));
-            case int[] a -> persistArray(a, builder::initI, (b, i) -> b.set(i, a[i]));
-            case long[] a -> persistArray(a, builder::initJ, (b, i) -> b.set(i, a[i]));
-            case float[] a -> persistArray(a, builder::initF, (b, i) -> b.set(i, a[i]));
-            case double[] a -> persistArray(a, builder::initD, (b, i) -> b.set(i, a[i]));
-            default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+        if (array instanceof List<?> l) {
+            switch (componentKind) {
+                case Boolean -> persistList(l, builder::initZ, (b, i) -> b.set(i, (boolean) l.get(i)));
+                case Byte -> persistList(l, builder::initB, (b, i) -> b.set(i, (byte) l.get(i)));
+                case Short -> persistList(l, builder::initS, (b, i) -> b.set(i, (short) l.get(i)));
+                case Char -> persistList(l, builder::initC, (b, i) -> b.set(i, (short) (char) l.get(i)));
+                case Int -> persistList(l, builder::initI, (b, i) -> b.set(i, (int) l.get(i)));
+                case Long -> persistList(l, builder::initJ, (b, i) -> b.set(i, (long) l.get(i)));
+                case Float -> persistList(l, builder::initF, (b, i) -> b.set(i, (float) l.get(i)));
+                case Double -> persistList(l, builder::initD, (b, i) -> b.set(i, (double) l.get(i)));
+                default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+            }
+        } else {
+            assert componentKind.toJavaClass().equals(array.getClass().getComponentType()) : "%s != %s".formatted(componentKind.toJavaClass(), array.getClass().getComponentType());
+            switch (array) {
+                case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
+                case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));
+                case short[] a -> persistArray(a, builder::initS, (b, i) -> b.set(i, a[i]));
+                case char[] a -> persistArray(a, builder::initC, (b, i) -> b.set(i, (short) a[i]));
+                case int[] a -> persistArray(a, builder::initI, (b, i) -> b.set(i, a[i]));
+                case long[] a -> persistArray(a, builder::initJ, (b, i) -> b.set(i, a[i]));
+                case float[] a -> persistArray(a, builder::initF, (b, i) -> b.set(i, a[i]));
+                case double[] a -> persistArray(a, builder::initD, (b, i) -> b.set(i, a[i]));
+                default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+            }
         }
     }
 
     /** Enables concise one-liners in {@link #persistConstantPrimitiveArray}. */
     private static <A, T extends ListBuilder> void persistArray(A array, IntFunction<T> init, ObjIntConsumer<T> setter) {
         int length = Array.getLength(array);
+        T builder = init.apply(length);
+        for (int i = 0; i < length; i++) {
+            setter.accept(builder, i);
+        }
+    }
+
+    /** Enables concise one-liners in {@link #persistConstantPrimitiveArray}. */
+    private static <T extends ListBuilder> void persistList(List<?> list, IntFunction<T> init, ObjIntConsumer<T> setter) {
+        int length = list.size();
         T builder = init.apply(length);
         for (int i = 0; i < length; i++) {
             setter.accept(builder, i);
@@ -975,7 +1011,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private boolean maybeWriteConstant(JavaConstant constant, ConstantReference.Builder builder) {
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            assert constantsMap.containsKey(imageHeapConstant);
+            assert constantsMap.containsKey(imageHeapConstant) : imageHeapConstant;
             var ocb = builder.initObjectConstant();
             ocb.setConstantId(ImageHeapConstant.getConstantID(imageHeapConstant));
         } else if (constant instanceof PrimitiveConstant primitiveConstant) {
@@ -1290,7 +1326,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeBoolList(String keyName, List<Boolean> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             boolean[] b = new boolean[value.size()];
             for (int i = 0; i < value.size(); i++) {
                 b[i] = value.get(i);
@@ -1307,7 +1343,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeIntList(String keyName, List<Integer> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             var previous = keyValueStore.put(keyName, value.stream().mapToInt(i -> i).toArray());
             assert previous == null : Assertions.errorMessage(keyName, previous);
         }
@@ -1326,7 +1362,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeStringList(String keyName, List<String> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             var previous = keyValueStore.put(keyName, value.toArray(String[]::new));
             assert previous == null : Assertions.errorMessage(keyName, previous);
         }

@@ -215,6 +215,13 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             return true;
         }
 
+        /**
+         * Determines if {@link VerifyAnnotatedElementUsage} is to be checked.
+         */
+        public boolean shouldVerifyAnnotatedElementUsages() {
+            return true;
+        }
+
         public void verifyCurrentTimeMillis(MetaAccessProvider meta, MethodCallTargetNode t, ResolvedJavaType declaringClass) {
             final ResolvedJavaType services = meta.lookupJavaType(GraalServices.class);
             if (!declaringClass.equals(services)) {
@@ -392,6 +399,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {
             verifiers.add(foldableMethodsVerifier);
+        }
+        if (tool.shouldVerifyAnnotatedElementUsages()) {
+            verifiers.add(new VerifyAnnotatedElementUsage());
         }
 
         verifiers.add(new VerifyCurrentTimeMillisUsage(tool));

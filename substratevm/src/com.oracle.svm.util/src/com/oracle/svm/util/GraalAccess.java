@@ -51,6 +51,9 @@ import jdk.vm.ci.runtime.JVMCI;
  * {@code HotSpotResolvedObjectTypeImpl} when running on HotSpot). There are methods for going in
  * the opposite direction in {@link OriginalClassProvider}, {@link OriginalMethodProvider} and
  * {@link OriginalFieldProvider}.
+ * <p>
+ * This class is also used to access the JVMCI and {@linkplain #getOriginalProviders compiler
+ * providers}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class GraalAccess {

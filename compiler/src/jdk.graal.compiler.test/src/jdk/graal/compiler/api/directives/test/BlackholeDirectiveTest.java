@@ -29,13 +29,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Tests for {@link GraalDirectives#blackhole}.
@@ -137,9 +140,9 @@ public class BlackholeDirectiveTest extends GraalCompilerTest {
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        BlackholeSnippet snippet = graph.method().getAnnotation(BlackholeSnippet.class);
+        AnnotationValue snippet = AnnotationValueSupport.getAnnotationValue(graph.method(), BlackholeSnippet.class);
         ParameterNode arg = graph.getParameter(0);
-        if (snippet.expectParameterUsage()) {
+        if (snippet != null && snippet.getBoolean("expectParameterUsage")) {
             Assert.assertNotNull("couldn't find ParameterNode(0)", arg);
             Assert.assertFalse("expected usages of " + arg, arg.hasNoUsages());
         } else {
