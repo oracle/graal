@@ -134,6 +134,7 @@ public final class GCImpl implements GC {
 
     private final CollectionPolicy policy;
     private boolean completeCollection = false;
+    private boolean outOfMemoryCollection = false;
     private UnsignedWord collectionEpoch = Word.zero();
     private long lastWholeHeapExaminedNanos = -1;
 
@@ -299,13 +300,12 @@ public final class GCImpl implements GC {
         try {
             outOfMemory = doCollectImpl(cause, beginNanoTime, forceFullGC, false);
             if (outOfMemory) {
-                // Avoid running out of memory with a full GC that reclaims softly reachable objects
-                ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
+                outOfMemoryCollection = true; // increase eagerness to free memory
                 try {
                     verifyHeap(During);
                     outOfMemory = doCollectImpl(cause, System.nanoTime(), true, true);
                 } finally {
-                    ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
+                    outOfMemoryCollection = false;
                 }
             }
         } finally {
@@ -517,9 +517,20 @@ public final class GCImpl implements GC {
         collect(cause, true);
     }
 
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCompleteCollection() {
         return completeCollection;
+    }
+
+    /**
+     * Whether the current collection is intended to be more aggressive as a last resort to avoid an
+     * out of memory condition.
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isOutOfMemoryCollection() {
+        return outOfMemoryCollection;
     }
 
     /** Collect, either incrementally or completely, and process discovered references. */
