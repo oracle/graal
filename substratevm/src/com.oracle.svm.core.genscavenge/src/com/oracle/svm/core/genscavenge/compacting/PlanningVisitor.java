@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
@@ -183,6 +184,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
         assert chunk.getShouldSweepInsteadOfCompact();
+        if (GCImpl.getGCImpl().isOutOfMemoryCollection()) {
+            return HeapChunk.getTopPointer(chunk);
+        }
         /*
          * Continue allocation for compaction in the next chunk. Moving in other objects is likely
          * to increase future fragmentation and sweeping effort until the chunk can participate in
