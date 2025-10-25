@@ -48,9 +48,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -96,6 +94,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -109,6 +108,7 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -837,7 +837,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 if (MultiMethod.isOriginalMethod(b.getMethod())) { // not for hosted compilation
                     return false;
                 }
-                if (!AnnotationAccess.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {
+                if (!AnnotationUtil.isAnnotationPresent(b.getMethod(), SharedArenaSupport.SCOPED_ANNOTATION)) {
                     return false;
                 }
                 MethodCallTargetNode mt = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, checkValidStateRawInRuntimeCompiledCode, args, b.getInvokeReturnStamp(b.getAssumptions())));

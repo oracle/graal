@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -131,7 +132,7 @@ public class JvmtiFeature implements InternalFeature {
     }
 
     private static boolean isIncluded(HostedMethod method) {
-        CEntryPoint entryPoint = method.getAnnotation(CEntryPoint.class);
+        CEntryPoint entryPoint = AnnotationUtil.getAnnotation(method, CEntryPoint.class);
         return ReflectionUtil.newInstance(entryPoint.include()).getAsBoolean();
     }
 

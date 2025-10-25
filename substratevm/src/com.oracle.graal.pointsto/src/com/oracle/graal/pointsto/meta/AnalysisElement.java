@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -86,17 +87,17 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     @Override
     public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return getUniverse().getAnnotationExtractor().hasAnnotation(getWrapped(), annotationClass);
+        return AnnotationUtil.isAnnotationPresent((Annotated) getWrapped(), annotationClass);
     }
 
     @Override
     public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, false);
+        return AnnotationUtil.getAnnotation((Annotated) getWrapped(), annotationClass);
     }
 
     @Override
     public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, true);
+        throw GraalError.shouldNotReachHere("The getDeclaredAnnotation method is not supported");
     }
 
     @Override

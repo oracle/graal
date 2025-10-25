@@ -28,7 +28,6 @@ package com.oracle.svm.hosted.webimage.js;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.webimage.api.JS;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -39,6 +38,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
@@ -118,9 +118,9 @@ public class JSStubMethod extends CustomSubstitutionMethod {
             coercion = jsObjectAccessMethod.isLoad();
             jsCode = jsObjectAccessMethod.getJSCode();
         } else {
-            rawCall = AnnotationAccess.isAnnotationPresent(method, JSRawCall.class);
-            coercion = AnnotationAccess.isAnnotationPresent(method, JS.Coerce.class);
-            JS js = Objects.requireNonNull(AnnotationAccess.getAnnotation(method, JS.class));
+            rawCall = AnnotationUtil.isAnnotationPresent(method, JSRawCall.class);
+            coercion = AnnotationUtil.isAnnotationPresent(method, JS.Coerce.class);
+            JS js = Objects.requireNonNull(AnnotationUtil.getAnnotation(method, JS.class));
             jsCode = new JSBody.JSCode(js, method);
         }
         return buildGraph(debug, method, providers, purpose, jsCode, coercion, rawCall);

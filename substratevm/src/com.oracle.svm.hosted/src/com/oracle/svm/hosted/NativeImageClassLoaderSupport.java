@@ -85,7 +85,6 @@ import java.util.zip.ZipFile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
@@ -145,7 +144,7 @@ public final class NativeImageClassLoaderSupport {
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
 
-    public final AnnotationExtractor annotationExtractor;
+    public final SubstrateAnnotationExtractor annotationExtractor;
 
     private Path layerFile;
 

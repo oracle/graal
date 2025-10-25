@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.graal.word;
 
-import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.AnnotationUtil;
 
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -42,7 +42,7 @@ public final class SubstrateWordTypes extends WordTypes {
 
     @Override
     public boolean isWordOperation(ResolvedJavaMethod targetMethod) {
-        if (AnnotationAccess.isAnnotationPresent(targetMethod, InvokeCFunctionPointer.class)) {
+        if (AnnotationUtil.isAnnotationPresent(targetMethod, InvokeCFunctionPointer.class)) {
             return false; // handled by CInterfaceInvocationPlugin
         }
         return super.isWordOperation(targetMethod);

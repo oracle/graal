@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
@@ -47,6 +46,7 @@ import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
@@ -316,7 +316,7 @@ public final class ObjectLayout {
         if (metaAccess != null && metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(resolvedJavaType)) {
             return target.wordJavaKind;
         }
-        if (isEntryPoint && AnnotationAccess.isAnnotationPresent(resolvedJavaType, CEnum.class)) {
+        if (isEntryPoint && AnnotationUtil.isAnnotationPresent(resolvedJavaType, CEnum.class)) {
             return JavaKind.Int;
         }
         return type.getJavaKind();

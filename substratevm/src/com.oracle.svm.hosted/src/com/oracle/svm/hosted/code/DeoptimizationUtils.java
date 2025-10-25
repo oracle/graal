@@ -54,6 +54,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.graph.Node;
@@ -136,7 +137,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (method.getAnnotation(DeoptTest.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, DeoptTest.class) != null) {
             return true;
         }
 
@@ -169,7 +170,7 @@ public class DeoptimizationUtils {
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             return false;
         }
-        if (method.getAnnotation(RestrictHeapAccess.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class) != null) {
             return false;
         }
         if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {

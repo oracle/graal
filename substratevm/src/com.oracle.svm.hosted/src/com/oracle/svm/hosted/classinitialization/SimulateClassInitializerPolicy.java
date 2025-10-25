@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
@@ -35,6 +33,7 @@ import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -50,7 +49,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
  * This class is necessary because simulation of class initializer is based on
  * {@link InlineBeforeAnalysis}. The scope keeps track of the number of bytes that were allocated in
  * the image heap.
- * 
+ *
  * See {@link SimulateClassInitializerSupport} for an overview of class initializer simulation.
  */
 public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPolicy {
@@ -115,7 +114,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
             /* Safeguard against excessive inlining, for example endless recursion. */
             return false;
         }
-        if (AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), FactoryMethodMarker.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
              * Synthetic factory methods are annotated as "never inline before analysis" because
              * they would all be inlined immediately. But for the class initializer analysis, we

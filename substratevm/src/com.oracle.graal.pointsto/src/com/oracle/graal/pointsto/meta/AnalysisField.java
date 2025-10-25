@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.svm.common.meta.GuaranteeFolded;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -257,7 +258,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean isGuaranteeFolded() {
-        return getAnnotation(GuaranteeFolded.class) != null;
+        return AnnotationUtil.getAnnotation(this, GuaranteeFolded.class) != null;
     }
 
     public void checkGuaranteeFolded() {

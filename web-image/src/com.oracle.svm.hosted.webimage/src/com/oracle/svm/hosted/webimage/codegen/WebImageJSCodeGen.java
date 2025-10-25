@@ -283,7 +283,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
                 }
                 lowerJavaScriptCode(codeBuffer, titleComment, is);
             }
-            var code = type.getDeclaredAnnotation(JS.Code.class);
+            var code = com.oracle.svm.util.AnnotationUtil.getAnnotation(type, JS.Code.class);
             if (code != null) {
                 String titleComment = "// Class file: " + type.getJavaClass().getName();
                 lowerJavaScriptCode(codeBuffer, titleComment, new ByteArrayInputStream(code.value().getBytes(StandardCharsets.UTF_8)));
@@ -334,7 +334,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     private void requestJSObjectSubclasses(HostedType type) {
         // Only explicitly exported classes must be emitted.
-        if (type.getJavaClass().equals(JSObject.class) || type.getAnnotation(JS.Export.class) != null) {
+        if (type.getJavaClass().equals(JSObject.class) || com.oracle.svm.util.AnnotationUtil.getAnnotation(type, JS.Export.class) != null) {
             typeControl.requestTypeName(type);
         }
         for (HostedType subtype : type.getSubTypes()) {

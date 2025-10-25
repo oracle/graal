@@ -28,11 +28,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Executable;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -40,8 +37,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -128,18 +124,11 @@ public @interface Uninterruptible {
     boolean mayBeInlined() default false;
 
     class Utils {
-        private static final int SYNTHETIC = 0x00001000;
 
         /**
-         * Defines the {@link Uninterruptible} annotation returned for C function calls with
-         * NO_TRANSITION.
+         * The {@link Uninterruptible} annotation returned for C function calls with NO_TRANSITION.
          */
-        @Uninterruptible(reason = "@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION")
-        @SuppressWarnings("unused")
-        private static void noTransitionHolder() {
-        }
-
-        private static final Uninterruptible NO_TRANSITION = Objects.requireNonNull(getAnnotation(ReflectionUtil.lookupMethod(Utils.class, "noTransitionHolder")));
+        private static final AtomicReference<Uninterruptible> NO_TRANSITION = new AtomicReference<>();
 
         /**
          * Returns the {@link Uninterruptible} annotation of the method. Note that there are certain
@@ -148,16 +137,8 @@ public @interface Uninterruptible {
          * the method must not be uninterruptible. So always use this method and never look up the
          * annotation directly on a method.
          */
-        public static Uninterruptible getAnnotation(AnnotatedElement method) {
-            boolean isSynthetic;
-            if (method instanceof Executable) {
-                isSynthetic = (((Executable) method).getModifiers() & SYNTHETIC) != 0;
-            } else if (method instanceof ResolvedJavaMethod) {
-                isSynthetic = ((ResolvedJavaMethod) method).isSynthetic();
-            } else {
-                throw VMError.shouldNotReachHere("Unexpected method implementation class: " + method.getClass().getTypeName());
-            }
-            if (isSynthetic) {
+        public static Uninterruptible getAnnotation(ResolvedJavaMethod method) {
+            if (method.isSynthetic()) {
                 /*
                  * Java compilers differ how annotations are inherited for synthetic methods: javac
                  * annotates synthetic bridge methods for covariant return types, but ECJ does not.
@@ -167,14 +148,14 @@ public @interface Uninterruptible {
                 return null;
             }
 
-            Uninterruptible annotation = AnnotationAccess.getAnnotation(method, Uninterruptible.class);
+            Uninterruptible annotation = AnnotationUtil.getAnnotation(method, Uninterruptible.class);
             if (annotation != null) {
                 /* Explicit annotated method. */
                 return annotation;
             }
 
-            CFunction cFunctionAnnotation = AnnotationAccess.getAnnotation(method, CFunction.class);
-            InvokeCFunctionPointer cFunctionPointerAnnotation = AnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class);
+            CFunction cFunctionAnnotation = AnnotationUtil.getAnnotation(method, CFunction.class);
+            InvokeCFunctionPointer cFunctionPointerAnnotation = AnnotationUtil.getAnnotation(method, InvokeCFunctionPointer.class);
             if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
                             (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
                 /*
@@ -182,7 +163,11 @@ public @interface Uninterruptible {
                  * treated as uninterruptible. This avoids annotating many methods with multiple
                  * annotations.
                  */
-                return NO_TRANSITION;
+                if (NO_TRANSITION.get() == null) {
+                    NO_TRANSITION.compareAndExchange(null, AnnotationUtil.newAnnotation(Uninterruptible.class,
+                                    "reason", "@CFunction / @InvokeCFunctionPointer with Transition.NO_TRANSITION"));
+                }
+                return NO_TRANSITION.get();
             }
 
             /* No relevant annotation found, so not uninterruptible. */
@@ -194,12 +179,12 @@ public @interface Uninterruptible {
          * the method or implicitly due to other annotations.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        public static boolean isUninterruptible(AnnotatedElement method) {
+        public static boolean isUninterruptible(ResolvedJavaMethod method) {
             return getAnnotation(method) != null;
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
+        public static boolean inliningAllowed(ResolvedJavaMethod caller, ResolvedJavaMethod callee) {
             boolean callerUninterruptible = isUninterruptible(caller);
             boolean calleeUninterruptible = isUninterruptible(callee);
 
@@ -220,7 +205,7 @@ public @interface Uninterruptible {
                 if (!calleeUninterruptible) {
                     return true;
                 }
-                Uninterruptible calleeUninterruptibleAnnotation = AnnotationAccess.getAnnotation(callee, Uninterruptible.class);
+                Uninterruptible calleeUninterruptibleAnnotation = AnnotationUtil.getAnnotation(callee, Uninterruptible.class);
                 if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
                     return true;
                 }

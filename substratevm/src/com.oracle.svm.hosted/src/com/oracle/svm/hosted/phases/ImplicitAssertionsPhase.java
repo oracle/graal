@@ -30,6 +30,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.svm.core.code.FactoryMethodMarker;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
@@ -48,13 +53,7 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
-
-import com.oracle.svm.core.code.FactoryMethodMarker;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * Code that must be allocation free cannot throw new {@link AssertionError}. Therefore we convert
@@ -73,7 +72,7 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (AnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
+        if (AnnotationUtil.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
              * Factory methods, which includes methods in ImplicitExceptions, are the methods that
              * actually perform the allocations at run time.

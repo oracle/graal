@@ -41,6 +41,7 @@
 package org.graalvm.nativeimage;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 
@@ -93,7 +94,8 @@ public final class AnnotationAccess {
     @SuppressWarnings("unchecked")
     public static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> annotationType) {
         if (ImageInfo.inImageBuildtimeCode()) {
-            return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(element, annotationType, false);
+            Inherited inherited = annotationType.getAnnotation(Inherited.class);
+            return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(element, annotationType, inherited == null);
         } else {
             return element.getAnnotation(annotationType);
         }

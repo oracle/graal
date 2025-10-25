@@ -55,7 +55,6 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -73,7 +72,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -131,7 +129,9 @@ import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -1734,7 +1734,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private static boolean shouldRelinkField(AnalysisField field) {
         VMError.guarantee(field.isInBaseLayer());
-        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationAccess.isAnnotationPresent(field, Delete.class);
+        return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationUtil.isAnnotationPresent(field, Delete.class);
     }
 
     @SuppressWarnings("unchecked")

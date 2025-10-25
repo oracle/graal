@@ -308,7 +308,8 @@ public class ClassLowerer {
          * getDeclaredAnnotationsByType() must detect @Repeatable and thus also look for
          * JavaScriptResource.Group.
          */
-        assert requiredJSResources.size() != 0 || !type.isAnnotationPresent(JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
+        assert requiredJSResources.size() != 0 ||
+                        !com.oracle.svm.util.AnnotationUtil.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
 
         List<String> resourceNames = new ArrayList<>(requiredJSResources.size());
 

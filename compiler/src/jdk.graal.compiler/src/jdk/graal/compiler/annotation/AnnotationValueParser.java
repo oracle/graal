@@ -151,7 +151,7 @@ public class AnnotationValueParser {
             result = new ElementTypeMismatch(memberType.toJavaName());
         } else if (tag != '[' &&
                         !(result instanceof ErrorElement) &&
-                        !matchesMemberType(result, memberType)) {
+                        !AnnotationValueType.matchesElementType(result, memberType)) {
             if (result instanceof AnnotationValue) {
                 result = new ElementTypeMismatch(result.toString());
             } else {
@@ -159,22 +159,6 @@ public class AnnotationValueParser {
             }
         }
         return result;
-    }
-
-    private static boolean matchesMemberType(Object result, ResolvedJavaType memberType) {
-        if (result instanceof AnnotationValue av) {
-            return memberType.equals(av.getAnnotationType());
-        }
-        if (result instanceof ResolvedJavaType) {
-            return memberType.getName().equals("Ljava/lang/Class;");
-        }
-        if (result instanceof EnumElement ee) {
-            return ee.enumType.equals(memberType);
-        }
-        if (memberType.isPrimitive()) {
-            return result.getClass() == memberType.getJavaKind().toBoxedJavaClass();
-        }
-        return memberType.toJavaName().equals(result.getClass().getName());
     }
 
     private static Object parsePrimitiveConst(char tag,
