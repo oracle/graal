@@ -234,8 +234,7 @@ public class JNIAccessFeature implements Feature {
                     implements RuntimeJNIAccessSupport {
 
         @Override
-        public void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz) {
-            assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
+        public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "JNI access"));
             abortIfSealed();
             registerConditionalConfiguration(condition, _ -> newClasses.add(new RegistrationWithPreserved<>(clazz, preserved)));
@@ -271,7 +270,7 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void registerClassLookup(AccessCondition condition, boolean preserved, String reflectionName) {
             try {
-                register(condition, false, preserved, Class.forName(reflectionName));
+                register(condition, preserved, Class.forName(reflectionName));
             } catch (ClassNotFoundException e) {
                 String jniName = ClassNameSupport.reflectionNameToJNIName(reflectionName);
                 newNegativeClassLookups.add(jniName);

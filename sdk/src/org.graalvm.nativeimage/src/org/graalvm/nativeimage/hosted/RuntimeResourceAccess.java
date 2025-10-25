@@ -47,25 +47,30 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 /**
  * This class can be used to register Java resources and ResourceBundles that should be accessible
  * at run time.
- *
- * @since 22.3
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeResourceAccess {
 
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+
     /**
      * Make Java resource {@code resourcePath} from {@code module} available at run time. If the
      * given {@code module} is unnamed, the resource is looked up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
     public static void addResource(Module module, String resourcePath) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath, "Manually added via RuntimeResourceAccess");
@@ -76,10 +81,13 @@ public final class RuntimeResourceAccess {
      * {@code resourceContent}. At runtime the resource can be accessed as if it was part of the
      * original application. If the given {@code module} is unnamed, the resource is placed on the
      * classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
     public static void addResource(Module module, String resourcePath, byte[] resourceContent) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
@@ -91,10 +99,13 @@ public final class RuntimeResourceAccess {
      * Make Java ResourceBundle that is specified by a {@code baseBundleName} and {@code locales}
      * from module {@code module} available at run time. If the given {@code module} is unnamed, the
      * ResourceBundle is looked up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
+        deprecationFlag.printDeprecationWarning();
         Objects.requireNonNull(locales);
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         withModuleName(module, baseBundleName), Arrays.asList(locales));
@@ -104,10 +115,13 @@ public final class RuntimeResourceAccess {
      * Make Java ResourceBundle that is specified by a {@code bundleName} from module {@code module}
      * available at run time. If the given {@code module} is unnamed, the ResourceBundle is looked
      * up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
+        deprecationFlag.printDeprecationWarning();
         RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(),
                         false, withModuleName(module, bundleName));
     }

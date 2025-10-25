@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,39 +40,52 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+/**
+ * A class that is used to emit warnings when calling the APIs that are currently in the migration
+ * process, if an appropriate flag is enabled. It is used in conjunction with
+ * {@link org.graalvm.nativeimage.ImageSingletons}.
+ */
+public class APIDeprecationSupport {
+    private final boolean flagValue;
+    private boolean userEnabledFeaturesStarted = false;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-
-public interface RuntimeSerializationSupport<C> {
-
-    @SuppressWarnings("unchecked")
-    static RuntimeSerializationSupport<AccessCondition> singleton() {
-        return ImageSingletons.lookup(RuntimeSerializationSupport.class);
+    public APIDeprecationSupport(boolean flagValue) {
+        this.flagValue = flagValue;
     }
 
-    void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
-
-    default void register(C condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+    public boolean isUserEnabledFeaturesStarted() {
+        return userEnabledFeaturesStarted;
     }
 
-    void register(C condition, boolean preserved, Class<?> clazz);
-
-    void register(C condition, String clazz);
-
-    void registerLambdaCapturingClass(C condition, String lambdaCapturingClassName);
-
-    default void registerLambdaCapturingClass(C condition, Class<?> lambdaCapturingClass) {
-        registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
+    public void setUserEnabledFeaturesStarted(boolean started) {
+        userEnabledFeaturesStarted = started;
     }
 
-    void registerProxyClass(C condition, List<String> implementedInterfaces);
+    public void printDeprecationWarning() {
+        if (flagValue && userEnabledFeaturesStarted) {
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            String callersClass = stackTrace[2].getClassName();
+            String migrationClass;
+            switch (callersClass) {
+                case "org.graalvm.nativeimage.hosted.RuntimeResourceAccess":
+                    migrationClass = "ResourceAccess";
+                    break;
+                case "org.graalvm.nativeimage.hosted.RuntimeJNIAccess":
+                    migrationClass = "JNIAccess";
+                    break;
+                case "org.graalvm.nativeimage.hosted.RuntimeForeignAccess":
+                    migrationClass = "ForeignAccess";
+                    break;
+                default:
+                    migrationClass = "ReflectiveAccess";
+                    break;
+            }
 
-    default void registerProxyClass(C condition, Class<?>... implementedInterfaces) {
-        registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
+            System.err.println(
+                            String.format("Warning: You are using an outdated metadata registration API. Please migrate to the new API: %s located in the 'dynamicaccess' package.", migrationClass));
+            for (int i = 2; i < stackTrace.length; i++) {
+                System.err.println("\tat " + stackTrace[i]);
+            }
+        }
     }
 }

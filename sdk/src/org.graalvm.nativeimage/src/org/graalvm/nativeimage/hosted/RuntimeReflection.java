@@ -48,7 +48,9 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 //Checkstyle: allow reflection
@@ -62,13 +64,18 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeReflection {
 
+    private static final APIDeprecationSupport deprecationFlag = ImageSingletons.lookup(APIDeprecationSupport.class);
+
     /**
      * Makes the provided classes available for reflection at run time. A call to
      * {@link Class#forName} for the names of the classes will return the classes at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
     public static void register(Class<?>... classes) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), classes);
     }
 
@@ -76,10 +83,13 @@ public final class RuntimeReflection {
      * Makes the provided class available for reflection at run time. A call to
      * {@link Class#forName} for the name of the class will return the class (if it exists) or a
      * {@link ClassNotFoundException} at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerClassLookup(String className) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(AccessCondition.unconditional(), false, className);
     }
 
@@ -87,10 +97,13 @@ public final class RuntimeReflection {
      * Makes the provided methods available for reflection at run time. The methods will be returned
      * by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and all the
      * other methods on {@link Class} that return a single method.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
     public static void register(Executable... methods) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, methods);
     }
 
@@ -99,10 +112,13 @@ public final class RuntimeReflection {
      * returned by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 21.3
      */
     public static void registerAsQueried(Executable... methods) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), true, false, methods);
     }
 
@@ -112,10 +128,13 @@ public final class RuntimeReflection {
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable. If the method doesn't exist a
      * {@link NoSuchMethodException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), false, declaringClass, methodName, parameterTypes);
     }
 
@@ -126,10 +145,13 @@ public final class RuntimeReflection {
      * that return a single constructor, but will not be invocable and will not be considered
      * reachable. If the constructor doesn't exist a {@link NoSuchMethodException} will be thrown
      * when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(AccessCondition.unconditional(), false, declaringClass, parameterTypes);
     }
 
@@ -137,10 +159,13 @@ public final class RuntimeReflection {
      * Makes the provided fields available for reflection at run time. The fields will be returned
      * by {@link Class#getField}, {@link Class#getDeclaredField(String)},and all the other methods
      * on {@link Class} that return a single field.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
     public static void register(Field... fields) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, false, fields);
     }
 
@@ -149,124 +174,163 @@ public final class RuntimeReflection {
      * {@link Class#getField}, {@link Class#getDeclaredField(String)}, and all the other methods on
      * {@link Class} that return a single field. If the field doesn't exist a
      * {@link NoSuchFieldException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
     public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(AccessCondition.unconditional(), false, declaringClass, fieldName);
     }
 
     /**
      * Allows calling {@link Class#getClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllClasses(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllDeclaredClasses(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getMethods()} on the provided class at run time. The methods will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllMethods(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(AccessCondition.unconditional(), true, false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredMethods()} on the provided class at run time. The
      * methods will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllDeclaredMethods(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(AccessCondition.unconditional(), true, false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllConstructors(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(AccessCondition.unconditional(), true, false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getFields()} on the provided class at run time. The fields will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllFields(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFields(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getDeclaredFields()} on the provided class at run time. The
      * fields will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getNestMembers()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllNestMembers(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getPermittedSubclasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(AccessCondition.unconditional(), false, declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getRecordComponents()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllRecordComponents(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(AccessCondition.unconditional(), declaringClass);
     }
 
     /**
      * Allows calling {@link Class#getSigners()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
     public static void registerAllSigners(Class<?> declaringClass) {
+        deprecationFlag.printDeprecationWarning();
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(AccessCondition.unconditional(), declaringClass);
     }
 
@@ -296,10 +360,13 @@ public final class RuntimeReflection {
      * Makes the provided classes available for reflective instantiation by
      * {@link Class#newInstance}. This is equivalent to registering the nullary constructors of the
      * classes.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
     public static void registerForReflectiveInstantiation(Class<?>... classes) {
+        deprecationFlag.printDeprecationWarning();
         for (Class<?> clazz : classes) {
             if (clazz.isArray() || clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
                 throw new IllegalArgumentException("Class " + clazz.getTypeName() + " cannot be instantiated reflectively. It must be a non-abstract instance type.");
