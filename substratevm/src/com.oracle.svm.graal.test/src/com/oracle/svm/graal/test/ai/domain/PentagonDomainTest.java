@@ -64,7 +64,7 @@ public class PentagonDomainTest {
 
         // Widening should accelerate convergence
         PentagonDomain<String> widened = domain1.widen(domain2);
-        Assert.assertEquals(new IntInterval(0, IntInterval.MAX), widened.getInterval("i"));
+        Assert.assertEquals(new IntInterval(0, IntInterval.POS_INF), widened.getInterval("i"));
     }
 
     @Test

@@ -100,7 +100,7 @@ public class IntIntervalDomainTest {
         IntInterval interval2 = new IntInterval(3, 7);
         interval1.widenWith(interval2);
         Assert.assertEquals(1, interval1.getLowerBound());
-        Assert.assertEquals(IntInterval.MAX, interval1.getUpperBound());
+        Assert.assertEquals(IntInterval.POS_INF, interval1.getUpperBound());
 
         /* Widen with a BOT should not change the interval */
         interval1 = new IntInterval(1, 5);
@@ -195,7 +195,7 @@ public class IntIntervalDomainTest {
     public void testGetLowerInterval() {
         IntInterval interval = new IntInterval(4, 6);
         IntInterval result = IntInterval.getLowerInterval(interval);
-        Assert.assertEquals(IntInterval.MIN, result.getLowerBound());
+        Assert.assertEquals(IntInterval.NEG_INF, result.getLowerBound());
         Assert.assertEquals(3, result.getUpperBound());
     }
 
@@ -204,7 +204,7 @@ public class IntIntervalDomainTest {
         IntInterval interval = new IntInterval(4, 6);
         IntInterval result = IntInterval.getHigherInterval(interval);
         Assert.assertEquals(7, result.getLowerBound());
-        Assert.assertEquals(IntInterval.MAX, result.getUpperBound());
+        Assert.assertEquals(IntInterval.POS_INF, result.getUpperBound());
     }
 
 

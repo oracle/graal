@@ -104,7 +104,7 @@ public class MapDomainTest {
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain1.getKind());
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain2.getKind());
         mapDomain1.widenWith(mapDomain2);
-        Assert.assertEquals(new IntInterval(1, IntInterval.MAX), mapDomain1.get("x"));
+        Assert.assertEquals(new IntInterval(1, IntInterval.POS_INF), mapDomain1.get("x"));
     }
 
     @Test

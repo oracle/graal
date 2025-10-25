@@ -5,26 +5,33 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import java.util.Objects;
 
 /**
- * Represents an interval domain of integer values
+ * A simple integer interval domain.
+ * Representation:
+ * - top: represents all integers
+ * - bottom: represents empty set
+ * - otherwise interval [lo, hi], where lo <= hi
+ * For +, -, * we are conservative and produce sound intervals.
+ * Widening is implemented in a simple standard way: when a bound grows
+ * beyond the previous, we set it to infinite (Long.MIN_VALUE / Long.MAX_VALUE).
  */
 public final class IntInterval extends AbstractDomain<IntInterval> {
 
-    public static final long MIN = Long.MIN_VALUE;
-    public static final long MAX = Long.MAX_VALUE;
+    public static final long NEG_INF = Long.MIN_VALUE;
+    public static final long POS_INF = Long.MAX_VALUE;
     private long lowerBound;
     private long upperBound;
 
     /**
-     * Default ctor creates BOT value (lower bound > upper bound)
+     * Default constructor creates BOT value (lower bound > upper bound)
      */
     public IntInterval() {
         this.lowerBound = 1;
         this.upperBound = 0;
     }
 
-    public IntInterval(long constant) {
-        this.lowerBound = constant;
-        this.upperBound = constant;
+    public IntInterval(long value) {
+        this.lowerBound = value;
+        this.upperBound = value;
     }
 
     public IntInterval(long lowerBound, long upperBound) {
@@ -50,7 +57,7 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public boolean isTop() {
-        return (lowerBound == MIN && upperBound == MAX);
+        return (lowerBound == NEG_INF && upperBound == POS_INF);
     }
 
     public boolean leq(IntInterval other) {
@@ -81,13 +88,13 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public void setToBot() {
-        lowerBound = MAX;
-        upperBound = MIN;
+        lowerBound = POS_INF;
+        upperBound = NEG_INF;
     }
 
     public void setToTop() {
-        lowerBound = MIN;
-        upperBound = MAX;
+        lowerBound = NEG_INF;
+        upperBound = POS_INF;
     }
 
     public void joinWith(IntInterval other) {
@@ -108,10 +115,10 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         }
 
         if (other.lowerBound < lowerBound) {
-            lowerBound = MIN;
+            lowerBound = NEG_INF;
         }
         if (upperBound < other.upperBound) {
-            upperBound = MAX;
+            upperBound = POS_INF;
         }
     }
 
@@ -131,8 +138,8 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         if (isTop()) {
             return "⊤";
         }
-        String lower = (lowerBound == MIN) ? "-∞" : String.valueOf(lowerBound);
-        String upper = (upperBound == MAX) ? "∞" : String.valueOf(upperBound);
+        String lower = (lowerBound == NEG_INF) ? "-∞" : String.valueOf(lowerBound);
+        String upper = (upperBound == POS_INF) ? "∞" : String.valueOf(upperBound);
         return "[" + lower + ", " + upper + "]";
     }
 
@@ -142,7 +149,8 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public boolean containsValue(long value) {
-        return lowerBound >= value && value <= upperBound;
+        if (isBot()) return false;
+        return lowerBound <= value && value <= upperBound;
     }
 
     /**
@@ -218,30 +226,25 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public void divWith(IntInterval other) {
-        if (isDivisionByZeroInterval(other)) {
+        if (other.isBot()) {
+            setToBot();
             return;
         }
-
-        long a = getLowerBound() / other.getLowerBound();
-        long b = getLowerBound() / other.getUpperBound();
-        long c = getUpperBound() / other.getLowerBound();
-        long d = getUpperBound() / other.getUpperBound();
+        if (other.getLowerBound() <= 0 && other.getUpperBound() >= 0) {
+            setToTop();
+            return;
+        }
+        long a = safeDiv(getLowerBound(), other.getLowerBound());
+        long b = safeDiv(getLowerBound(), other.getUpperBound());
+        long c = safeDiv(getUpperBound(), other.getLowerBound());
+        long d = safeDiv(getUpperBound(), other.getUpperBound());
         this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
         this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
     }
 
-    private boolean isDivisionByZeroInterval(IntInterval other) {
-        if (other.isBot() || other.getLowerBound() == 0 || other.getUpperBound() == 0) {
-            setToBot();
-            return true;
-        }
-
-        if (isBot()) {
-            this.lowerBound = other.lowerBound;
-            this.upperBound = other.upperBound;
-            return true;
-        }
-        return false;
+    private static long safeDiv(long a, long b) {
+        if (b == 0) return 0;
+        return a / b;
     }
 
     /* We have leq, but we also need less than for {@link IntegerLessThanNode} */
@@ -256,9 +259,6 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public void remWith(IntInterval other) {
-        if (isDivisionByZeroInterval(other)) {
-            return;
-        }
         long a = getLowerBound() % other.getLowerBound();
         long b = getLowerBound() % other.getUpperBound();
         long c = getUpperBound() % other.getLowerBound();
@@ -275,15 +275,15 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
 
     public static IntInterval getLowerInterval(IntInterval interval) {
         if (interval.isTop()) {
-            AbstractDomain.createBot(interval);
+            return AbstractDomain.createBot(interval);
         }
 
         long lowerBound = interval.getLowerBound();
-        if (lowerBound != MIN) {
+        if (lowerBound != NEG_INF) {
             lowerBound--;
         }
 
-        return new IntInterval(MIN, lowerBound);
+        return new IntInterval(NEG_INF, lowerBound);
     }
 
     public static IntInterval getHigherInterval(IntInterval interval) {
@@ -292,10 +292,10 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         }
 
         long upperBound = interval.getUpperBound();
-        if (upperBound != MAX) {
+        if (upperBound != POS_INF) {
             upperBound++;
         }
 
-        return new IntInterval(upperBound, MAX);
+        return new IntInterval(upperBound, POS_INF);
     }
 }

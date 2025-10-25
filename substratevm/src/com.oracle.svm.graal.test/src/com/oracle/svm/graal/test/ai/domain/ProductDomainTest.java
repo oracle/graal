@@ -106,7 +106,7 @@ public class ProductDomainTest {
         ProductDomain productDomain2 = new ProductDomain(Arrays.asList(intInterval2, booleanDomain2));
 
         productDomain1.widenWith(productDomain2);
-        Assert.assertEquals(new IntInterval(1, IntInterval.MAX), productDomain1.getDomains().get(0));
+        Assert.assertEquals(new IntInterval(1, IntInterval.POS_INF), productDomain1.getDomains().get(0));
         Assert.assertFalse(((BooleanAndDomain) productDomain1.getDomains().get(1)).getValue());
     }
 
