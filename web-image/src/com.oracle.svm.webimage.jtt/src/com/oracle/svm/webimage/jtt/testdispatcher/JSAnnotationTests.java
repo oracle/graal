@@ -29,10 +29,14 @@ import java.util.Arrays;
 import com.oracle.svm.webimage.jtt.api.CoercionConversionTest;
 import com.oracle.svm.webimage.jtt.api.HtmlApiExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JSErrorsTest;
+import com.oracle.svm.webimage.jtt.api.JSNumberTest;
 import com.oracle.svm.webimage.jtt.api.JSObjectConversionTest;
 import com.oracle.svm.webimage.jtt.api.JSObjectSubclassTest;
+import com.oracle.svm.webimage.jtt.api.JSObjectTest;
 import com.oracle.svm.webimage.jtt.api.JSPrimitiveConversionTest;
 import com.oracle.svm.webimage.jtt.api.JSRawCallTest;
+import com.oracle.svm.webimage.jtt.api.JSStringTest;
+import com.oracle.svm.webimage.jtt.api.JSSymbolTest;
 import com.oracle.svm.webimage.jtt.api.JavaDocExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyConversionTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyTest;
@@ -61,6 +65,14 @@ public class JSAnnotationTests extends JTTTestDispatcher {
             JSErrorsTest.main(remainingArgs);
         } else if (checkClass(HtmlApiExamplesTest.class, className)) {
             HtmlApiExamplesTest.main(remainingArgs);
+        } else if (checkClass(JSNumberTest.class, className)) {
+            JSNumberTest.main(remainingArgs);
+        } else if (checkClass(JSStringTest.class, className)) {
+            JSStringTest.main(remainingArgs);
+        } else if (checkClass(JSSymbolTest.class, className)) {
+            JSSymbolTest.main(remainingArgs);
+        } else if (checkClass(JSObjectTest.class, className)) {
+            JSObjectTest.main(remainingArgs);
         } else {
             throw new IllegalArgumentException("unexpected class name");
         }
