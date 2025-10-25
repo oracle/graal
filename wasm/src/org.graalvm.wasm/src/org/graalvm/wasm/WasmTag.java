@@ -47,13 +47,13 @@ public final class WasmTag extends EmbedderDataHolder implements TruffleObject {
         public static final int EXCEPTION = 0;
     }
 
-    private final SymbolTable.FunctionType type;
+    private final SymbolTable.ClosedFunctionType type;
 
-    public WasmTag(SymbolTable.FunctionType type) {
+    public WasmTag(SymbolTable.ClosedFunctionType type) {
         this.type = type;
     }
 
-    public SymbolTable.FunctionType type() {
+    public SymbolTable.ClosedFunctionType type() {
         return type;
     }
 }

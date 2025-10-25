@@ -65,7 +65,13 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     /**
      * @see #elemType()
      */
-    private final byte elemType;
+    private final int elemType;
+
+    /**
+     * For resolving {@link #elemType} in {@link #closedElemType()}. Can be {@code null} for tables
+     * allocated from JS.
+     */
+    private final SymbolTable symbolTable;
 
     /**
      * @see #minSize()
@@ -86,7 +92,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     private Object[] elements;
 
     @TruffleBoundary
-    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, byte elemType, Object initialValue) {
+    private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, int elemType, Object initialValue, SymbolTable symbolTable) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -101,14 +107,15 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
         this.elements = new Object[declaredMinSize];
         Arrays.fill(this.elements, initialValue);
         this.elemType = elemType;
+        this.symbolTable = symbolTable;
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL);
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, int elemType, SymbolTable symbolTable) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL, symbolTable);
     }
 
-    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, byte elemType, Object initialValue) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue);
+    public WasmTable(int declaredMinSize, int declaredMaxSize, int maxAllowedSize, int elemType, Object initialValue) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, elemType, initialValue, null);
     }
 
     /**
@@ -156,10 +163,18 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * <p>
      * This table can only be imported with an equivalent elem type.
      *
-     * @return Either {@link WasmType#FUNCREF_TYPE} or {@link WasmType#EXTERNREF_TYPE}.
+     * @return Either {@link WasmType#FUNCREF_TYPE}, {@link WasmType#EXTERNREF_TYPE} or some
+     *         concrete reference type.
      */
-    public byte elemType() {
+    public int elemType() {
         return elemType;
+    }
+
+    /**
+     * The closed form of the type of the elements in the table.
+     */
+    public SymbolTable.ClosedValueType closedElemType() {
+        return SymbolTable.closedTypeOf(elemType, symbolTable);
     }
 
     /**

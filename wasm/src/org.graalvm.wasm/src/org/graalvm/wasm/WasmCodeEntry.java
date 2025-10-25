@@ -47,15 +47,15 @@ public final class WasmCodeEntry {
 
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] bytecode;
-    @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
+    @CompilationFinal(dimensions = 1) private final int[] localTypes;
+    @CompilationFinal(dimensions = 1) private final int[] resultTypes;
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile exceptionBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
     private final boolean usesMemoryZero;
 
-    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, int[] localTypes, int[] resultTypes, boolean usesMemoryZero) {
         this.function = function;
         this.bytecode = bytecode;
         this.localTypes = localTypes;
@@ -73,7 +73,7 @@ public final class WasmCodeEntry {
         return bytecode;
     }
 
-    public byte localType(int index) {
+    public int localType(int index) {
         return localTypes[index];
     }
 
@@ -89,7 +89,7 @@ public final class WasmCodeEntry {
         return resultCount;
     }
 
-    public byte resultType(int index) {
+    public int resultType(int index) {
         return resultTypes[index];
     }
 

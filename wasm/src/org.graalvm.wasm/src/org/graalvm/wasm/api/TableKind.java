@@ -44,24 +44,22 @@ import org.graalvm.wasm.WasmType;
 
 public enum TableKind {
     externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE),
-    exnref(WasmType.EXNREF_TYPE);
+    anyfunc(WasmType.FUNCREF_TYPE);
 
-    private final byte byteValue;
+    private final int value;
 
-    TableKind(byte byteValue) {
-        this.byteValue = byteValue;
+    TableKind(int value) {
+        this.value = value;
     }
 
-    public byte byteValue() {
-        return byteValue;
+    public int value() {
+        return value;
     }
 
-    public static String toString(byte byteValue) {
-        return switch (byteValue) {
+    public static String toString(int value) {
+        return switch (value) {
             case WasmType.EXTERNREF_TYPE -> "externref";
             case WasmType.FUNCREF_TYPE -> "anyfunc";
-            case WasmType.EXNREF_TYPE -> "exnref";
             default -> "";
         };
     }

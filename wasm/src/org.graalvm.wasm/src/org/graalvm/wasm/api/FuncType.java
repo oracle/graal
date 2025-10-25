@@ -84,18 +84,18 @@ public final class FuncType {
         }
     }
 
-    public static FuncType fromFunctionType(SymbolTable.FunctionType functionType) {
-        final byte[] paramTypes = functionType.paramTypes();
-        final byte[] resultTypes = functionType.resultTypes();
+    public static FuncType fromClosedFunctionType(SymbolTable.ClosedFunctionType functionType) {
+        final SymbolTable.ClosedValueType[] paramTypes = functionType.paramTypes();
+        final SymbolTable.ClosedValueType[] resultTypes = functionType.resultTypes();
 
         final ValueType[] params = new ValueType[paramTypes.length];
         final ValueType[] results = new ValueType[resultTypes.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
-            params[i] = ValueType.fromByteValue(paramTypes[i]);
+            params[i] = ValueType.fromClosedValueType(paramTypes[i]);
         }
         for (int i = 0; i < resultTypes.length; i++) {
-            results[i] = ValueType.fromByteValue(resultTypes[i]);
+            results[i] = ValueType.fromClosedValueType(resultTypes[i]);
         }
         return new FuncType(params, results);
     }
@@ -116,17 +116,17 @@ public final class FuncType {
         return results.length;
     }
 
-    public SymbolTable.FunctionType toFunctionType() {
-        final byte[] paramTypes = new byte[params.length];
-        final byte[] resultTypes = new byte[results.length];
+    public SymbolTable.ClosedFunctionType toClosedFunctionType() {
+        var paramTypes = new SymbolTable.ClosedValueType[params.length];
+        var resultTypes = new SymbolTable.ClosedValueType[results.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
-            paramTypes[i] = params[i].byteValue();
+            paramTypes[i] = params[i].asClosedValueType();
         }
         for (int i = 0; i < resultTypes.length; i++) {
-            resultTypes[i] = results[i].byteValue();
+            resultTypes[i] = results[i].asClosedValueType();
         }
-        return SymbolTable.FunctionType.create(paramTypes, resultTypes);
+        return new SymbolTable.ClosedFunctionType(paramTypes, resultTypes);
     }
 
     public String toString(StringBuilder b) {

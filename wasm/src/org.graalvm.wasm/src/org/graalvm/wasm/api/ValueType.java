@@ -40,11 +40,12 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public enum ValueType {
     i32(WasmType.I32_TYPE),
@@ -56,13 +57,13 @@ public enum ValueType {
     externref(WasmType.EXTERNREF_TYPE),
     exnref(WasmType.EXNREF_TYPE);
 
-    private final byte byteValue;
+    private final int value;
 
-    ValueType(byte byteValue) {
-        this.byteValue = byteValue;
+    ValueType(int value) {
+        this.value = value;
     }
 
-    public static ValueType fromByteValue(byte value) {
+    public static ValueType fromValue(int value) {
         CompilerAsserts.neverPartOfCompilation();
         return switch (value) {
             case WasmType.I32_TYPE -> i32;
@@ -70,16 +71,23 @@ public enum ValueType {
             case WasmType.F32_TYPE -> f32;
             case WasmType.F64_TYPE -> f64;
             case WasmType.V128_TYPE -> v128;
-            case WasmType.FUNCREF_TYPE -> anyfunc;
-            case WasmType.EXTERNREF_TYPE -> externref;
-            case WasmType.EXNREF_TYPE -> exnref;
-            default ->
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+            default -> {
+                assert WasmType.isReferenceType(value);
+                yield switch (WasmType.getAbstractHeapType(value)) {
+                    case WasmType.FUNC_HEAPTYPE -> anyfunc;
+                    case WasmType.EXTERN_HEAPTYPE -> externref;
+                    case WasmType.EXN_HEAPTYPE -> exnref;
+                    default -> {
+                        assert WasmType.isConcreteReferenceType(value);
+                        yield anyfunc;
+                    }
+                };
+            }
         };
     }
 
-    public byte byteValue() {
-        return byteValue;
+    public int value() {
+        return value;
     }
 
     public static boolean isNumberType(ValueType valueType) {
@@ -92,5 +100,39 @@ public enum ValueType {
 
     public static boolean isReferenceType(ValueType valueType) {
         return valueType == anyfunc || valueType == externref || valueType == exnref;
+    }
+
+    public SymbolTable.ClosedValueType asClosedValueType() {
+        return switch (this) {
+            case i32 -> SymbolTable.NumberType.I32;
+            case i64 -> SymbolTable.NumberType.I64;
+            case f32 -> SymbolTable.NumberType.F32;
+            case f64 -> SymbolTable.NumberType.F64;
+            case v128 -> SymbolTable.VectorType.V128;
+            case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
+            case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
+            case exnref -> SymbolTable.ClosedReferenceType.EXNREF;
+        };
+    }
+
+    public static ValueType fromClosedValueType(SymbolTable.ClosedValueType closedValueType) {
+        return switch (closedValueType.kind()) {
+            case Number -> fromValue(((SymbolTable.NumberType) closedValueType).value());
+            case Vector -> fromValue(((SymbolTable.VectorType) closedValueType).value());
+            case Reference -> {
+                SymbolTable.ClosedReferenceType referenceType = (SymbolTable.ClosedReferenceType) closedValueType;
+                yield switch (referenceType.heapType().kind()) {
+                    case Abstract -> {
+                        SymbolTable.AbstractHeapType abstractHeapType = (SymbolTable.AbstractHeapType) referenceType.heapType();
+                        yield switch (abstractHeapType.value()) {
+                            case WasmType.FUNC_HEAPTYPE -> anyfunc;
+                            case WasmType.EXTERNREF_TYPE -> externref;
+                            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(abstractHeapType.value()));
+                        };
+                    }
+                    case Function -> anyfunc;
+                };
+            }
+        };
     }
 }

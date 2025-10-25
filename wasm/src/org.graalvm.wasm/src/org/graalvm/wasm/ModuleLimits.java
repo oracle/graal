@@ -80,7 +80,7 @@ public final class ModuleLimits {
                     int dataSegmentCountLimit, int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int localCountLimit,
                     int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit, int tagCountLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
-        this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
+        this.typeCountLimit = minUnsigned(typeCountLimit, WasmType.MAX_TYPE_INDEX);
         this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);
         this.tableCountLimit = minUnsigned(tableCountLimit, Integer.MAX_VALUE);
         this.multiMemoryCountLimit = minUnsigned(memoryCountLimit, Integer.MAX_VALUE);
@@ -109,7 +109,7 @@ public final class ModuleLimits {
 
     static final ModuleLimits DEFAULTS = new ModuleLimits(
                     Integer.MAX_VALUE,
-                    Integer.MAX_VALUE,
+                    WasmType.MAX_TYPE_INDEX,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,

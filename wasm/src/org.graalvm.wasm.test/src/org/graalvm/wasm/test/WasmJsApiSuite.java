@@ -102,7 +102,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class WasmJsApiSuite {
     private static final String REF_TYPES_OPTION = "wasm.BulkMemoryAndRefTypes";
 
-    private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, byte[] paramTypes, byte[] resultTypes, RootNode functionRootNode) {
+    private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, int[] paramTypes, int[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
         module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
         WasmFunction func = module.declareFunction(0);
@@ -111,7 +111,6 @@ public class WasmJsApiSuite {
         // Perform normal linking steps, incl. assignTypeEquivalenceClasses().
         // Functions need to have type equivalence classes assigned for indirect calls.
         moduleInstance.store().linker().tryLink(moduleInstance);
-        assert func.typeEquivalenceClass() >= 0 : "type equivalence class must be assigned";
         return new WasmFunctionInstance(moduleInstance, func, functionRootNode.getCallTarget());
     }
 
@@ -503,7 +502,7 @@ public class WasmJsApiSuite {
     public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
         runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = new WasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
+            final WasmGlobal global = WasmGlobal.allocRef(ValueType.anyfunc, true, WasmConstant.NULL);
             try {
                 wasm.globalWrite(global, WasmConstant.NULL);
                 Assert.fail("Should have failed - ref types not enabled");
@@ -517,7 +516,7 @@ public class WasmJsApiSuite {
     public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
         runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = new WasmGlobal(ValueType.externref, true, WasmConstant.NULL);
+            final WasmGlobal global = WasmGlobal.allocRef(ValueType.externref, true, WasmConstant.NULL);
             try {
                 wasm.globalWrite(global, WasmConstant.NULL);
                 Assert.fail("Should have failed - ref types not enabled");
@@ -1412,7 +1411,14 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMultiValueReferencePassThrough() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", """
+        final byte[] source1 = compileWat("data", """
+                        (module
+                        (type (func (result i32)))
+                        (func (export "func") (type 0)
+                        i32.const 42
+                        ))
+                        """);
+        final byte[] source2 = compileWat("data", """
                         (module
                         (type (func (result funcref externref)))
                         (import "m" "f" (func (type 0)))
@@ -1422,7 +1428,8 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final var func = new Executable((args) -> 0);
+            final WasmInstance instance1 = moduleInstantiate(wasm, source1, null);
+            final Object func = WebAssembly.instanceExport(instance1, "func");
             final var f = new Executable((args) -> {
                 final Object[] result = new Object[2];
                 result[0] = func;
@@ -1430,8 +1437,8 @@ public class WasmJsApiSuite {
                 return InteropArray.create(result);
             });
             final Dictionary importObject = Dictionary.create(new Object[]{"m", Dictionary.create(new Object[]{"f", f})});
-            final WasmInstance instance = moduleInstantiate(wasm, source, importObject);
-            final Object main = WebAssembly.instanceExport(instance, "main");
+            final WasmInstance instance2 = moduleInstantiate(wasm, source2, importObject);
+            final Object main = WebAssembly.instanceExport(instance2, "main");
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 Object result = lib.execute(main);
