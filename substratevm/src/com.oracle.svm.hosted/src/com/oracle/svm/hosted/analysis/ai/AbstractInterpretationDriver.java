@@ -2,9 +2,10 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.ai.analyses.access.inter.AccessPathIntervalInterAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.intra.IntraDataFlowIntervalAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
-import com.oracle.svm.hosted.analysis.ai.analyses.access.inter.AccessPathIntervalInterAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
@@ -65,7 +66,7 @@ public class AbstractInterpretationDriver {
           If we wish to use analyzers during the native image build, we must register them here.
           To get started quickly, we can use the sample analyzer wrappers provided in {@link com.oracle.svm.hosted.analysis.ai.example}.
          */
-        var analyzer = new AccessPathIntervalInterAnalyzerWrapper().getAnalyzer();
+        var analyzer = new IntraDataFlowIntervalAnalyzerWrapper().getAnalyzer();
         analyzerManager.registerAnalyzer(analyzer);
     }
 }
