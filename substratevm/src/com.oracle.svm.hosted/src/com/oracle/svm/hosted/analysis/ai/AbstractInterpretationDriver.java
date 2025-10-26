@@ -49,7 +49,7 @@ public class AbstractInterpretationDriver {
     }
 
     /**
-     * This is the entry method for setting up analyses in graalaif.
+     * This is the entry method for setting up analyses in GraalAIF.
      * We can:
      * 1. Provide the {@link com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer} to the {@link AnalyzerManager}.
      * These analyzers will then run as a part of the Native Image compilation process.

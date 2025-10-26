@@ -68,7 +68,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
     }
 
-    // Narrow intervals for a condition `x < y`. If isTrue==true we apply the true-branch narrowing, otherwise the false-branch.
     private AbsMemory narrowOnLessThan(AbsMemory base, IntegerLessThanNode itn, boolean isTrue) {
         AbsMemory out = base.copyOf();
         Node x = itn.getX();
@@ -118,15 +117,10 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             threaded = evalNode(input, threaded, abstractState, invokeCallBack, evalStack);
         }
 
-        // start from the threaded memory
         AbsMemory post = threaded.copyOf();
-
-        /* Handle control-level nodes that have side-effects (stores, returns, etc.) here */
         if (node instanceof StoreFieldNode sfn) {
-            // Evaluate the RHS value under the threaded memory so any side-effects are visible
             AbsMemory afterVal = evalNode(sfn.value(), threaded, abstractState, invokeCallBack, new HashSet<>());
             IntInterval val = getNodeResultInterval(sfn.value(), afterVal);
-            // resolve base from the afterVal memory
             AccessPath base = resolveFieldBase(sfn.object(), sfn.field(), afterVal);
             AccessPath key = (base == null) ? AccessPath.forLocal("unknown") : base.appendField(sfn.field().getName());
             post = afterVal.copyOf();
