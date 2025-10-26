@@ -46,7 +46,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
         protected final Domain initialDomain;
         protected final AbstractInterpreter<Domain> abstractInterpreter;
-        protected IteratorPolicy iteratorPolicy = IteratorPolicy.DEFAULT_FORWARD_SEQUENTIAL;
+        protected IteratorPolicy iteratorPolicy = IteratorPolicy.DEFAULT_FORWARD_WTO;
         protected CheckerManager checkerManager = new CheckerManager();
         protected AnalysisMethodFilterManager methodFilterManager = new AnalysisMethodFilterManager();
 

@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.leaks.count.inter;
 
-import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import jdk.graal.compiler.nodes.Invoke;

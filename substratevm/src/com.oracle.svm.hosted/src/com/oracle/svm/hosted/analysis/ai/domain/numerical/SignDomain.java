@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain.numerical;
 
-import com.oracle.svm.hosted.analysis.ai.domain.FiniteDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.FiniteDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.domain.value.Sign;
 

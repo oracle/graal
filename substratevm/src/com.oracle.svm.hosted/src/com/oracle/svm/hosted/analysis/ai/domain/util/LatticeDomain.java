@@ -1,5 +1,6 @@
-package com.oracle.svm.hosted.analysis.ai.domain;
+package com.oracle.svm.hosted.analysis.ai.domain.util;
 
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValue;
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 

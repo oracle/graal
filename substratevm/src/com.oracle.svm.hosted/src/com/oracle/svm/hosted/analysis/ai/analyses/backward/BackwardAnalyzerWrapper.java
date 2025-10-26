@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.backward;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.domain.EmptyDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.EmptyDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 
 /**

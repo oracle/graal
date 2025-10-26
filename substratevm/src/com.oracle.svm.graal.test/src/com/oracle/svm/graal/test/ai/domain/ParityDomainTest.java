@@ -1,6 +1,6 @@
 package com.oracle.svm.graal.test.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.ParityDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.ParityDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.value.Parity;
 import org.junit.Assert;
 import org.junit.Test;

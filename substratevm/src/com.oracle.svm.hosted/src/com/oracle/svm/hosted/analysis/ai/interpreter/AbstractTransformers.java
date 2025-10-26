@@ -12,18 +12,16 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 /**
  * Represents the transfer functions used in abstract interpretation.
  * This class is responsible for applying abstract operations corresponding to the semantics
- * of Graal IR nodes and edges, effectively transforming the abstract state as the analysis progresses.
- * It uses an {@link AbstractInterpreter} to define the specific abstract semantics for each node type
- * and an {@link InvokeCallBack} to handle method invocations.
+ * of Graal IR nodes and edges and transforming the abstract state during an analysis.
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis.
  */
 public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
-        AbstractInterpreter<Domain> abstractInterpreter,
-        InvokeCallBack<Domain> analyzeDependencyCallback) {
+        AbstractInterpreter<Domain> abstractInterpreter, InvokeCallBack<Domain> analyzeDependencyCallback) {
 
     /**
-     * Performs semantic transformation of the given {@link Node}, while modifying the post-condition of {@code node}
+     * Performs semantic transformation of the given {@link Node},
+     * For efficiency it modifies the post-condition of {@param node}
      *
      * @param node          to analyze
      * @param abstractState current abstract state during fixpoint iteration
@@ -36,7 +34,8 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
     }
 
     /**
-     * Performs semantic transformation of an edge between two {@link Node}s. while modifying the pre-condition of {@code target}
+     * Performs semantic transformation of an edge between two {@link Node}s.
+     * For efficiency, it modifies the pre-condition of the {@param target} Node.
      *
      * @param source        the node from which the edge originates
      * @param target        the node to which the edge goes
@@ -53,14 +52,11 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
 
     /**
      * Collect post-conditions from the CFG predecessors of the given {@link HIRBlock}.
-     * NOTE: This analysisMethod should modify the precondition of the destination node directly, to avoid creating copies.
      *
      * @param block         the {@link HIRBlock} into which we are merging invariants
      * @param abstractState abstract state during fixpoint iteration
      */
-    public void collectInvariantsFromCfgPredecessors(HIRBlock block,
-                                                     AbstractState<Domain> abstractState,
-                                                     GraphTraversalHelper graphTraversalHelper) {
+    public void collectInvariantsFromCfgPredecessors(HIRBlock block, AbstractState<Domain> abstractState, GraphTraversalHelper graphTraversalHelper) {
         Node blockBeginNode = graphTraversalHelper.getBeginNode(block);
         for (int i = 0; i < graphTraversalHelper.getPredecessorCount(block); i++) {
             HIRBlock predecessor = block.getPredecessorAt(i);
@@ -90,9 +86,7 @@ public record AbstractTransformers<Domain extends AbstractDomain<Domain>>(
      * @param block         the head to analyze
      * @param abstractState abstract state during fixpoint iteration
      */
-    public void analyzeBlock(HIRBlock block,
-                             AbstractState<Domain> abstractState,
-                             GraphTraversalHelper graphTraversalHelper) {
+    public void analyzeBlock(HIRBlock block, AbstractState<Domain> abstractState, GraphTraversalHelper graphTraversalHelper) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
         for (Node node : block.getNodes()) {

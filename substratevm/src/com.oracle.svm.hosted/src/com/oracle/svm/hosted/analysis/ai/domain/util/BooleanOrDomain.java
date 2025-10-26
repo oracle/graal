@@ -1,21 +1,23 @@
-package com.oracle.svm.hosted.analysis.ai.domain;
+package com.oracle.svm.hosted.analysis.ai.domain.util;
+
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 import java.util.Objects;
 
 /**
- * Represents a boolean domain ordered by a || ¬b.
+ * Represents a boolean domain ordered by ¬a || b.
  * This domain can be used when we want to have a boolean value
  * that is true only when it is true in all paths.
  */
-public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
+public final class BooleanOrDomain extends AbstractDomain<BooleanOrDomain> {
 
     private boolean value;
 
-    public BooleanAndDomain() {
-        this.value = true;
+    public BooleanOrDomain() {
+        this.value = false;
     }
 
-    public BooleanAndDomain(boolean value) {
+    public BooleanOrDomain(boolean value) {
         this.value = value;
     }
 
@@ -34,14 +36,14 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
     }
 
     @Override
-    public boolean leq(BooleanAndDomain other) {
-        return this.value || !other.value;
+    public boolean leq(BooleanOrDomain other) {
+        return !this.value || other.value;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        BooleanAndDomain that = (BooleanAndDomain) o;
+        BooleanOrDomain that = (BooleanOrDomain) o;
         return value == that.value;
     }
 
@@ -61,41 +63,41 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
     }
 
     @Override
-    public void joinWith(BooleanAndDomain other) {
-        this.value = this.value && other.value;
-    }
-
-    @Override
-    public void widenWith(BooleanAndDomain other) {
-        joinWith(other);
-    }
-
-    @Override
-    public void meetWith(BooleanAndDomain other) {
+    public void joinWith(BooleanOrDomain other) {
         this.value = this.value || other.value;
     }
 
     @Override
-    public String toString() {
-        return "BooleanAndDomain{ " + value + " }";
+    public void widenWith(BooleanOrDomain other) {
+        joinWith(other);
     }
 
     @Override
-    public BooleanAndDomain copyOf() {
-        return new BooleanAndDomain(this.value);
+    public void meetWith(BooleanOrDomain other) {
+        this.value = this.value && other.value;
+    }
+
+    @Override
+    public String toString() {
+        return "BooleanOrDomain{ " + value + " }";
+    }
+
+    @Override
+    public BooleanOrDomain copyOf() {
+        return new BooleanOrDomain(this.value);
     }
 
     public void negate() {
         this.value = !this.value;
     }
 
-    public BooleanAndDomain getNegated() {
-        BooleanAndDomain copy = this.copyOf();
+    public BooleanOrDomain getNegated() {
+        BooleanOrDomain copy = this.copyOf();
         copy.negate();
         return copy;
     }
 
-    public static BooleanAndDomain TRUE = new BooleanAndDomain(true);
+    public static BooleanOrDomain TRUE = new BooleanOrDomain(true);
 
-    public static BooleanAndDomain FALSE = new BooleanAndDomain(false);
+    public static BooleanOrDomain FALSE = new BooleanOrDomain(false);
 }

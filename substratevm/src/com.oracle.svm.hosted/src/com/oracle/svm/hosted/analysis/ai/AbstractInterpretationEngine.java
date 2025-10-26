@@ -34,11 +34,9 @@ public class AbstractInterpretationEngine {
         this.bb = bb;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
 
-        // Todo: think about whether or not we want to have multiple main methods
         AtomicReference<AnalysisMethod> tempRoot = new AtomicReference<>();
         bb.getUniverse().getMethods().forEach(method -> {
             if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
-                System.out.println("Found main method: " + method);
                 tempRoot.set(method);
             }
         });

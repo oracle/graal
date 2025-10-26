@@ -1,6 +1,6 @@
 package com.oracle.svm.graal.test.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.BooleanAndDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.BooleanAndDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import org.junit.Assert;

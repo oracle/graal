@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.inter;
 
-import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.ResourceId;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;

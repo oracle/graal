@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.leaks.count;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
-import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.InvokeUtil;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;

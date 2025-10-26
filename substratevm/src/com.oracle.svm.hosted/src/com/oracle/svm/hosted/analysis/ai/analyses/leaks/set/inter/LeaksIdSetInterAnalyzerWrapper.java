@@ -4,7 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.checker.ResourceLeaksChecker;
-import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.util.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.LeaksIdSetAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.ResourceId;
 

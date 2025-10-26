@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.domain;
+package com.oracle.svm.hosted.analysis.ai.domain.util;
 
 import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.domain.value.Parity;

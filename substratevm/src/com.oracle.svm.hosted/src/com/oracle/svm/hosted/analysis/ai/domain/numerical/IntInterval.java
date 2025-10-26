@@ -298,4 +298,20 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
 
         return new IntInterval(upperBound, POS_INF);
     }
+
+    public long getUpper() {
+        return upperBound;
+    }
+
+    public void setUpper(long newUpper) {
+        this.upperBound = newUpper;
+    }
+
+    public long getLower() {
+        return lowerBound;
+    }
+
+    public void setLower(long newLower) {
+        this.lowerBound = newLower;
+    }
 }
