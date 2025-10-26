@@ -49,7 +49,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class CaseFoldData {
 
@@ -2061,6 +2061,6 @@ public class CaseFoldData {
     private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB = getTable(CaseFoldAlgorithm.OracleDB).createCaseUnfoldTrie();
     private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB_AI = getTable(CaseFoldAlgorithm.OracleDBAI).createCaseUnfoldTrie();
 
-    public static final CodePointSet FOLDED_CHARACTERS = FOLDABLE_CHARACTERS.createInverse(Encodings.UTF_32);
+    public static final CodePointSet FOLDED_CHARACTERS = FOLDABLE_CHARACTERS.createInverse(Encoding.UTF_32);
 
 }

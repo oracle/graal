@@ -499,7 +499,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
-        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins());
+
+        /*
+         * SIMD intrinsics for TruffleString and ArrayUtils are implemented for AMD64 and AARCH64
+         * only, so they need to be turned off when compiling for WebImage.
+         */
+        Class<?> webImageFeature = ReflectionUtil.lookupClass(true, "com.oracle.svm.webimage.truffle.WebImageTruffleFeature");
+        boolean registerSIMDIntrinsics = webImageFeature == null || !ImageSingletons.contains(webImageFeature);
+        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), registerSIMDIntrinsics);
 
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so

@@ -93,12 +93,14 @@ final class NumberConversion {
         return parseNum(node, it, encoding, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
     }
 
-    static int parseInt7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return (int) parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    static int parseInt7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int stride, int radix, InlinedBranchProfile errorProfile)
+                    throws TruffleString.NumberFormatException {
+        return (int) parseNum7Bit(node, a, arrayA, offsetA, lengthA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    static long parseLong7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
+    static long parseLong7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int stride, int radix, InlinedBranchProfile errorProfile)
+                    throws TruffleString.NumberFormatException {
+        return parseNum7Bit(node, a, arrayA, offsetA, lengthA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     static boolean isSafeInteger(long value) {
@@ -160,17 +162,17 @@ final class NumberConversion {
         return negative ? result : -result;
     }
 
-    private static long parseNum7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
+    private static long parseNum7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
                     throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
         assert TStringGuards.is7Bit(a.codeRange());
         checkRadix(node, a, radix, errorProfile);
-        checkEmptyStr(node, a, errorProfile);
+        checkEmptyStr(node, a, lengthA, errorProfile);
         long result = 0;
         boolean negative = false;
         long limit = -max;
         int i = 0;
-        int firstChar = TStringOps.readValue(a, arrayA, offsetA, stride, i);
+        int firstChar = TStringOps.readValue(arrayA, offsetA, lengthA, stride, i);
         if (firstChar < '0') { // Possible leading "+" or "-"
             if (firstChar == '-') {
                 negative = true;
@@ -179,16 +181,16 @@ final class NumberConversion {
                 errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.INVALID_CODEPOINT);
             }
-            if (a.length() == 1) { // Cannot have lone "+" or "-"
+            if (lengthA == 1) { // Cannot have lone "+" or "-"
                 errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.LONE_SIGN);
             }
             i++;
         }
         long multmin = limit / radix;
-        while (i < a.length()) {
+        while (i < lengthA) {
             // Accumulating negatively avoids surprises near MAX_VALUE
-            int c = TStringOps.readValue(a, arrayA, offsetA, stride, i++);
+            int c = TStringOps.readValue(arrayA, offsetA, lengthA, stride, i++);
             final int digit = parseDigit7Bit(node, a, i, radix, errorProfile, c);
             if (result < multmin) {
                 errorProfile.enter(node);
@@ -229,8 +231,8 @@ final class NumberConversion {
         }
     }
 
-    private static void checkEmptyStr(Node node, AbstractTruffleString a, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        if (a.isEmpty()) {
+    private static void checkEmptyStr(Node node, AbstractTruffleString a, int lengthA, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        if (lengthA == 0) {
             errorProfile.enter(node);
             throw numberFormatException(a, Reason.EMPTY);
         }

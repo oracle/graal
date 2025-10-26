@@ -66,7 +66,7 @@ public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return cacheInstalledCodeConstantStride(installedCodeOwner, graph, options, getMemcmpWithStrideIntl(), cache.get(), strideA, strideB);
+        return cacheInstalledCodeConstantStride(installedCodeOwner, graph, options, getMemcmpWithStride(), cache.get(), strideA, strideB);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
     public void testMemCmp() {
         constantArgs[3] = strideA;
         constantArgs[6] = strideB;
-        testWithNative(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
+        testWithNative(getMemcmpWithStride(), null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

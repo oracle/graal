@@ -32,7 +32,6 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 
 public class ArrayIndexOfForeignCalls {
@@ -68,9 +67,13 @@ public class ArrayIndexOfForeignCalls {
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_1_S1 = foreignCallDescriptor("indexOfRange1S1", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_1_S2 = foreignCallDescriptor("indexOfRange1S2", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_1_S4 = foreignCallDescriptor("indexOfRange1S4", 2);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_FE_1_S2 = foreignCallDescriptor("indexOfRangeForeignEndian1S2", 2);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_FE_1_S4 = foreignCallDescriptor("indexOfRangeForeignEndian1S4", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_2_S1 = foreignCallDescriptor("indexOfRange2S1", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_2_S2 = foreignCallDescriptor("indexOfRange2S2", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_2_S4 = foreignCallDescriptor("indexOfRange2S4", 4);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_FE_2_S2 = foreignCallDescriptor("indexOfRangeForeignEndian2S2", 4);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_RANGE_FE_2_S4 = foreignCallDescriptor("indexOfRangeForeignEndian2S4", 4);
 
     public static final ForeignCallDescriptor STUB_INDEX_OF_WITH_MASK_S1 = foreignCallDescriptor("indexOfWithMaskS1", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_WITH_MASK_S2 = foreignCallDescriptor("indexOfWithMaskS2", 2);
@@ -84,6 +87,8 @@ public class ArrayIndexOfForeignCalls {
     public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S1 = foreignCallDescriptor("indexOfTableS1", 1, byte[].class);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S2 = foreignCallDescriptor("indexOfTableS2", 1, byte[].class);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S4 = foreignCallDescriptor("indexOfTableS4", 1, byte[].class);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S2 = foreignCallDescriptor("indexOfTableForeignEndianS2", 1, byte[].class);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_FE_S4 = foreignCallDescriptor("indexOfTableForeignEndianS4", 1, byte[].class);
 
     /**
      * CAUTION: the ordering here is important: ever entry's index must be 4 * log2(stride) +
@@ -110,9 +115,13 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_RANGE_1_S1,
                     STUB_INDEX_OF_RANGE_1_S2,
                     STUB_INDEX_OF_RANGE_1_S4,
+                    STUB_INDEX_OF_RANGE_FE_1_S2,
+                    STUB_INDEX_OF_RANGE_FE_1_S4,
                     STUB_INDEX_OF_RANGE_2_S1,
                     STUB_INDEX_OF_RANGE_2_S2,
                     STUB_INDEX_OF_RANGE_2_S4,
+                    STUB_INDEX_OF_RANGE_FE_2_S2,
+                    STUB_INDEX_OF_RANGE_FE_2_S4,
                     STUB_INDEX_OF_WITH_MASK_S1,
                     STUB_INDEX_OF_WITH_MASK_S2,
                     STUB_INDEX_OF_WITH_MASK_S4,
@@ -124,7 +133,9 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4,
                     STUB_INDEX_OF_TABLE_S1,
                     STUB_INDEX_OF_TABLE_S2,
-                    STUB_INDEX_OF_TABLE_S4)).toArray(ForeignCallDescriptor[]::new);
+                    STUB_INDEX_OF_TABLE_S4,
+                    STUB_INDEX_OF_TABLE_FE_S2,
+                    STUB_INDEX_OF_TABLE_FE_S4)).toArray(ForeignCallDescriptor[]::new);
 
     public static EnumSet<AMD64.CPUFeature> getMinimumFeaturesAMD64(ForeignCallDescriptor foreignCallDescriptor) {
         return ArrayIndexOfNode.minFeaturesAMD64(getStride(foreignCallDescriptor), getVariant(foreignCallDescriptor));
@@ -136,8 +147,14 @@ public class ArrayIndexOfForeignCalls {
 
     private static LIRGeneratorTool.ArrayIndexOfVariant getVariant(ForeignCallDescriptor foreignCallDescriptor) {
         String name = foreignCallDescriptor.getName();
+        if (name.startsWith("indexOfRangeForeignEndian")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.MatchRangeForeignEndian;
+        }
         if (name.startsWith("indexOfRange")) {
             return LIRGeneratorTool.ArrayIndexOfVariant.MatchRange;
+        }
+        if (name.startsWith("indexOfTableForeignEndian")) {
+            return LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian;
         }
         if (name.startsWith("indexOfTable")) {
             return LIRGeneratorTool.ArrayIndexOfVariant.Table;
@@ -172,6 +189,15 @@ public class ArrayIndexOfForeignCalls {
                         return valueCount == 2 ? STUB_INDEX_OF_RANGE_1_S2 : STUB_INDEX_OF_RANGE_2_S2;
                     case S4:
                         return valueCount == 2 ? STUB_INDEX_OF_RANGE_1_S4 : STUB_INDEX_OF_RANGE_2_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case MatchRangeForeignEndian:
+                switch (stride) {
+                    case S2:
+                        return valueCount == 2 ? STUB_INDEX_OF_RANGE_FE_1_S2 : STUB_INDEX_OF_RANGE_FE_2_S2;
+                    case S4:
+                        return valueCount == 2 ? STUB_INDEX_OF_RANGE_FE_1_S4 : STUB_INDEX_OF_RANGE_FE_2_S4;
                     default:
                         throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
@@ -216,6 +242,15 @@ public class ArrayIndexOfForeignCalls {
                         return STUB_INDEX_OF_TABLE_S2;
                     case S4:
                         return STUB_INDEX_OF_TABLE_S4;
+                    default:
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                }
+            case TableForeignEndian:
+                switch (stride) {
+                    case S2:
+                        return STUB_INDEX_OF_TABLE_FE_S2;
+                    case S4:
+                        return STUB_INDEX_OF_TABLE_FE_S4;
                     default:
                         throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }

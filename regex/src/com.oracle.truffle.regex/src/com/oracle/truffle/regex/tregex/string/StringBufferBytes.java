@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.string;
 
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 
-import org.junit.Test;
+public final class StringBufferBytes extends ByteArrayBuffer implements AbstractStringBuffer {
 
-import com.oracle.truffle.regex.flavor.python.PythonFlags;
+    private final Encoding encoding;
 
-public class PythonFlagsTest {
-
-    private static PythonFlags parse(String flags) {
-        return new PythonFlags(flags);
+    public StringBufferBytes(int capacity, Encoding encoding) {
+        super(capacity);
+        assert encoding == Encoding.ASCII || encoding == Encoding.LATIN_1 || encoding == Encoding.BYTES;
+        this.encoding = encoding;
     }
 
-    @Test
-    public void testParseFlags() {
-        assertTrue(parse("L").isLocale());
-        assertTrue(parse("a").isAscii());
-        assertTrue(parse("i").isIgnoreCase());
-        assertTrue(parse("m").isMultiLine());
-        assertTrue(parse("s").isDotAll());
-        assertTrue(parse("u").isUnicodeExplicitlySet());
-        assertTrue(parse("x").isVerbose());
+    @Override
+    public Encoding getEncoding() {
+        return encoding;
+    }
+
+    @Override
+    public void append(int codepoint) {
+        assert codepoint <= encoding.getMaxValue();
+        add((byte) codepoint);
+    }
+
+    @Override
+    public void appendOR(int c1, int c2) {
+        assert c1 <= encoding.getMaxValue();
+        assert c2 <= encoding.getMaxValue();
+        add((byte) (c1 | c2));
+    }
+
+    @Override
+    public void appendXOR(int c1, int c2) {
+        assert c1 <= encoding.getMaxValue();
+        assert c2 <= encoding.getMaxValue();
+        add((byte) (c1 ^ c2));
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromByteArrayUncached(toArray(), 0, length(), encoding.getTStringEncoding(), false);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUncached(pattern, toArray(), encoding.getTStringEncoding());
     }
 }

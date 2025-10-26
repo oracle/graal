@@ -64,6 +64,17 @@ public final class Encodings {
                     TruffleString.Encoding.UTF_8,
                     UTF_16,
                     UTF_32};
+
+    public static final TruffleString.Encoding[] PRIMARY_ENCODINGS_WITH_FOREIGN_ENDIAN = {
+                    TruffleString.Encoding.US_ASCII,
+                    TruffleString.Encoding.ISO_8859_1,
+                    TruffleString.Encoding.BYTES,
+                    TruffleString.Encoding.UTF_8,
+                    TruffleString.Encoding.UTF_16LE,
+                    TruffleString.Encoding.UTF_16BE,
+                    TruffleString.Encoding.UTF_32LE,
+                    TruffleString.Encoding.UTF_32BE
+    };
     private static final int MAX_J_CODINGS_INDEX_VALUE = 0x7f;
     static final EconomicMap<String, Encoding> J_CODINGS_MAP = createJCodingsMap();
 
@@ -165,7 +176,7 @@ public final class Encodings {
      * Generate unit test character tables for all encodings. Invoke with the following mx command:
      *
      * <pre>
-     * mx java -cp `mx paths truffle:TRUFFLE_API`:`mx paths truffle:TRUFFLE_TEST`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.api.strings.test.Encodings
+     * mx java -cp `mx paths truffle:TRUFFLE_API`:`mx paths truffle:TRUFFLE_TEST`:`mx paths sdk:COLLECTIONS`:`mx paths truffle:TRUFFLE_JCODINGS` com.oracle.truffle.api.strings.test.Encodings
      * </pre>
      */
     public static void main(String[] args) {
@@ -198,6 +209,15 @@ public final class Encodings {
                         encodeCodePoints(codepointsUTF16, getJCoding(TruffleString.Encoding.UTF_16)),
                         asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1),
                         new int[]{Character.MIN_LOW_SURROGATE});
+        testData[TruffleString.Encoding.UTF_16BE.ordinal()] = new TestData(
+                        codepointsUTF16,
+                        codePointByteIndices(codepointsUTF16, getJCoding(TruffleString.Encoding.UTF_16)),
+                        asBytes(new int[]{0x00, 0x7f}, 1, ByteOrder.BIG_ENDIAN),
+                        asBytes(new int[]{0x00, 0xff}, 1, ByteOrder.BIG_ENDIAN),
+                        asBytes(new int[]{0x0000, 0xffff}, 1, ByteOrder.BIG_ENDIAN),
+                        encodeCodePoints(codepointsUTF16, getJCoding(TruffleString.Encoding.UTF_16BE)),
+                        asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1, ByteOrder.BIG_ENDIAN),
+                        new int[]{Character.MIN_LOW_SURROGATE});
         testData[TruffleString.Encoding.UTF_32.ordinal()] = new TestData(
                         codepointsUTF16,
                         codePointByteIndices(codepointsUTF16, getJCoding(TruffleString.Encoding.UTF_32)),
@@ -206,6 +226,15 @@ public final class Encodings {
                         asBytes(new int[]{0x0000, 0xffff}, 2),
                         asBytes(codepointsUTF16, 2),
                         asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2),
+                        new int[]{Character.MIN_LOW_SURROGATE});
+        testData[TruffleString.Encoding.UTF_32BE.ordinal()] = new TestData(
+                        codepointsUTF16,
+                        codePointByteIndices(codepointsUTF16, getJCoding(TruffleString.Encoding.UTF_32BE)),
+                        asBytes(new int[]{0x00, 0x7f}, 2, ByteOrder.BIG_ENDIAN),
+                        asBytes(new int[]{0x00, 0xff}, 2, ByteOrder.BIG_ENDIAN),
+                        asBytes(new int[]{0x0000, 0xffff}, 2, ByteOrder.BIG_ENDIAN),
+                        asBytes(codepointsUTF16, 2, ByteOrder.BIG_ENDIAN),
+                        asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2, ByteOrder.BIG_ENDIAN),
                         new int[]{Character.MIN_LOW_SURROGATE});
         testData[TruffleString.Encoding.BYTES.ordinal()] = new TestData(
                         new int[]{0x00, 0x7f, 0x80, 0xff},
@@ -243,14 +272,6 @@ public final class Encodings {
 
                 byte[] encodedBroken = null;
                 int[] codepointsBroken = null;
-
-                if (e == TruffleString.Encoding.UTF_16BE) {
-                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1, ByteOrder.BIG_ENDIAN);
-                    codepointsBroken = new int[]{Character.MIN_LOW_SURROGATE};
-                } else if (e == TruffleString.Encoding.UTF_32BE) {
-                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2, ByteOrder.BIG_ENDIAN);
-                    codepointsBroken = new int[]{Character.MIN_LOW_SURROGATE};
-                }
 
                 testData[e.ordinal()] = new TestData(
                                 codepoints,
@@ -451,9 +472,15 @@ public final class Encodings {
 
     static TestData dataUTF32BE() {
         assert TruffleString.Encoding.UTF_32BE.ordinal() == 1;
-        return new TestData(
-                        new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                                        (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff},
+        return new TestData(new int[]{0x000000, 0x00007f, 0x000080, 0x0000ff, 0x000100, 0x00d7ff, 0x00e000, 0x00ffff, 0x010000, 0x10ffff},
+                        new int[]{0x00, 0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x7f},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0xff},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x7f, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x80,
+                                        (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff,
+                                        (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+                                        (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff},
                         new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xdc, (byte) 0x00}, new int[]{0xdc00});
     }
 
@@ -469,8 +496,11 @@ public final class Encodings {
 
     static TestData dataUTF16BE() {
         assert TruffleString.Encoding.UTF_16BE.ordinal() == 3;
-        return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x2, 0x4, 0x6}, null, null, null,
-                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff},
+        return new TestData(new int[]{0x000000, 0x00007f, 0x000080, 0x0000ff, 0x000100, 0x00d7ff, 0x00e000, 0x00ffff, 0x010000, 0x10ffff},
+                        new int[]{0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x14}, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x7f},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff}, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0xff},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x7f, (byte) 0x00, (byte) 0x80, (byte) 0x00, (byte) 0xff, (byte) 0x01, (byte) 0x00, (byte) 0xd7, (byte) 0xff,
+                                        (byte) 0xe0, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xd8, (byte) 0x00, (byte) 0xdc, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff},
                         new byte[]{(byte) 0xdc, (byte) 0x00}, new int[]{0xdc00});
     }
 

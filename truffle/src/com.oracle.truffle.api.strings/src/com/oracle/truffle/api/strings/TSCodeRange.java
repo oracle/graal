@@ -51,9 +51,29 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TSCodeRange {
 
+    /**
+     * CodeRange is a single byte. The first three bits store the code range value: one of
+     * {@link #CR_7BIT}, {@link #CR_8BIT}, {@link #CR_16BIT}, {@link #CR_VALID}, {@link #CR_BROKEN}.
+     */
+    private static final int MASK_ORDINAL = 0b111;
+    /**
+     * Fourth bit is a flag that denotes whether the given string contains codepoints encoded as
+     * multiple values in respect to the string's stride.
+     */
     private static final int FLAG_MULTIBYTE = 1 << 3;
-    private static final int FLAG_IMPRECISE = 1 << 4;
-    private static final int MASK_ORDINAL = 0x7;
+    /**
+     * Fifth bit is a flag that denotes whether the given string is in foreign endian. NOTE: This
+     * bit MUST be after the ordinal bits for {@link #isMoreRestrictiveAndNativeEndian}!
+     */
+    private static final int FLAG_FOREIGN_ENDIAN = 1 << 4;
+    private static final int MASK_ORDINAL_AND_FOREIGN_ENDIAN = 0b10111;
+    /**
+     * Sixth bit is a flag that denotes whether this code range <i>precise</i>. If this flag is set,
+     * the string's code range has not been calculated yet, and the current value is just an
+     * approximation. This approximation may be more general than the real code range, but never
+     * more restrictive.
+     */
+    private static final int FLAG_IMPRECISE = 1 << 5;
     private static final int MASK_ORDINAL_MULTIBYTE = MASK_ORDINAL | FLAG_MULTIBYTE;
 
     /**
@@ -93,11 +113,27 @@ final class TSCodeRange {
     }
 
     static boolean isCodeRange(int codeRange) {
-        return CR_7BIT <= ordinal(codeRange) && ordinal(codeRange) <= CR_BROKEN && (codeRange >>> 6) == 0;
+        return CR_7BIT <= ordinal(codeRange) && ordinal(codeRange) <= CR_BROKEN;
+    }
+
+    static int markForeignEndian(int codeRange) {
+        return codeRange | FLAG_FOREIGN_ENDIAN;
+    }
+
+    static int clearMarkForeignEndian(int codeRange) {
+        return codeRange & ~FLAG_FOREIGN_ENDIAN;
     }
 
     static int markImprecise(int codeRange) {
         return codeRange | FLAG_IMPRECISE;
+    }
+
+    static int markPrecise(int codeRange) {
+        return codeRange & ~FLAG_IMPRECISE;
+    }
+
+    static boolean isForeignEndian(int codeRange) {
+        return (codeRange & FLAG_FOREIGN_ENDIAN) != 0;
     }
 
     static boolean isFixedWidth(int codeRange) {
@@ -150,6 +186,32 @@ final class TSCodeRange {
 
     static int getBrokenMultiByte() {
         return CR_BROKEN_MULTIBYTE;
+    }
+
+    static int fromBMPCodePoint(int codePoint) {
+        if (codePoint <= 0x7f) {
+            return get7Bit();
+        } else if (codePoint <= 0xff) {
+            return get8Bit();
+        } else {
+            assert codePoint <= 0xffff;
+            assert !Encodings.isUTF16Surrogate(codePoint);
+            return get16Bit();
+        }
+    }
+
+    static int fromValidCodePoint(int codePoint, boolean fixedWidth) {
+        if (codePoint <= 0x7f) {
+            return get7Bit();
+        } else if (codePoint <= 0xff) {
+            return get8Bit();
+        } else if (codePoint <= 0xffff) {
+            assert !Encodings.isUTF16Surrogate(codePoint);
+            return get16Bit();
+        } else {
+            assert codePoint <= 0x10ffff;
+            return getValid(fixedWidth);
+        }
     }
 
     static boolean is7Bit(int codeRange) {
@@ -209,6 +271,22 @@ final class TSCodeRange {
      */
     static int commonCodeRange(int a, int b) {
         return isMoreGeneralThan(a, b) ? a : b;
+    }
+
+    /**
+     * Returns {@code true} iff code range {@code a} is native-endian ({@link #FLAG_FOREIGN_ENDIAN}
+     * is not set) and {@link #isMoreRestrictiveThan more restrictive} than code range {@code b}.
+     */
+    static boolean isMoreRestrictiveAndNativeEndian(int a, int b) {
+        return (a & MASK_ORDINAL_AND_FOREIGN_ENDIAN) < ordinal(b);
+    }
+
+    /**
+     * Returns {@code true} iff code range {@code a} is native-endian ({@link #FLAG_FOREIGN_ENDIAN}
+     * is not set) and {@link #isMoreRestrictiveThan more restrictive} than code range {@code b}.
+     */
+    static boolean isMoreRestrictiveOrEqualAndNativeEndian(int a, int b) {
+        return (a & MASK_ORDINAL_AND_FOREIGN_ENDIAN) <= ordinal(b);
     }
 
     static boolean isMoreRestrictiveThan(int a, int b) {
@@ -282,6 +360,8 @@ final class TSCodeRange {
     static int getAsciiCodeRange(Encoding encoding) {
         if (TStringGuards.is7BitCompatible(encoding)) {
             return get7Bit();
+        } else if (encoding.isForeignEndian()) {
+            return markForeignEndian(get7Bit());
         } else if (encoding.isSingleByte()) {
             return getValidFixedWidth();
         } else {
@@ -296,7 +376,11 @@ final class TSCodeRange {
         if (isBytes(encoding)) {
             return (byte) markImprecise(getValidFixedWidth());
         }
-        return (byte) markImprecise(getBroken(Encoding.isFixedWidth(encoding)));
+        int codeRange = (byte) markImprecise(getBroken(Encoding.isFixedWidth(encoding)));
+        if (Encoding.isForeignEndian(encoding)) {
+            return (byte) markForeignEndian(codeRange);
+        }
+        return (byte) codeRange;
     }
 
     static {
@@ -329,39 +413,45 @@ final class TSCodeRange {
 
     @TruffleBoundary
     static String toString(int codeRange) {
-        switch (ordinal(codeRange)) {
-            case CR_7BIT:
-                return "7Bit" + preciseFlagToString(codeRange);
-            case CR_8BIT:
-                return "8Bit" + preciseFlagToString(codeRange);
-            case CR_16BIT:
-                return "16Bit" + preciseFlagToString(codeRange);
-            case CR_VALID:
-                return "Valid" + flagsToString(codeRange);
-            case CR_BROKEN:
-                return "Broken" + flagsToString(codeRange);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
-    private static String preciseFlagToString(int codeRange) {
-        return isPrecise(codeRange) ? "" : "(imprecise)";
+        return switch (ordinal(codeRange)) {
+            case CR_7BIT -> "7Bit";
+            case CR_8BIT -> "8Bit";
+            case CR_16BIT -> "16Bit";
+            case CR_VALID -> "Valid";
+            case CR_BROKEN -> "Broken";
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        } + flagsToString(codeRange);
     }
 
     private static String flagsToString(int codeRange) {
-        if (isFixedWidth(codeRange)) {
-            if (isPrecise(codeRange)) {
-                return "(fixedWidth)";
-            } else {
-                return "(fixedWidth, imprecise)";
-            }
-        } else {
-            if (isPrecise(codeRange)) {
-                return "(multibyte)";
-            } else {
-                return "(multibyte, imprecise)";
-            }
+        if ((codeRange & (FLAG_FOREIGN_ENDIAN | FLAG_IMPRECISE | FLAG_MULTIBYTE)) == 0) {
+            return "";
         }
+        StringBuilder sb = new StringBuilder("(");
+        if (isForeignEndian(codeRange)) {
+            sb.append("foreignEndian");
+        }
+        if (!isFixedWidth(codeRange)) {
+            if (sb.length() > 1) {
+                sb.append(", ");
+            }
+            sb.append("multibyte");
+        }
+        if (!isPrecise(codeRange)) {
+            if (sb.length() > 1) {
+                sb.append(", ");
+            }
+            sb.append("imprecise");
+        }
+        return sb.append(")").toString();
+    }
+
+    static {
+        checkForeignEndianFlagHigherThanOrdinal();
+    }
+
+    @SuppressWarnings("all")
+    private static void checkForeignEndianFlagHigherThanOrdinal() {
+        assert (MASK_ORDINAL + 1) << 1 == FLAG_FOREIGN_ENDIAN;
     }
 }

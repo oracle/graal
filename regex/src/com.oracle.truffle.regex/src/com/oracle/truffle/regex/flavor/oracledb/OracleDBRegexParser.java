@@ -66,7 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public final class OracleDBRegexParser implements RegexParser {
 
@@ -266,7 +266,7 @@ public final class OracleDBRegexParser implements RegexParser {
         // No transitive closure
         CaseFoldData.getTable(algorithm).caseFold(contents.getCodePointSet(), (codepoint, caseFolded) -> {
             if (caseFolded.length > 1) {
-                CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
+                CodePointSet encodingRange = Encoding.UTF_8.getFullSet();
                 CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
                 MultiCharacterCaseFolding.caseFoldUnfoldString(algorithm, caseFolded, encodingRange, false, false, null, curCharClass, compilationBuffer);
             }
@@ -276,7 +276,7 @@ public final class OracleDBRegexParser implements RegexParser {
     private void caseClosure(CaseFoldAlgorithm algorithm, CodePointSet codePointSet) {
         charClassTmpCaseClosure.clear();
         charClassTmpCaseClosure.addSet(codePointSet);
-        MultiCharacterCaseFolding.caseClosure(algorithm, charClassTmpCaseClosure, charClassTmp2, (a, b) -> true, Encodings.UTF_8.getFullSet(), false);
+        MultiCharacterCaseFolding.caseClosure(algorithm, charClassTmpCaseClosure, charClassTmp2, (a, b) -> true, Encoding.UTF_8.getFullSet(), false);
     }
 
     private CodePointSet ccAtomRangeIgnoreCase(CodePointSet parsedRange) {
@@ -296,7 +296,7 @@ public final class OracleDBRegexParser implements RegexParser {
             // to
             // lowercase(lo) <= chr || chr <= lowercase(hi)
             if (loLC <= hiLC || hiLC == loLC - 1) {
-                return Encodings.UTF_8.getFullSet();
+                return Encoding.UTF_8.getFullSet();
             } else {
                 CodePointSet ret = CodePointSet.create(Character.MIN_CODE_POINT, hiLC, loLC, Character.MAX_CODE_POINT);
                 caseFoldTable.caseFold(ret, (codePoint, caseFolded) -> {
@@ -346,7 +346,7 @@ public final class OracleDBRegexParser implements RegexParser {
     private void addLiteralString(IntArrayBuffer literalStringBuffer) {
         if (flags.isIgnoreCase()) {
             int[] codepoints = literalStringBuffer.toArray();
-            CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
+            CodePointSet encodingRange = Encoding.UTF_8.getFullSet();
             CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
             MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldAlgorithm.OracleDB, codepoints, encodingRange, false, false, astBuilder, null, compilationBuffer);
         } else {

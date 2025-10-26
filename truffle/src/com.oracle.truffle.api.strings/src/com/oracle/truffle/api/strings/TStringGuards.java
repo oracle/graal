@@ -48,10 +48,6 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TStringGuards {
 
-    static boolean isEmpty(AbstractTruffleString a) {
-        return a.isEmpty();
-    }
-
     static boolean is7Bit(int codeRange) {
         return TSCodeRange.is7Bit(codeRange);
     }
@@ -122,8 +118,8 @@ final class TStringGuards {
         return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
-    static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {
-        return regionLength < b.length() || codeRangesCannotMatch(codeRangeA, codeRangeB, mask);
+    static boolean indexOfCannotMatch(int codeRangeA, int lengthB, int codeRangeB, byte[] mask, int regionLength) {
+        return regionLength < lengthB || codeRangesCannotMatch(codeRangeA, codeRangeB, mask);
     }
 
     private static boolean codeRangesCannotMatch(int codeRangeA, int codeRangeB, byte[] mask) {
@@ -216,14 +212,6 @@ final class TStringGuards {
         return enc <= 1;
     }
 
-    static boolean isUTF(Encoding enc) {
-        return isUTF16Or32(enc) || isUTF8(enc);
-    }
-
-    static boolean identical(Object a, Object b) {
-        return a == b;
-    }
-
     static boolean isSupportedEncoding(int encoding) {
         return Encoding.isSupported(encoding);
     }
@@ -246,18 +234,6 @@ final class TStringGuards {
 
     static int length(AbstractTruffleString a) {
         return a.length();
-    }
-
-    static boolean isStride0(AbstractTruffleString a) {
-        return a.stride() == 0;
-    }
-
-    static boolean isStride1(AbstractTruffleString a) {
-        return a.stride() == 1;
-    }
-
-    static boolean isStride2(AbstractTruffleString a) {
-        return a.stride() == 2;
     }
 
     static boolean is7BitCompatible(Encoding encoding) {

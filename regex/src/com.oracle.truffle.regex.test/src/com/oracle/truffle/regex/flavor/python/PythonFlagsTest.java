@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,15 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.string;
+package com.oracle.truffle.regex.flavor.python;
 
-import java.util.PrimitiveIterator;
+import static org.junit.Assert.assertTrue;
 
-public abstract class AbstractStringIterator implements PrimitiveIterator.OfInt {
+import org.junit.Test;
 
-    protected int i;
+public class PythonFlagsTest {
 
-    public int getIndex() {
-        return i;
+    private static PythonFlags parse(String flags) {
+        return new PythonFlags(flags);
+    }
+
+    @Test
+    public void testParseFlags() {
+        assertTrue(parse("L").isLocale());
+        assertTrue(parse("a").isAscii());
+        assertTrue(parse("i").isIgnoreCase());
+        assertTrue(parse("m").isMultiLine());
+        assertTrue(parse("s").isDotAll());
+        assertTrue(parse("u").isUnicodeExplicitlySet());
+        assertTrue(parse("x").isVerbose());
     }
 }
