@@ -122,39 +122,39 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return isFinite(number);")
-    public native static boolean isFinite(JSNumber number);
+    public static native boolean isFinite(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return isFinite(number);")
-    public native static boolean isFinite(double number);
+    public static native boolean isFinite(double number);
 
     @JS.Coerce
     @JS(value = "return Number.isInteger(number);")
-    public native static boolean isInteger(JSNumber number);
+    public static native boolean isInteger(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return Number.isInteger(number);")
-    public native static boolean isInteger(double number);
+    public static native boolean isInteger(double number);
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
-    public native static boolean isNaN(JSNumber number);
+    public static native boolean isNaN(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return isNaN(number);")
-    public native static boolean isNaN(double number);
+    public static native boolean isNaN(double number);
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
-    public native static boolean isSafeInteger(JSNumber number);
+    public static native boolean isSafeInteger(JSNumber number);
 
     @JS.Coerce
     @JS(value = "return Number.isSafeInteger(number);")
-    public native static boolean isSafeInteger(double number);
+    public static native boolean isSafeInteger(double number);
 
     @JS.Coerce
     @JS(value = "return Number.parseFloat(number);")
-    public native static double parseFloat(String number);
+    public static native double parseFloat(String number);
 
     @JS.Coerce
     @JS(value = "return Number.parseInt(number);")
@@ -182,35 +182,35 @@ public final class JSNumber extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Number.EPSILON;")
-    public native static double EPSILON();
+    public static native double epsilon();
 
     @JS.Coerce
     @JS(value = "return Number.MAX_SAFE_INTEGER;")
-    public native static long MAX_SAFE_INTEGER();
+    public static native long maxSafeInteger();
 
     @JS.Coerce
     @JS(value = "return Number.MAX_VALUE;")
-    public native static double MAX_VALUE();
+    public static native double maxValue();
 
     @JS.Coerce
     @JS(value = "return Number.MIN_SAFE_INTEGER;")
-    public native static long MIN_SAFE_INTEGER();
+    public static native long minSafeInteger();
 
     @JS.Coerce
     @JS(value = "return Number.MIN_VALUE;")
-    public native static double MIN_VALUE();
+    public static native double minValue();
 
     @JS.Coerce
     @JS(value = "return Number.NaN;")
-    public native static double NaN();
+    public static native double nan();
 
     @JS.Coerce
     @JS(value = "return Number.NEGATIVE_INFINITY;")
-    public native static double NEGATIVE_INFINITY();
+    public static native double negativeInfinity();
 
     @JS.Coerce
     @JS(value = "return Number.POSITIVE_INFINITY;")
-    public native static double POSITIVE_INFINITY();
+    public static native double positiveInfinity();
 
     @JS.Coerce
     @JS(value = "return this.toExponential();")

@@ -590,7 +590,7 @@ public class JSObject extends JSValue {
 
     @JS.Coerce
     @JS(value = "return Object.groupBy(items, callback);")
-    public native static JSObject groupBy(JSObject items, JSValue callback);
+    public static native JSObject groupBy(JSObject items, JSValue callback);
 
     @JS.Coerce
     @JS(value = "return Object.hasOwn(obj, prop);")

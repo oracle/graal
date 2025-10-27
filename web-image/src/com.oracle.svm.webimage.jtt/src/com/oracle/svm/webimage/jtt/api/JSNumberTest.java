@@ -99,14 +99,14 @@ public class JSNumberTest {
     }
 
     public static void testConstants() {
-        assertEquals(Math.ulp(1.0), JSNumber.EPSILON(), DELTA);
-        assertEquals(9007199254740991L, JSNumber.MAX_SAFE_INTEGER(), DELTA);
-        assertEquals(Double.MAX_VALUE, JSNumber.MAX_VALUE(), DELTA);
-        assertEquals(-9007199254740991L, JSNumber.MIN_SAFE_INTEGER(), DELTA);
-        assertEquals(Double.MIN_VALUE, JSNumber.MIN_VALUE(), DELTA);
-        assertEquals(Double.NaN, JSNumber.NaN(), DELTA);
-        assertEquals(Double.NEGATIVE_INFINITY, JSNumber.NEGATIVE_INFINITY(), DELTA);
-        assertEquals(Double.POSITIVE_INFINITY, JSNumber.POSITIVE_INFINITY(), DELTA);
+        assertEquals(Math.ulp(1.0), JSNumber.epsilon(), DELTA);
+        assertEquals(9007199254740991L, JSNumber.maxSafeInteger(), DELTA);
+        assertEquals(Double.MAX_VALUE, JSNumber.maxValue(), DELTA);
+        assertEquals(-9007199254740991L, JSNumber.minSafeInteger(), DELTA);
+        assertEquals(Double.MIN_VALUE, JSNumber.minValue(), DELTA);
+        assertEquals(Double.NaN, JSNumber.nan(), DELTA);
+        assertEquals(Double.NEGATIVE_INFINITY, JSNumber.negativeInfinity(), DELTA);
+        assertEquals(Double.POSITIVE_INFINITY, JSNumber.positiveInfinity(), DELTA);
 
     }
 
