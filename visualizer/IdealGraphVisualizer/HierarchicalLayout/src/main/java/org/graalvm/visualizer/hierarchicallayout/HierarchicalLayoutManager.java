@@ -1143,16 +1143,43 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
 
                 if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
-                    downProcessingOrder[i] = layer.toArray(new LayoutNode[layer.size()]);
-                    upProcessingOrder[i] = layer.toArray(new LayoutNode[layer.size()]);
+                    downProcessingOrder[i] = layer.toArray(new LayoutNode[0]);
                     Arrays.sort(downProcessingOrder[i], downComparer);
-                    Arrays.sort(upProcessingOrder[i], upComparer);
+                    upProcessingOrder[i] = reverseSort(downProcessingOrder[i], upComparer);
                 } else {
-                    bothProcessingOrder[i] = layer.toArray(new LayoutNode[layer.size()]);
+                    bothProcessingOrder[i] = layer.toArray(new LayoutNode[0]);
                     Arrays.sort(bothProcessingOrder[i], bothComparer);
                 }
             }
         }
+
+        /**
+         * Instead of sorting again in reverse order, just reverse the array.  Assert that this produces the same order as sorting .
+         */
+        private static LayoutNode[] reverseSort(LayoutNode[] source, Comparator<LayoutNode> upComparer) {
+            LayoutNode[] array = source.clone();
+            int left = 0, right = array.length - 1;
+            while (left < right) {
+                LayoutNode temp = array[left];
+                array[left] = array[right];
+                array[right] = temp;
+                left++;
+                right--;
+            }
+            assert verifySort(array, upComparer);
+            return array;
+        }
+
+        /**
+         * Ensure that the reversed array is sorted in the same order.
+         */
+        private static boolean verifySort(LayoutNode[] array, Comparator<LayoutNode> upComparer) {
+            LayoutNode[] copy = array.clone();
+            Arrays.sort(copy, upComparer);
+            assert Arrays.equals(array, copy);
+            return true;
+        }
+
 
         @Override
         protected void run() {
