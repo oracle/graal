@@ -585,32 +585,14 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             functionCandidate = popReference(frame, --stackPointer);
                             elementIndex = -1;
                         }
-                        final WasmFunctionInstance functionInstance;
-                        final WasmFunction function;
-                        final CallTarget target;
-                        final WasmContext functionInstanceContext;
-                        if (functionCandidate == WasmConstant.NULL) {
-                            enterErrorBranch();
-                            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
-                                throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
-                            } else {
-                                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
-                                throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
-                            }
-                        } else if (functionCandidate instanceof WasmFunctionInstance) {
-                            functionInstance = (WasmFunctionInstance) functionCandidate;
-                            function = functionInstance.function();
-                            target = functionInstance.target();
-                            functionInstanceContext = functionInstance.context();
-                        } else {
-                            enterErrorBranch();
-                            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
-                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", functionCandidate);
-                            } else {
-                                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
-                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionCandidate);
-                            }
+
+                        if (!(functionCandidate instanceof WasmFunctionInstance functionInstance)) {
+                            throw callIndirectNotAFunctionError(opcode, functionCandidate, elementIndex);
                         }
+
+                        final WasmFunction function = functionInstance.function();
+                        final CallTarget target = functionInstance.target();
+                        final WasmContext functionInstanceContext = functionInstance.context();
 
                         // Target function instance must be from the same context.
                         assert functionInstanceContext == WasmContext.get(this);
@@ -1776,6 +1758,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         throw WasmException.format(Failure.INDIRECT_CALL_TYPE_MISMATCH, this,
                         "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
                         function.typeIndex(), function.name(), expectedFunctionTypeIndex, module.name());
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private WasmException callIndirectNotAFunctionError(int opcode, Object functionCandidate, int elementIndex) {
+        enterErrorBranch();
+        if (functionCandidate == WasmConstant.NULL) {
+            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+            } else {
+                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
+            }
+        } else {
+            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", functionCandidate);
+            } else {
+                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionCandidate);
+            }
+        }
     }
 
     private void check(int v, int limit) {
