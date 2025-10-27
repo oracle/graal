@@ -196,14 +196,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     // region OSR support
-    private record WasmOSRInterpreterState(int stackPointer, int line) {
+    /**
+     * Prepare for OSR. An interpreter that uses {@code long} targets must override this method.
+     */
+    @Override
+    public void prepareOSR(long target) {
+        // do nothing
     }
 
     @Override
-    public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
-        WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
+    public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, long target, Object targetMetadata) {
+        BytecodeOSRNode.super.copyIntoOSRFrame(osrFrame, parentFrame, (int) target, targetMetadata);
+    }
+
+    @Override
+    public Object executeOSR(VirtualFrame osrFrame, long target, Object interpreterState) {
         WasmInstance instance = ((WasmRootNode) getRootNode()).instance(osrFrame);
-        return executeBodyFromOffset(instance, osrFrame, target, state.stackPointer, state.line);
+        int offset = (int) target;
+        int stackPointer = (int) (target >>> 32);
+        int line = (int) interpreterState;
+        return executeBodyFromOffset(instance, osrFrame, offset, stackPointer, line);
     }
 
     @Override
@@ -294,8 +306,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         // A return statement causes the termination of the current function, i.e.
                         // causes the execution to resume after the instruction that invoked
                         // the current frame.
-                        if (backEdgeCounter.count > 0) {
-                            LoopNode.reportLoopCount(this, backEdgeCounter.count);
+                        if (CompilerDirectives.hasNextTier()) {
+                            int backEdgeCount = backEdgeCounter.count;
+                            if (backEdgeCount > 0) {
+                                LoopNode.reportLoopCount(this, backEdgeCount);
+                            }
                         }
                         final int resultCount = codeEntry.resultCount();
                         unwindStack(frame, stackPointer, localCount, resultCount);
@@ -373,7 +388,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         if (CompilerDirectives.hasNextTier() && ++backEdgeCounter.count >= REPORT_LOOP_STRIDE) {
                             LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, REPORT_LOOP_STRIDE)) {
-                                Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(stackPointer, lineIndex), null, frame);
+                                Object result = BytecodeOSRNode.tryOSR(this, offset | ((long) stackPointer << 32), lineIndex, null, frame);
                                 if (result != null) {
                                     return result;
                                 }
@@ -1669,9 +1684,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                 /*
                  * The exception table is encoded in the following format:
-                 * 
+                 *
                  * from | to | type | tag index (optional) | target
-                 * 
+                 *
                  * The values from (exclusive) and to (inclusive) define a range. If source is
                  * inside this range, the entry defines a possible exception handler for the
                  * exception. If the type of the exception handler is catch or catch_ref, we check
@@ -1683,7 +1698,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  * only pushes the reference, and catch_all doesn't push anything onto the stack.
                  *
                  * If we find a matching entry, execution continues at the label defined by target.
-                 * 
+                 *
                  * If the current entry doesn't match, we continue to the next, until we reach a
                  * match or the end of the table. If we reach the end of the table, we rethrow the
                  * exception to the next function on the call stack.
