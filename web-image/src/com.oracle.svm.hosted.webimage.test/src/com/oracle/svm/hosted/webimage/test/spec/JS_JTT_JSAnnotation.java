@@ -142,6 +142,8 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void jsStringTest() {
+        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSStringTest.class.getName());
     }
 
@@ -152,6 +154,8 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void jsObjectTest() {
+        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSObjectTest.class.getName());
     }
 }
