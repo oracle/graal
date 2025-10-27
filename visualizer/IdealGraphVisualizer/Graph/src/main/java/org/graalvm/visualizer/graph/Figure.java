@@ -509,11 +509,16 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         }
     }
 
+    Boolean isRoot;
+
     @Override
     public boolean isRoot() {
-        List<InputNode> sourceNodes = source.getSourceNodes();
-        //Get property value just once
-        return sourceNodes.size() > 0 && NAME_ROOT.equals(sourceNodes.get(0).getProperties().get(PROPNAME_NAME, String.class));
+        if (isRoot == null) {
+            List<InputNode> sourceNodes = source.getSourceNodes();
+            // Get property value just once
+            isRoot = !sourceNodes.isEmpty() && NAME_ROOT.equals(sourceNodes.get(0).getProperties().get(PROPNAME_NAME, String.class));
+        }
+        return isRoot;
     }
 
     @Override
@@ -528,6 +533,7 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     void sourcesChanged(Source s) {
         diagram.invalidateSlotMap();
+        isRoot = null;
     }
 
     @Override
