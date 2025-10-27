@@ -27,9 +27,13 @@ package jdk.graal.compiler.core.test;
 import java.util.Optional;
 
 import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -55,12 +59,31 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
         }
 
         public VerificationError(Invoke invoke, String format, Object... args) {
-            this(String.format("In %s: %s", invoke.asNode().graph().method().asStackTraceElement(invoke.bci()), format), args);
+            this(String.format("In %s: %s", getStackTraceElement(invoke.asNode(), invoke.bci()), format), args);
         }
 
         public VerificationError(CallTargetNode target, String format, Object... args) {
             this(target.invoke(), format, args);
         }
+
+        public VerificationError(ValueNode node, String format, Object... args) {
+            this(String.format("In %s: %s", getMethodString(node), format), args);
+        }
+
+        private static String getMethodString(ValueNode node) {
+            if (node instanceof FixedNode fixedNode) {
+                FrameState lastFrameState = GraphUtil.findLastFrameState(fixedNode);
+                if (lastFrameState != null) {
+                    return getStackTraceElement(node, lastFrameState.bci).toString();
+                }
+            }
+            return node.graph().method().format("%H.%n(%p)");
+        }
+
+        private static StackTraceElement getStackTraceElement(ValueNode node, int bci) {
+            return node.graph().method().asStackTraceElement(bci);
+        }
+
     }
 
     @Override

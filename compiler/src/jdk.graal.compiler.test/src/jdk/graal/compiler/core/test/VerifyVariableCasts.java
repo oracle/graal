@@ -63,9 +63,8 @@ public class VerifyVariableCasts extends VerifyPhase<CoreProviders> {
             if (stamp instanceof AbstractObjectStamp) {
                 ResolvedJavaType castType = stamp.javaType(metaAccess);
                 if (variableType.isAssignableFrom(castType)) {
-                    throw new VerificationError("Cast to %s in %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.asVariable instead.",
-                                    variableType.toJavaName(),
-                                    method.format("%H.%n(%p)"));
+                    throw new VerificationError(cast, "Cast to %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.asVariable instead.",
+                                    variableType.toJavaName());
                 }
             }
         }
@@ -74,9 +73,8 @@ public class VerifyVariableCasts extends VerifyPhase<CoreProviders> {
             TypeReference typeRef = instanceOf.type();
             if (typeRef != null) {
                 if (variableType.isAssignableFrom(typeRef.getType())) {
-                    throw new VerificationError("Instanceof check on %s in %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.isVariable instead.",
-                                    variableType.toJavaName(),
-                                    method.format("%H.%n(%p)"));
+                    throw new VerificationError(instanceOf, "Instanceof check on %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.isVariable instead.",
+                                    variableType.toJavaName());
                 }
             }
         }
