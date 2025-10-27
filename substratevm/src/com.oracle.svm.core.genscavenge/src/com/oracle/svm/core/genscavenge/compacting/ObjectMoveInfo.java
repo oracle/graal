@@ -180,6 +180,7 @@ public final class ObjectMoveInfo {
             while (p.notEqual(objSeqEnd)) {
                 assert p.belowThan(objSeqEnd);
                 Object obj = p.toObjectNonNull();
+                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(obj);
                 UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
 
                 /*

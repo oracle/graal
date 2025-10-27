@@ -99,8 +99,6 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             }
 
             if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObjectNonNull());
-
                 /*
                  * Adding the optional identity hash field would increase an object's size, so we
                  * should have copied all objects that need one during marking instead.
