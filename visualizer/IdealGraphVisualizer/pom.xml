@@ -31,6 +31,9 @@
                     <configuration>
                         <source>11</source>
                         <release>17</release>
+                        <compilerArgs>
+                            <arg>-g</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
                 <plugin>
