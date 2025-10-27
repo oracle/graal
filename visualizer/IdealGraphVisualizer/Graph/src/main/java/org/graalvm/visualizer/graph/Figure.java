@@ -152,6 +152,17 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         return result;
     }
 
+    public int getSlotsWidthBefore(InputSlot inputSlot) {
+        int result = Figure.SLOT_OFFSET;
+        for (Slot s : inputSlots) {
+            if (s == inputSlot) {
+                return result;
+            }
+            result += s.getWidth() + Figure.SLOT_OFFSET;
+        }
+        return result;
+    }
+
     public static int getSlotsWidth(Slot s) {
         if (s == null) {
             return Figure.SLOT_OFFSET;
@@ -405,6 +416,10 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         return Collections.unmodifiableList(inputSlots);
     }
 
+    int getInputSlotsWidth() {
+        return Figure.getSlotsWidth(inputSlots);
+    }
+
     public Set<Slot> getSlots() {
         Set<Slot> result = new HashSet<>();
         result.addAll(getInputSlots());
@@ -419,6 +434,17 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
             return Collections.singletonList(singleOutput);
         } else {
             return Collections.emptyList();
+        }
+    }
+
+
+    public int getOutputSlotsWidth() {
+        if (outputSlots != null) {
+            return Figure.getSlotsWidth(outputSlots);
+        } else if (singleOutput != null) {
+            return Figure.getSlotsWidth(Collections.singletonList(singleOutput));
+        } else {
+            return 0;
         }
     }
 
