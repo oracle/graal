@@ -618,12 +618,15 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
                             // Validate that the target function type matches the expected type of
                             // the indirect call. We first try if the types are equivalent using the
-                            // equivalence classes. If they are not equivalent, we run the full
-                            // subtype matching procedure.
-                            if (symtab.equivalenceClass(expectedFunctionTypeIndex) != function.typeEquivalenceClass() &&
-                                            !symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
-                                enterErrorBranch();
-                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            // equivalence classes...
+                            if (symtab.equivalenceClass(expectedFunctionTypeIndex) != function.typeEquivalenceClass()) {
+                                codeEntry.subtypingBranch();
+                                // If they are not equivalent, we run the full subtype matching
+                                // procedure.
+                                if (!symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
+                                    enterErrorBranch();
+                                    failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                                }
                             }
                         }
 

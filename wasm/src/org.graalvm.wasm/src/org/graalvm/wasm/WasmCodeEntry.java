@@ -51,6 +51,7 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private final int[] resultTypes;
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile exceptionBranch = BranchProfile.create();
+    private final BranchProfile subtypingBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
     private final boolean usesMemoryZero;
@@ -99,6 +100,10 @@ public final class WasmCodeEntry {
 
     public void exceptionBranch() {
         exceptionBranch.enter();
+    }
+
+    public void subtypingBranch() {
+        subtypingBranch.enter();
     }
 
     public boolean usesMemoryZero() {
