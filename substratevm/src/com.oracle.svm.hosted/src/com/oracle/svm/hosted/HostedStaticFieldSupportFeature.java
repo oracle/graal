@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.hosted;
 
-import java.util.function.Function;
+import java.lang.reflect.Field;
+
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.StaticFieldsSupport.HostedStaticFieldSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -40,6 +45,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -48,15 +54,27 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@AutomaticallyRegisteredImageSingleton(StaticFieldsSupport.HostedStaticFieldSupport.class)
+@AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
-public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedStaticFieldSupport {
+final class HostedStaticFieldSupportFeature extends HostedStaticFieldSupport implements InternalFeature {
 
     private enum State {
         UNUSED,
         CURRENT_LAYER,
         PRIOR_LAYER,
         FUTURE_APP_LAYER,
+    }
+
+    private HostedMetaAccess hostedMetaAccess;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(HostedStaticFieldSupport.class, this);
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        hostedMetaAccess = ((FeatureImpl.BeforeCompilationAccessImpl) access).getMetaAccess();
     }
 
     private State determineState(int layerNum) {
@@ -77,22 +95,22 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
     }
 
     @Override
-    public JavaConstant getStaticFieldsBaseConstant(int layerNum, boolean primitive, Function<Object, JavaConstant> toConstant) {
+    protected Object getStaticFieldBaseTransformation(int layerNum, boolean primitive) {
         return switch (determineState(layerNum)) {
-            case UNUSED, CURRENT_LAYER -> {
-                Object hostedObject = primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
-                yield toConstant.apply(hostedObject);
-            }
-            case PRIOR_LAYER ->
-                primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
+            case UNUSED, CURRENT_LAYER ->
+                primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
+            case PRIOR_LAYER -> {
+                var value = primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
                                 : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
+                yield new JavaConstantWrapper(value);
+            }
             case FUTURE_APP_LAYER ->
-                LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldBaseConstant(primitive);
+                new JavaConstantWrapper(LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldBaseConstant(primitive));
         };
     }
 
     @Override
-    public FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph) {
+    protected FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph) {
         return switch (determineState(layerNum)) {
             case UNUSED, CURRENT_LAYER -> {
                 Object hostedObject = primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
@@ -110,7 +128,7 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
     }
 
     @Override
-    public boolean isPrimitive(ResolvedJavaField field) {
+    protected boolean isPrimitive(ResolvedJavaField field) {
         if (field instanceof AnalysisField aField) {
             return aField.getStorageKind().isPrimitive();
         }
@@ -129,7 +147,7 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
     }
 
     @Override
-    public int getInstalledLayerNum(ResolvedJavaField field) {
+    protected int getInstalledLayerNum(ResolvedJavaField field) {
         assert ImageLayerBuildingSupport.buildingImageLayer();
         if (field instanceof SharedField sField) {
             return sField.getInstalledLayerNum();
@@ -141,5 +159,10 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
                 case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> LayeredStaticFieldSupport.getAppLayerNumber();
             };
         }
+    }
+
+    @Override
+    protected ResolvedJavaField toResolvedField(Field field) {
+        return hostedMetaAccess.lookupJavaField(field);
     }
 }
