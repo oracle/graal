@@ -84,7 +84,7 @@ import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
-import org.graalvm.wasm.constants.Vector128OpStackEffects;
+import org.graalvm.wasm.constants.StackEffects;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
@@ -326,7 +326,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         break;
                     }
                     case Bytecode.LABEL_U16: {
-                        final int value = rawPeekU16(bytecode, offset);
+                        final int value = rawPeekU8(bytecode, offset);
                         final int stackSize = rawPeekU8(bytecode, offset + 1);
                         offset += 2;
                         final int resultCount = (value & BytecodeBitEncoding.LABEL_U16_RESULT_VALUE);
@@ -535,9 +535,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         break;
                     }
                     case Bytecode.CALL_INDIRECT_U8:
-                    case Bytecode.CALL_INDIRECT_I32: {
-                        // Extract the function object.
-                        stackPointer--;
+                    case Bytecode.CALL_INDIRECT_I32:
+                    case Bytecode.CALL_REF_U8:
+                    case Bytecode.CALL_REF_I32: {
                         final SymbolTable symtab = module.symbolTable();
 
                         final int callNodeIndex;
@@ -548,50 +548,68 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                             expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
                             tableIndex = rawPeekU8(bytecode, offset + 2);
                             offset += 3;
-                        } else {
+                        } else if (opcode == Bytecode.CALL_INDIRECT_I32) {
                             callNodeIndex = rawPeekI32(bytecode, offset);
                             expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
                             tableIndex = rawPeekI32(bytecode, offset + 8);
                             offset += 12;
-                        }
-                        final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
-                        final Object[] elements = table.elements();
-                        final int elementIndex = popInt(frame, stackPointer);
-                        if (elementIndex < 0 || elementIndex >= elements.length) {
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
-                        }
-                        // Currently, table elements may only be functions.
-                        // We can add a check here when this changes in the future.
-                        final Object element = elements[elementIndex];
-                        if (element == WasmConstant.NULL) {
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
-                        }
-                        final WasmFunctionInstance functionInstance;
-                        final WasmFunction function;
-                        final CallTarget target;
-                        final WasmContext functionInstanceContext;
-                        if (element instanceof WasmFunctionInstance) {
-                            functionInstance = (WasmFunctionInstance) element;
-                            function = functionInstance.function();
-                            target = functionInstance.target();
-                            functionInstanceContext = functionInstance.context();
+                        } else if (opcode == Bytecode.CALL_REF_U8) {
+                            callNodeIndex = rawPeekU8(bytecode, offset);
+                            expectedFunctionTypeIndex = rawPeekU8(bytecode, offset + 1);
+                            tableIndex = -1;
+                            offset += 2;
                         } else {
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
+                            assert opcode == Bytecode.CALL_REF_I32;
+                            callNodeIndex = rawPeekI32(bytecode, offset);
+                            expectedFunctionTypeIndex = rawPeekI32(bytecode, offset + 4);
+                            tableIndex = -1;
+                            offset += 8;
                         }
 
-                        int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+                        // Extract the function object.
+                        final Object functionCandidate;
+                        final int elementIndex;
+                        if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                            final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
+                            final Object[] elements = table.elements();
+                            elementIndex = popInt(frame, --stackPointer);
+                            if (elementIndex < 0 || elementIndex >= elements.length) {
+                                enterErrorBranch();
+                                throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
+                            }
+                            // Currently, table elements may only be functions.
+                            // We can add a check here when this changes in the future.
+                            functionCandidate = elements[elementIndex];
+                        } else {
+                            assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                            functionCandidate = popReference(frame, --stackPointer);
+                            elementIndex = -1;
+                        }
+
+                        if (!(functionCandidate instanceof WasmFunctionInstance functionInstance)) {
+                            throw callIndirectNotAFunctionError(opcode, functionCandidate, elementIndex);
+                        }
+
+                        final WasmFunction function = functionInstance.function();
+                        final CallTarget target = functionInstance.target();
+                        final WasmContext functionInstanceContext = functionInstance.context();
 
                         // Target function instance must be from the same context.
                         assert functionInstanceContext == WasmContext.get(this);
 
-                        // Validate that the target function type matches the expected type of the
-                        // indirect call by performing an equivalence-class check.
-                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            enterErrorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                        if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                            // Validate that the target function type matches the expected type of
+                            // the indirect call. We first try if the types are equivalent using the
+                            // equivalence classes...
+                            if (symtab.equivalenceClass(expectedFunctionTypeIndex) != function.typeEquivalenceClass()) {
+                                codeEntry.subtypingBranch();
+                                // If they are not equivalent, we run the full subtype matching
+                                // procedure.
+                                if (!symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
+                                    enterErrorBranch();
+                                    failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                                }
+                            }
                         }
 
                         // Invoke the resolved function.
@@ -1497,24 +1515,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final Object refType = popReference(frame, stackPointer - 1);
                         pushInt(frame, stackPointer - 1, refType == WasmConstant.NULL ? 1 : 0);
                         break;
-                    case Bytecode.REF_FUNC:
+                    case Bytecode.REF_FUNC: {
                         final int functionIndex = rawPeekI32(bytecode, offset);
                         final WasmFunction function = module.symbolTable().function(functionIndex);
                         final WasmFunctionInstance functionInstance = instance.functionInstance(function);
                         pushReference(frame, stackPointer, functionInstance);
                         stackPointer++;
-                        offset += 4;
-                        break;
-                    case Bytecode.TABLE_GET: {
-                        final int tableIndex = rawPeekI32(bytecode, offset);
-                        table_get(instance, frame, stackPointer, tableIndex);
-                        offset += 4;
-                        break;
-                    }
-                    case Bytecode.TABLE_SET: {
-                        final int tableIndex = rawPeekI32(bytecode, offset);
-                        table_set(instance, frame, stackPointer, tableIndex);
-                        stackPointer -= 2;
                         offset += 4;
                         break;
                     }
@@ -1523,142 +1529,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         offset++;
                         CompilerAsserts.partialEvaluationConstant(miscOpcode);
                         switch (miscOpcode) {
-                            case Bytecode.I32_TRUNC_SAT_F32_S:
-                                i32_trunc_sat_f32_s(frame, stackPointer);
-                                break;
-                            case Bytecode.I32_TRUNC_SAT_F32_U:
-                                i32_trunc_sat_f32_u(frame, stackPointer);
-                                break;
-                            case Bytecode.I32_TRUNC_SAT_F64_S:
-                                i32_trunc_sat_f64_s(frame, stackPointer);
-                                break;
-                            case Bytecode.I32_TRUNC_SAT_F64_U:
-                                i32_trunc_sat_f64_u(frame, stackPointer);
-                                break;
-                            case Bytecode.I64_TRUNC_SAT_F32_S:
-                                i64_trunc_sat_f32_s(frame, stackPointer);
-                                break;
-                            case Bytecode.I64_TRUNC_SAT_F32_U:
-                                i64_trunc_sat_f32_u(frame, stackPointer);
-                                break;
-                            case Bytecode.I64_TRUNC_SAT_F64_S:
-                                i64_trunc_sat_f64_s(frame, stackPointer);
-                                break;
-                            case Bytecode.I64_TRUNC_SAT_F64_U:
-                                i64_trunc_sat_f64_u(frame, stackPointer);
-                                break;
-                            case Bytecode.MEMORY_INIT:
-                            case Bytecode.MEMORY64_INIT: {
-                                final int dataIndex = rawPeekI32(bytecode, offset);
-                                final int memoryIndex = rawPeekI32(bytecode, offset + 4);
-                                executeMemoryInit(instance, frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
-                                stackPointer -= 3;
-                                offset += 8;
-                                break;
-                            }
-                            case Bytecode.DATA_DROP: {
-                                final int dataIndex = rawPeekI32(bytecode, offset);
-                                data_drop(instance, dataIndex);
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.MEMORY_COPY:
-                            case Bytecode.MEMORY64_COPY_D64_S64:
-                            case Bytecode.MEMORY64_COPY_D64_S32:
-                            case Bytecode.MEMORY64_COPY_D32_S64: {
-                                final int destMemoryIndex = rawPeekI32(bytecode, offset);
-                                final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                                executeMemoryCopy(instance, frame, stackPointer, miscOpcode, destMemoryIndex, srcMemoryIndex);
-                                stackPointer -= 3;
-                                offset += 8;
-                                break;
-                            }
-                            case Bytecode.MEMORY_FILL:
-                            case Bytecode.MEMORY64_FILL: {
-                                final int memoryIndex = rawPeekI32(bytecode, offset);
-                                executeMemoryFill(instance, frame, stackPointer, miscOpcode, memoryIndex);
-                                stackPointer -= 3;
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.TABLE_INIT: {
-                                final int elementIndex = rawPeekI32(bytecode, offset);
-                                final int tableIndex = rawPeekI32(bytecode, offset + 4);
-
-                                final int n = popInt(frame, stackPointer - 1);
-                                final int src = popInt(frame, stackPointer - 2);
-                                final int dst = popInt(frame, stackPointer - 3);
-                                table_init(instance, n, src, dst, tableIndex, elementIndex);
-                                stackPointer -= 3;
-                                offset += 8;
-                                break;
-                            }
-                            case Bytecode.ELEM_DROP: {
-                                final int elementIndex = rawPeekI32(bytecode, offset);
-                                instance.dropElemInstance(elementIndex);
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.TABLE_COPY: {
-                                final int srcIndex = rawPeekI32(bytecode, offset);
-                                final int dstIndex = rawPeekI32(bytecode, offset + 4);
-
-                                final int n = popInt(frame, stackPointer - 1);
-                                final int src = popInt(frame, stackPointer - 2);
-                                final int dst = popInt(frame, stackPointer - 3);
-                                table_copy(instance, n, src, dst, srcIndex, dstIndex);
-                                stackPointer -= 3;
-                                offset += 8;
-                                break;
-                            }
-                            case Bytecode.TABLE_GROW: {
-                                final int tableIndex = rawPeekI32(bytecode, offset);
-
-                                final int n = popInt(frame, stackPointer - 1);
-                                final Object val = popReference(frame, stackPointer - 2);
-
-                                final int res = table_grow(instance, n, val, tableIndex);
-                                pushInt(frame, stackPointer - 2, res);
-                                stackPointer--;
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.TABLE_SIZE: {
-                                final int tableIndex = rawPeekI32(bytecode, offset);
-                                table_size(instance, frame, stackPointer, tableIndex);
-                                stackPointer++;
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.TABLE_FILL: {
-                                final int tableIndex = rawPeekI32(bytecode, offset);
-
-                                final int n = popInt(frame, stackPointer - 1);
-                                final Object val = popReference(frame, stackPointer - 2);
-                                final int i = popInt(frame, stackPointer - 3);
-                                table_fill(instance, n, val, i, tableIndex);
-                                stackPointer -= 3;
-                                offset += 4;
-                                break;
-                            }
-                            case Bytecode.MEMORY64_SIZE: {
-                                final int memoryIndex = rawPeekI32(bytecode, offset);
-                                offset += 4;
-                                final WasmMemory memory = memory(instance, memoryIndex);
-                                long pageSize = memoryLib(memoryIndex).size(memory);
-                                pushLong(frame, stackPointer, pageSize);
-                                stackPointer++;
-                                break;
-                            }
-                            case Bytecode.MEMORY64_GROW: {
-                                final int memoryIndex = rawPeekI32(bytecode, offset);
-                                offset += 4;
-                                final WasmMemory memory = memory(instance, memoryIndex);
-                                long extraSize = popLong(frame, stackPointer - 1);
-                                long previousSize = memoryLib(memoryIndex).grow(memory, extraSize);
-                                pushLong(frame, stackPointer - 1, previousSize);
-                                break;
-                            }
                             case Bytecode.THROW: {
                                 codeEntry.exceptionBranch();
                                 final int tagIndex = rawPeekI32(bytecode, offset);
@@ -1680,8 +1550,61 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 assert exception instanceof WasmRuntimeException : "Only wasm exceptions can be thrown by throw_ref";
                                 throw (WasmRuntimeException) exception;
                             }
-                            default:
-                                throw CompilerDirectives.shouldNotReachHere();
+                            case Bytecode.BR_ON_NULL_U8: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 1, reference == WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekU8(bytecode, offset);
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte
+                                    // value. BR_ON_NULL_U8
+                                    // can never perform a forward jump.
+                                    offset -= offsetDelta;
+                                } else {
+                                    offset += 3;
+                                    pushReference(frame, stackPointer++, reference);
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NULL_I32: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 4, reference == WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekI32(bytecode, offset);
+                                    offset += offsetDelta;
+                                } else {
+                                    offset += 6;
+                                    pushReference(frame, stackPointer++, reference);
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NON_NULL_U8: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 1, reference != WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekU8(bytecode, offset);
+                                    // BR_ON_NULL_U8 encodes the back jump value as a positive byte
+                                    // value. BR_ON_NULL_U8
+                                    // can never perform a forward jump.
+                                    offset -= offsetDelta;
+                                    pushReference(frame, stackPointer++, reference);
+                                } else {
+                                    offset += 3;
+                                }
+                                break;
+                            }
+                            case Bytecode.BR_ON_NON_NULL_I32: {
+                                Object reference = popReference(frame, --stackPointer);
+                                if (profileCondition(bytecode, offset + 4, reference != WasmConstant.NULL)) {
+                                    final int offsetDelta = rawPeekI32(bytecode, offset);
+                                    offset += offsetDelta;
+                                    pushReference(frame, stackPointer++, reference);
+                                } else {
+                                    offset += 6;
+                                }
+                                break;
+                            }
+                            default: {
+                                offset = executeMisc(instance, frame, offset, stackPointer, miscOpcode);
+                                stackPointer += StackEffects.getMiscOpStackEffect(miscOpcode);
+                                break;
+                            }
                         }
                         break;
                     }
@@ -1717,7 +1640,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         offset++;
                         CompilerAsserts.partialEvaluationConstant(vectorOpcode);
                         offset = executeVector(instance, frame, offset, stackPointer, vectorOpcode);
-                        stackPointer += Vector128OpStackEffects.getVector128OpStackEffect(vectorOpcode);
+                        stackPointer += StackEffects.getVectorOpStackEffect(vectorOpcode);
                         break;
                     }
                     case Bytecode.NOTIFY: {
@@ -1832,9 +1755,29 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     @TruffleBoundary
     private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
-        throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
+        throw WasmException.format(Failure.INDIRECT_CALL_TYPE_MISMATCH, this,
                         "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
                         function.typeIndex(), function.name(), expectedFunctionTypeIndex, module.name());
+    }
+
+    @HostCompilerDirectives.InliningCutoff
+    private WasmException callIndirectNotAFunctionError(int opcode, Object functionCandidate, int elementIndex) {
+        enterErrorBranch();
+        if (functionCandidate == WasmConstant.NULL) {
+            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+            } else {
+                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                throw WasmException.format(Failure.NULL_FUNCTION_REFERENCE, this, "Function reference is null");
+            }
+        } else {
+            if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", functionCandidate);
+            } else {
+                assert opcode == Bytecode.CALL_REF_U8 || opcode == Bytecode.CALL_REF_I32;
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown function object: %s", functionCandidate);
+            }
+        }
     }
 
     private void check(int v, int limit) {
@@ -2161,6 +2104,178 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 throw CompilerDirectives.shouldNotReachHere();
         }
         memory_fill(instance, n, val, dst, memoryIndex);
+    }
+
+    private int executeMisc(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int miscOpcode) {
+        int offset = startingOffset;
+        int stackPointer = startingStackPointer;
+
+        CompilerAsserts.partialEvaluationConstant(miscOpcode);
+        switch (miscOpcode) {
+            case Bytecode.I32_TRUNC_SAT_F32_S:
+                i32_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case Bytecode.I32_TRUNC_SAT_F32_U:
+                i32_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case Bytecode.I32_TRUNC_SAT_F64_S:
+                i32_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case Bytecode.I32_TRUNC_SAT_F64_U:
+                i32_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            case Bytecode.I64_TRUNC_SAT_F32_S:
+                i64_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case Bytecode.I64_TRUNC_SAT_F32_U:
+                i64_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case Bytecode.I64_TRUNC_SAT_F64_S:
+                i64_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case Bytecode.I64_TRUNC_SAT_F64_U:
+                i64_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            case Bytecode.MEMORY_INIT:
+            case Bytecode.MEMORY64_INIT: {
+                final int dataIndex = rawPeekI32(bytecode, offset);
+                final int memoryIndex = rawPeekI32(bytecode, offset + 4);
+                executeMemoryInit(instance, frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
+                stackPointer -= 3;
+                offset += 8;
+                break;
+            }
+            case Bytecode.DATA_DROP: {
+                final int dataIndex = rawPeekI32(bytecode, offset);
+                data_drop(instance, dataIndex);
+                offset += 4;
+                break;
+            }
+            case Bytecode.MEMORY_COPY:
+            case Bytecode.MEMORY64_COPY_D64_S64:
+            case Bytecode.MEMORY64_COPY_D64_S32:
+            case Bytecode.MEMORY64_COPY_D32_S64: {
+                final int destMemoryIndex = rawPeekI32(bytecode, offset);
+                final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
+                executeMemoryCopy(instance, frame, stackPointer, miscOpcode, destMemoryIndex, srcMemoryIndex);
+                stackPointer -= 3;
+                offset += 8;
+                break;
+            }
+            case Bytecode.MEMORY_FILL:
+            case Bytecode.MEMORY64_FILL: {
+                final int memoryIndex = rawPeekI32(bytecode, offset);
+                executeMemoryFill(instance, frame, stackPointer, miscOpcode, memoryIndex);
+                stackPointer -= 3;
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_INIT: {
+                final int elementIndex = rawPeekI32(bytecode, offset);
+                final int tableIndex = rawPeekI32(bytecode, offset + 4);
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+                table_init(instance, n, src, dst, tableIndex, elementIndex);
+                stackPointer -= 3;
+                offset += 8;
+                break;
+            }
+            case Bytecode.ELEM_DROP: {
+                final int elementIndex = rawPeekI32(bytecode, offset);
+                instance.dropElemInstance(elementIndex);
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_COPY: {
+                final int srcIndex = rawPeekI32(bytecode, offset);
+                final int dstIndex = rawPeekI32(bytecode, offset + 4);
+
+                final int n = popInt(frame, stackPointer - 1);
+                final int src = popInt(frame, stackPointer - 2);
+                final int dst = popInt(frame, stackPointer - 3);
+                table_copy(instance, n, src, dst, srcIndex, dstIndex);
+                stackPointer -= 3;
+                offset += 8;
+                break;
+            }
+            case Bytecode.TABLE_GROW: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+
+                final int n = popInt(frame, stackPointer - 1);
+                final Object val = popReference(frame, stackPointer - 2);
+
+                final int res = table_grow(instance, n, val, tableIndex);
+                pushInt(frame, stackPointer - 2, res);
+                stackPointer--;
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_SIZE: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+                table_size(instance, frame, stackPointer, tableIndex);
+                stackPointer++;
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_FILL: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+
+                final int n = popInt(frame, stackPointer - 1);
+                final Object val = popReference(frame, stackPointer - 2);
+                final int i = popInt(frame, stackPointer - 3);
+                table_fill(instance, n, val, i, tableIndex);
+                stackPointer -= 3;
+                offset += 4;
+                break;
+            }
+            case Bytecode.MEMORY64_SIZE: {
+                final int memoryIndex = rawPeekI32(bytecode, offset);
+                offset += 4;
+                final WasmMemory memory = memory(instance, memoryIndex);
+                long pageSize = memoryLib(memoryIndex).size(memory);
+                pushLong(frame, stackPointer, pageSize);
+                stackPointer++;
+                break;
+            }
+            case Bytecode.MEMORY64_GROW: {
+                final int memoryIndex = rawPeekI32(bytecode, offset);
+                offset += 4;
+                final WasmMemory memory = memory(instance, memoryIndex);
+                long extraSize = popLong(frame, stackPointer - 1);
+                long previousSize = memoryLib(memoryIndex).grow(memory, extraSize);
+                pushLong(frame, stackPointer - 1, previousSize);
+                break;
+            }
+            case Bytecode.TABLE_GET: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+                table_get(instance, frame, stackPointer, tableIndex);
+                offset += 4;
+                break;
+            }
+            case Bytecode.TABLE_SET: {
+                final int tableIndex = rawPeekI32(bytecode, offset);
+                table_set(instance, frame, stackPointer, tableIndex);
+                stackPointer -= 2;
+                offset += 4;
+                break;
+            }
+            case Bytecode.REF_AS_NON_NULL: {
+                Object reference = popReference(frame, stackPointer - 1);
+                if (reference == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.format(Failure.NULL_REFERENCE, this, "Function reference is null");
+                }
+                pushReference(frame, stackPointer - 1, reference);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        assert stackPointer - startingStackPointer == StackEffects.getMiscOpStackEffect(miscOpcode);
+        return offset;
     }
 
     private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, WasmMemoryLibrary memoryLib, long memOffset, int indexType64) {
@@ -3221,7 +3336,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 throw CompilerDirectives.shouldNotReachHere();
         }
 
-        assert stackPointer - startingStackPointer == Vector128OpStackEffects.getVector128OpStackEffect(vectorOpcode);
+        assert stackPointer - startingStackPointer == StackEffects.getVectorOpStackEffect(vectorOpcode);
         return offset;
     }
 
@@ -3359,7 +3474,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     // Checkstyle: stop method name check
 
     private void global_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final byte type = module.globalValueType(index);
+        final int type = module.globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         // For global.set, we don't need to make sure that the referenced global is
         // mutable.
@@ -3369,60 +3484,34 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final GlobalRegistry globals = instance.globals();
 
         switch (type) {
-            case WasmType.I32_TYPE:
-                globals.storeInt(globalAddress, popInt(frame, stackPointer));
-                break;
-            case WasmType.F32_TYPE:
-                globals.storeFloat(globalAddress, popFloat(frame, stackPointer));
-                break;
-            case WasmType.I64_TYPE:
-                globals.storeLong(globalAddress, popLong(frame, stackPointer));
-                break;
-            case WasmType.F64_TYPE:
-                globals.storeDouble(globalAddress, popDouble(frame, stackPointer));
-                break;
-            case WasmType.V128_TYPE:
-                globals.storeVector128(globalAddress, vector128Ops().toVector128(popVector128(frame, stackPointer)));
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-            case WasmType.EXNREF_TYPE:
+            case WasmType.I32_TYPE -> globals.storeInt(globalAddress, popInt(frame, stackPointer));
+            case WasmType.F32_TYPE -> globals.storeFloat(globalAddress, popFloat(frame, stackPointer));
+            case WasmType.I64_TYPE -> globals.storeLong(globalAddress, popLong(frame, stackPointer));
+            case WasmType.F64_TYPE -> globals.storeDouble(globalAddress, popDouble(frame, stackPointer));
+            case WasmType.V128_TYPE -> globals.storeVector128(globalAddress, vector128Ops().toVector128(popVector128(frame, stackPointer)));
+            default -> {
+                assert WasmType.isReferenceType(type);
                 globals.storeReference(globalAddress, popReference(frame, stackPointer));
-                break;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
+            }
         }
     }
 
     private void global_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final byte type = module.symbolTable().globalValueType(index);
+        final int type = module.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         final int globalAddress = module.symbolTable().globalAddress(index);
         final GlobalRegistry globals = instance.globals();
 
         switch (type) {
-            case WasmType.I32_TYPE:
-                pushInt(frame, stackPointer, globals.loadAsInt(globalAddress));
-                break;
-            case WasmType.F32_TYPE:
-                pushFloat(frame, stackPointer, globals.loadAsFloat(globalAddress));
-                break;
-            case WasmType.I64_TYPE:
-                pushLong(frame, stackPointer, globals.loadAsLong(globalAddress));
-                break;
-            case WasmType.F64_TYPE:
-                pushDouble(frame, stackPointer, globals.loadAsDouble(globalAddress));
-                break;
-            case WasmType.V128_TYPE:
-                pushVector128(frame, stackPointer, vector128Ops().fromVector128(globals.loadAsVector128(globalAddress)));
-                break;
-            case WasmType.FUNCREF_TYPE:
-            case WasmType.EXTERNREF_TYPE:
-            case WasmType.EXNREF_TYPE:
+            case WasmType.I32_TYPE -> pushInt(frame, stackPointer, globals.loadAsInt(globalAddress));
+            case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, globals.loadAsFloat(globalAddress));
+            case WasmType.I64_TYPE -> pushLong(frame, stackPointer, globals.loadAsLong(globalAddress));
+            case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, globals.loadAsDouble(globalAddress));
+            case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128(globals.loadAsVector128(globalAddress)));
+            default -> {
+                assert WasmType.isReferenceType(type);
                 pushReference(frame, stackPointer, globals.loadAsReference(globalAddress));
-                break;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Global variable cannot have the void type.");
+            }
         }
     }
 
@@ -4547,7 +4636,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             Object arg = switch (type) {
                 case WasmType.I32_TYPE -> popInt(frame, stackPointer);
@@ -4555,8 +4644,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
                 case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
                 case WasmType.V128_TYPE -> vector128Ops().toVector128(popVector128(frame, stackPointer));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> popReference(frame, stackPointer);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    yield popReference(frame, stackPointer);
+                }
             };
             WasmArguments.setArgument(args, i, arg);
         }
@@ -4577,7 +4668,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         int stackPointer = stackPointerOffset;
         for (int i = numFields - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             final Object arg = switch (type) {
                 case WasmType.I32_TYPE -> popInt(frame, stackPointer);
@@ -4585,8 +4676,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
                 case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
                 case WasmType.V128_TYPE -> vector128Ops().toVector128(popVector128(frame, stackPointer));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> popReference(frame, stackPointer);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    yield popReference(frame, stackPointer);
+                }
             };
             fields[i] = arg;
         }
@@ -4601,7 +4694,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final Object[] fields = e.fields();
         int stackPointer = stackPointerOffset;
         for (int i = 0; i < numFields; i++) {
-            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            int type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             switch (type) {
                 case WasmType.I32_TYPE -> pushInt(frame, stackPointer, (int) fields[i]);
@@ -4609,8 +4702,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) fields[i]);
                 case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) fields[i]);
                 case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128((Vector128) fields[i]));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> pushReference(frame, stackPointer, fields[i]);
-                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    pushReference(frame, stackPointer, fields[i]);
+                }
             }
             stackPointer++;
         }
@@ -4787,7 +4882,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (resultCount == 0) {
             return stackPointer;
         } else if (resultCount == 1) {
-            final byte resultType = function.resultTypeAt(0);
+            final int resultType = function.resultTypeAt(0);
             pushResult(frame, stackPointer, resultType, result);
             return stackPointer + 1;
         } else {
@@ -4803,7 +4898,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         if (resultCount == 0) {
             return stackPointer;
         } else if (resultCount == 1) {
-            final byte resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
+            final int resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
             pushResult(frame, stackPointer, resultType, result);
             return stackPointer + 1;
         } else {
@@ -4812,7 +4907,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         }
     }
 
-    private void pushResult(VirtualFrame frame, int stackPointer, byte resultType, Object result) {
+    private void pushResult(VirtualFrame frame, int stackPointer, int resultType, Object result) {
         CompilerAsserts.partialEvaluationConstant(resultType);
         switch (resultType) {
             case WasmType.I32_TYPE -> pushInt(frame, stackPointer, (int) result);
@@ -4820,9 +4915,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) result);
             case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) result);
             case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, vector128Ops().fromVector128((Vector128) result));
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> pushReference(frame, stackPointer, result);
             default -> {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+                assert WasmType.isReferenceType(resultType);
+                pushReference(frame, stackPointer, result);
             }
         }
     }
@@ -4845,7 +4940,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
         final Object[] objectMultiValueStack = multiValueStack.objectStack();
         for (int i = 0; i < resultCount; i++) {
-            final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+            final int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE -> pushInt(frame, stackPointer + i, (int) primitiveMultiValueStack[i]);
@@ -4856,13 +4951,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     pushVector128(frame, stackPointer + i, vector128Ops().fromVector128((Vector128) objectMultiValueStack[i]));
                     objectMultiValueStack[i] = null;
                 }
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> {
+                default -> {
+                    assert WasmType.isReferenceType(resultType);
                     pushReference(frame, stackPointer + i, objectMultiValueStack[i]);
                     objectMultiValueStack[i] = null;
-                }
-                default -> {
-                    enterErrorBranch();
-                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                 }
             }
         }

@@ -46,7 +46,6 @@ import java.util.Objects;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.globals.WasmGlobal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
@@ -117,15 +116,17 @@ public final class GlobalRegistry {
         return objectGlobals[address];
     }
 
-    public void store(byte globalValueType, int address, Object value) {
+    public void store(int globalValueType, int address, Object value) {
         switch (globalValueType) {
             case WasmType.I32_TYPE -> storeInt(address, (int) value);
             case WasmType.I64_TYPE -> storeLong(address, (long) value);
             case WasmType.F32_TYPE -> storeFloat(address, (float) value);
             case WasmType.F64_TYPE -> storeDouble(address, (double) value);
             case WasmType.V128_TYPE -> storeVector128(address, (Vector128) value);
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE, WasmType.EXNREF_TYPE -> storeReference(address, value);
-            default -> throw CompilerDirectives.shouldNotReachHere();
+            default -> {
+                assert WasmType.isReferenceType(globalValueType);
+                storeReference(address, value);
+            }
         }
     }
 
