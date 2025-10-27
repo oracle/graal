@@ -537,12 +537,9 @@ public class JSObject extends JSValue {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T as(Class<T> cls) {
-        if (cls.isAssignableFrom(this.getClass())) {
-            return (T) this;
-        }
-        T facade = extractFacadeClass(cls);
+        Object facade = extractFacadeClass(cls);
         if (facade != null) {
-            return facade;
+            return (T) facade;
         }
         return super.as(cls);
     }
