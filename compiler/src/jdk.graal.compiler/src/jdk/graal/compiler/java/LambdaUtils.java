@@ -181,10 +181,10 @@ public final class LambdaUtils {
     }
 
     /**
-     * Checks if the passed class is lambda class.
+     * Checks if the passed class is a lambda class.
      *
      * @param type the type to be checked
-     * @return true if the clazz is lambda class, false instead
+     * @return true if type is a lambda class, false instead
      */
     public static boolean isLambdaClass(ResolvedJavaType type) {
         return isLambdaClassName(type.toClassName());
