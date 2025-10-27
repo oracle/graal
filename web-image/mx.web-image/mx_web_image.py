@@ -49,7 +49,7 @@ from mx_unittest import unittest
 
 _suite = mx.suite("web-image")
 
-_web_image_js_engine_name = os.getenv("NODE_EXE", "node")
+_web_image_js_engine_name = [os.getenv("NODE_EXE", "node"), "--experimental-wasm-exnref"]
 
 # Name of GraalVm component defining the web-image macro
 web_image_component = "web-image"
@@ -489,7 +489,7 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         vm_args, main_class, main_class_args = config
 
-        vm_args += ["-Dwebimage.test.js=" + _web_image_js_engine_name]
+        vm_args += ["-Dwebimage.test.js=" + ",".join(_web_image_js_engine_name)]
         vm_args += ["-Dwebimage.test.launcher=" + vm_web_image_path()]
         vm_args += ["-Dwebimage.test.flags=" + ",".join(get_launcher_flags(WebImageConfiguration.test_cases))]
         # If any of the arguments contains spaces and double quotes, on Windows it will add its own quotes around
