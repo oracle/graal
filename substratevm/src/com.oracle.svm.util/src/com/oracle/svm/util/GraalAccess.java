@@ -27,7 +27,9 @@ package com.oracle.svm.util;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.RecordComponent;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -82,20 +84,25 @@ public final class GraalAccess {
         return originalProviders;
     }
 
+    private static final Map<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>();
+    private static final Map<Executable, ResolvedJavaMethod> methodCache = new ConcurrentHashMap<>();
+    private static final Map<Field, ResolvedJavaField> fieldCache = new ConcurrentHashMap<>();
+    private static final Map<RecordComponent, ResolvedJavaRecordComponent> recordCache = new ConcurrentHashMap<>();
+
     public static ResolvedJavaType lookupType(Class<?> cls) {
-        return originalProviders.getMetaAccess().lookupJavaType(cls);
+        return typeCache.computeIfAbsent(cls, c -> originalProviders.getMetaAccess().lookupJavaType(cls));
     }
 
     public static ResolvedJavaMethod lookupMethod(Executable exe) {
-        return originalProviders.getMetaAccess().lookupJavaMethod(exe);
+        return methodCache.computeIfAbsent(exe, e -> originalProviders.getMetaAccess().lookupJavaMethod(e));
     }
 
     public static ResolvedJavaField lookupField(Field field) {
-        return originalProviders.getMetaAccess().lookupJavaField(field);
+        return fieldCache.computeIfAbsent(field, f -> originalProviders.getMetaAccess().lookupJavaField(f));
     }
 
     public static ResolvedJavaRecordComponent lookupRecordComponent(RecordComponent rc) {
-        return originalProviders.getMetaAccess().lookupJavaRecordComponent(rc);
+        return recordCache.computeIfAbsent(rc, r -> originalProviders.getMetaAccess().lookupJavaRecordComponent(rc));
     }
 
     public static SnippetReflectionProvider getOriginalSnippetReflection() {
