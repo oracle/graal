@@ -41,6 +41,7 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
 import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
 
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.meta.InvokeTarget;
@@ -195,8 +196,8 @@ public class AArch64Call {
      * @return true if foreign call can be called directly and does not need a scratch register to
      *         load the address into.
      */
-    public static boolean isNearCall(ForeignCallLinkage linkage) {
-        long maxOffset = linkage.getMaxCallTargetOffset();
+    public static boolean isNearCall(ForeignCallLinkage linkage, CodeCacheProvider codeCache) {
+        long maxOffset = linkage.getMaxCallTargetOffset(codeCache);
         return maxOffset != -1 && AArch64MacroAssembler.isBranchImmediateOffset(maxOffset);
     }
 
@@ -247,7 +248,7 @@ public class AArch64Call {
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, ForeignCallLinkage callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            if (AArch64Call.isNearCall(callTarget)) {
+            if (AArch64Call.isNearCall(callTarget, crb.getCodeCache())) {
                 masm.jmp();
             } else {
                 masm.movNativeAddress(scratch.getRegister(), 0L, true);
