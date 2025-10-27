@@ -102,7 +102,7 @@ public final class Target_java_lang_reflect_Method {
     @Alias //
     private Class<?>[] exceptionTypes;
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
     public int modifiers;
 
     @Alias //
