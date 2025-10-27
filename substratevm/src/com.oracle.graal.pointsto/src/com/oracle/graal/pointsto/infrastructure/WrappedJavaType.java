@@ -24,10 +24,18 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.svm.util.AnnotatedWrapper;
 
-public interface WrappedJavaType extends WrappedElement, ResolvedJavaType {
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
+
+public interface WrappedJavaType extends WrappedElement, AnnotatedWrapper, ResolvedJavaType {
 
     @Override
     ResolvedJavaType getWrapped();
+
+    @Override
+    default Annotated getWrappedAnnotated() {
+        return getWrapped();
+    }
 }

@@ -228,7 +228,10 @@ suite = {
                 "compiler:GRAAL",
             ],
             "requiresConcealed" : {
-                "java.base" : ["jdk.internal.module"],
+                "java.base" : [
+                    "jdk.internal.module",
+                    "sun.reflect.annotation"
+                ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
@@ -1590,6 +1593,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.common",
                 ]
@@ -1639,6 +1643,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                 ],
                 "java.base" : [

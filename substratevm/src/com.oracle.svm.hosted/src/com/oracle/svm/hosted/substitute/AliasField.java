@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 
-import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public final class AliasField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public final class AliasField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper, AnnotatedWrapper {
 
     final ResolvedJavaField original;
     final ResolvedJavaField annotated;
@@ -90,7 +91,7 @@ public final class AliasField implements ResolvedJavaField, OriginalFieldProvide
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return original;
     }
 

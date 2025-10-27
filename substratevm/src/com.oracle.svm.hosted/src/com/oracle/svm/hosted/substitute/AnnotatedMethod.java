@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -54,8 +54,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper {
+public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
@@ -197,7 +198,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return original;
     }
 

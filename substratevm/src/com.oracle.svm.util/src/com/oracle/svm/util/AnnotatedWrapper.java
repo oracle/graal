@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.util;
 
-import com.oracle.svm.util.AnnotatedWrapper;
+import java.util.List;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.annotation.Annotated;
 
-public interface WrappedJavaField extends ResolvedJavaField, WrappedElement, AnnotatedWrapper {
+/**
+ * An annotated element may have its annotations provided by multiple, layered objects that
+ * implement this interface. A layer can optionally {@linkplain #getInjectedAnnotations() inject
+ * annotations}.
+ */
+public interface AnnotatedWrapper {
+    /**
+     * Gets the annotated element wrapped by this wrapper.
+     */
+    Annotated getWrappedAnnotated();
 
-    @Override
-    ResolvedJavaField getWrapped();
-
-    @Override
-    default Annotated getWrappedAnnotated() {
-        return getWrapped();
+    /**
+     * Gets the annotations injected by this wrapper.
+     */
+    default List<AnnotationValue> getInjectedAnnotations() {
+        return List.of();
     }
 }

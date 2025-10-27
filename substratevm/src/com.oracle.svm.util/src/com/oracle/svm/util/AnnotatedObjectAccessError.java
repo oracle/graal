@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.meta;
+package com.oracle.svm.util;
 
-import java.lang.annotation.Annotation;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
- * Base class for types representing persisted information from the base layer.
+ * Error thrown by {@link AnnotatedObjectAccess} or one of its subclasses.
  */
-public class BaseLayerElement {
-    private final Annotation[] annotations;
-
-    public BaseLayerElement(Annotation[] annotations) {
-        this.annotations = annotations;
+@SuppressWarnings("serial")
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class AnnotatedObjectAccessError extends Error {
+    public AnnotatedObjectAccessError(Object targetElement, Throwable cause) {
+        super("Failed to process '%s': %s".formatted(targetElement, cause), cause);
     }
 
-    public Annotation[] getBaseLayerAnnotations() {
-        return annotations;
+    public AnnotatedObjectAccessError(Object targetElement, String message) {
+        super("Failed to process '%s': %s".formatted(targetElement, message));
     }
 }

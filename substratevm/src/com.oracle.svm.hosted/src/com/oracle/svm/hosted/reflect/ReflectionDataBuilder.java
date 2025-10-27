@@ -80,7 +80,6 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -117,6 +116,7 @@ import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -128,6 +128,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 import sun.reflect.annotation.ExceptionProxy;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
@@ -1019,7 +1020,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             if (!filteredAnnotations.containsKey(annotatedElement)) {
                 List<AnnotationValue> includedAnnotations = new ArrayList<>();
-                for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationValues(annotatedElement).values()) {
+                Annotated annotated = SubstrateAnnotationExtractor.toAnnotated(annotatedElement);
+                for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationValues(annotated).values()) {
                     if (includeAnnotation(annotation)) {
                         includedAnnotations.add(annotation);
                         registerTypesForAnnotation(annotation);
@@ -1055,7 +1057,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (annotatedElement != null) {
             if (!filteredTypeAnnotations.containsKey(annotatedElement)) {
                 List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
-                for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationValues(annotatedElement)) {
+                Annotated annotated = SubstrateAnnotationExtractor.toAnnotated(annotatedElement);
+                for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationValues(annotated)) {
                     if (includeAnnotation(typeAnnotation.getAnnotation())) {
                         includedTypeAnnotations.add(typeAnnotation);
                         registerTypesForAnnotation(typeAnnotation.getAnnotation());
@@ -1431,7 +1434,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return filteredTypeAnnotations.getOrDefault(element, NO_TYPE_ANNOTATIONS);
     }
 
-    public Object getAnnotationDefaultData(AnnotatedElement element) {
+    public Object getAnnotationDefaultData(AnalysisMethod element) {
         return annotationExtractor.getAnnotationDefaultValue(element);
     }
 

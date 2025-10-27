@@ -33,6 +33,8 @@ import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -51,54 +53,38 @@ import jdk.vm.ci.meta.annotation.Annotated;
  */
 public final class AnnotationUtil {
 
-    /**
-     * Annotation related functionality that is in terms of {@link Annotated} instead of
-     * {@link java.lang.reflect.AnnotatedElement}. This interface must be implemented by the
-     * registered {@link AnnotationExtractor} image singleton.
-     */
-    public interface Access {
-        /**
-         * Retrieves the annotation of type {@code annotationType} from the given {@code element}.
-         *
-         * @param element the annotated element to retrieve the annotation value from
-         * @param annotationType the type of annotation to retrieve
-         * @return the annotation value of the specified type, or null if no such annotation exists
-         */
-        <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType);
-
-        /**
-         * Gets the declared annotations of {@code annotated}.
-         */
-        Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(Annotated element);
-
-        /**
-         * Converts an {@link AnnotationValue} to an {@link Annotation} of type
-         * {@code annotationType}.
-         */
-        <T extends Annotation> T asAnnotation(AnnotationValue annotationValue, Class<T> annotationType);
-
-        /**
-         * Converts an {@link Annotation} to an {@link AnnotationValue}.
-         */
-        AnnotationValue asAnnotationValue(Annotation annotation);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static class Lazy {
+        static final AnnotatedObjectAccess instance;
+        static {
+            if (ImageSingletons.contains(AnnotationExtractor.class)) {
+                instance = (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
+            } else {
+                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
+                instance = new AnnotatedObjectAccess();
+            }
+        }
     }
 
-    private static Access access() {
-        return (Access) ImageSingletons.lookup(AnnotationExtractor.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static AnnotatedObjectAccess instance() {
+        return Lazy.instance;
     }
 
     /**
      * Converts an {@link Annotation} to an {@link AnnotationValue}.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static AnnotationValue asAnnotationValue(Annotation annotation) {
-        return access().asAnnotationValue(annotation);
+        return instance().asAnnotationValue(annotation);
     }
 
     /**
      * Gets the declared annotations of {@code annotated}.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValues(Annotated annotated) {
-        return access().getDeclaredAnnotationValues(annotated);
+        return instance().getDeclaredAnnotationValues(annotated);
     }
 
     /**
@@ -107,11 +93,13 @@ public final class AnnotationUtil {
      */
     public static <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
         // Checkstyle: allow direct annotation access
-        if (ImageInfo.inImageBuildtimeCode()) {
-            return access().getAnnotation(element, annotationType);
-        } else {
-            return ((AnnotatedElement) element).getAnnotation(annotationType);
+        if (ImageInfo.inImageRuntimeCode()) {
+            if (element instanceof AnnotatedElement ae) {
+                return ae.getAnnotation(annotationType);
+            }
+            throw new IllegalArgumentException("Cannot cast " + element.getClass() + " to " + AnnotatedElement.class.getName() + ": " + element);
         }
+        return instance().getAnnotation(element, annotationType);
         // Checkstyle: disallow direct annotation access
     }
 
@@ -170,8 +158,9 @@ public final class AnnotationUtil {
      *            {@link Class} values are automatically converted to {@link EnumElement} and
      *            {@link ResolvedJavaType} values respectively.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static <T extends Annotation> T newAnnotation(Class<T> annotationType, Object... elements) {
-        return access().asAnnotation(newAnnotationValue(annotationType, elements), annotationType);
+        return instance().asAnnotation(newAnnotationValue(annotationType, elements), annotationType);
     }
 
     /**

@@ -25,10 +25,10 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -37,8 +37,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaField original;
     private final List<AnnotationValue> injectedAnnotations;
@@ -49,7 +50,7 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return original;
     }
 

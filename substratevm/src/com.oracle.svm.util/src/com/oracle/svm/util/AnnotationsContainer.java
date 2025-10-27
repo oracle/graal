@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.annotation;
+package com.oracle.svm.util;
 
-@SuppressWarnings("serial")
-public final class AnnotationExtractionError extends Error {
-    AnnotationExtractionError(Object targetElement, Throwable cause) {
-        super("Failed to process '%s': %s".formatted(targetElement, cause), cause);
+import java.lang.annotation.Annotation;
+import java.util.List;
+
+/**
+ * A container for an array of annotations.
+ */
+public class AnnotationsContainer {
+    private final List<Annotation> annotations;
+
+    public AnnotationsContainer(Annotation[] annotations) {
+        this.annotations = List.of(annotations);
     }
 
-    AnnotationExtractionError(Object targetElement, String message) {
-        super("Failed to process '%s': %s".formatted(targetElement, message));
+    /**
+     * Gets an immutable view of the contained annotations.
+     */
+    public List<Annotation> getContainedAnnotations() {
+        return annotations;
     }
 }

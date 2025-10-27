@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -45,6 +44,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * Call stub for invoking {@link CEntryPoint} methods via a Java-to-native call to the method's
@@ -103,7 +103,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return null;
     }
 }

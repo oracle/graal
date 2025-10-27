@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -41,8 +41,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
-public abstract class CustomSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
+public abstract class CustomSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
     private final ResolvedJavaType original;
 
     public CustomSubstitutionType(ResolvedJavaType original) {
@@ -60,7 +61,7 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return null;
     }
 

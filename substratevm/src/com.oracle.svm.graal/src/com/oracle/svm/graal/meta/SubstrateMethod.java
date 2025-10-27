@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public class SubstrateMethod implements SharedRuntimeMethod {
 
@@ -416,19 +417,33 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
+    private RuntimeException annotationsUnimplemented() {
+        return VMError.unimplemented("Annotations are not available for JIT compilation at image run time: " + format("%H.%n(%p)"));
+    }
+
+    @Override
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
     @Override
     public Annotation[] getAnnotations() {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override

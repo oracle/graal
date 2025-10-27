@@ -121,7 +121,7 @@ class DowncallStub extends NonBytecodeMethod {
         if (nep.allowHeapAccess()) {
             return INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS;
         }
-        return null;
+        return List.of();
     }
 
     /**

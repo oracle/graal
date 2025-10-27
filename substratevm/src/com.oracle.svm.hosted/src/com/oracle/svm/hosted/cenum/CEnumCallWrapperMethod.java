@@ -82,7 +82,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
         if (AnnotationUtil.getAnnotation(original, CEnumValue.class) != null) {
             return INJECTED_ANNOTATIONS;
         }
-        return null;
+        return List.of();
     }
 
     @Override

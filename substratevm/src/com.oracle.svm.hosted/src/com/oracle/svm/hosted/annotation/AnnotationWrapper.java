@@ -26,21 +26,17 @@ package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.annotation.AnnotationValue;
-
+/**
+ * Default implementations for {@link AnnotatedElement} based on the {@link AnnotationExtractor}
+ * image singleton.
+ */
 public interface AnnotationWrapper extends AnnotatedElement {
-    AnnotatedElement getAnnotationRoot();
-
-    default List<AnnotationValue> getInjectedAnnotations() {
-        return null;
-    }
 
     @Override
     default boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
