@@ -2917,9 +2917,9 @@ public class HierarchicalLayoutManager implements LayoutManager {
             Link[] links = graph.getLinks().toArray(new Link[0]);
             final boolean VIP = !noVip;
             if (VIP) {
-                Arrays.parallelSort(links, LINK_COMPARATOR);
+                Arrays.parallelSort(links, HierarchicalLayoutManager::compareLink);
             } else {
-                Arrays.parallelSort(links, LINK_NOVIP_COMPARATOR);
+                Arrays.parallelSort(links, HierarchicalLayoutManager::compareLinkNoVip);
             }
 
             for (Link l : links) {
@@ -2958,130 +2958,251 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
     }
 
-    private static interface PartialComparator<T> {
-
-        Integer partiallyCompare(T o1, T o2);
+    /**
+     * Compare by sum of VIP predecessors and successors, highest first.
+     * Returns 0 if equal.
+     */
+    private static int nodeBothVipCompare(LayoutNode n1, LayoutNode n2) {
+        int n1VIP = n1.getPredsVips() + n1.getSuccsVips();
+        int n2VIP = n2.getPredsVips() + n2.getSuccsVips();
+        return Integer.compare(n2VIP, n1VIP);
     }
 
-    private static class NestedComparator<T> implements Comparator<T> {
-
-        private final PartialComparator<T>[] partials;
-        private final Comparator<T> nested;
-
-        public NestedComparator(Comparator<T> comparator, PartialComparator<T>... partials) {
-            this.partials = partials;
-            nested = comparator;
-        }
-
-        @Override
-        public int compare(T o1, T o2) {
-            Integer part;
-            for (PartialComparator<T> partial : partials) {
-                part = partial.partiallyCompare(o1, o2);
-                if (part != null) {
-                    return part;
-                }
-            }
-            return nested.compare(o1, o2);
-        }
+    /**
+     * Compare by number of VIP predecessor edges, highest first.
+     * Returns 0 if equal.
+     */
+    private static int compareNodeDownVIP(LayoutNode n1, LayoutNode n2) {
+        int n1VIP = n1.getPredsVips();
+        int n2VIP = n2.getPredsVips();
+        return Integer.compare(n2VIP, n1VIP);
     }
 
-    private static final Comparator<LayoutNode> NODE_POSITION_COMPARATOR = (n1, n2) -> n1.pos - n2.pos;
+    /**
+     * Compare by number of VIP successor edges, highest first.
+     * Returns 0 if equal.
+     */
+    private static int compareNodeUpVIP(LayoutNode n1, LayoutNode n2) {
+        int n1VIP = n1.getSuccsVips();
+        int n2VIP = n2.getSuccsVips();
+        return Integer.compare(n2VIP, n1VIP);
+    }
 
-    private static final PartialComparator<LayoutNode> NODE_BOTHVIP = (n1, n2) -> {
-        long n1VIP = n1.getPredsVips() + n1.getSuccsVips();
-        long n2VIP = n2.getPredsVips() + n2.getSuccsVips();
-        if (n1VIP != n2VIP) {
-            return (int) (n2VIP - n1VIP);
-        }
-        return null;
-    };
-    private static final PartialComparator<LayoutNode> NODE_DOWNVIP = (n1, n2) -> {
-        long n1VIP = n1.getPredsVips();
-        long n2VIP = n2.getPredsVips();
-        if (n1VIP != n2VIP) {
-            return (int) (n2VIP - n1VIP);
-        }
-        return null;
-    };
-    private static final PartialComparator<LayoutNode> NODE_UPVIP = (n1, n2) -> {
-        long n1VIP = n1.getSuccsVips();
-        long n2VIP = n2.getSuccsVips();
-        if (n1VIP != n2VIP) {
-            return (int) (n2VIP - n1VIP);
-        }
-        return null;
-    };
-    private static final PartialComparator<LayoutNode> NODE_DUMMY = (n1, n2) -> {
+    /**
+     * Compare dummy status: dummy nodes sort after real nodes.
+     * Returns 1 if n1 is dummy and n2 isn't, -1 if n2 is dummy and n1 isn't, 0 if equal.
+     */
+    private static int compareNodeDummy(LayoutNode n1, LayoutNode n2) {
         if (n1.isDummy()) {
             return n2.isDummy() ? 0 : 1;
         }
-        return n2.isDummy() ? -1 : null;
-    };
-    private static final PartialComparator<LayoutNode> NODE_RDUMMY = (n1, n2) -> {
+        return n2.isDummy() ? -1 : 0;
+    }
+
+    /**
+     * Reversed dummy comparison: dummy nodes sort before real nodes.
+     * Returns -1 if n1 is dummy and n2 isn't, 1 if n2 is dummy and n1 isn't, 0 if equal.
+     */
+    private static int compareNodeRDummy(LayoutNode n1, LayoutNode n2) {
         if (n1.isDummy()) {
             return n2.isDummy() ? 0 : -1;
         }
-        return n2.isDummy() ? 1 : null;
+        return n2.isDummy() ? 1 : 0;
+    }
+
+    private static int compareNodeBoth(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n1.preds.size() + n1.succs.size(), n2.preds.size() + n2.succs.size());
+    }
+
+    private static int compareNodeBothReverse(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n2.preds.size() + n2.succs.size(), n1.preds.size() + n1.succs.size());
+    }
+
+    private static int compareNodeDown(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n1.preds.size(), n2.preds.size());
+    }
+
+    private static int compareNodeDownReverse(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n2.preds.size(), n1.preds.size());
+    }
+
+    private static int compareNodeUp(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n1.succs.size(), n2.succs.size());
+    }
+
+    private static int compareNodeUpReverse(LayoutNode n1, LayoutNode n2) {
+        return Integer.compare(n2.succs.size(), n1.succs.size());
+    }
+
+    private static final Comparator<LayoutNode> NODE_PROCESSING_BOTH_COMPARATOR = (n1, n2) -> {
+        int part = nodeBothVipCompare(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeBoth(n1, n2);
     };
 
-    private static final Comparator<LayoutNode> NODE_BOTH = (n1, n2) -> (n1.preds.size() + n1.succs.size()) - (n2.preds.size() + n2.succs.size());
-    private static final Comparator<LayoutNode> NODE_BOTH_REVERSE = (n1, n2) -> (n2.preds.size() + n2.succs.size()) - (n1.preds.size() + n1.succs.size());
-    private static final Comparator<LayoutNode> NODE_DOWN = (n1, n2) -> n1.preds.size() - n2.preds.size();
-    private static final Comparator<LayoutNode> NODE_DOWN_REVERSE = (n1, n2) -> n2.preds.size() - n1.preds.size();
-    private static final Comparator<LayoutNode> NODE_UP = (n1, n2) -> n1.succs.size() - n2.succs.size();
-    private static final Comparator<LayoutNode> NODE_UP_REVERSE = (n1, n2) -> n2.succs.size() - n1.succs.size();
+    private static final Comparator<LayoutNode> NODE_PROCESSING_BOTH_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = nodeBothVipCompare(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeBothReverse(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_BOTH_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_BOTH, NODE_BOTHVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DOWN_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeDownVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeDown(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_BOTH_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_BOTH_REVERSE, NODE_BOTHVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DOWN_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeDownVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeDownReverse(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DOWN_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_DOWN, NODE_DOWNVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_UP_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeUpVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeUp(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DOWN_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_DOWN_REVERSE, NODE_DOWNVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_UP_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeUpVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeUpReverse(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_UP_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_UP, NODE_UPVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_BOTH_COMPARATOR = (n1, n2) -> {
+        int part = nodeBothVipCompare(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeBoth(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_UP_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_UP_REVERSE, NODE_UPVIP, NODE_DUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_BOTH_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = nodeBothVipCompare(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeBothReverse(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_BOTH_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_BOTH, NODE_BOTHVIP, NODE_RDUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_DOWN_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeDownVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeDown(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_BOTH_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_BOTH_REVERSE, NODE_BOTHVIP, NODE_RDUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_DOWN_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeDownVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeDownReverse(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_DOWN_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_DOWN, NODE_DOWNVIP, NODE_RDUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_UP_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeUpVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeUp(n1, n2);
+    };
 
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_DOWN_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_DOWN_REVERSE, NODE_DOWNVIP, NODE_RDUMMY);
-
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_UP_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_UP, NODE_UPVIP, NODE_RDUMMY);
-
-    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_UP_REVERSE_COMPARATOR = new NestedComparator<LayoutNode>(
-            NODE_UP_REVERSE, NODE_UPVIP, NODE_RDUMMY);
+    private static final Comparator<LayoutNode> NODE_PROCESSING_DUMMY_UP_REVERSE_COMPARATOR = (n1, n2) -> {
+        int part = compareNodeUpVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        part = compareNodeRDummy(n1, n2);
+        if (part != 0) {
+            return part;
+        }
+        return compareNodeUpReverse(n1, n2);
+    };
 
     private static final Comparator<LayoutNode> CROSSING_NODE_COMPARATOR = (n1, n2) -> Float.compare(n1.crossingNumber, n2.crossingNumber);
-    private static final Comparator<LayoutNode> DOWN_CROSSING_COMPARATOR = (n1, n2) -> n1.succs.size() - n2.succs.size();
-    private static final Comparator<LayoutNode> UP_CROSSING_COMPARATOR = (n1, n2) -> n1.preds.size() - n2.preds.size();
+    private static final Comparator<LayoutNode> DOWN_CROSSING_COMPARATOR = Comparator.comparingInt(n -> n.succs.size());
+    private static final Comparator<LayoutNode> UP_CROSSING_COMPARATOR = Comparator.comparingInt(n -> n.preds.size());
 
     private static final Comparator<LayoutNode> DANGLING_UP_NODE_COMPARATOR = (n1, n2) -> {
         int ret = Integer.compare(n1.layer, n2.layer);
         if (ret != 0) {
             return ret;
         }
-        ret = NODE_PROCESSING_UP_COMPARATOR.compare(n1, n2);
-        if (ret != 0) {
-            return ret;
+        // Inline NODE_PROCESSING_UP_COMPARATOR logic
+        int part = compareNodeUpVIP(n1, n2);
+        if (part != 0) {
+            return part;
+        } else {
+            part = compareNodeDummy(n1, n2);
+            if (part != 0) {
+                return part;
+            } else {
+                ret = Integer.compare(n1.succs.size(), n2.succs.size());
+                if (ret != 0) {
+                    return ret;
+                }
+            }
         }
-        return NODE_POSITION_COMPARATOR.compare(n1, n2);
+        return n1.pos - n2.pos;
     };
 
     private static final Comparator<LayoutNode> DANGLING_DOWN_NODE_COMPARATOR = (n1, n2) -> {
@@ -3093,28 +3214,33 @@ public class HierarchicalLayoutManager implements LayoutManager {
         if (ret != 0) {
             return ret;
         }
-        return NODE_POSITION_COMPARATOR.compare(n1, n2);
+        return n1.pos - n2.pos;
     };
 
-    private static final Comparator<LayoutEdge> LAYER_COMPARATOR = (e1, e2) -> e1.to.layer - e2.to.layer;
+    private static final Comparator<LayoutEdge> LAYER_COMPARATOR = Comparator.comparingInt(e -> e.to.layer);
 
-    private static final Comparator<Link> LINK_NOVIP_COMPARATOR = (l1, l2) -> {
-        int result = l1.getFrom().getVertex().compareTo(l2.getFrom().getVertex());
+    private static int compareLinkNoVip(Link l1, Link l2) {
+        Port l1From = l1.getFrom();
+        Port l2From = l2.getFrom();
+        int result = l1From.getVertex().compareTo(l2From.getVertex());
         if (result != 0) {
             return result;
         }
-        result = l1.getTo().getVertex().compareTo(l2.getTo().getVertex());
+        Port l1To = l1.getTo();
+        Port l2To = l2.getTo();
+        result = l1To.getVertex().compareTo(l2To.getVertex());
         if (result != 0) {
             return result;
         }
-        result = l1.getFrom().getRelativePosition().x - l2.getFrom().getRelativePosition().x;
+        result = l1From.getRelativePosition().x - l2From.getRelativePosition().x;
         if (result != 0) {
             return result;
         }
-        result = l1.getTo().getRelativePosition().x - l2.getTo().getRelativePosition().x;
+        result = l1To.getRelativePosition().x - l2To.getRelativePosition().x;
         return result;
-    };
-    private static final Comparator<Link> LINK_COMPARATOR = (l1, l2) -> {
+    }
+
+    private static int compareLink(Link l1, Link l2) {
         if (l1.isVIP() && !l2.isVIP()) {
             return -1;
         }
@@ -3122,8 +3248,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         if (!l1.isVIP() && l2.isVIP()) {
             return 1;
         }
-        return LINK_NOVIP_COMPARATOR.compare(l1, l2);
-    };
+        return compareLinkNoVip(l1, l2);
+    }
 
     @Override
     public void doRouting(LayoutGraph graph) {
