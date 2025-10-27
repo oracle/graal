@@ -110,6 +110,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
     public static final int VIP_BONUS = 10;
 
     private final AtomicBoolean cancelled;
+    private final LayoutSettingBean settings;
 
     private boolean trace = TRACE_DEFAULT;
 
@@ -132,17 +133,51 @@ public class HierarchicalLayoutManager implements LayoutManager {
         SAME_OUTPUTS
     }
 
-    private final LayoutSettingBean setting;
+    // Cached settings fields
+    private boolean bothSort;
+    private boolean centerCrossingX;
+    private boolean centerSimpleNodes;
+    private boolean crossingSort;
+    private boolean crossPositionDuring;
+    private boolean crossReduceRouting;
+    private boolean crossResetXFromMiddle;
+    private boolean crossResetXFromNode;
+    private boolean decreaseLayerWidthDeviation;
+    private boolean decreaseLayerWidthDeviationQuick;
+    private boolean decreaseLayerWidthDeviationUp;
+    private boolean dummyFirstSort;
+    private boolean edgeBending;
+    private boolean irrelevantLayoutCode;
+    private boolean lastDownSweep;
+    private boolean lastUpCrossingSweep;
+    private boolean meanNotMedian;
+    private boolean noCrossingLayerReassign;
+    private boolean noDummyLongEdges;
+    private boolean noVip;
+    private boolean optimalUpVip;
+    private boolean properCrossingClosestNode;
+    private boolean reverseSort;
+    private boolean spanByAngle;
+    private boolean squashPosition;
+    private boolean standalones;
+    private boolean unreverseVips;
+    private boolean unknownCrossingNumber;
+
+    private int xAssignSweepCount;
+    private int crossingSweepCount;
+    private int minEdgeAngle;
+    private float crossFactor;
+
     // Options
     private final Combine combine;
     private final int dummyWidth;
     private final int offset;
     private int maxLayerLength;
     // Algorithm global datastructures
-    private final Set<Link> reversedLinks;
-    private final Set<LayoutEdge> longEdges;
-    private final List<LayoutNode> nodes;
-    private final List<LayoutNode> standAlones;
+    private final HashSet<Link> reversedLinks;
+    private final HashSet<LayoutEdge> longEdges;
+    private final ArrayList<LayoutNode> nodes;
+    private final ArrayList<LayoutNode> standAlones;
     private final HashMap<Vertex, LayoutNode> vertexToLayoutNode;
     private final HashMap<Link, List<Point>> reversedLinkStartPoints;
     private final HashMap<Link, List<Point>> reversedLinkEndPoints;
@@ -454,20 +489,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
     }
 
-    public HierarchicalLayoutManager() {
-        this(Combine.NONE, LayoutSettings.getBean());
-    }
+    public HierarchicalLayoutManager(Combine b, LayoutSettingBean setting) {
 
-    public HierarchicalLayoutManager(Combine b) {
-        this(b, LayoutSettings.getBean());
-    }
-
-    public HierarchicalLayoutManager(LayoutSettingBean layoutSetting) {
-        this(Combine.NONE, layoutSetting);
-    }
-
-    public HierarchicalLayoutManager(Combine b, LayoutSettingBean layoutSetting) {
-        setting = layoutSetting;
         isDefaultLayout = setting.get(Boolean.class, DEFAULT_LAYOUT);
         isDummyCrossing = setting.get(Boolean.class, DUMMY_CROSSING);
         isCrossingByConnDiff = setting.get(Boolean.class, CROSS_BY_CONN_DIFF);
@@ -482,7 +505,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
         } else {
             this.dummyWidth = setting.get(Integer.class, LayoutSettings.DUMMY_WIDTH);
         }
-        this.maxLayerLength = MAX_LAYER_LENGTH;
+
+        this.settings = setting;
+
+        maxLayerLength = MAX_LAYER_LENGTH;
         offset = X_OFFSET + dummyWidth;
 
         vertexToLayoutNode = new HashMap<>();
@@ -493,6 +519,45 @@ public class HierarchicalLayoutManager implements LayoutManager {
         standAlones = new ArrayList<>();
         longEdges = new HashSet<>();
         cancelled = new AtomicBoolean(false);
+    }
+
+    private void initSettings(LayoutSettingBean setting) {
+        // Boolean settings (cached once per instance)
+        bothSort = setting.get(Boolean.class, BOTH_SORT);
+        reverseSort = setting.get(Boolean.class, REVERSE_SORT);
+        dummyFirstSort = setting.get(Boolean.class, DUMMY_FIRST_SORT);
+        lastDownSweep = setting.get(Boolean.class, LAST_DOWN_SWEEP);
+        optimalUpVip = setting.get(Boolean.class, OPTIMAL_UP_VIP);
+        squashPosition = setting.get(Boolean.class, SQUASH_POSITION);
+        centerSimpleNodes = setting.get(Boolean.class, CENTER_SIMPLE_NODES);
+        meanNotMedian = setting.get(Boolean.class, MEAN_NOT_MEDIAN);
+        crossingSort = setting.get(Boolean.class, CROSSING_SORT);
+        noCrossingLayerReassign = setting.get(Boolean.class, NO_CROSSING_LAYER_REASSIGN);
+        lastUpCrossingSweep = setting.get(Boolean.class, LAST_UP_CROSSING_SWEEP);
+        irrelevantLayoutCode = setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE);
+        centerCrossingX = setting.get(Boolean.class, CENTER_CROSSING_X);
+        crossResetXFromNode = setting.get(Boolean.class, CROSS_RESET_X_FROM_NODE);
+        crossResetXFromMiddle = setting.get(Boolean.class, CROSS_RESET_X_FROM_MIDDLE);
+        spanByAngle = setting.get(Boolean.class, SPAN_BY_ANGLE);
+        noDummyLongEdges = setting.get(Boolean.class, NO_DUMMY_LONG_EDGES);
+        standalones = setting.get(Boolean.class, STANDALONES);
+        edgeBending = setting.get(Boolean.class, EDGE_BENDING);
+        decreaseLayerWidthDeviation = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION);
+        decreaseLayerWidthDeviationQuick = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_QUICK);
+        decreaseLayerWidthDeviationUp = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_UP);
+        unreverseVips = setting.get(Boolean.class, UNREVERSE_VIPS);
+        noVip = setting.get(Boolean.class, NO_VIP);
+        crossReduceRouting = setting.get(Boolean.class, CROSS_REDUCE_ROUTING);
+        crossPositionDuring = setting.get(Boolean.class, CROSS_POSITION_DURING);
+        properCrossingClosestNode = setting.get(Boolean.class, PROPER_CROSSING_CLOSEST_NODE);
+        unknownCrossingNumber = setting.get(Boolean.class, UNKNOWN_CROSSING_NUMBER);
+
+        // int and float settings
+
+        xAssignSweepCount = setting.get(Integer.class, X_ASSIGN_SWEEP_COUNT);
+        crossingSweepCount = setting.get(Integer.class, CROSSING_SWEEP_COUNT);
+        minEdgeAngle = setting.get(Integer.class, MIN_EDGE_ANGLE);
+        crossFactor = setting.get(Float.class, CROSS_FACTOR);
     }
 
     public int getMaxLayerLength() {
@@ -510,6 +575,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         reversedLinkEndPoints.clear();
         nodes.clear();
         longEdges.clear();
+
+        initSettings(settings);
     }
 
     @Override
@@ -593,7 +660,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             HashMap<Link, List<Point>> linkPositions = new HashMap<>();
             for (Vertex v : graph.getVertices()) {
                 LayoutNode n = vertexToLayoutNode.get(v);
-                if (!(setting.get(Boolean.class, STANDALONES) && standAlones.contains(n))) {
+                if (!(standalones && standAlones.contains(n))) {
                     assert !vertexPositions.containsKey(v);
                     vertexPositions.put(v, new Point(n.getLeftSide(), n.y));
                 }
@@ -773,7 +840,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
             }
             Dimension dim;
-            if (setting.get(Boolean.class, STANDALONES)) {
+            if (standalones) {
                 dim = setStandAlones(new Rectangle(minX, minY, maxX - minX, maxY - minY), vertexPositions);
                 minY -= dim.height - maxY + minY;
             } else {
@@ -792,7 +859,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 linkPositions.put(e.link, makeLongEnding(e));
             }
 
-            if (!setting.get(Boolean.class, EDGE_BENDING)) {
+            if (!edgeBending) {
                 for (List<Point> points : linkPositions.values()) {
                     points.remove(points.size() - 2);
                     points.remove(1);
@@ -1098,7 +1165,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         private void createArrays() {
             space = new int[layers.length][];
-            if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
+            if (isDefaultLayout || !bothSort) {
                 downProcessingOrder = new LayoutNode[layers.length][];
                 upProcessingOrder = new LayoutNode[layers.length][];
             } else {
@@ -1110,8 +1177,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
             bothComparer = NODE_PROCESSING_DUMMY_BOTH_COMPARATOR;
             if (isDefaultLayout) {
                 //leave default sort
-            } else if (setting.get(Boolean.class, REVERSE_SORT)) {
-                if (setting.get(Boolean.class, DUMMY_FIRST_SORT)) {
+            } else if (reverseSort) {
+                if (dummyFirstSort) {
                     upComparer = NODE_PROCESSING_DUMMY_UP_REVERSE_COMPARATOR;
                     downComparer = NODE_PROCESSING_DUMMY_DOWN_REVERSE_COMPARATOR;
                     bothComparer = NODE_PROCESSING_DUMMY_BOTH_REVERSE_COMPARATOR;
@@ -1120,7 +1187,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     downComparer = NODE_PROCESSING_DOWN_REVERSE_COMPARATOR;
                     bothComparer = NODE_PROCESSING_BOTH_REVERSE_COMPARATOR;
                 }
-            } else if (!setting.get(Boolean.class, DUMMY_FIRST_SORT)) {
+            } else if (!dummyFirstSort) {
                 upComparer = NODE_PROCESSING_UP_COMPARATOR;
                 downComparer = NODE_PROCESSING_DOWN_COMPARATOR;
                 bothComparer = NODE_PROCESSING_BOTH_COMPARATOR;
@@ -1142,7 +1209,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     }
                 }
 
-                if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
+                if (isDefaultLayout || !bothSort) {
                     downProcessingOrder[i] = layer.toArray(new LayoutNode[0]);
                     Arrays.sort(downProcessingOrder[i], downComparer);
                     upProcessingOrder[i] = reverseSort(downProcessingOrder[i], upComparer);
@@ -1186,12 +1253,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
             createArrays();
             initialPositions();
 
-            for (int i = 0; i < (isDefaultLayout ? SWEEP_ITERATIONS : setting.get(Integer.class, X_ASSIGN_SWEEP_COUNT)); i++) {
+            for (int i = 0; i < (isDefaultLayout ? SWEEP_ITERATIONS : xAssignSweepCount); i++) {
                 sweepDown();
                 sweepUp();
             }
             sweepDown();
-            if (isDefaultLayout || !setting.get(Boolean.class, LAST_DOWN_SWEEP)) {
+            if (isDefaultLayout || !lastDownSweep) {
                 sweepUp();
             }
         }
@@ -1291,7 +1358,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             ArrayList<Integer> values = new ArrayList<>(n.succs.size());
             int layer = getVisibleLayer(n.layer, false);
 
-            if (isDefaultLayout || !setting.get(Boolean.class, OPTIMAL_UP_VIP)) {
+            if (isDefaultLayout || !optimalUpVip) {
                 for (LayoutEdge e : n.succs) {
                     if (e.vip) {
                         getOptimalPositions(e, layer, new ArrayList<>(), e.relativeFrom, false, hasNoDangling);
@@ -1317,13 +1384,13 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         private int median(ArrayList<Integer> values, LayoutNode n, LayoutNode last, boolean up, boolean hasNoDangling) {
             if (values.isEmpty()) {
-                if (isDefaultLayout || !setting.get(Boolean.class, SQUASH_POSITION)) {
+                if (isDefaultLayout || !squashPosition) {
                     return n.x;
                 } else {
                     return calcClosestPosition(n, last, up, hasNoDangling);
                 }
             }
-            if (setting.get(Boolean.class, CENTER_SIMPLE_NODES) && !n.isDummy() && values.size() == 1 && (up ? n.preds.size() == 1 : n.succs.size() == 1) && !(n.vertex instanceof ClusterSlotNode)) {
+            if (centerSimpleNodes && !n.isDummy() && values.size() == 1 && (up ? n.preds.size() == 1 : n.succs.size() == 1) && !(n.vertex instanceof ClusterSlotNode)) {
                 LayoutNode node;
                 if (up) {
                     node = n.preds.get(0).from;
@@ -1334,7 +1401,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     return node.x + ((node.getWholeWidth() - n.getWholeWidth()) / 2);
                 }
             }
-            if (!isDefaultLayout && setting.get(Boolean.class, MEAN_NOT_MEDIAN)) {
+            if (!isDefaultLayout && meanNotMedian) {
                 return values.stream().reduce(0, Integer::sum) / values.size();
             }
             values.sort(Integer::compare);
@@ -1347,7 +1414,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         private void sweepUp() {
             LayoutNode[][] chosenOrder;
-            if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
+            if (isDefaultLayout || !bothSort) {
                 chosenOrder = upProcessingOrder;
             } else {
                 chosenOrder = bothProcessingOrder;
@@ -1392,7 +1459,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         private void sweepDown() {
             LayoutNode[][] chosenOrder;
-            if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
+            if (isDefaultLayout || !bothSort) {
                 chosenOrder = downProcessingOrder;
             } else {
                 chosenOrder = bothProcessingOrder;
@@ -1625,7 +1692,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private void createLayers() {
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSSING_SORT) && !isCrossingByConnDiff) {
+            if (!isDefaultLayout && crossingSort && !isCrossingByConnDiff) {
                 upCrossing = new ArrayList[layerCount];
                 downCrossing = new ArrayList[layerCount];
             }
@@ -1634,7 +1701,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 for (int i = 0; i < layerCount; i++) {
                     layers[i] = new LayoutLayer();
                 }
-                if (!isDefaultLayout && setting.get(Boolean.class, NO_CROSSING_LAYER_REASSIGN)) {
+                if (!isDefaultLayout && noCrossingLayerReassign) {
                     for (LayoutNode n : nodes) {
                         layers[n.layer].add(n);
                     }
@@ -1665,7 +1732,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
             }
             toMove = !routingCrossing ? layers : Arrays.stream(layers).map(l -> l.stream().filter(n -> n.isDummy()).collect(LayoutLayer::new, LayoutLayer::add, LayoutLayer::addAll)).toArray(LayoutLayer[]::new);
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSSING_SORT) && !isCrossingByConnDiff) {
+            if (!isDefaultLayout && crossingSort && !isCrossingByConnDiff) {
                 for (int i = 0; i < layerCount; ++i) {
                     upCrossing[i] = new ArrayList<>(layers[i]);
                     downCrossing[i] = new ArrayList<>(layers[i]);
@@ -1678,28 +1745,28 @@ public class HierarchicalLayoutManager implements LayoutManager {
         @Override
         protected void run() {
             createLayers();
-            if (setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE)) {
+            if (irrelevantLayoutCode) {
                 updatePositions();
             }
             //will be reassigned
             initX();
             // Optimize
-            int sweepCount = isDefaultLayout ? CROSSING_ITERATIONS : setting.get(Integer.class, CROSSING_SWEEP_COUNT);
+            int sweepCount = isDefaultLayout ? CROSSING_ITERATIONS : crossingSweepCount;
             for (int i = 0; i < sweepCount; i++) {
                 downSweep();
                 upSweep();
             }
-            if (isDefaultLayout || !setting.get(Boolean.class, LAST_UP_CROSSING_SWEEP)) {
+            if (isDefaultLayout || !lastUpCrossingSweep) {
                 downSweep();
             }
-            if (setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE)) {
+            if (irrelevantLayoutCode) {
                 initX();
             }
             updatePositions();
         }
 
         private void initX() {
-            if (!isDefaultLayout && setting.get(Boolean.class, CENTER_CROSSING_X)) {
+            if (!isDefaultLayout && centerCrossingX) {
                 createCenterDiffs();
             }
             for (int i = 0; i < layers.length; i++) {
@@ -1727,14 +1794,14 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
 
         private void updateXOfLayer(int index) {
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSS_RESET_X_FROM_NODE)) {
-                if (setting.get(Boolean.class, CROSS_RESET_X_FROM_MIDDLE)) {
+            if (!isDefaultLayout && crossResetXFromNode) {
+                if (crossResetXFromMiddle) {
                     updateFromMiddle(index);
                 } else {
                     updateFromLeft(index);
                 }
             } else {
-                int x = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : centerDiffs[index];
+                int x = (isDefaultLayout || !centerCrossingX) ? 0 : centerDiffs[index];
                 for (LayoutNode n : layers[index]) {
                     n.x = x;
                     x += n.getWholeWidth() + offset;
@@ -1746,7 +1813,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             LayoutLayer layer = layers[index];
             int middleIndex = layer.size() / 2;
             LayoutNode n = layer.get(middleIndex);
-            int add = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : (centerDiffs[index] / (layer.size() + 1));
+            int add = (isDefaultLayout || !centerCrossingX) ? 0 : (centerDiffs[index] / (layer.size() + 1));
             int x = n.x;
             for (int i = middleIndex - 1; i >= 0; --i) {
                 n = layer.get(i);
@@ -1764,7 +1831,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private void updateFromLeft(int index) {
             LayoutLayer layer = layers[index];
             LayoutNode n = layer.get(0);
-            int add = (isDefaultLayout || !setting.get(Boolean.class, CENTER_CROSSING_X)) ? 0 : (centerDiffs[index] / (layer.size() + 1));
+            int add = (isDefaultLayout || !centerCrossingX) ? 0 : (centerDiffs[index] / (layer.size() + 1));
             int x = n.getRightSide() + offset;
             for (int i = 0; i < layer.size(); ++i) {
                 n = layer.get(i);
@@ -1788,14 +1855,14 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
 
         private void changeXOfLayer(int index) {
-            float factor = !isDefaultLayout && setting.get(Boolean.class, CROSS_RESET_X_FROM_MIDDLE) ? setting.get(Float.class, CROSS_FACTOR) : 1;
+            float factor = !isDefaultLayout && crossResetXFromMiddle ? crossFactor : 1;
             for (LayoutNode n : toMove[index]) {
                 n.x += n.crossingNumber * factor;
             }
         }
 
         private void downSweep() {
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSS_POSITION_DURING)) {
+            if (!isDefaultLayout && crossPositionDuring) {
                 updatePositions();
                 new AssignXCoordinates().start();
             }
@@ -1813,14 +1880,14 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     layers[i].sort(CROSSING_NODE_COMPARATOR);
                     updateXOfLayer(i);
                 }
-                if (setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE)) {
+                if (irrelevantLayoutCode) {
                     updateLayerPositions(i);
                 }
             }
         }
 
         private void upSweep() {
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSS_POSITION_DURING)) {
+            if (!isDefaultLayout && crossPositionDuring) {
                 updatePositions();
                 new AssignXCoordinates().start();
             }
@@ -1839,7 +1906,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     layers[i].sort(CROSSING_NODE_COMPARATOR);
                     updateXOfLayer(i);
                 }
-                if (setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE)) {
+                if (irrelevantLayoutCode) {
                     updateLayerPositions(i);
                 }
             }
@@ -1847,13 +1914,13 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         private void updateCrossingNumbers(int index, boolean down) {
             List<LayoutNode> layer;
-            if (!isDefaultLayout && setting.get(Boolean.class, CROSSING_SORT)) {
+            if (!isDefaultLayout && crossingSort) {
                 layer = down ? downCrossing[index] : upCrossing[index];
             } else {
                 layer = layers[index];
             }
-            boolean properCrossing = !isDefaultLayout && setting.get(Boolean.class, PROPER_CROSSING_CLOSEST_NODE);
-            int diff = (!isDefaultLayout && setting.get(Boolean.class, UNKNOWN_CROSSING_NUMBER)) ? 1 : 0;
+            boolean properCrossing = !isDefaultLayout && properCrossingClosestNode;
+            int diff = (!isDefaultLayout && unknownCrossingNumber) ? 1 : 0;
             LayoutNode prev;
             LayoutNode next;
             for (int i = 0; i < layer.size(); i++) {
@@ -1930,10 +1997,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
         @Override
         protected void run() {
             final IntUnaryOperator layerDiff;
-            if (isDefaultLayout || !setting.get(Boolean.class, SPAN_BY_ANGLE)) {
+            if (isDefaultLayout || !spanByAngle) {
                 layerDiff = (in) -> (int) (Math.sqrt(in) * 2);
             } else {
-                final double coef = Math.tan(Math.toRadians(setting.get(Integer.class, MIN_EDGE_ANGLE)));
+                final double coef = Math.tan(Math.toRadians(minEdgeAngle));
                 layerDiff = (in) -> (int) (in * coef);
             }
             int curY = 0;
@@ -1990,7 +2057,6 @@ public class HierarchicalLayoutManager implements LayoutManager {
             oldNodeCount = nodes.size();
 
             if (combine == Combine.SAME_OUTPUTS) {
-                final boolean noDummyLongEdges = setting.get(Boolean.class, NO_DUMMY_LONG_EDGES);
                 HashMap<Integer, List<LayoutEdge>> portHash = new HashMap<>();
                 ArrayList<LayoutNode> currentNodes = new ArrayList<>(nodes);
                 for (LayoutNode n : currentNodes) {
@@ -2002,7 +2068,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     for (LayoutEdge e : succs) {
                         assert e.from.layer < e.to.layer;
                         if (e.from.layer != e.to.layer - 1) {
-                            if (maxLayerLength != -1 && e.to.layer - e.from.layer > maxLayerLength && !setting.get(Boolean.class, DRAW_LONG_EDGES) /* && e.to.preds.size() > 1 && e.from.succs.size() > 1 */) {
+                            if (maxLayerLength != -1 && e.to.layer - e.from.layer > maxLayerLength && !isDrawLongEdges /* && e.to.preds.size() > 1 && e.from.succs.size() > 1 */) {
                                 assert maxLayerLength > 2;
                                 e.to.preds.remove(e);
                                 e.from.succs.remove(e);
@@ -2090,7 +2156,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                                     curEdge.relativeFrom = anchor.width / 2;
                                     n.succs.remove(curEdge);
                                 }
-                                if (!isDefaultLayout && setting.get(Boolean.class, NO_CROSSING_LAYER_REASSIGN)) {
+                                if (!isDefaultLayout && noCrossingLayerReassign) {
                                     HierarchicalLayoutManager.this.nodes.addAll(Arrays.asList(nodes));
                                 }
                             }
@@ -2161,7 +2227,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             assignLayerDownwards();
             assignLayerUpwards();
             reassignInOutBlockNodes();
-            if (!isDefaultLayout && setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION)) {
+            if (!isDefaultLayout && decreaseLayerWidthDeviation) {
                 reassignLayers();
             }
         }
@@ -2306,7 +2372,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             double avg = lay.stream().mapToInt(l -> l.getMinimalWidth()).sum() / layerCount;
             boolean up, down;
             LayoutNode node = null;
-            final boolean isQuick = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_QUICK);
+            final boolean isQuick = decreaseLayerWidthDeviationQuick;
             while (!lay.isEmpty()) {
                 if (cancelled.get()) {
                     return;
@@ -2318,7 +2384,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     break;
                 }
                 layer.sort(NODE_WIDTH_COMPARATOR);
-                if (!setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_UP)) {
+                if (!decreaseLayerWidthDeviationUp) {
                     for (LayoutNode n : layer) {
                         if ((down = canMoveDown(n)) || (up = canMoveUp(n))) {
                             break;
@@ -2578,7 +2644,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                     }
                 }
             }
-            if (setting.get(Boolean.class, STANDALONES)) {
+            if (standalones) {
                 for (Iterator<LayoutNode> it = nodes.iterator(); it.hasNext(); ) {
                     LayoutNode n = it.next();
                     if (n.succs.isEmpty() && n.preds.isEmpty()) {
@@ -2616,7 +2682,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 return;
             }
 
-            final boolean sortSuccs = vip && !isDefaultLayout && setting.get(Boolean.class, UNREVERSE_VIPS);
+            final boolean sortSuccs = vip && !isDefaultLayout && unreverseVips;
 
             Stack<LayoutNode> stack = new Stack<>();
             stack.push(startNode);
@@ -2653,8 +2719,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
 
         private void DFS() {
-            if (isDefaultLayout || !setting.get(Boolean.class, UNREVERSE_VIPS)) {
-                nodes.forEach(n -> DFS(n, false));
+            nodes.forEach(n -> DFS(n, false));
+            if (isDefaultLayout || !unreverseVips) {
             } else {
                 //first search from vip starting nodes
                 nodes.stream().filter((n) -> n.preds.stream().allMatch((e) -> !e.vip) && n.succs.stream().anyMatch((e) -> e.vip))
@@ -2840,7 +2906,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
             // Set up edges
             List<? extends Link> links = new ArrayList<>(graph.getLinks());
-            final boolean VIP = !setting.get(Boolean.class, NO_VIP);
+            final boolean VIP = !noVip;
             if (VIP) {
                 Collections.sort(links, LINK_COMPARATOR);
             } else {
@@ -3066,7 +3132,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return;
         }
 
-        if (setting.get(Boolean.class, CROSS_REDUCE_ROUTING)) {
+        if (crossReduceRouting) {
             new CrossingReduction(true).start();
         }
         if (cancelled.get()) {
@@ -3184,11 +3250,11 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 int invisibleLayers = getInvisible(n.layer, e.to.layer);
                 assert e.from.layer <= e.to.layer : e.from + "=" + e.from.layer + "; " + e.to + "=" + e.to.layer;
                 if (e.from.layer != e.to.layer - 1 - invisibleLayers) {
-                    if ((maxLayerLength != -1 && e.to.layer - invisibleLayers - e.from.layer > maxLayerLength && !setting.get(Boolean.class, DRAW_LONG_EDGES)) || e.from.layer == e.to.layer) {
+                    if ((maxLayerLength != -1 && e.to.layer - invisibleLayers - e.from.layer > maxLayerLength && !isDrawLongEdges) || e.from.layer == e.to.layer) {
                         assert maxLayerLength > 2;
                         e.to.preds.remove(e);
                         e.from.succs.remove(e);
-                        if ((isDefaultLayout || !setting.get(Boolean.class, NO_DUMMY_LONG_EDGES)) && e.from.layer != e.to.layer) {
+                        if ((isDefaultLayout || !noDummyLongEdges) && e.from.layer != e.to.layer) {
                             LayoutEdge topEdge;
 
                             LayoutNode topNode = topNodeHash.get(e.relativeFrom);
