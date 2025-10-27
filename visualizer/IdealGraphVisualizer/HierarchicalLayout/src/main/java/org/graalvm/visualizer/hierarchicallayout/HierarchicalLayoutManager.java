@@ -157,6 +157,41 @@ public class HierarchicalLayoutManager implements LayoutManager {
     private final boolean isDelayDanglingNodes;
     private final boolean isDrawLongEdges;
 
+    /**
+     * Helper class to track the number of VIP edges.
+     */
+    static class VIPArrayList extends ArrayList<LayoutEdge> {
+        int vips;
+
+        public int getVips() {
+            return vips;
+        }
+
+        VIPArrayList() {
+        }
+
+        public boolean add(LayoutEdge e) {
+            super.add(e);
+            if (e.vip) {
+                vips++;
+            }
+            return true;
+        }
+
+        public boolean remove(Object object) {
+            boolean remove = super.remove(object);
+            if (remove && ((LayoutEdge) object).vip) {
+                vips--;
+            }
+            return remove;
+        }
+
+        public void clear() {
+            super.clear();
+            vips = 0;
+        }
+    }
+
     private class LayoutNode {
 
         public int x;
@@ -169,12 +204,40 @@ public class HierarchicalLayoutManager implements LayoutManager {
         public int bottomYOffset;
         public final Vertex vertex; // Only used for non-dummy nodes, otherwise null
 
-        public final List<LayoutEdge> preds = new ArrayList<>();
-        public final List<LayoutEdge> succs = new ArrayList<>();
+        public final VIPArrayList preds = new VIPArrayList();
+        public final VIPArrayList succs = new VIPArrayList();
         public int pos = -1; // Position within layer
+
+        NodeRow dangling;
+
+        boolean isDangling() {
+            return dangling != null;
+        }
+
+        private NodeRow getDanglingRow() {
+            return this.dangling;
+        }
+
+        private void setDangling(NodeRow r) {
+            assert this.dangling == null : this.dangling;
+            this.dangling = r;
+        }
+
+        private void removeDangling() {
+            assert this.dangling != null : this;
+            this.dangling = null;
+        }
 
         public int getPos() {
             return pos;
+        }
+
+        public int getPredsVips() {
+            return preds.getVips();
+        }
+
+        public int getSuccsVips() {
+            return succs.getVips();
         }
 
         public float crossingNumber = 0;
@@ -282,7 +345,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         public int relativeFrom;
         public int relativeTo;
         public Link link;
-        public boolean vip;
+        public final boolean vip;
 
         public int loadCrossingNumber(boolean up, LayoutNode source) {
             if (isDefaultLayout || !isDummyCrossing || !(up ? to.isDummy() : from.isDummy())) {
@@ -320,14 +383,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return relativeTo + to.getLeftSide();
         }
 
-        public LayoutEdge(LayoutNode from, LayoutNode to) {
+        public LayoutEdge(LayoutNode from, LayoutNode to, int relativeFrom, int relativeTo, Link link, boolean vip) {
             assert from != null && to != null : "Dangling LayoutEdge.";
             this.from = from;
             this.to = to;
-        }
-
-        public LayoutEdge(LayoutNode from, LayoutNode to, int relativeFrom, int relativeTo, Link link, boolean vip) {
-            this(from, to);
             this.relativeFrom = relativeFrom;
             this.relativeTo = relativeTo;
             this.link = link;
@@ -1031,15 +1090,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private LayoutNode[][] upProcessingOrder;
         private LayoutNode[][] bothProcessingOrder;
 
-        private Map<LayoutNode, NodeRow> dangling = new HashMap<>();
-
         private void initialPositions() {
             for (LayoutNode n : nodes) {
                 n.x = space[n.layer][n.pos];
             }
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         private void createArrays() {
             space = new int[layers.length][];
             if (isDefaultLayout || !setting.get(Boolean.class, BOTH_SORT)) {
@@ -1130,43 +1186,42 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return -1;
         }
 
-        public List<Integer> getOptimalPositions(LayoutEdge edge, int layer, List<Integer> vals, int correction, boolean up) {
+        public void getOptimalPositions(LayoutEdge edge, int layer, List<Integer> vals, int correction, boolean up, boolean hasNoDangling) {
             if (up) {
                 if (edge.from.layer <= layer) {
-                    if (!dangling.containsKey(edge.from)) {
+                    if (!edge.from.isDangling()) {
                         vals.add(edge.getStartPoint() - correction);
                     }
                 } else if (edge.from.isDummy()) {
-                    edge.from.preds.forEach(x -> getOptimalPositions(x, layer, vals, correction, up));
+                    edge.from.preds.forEach(x -> getOptimalPositions(x, layer, vals, correction, up, hasNoDangling));
                 }
             } else {
                 if (edge.to.layer >= layer) {
-                    if (!dangling.containsKey(edge.to)) {
+                    if (!edge.to.isDangling()) {
                         vals.add(edge.getEndPoint() - correction);
                     }
                 } else if (edge.to.isDummy()) {
-                    edge.to.succs.forEach(x -> getOptimalPositions(x, layer, vals, correction, up));
+                    edge.to.succs.forEach(x -> getOptimalPositions(x, layer, vals, correction, up, hasNoDangling));
                 }
             }
-            return vals;
         }
 
-        private int calculateOptimalDown(LayoutNode n, LayoutNode last) {
-            List<Integer> values = new ArrayList<>();
+        private int calculateOptimalDown(LayoutNode n, LayoutNode last, boolean hasNoDangling) {
+            ArrayList<Integer> values = new ArrayList<>(n.preds.size());
             int layer = getVisibleLayer(n.layer, true);
 
-            if (n.preds.stream().anyMatch(x -> x.vip)) {
+            if (n.getPredsVips() != 0) {
                 for (LayoutEdge e : n.preds) {
                     if (e.vip) {
-                        values = getOptimalPositions(e, layer, values, e.relativeTo, true);
+                        getOptimalPositions(e, layer, values, e.relativeTo, true, hasNoDangling);
                     }
                 }
             } else {
                 for (LayoutEdge e : n.preds) {
-                    values = getOptimalPositions(e, layer, values, e.relativeTo, true);
+                    getOptimalPositions(e, layer, values, e.relativeTo, true, hasNoDangling);
                 }
             }
-            return median(values, n, last, true);
+            return median(values, n, last, true, hasNoDangling);
         }
 
         private int calcLayerCenter(LayoutLayer layer) {
@@ -1174,9 +1229,9 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return (layer.get(0).x + last.getRightSide()) / 2;
         }
 
-        private int calcClosestPosition(LayoutNode n, LayoutNode last, boolean up) {
+        private int calcClosestPosition(LayoutNode n, LayoutNode last, boolean up, boolean hasNoDangling) {
             assert n != null;
-            return last == null ? calcLastLayerCenter(n, up) : last.x;
+            return last == null ? calcLastLayerCenter(n, up, hasNoDangling) : last.x;
         }
 
         public int getExpectedRelativePosition(LayoutLayer layer, LayoutNode n) {
@@ -1188,16 +1243,16 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return x;
         }
 
-        private int calcLastLayerCenter(LayoutNode n, boolean up) {
+        private int calcLastLayerCenter(LayoutNode n, boolean up, boolean hasNoDangling) {
             if (up) {
                 for (int i = n.layer - 1; i >= 0; --i) {
-                    if (layers[i].isVisible() && (dangling.isEmpty() || layers[i].stream().allMatch(node -> !dangling.containsKey(node)))) {
+                    if (layers[i].isVisible() && (hasNoDangling || layers[i].stream().noneMatch(LayoutNode::isDangling))) {
                         return (calcLayerCenter(layers[i]) - layers[n.layer].getMinimalWidth() / 2) + getExpectedRelativePosition(layers[n.layer], n);
                     }
                 }
             } else {
                 for (int i = n.layer + 1; i < layers.length; ++i) {
-                    if (layers[i].isVisible() && (dangling.isEmpty() || layers[i].stream().allMatch(node -> !dangling.containsKey(node)))) {
+                    if (layers[i].isVisible() && (hasNoDangling || layers[i].stream().noneMatch(LayoutNode::isDangling))) {
                         return (calcLayerCenter(layers[i]) - layers[n.layer].getMinimalWidth() / 2) + getExpectedRelativePosition(layers[n.layer], n);
                     }
                 }
@@ -1205,40 +1260,40 @@ public class HierarchicalLayoutManager implements LayoutManager {
             return n.x;
         }
 
-        private int calculateOptimalUp(LayoutNode n, LayoutNode last) {
-            List<Integer> values = new ArrayList<>();
+        private int calculateOptimalUp(LayoutNode n, LayoutNode last, boolean hasNoDangling) {
+            ArrayList<Integer> values = new ArrayList<>(n.succs.size());
             int layer = getVisibleLayer(n.layer, false);
 
             if (isDefaultLayout || !setting.get(Boolean.class, OPTIMAL_UP_VIP)) {
                 for (LayoutEdge e : n.succs) {
                     if (e.vip) {
-                        values = getOptimalPositions(e, layer, new ArrayList<>(), e.relativeFrom, false);
+                        getOptimalPositions(e, layer, new ArrayList<>(), e.relativeFrom, false, hasNoDangling);
                         break;
                     }
-                    values = getOptimalPositions(e, layer, values, e.relativeFrom, false);
+                    getOptimalPositions(e, layer, values, e.relativeFrom, false, hasNoDangling);
                 }
             } else {
-                if (n.succs.stream().anyMatch(x -> x.vip)) {
+                if (n.getSuccsVips() != 0) {
                     for (LayoutEdge e : n.succs) {
                         if (e.vip) {
-                            values = getOptimalPositions(e, layer, values, e.relativeFrom, false);
+                            getOptimalPositions(e, layer, values, e.relativeFrom, false, hasNoDangling);
                         }
                     }
                 } else {
                     for (LayoutEdge e : n.succs) {
-                        values = getOptimalPositions(e, layer, values, e.relativeFrom, false);
+                        getOptimalPositions(e, layer, values, e.relativeFrom, false, hasNoDangling);
                     }
                 }
             }
-            return median(values, n, last, false);
+            return median(values, n, last, false, hasNoDangling);
         }
 
-        private int median(List<Integer> values, LayoutNode n, LayoutNode last, boolean up) {
+        private int median(ArrayList<Integer> values, LayoutNode n, LayoutNode last, boolean up, boolean hasNoDangling) {
             if (values.isEmpty()) {
                 if (isDefaultLayout || !setting.get(Boolean.class, SQUASH_POSITION)) {
                     return n.x;
                 } else {
-                    return calcClosestPosition(n, last, up);
+                    return calcClosestPosition(n, last, up, hasNoDangling);
                 }
             }
             if (setting.get(Boolean.class, CENTER_SIMPLE_NODES) && !n.isDummy() && values.size() == 1 && (up ? n.preds.size() == 1 : n.succs.size() == 1) && !(n.vertex instanceof ClusterSlotNode)) {
@@ -1270,20 +1325,42 @@ public class HierarchicalLayoutManager implements LayoutManager {
             } else {
                 chosenOrder = bothProcessingOrder;
             }
+
+            List<LayoutNode> dangling = new ArrayList<>();
             for (int i = layers.length - 2; i >= 0; i--) {
-                NodeRow r = new NodeRow(space[i]);
+                NodeRow r = new NodeRow(space[i], chosenOrder[i].length);
                 LayoutNode last = null;
                 for (LayoutNode n : chosenOrder[i]) {
-                    if (!isDefaultLayout && isDelayDanglingNodes && ((n.succs.isEmpty() && !n.preds.isEmpty()) || (!n.succs.isEmpty() && n.succs.stream().allMatch(e -> dangling.containsKey(e.to))))) {
-                        dangling.put(n, r);
+                    if (!isDefaultLayout && isDelayDanglingNodes && ((n.succs.isEmpty() && !n.preds.isEmpty()) || (!n.succs.isEmpty() && isAllDanglingSuccs(n)))) {
+                        n.setDangling(r);
+                        dangling.add(n);
                     } else {
-                        int optimal = calculateOptimalUp(n, last);
+                        int optimal = calculateOptimalUp(n, last, dangling.isEmpty());
                         r.insert(n, optimal);
                         last = n;
                     }
                 }
             }
-            resolveDanglingNodes(true);
+            resolveDanglingNodes(true, dangling);
+        }
+
+        private boolean isAllDanglingPreds(LayoutNode n) {
+            for (LayoutEdge e : n.preds) {
+                if (!e.from.isDangling()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean isAllDanglingSuccs(LayoutNode n) {
+            if (n.succs.isEmpty()) return false;
+            for (LayoutEdge e : n.succs) {
+                if (!e.to.isDangling()) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private void sweepDown() {
@@ -1293,57 +1370,87 @@ public class HierarchicalLayoutManager implements LayoutManager {
             } else {
                 chosenOrder = bothProcessingOrder;
             }
+            boolean noDefaultAndDelay = !isDefaultLayout && isDelayDanglingNodes;
+            ArrayList<LayoutNode> dangling = new ArrayList<>();
             for (int i = 1; i < layers.length; i++) {
-                NodeRow r = new NodeRow(space[i]);
+                NodeRow r = new NodeRow(space[i], chosenOrder[i].length);
                 LayoutNode last = null;
                 for (LayoutNode n : chosenOrder[i]) {
-                    if (!isDefaultLayout && isDelayDanglingNodes && ((n.preds.isEmpty() && !n.succs.isEmpty()) || (!n.preds.isEmpty() && n.preds.stream().allMatch(e -> dangling.containsKey(e.from))))) {
-                        dangling.put(n, r);
+                    boolean predsIsEmpty = n.preds.isEmpty();
+                    if (noDefaultAndDelay && (predsIsEmpty ? !n.succs.isEmpty() : !dangling.isEmpty() && isAllDanglingPreds(n))) {
+                        n.setDangling(r);
+                        dangling.add(n);
                     } else {
-                        int optimal = calculateOptimalDown(n, last);
+                        int optimal = calculateOptimalDown(n, last, dangling.isEmpty());
                         r.insert(n, optimal);
                         last = n;
                     }
                 }
             }
-            resolveDanglingNodes(false);
+            resolveDanglingNodes(false, dangling);
         }
 
-        private void resolveDanglingNodes(boolean up) {
+        public static void reverse(Object[] array, int size) {
+            for (int i = 0, mid = size >> 1, j = size - 1; i < mid; i++, j--) {
+                Object tmp = array[i];
+                array[i] = array[j];
+                array[j] = tmp;
+            }
+        }
+
+        private void resolveDanglingNodes(boolean up, List<LayoutNode> dangling) {
             boolean dir = up;
             boolean force = false;
-            while (!dangling.isEmpty()) {
+            LayoutNode[] nodes = dangling.toArray(new LayoutNode[0]);
+            Arrays.parallelSort(nodes, up ? DANGLING_UP_NODE_COMPARATOR : DANGLING_DOWN_NODE_COMPARATOR);
+            int length = nodes.length;
+            /*
+             * The nodes array can be quite large so it's best to use an array to support efficient sorting but
+             * removing elements from the array requires shifting elements down repeatedly.  Instead elements are
+             * shifted down into the empty slot as nodes visited.
+             */
+            while (length > 0) {
                 int newResolved = 0;
-                List<LayoutNode> nodes = new ArrayList<>(dangling.keySet());
-                if (up) {
-                    nodes.sort(DANGLING_UP_NODE_COMPARATOR);
-                    for (LayoutNode n : nodes) {
-                        NodeRow r = dangling.get(n);
-                        if (r != null && (!(n.preds.isEmpty() || n.preds.stream().allMatch(e -> dangling.containsKey(e.from))) || (force && n.preds.isEmpty()))) {
-                            int optimal = calculateOptimalDown(n, null);
-                            r.insert(n, optimal);
-                            dangling.remove(n);
-                            newResolved++;
+                int emptySlot = -1;
+                for (int i = 0; i < length; i++) {
+                    var n = nodes[i];
+                    NodeRow r = n.getDanglingRow();
+                    int optimal = -1;
+                    boolean hasOptimal = false;
+                    if (up) {
+                        if (!n.preds.isEmpty() && !isAllDanglingPreds(n) || force && n.preds.isEmpty()) {
+                            optimal = calculateOptimalDown(n, null, false);
+                            hasOptimal = true;
+                        }
+                    } else {
+                        if (!(n.succs.isEmpty() || isAllDanglingSuccs(n)) || force && n.succs.isEmpty()) {
+                            optimal = calculateOptimalUp(n, null, false);
+                            hasOptimal = true;
                         }
                     }
-                } else {
-                    nodes.sort(DANGLING_DOWN_NODE_COMPARATOR);
-                    for (LayoutNode n : nodes) {
-                        NodeRow r = dangling.get(n);
-                        if (r != null && (!(n.succs.isEmpty() || n.succs.stream().allMatch(e -> dangling.containsKey(e.to))) || (force && n.succs.isEmpty()))) {
-                            int optimal = calculateOptimalUp(n, null);
-                            r.insert(n, optimal);
-                            dangling.remove(n);
-                            newResolved++;
+                    if (hasOptimal) {
+                        r.insert(n, optimal);
+                        nodes[i] = null;
+                        if (emptySlot == -1) {
+                            emptySlot = i;
                         }
+                        n.removeDangling();
+                        newResolved++;
+                    } else if (emptySlot != -1) {
+                        nodes[emptySlot++] = nodes[i];
+                        nodes[i] = null;
                     }
                 }
-                if (newResolved == 0 && !dangling.isEmpty()) {
+                length -= newResolved;
+                if (emptySlot != -1 && length != emptySlot) {
+                    throw new InternalError("Incorrect packing");
+                }
+                if (newResolved == 0 && length != 0) {
+                    reverse(nodes, length);
                     up = !up;
                     force = up == dir;
                 }
             }
-            assert dangling.isEmpty() : "dangling size: " + dangling.size();
         }
     }
 
@@ -1422,7 +1529,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private final int[] space;
         static final Comparator<LayoutNode> COMPARATOR = Comparator.comparingInt(LayoutNode::getPos);
 
-        public NodeRow(int[] space) {
+        public NodeRow(int[] space, int length) {
             this.positions = new ArrayList<>();
             this.space = space;
         }
@@ -2780,24 +2887,24 @@ public class HierarchicalLayoutManager implements LayoutManager {
     private static final Comparator<LayoutNode> NODE_POSITION_COMPARATOR = (n1, n2) -> n1.pos - n2.pos;
 
     private static final PartialComparator<LayoutNode> NODE_BOTHVIP = (n1, n2) -> {
-        long n1VIP = n1.preds.stream().filter(x -> x.vip).count() + n1.succs.stream().filter(x -> x.vip).count();
-        long n2VIP = n2.preds.stream().filter(x -> x.vip).count() + n2.succs.stream().filter(x -> x.vip).count();
+        long n1VIP = n1.getPredsVips() + n1.getSuccsVips();
+        long n2VIP = n2.getPredsVips() + n2.getSuccsVips();
         if (n1VIP != n2VIP) {
             return (int) (n2VIP - n1VIP);
         }
         return null;
     };
     private static final PartialComparator<LayoutNode> NODE_DOWNVIP = (n1, n2) -> {
-        long n1VIP = n1.preds.stream().filter(x -> x.vip).count();
-        long n2VIP = n2.preds.stream().filter(x -> x.vip).count();
+        long n1VIP = n1.getPredsVips();
+        long n2VIP = n2.getPredsVips();
         if (n1VIP != n2VIP) {
             return (int) (n2VIP - n1VIP);
         }
         return null;
     };
     private static final PartialComparator<LayoutNode> NODE_UPVIP = (n1, n2) -> {
-        long n1VIP = n1.succs.stream().filter(x -> x.vip).count();
-        long n2VIP = n2.succs.stream().filter(x -> x.vip).count();
+        long n1VIP = n1.getSuccsVips();
+        long n2VIP = n2.getSuccsVips();
         if (n1VIP != n2VIP) {
             return (int) (n2VIP - n1VIP);
         }
