@@ -37,15 +37,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
@@ -397,6 +400,57 @@ public class Diagram {
 
     public InputGraph getGraph() {
         return graph;
+    }
+
+
+    public Iterable<Connection> iterateConnections() {
+        return new Iterable<>() {
+            @Override
+            public Iterator<Connection> iterator() {
+                return new Iterator<>() {
+
+                    final Iterator<Figure> figureMapIterator = figureMap.values().iterator();
+                    Iterator<InputSlot> inputSlotIterator = Collections.emptyIterator();
+                    Iterator<Connection> connectionIterator = Collections.emptyIterator();
+
+                    @Override
+                    public boolean hasNext() {
+                        while (true) {
+                            if (connectionIterator.hasNext()) {
+                                return true;
+                            }
+                            if (inputSlotIterator.hasNext()) {
+                                connectionIterator = inputSlotIterator.next().getConnections().iterator();
+                                continue;
+                            }
+                            if (figureMapIterator.hasNext()) {
+                                inputSlotIterator = figureMapIterator.next().getInputSlots().iterator();
+                                continue;
+                            }
+                            return false;
+                        }
+                    }
+
+                    @Override
+                    public Connection next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        return connectionIterator.next();
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public void forEachRemaining(Consumer<? super Connection> action) {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        };
     }
 
     public Set<Connection> getConnections() {
