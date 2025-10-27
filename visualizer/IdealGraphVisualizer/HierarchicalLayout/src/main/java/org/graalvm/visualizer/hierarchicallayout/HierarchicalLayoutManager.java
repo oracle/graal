@@ -98,7 +98,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
     private static final Logger LOG = Logger.getLogger(HierarchicalLayoutManager.class.getName());
 
-    public static final boolean TRACE = false;
+    public static final boolean TRACE_DEFAULT = false;
     public static final boolean CHECK = false;
     public static final int SWEEP_ITERATIONS = 1;
     public static final int CROSSING_ITERATIONS = 2;
@@ -110,6 +110,15 @@ public class HierarchicalLayoutManager implements LayoutManager {
     public static final int VIP_BONUS = 10;
 
     private final AtomicBoolean cancelled;
+
+    private boolean trace = TRACE_DEFAULT;
+
+    /**
+     * Enable or disable tracing of time spent in each step of the algorithm.
+     */
+    public void setTrace(boolean t) {
+        trace = t;
+    }
 
     @Override
     public boolean cancel() {
@@ -322,22 +331,46 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
     }
 
+    static final ThreadLocal<Integer> indent = ThreadLocal.withInitial(() -> 0);
+
+    private void traceEnd(long start, Class<?> theClass) {
+        if (trace) {
+            for (int i = 0; i < indent.get(); i++) {
+                System.out.print(' ');
+            }
+            System.out.println("Timing for " + theClass.getName() + " is " + (System.currentTimeMillis() - start));
+        }
+    }
+
+    private long traceBegin(Class<?> theClass) {
+        long start = 0;
+        if (trace) {
+            for (int i = 0; i < indent.get(); i++) {
+                System.out.print(' ');
+            }
+            System.out.println("Starting part " + theClass.getName());
+            start = System.currentTimeMillis();
+        }
+        return start;
+    }
+
     private abstract class AlgorithmPart {
+
 
         public void start() {
             if (CHECK) {
                 preCheck();
             }
 
-            long start = 0;
-            if (TRACE) {
-                System.out.println("##################################################");
-                System.out.println("Starting part " + this.getClass().getName());
-                start = System.currentTimeMillis();
+            try {
+                indent.set(indent.get() + 2);
+                long start = traceBegin(getClass());
+                run();
+                traceEnd(start, getClass());
+            } finally {
+                indent.set(indent.get() - 2);
             }
-            run();
-            if (TRACE) {
-                System.out.println("Timing for " + this.getClass().getName() + " is " + (System.currentTimeMillis() - start));
+            if (trace) {
                 printStatistics();
             }
 
@@ -422,6 +455,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
         cleanup();
 
+        long start = traceBegin(getClass());
+
         // #############################################################
         // Step 1: Build up data structure
         new BuildDatastructure().start();
@@ -474,6 +509,8 @@ public class HierarchicalLayoutManager implements LayoutManager {
         // #############################################################
         // STEP 8: Write back to interface
         new WriteResult().start();
+
+        traceEnd(start, getClass());
     }
 
     private class WriteResult extends AlgorithmPart {
