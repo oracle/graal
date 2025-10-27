@@ -173,6 +173,10 @@ public class HierarchicalLayoutManager implements LayoutManager {
         public final List<LayoutEdge> succs = new ArrayList<>();
         public int pos = -1; // Position within layer
 
+        public int getPos() {
+            return pos;
+        }
+
         public float crossingNumber = 0;
 
         public void loadCrossingNumber(boolean up) {
@@ -1414,11 +1418,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
 
     private class NodeRow {
 
-        private final TreeSet<LayoutNode> treeSet;
+        private final ArrayList<LayoutNode> positions;
         private final int[] space;
+        static final Comparator<LayoutNode> COMPARATOR = Comparator.comparingInt(LayoutNode::getPos);
 
         public NodeRow(int[] space) {
-            treeSet = new TreeSet<>(NODE_POSITION_COMPARATOR);
+            this.positions = new ArrayList<>();
             this.space = space;
         }
 
@@ -1429,22 +1434,24 @@ public class HierarchicalLayoutManager implements LayoutManager {
         }
 
         public void insert(LayoutNode n, int pos) {
-            SortedSet<LayoutNode> headSet = treeSet.headSet(n);
             LayoutNode leftNeighbor;
             int minX = Integer.MIN_VALUE;
-            if (!headSet.isEmpty()) {
-                leftNeighbor = headSet.last();
+            int idx = Collections.binarySearch(positions, n, COMPARATOR);
+            if (idx > 0) {
+                throw new IllegalArgumentException("already in list");
+            }
+            int insertPos = -idx - 1; // where you would insert
+            leftNeighbor = insertPos > 0 ? positions.get(insertPos - 1) : null;
+            LayoutNode rightNeighbor = insertPos < positions.size() ? positions.get(insertPos) : null;
+            if (leftNeighbor != null) {
                 minX = leftNeighbor.getRightSide() + offset(leftNeighbor, n);
             }
 
             if (pos < minX) {
                 n.x = minX;
             } else {
-                LayoutNode rightNeighbor;
-                SortedSet<LayoutNode> tailSet = treeSet.tailSet(n);
                 int maxX = Integer.MAX_VALUE;
-                if (!tailSet.isEmpty()) {
-                    rightNeighbor = tailSet.first();
+                if (rightNeighbor != null) {
                     maxX = rightNeighbor.x - offset(n, rightNeighbor) - n.getWholeWidth();
                 }
 
@@ -1455,7 +1462,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 }
                 assert minX <= maxX : minX + " vs " + maxX;
             }
-            treeSet.add(n);
+            positions.add(insertPos, n);
         }
     }
 
