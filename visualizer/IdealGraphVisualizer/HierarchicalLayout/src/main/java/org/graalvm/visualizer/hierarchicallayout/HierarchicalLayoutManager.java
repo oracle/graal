@@ -2914,12 +2914,12 @@ public class HierarchicalLayoutManager implements LayoutManager {
             }
 
             // Set up edges
-            List<? extends Link> links = new ArrayList<>(graph.getLinks());
+            Link[] links = graph.getLinks().toArray(new Link[0]);
             final boolean VIP = !noVip;
             if (VIP) {
-                Collections.sort(links, LINK_COMPARATOR);
+                Arrays.parallelSort(links, LINK_COMPARATOR);
             } else {
-                Collections.sort(links, LINK_NOVIP_COMPARATOR);
+                Arrays.parallelSort(links, LINK_NOVIP_COMPARATOR);
             }
 
             for (Link l : links) {
