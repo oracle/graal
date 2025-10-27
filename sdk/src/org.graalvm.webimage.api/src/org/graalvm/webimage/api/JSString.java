@@ -91,7 +91,6 @@ public final class JSString extends JSValue {
     @JS(value = "return String.fromCharCode(...codeUnits);")
     public static native JSString fromCharCode(char... codeUnits);
 
-
     @JS.Coerce
     @JS(value = "return String.fromCodePoint(...codePoints);")
     public static native JSString fromCodePoint(int... codePoints);
@@ -109,16 +108,16 @@ public final class JSString extends JSValue {
 
     @JS.Coerce
     @JS(value = """
-            const code = this.charCodeAt(index);
-            return Number.isNaN(code) ? -1 : code;
-            """)
+                    const code = this.charCodeAt(index);
+                    return Number.isNaN(code) ? -1 : code;
+                    """)
     public native int charCodeAt(int index);
 
     @JS.Coerce
     @JS(value = """
-            const code = this.codePointAt(index);
-            return code === undefined ? -1 : code;
-            """)
+                    const code = this.codePointAt(index);
+                    return code === undefined ? -1 : code;
+                    """)
     public native int codePointAt(int index);
 
     @JS.Coerce

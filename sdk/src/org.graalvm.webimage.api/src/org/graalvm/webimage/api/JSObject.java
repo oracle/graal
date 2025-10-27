@@ -395,7 +395,7 @@ public class JSObject extends JSValue {
     /**
      * Sets the value of the key passed as the argument in the JavaScript object.
      *
-     * @param key      the object under which the value should be placed in the JavaScript object
+     * @param key the object under which the value should be placed in the JavaScript object
      * @param newValue the value that should be placed under the given key in the JavaScript object
      */
     @JS("this[key] = newValue;")
@@ -413,7 +413,7 @@ public class JSObject extends JSValue {
      * Invoke the underlying JavaScript function, if this object is callable.
      *
      * @param args The array of Java arguments, which is converted to JavaScript and passed to the
-     *             underlying JavaScript function
+     *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
     @JS("return this.apply(this, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
@@ -424,8 +424,8 @@ public class JSObject extends JSValue {
      * in the function, if this object is callable.
      *
      * @param thisArg The value for the binding of {@code this} inside the JavaScript function
-     * @param args    The array of Java arguments, which is converted to JavaScript and passed to the
-     *                underlying JavaScript function
+     * @param args The array of Java arguments, which is converted to JavaScript and passed to the
+     *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
     @JS("return this.apply(thisArg, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
