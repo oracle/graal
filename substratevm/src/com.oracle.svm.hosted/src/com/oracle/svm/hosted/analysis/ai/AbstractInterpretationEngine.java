@@ -29,7 +29,7 @@ public class AbstractInterpretationEngine {
     private final Inflation bb;
 
     public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Inflation bb) {
-        SvmUtility.getInstance(bb); // Initialize SvmUtility singleton
+        SvmUtility.getInstance(bb);
         this.analyzerManager = analyzerManager;
         this.bb = bb;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
@@ -49,7 +49,6 @@ public class AbstractInterpretationEngine {
         switch (absintMode) {
             case INTRA_ANALYZE_MAIN_ONLY -> {
                 logger.log("Running intra-procedural analysis on main method only.", LoggerVerbosity.INFO);
-
             }
             case INTRA_ANALYZE_ALL_INVOKED_METHODS -> {
                 logger.log("Running intra-procedural analysis on all potentially invoked methods.", LoggerVerbosity.INFO);
