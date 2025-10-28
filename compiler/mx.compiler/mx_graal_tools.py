@@ -144,19 +144,7 @@ def c1visualizer(args):
 c1visualizer.__doc__ = netbeans_docstring('C1 Visualizer', 'c1visualizer')
 
 
-def hsdis(args, copyToDir=None):
-    """download the hsdis library and copy it to a specific dir or to the current JDK
-
-    This is needed to support HotSpot's assembly dumping features.
-    On amd64 platforms, it downloads the Intel syntax version"""
-
-    parser = ArgumentParser(prog='hsdis')
-    args = parser.parse_args(args)
-
-    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
-    if hsdis_syntax:
-        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
-
+def get_hsdis_lib() -> str:
     hsdis_lib_name = 'HSDIS'
     hsdis_lib = mx.library(hsdis_lib_name)
 
@@ -168,8 +156,31 @@ def hsdis(args, copyToDir=None):
     if len(hsdis_lib_files) != 1:
         mx.abort("hsdis library '{}' does not contain a single file: {}".format(hsdis_lib_name, hsdis_lib_files))
     hsdis_lib_file = join(hsdis_lib_path, hsdis_lib_files[0])
+    return hsdis_lib_file
+
+def hsdis(args):
+    """download the hsdis library and copy it to a specific dir or to the current JDK
+
+    This is needed to support HotSpot's assembly dumping features.
+    On amd64 platforms, it downloads the Intel syntax version"""
+
+    parser = ArgumentParser(prog='hsdis')
+    parser.add_argument('-d', '--directory', action='store', help='Directory to copy hsdis to.')
+    parser.add_argument('-l', '--lib-prefix', action='store_true', help='Add lib prefix to filename if necessary.')
+    args = parser.parse_args(args)
+
+    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
+    if hsdis_syntax:
+        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
+
+    hsdis_lib_file = get_hsdis_lib()
+
+    libname = mx.add_lib_suffix('hsdis-' + mx.get_arch())
+    if args.lib_prefix and args.directory:
+        libname = mx.add_lib_prefix(libname)
 
     overwrite = True
+    copyToDir = args.directory
     if copyToDir is None:
         # Try install hsdis into JAVA_HOME
         overwrite = False
@@ -188,7 +199,7 @@ def hsdis(args, copyToDir=None):
                 copyToDir = join(base, 'lib', mx.get_arch())
 
     if exists(copyToDir):
-        dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))
+        dest = join(copyToDir, libname)
         if exists(dest) and not overwrite:
             import filecmp
             # Only issue warning if existing lib is different
@@ -200,6 +211,22 @@ def hsdis(args, copyToDir=None):
                 mx.log('Copied {} to {}'.format(hsdis_lib_file, dest))
             except IOError as e:
                 mx.warn('Could not copy {} to {}: {}'.format(hsdis_lib_file, dest, str(e)))
+
+def distool(args):
+    """disassemble annotated machine code embedded in text files
+
+    Run a tool over the input files to convert in place HexCodeFiles
+    embedded in cfg files and MachCode sections in hs_err_pid files to a
+    disassembled format.
+    """
+
+    # Explicitly resolve GRAAL_TEST to get a clearer
+    # error message if it has not been built.
+    mx.distribution('GRAAL_TEST').classpath_repr(True)
+
+    path = mx.classpath('GRAAL_TEST')
+    mx.run_java(['-ea', '-cp', path, f"-Dtest.jdk.graal.compiler.disassembler.path={get_hsdis_lib()}",
+                 "--enable-native-access=ALL-UNNAMED", 'jdk.graal.compiler.disassembler.DisassemblerTool'] + args)
 
 def hcfdis(args, cp=None):
     """disassemble HexCodeFiles embedded in text files
@@ -271,6 +298,7 @@ def jol(args):
 
 mx.update_commands(_suite, {
     'c1visualizer' : [c1visualizer, ''],
+    'distool' : [distool, '[options]'],
     'hsdis': [hsdis, ''],
     'hcfdis': [hcfdis, ''],
     'igv' : [igv, ''],

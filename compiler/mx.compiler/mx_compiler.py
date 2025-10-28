@@ -886,6 +886,11 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         # TODO: GR-31197, this should be removed.
         vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
         vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+
+        # Add support for PanamaDisassemblerVisitor
+        vmArgs.append(f"-Dtest.jdk.graal.compiler.disassembler.path={mx_graal_tools.get_hsdis_lib()}")
+        vmArgs.append("--enable-native-access=ALL-UNNAMED")
+
         return (vmArgs, mainClass, mainClassArgs)
 
 
