@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
+package com.oracle.svm.hosted.analysis.ai.analyzer.metadata;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
@@ -11,6 +11,7 @@ import java.util.List;
  */
 public final class CallStack {
 
+    // TODO: refactor this shit
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
     private final int maxRecursionDepth;
 
@@ -35,12 +36,13 @@ public final class CallStack {
     }
 
     /**
-     * Counts the number of recursive calls of the specified analysisMethod in the call stack.
+     * Counts the number of times an analysis method has been
+     * consecutively called in the current call stack.
      *
      * @param method the analysisMethod to count recursive calls for
-     * @return the number of recursive calls of the specified analysisMethod
+     * @return the number of consecutive the specified analysisMethod
      */
-    public int countRecursiveCalls(AnalysisMethod method) {
+    public int countConsecutiveCalls(AnalysisMethod method) {
         int count = 0;
         String qualifiedName = method.getQualifiedName();
         for (AnalysisMethod callStackMethod : callStack) {

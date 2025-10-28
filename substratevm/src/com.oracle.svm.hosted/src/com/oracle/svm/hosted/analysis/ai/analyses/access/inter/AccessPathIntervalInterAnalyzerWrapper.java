@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.access.inter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer.Builder;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.analyses.access.AccessPathIntervalAbstractInterpreter;

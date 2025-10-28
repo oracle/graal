@@ -20,21 +20,21 @@ import java.util.Set;
  * - widen: same shape as join but uses widenWith on intervals
  * - meet: intersection of env/store keys; env keeps mapping only when equal; store meets intervals
  */
-public class AbsMemory extends AbstractDomain<AbsMemory> {
+public class AbstractMemory extends AbstractDomain<AbstractMemory> {
 
     private boolean isBot;
     private boolean isTop;
     private final Map<Var, AccessPath> env;
     private final Map<AccessPath, IntInterval> store;
 
-    public AbsMemory() {
+    public AbstractMemory() {
         this.isBot = false;
         this.isTop = false;
         this.env = new HashMap<>();
         this.store = new HashMap<>();
     }
 
-    public AbsMemory(Map<Var, AccessPath> env, Map<AccessPath, IntInterval> store) {
+    public AbstractMemory(Map<Var, AccessPath> env, Map<AccessPath, IntInterval> store) {
         this.isBot = false;
         this.isTop = false;
         this.env = new HashMap<>(env);
@@ -143,7 +143,7 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
      * placeholderToActualRoot maps placeholder root names (strings) to caller AccessPath roots.
      * We translate each summary store entry by replacing the placeholder root with the actual root and weakly joining the value.
      */
-    public void applySummary(AbsMemory summary, Map<String, AccessPath> placeholderToActualRoot) {
+    public void applySummary(AbstractMemory summary, Map<String, AccessPath> placeholderToActualRoot) {
         Objects.requireNonNull(summary);
         Objects.requireNonNull(placeholderToActualRoot);
         // Apply store entries
@@ -184,7 +184,7 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     }
 
     @Override
-    public boolean leq(AbsMemory other) {
+    public boolean leq(AbstractMemory other) {
         if (other == null) return false;
         if (this.isBot()) return true;
         if (other.isTop()) return true;
@@ -206,8 +206,8 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     @Override
     public boolean equals(Object other) {
         if (this == other) return true;
-        if (!(other instanceof AbsMemory)) return false;
-        AbsMemory o = (AbsMemory) other;
+        if (!(other instanceof AbstractMemory)) return false;
+        AbstractMemory o = (AbstractMemory) other;
         if (this.isBot != o.isBot) return false;
         if (this.isTop != o.isTop) return false;
         return this.env.equals(o.env) && this.store.equals(o.store);
@@ -230,7 +230,7 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     }
 
     @Override
-    public void joinWith(AbsMemory other) {
+    public void joinWith(AbstractMemory other) {
         if (other == null) return;
         if (this.isTop || other.isTop) {
             setToTop();
@@ -280,7 +280,7 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     }
 
     @Override
-    public void widenWith(AbsMemory other) {
+    public void widenWith(AbstractMemory other) {
         if (other == null) return;
         if (this.isTop || other.isTop) {
             setToTop();
@@ -330,7 +330,7 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     }
 
     @Override
-    public void meetWith(AbsMemory other) {
+    public void meetWith(AbstractMemory other) {
         if (other == null) return;
         if (this.isBot || other.isBot) {
             setToBot();
@@ -384,8 +384,8 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
     }
 
     @Override
-    public AbsMemory copyOf() {
-        AbsMemory c = new AbsMemory();
+    public AbstractMemory copyOf() {
+        AbstractMemory c = new AbstractMemory();
         c.isBot = this.isBot;
         c.isTop = this.isTop;
         c.env.clear();
@@ -404,5 +404,15 @@ public class AbsMemory extends AbstractDomain<AbsMemory> {
             return top;
         }
         return v.copyOf();
+    }
+
+    public String[] getAllTempNames() {
+        Set<String> tempNames = new HashSet<>();
+        for (Var v : env.keySet()) {
+            if (v.kind() == Var.Kind.TEMP) {
+                tempNames.add(v.name());
+            }
+        }
+        return tempNames.toArray(new String[0]);
     }
 }

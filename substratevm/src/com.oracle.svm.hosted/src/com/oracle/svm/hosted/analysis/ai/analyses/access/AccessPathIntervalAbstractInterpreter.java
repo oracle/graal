@@ -9,6 +9,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathConstants;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPathMap;
 import com.oracle.svm.hosted.analysis.ai.domain.access.PlaceHolderAccessPathBase;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -39,13 +40,7 @@ import java.util.List;
 public class AccessPathIntervalAbstractInterpreter implements AbstractInterpreter<AccessPathMap<IntInterval>> {
 
     @Override
-    public void execEdge(Node source,
-                         Node target,
-                         AbstractState<AccessPathMap<IntInterval>> abstractState) {
-
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Analyzing edge: " + source + " -> " + target, LoggerVerbosity.DEBUG);
-
+    public void execEdge(Node source, Node target, AbstractState<AccessPathMap<IntInterval>> abstractState, IteratorContext iteratorContext) {
         if (!(source instanceof IfNode ifNode)) {
             abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
             return;
@@ -90,14 +85,10 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
             condInterval = IntInterval.getHigherInterval(condInterval);
             abstractState.getPreCondition(target).get(relevantFieldPath).meetWith(condInterval);
         }
-
     }
 
     @Override
-    public void execNode(Node node,
-                         AbstractState<AccessPathMap<IntInterval>> abstractState,
-                         InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack) {
-
+    public void execNode(Node node, AbstractState<AccessPathMap<IntInterval>> abstractState, InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack, IteratorContext iteratorContext) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         AccessPathMap<IntInterval> preCondition = abstractState.getPreCondition(node);
         logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
@@ -324,8 +315,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
         abstractState.setPostCondition(node, computedPostCondition);
     }
 
-    private AccessPath getAccessPathFromAccessFieldNode(AccessFieldNode accessFieldNode,
-                                                        AbstractState<AccessPathMap<IntInterval>> abstractState) {
+    private AccessPath getAccessPathFromAccessFieldNode(AccessFieldNode accessFieldNode, AbstractState<AccessPathMap<IntInterval>> abstractState) {
 
         AccessPath fieldPath = AccessPath.getAccessPathFromAccessFieldNode(accessFieldNode);
         if (fieldPath != null) {
@@ -359,9 +349,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
         return startState.getPreCondition().get(accessPath).copyOf();
     }
 
-    private AccessPathMap<IntInterval> execAndGet(Node node,
-                                                  AbstractState<AccessPathMap<IntInterval>> abstractState,
-                                                  InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack) {
+    private AccessPathMap<IntInterval> execAndGet(Node node, AbstractState<AccessPathMap<IntInterval>> abstractState, InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack) {
         execNode(node, abstractState, invokeCallBack);
         return abstractState.getPostCondition(node);
     }

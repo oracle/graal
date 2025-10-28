@@ -1,8 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;

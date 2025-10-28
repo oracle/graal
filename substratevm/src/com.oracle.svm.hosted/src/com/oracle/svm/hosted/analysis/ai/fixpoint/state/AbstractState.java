@@ -10,8 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * This class maps Nodes of StructuredGraph to a common abstract domain
- * and also keeps track of some fixpoint iteration related information.
+ * This class maps Nodes of StructuredGraph to a common abstract domain.
+ * It maintains pre-conditions and post-conditions for each node during fixpoint iteration.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
@@ -63,10 +63,6 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     public void setPreCondition(Node node, Domain preCondition) {
         NodeState<Domain> state = getState(node);
         state.setPreCondition(preCondition);
-    }
-
-    public void resetCount(Node node) {
-        getState(node).resetCount();
     }
 
     public void join(AbstractState<Domain> other) {

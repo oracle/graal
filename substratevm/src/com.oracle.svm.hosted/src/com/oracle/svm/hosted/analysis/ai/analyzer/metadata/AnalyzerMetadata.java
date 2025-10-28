@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
+package com.oracle.svm.hosted.analysis.ai.analyzer.metadata;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
@@ -11,22 +11,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Represents the payload for the fixpoint iteration process, managing mappings
- * between analysis methods and their corresponding control flow graphs, weak
- * topological orderings, and weak partial orderings. This class enables efficient
- * reuse of computations during analysis.
+ * Represents the gathered metadata that the analyzer was able to infer during the analysis.
  */
-public final class IteratorPayload {
+public final class AnalyzerMetadata {
 
     private final IteratorPolicy iteratorPolicy;
 
-    /* AnalysisMethod to the corresponding control flow graph mapping -> to avoid getting the cfg on every fixpoint creation */
+    /* Mapping of AnalysisMethod to the corresponding control flow graph -> to avoid getting the cfg on every fixpoint creation */
     private final Map<AnalysisMethod, ControlFlowGraph> methodGraphMap = new HashMap<>();
 
-    /* AnalysisMethod to the corresponding weak topological ordering mapping -> to avoid computing WTO on every fixpoint creation */
+    /* Mapping of AnalysisMethod to the corresponding weak topological ordering -> to avoid computing WTO on every fixpoint creation */
     private final Map<AnalysisMethod, WeakTopologicalOrdering> methodWtoMap = new HashMap<>();
 
-    /* AnalysisMethod to the corresponding weak partial ordering mapping -> to avoid computing WPO on every fixpoint creation */
+    /* Mapping of AnalysisMethod to the corresponding weak partial ordering -> to avoid computing WPO on every fixpoint creation */
     private final Map<AnalysisMethod, WeakPartialOrdering> methodWpoMap = new HashMap<>();
 
     public IteratorPolicy getIteratorPolicy() {
@@ -84,7 +81,7 @@ public final class IteratorPayload {
         this.methodWpoMap.put(method, wpo);
     }
 
-    public IteratorPayload(IteratorPolicy iteratorPolicy) {
+    public AnalyzerMetadata(IteratorPolicy iteratorPolicy) {
         this.iteratorPolicy = iteratorPolicy;
     }
 
