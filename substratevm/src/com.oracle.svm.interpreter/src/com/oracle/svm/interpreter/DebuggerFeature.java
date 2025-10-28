@@ -761,7 +761,7 @@ public class DebuggerFeature implements InternalFeature {
 
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
 
-        stubSection.markEnterStubPatch(enterInterpreterMethod);
+        stubSection.markEnterStubPatch(accessImpl.getHostedUniverse().lookup(enterInterpreterMethod));
         enterStubTable.writeMetadataHashString(hashString.getBytes(StandardCharsets.UTF_8));
     }
 

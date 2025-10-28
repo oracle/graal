@@ -64,6 +64,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
@@ -77,7 +78,6 @@ import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @InternalVMMethod
@@ -177,12 +177,12 @@ public abstract class InterpreterStubSection {
     public abstract int getVTableStubSize();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void markEnterStubPatch(ResolvedJavaMethod enterStub) {
+    public void markEnterStubPatch(HostedMethod enterStub) {
         markEnterStubPatch(stubsBufferImpl, enterStub);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub);
+    protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, HostedMethod enterStub);
 
     @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
     @NeverInline("needs ABI boundary")
