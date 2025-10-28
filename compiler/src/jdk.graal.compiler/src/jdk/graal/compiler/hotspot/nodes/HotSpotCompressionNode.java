@@ -72,10 +72,10 @@ public final class HotSpotCompressionNode extends CompressionNode {
 
     @Override
     public boolean isCompressible(Constant constant) {
-        if (constant instanceof HotSpotMetaspaceConstant mc) {
-            return mc.isCompressible();
+        if (constant instanceof HotSpotConstant hc) {
+            return !hc.isCompressed();
         }
-        return true;
+        return super.isCompressible(constant);
     }
 
     @Override
