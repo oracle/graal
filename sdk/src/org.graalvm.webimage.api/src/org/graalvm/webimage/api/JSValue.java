@@ -76,13 +76,19 @@ public abstract class JSValue {
     }
 
     /**
-     * Checks whether the given JSValue is the JavaScript 'undefined' value.
+     * Checks whether the given value is the JavaScript {@code undefined} value.
      *
-     * @param value the JSValue to check
-     * @return true if the value is an instance of JSUndefined, false otherwise
+     * @see #isUndefined()
      */
     public static boolean isUndefined(JSValue value) {
-        return value instanceof JSUndefined;
+        return value != null && value.isUndefined();
+    }
+
+    /**
+     * Checks whether this is the JavaScript {@code undefined} value.
+     */
+    public boolean isUndefined() {
+        return false;
     }
 
     public static JSUndefined undefined() {
