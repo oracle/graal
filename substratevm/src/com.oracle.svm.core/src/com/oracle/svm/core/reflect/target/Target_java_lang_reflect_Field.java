@@ -86,7 +86,7 @@ public final class Target_java_lang_reflect_Field {
     @Alias //
     boolean override;
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
     public int modifiers;
 
     @Alias //

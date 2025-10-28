@@ -61,7 +61,7 @@ public final class Target_java_lang_reflect_Constructor {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class)//
     byte[] parameterAnnotations;
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) //
     public int modifiers;
 
     /**
