@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.leaks.pair.intra;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangAnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.util.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.util.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.composite.PairDomain;

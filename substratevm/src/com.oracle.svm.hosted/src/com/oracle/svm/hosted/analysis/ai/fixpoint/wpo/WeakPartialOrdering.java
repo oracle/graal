@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+* NO QA, EXPERIMENTAL CODE: This class is experimental and has not been thoroughly tested.
  * Represents a weak partial ordering of a control flow graph.
  */
 public final class WeakPartialOrdering {

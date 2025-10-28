@@ -5,6 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -32,14 +33,8 @@ import jdk.graal.compiler.nodes.java.StoreFieldNode;
  * it handles only intra-procedural methods.
  */
 public class PentagonAbstractInterpreter implements AbstractInterpreter<PentagonDomain<AccessPath>> {
-
-    private final AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-
     @Override
-    public void execEdge(Node source,
-                         Node target,
-                         AbstractState<PentagonDomain<AccessPath>> abstractState) {
-
+    public void execEdge(Node source, Node target, AbstractState<PentagonDomain<AccessPath>> abstractState, IteratorContext iteratorContext) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing edge: " + source + " -> " + target, LoggerVerbosity.DEBUG);
 
@@ -120,10 +115,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
     }
 
     @Override
-    public void execNode(Node node,
-                         AbstractState<PentagonDomain<AccessPath>> abstractState,
-                         InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
-
+    public void execNode(Node node, AbstractState<PentagonDomain<AccessPath>> abstractState, InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack, IteratorContext iteratorContext) {
         PentagonDomain<AccessPath> preCondition = abstractState.getPreCondition(node);
         PentagonDomain<AccessPath> computedPost = preCondition.copyOf();
 
@@ -265,22 +257,20 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case Invoke invoke -> {
                 AnalysisOutcome<PentagonDomain<AccessPath>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                 if (outcome.isError()) {
-                    logger.log("Error in invoke: " + outcome.result(), LoggerVerbosity.INFO);
                     computedPost.setToTop();
                 }
             }
 
             default -> {
-                // Default case - keep existing domain
+                /* Default case - keep existing domain */
             }
         }
 
         abstractState.setPostCondition(node, computedPost);
-        logger.log("Completed node: " + node + " -> " + computedPost, LoggerVerbosity.DEBUG);
     }
 
     private void transferLessThanRelations(AccessPath sourceVar, AccessPath targetVar, PentagonDomain<AccessPath> domain) {
-        // Transfer all less-than relations from source to target
+        /* Transfer all less-than relations from source to target */
         for (AccessPath otherVar : domain.getVariableNames()) {
             if (domain.lessThan(sourceVar, otherVar)) {
                 domain.addLessThanRelation(targetVar, otherVar);

@@ -1,22 +1,20 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorPhase;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
-import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
- * Represents a fixpoint iterator that iterates over {@link HIRBlock}s
- * according to the Weak Topological Ordering (WTO).
- * Implemented based on:
+ * Represents a fixpoint iterator based on the Weak Topological Ordering (WTO) algorithm.
  * F. Bourdoncle. Efficient chaotic iteration strategies with widenings.
  * In Formal Methods in Programming and Their Applications, pp 128-141.
  * <a href="https://doi.org/10.1007/BFb0039704"></a>
@@ -29,16 +27,16 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
 
     public WtoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
-                               AbstractTransformers<Domain> abstractTransformers,
-                               IteratorPayload iteratorPayload) {
+                               AbstractTransformer<Domain> abstractTransformer,
+                               AnalyzerMetadata analyzerMetadata) {
 
-        super(method, initialDomain, abstractTransformers, iteratorPayload);
-        if (iteratorPayload.containsMethodWto(method)) {
-            this.weakTopologicalOrdering = iteratorPayload.getMethodWtoMap().get(method);
+        super(method, initialDomain, abstractTransformer, analyzerMetadata);
+        if (analyzerMetadata.containsMethodWto(method)) {
+            this.weakTopologicalOrdering = analyzerMetadata.getMethodWtoMap().get(method);
         } else {
             logger.log("Computing Weak Topological Ordering for " + method.getQualifiedName(), LoggerVerbosity.DEBUG);
             this.weakTopologicalOrdering = new WeakTopologicalOrdering(graphTraversalHelper);
-            iteratorPayload.addToMethodWtoMap(method, weakTopologicalOrdering);
+            analyzerMetadata.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
         logger.log("Weak Topological Ordering for " + method.getQualifiedName() + ": ", LoggerVerbosity.DEBUG);
         logger.log(weakTopologicalOrdering.toString(), LoggerVerbosity.DEBUG);
@@ -47,12 +45,16 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     @Override
     public AbstractState<Domain> iterateUntilFixpoint() {
         logger.log("Starting WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
+        iteratorContext.reset();
+
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
+            iteratorContext.incrementGlobalIteration();
             analyzeComponent(component);
         }
 
+        iteratorContext.setConverged(true);
         logger.log("Finished WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        logger.printLabelledGraph(analyzerMetadata.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 
@@ -68,19 +70,33 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     private void analyzeVertex(WtoVertex vertex) {
         logger.log("Analyzing vertex: " + vertex.toString(), LoggerVerbosity.DEBUG);
         Node node = graphTraversalHelper.getBeginNode(vertex.block());
+
+        // Track node visits (used for isFirstVisit and widening decisions)
+        iteratorContext.incrementNodeVisitCount(node);
+        iteratorContext.setCurrentBlock(vertex.block());
+
         if (node == graphTraversalHelper.getGraphStart() && !abstractState.hasNode(node)) {
             abstractState.setPreCondition(node, initialDomain);
         }
-        abstractTransformers.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper);
+
+        abstractTransformer.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper, iteratorContext);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
         logger.log("Analyzing cycle: " + cycle.toString(), LoggerVerbosity.DEBUG);
         boolean iterate = true;
+        Node headBegin = cycle.head().getBeginNode();
 
+        if (iteratorContext.isLoopHeader(headBegin)) {
+            iteratorContext.incrementLoopIteration(headBegin);
+        }
+
+        iteratorContext.setPhase(IteratorPhase.WIDENING);
         while (iterate) {
-            /* Analyze the nodes inside outermost head */
-            abstractTransformers.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper);
+            iteratorContext.setCurrentBlock(cycle.head());
+
+            /* Analyze the nodes inside the outermost head */
+            abstractTransformer.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper, iteratorContext);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
@@ -92,13 +108,18 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
              * we look at the head of the cycle by collecting invariants from predecessors
              * and checking if the pre-condition at the head of the cycle changed.
              */
-            abstractTransformers.collectInvariantsFromCfgPredecessors(cycle.head(), abstractState, graphTraversalHelper);
-            Node headBegin = cycle.head().getBeginNode();
+            abstractTransformer.collectInvariantsFromCfgPredecessors(cycle.head(), abstractState, graphTraversalHelper, iteratorContext);
+
             if (abstractState.getPreCondition(headBegin).leq(abstractState.getPostCondition(headBegin))) {
                 iterate = false;
             } else {
                 extrapolate(headBegin);
+                if (iteratorContext.isLoopHeader(headBegin)) {
+                    iteratorContext.incrementLoopIteration(headBegin);
+                }
             }
         }
+
+        iteratorContext.setPhase(IteratorPhase.ASCENDING);
     }
 }

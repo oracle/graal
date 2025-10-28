@@ -92,4 +92,8 @@ public class GraphTraversalHelper {
                 ? current.cfgSuccessors()
                 : current.cfgPredecessors();
     }
+
+    public ControlFlowGraph getCfgGraph() {
+        return cfgGraph;
+    }
 }

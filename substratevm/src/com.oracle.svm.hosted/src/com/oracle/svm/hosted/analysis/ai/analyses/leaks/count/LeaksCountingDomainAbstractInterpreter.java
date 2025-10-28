@@ -5,6 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.util.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.InvokeUtil;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
@@ -15,14 +16,12 @@ import jdk.graal.compiler.nodes.Invoke;
 public class LeaksCountingDomainAbstractInterpreter implements AbstractInterpreter<CountDomain> {
 
     @Override
-    public void execEdge(Node source,
-                         Node target,
-                         AbstractState<CountDomain> abstractState) {
+    public void execEdge(Node source, Node target, AbstractState<CountDomain> abstractState, IteratorContext iteratorContext) {
         abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
     }
 
     @Override
-    public void execNode(Node node, AbstractState<CountDomain> abstractState, InvokeCallBack<CountDomain> invokeCallBack) {
+    public void execNode(Node node, AbstractState<CountDomain> abstractState, InvokeCallBack<CountDomain> invokeCallBack, IteratorContext iteratorContext) {
         NodeState<CountDomain> state = abstractState.getState(node);
         CountDomain preCondition = state.getPreCondition();
         CountDomain computedPost = preCondition.copyOf();

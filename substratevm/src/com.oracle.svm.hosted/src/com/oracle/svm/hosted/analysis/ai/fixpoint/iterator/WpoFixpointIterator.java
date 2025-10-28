@@ -1,12 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoVertex;
-import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformers;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * WARNING: You are now entering a dangerous class, which is currently experimental, and most likely needs to be fixed
+ * NOQA, EXPERIMENTAL CODE: This class is experimental and has not been thoroughly tested.
  * <p>
  * Represents a deterministic concurrent fixpoint algorithm using weak partial ordering
  * of a {@link ControlFlowGraph}.
@@ -41,14 +41,14 @@ public final class WpoFixpointIterator<
 
     public WpoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
-                               AbstractTransformers<Domain> abstractTransformers,
-                               IteratorPayload iteratorPayload) {
-        super(method, initialDomain, abstractTransformers, iteratorPayload);
-        if (iteratorPayload.containsMethodWpo(method)) {
-            this.weakPartialOrdering = iteratorPayload.getMethodWpoMap().get(method);
+                               AbstractTransformer<Domain> abstractTransformer,
+                               AnalyzerMetadata analyzerMetadata) {
+        super(method, initialDomain, abstractTransformer, analyzerMetadata);
+        if (analyzerMetadata.containsMethodWpo(method)) {
+            this.weakPartialOrdering = analyzerMetadata.getMethodWpoMap().get(method);
         } else {
             this.weakPartialOrdering = new WeakPartialOrdering(graphTraversalHelper);
-            iteratorPayload.addToMethodWpoMap(method, weakPartialOrdering);
+            analyzerMetadata.addToMethodWpoMap(method, weakPartialOrdering);
         }
 
         this.entry = graphTraversalHelper.getEntryBlock();
@@ -60,7 +60,7 @@ public final class WpoFixpointIterator<
         buildWorkNodes();
         runAnalysis();
         logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        logger.printLabelledGraph(analyzerMetadata.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 
@@ -156,7 +156,7 @@ public final class WpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            abstractTransformers.analyzeBlock(node, abstractState, graphTraversalHelper);
+            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -165,12 +165,12 @@ public final class WpoFixpointIterator<
             if (refCount.get() == weakPartialOrdering.getNumPredecessors(index)) {
                 for (WorkNode pred : predecessors) {
                     if (!weakPartialOrdering.isBackEdge(node, pred.node)) {
-                        abstractTransformers.analyzeEdge(pred.node, node, abstractState);
+                        abstractTransformer.analyzeEdge(pred.node, node, abstractState);
                     }
                 }
             }
 
-            abstractTransformers.analyzeBlock(node, abstractState, graphTraversalHelper);
+            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
             return successors;
         }
 
@@ -187,11 +187,11 @@ public final class WpoFixpointIterator<
 
         boolean updateHeadBackEdge() {
             Domain oldPre = abstractState.getPreCondition(node.getBeginNode()).copyOf();
-            abstractTransformers.collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper);
+            abstractTransformer.collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractState.getPreCondition(node.getBeginNode()))) {
-                abstractState.resetCount(node.getBeginNode());
+//                abstractState.resetCount(node.getBeginNode());
                 return true;
             }
 

@@ -4,15 +4,16 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 /**
  * Represents a state of a node in the fixpoint iteration.
+ * Contains the pre- and post-conditions for the abstract domain.
  *
  * @param <Domain> type of the derived AbstractDomain
  */
 public final class NodeState<Domain extends AbstractDomain<Domain>> {
 
-    /* Number of times this state has been visited/iterated in fixpoint iteration  */
-    private int visitedCount = 0;
-
-    /* Do we want to restrict the execution of this state in the current fixpoint iteration */
+    /**
+     * Remove this once {@link com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter}
+     * outperforms {@link com.oracle.svm.hosted.analysis.ai.analyses.access.AccessPathIntervalAbstractInterpreter}
+     */
     private boolean restrictedFromExecution = false;
 
     private Domain preCondition;
@@ -26,14 +27,6 @@ public final class NodeState<Domain extends AbstractDomain<Domain>> {
     public NodeState(Domain preCondition, Domain postCondition) {
         this.preCondition = preCondition.copyOf();
         this.postCondition = postCondition.copyOf();
-    }
-
-    public int getVisitedCount() {
-        return visitedCount;
-    }
-
-    public void incrementVisitedCount() {
-        ++visitedCount;
     }
 
     public Domain getPreCondition() {
@@ -52,20 +45,11 @@ public final class NodeState<Domain extends AbstractDomain<Domain>> {
         this.postCondition = postCondition.copyOf();
     }
 
-    public void resetCount() {
-        visitedCount = 0;
-    }
-
-    /**
-     * NOTE
-     * The following two methods will be removed in the future. For now they
-     * are used as a poor man's solution that provides a general mechanism for
-     * restricting the execution of a node in the current fixpoint iteration
-     */
     public boolean isRestrictedFromExecution() {
         return restrictedFromExecution;
     }
 
+    // TODO: remove this once we have dataflow interpreter handled
     public void markRestrictedFromExecution() {
         restrictedFromExecution = true;
     }

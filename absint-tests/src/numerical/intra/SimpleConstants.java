@@ -11,7 +11,6 @@ public class SimpleConstants {
     int d = 0;
     d = (a > 0) ? 1 : 2; // d should be 1
 
-    // constant folding style
     int e = 10 * 2 - 5; // 15
   }
 }

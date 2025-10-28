@@ -3,8 +3,8 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.call;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
@@ -28,8 +28,8 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
                                         AbstractInterpreter<Domain> abstractInterpreter,
                                         CheckerManager checkerManager,
                                         AnalysisMethodFilterManager methodFilterManager,
-                                        IteratorPayload iteratorPayload) {
-        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+                                        AnalyzerMetadata analyzerMetadata) {
+        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analyzerMetadata);
     }
 
     @Override
@@ -43,7 +43,7 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformers, iteratorPayload);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analyzerMetadata);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
         checkerManager.runCheckers(root, abstractState);
     }

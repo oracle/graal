@@ -34,9 +34,8 @@ public record Var(Var.Kind kind, String name) {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Var)) return false;
-        Var that = (Var) o;
-        return kind == that.kind && name.equals(that.name);
+        if (!(o instanceof Var(Kind kind1, String name1))) return false;
+        return kind == kind1 && name.equals(name1);
     }
 
 }

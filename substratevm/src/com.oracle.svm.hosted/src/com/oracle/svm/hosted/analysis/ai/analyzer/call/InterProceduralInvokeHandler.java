@@ -5,9 +5,9 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.CallStack;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
@@ -44,10 +44,10 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             AbstractInterpreter<Domain> abstractInterpreter,
             CheckerManager checkerManager,
             AnalysisMethodFilterManager methodFilterManager,
-            IteratorPayload iteratorPayload,
+            AnalyzerMetadata analyzerMetadata,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
-        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload);
+        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analyzerMetadata);
         this.callStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
     }
@@ -87,7 +87,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* At this point we know that we don't have a complete summary for this analysisMethod, therefore we must compute it.
          * However, we need to check if we have reached our recursion limit */
-        if (callStack.countRecursiveCalls(targetAnalysisMethod) >= callStack.getMaxRecursionDepth()) {
+        if (callStack.countConsecutiveCalls(targetAnalysisMethod) >= callStack.getMaxRecursionDepth()) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
@@ -103,7 +103,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformers, iteratorPayload);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analyzerMetadata);
         fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
         logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
@@ -122,7 +122,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return;
         }
 
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformers, iteratorPayload);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analyzerMetadata);
 
         callStack.push(root);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
@@ -136,7 +136,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
     private List<Domain> convertActualArgs(Invoke invoke, AbstractState<Domain> callerState) {
         List<Domain> result = new ArrayList<>();
         for (Node argument : invoke.callTarget().arguments()) {
-            abstractTransformers.analyzeNode(argument, callerState);
+            abstractTransformer.analyzeNode(argument, callerState);
             result.add(callerState.getPostCondition(argument));
         }
         return result;

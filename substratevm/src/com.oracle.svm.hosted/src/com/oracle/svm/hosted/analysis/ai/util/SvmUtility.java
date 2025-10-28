@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.util;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.hosted.analysis.Inflation;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -16,13 +17,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class SvmUtility {
 
     private static SvmUtility instance;
-    private final BigBang bb;
+    private final Inflation bb;
 
-    private SvmUtility(BigBang bb) {
+    private SvmUtility(Inflation bb) {
         this.bb = bb;
     }
 
-    public static SvmUtility getInstance(BigBang bb) {
+    public static SvmUtility getInstance(Inflation bb) {
         if (instance == null) {
             instance = new SvmUtility(bb);
         }

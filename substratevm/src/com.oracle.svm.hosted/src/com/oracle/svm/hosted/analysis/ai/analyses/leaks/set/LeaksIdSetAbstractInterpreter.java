@@ -4,6 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.util.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.InvokeUtil;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -19,17 +20,12 @@ import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDomain<ResourceId>> {
 
     @Override
-    public void execEdge(Node source,
-                         Node destination,
-                         AbstractState<SetDomain<ResourceId>> abstractState) {
-        abstractState.getPreCondition(destination).joinWith(abstractState.getPostCondition(source));
+    public void execEdge(Node source, Node target, AbstractState<SetDomain<ResourceId>> abstractState, IteratorContext iteratorContext) {
+        abstractState.getPreCondition(target).joinWith(abstractState.getPostCondition(source));
     }
 
     @Override
-    public void execNode(Node node,
-                         AbstractState<SetDomain<ResourceId>> abstractState,
-                         InvokeCallBack<SetDomain<ResourceId>> invokeCallBack) {
-
+    public void execNode(Node node, AbstractState<SetDomain<ResourceId>> abstractState, InvokeCallBack<SetDomain<ResourceId>> invokeCallBack, IteratorContext iteratorContext) {
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing node: " + node, LoggerVerbosity.DEBUG);
         SetDomain<ResourceId> preCondition = abstractState.getPreCondition(node).copyOf();

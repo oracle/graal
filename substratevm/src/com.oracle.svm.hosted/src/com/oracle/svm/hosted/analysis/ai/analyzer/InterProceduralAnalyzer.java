@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InterProceduralInvokeHandler;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
@@ -26,8 +26,9 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
 
     @Override
     public void runAnalysis(AnalysisMethod method) {
-        IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
-        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, iteratorPayload, summaryFactory, maxRecursionDepth);
+        AnalyzerMetadata analyzerMetadata = new AnalyzerMetadata(iteratorPolicy);
+        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager
+                , methodFilterManager, analyzerMetadata, summaryFactory, maxRecursionDepth);
         callHandler.handleRootInvoke(method);
     }
 
