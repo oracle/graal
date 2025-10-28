@@ -69,10 +69,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObjectLibraryImpl.RemovePlan;
 import com.oracle.truffle.api.object.DynamicObjectFactory.GetNodeGen;
 import com.oracle.truffle.api.object.DynamicObjectFactory.PutConstantNodeGen;
 import com.oracle.truffle.api.object.DynamicObjectFactory.PutNodeGen;
+import com.oracle.truffle.api.object.DynamicObjectLibraryImpl.RemovePlan;
 
 import sun.misc.Unsafe;
 
@@ -477,7 +477,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
-                return cachedLocation.getLong(receiver, guard);
+                return cachedLocation.getLongInternal(receiver, cachedShape, guard);
             } else {
                 return Location.expectLong(defaultValue);
             }
@@ -492,11 +492,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
-                if (cachedLocation instanceof ExtLocations.IntArrayLocation intArrayLocation) {
-                    return intArrayLocation.getInt(receiver, guard);
-                } else {
-                    return cachedLocation.getInt(receiver, guard);
-                }
+                return cachedLocation.getIntInternal(receiver, cachedShape, guard);
             } else {
                 return Location.expectInteger(defaultValue);
             }
@@ -511,7 +507,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) throws UnexpectedResultException {
             if (cachedLocation != null) {
-                return cachedLocation.getDouble(receiver, guard);
+                return cachedLocation.getDoubleInternal(receiver, cachedShape, guard);
             } else {
                 return Location.expectDouble(defaultValue);
             }
@@ -526,13 +522,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached("key") Object cachedKey,
                         @Cached("cachedShape.getLocation(key)") Location cachedLocation) {
             if (cachedLocation != null) {
-                if (cachedLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
-                    return objectArrayLocation.get(receiver, guard);
-                } else if (cachedLocation instanceof ExtLocations.IntArrayLocation intArrayLocation) {
-                    return intArrayLocation.get(receiver, guard);
-                } else {
-                    return cachedLocation.get(receiver, guard);
-                }
+                return cachedLocation.getInternal(receiver, cachedShape, guard);
             } else {
                 return defaultValue;
             }
@@ -540,9 +530,10 @@ public abstract class DynamicObject implements TruffleObject {
 
         @Specialization(replaces = {"doCachedLong", "doCachedInt", "doCachedDouble", "doCached"}, rewriteOn = UnexpectedResultException.class)
         static long doGenericLong(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            Location location = receiver.getShape().getLocation(key);
+            Shape shape = receiver.getShape();
+            Location location = shape.getLocation(key);
             if (location != null) {
-                return location.getLong(receiver, false);
+                return location.getLongInternal(receiver, shape, false);
             } else {
                 return Location.expectLong(defaultValue);
             }
@@ -550,9 +541,10 @@ public abstract class DynamicObject implements TruffleObject {
 
         @Specialization(replaces = {"doCachedLong", "doCachedInt", "doCachedDouble", "doCached"}, rewriteOn = UnexpectedResultException.class)
         static int doGenericInt(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            Location location = receiver.getShape().getLocation(key);
+            Shape shape = receiver.getShape();
+            Location location = shape.getLocation(key);
             if (location != null) {
-                return location.getInt(receiver, false);
+                return location.getIntInternal(receiver, shape, false);
             } else {
                 return Location.expectInteger(defaultValue);
             }
@@ -560,9 +552,10 @@ public abstract class DynamicObject implements TruffleObject {
 
         @Specialization(replaces = {"doCachedLong", "doCachedInt", "doCachedDouble", "doCached"}, rewriteOn = UnexpectedResultException.class)
         static double doGenericDouble(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            Location location = receiver.getShape().getLocation(key);
+            Shape shape = receiver.getShape();
+            Location location = shape.getLocation(key);
             if (location != null) {
-                return location.getDouble(receiver, false);
+                return location.getDoubleInternal(receiver, shape, false);
             } else {
                 return Location.expectDouble(defaultValue);
             }
@@ -571,9 +564,10 @@ public abstract class DynamicObject implements TruffleObject {
         @TruffleBoundary
         @Specialization(replaces = {"doCachedLong", "doCachedInt", "doCachedDouble", "doCached", "doGenericLong", "doGenericInt", "doGenericDouble"})
         static Object doGeneric(DynamicObject receiver, Object key, Object defaultValue) {
-            Location location = receiver.getShape().getLocation(key);
+            Shape shape = receiver.getShape();
+            Location location = shape.getLocation(key);
             if (location != null) {
-                return location.get(receiver, false);
+                return location.getInternal(receiver, shape, false);
             } else {
                 return defaultValue;
             }
@@ -712,7 +706,7 @@ public abstract class DynamicObject implements TruffleObject {
                         "key == cachedKey",
                         "mode == cachedMode",
                         "propertyFlags == cachedPropertyFlags",
-                        "newLocation == null || canStore(newLocation, value)",
+                        "newLocation == null || newLocation.canStoreValue(value)",
         }, assumptions = "newShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
         static boolean doCached(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags,
                         @Bind("receiver.getShape()") Shape shape,
@@ -734,18 +728,9 @@ public abstract class DynamicObject implements TruffleObject {
             if ((mode & Flags.IF_ABSENT) != 0) {
                 return true;
             } else {
-                boolean addingNewProperty = newShape != oldShape;
-                if (addingNewProperty) {
-                    DynamicObjectSupport.grow(receiver, oldShape, newShape);
-                }
+                newLocation.setInternal(receiver, value, guard, oldShape, newShape);
 
-                if (newLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
-                    objectArrayLocation.set(receiver, value, guard, addingNewProperty);
-                } else {
-                    newLocation.set(receiver, value, guard, addingNewProperty);
-                }
-
-                if (addingNewProperty) {
+                if (newShape != oldShape) {
                     DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
                 }
                 return true;
@@ -903,7 +888,7 @@ public abstract class DynamicObject implements TruffleObject {
                         "key == cachedKey",
                         "mode == cachedMode",
                         "propertyFlags == cachedPropertyFlags",
-                        "newLocation == null || canStore(newLocation, value)",
+                        "newLocation == null || newLocation.canStoreConstant(value)",
         }, assumptions = "newShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
         static boolean doCached(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags,
                         @Bind("receiver.getShape()") Shape shape,
@@ -925,18 +910,7 @@ public abstract class DynamicObject implements TruffleObject {
             if ((mode & Flags.IF_ABSENT) != 0) {
                 return true;
             } else {
-                boolean addingNewProperty = newShape != oldShape;
-                if (addingNewProperty) {
-                    DynamicObjectSupport.grow(receiver, oldShape, newShape);
-                }
-
-                if (newLocation instanceof ExtLocations.ObjectArrayLocation objectArrayLocation) {
-                    objectArrayLocation.set(receiver, value, guard, addingNewProperty);
-                } else {
-                    newLocation.set(receiver, value, guard, addingNewProperty);
-                }
-
-                if (addingNewProperty) {
+                if (newShape != oldShape) {
                     DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
                 }
                 return true;
@@ -960,10 +934,6 @@ public abstract class DynamicObject implements TruffleObject {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
-    }
-
-    static boolean canStore(Location newLocation, Object value) {
-        return newLocation instanceof ExtLocations.AbstractObjectLocation || newLocation.canStore(value);
     }
 
     static Shape getNewShape(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {

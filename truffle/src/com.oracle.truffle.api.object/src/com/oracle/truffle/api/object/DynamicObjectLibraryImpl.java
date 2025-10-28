@@ -431,15 +431,15 @@ abstract class DynamicObjectLibraryImpl {
             this.toOrd = toOrd;
         }
 
-        void perform(DynamicObject obj) {
+        void perform(DynamicObject obj, Shape shapeBefore) {
             if (fromLoc == toLoc) {
                 return;
             }
-            performSet(obj, performGet(obj));
+            performSet(obj, performGet(obj, shapeBefore));
         }
 
-        Object performGet(DynamicObject obj) {
-            return fromLoc.get(obj, false);
+        Object performGet(DynamicObject obj, Shape shapeBefore) {
+            return fromLoc.getInternal(obj, shapeBefore, false);
         }
 
         void performSet(DynamicObject obj, Object value) {
@@ -495,7 +495,7 @@ abstract class DynamicObjectLibraryImpl {
             if (canMoveInPlace) {
                 // perform the moves in inverse order
                 for (int i = moves.length - 1; i >= 0; i--) {
-                    moves[i].perform(object);
+                    moves[i].perform(object, shapeBefore);
                 }
 
                 if (moves.length > 0) {
@@ -508,7 +508,7 @@ abstract class DynamicObjectLibraryImpl {
                 // we cannot perform the moves in place, so stash away the values
                 Object[] tempValues = new Object[moves.length];
                 for (int i = moves.length - 1; i >= 0; i--) {
-                    tempValues[i] = moves[i].performGet(object);
+                    tempValues[i] = moves[i].performGet(object, shapeBefore);
                     moves[i].clear(object);
                 }
                 DynamicObjectSupport.resize(object, shapeBefore, shapeAfter);
@@ -607,7 +607,7 @@ abstract class DynamicObjectLibraryImpl {
         public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return existing.getLocation().get(object, false);
+                return existing.getLocation().getInternal(object, cachedShape, false);
             } else {
                 return defaultValue;
             }
@@ -618,7 +618,7 @@ abstract class DynamicObjectLibraryImpl {
         public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return existing.getLocation().getInt(object, false);
+                return existing.getLocation().getIntInternal(object, cachedShape, false);
             } else {
                 return expectInteger(defaultValue);
             }
@@ -629,7 +629,7 @@ abstract class DynamicObjectLibraryImpl {
         public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return existing.getLocation().getLong(object, false);
+                return existing.getLocation().getLongInternal(object, cachedShape, false);
             } else {
                 return expectLong(defaultValue);
             }
@@ -640,7 +640,7 @@ abstract class DynamicObjectLibraryImpl {
         public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
             Property existing = object.getShape().getProperty(key);
             if (existing != null) {
-                return existing.getLocation().getDouble(object, false);
+                return existing.getLocation().getDoubleInternal(object, cachedShape, false);
             } else {
                 return expectDouble(defaultValue);
             }
@@ -1023,28 +1023,28 @@ abstract class DynamicObjectLibraryImpl {
             public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return cachedProperty.getLocation().get(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getInternal(object, cachedShape, guard(object, cachedShape));
             }
 
             @Override
             public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return cachedProperty.getLocation().getInt(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getIntInternal(object, cachedShape, guard(object, cachedShape));
             }
 
             @Override
             public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return cachedProperty.getLocation().getLong(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getLongInternal(object, cachedShape, guard(object, cachedShape));
             }
 
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return cachedProperty.getLocation().getDouble(object, guard(object, cachedShape));
+                return cachedProperty.getLocation().getDoubleInternal(object, cachedShape, guard(object, cachedShape));
             }
 
             @Override
