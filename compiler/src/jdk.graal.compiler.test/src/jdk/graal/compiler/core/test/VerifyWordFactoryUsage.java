@@ -49,9 +49,8 @@ public class VerifyWordFactoryUsage extends VerifyPhase<CoreProviders> {
         ResolvedJavaType wordFactory = context.getMetaAccess().lookupJavaType(WordFactory.class);
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (t.targetMethod().getDeclaringClass().equals(wordFactory)) {
-                throw new VerificationError("accessing %s in %s is prohibited - use %s.%s instead",
+                throw new VerificationError(t, "accessing %s is prohibited - use %s.%s instead",
                                 wordFactory.toJavaName(),
-                                graph.method().format("%H.%n(%p)"),
                                 Word.class.getName(),
                                 t.targetMethod().format("%n(%p)"));
 

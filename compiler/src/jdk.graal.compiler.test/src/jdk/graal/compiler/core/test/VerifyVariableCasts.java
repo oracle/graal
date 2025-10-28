@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -62,21 +63,21 @@ public class VerifyVariableCasts extends VerifyPhase<CoreProviders> {
             Stamp stamp = cast.piStamp();
             if (stamp instanceof AbstractObjectStamp) {
                 ResolvedJavaType castType = stamp.javaType(metaAccess);
-                if (variableType.isAssignableFrom(castType)) {
-                    throw new VerificationError("Cast to %s in %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.asVariable instead.",
-                                    variableType.toJavaName(),
-                                    method.format("%H.%n(%p)"));
+                ResolvedJavaType sourceType = cast.object().stamp(NodeView.DEFAULT).javaType(metaAccess);
+                if (variableType.isAssignableFrom(castType) && !variableType.isAssignableFrom(sourceType)) {
+                    throw new VerificationError(cast, "Cast to %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.asVariable instead.",
+                                    variableType.toJavaName());
                 }
             }
         }
 
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             TypeReference typeRef = instanceOf.type();
+            ResolvedJavaType sourceType = instanceOf.getValue().stamp(NodeView.DEFAULT).javaType(metaAccess);
             if (typeRef != null) {
-                if (variableType.isAssignableFrom(typeRef.getType())) {
-                    throw new VerificationError("Instanceof check on %s in %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.isVariable instead.",
-                                    variableType.toJavaName(),
-                                    method.format("%H.%n(%p)"));
+                if (variableType.isAssignableFrom(typeRef.getType()) && !variableType.isAssignableFrom(sourceType)) {
+                    throw new VerificationError(instanceOf, "Instanceof check on %s is prohibited as it might skip checks for LIR CastValues. Use LIRValueUtil.isVariable instead.",
+                                    variableType.toJavaName());
                 }
             }
         }
