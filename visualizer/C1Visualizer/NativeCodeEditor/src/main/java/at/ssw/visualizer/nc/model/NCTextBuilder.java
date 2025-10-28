@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.netbeans.api.editor.fold.FoldType;
 import org.netbeans.editor.TokenID;
 
@@ -69,7 +70,9 @@ public class NCTextBuilder extends TextBuilder {
     private Text buildDocument(ControlFlowGraph cfg, boolean skipLIR) {
         String text = cfg.getNativeMethod().getMethodText().trim();
         if (text.startsWith("<<<HexCodeFile") && text.endsWith("HexCodeFile>>>")) {
-            text = HexCodeFileSupport.decode(text);
+            // There is no builtin disassembler so just pass it through for now
+            append(text);
+            return buildText(cfg, NCEditorSupport.MIME_TYPE);
         }
         String[] methodText = text.split("\n");
         
