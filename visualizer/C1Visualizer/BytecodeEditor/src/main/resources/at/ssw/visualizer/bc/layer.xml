@@ -23,14 +23,6 @@
         </file>
     </folder>
     
-    <folder name="OptionsDialog">
-        <folder name="PreviewExamples">
-            <folder name="text">
-                <file name="x-compilation-bc" url="model/BCExample"/>
-            </folder>
-        </folder>
-    </folder>
-    
     <folder name="Editors">
         <folder name="text">
             <folder name="x-compilation-bc">

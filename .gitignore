@@ -54,6 +54,7 @@ bench-results.json
 jmh_result.json
 /vm/src/installer/dist/
 visualizer/IdealGraphVisualizer/*/target/
+visualizer/C1Visualizer/*/target/
 /.src-rev
 *.interp
 *.tokens

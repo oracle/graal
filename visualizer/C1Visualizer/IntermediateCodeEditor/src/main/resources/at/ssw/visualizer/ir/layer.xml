@@ -31,14 +31,6 @@
         </file>
     </folder>
     
-    <folder name="OptionsDialog">
-        <folder name="PreviewExamples">
-            <folder name="text">
-                <file name="x-compilation-ir" url="model/IRExample"/>
-            </folder>
-        </folder>
-    </folder>
-    
     <folder name="Editors">
         <folder name="text">           
             <folder name="x-compilation-ir">

@@ -10,6 +10,5 @@
     
     <folder name="at-ssw-visualizer-bc">
         <file name="classpaths"/>
-        <!-- url="options/BC-classpaths"--> 
     </folder>
 </filesystem>

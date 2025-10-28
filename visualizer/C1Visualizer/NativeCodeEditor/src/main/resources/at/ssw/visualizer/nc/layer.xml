@@ -12,13 +12,6 @@
             <file name="at-ssw-visualizer-nc-action-ShowNCEditorAction.instance"/>
         </folder>
     </folder>
-    <folder name="OptionsDialog">
-        <folder name="PreviewExamples">
-            <folder name="text">
-                <file name="x-compilation-nc" url="model/NCExample"/>
-            </folder>
-        </folder>
-    </folder>
     <folder name="Editors">
         <folder name="text">
             <folder name="x-compilation-nc">
