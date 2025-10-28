@@ -275,7 +275,7 @@ public final class JVMCIVersionCheck {
      * {@code props}:
      * <ul>
      * <li>{@code java.specification.version}: Java specification version, e.g., {@code "21"}</li>
-     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "25.0.2+2"}</li>
+     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "21+35"}</li>
      * <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g., {@code "GraalVM Community"}</li>
      * </ul>
      */
@@ -332,7 +332,7 @@ public final class JVMCIVersionCheck {
      *            <li>{@code java.specification.version}: Java specification version, e.g.,
      *            {@code "21"}</li>
      *            <li>{@code java.vm.version}: Full Java VM version string, e.g.,
-     *            {@code "25.0.2+2"}</li>
+     *            {@code "21+35"}</li>
      *            <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g.,
      *            {@code "GraalVM Community"}</li>
      *            </ul>
