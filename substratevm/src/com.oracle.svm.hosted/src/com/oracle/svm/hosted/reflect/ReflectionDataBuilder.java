@@ -380,7 +380,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             Object[] signers = clazz.getSigners();
             if (signers != null) {
                 for (Object signer : signers) {
-                    metaAccess.lookupJavaType(signer.getClass()).registerAsInstantiated("signer");
+                    universe.getHeapScanner().rescanObject(signer, new OtherReason("Signer stored in reflection metadata"));
                 }
             }
         });
