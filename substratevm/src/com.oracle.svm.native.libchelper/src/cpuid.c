@@ -315,9 +315,9 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
-  if (max_level >= 24)
+  if (max_level >= 0x24)
   {
-    get_cpuid(24, &eax, &ebx, &ecx, &edx);
+    get_cpuid(0x24, &eax, &ebx, &ecx, &edx);
     _cpuid_info->std_cpuid24_eax.value = eax;
     _cpuid_info->std_cpuid24_ebx.value = ebx;
   }
