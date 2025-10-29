@@ -1,0 +1,75 @@
+package com.oracle.svm.hosted.analysis.ai.analyzer;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
+import com.oracle.svm.hosted.analysis.ai.checker.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
+import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
+
+import java.io.IOException;
+
+/**
+ * Represents an abstract analyzer framework for performing analyses driven by a specific domain.
+ * The analyzer uses transfer functions, interpreters, and iterator policies to compute analysis results.
+ * It encapsulates logic for creating analysis payloads and facilitates method-specific analysis.
+ * To create an intra-procedural analyzer, it is sufficient to provide the initial domain, and the node interpreter.
+ * To create an inter-procedural analyzer, we need to also add an implementation of {@link Summary}, as well as logic
+ * for creating the summary from an abstract context, which is handled by {@link SummaryFactory}.
+ * We can also add additional parameters, like a list of checkers to be used during the analysis, or method filters,
+ * to restrict the analysis of specific methods, extrapolation limits such as join/widen limits, etc.
+ *
+ * @param <Domain> the type of the abstract domain used for the analysis.
+ */
+public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
+
+    protected final Domain initialDomain;
+    protected final AbstractInterpreter<Domain> abstractInterpreter;
+    protected final IteratorPolicy iteratorPolicy;
+    protected final CheckerManager checkerManager;
+    protected final AnalysisMethodFilterManager methodFilterManager;
+
+    protected Analyzer(Builder<?, Domain> builder) {
+        this.initialDomain = builder.initialDomain;
+        this.abstractInterpreter = builder.abstractInterpreter;
+        this.iteratorPolicy = builder.iteratorPolicy;
+        this.checkerManager = builder.checkerManager;
+        this.methodFilterManager = builder.methodFilterManager;
+    }
+
+    public abstract void runAnalysis(AnalysisMethod method) throws IOException;
+
+    public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
+        protected final Domain initialDomain;
+        protected final AbstractInterpreter<Domain> abstractInterpreter;
+        protected IteratorPolicy iteratorPolicy = IteratorPolicy.DEFAULT_FORWARD_WTO;
+        protected CheckerManager checkerManager = new CheckerManager();
+        protected AnalysisMethodFilterManager methodFilterManager = new AnalysisMethodFilterManager();
+
+        protected Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter) {
+            this.initialDomain = initialDomain;
+            this.abstractInterpreter = abstractInterpreter;
+        }
+
+        public T iteratorPolicy(IteratorPolicy iteratorPolicy) {
+            this.iteratorPolicy = iteratorPolicy;
+            return self();
+        }
+
+        public T registerChecker(Checker<?> checker) {
+            checkerManager.registerChecker(checker);
+            return self();
+        }
+
+        public T addMethodFilter(AnalysisMethodFilter filter) {
+            methodFilterManager.addMethodFilter(filter);
+            return self();
+        }
+
+        protected abstract T self();
+    }
+}
