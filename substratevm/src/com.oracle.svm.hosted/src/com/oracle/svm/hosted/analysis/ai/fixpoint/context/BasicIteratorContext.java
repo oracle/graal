@@ -2,6 +2,8 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.context;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
@@ -24,8 +26,6 @@ public class BasicIteratorContext implements IteratorContext {
     private final GraphTraversalHelper graphTraversalHelper;
     private final Map<Node, Integer> loopIterationCounts;
     private final Map<Node, Integer> nodeVisitCounts;
-
-
     private AbstractState<?> abstractState;
     private HIRBlock previousBlock;
     private HIRBlock currentBlock;
@@ -80,7 +80,6 @@ public class BasicIteratorContext implements IteratorContext {
         return block != null ? graphTraversalHelper.getPredecessorCount(block) : 0;
     }
 
-    // TODO: this os probably a really bad idea and should be handled by separate iterators per direction
     @Override
     public boolean isLoopHeader(Node node) {
         return node instanceof LoopBeginNode;
@@ -94,26 +93,6 @@ public class BasicIteratorContext implements IteratorContext {
         // A back-edge is from a LoopEndNode to a LoopBeginNode
         return source instanceof LoopEndNode loopEnd &&
                 loopEnd.loopBegin() == target;
-    }
-
-    @Override
-    public Node getContainingLoopHeader(Node node) {
-        HIRBlock block = getBlockForNode(node);
-        if (block == null) {
-            return null;
-        }
-        // Walk up dominator tree to find loop header
-        HIRBlock current = block;
-        while (current != null) {
-            Node beginNode = graphTraversalHelper.getBeginNode(current);
-            if (isLoopHeader(beginNode)) {
-                return beginNode;
-            }
-            // Try to find dominator - for now return null as we'd need more API
-            // This is a simplified implementation
-            break;
-        }
-        return null;
     }
 
     @Override
@@ -193,7 +172,7 @@ public class BasicIteratorContext implements IteratorContext {
      * Increment the loop iteration counter for a specific loop header.
      * Should be called when re-analyzing a loop.
      *
-     * @param loopHeader The loop begin node
+     * @param loopHeader The loop header node
      */
     public void incrementLoopIteration(Node loopHeader) {
         if (isLoopHeader(loopHeader)) {
@@ -216,6 +195,23 @@ public class BasicIteratorContext implements IteratorContext {
     public void setCurrentBlock(HIRBlock block) {
         this.previousBlock = this.currentBlock;
         this.currentBlock = block;
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log(String.format("Context: previous block set to %s, current block set to %s",
+                previousBlock, currentBlock), LoggerVerbosity.DEBUG);
+    }
+
+    /**
+     * Update context when traversing an edge from source block to target block.
+     * This ensures previousBlock is correctly set to the source when analyzing the target.
+     *
+     * @param sourceBlock The block we're coming from
+     * @param targetBlock The block we're going to
+     */
+    public void setEdgeTraversal(HIRBlock sourceBlock, HIRBlock targetBlock) {
+        this.previousBlock = sourceBlock;
+        this.currentBlock = targetBlock;
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log(String.format("Edge traversal: %s -> %s", sourceBlock, targetBlock), LoggerVerbosity.DEBUG);
     }
 
     public void setPhase(IteratorPhase phase) {
@@ -244,17 +240,29 @@ public class BasicIteratorContext implements IteratorContext {
     @Override
     public int getPreviousBlockIndex() {
         if (previousBlock == null || currentBlock == null) {
+            AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+            logger.log(String.format("getPreviousBlockIndex: previousBlock=%s, currentBlock=%s -> returning -1",
+                    previousBlock, currentBlock), LoggerVerbosity.DEBUG);
             return -1;
         }
 
-        // Find the index of previousBlock in currentBlock's predecessors
-        for (int i = 0; i < graphTraversalHelper.getPredecessorCount(currentBlock); i++) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        int predCount = graphTraversalHelper.getPredecessorCount(currentBlock);
+        logger.log(String.format("getPreviousBlockIndex: looking for %s among %d predecessors of %s",
+                previousBlock, predCount, currentBlock), LoggerVerbosity.DEBUG);
+
+        for (int i = 0; i < predCount; i++) {
             HIRBlock pred = graphTraversalHelper.getPredecessorAt(currentBlock, i);
+            logger.log(String.format("  Checking predecessor[%d]: %s (matches: %s)",
+                    i, pred, pred == previousBlock), LoggerVerbosity.DEBUG);
             if (pred == previousBlock) {
+                logger.log(String.format("  Found previousBlock at index %d", i), LoggerVerbosity.DEBUG);
                 return i;
             }
         }
 
+        logger.log(String.format("getPreviousBlockIndex: previousBlock %s not found among predecessors -> returning -1",
+                previousBlock), LoggerVerbosity.DEBUG);
         return -1;
     }
 

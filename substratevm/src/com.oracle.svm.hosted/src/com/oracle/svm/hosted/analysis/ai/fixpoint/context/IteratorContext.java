@@ -63,14 +63,6 @@ public interface IteratorContext {
     boolean isBackEdge(Node source, Node target);
 
     /**
-     * Get the loop header that dominates the given node, if any.
-     *
-     * @param node The node to check
-     * @return The loop header that contains this node, or null if not in a loop
-     */
-    Node getContainingLoopHeader(Node node);
-
-    /**
      * Get the current global iteration count of the fixpoint computation.
      * Iteration 0 is the initial pass.
      *
