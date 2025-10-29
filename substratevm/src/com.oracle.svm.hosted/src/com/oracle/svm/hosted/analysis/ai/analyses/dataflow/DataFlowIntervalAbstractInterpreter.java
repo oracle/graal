@@ -31,13 +31,13 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<AbstractMemory> {
-
     private static final String NODE_PREFIX = "n";
 
     private static String nodeId(Node n) {
@@ -151,6 +151,13 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             AccessPath base = resolveFieldBase(obj, field, post);
             AccessPath key = (base == null) ? AccessPath.forLocal("unknown") : base.appendField(field.getName());
             IntInterval val = post.readStore(key);
+
+            if (val.isTop() && field.isStatic() && field.getType().getJavaKind().isNumericInteger()) {
+                val = new IntInterval(0, 0);
+                logger.log("LoadField of uninitialized static field " + field.getName() +
+                          ", using default value [0, 0]", LoggerVerbosity.DEBUG);
+            }
+
             bindNodeResult(node, val, post);
         } else if (node instanceof LoadIndexedNode lin) {
             Node arrayNode = lin.array();
@@ -198,7 +205,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
     private AbstractMemory evalNode(Node node, AbstractMemory in, AbstractState<AbstractMemory> abstractState,
                                     InvokeCallBack<AbstractMemory> invokeCallBack, Set<Node> evalStack, IteratorContext iteratorContext) {
-        // Don't re-evaluate fixed nodes or nodes already on the evaluation stack (cycle detection)
         if (node instanceof FixedNode || evalStack.contains(node)) {
             return in;
         }
@@ -299,55 +305,119 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                                        InvokeCallBack<AbstractMemory> invokeCallBack,
                                        Set<Node> evalStack, IteratorContext iteratorContext) {
         var logger = AbstractInterpretationLogger.getInstance();
-        int prevBlockIndex = iteratorContext.getPreviousBlockIndex();
 
-        logger.log("Evaluating PhiNode: " + phi + ", previousBlockIndex=" + prevBlockIndex, LoggerVerbosity.INFO);
+        AbstractMergeNode merge = phi.merge();
+        HIRBlock phiBlock = (iteratorContext != null) ? iteratorContext.getBlockForNode(merge) : null;
+        HIRBlock currentBlock = (iteratorContext != null) ? iteratorContext.getCurrentBlock() : null;
 
-        if (prevBlockIndex >= 0 && prevBlockIndex < phi.valueCount()) {
-            // Flow-sensitive: only join the value from the incoming edge
-            Node incomingValue = phi.valueAt(prevBlockIndex);
-            logger.log("  PhiNode flow-sensitive: using value from predecessor " + prevBlockIndex + ": " + incomingValue, LoggerVerbosity.INFO);
+        boolean analyzingPhiBlock = (phiBlock != null && phiBlock.equals(currentBlock));
 
-            AbstractMemory tmp = evalNode(incomingValue, originalIn.copyOf(), abstractState, invokeCallBack, evalStack, iteratorContext);
-            IntInterval incomingInterval = getNodeResultInterval(incomingValue, tmp);
-            logger.log("  Incoming interval value: " + incomingInterval, LoggerVerbosity.INFO);
+        if (!analyzingPhiBlock && phiBlock != null) {
+            // We're in a different block (e.g., evaluating ValueProxy in exit block)
+            // The phi was already computed during loop analysis
+            // Look up the already-computed value from the abstract state
+            logger.log("  PhiNode accessed from different block - looking up computed value", LoggerVerbosity.DEBUG);
 
-            // Check if this phi already has a value (from previous iterations)
-            // If not, start with bottom (⊥) instead of top (⊤)
+            // First check if it's in current memory
             AccessPath existingPath = mem.lookupTempByName(nodeId(phi));
-            IntInterval existingInterval;
-            if (existingPath == null) {
-                existingInterval = new IntInterval();
-                existingInterval.setToBot();
-                logger.log("  Phi not yet bound, starting with bottom: " + existingInterval, LoggerVerbosity.INFO);
-            } else {
-                existingInterval = mem.readStore(existingPath);
-                logger.log("  Existing phi interval: " + existingInterval, LoggerVerbosity.INFO);
+            if (existingPath != null) {
+                IntInterval existingValue = mem.readStore(existingPath);
+                logger.log("  PhiNode cached value: " + existingValue, LoggerVerbosity.DEBUG);
+                return mem;
             }
 
-            IntInterval result = existingInterval.copyOf();
-            result.joinWith(incomingInterval);
-            bindNodeResult(phi, result, mem);
-            logger.log("  PhiNode result after join: " + result, LoggerVerbosity.INFO);
-        } else {
-            // No context or invalid index: join all incoming values (conservative)
-            logger.log("  PhiNode flow-insensitive: joining all " + phi.valueCount() + " inputs", LoggerVerbosity.INFO);
-
-            IntInterval acc = new IntInterval();
-            acc.setToBot();
-
-            for (int i = 0; i < phi.valueCount(); i++) {
-                Node input = phi.valueAt(i);
-                AbstractMemory tmp = evalNode(input, originalIn.copyOf(), abstractState, invokeCallBack, evalStack, iteratorContext);
-                IntInterval v = getNodeResultInterval(input, tmp);
-                acc.joinWith(v);
+            // If not found in current mem, get from abstract state's post-condition of the merge node
+            AbstractMemory mergePost = abstractState.getPostCondition(merge);
+            AccessPath mergePath = mergePost.lookupTempByName(nodeId(phi));
+            if (mergePath != null) {
+                IntInterval mergeValue = mergePost.readStore(mergePath);
+                bindNodeResult(phi, mergeValue, mem);
+                logger.log("  PhiNode value from merge post-condition: " + mergeValue, LoggerVerbosity.DEBUG);
+                return mem;
             }
 
-            bindNodeResult(phi, acc, mem);
-            logger.log("  PhiNode result: " + acc, LoggerVerbosity.INFO);
+            // Fallback: evaluate conservatively
+            logger.log("  PhiNode not found in state, evaluating conservatively", LoggerVerbosity.DEBUG);
+        }
+        boolean isLoopHeader = (merge instanceof jdk.graal.compiler.nodes.LoopBeginNode);
+        boolean isFirstVisit = false;
+
+        if (isLoopHeader && iteratorContext != null) {
+            isFirstVisit = iteratorContext.isFirstVisit(merge);
         }
 
+        logger.log("Evaluating PhiNode: " + phi + " (loop header: " + isLoopHeader + ", first visit: " + isFirstVisit + ")", LoggerVerbosity.INFO);
+        IntInterval acc = new IntInterval();
+        acc.setToBot();
+
+        // Determine which inputs to use
+        int numInputs = phi.valueCount();
+        for (int i = 0; i < numInputs; i++) {
+            Node input = phi.valueAt(i);
+            if (isLoopHeader && isFirstVisit && i == numInputs - 1) {
+                // Skip last input on first iteration (it's the back-edge with uncomputed value)
+                logger.log("  Input[" + i + "]: " + input + " = SKIPPED (back-edge on first iteration)", LoggerVerbosity.DEBUG);
+                continue;
+            }
+
+            IntInterval v;
+            if (isLoopHeader && !isFirstVisit && i == numInputs - 1) {
+                // Back-edge on subsequent iteration: compute using previous iteration's phi values
+                logger.log("    Evaluating back-edge with originalIn: " + originalIn, LoggerVerbosity.DEBUG);
+                v = evalBackEdgeValue(input, originalIn);
+                logger.log("  Input[" + i + "]: " + input + " = " + v + " (computed from previous iteration)", LoggerVerbosity.DEBUG);
+            } else {
+                // Entry edge: look up from originalIn
+                v = getNodeResultInterval(input, originalIn);
+                logger.log("  Input[" + i + "]: " + input + " = " + v, LoggerVerbosity.DEBUG);
+            }
+
+            acc.joinWith(v);
+        }
+
+        bindNodeResult(phi, acc, mem);
+        logger.log("  PhiNode result: " + acc, LoggerVerbosity.INFO);
         return mem;
+    }
+
+    /**
+     * Evaluate a back-edge value by computing it from values in the given memory.
+     * This uses phi values from the previous iteration to compute updated values.
+     */
+    private IntInterval evalBackEdgeValue(Node node, AbstractMemory fromMem) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("    evalBackEdgeValue for node: " + node, LoggerVerbosity.DEBUG);
+
+        // For binary arithmetic nodes (Add, Sub, etc.), compute from operands
+        if (node instanceof jdk.graal.compiler.nodes.calc.BinaryArithmeticNode<?> bin) {
+            Node x = bin.getX();
+            Node y = bin.getY();
+
+            logger.log("      X operand: " + x, LoggerVerbosity.DEBUG);
+            logger.log("      Y operand: " + y, LoggerVerbosity.DEBUG);
+
+            IntInterval ix = getNodeResultInterval(x, fromMem);
+            IntInterval iy = getNodeResultInterval(y, fromMem);
+
+            logger.log("      X interval: " + ix, LoggerVerbosity.DEBUG);
+            logger.log("      Y interval: " + iy, LoggerVerbosity.DEBUG);
+
+            if (bin instanceof AddNode) {
+                IntInterval result = ix.add(iy);
+                logger.log("      Add result: " + result, LoggerVerbosity.DEBUG);
+                return result;
+            } else if (bin instanceof SubNode) {
+                return ix.sub(iy);
+            } else if (bin instanceof MulNode) {
+                return ix.mul(iy);
+            }
+        }
+
+        // For other nodes, return top
+        logger.log("      Returning top (unsupported node type)", LoggerVerbosity.DEBUG);
+        IntInterval top = new IntInterval();
+        top.setToTop();
+        return top;
     }
 
     private AbstractMemory evalAllocatedObjectNode(AllocatedObjectNode alloc, AbstractMemory mem) {
@@ -382,10 +452,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private AbstractMemory evalIntegerLessThanNode(IntegerLessThanNode node, AbstractMemory mem) {
-        // Comparison result is either 0 (false) or 1 (true)
         IntInterval res = new IntInterval(0, 1);
         bindNodeResult(node, res, mem);
-        // Note: edge-narrowing happens in execEdge when propagating to successors
         return mem;
     }
 
@@ -418,13 +486,26 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
     /* Read the interval associated with a node's temp in a local memory */
     private static IntInterval getNodeResultInterval(Node node, AbstractMemory mem) {
-        AccessPath p = mem.lookupTempByName(nodeId(node));
-        if (p == null) {
-            IntInterval t = new IntInterval();
-            t.setToTop();
-            return t;
+        String nid = nodeId(node);
+        var logger = AbstractInterpretationLogger.getInstance();
+
+        // CRITICAL FIX: Check if node is a constant FIRST before reading from store
+        // Constants should be evaluated on-demand, not stored
+        if (node instanceof ConstantNode cn) {
+            if (cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                long v = cn.asJavaConstant().asLong();
+                IntInterval result = new IntInterval(v, v);
+                logger.log("        getNodeResultInterval: constant " + node + " = " + result, LoggerVerbosity.DEBUG);
+                return result;
+            }
         }
-        return mem.readStore(p);
+
+        // For non-constants, read from the store using the access path
+        AccessPath p = AccessPath.forLocal(nid);
+        IntInterval result = mem.readStore(p);
+
+        logger.log("        getNodeResultInterval: node " + node + " (id=" + nid + ") = " + result, LoggerVerbosity.DEBUG);
+        return result;
     }
 
     private static AccessPath accessBaseForNodeEval(Node objNode, AbstractMemory mem) {

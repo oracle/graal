@@ -108,7 +108,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
 
             case StoreFieldNode storeFieldNode -> {
                 AccessPath key = getAccessPathFromAccessFieldNode(storeFieldNode, abstractState);
-                var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack);
+                var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack, iteratorContext);
                 computedPostCondition.put(key, storeFieldEnv.getNodeDataValue(storeFieldNode.value(), new IntInterval()));
             }
 
@@ -136,7 +136,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                     return;
                 }
 
-                var condition = execAndGet(ifNode.condition(), abstractState, invokeCallBack);
+                var condition = execAndGet(ifNode.condition(), abstractState, invokeCallBack, iteratorContext);
                 if (condition.isBot()) {
                     abstractState.getPostCondition(ifNode).setToBot();
                     return;
@@ -152,12 +152,12 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                 /* Evaluate the condition, if it holds, set the postCondition to the data-flow value satisfying the condition */
                 /* If we have a condition like Constant(4) < Param(5), this is true and set post to [ -inf, 4 ], because this satisfies it */
                 /* If we have a condition like Constant(4) < Param(3), this is false and set post to bot, because this is unsatisfiable */
-                var firstEnv = execAndGet(nodeX, abstractState, invokeCallBack);
-                var secondEnv = execAndGet(nodeY, abstractState, invokeCallBack);
+                var firstEnv = execAndGet(nodeX, abstractState, invokeCallBack, iteratorContext);
+                var secondEnv = execAndGet(nodeY, abstractState, invokeCallBack, iteratorContext);
                 AccessPath nodeAccessPath = new AccessPath(integerLessThanNode);
                 IntInterval defaultInterval = new IntInterval();
 
-                if (!(firstEnv.getNodeDataValue(nodeX, defaultInterval).isLessThan(secondEnv.getNodeDataValue(nodeY, defaultInterval)))) {
+                if (!(firstEnv.getNodeDataValue(nodeX, defaultInterval).leq(secondEnv.getNodeDataValue(nodeY, defaultInterval)))) {
                     abstractState.getPostCondition(integerLessThanNode).setToBot();
                     return;
                 }
@@ -181,7 +181,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                     if (isCyclicEdge) {
                         phiResult.joinWith(abstractState.getPostCondition(input).getNodeDataValue(input, new IntInterval()));
                     } else {
-                        var inputEnv = execAndGet(input, abstractState, invokeCallBack);
+                        var inputEnv = execAndGet(input, abstractState, invokeCallBack, iteratorContext);
                         phiResult.joinWith(inputEnv.getNodeDataValue(input, new IntInterval()));
                     }
 
@@ -208,8 +208,8 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
             case BinaryArithmeticNode<?> binaryArithmeticNode -> {
                 Node nodeX = binaryArithmeticNode.getX();
                 Node nodeY = binaryArithmeticNode.getY();
-                var mapX = execAndGet(nodeX, abstractState, invokeCallBack);
-                var mapY = execAndGet(nodeY, abstractState, invokeCallBack);
+                var mapX = execAndGet(nodeX, abstractState, invokeCallBack, iteratorContext);
+                var mapY = execAndGet(nodeY, abstractState, invokeCallBack, iteratorContext);
                 IntInterval firstInterval = mapX.getNodeDataValue(nodeX, new IntInterval());
                 IntInterval secondInterval = mapY.getNodeDataValue(nodeY, new IntInterval());
                 IntInterval result;
@@ -256,7 +256,7 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
                 }
 
                 if (returnNode.result().getStackKind().isPrimitive()) {
-                    AccessPathMap<IntInterval> resultMap = execAndGet(returnNode.result(), abstractState, invokeCallBack);
+                    AccessPathMap<IntInterval> resultMap = execAndGet(returnNode.result(), abstractState, invokeCallBack, iteratorContext);
                     IntInterval resultInterval = resultMap.getOnlyDataValue();
                     computedPostCondition.put(new AccessPath(new PlaceHolderAccessPathBase(AccessPathConstants.RETURN_PREFIX)), resultInterval);
                 }
@@ -349,8 +349,8 @@ public class AccessPathIntervalAbstractInterpreter implements AbstractInterprete
         return startState.getPreCondition().get(accessPath).copyOf();
     }
 
-    private AccessPathMap<IntInterval> execAndGet(Node node, AbstractState<AccessPathMap<IntInterval>> abstractState, InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack) {
-        execNode(node, abstractState, invokeCallBack);
+    private AccessPathMap<IntInterval> execAndGet(Node node, AbstractState<AccessPathMap<IntInterval>> abstractState, InvokeCallBack<AccessPathMap<IntInterval>> invokeCallBack, IteratorContext context) {
+        execNode(node, abstractState, invokeCallBack, context);
         return abstractState.getPostCondition(node);
     }
 }

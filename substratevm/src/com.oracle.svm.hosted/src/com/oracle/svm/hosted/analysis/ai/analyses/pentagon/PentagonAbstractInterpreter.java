@@ -132,8 +132,8 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                 AccessPath resultVar = new AccessPath(binaryNode);
                 AccessPath leftVar = new AccessPath(binaryNode.getX());
                 AccessPath rightVar = new AccessPath(binaryNode.getY());
-                var xPentagon = execAndGet(binaryNode.getX(), abstractState, invokeCallBack);
-                var yPentagon = execAndGet(binaryNode.getY(), abstractState, invokeCallBack);
+                var xPentagon = execAndGet(binaryNode.getX(), abstractState, invokeCallBack, iteratorContext);
+                var yPentagon = execAndGet(binaryNode.getY(), abstractState, invokeCallBack, iteratorContext);
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
                 IntInterval rightInterval = yPentagon.getInterval(rightVar);
                 IntInterval result;
@@ -166,7 +166,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case StoreFieldNode storeFieldNode -> {
                 /* Same potential problem as in LoadFieldNode case */
                 AccessPath fieldVar = AccessPath.getAccessPathFromAccessFieldNode(storeFieldNode);
-                var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack);
+                var storeFieldEnv = execAndGet(storeFieldNode.value(), abstractState, invokeCallBack, iteratorContext);
                 computedPost.setInterval(fieldVar, storeFieldEnv.getInterval(new AccessPath(storeFieldNode.value())));
 
                 /* Transfer inequality relations to the field */
@@ -196,7 +196,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                     if (isCyclicEdge) {
                         phiResult.joinWith(abstractState.getPostCondition(input).getInterval(variableName));
                     } else {
-                        var inputEnv = execAndGet(input, abstractState, invokeCallBack);
+                        var inputEnv = execAndGet(input, abstractState, invokeCallBack, iteratorContext);
                         phiResult.joinWith(inputEnv.getInterval(variableName));
                     }
 
@@ -207,8 +207,8 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
             case IntegerLessThanNode lessThanNode -> {
 
                 AccessPath nodeVar = new AccessPath(node);
-                var xPentagon = execAndGet(lessThanNode.getX(), abstractState, invokeCallBack);
-                var yPentagon = execAndGet(lessThanNode.getY(), abstractState, invokeCallBack);
+                var xPentagon = execAndGet(lessThanNode.getX(), abstractState, invokeCallBack, iteratorContext);
+                var yPentagon = execAndGet(lessThanNode.getY(), abstractState, invokeCallBack, iteratorContext);
                 AccessPath leftVar = new AccessPath(lessThanNode.getX());
                 AccessPath rightVar = new AccessPath(lessThanNode.getY());
                 IntInterval leftInterval = xPentagon.getInterval(leftVar);
@@ -229,7 +229,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                     return;
                 }
 
-                var condition = execAndGet(ifNode.condition(), abstractState, invokeCallBack);
+                var condition = execAndGet(ifNode.condition(), abstractState, invokeCallBack, iteratorContext);
                 if (condition.isBot()) {
                     abstractState.getPostCondition(ifNode).setToBot();
                     return;
@@ -283,8 +283,10 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
 
     private PentagonDomain<AccessPath> execAndGet(Node node,
                                                   AbstractState<PentagonDomain<AccessPath>> abstractState,
-                                                  InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack) {
-        execNode(node, abstractState, invokeCallBack);
+                                                  InvokeCallBack<PentagonDomain<AccessPath>> invokeCallBack,
+                                                  IteratorContext context
+    ) {
+        execNode(node, abstractState, invokeCallBack, context);
         return abstractState.getPostCondition(node);
     }
 }

@@ -30,11 +30,6 @@ public final class AnalyzerMetadata {
         return iteratorPolicy;
     }
 
-    public void setMethodGraphMap(Map<AnalysisMethod, ControlFlowGraph> methodGraphMap) {
-        this.methodGraphMap.clear();
-        this.methodGraphMap.putAll(methodGraphMap);
-    }
-
     public Map<AnalysisMethod, ControlFlowGraph> getMethodGraph() {
         return methodGraphMap;
     }
