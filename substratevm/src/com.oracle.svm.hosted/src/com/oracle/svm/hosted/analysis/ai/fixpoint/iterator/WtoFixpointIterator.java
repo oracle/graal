@@ -71,14 +71,12 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
         logger.log("Analyzing vertex: " + vertex.toString(), LoggerVerbosity.DEBUG);
         Node node = graphTraversalHelper.getBeginNode(vertex.block());
 
-        // Track node visits (used for isFirstVisit and widening decisions)
+        /* Track node visits (used for isFirstVisit and widening decisions) */
         iteratorContext.incrementNodeVisitCount(node);
-        iteratorContext.setCurrentBlock(vertex.block());
-
         if (node == graphTraversalHelper.getGraphStart() && !abstractState.hasNode(node)) {
             abstractState.setPreCondition(node, initialDomain);
         }
-
+        iteratorContext.setCurrentBlock(vertex.block());
         abstractTransformer.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper, iteratorContext);
     }
 
@@ -92,10 +90,12 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
         }
 
         iteratorContext.setPhase(IteratorPhase.WIDENING);
-        while (iterate) {
-            iteratorContext.setCurrentBlock(cycle.head());
 
-            /* Analyze the nodes inside the outermost head */
+        while (iterate) {
+            int visitCount = iteratorContext.getNodeVisitCount(headBegin);
+            logger.log("Loop iteration (visit count: " + visitCount + ") for cycle: " + cycle, LoggerVerbosity.DEBUG);
+            Domain oldPreCondition = abstractState.getPreCondition(headBegin).copyOf();
+            iteratorContext.setCurrentBlock(cycle.head());
             abstractTransformer.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper, iteratorContext);
 
             /* Analyze all other nested WtoComponents */
@@ -103,16 +103,19 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
                 analyzeComponent(component);
             }
 
-            /*
-             * At this point we analyzed the body of the cycle,
-             * we look at the head of the cycle by collecting invariants from predecessors
-             * and checking if the pre-condition at the head of the cycle changed.
-             */
-            abstractTransformer.collectInvariantsFromCfgPredecessors(cycle.head(), abstractState, graphTraversalHelper, iteratorContext);
+            Domain postCondition = abstractState.getPostCondition(headBegin);
+            logger.log("Visit " + visitCount + ": old pre = " + oldPreCondition + ", post = " + postCondition,
+                    LoggerVerbosity.DEBUG);
 
-            if (abstractState.getPreCondition(headBegin).leq(abstractState.getPostCondition(headBegin))) {
+            /* Check convergence by comparing pre with post */
+            if (oldPreCondition.equals(postCondition)) {
+                logger.log("Loop converged (pre equals post) after " + (visitCount + 1) + " visits",
+                        LoggerVerbosity.DEBUG);
                 iterate = false;
             } else {
+                logger.log("Pre != Post, applying extrapolation (join/widen based on visit count)",
+                        LoggerVerbosity.DEBUG);
+                /* Extrapolate to compute new pre-condition for next iteration */
                 extrapolate(headBegin);
                 if (iteratorContext.isLoopHeader(headBegin)) {
                     iteratorContext.incrementLoopIteration(headBegin);
