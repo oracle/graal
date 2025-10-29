@@ -156,7 +156,7 @@ public final class WpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
+//            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -165,12 +165,12 @@ public final class WpoFixpointIterator<
             if (refCount.get() == weakPartialOrdering.getNumPredecessors(index)) {
                 for (WorkNode pred : predecessors) {
                     if (!weakPartialOrdering.isBackEdge(node, pred.node)) {
-                        abstractTransformer.analyzeEdge(pred.node, node, abstractState);
+//                        abstractTransformer.analyzeEdge(pred.node, node, abstractState);
                     }
                 }
             }
 
-            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
+//            abstractTransformer.analyzeBlock(node, abstractState, graphTraversalHelper);
             return successors;
         }
 
@@ -187,7 +187,7 @@ public final class WpoFixpointIterator<
 
         boolean updateHeadBackEdge() {
             Domain oldPre = abstractState.getPreCondition(node.getBeginNode()).copyOf();
-            abstractTransformer.collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper);
+//            abstractTransformer.collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractState.getPreCondition(node.getBeginNode()))) {
