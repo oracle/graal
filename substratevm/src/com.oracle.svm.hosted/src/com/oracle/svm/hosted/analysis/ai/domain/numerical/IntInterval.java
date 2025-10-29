@@ -9,7 +9,7 @@ import java.util.Objects;
  * Representation:
  * - top: represents all integers
  * - bottom: represents empty set
- * - otherwise interval [lo, hi], where lo <= hi
+ * - otherwise: [lo, hi], where lo <= hi
  * For +, -, * we are conservative and produce sound intervals.
  * Widening is implemented in a simple standard way: when a bound grows
  * beyond the previous, we set it to infinite (Long.MIN_VALUE / Long.MAX_VALUE).
@@ -18,15 +18,12 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
 
     public static final long NEG_INF = Long.MIN_VALUE;
     public static final long POS_INF = Long.MAX_VALUE;
+
     private long lowerBound;
     private long upperBound;
 
-    /**
-     * Default constructor creates BOT value (lower bound > upper bound)
-     */
     public IntInterval() {
-        this.lowerBound = 1;
-        this.upperBound = 0;
+        setToBot();
     }
 
     public IntInterval(long value) {
@@ -44,12 +41,32 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         this.upperBound = other.upperBound;
     }
 
-    public long getLowerBound() {
+    /* This is a utility function to get the interval
+       that represents all integers lower than the given interval
+        FIXME: remove once we have DataFlowIntervalAnalysis ready
+   */
+    public static IntInterval getLowerInterval(IntInterval interval) {
+        return new IntInterval(NEG_INF, interval.getLower() - 1);
+    }
+
+    public static IntInterval getHigherInterval(IntInterval interval) {
+        return new IntInterval(interval.getUpper() + 1, POS_INF);
+    }
+
+    public long getUpper() {
+        return upperBound;
+    }
+
+    public long getLower() {
         return lowerBound;
     }
 
-    public long getUpperBound() {
-        return upperBound;
+    public void setLower(long lowerBound) {
+        this.lowerBound = lowerBound;
+    }
+
+    public void setUpper(long upperBound) {
+        this.upperBound = upperBound;
     }
 
     public boolean isBot() {
@@ -57,34 +74,21 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
     }
 
     public boolean isTop() {
-        return (lowerBound == NEG_INF && upperBound == POS_INF);
-    }
-
-    public boolean leq(IntInterval other) {
-        return isBot() || (other.lowerBound <= lowerBound && upperBound <= other.upperBound);
+        return lowerBound == NEG_INF && upperBound == POS_INF;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
+    public boolean leq(IntInterval other) {
+        if (isBot()) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
+        if (other.isTop()) {
+            return true;
+        }
+        if (isTop()) {
             return false;
         }
-        IntInterval other = (IntInterval) obj;
-        if (isBot() && other.isBot()) {
-            return true;
-        }
-        if (isTop() && other.isTop()) {
-            return true;
-        }
-        return lowerBound == other.lowerBound && upperBound == other.upperBound;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(lowerBound, upperBound);
+        return other.lowerBound <= lowerBound && upperBound <= other.upperBound;
     }
 
     public void setToBot() {
@@ -97,10 +101,20 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         upperBound = POS_INF;
     }
 
+    public boolean containsValue(long value) {
+        if (isBot()) return false;
+        return lowerBound <= value && value <= upperBound;
+    }
+
     public void joinWith(IntInterval other) {
+        if (other.isBot()) return;
         if (isBot()) {
             lowerBound = other.lowerBound;
             upperBound = other.upperBound;
+            return;
+        }
+        if (isTop() || other.isTop()) {
+            setToTop();
             return;
         }
         lowerBound = Math.min(lowerBound, other.lowerBound);
@@ -113,205 +127,236 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
             upperBound = other.upperBound;
             return;
         }
+        if (other.isBot()) return;
 
-        if (other.lowerBound < lowerBound) {
-            lowerBound = NEG_INF;
-        }
-        if (upperBound < other.upperBound) {
-            upperBound = POS_INF;
-        }
+        long newLower = (other.lowerBound < lowerBound) ? NEG_INF : lowerBound;
+        long newUpper = (other.upperBound > upperBound) ? POS_INF : upperBound;
+        lowerBound = newLower;
+        upperBound = newUpper;
     }
 
     public void meetWith(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            setToBot();
+            return;
+        }
+        if (isTop()) {
+            lowerBound = other.lowerBound;
+            upperBound = other.upperBound;
+            return;
+        }
+        if (other.isTop()) {
+            return;
+        }
         lowerBound = Math.max(lowerBound, other.lowerBound);
         upperBound = Math.min(upperBound, other.upperBound);
-        if (isBot()) {
-            setToBot();
-        }
+        if (isBot()) setToBot();
     }
 
     @Override
-    public String toString() {
-        if (isBot()) {
-            return "⊥";
-        }
-        if (isTop()) {
-            return "⊤";
-        }
-        String lower = (lowerBound == NEG_INF) ? "-∞" : String.valueOf(lowerBound);
-        String upper = (upperBound == POS_INF) ? "∞" : String.valueOf(upperBound);
-        return "[" + lower + ", " + upper + "]";
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof IntInterval)) return false;
+        IntInterval other = (IntInterval) o;
+        if (isBot() && other.isBot()) return true;
+        if (isTop() && other.isTop()) return true;
+        return lowerBound == other.lowerBound && upperBound == other.upperBound;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(lowerBound, upperBound);
     }
 
     @Override
     public IntInterval copyOf() {
-        return new IntInterval(lowerBound, upperBound);
+        return new IntInterval(this);
     }
 
-    public boolean containsValue(long value) {
-        if (isBot()) return false;
-        return lowerBound <= value && value <= upperBound;
+    @Override
+    public String toString() {
+        if (isBot()) return "⊥";
+        if (isTop()) return "⊤";
+        String lo = (lowerBound == NEG_INF) ? "-∞" : String.valueOf(lowerBound);
+        String hi = (upperBound == POS_INF) ? "∞" : String.valueOf(upperBound);
+        return "[" + lo + ", " + hi + "]";
     }
 
-    /**
-     * Arithmetic operations
-     */
-    public void addWith(IntInterval other) {
-        if (other.isBot()) {
-            return;
-        }
-
-        if (isBot()) {
-            this.lowerBound = other.lowerBound;
-            this.upperBound = other.upperBound;
-            return;
-        }
-
-        lowerBound = getLowerBound() + other.getLowerBound();
-        upperBound = getUpperBound() + other.getUpperBound();
-    }
-
-    public IntInterval add(IntInterval other) {
-        IntInterval result = new IntInterval(this);
-        result.addWith(other);
-        return result;
-    }
-
-    public void subWith(IntInterval other) {
-        if (other.isBot()) {
-            return;
-        }
-
-        if (isBot()) {
-            this.lowerBound = other.lowerBound;
-            this.upperBound = other.upperBound;
-            return;
-        }
-
-        long lowerBound = getLowerBound() - other.getLowerBound();
-        long upperBound = getUpperBound() - other.getUpperBound();
-        this.lowerBound = (lowerBound);
-        this.upperBound = (upperBound);
-    }
-
-    public IntInterval sub(IntInterval other) {
-        IntInterval result = new IntInterval(this);
-        result.subWith(other);
-        return result;
-    }
-
-    public void mulWith(IntInterval other) {
-        if (other.isBot()) {
-            return;
-        }
-
-        if (isBot()) {
-            this.lowerBound = other.lowerBound;
-            this.upperBound = other.upperBound;
-            return;
-        }
-
-        long a = getLowerBound() * other.getLowerBound();
-        long b = getLowerBound() * other.getUpperBound();
-        long c = getUpperBound() * other.getLowerBound();
-        long d = getUpperBound() * other.getUpperBound();
-        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
-        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
-    }
-
-    public IntInterval mul(IntInterval other) {
-        IntInterval result = new IntInterval(this);
-        result.mulWith(other);
-        return result;
-    }
-
-    public void divWith(IntInterval other) {
-        if (other.isBot()) {
-            setToBot();
-            return;
-        }
-        if (other.getLowerBound() <= 0 && other.getUpperBound() >= 0) {
-            setToTop();
-            return;
-        }
-        long a = safeDiv(getLowerBound(), other.getLowerBound());
-        long b = safeDiv(getLowerBound(), other.getUpperBound());
-        long c = safeDiv(getUpperBound(), other.getLowerBound());
-        long d = safeDiv(getUpperBound(), other.getUpperBound());
-        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
-        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
-    }
-
-    private static long safeDiv(long a, long b) {
-        if (b == 0) return 0;
-        return a / b;
-    }
-
-    /* We have leq, but we also need less than for {@link IntegerLessThanNode} */
-    public boolean isLessThan(IntInterval other) {
-        return this.upperBound < other.lowerBound;
-    }
-
-    public IntInterval div(IntInterval other) {
-        IntInterval result = new IntInterval(this);
-        result.divWith(other);
-        return result;
-    }
-
-    public void remWith(IntInterval other) {
-        long a = getLowerBound() % other.getLowerBound();
-        long b = getLowerBound() % other.getUpperBound();
-        long c = getUpperBound() % other.getLowerBound();
-        long d = getUpperBound() % other.getUpperBound();
-        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
-        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
-    }
-
-    public IntInterval rem(IntInterval other) {
-        IntInterval result = new IntInterval(this);
-        result.remWith(other);
-        return result;
-    }
-
-    public static IntInterval getLowerInterval(IntInterval interval) {
-        if (interval.isTop()) {
-            return AbstractDomain.createBot(interval);
-        }
-
-        long lowerBound = interval.getLowerBound();
-        if (lowerBound != NEG_INF) {
-            lowerBound--;
-        }
-
-        return new IntInterval(NEG_INF, lowerBound);
-    }
-
-    public static IntInterval getHigherInterval(IntInterval interval) {
-        if (interval.isBot()) {
-            return AbstractDomain.createTop(interval);
-        }
-
-        long upperBound = interval.getUpperBound();
-        if (upperBound != POS_INF) {
-            upperBound++;
-        }
-
-        return new IntInterval(upperBound, POS_INF);
-    }
-
-    public long getUpper() {
-        return upperBound;
-    }
-
-    public void setUpper(long newUpper) {
-        this.upperBound = newUpper;
-    }
-
-    public long getLower() {
+    public long getLowerBound() {
         return lowerBound;
     }
 
-    public void setLower(long newLower) {
-        this.lowerBound = newLower;
+    public long getUpperBound() {
+        return upperBound;
+    }
+
+    private static long safeAdd(long a, long b) {
+        if (a == POS_INF || b == POS_INF) return POS_INF;
+        if (a == NEG_INF || b == NEG_INF) return NEG_INF;
+        return a + b;
+    }
+
+    private static long safeSub(long a, long b) {
+        if (a == POS_INF || b == NEG_INF) return POS_INF;
+        if (a == NEG_INF || b == POS_INF) return NEG_INF;
+        return a - b;
+    }
+
+    private static long safeMul(long a, long b) {
+        if ((a == 0 || b == 0) && (a == POS_INF || a == NEG_INF || b == POS_INF || b == NEG_INF))
+            return 0; // 0 * ∞ = 0 (conservatively safe)
+        if ((a == POS_INF && b > 0) || (b == POS_INF && a > 0)) return POS_INF;
+        if ((a == NEG_INF && b > 0) || (b == NEG_INF && a > 0)) return NEG_INF;
+        if ((a == POS_INF && b < 0) || (b == POS_INF && a < 0)) return NEG_INF;
+        if ((a == NEG_INF && b < 0) || (b == NEG_INF && a < 0)) return POS_INF;
+        if (a == POS_INF || a == NEG_INF || b == POS_INF || b == NEG_INF)
+            return (a > 0) == (b > 0) ? POS_INF : NEG_INF;
+        return a * b;
+    }
+
+    private static long safeDiv(long a, long b) {
+        if (b == 0) return 0; // undefined, handled outside
+        if (a == POS_INF || a == NEG_INF || b == POS_INF || b == NEG_INF) {
+            if (b == POS_INF || b == NEG_INF) return 0;
+            if (a == POS_INF && b > 0) return POS_INF;
+            if (a == POS_INF && b < 0) return NEG_INF;
+            if (a == NEG_INF && b > 0) return NEG_INF;
+            if (a == NEG_INF && b < 0) return POS_INF;
+        }
+        return a / b;
+    }
+
+    public void addWith(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            setToBot();
+            return;
+        }
+        if (isTop() || other.isTop()) {
+            setToTop();
+            return;
+        }
+        lowerBound = safeAdd(lowerBound, other.lowerBound);
+        upperBound = safeAdd(upperBound, other.upperBound);
+    }
+
+    public IntInterval add(IntInterval other) {
+        IntInterval res = copyOf();
+        res.addWith(other);
+        return res;
+    }
+
+    public void subWith(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            setToBot();
+            return;
+        }
+        if (isTop() || other.isTop()) {
+            setToTop();
+            return;
+        }
+        long lo = safeSub(lowerBound, other.upperBound);
+        long hi = safeSub(upperBound, other.lowerBound);
+        lowerBound = lo;
+        upperBound = hi;
+    }
+
+    public IntInterval sub(IntInterval other) {
+        IntInterval res = copyOf();
+        res.subWith(other);
+        return res;
+    }
+
+    public void mulWith(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            setToBot();
+            return;
+        }
+        if (isTop() || other.isTop()) {
+            setToTop();
+            return;
+        }
+
+        long a = safeMul(lowerBound, other.lowerBound);
+        long b = safeMul(lowerBound, other.upperBound);
+        long c = safeMul(upperBound, other.lowerBound);
+        long d = safeMul(upperBound, other.upperBound);
+
+        lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
+        upperBound = Math.max(Math.max(a, b), Math.max(c, d));
+    }
+
+    public IntInterval mul(IntInterval other) {
+        IntInterval res = copyOf();
+        res.mulWith(other);
+        return res;
+    }
+
+    public void divWith(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            setToBot();
+            return;
+        }
+        if (isTop() || other.isTop()) {
+            setToTop();
+            return;
+        }
+
+        if (other.lowerBound <= 0 && other.upperBound >= 0) {
+            setToTop();
+            return;
+        }
+
+        long a = safeDiv(lowerBound, other.lowerBound);
+        long b = safeDiv(lowerBound, other.upperBound);
+        long c = safeDiv(upperBound, other.lowerBound);
+        long d = safeDiv(upperBound, other.upperBound);
+
+        lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
+        upperBound = Math.max(Math.max(a, b), Math.max(c, d));
+    }
+
+    public IntInterval div(IntInterval other) {
+        IntInterval res = copyOf();
+        res.divWith(other);
+        return res;
+    }
+
+    public IntInterval rem(IntInterval other) {
+        if (isBot() || other.isBot()) {
+            IntInterval res = new IntInterval();
+            res.setToBot();
+            return res;
+        }
+        if (isTop() || other.isTop()) {
+            IntInterval res = new IntInterval();
+            res.setToTop();
+            return res;
+        }
+
+        if (other.lowerBound <= 0 && other.upperBound >= 0) {
+            IntInterval res = new IntInterval();
+            res.setToTop();
+            return res;
+        }
+
+        long maxAbsDivisor = Math.max(Math.abs(other.lowerBound), Math.abs(other.upperBound)) - 1;
+        if (maxAbsDivisor == 0) {
+            IntInterval res = new IntInterval();
+            res.setToBot();
+            return res;
+        }
+
+        long lo, hi;
+        if (lowerBound >= 0) {
+            lo = 0;
+            hi = Math.min(upperBound, maxAbsDivisor);
+        } else if (upperBound <= 0) {
+            lo = Math.max(lowerBound, -maxAbsDivisor);
+            hi = 0;
+        } else {
+            lo = -maxAbsDivisor;
+            hi = maxAbsDivisor;
+        }
+        return new IntInterval(lo, hi);
     }
 }
