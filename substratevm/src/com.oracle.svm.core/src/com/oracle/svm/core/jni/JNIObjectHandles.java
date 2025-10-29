@@ -34,7 +34,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
@@ -299,13 +298,29 @@ final class JNIGlobalHandles {
         assert JNIObjectHandles.nullHandle().equal(Word.zero());
     }
 
+    // Define the mid-point to split the range in half
+    private static final SignedWord HANDLE_RANGE_SPLIT_POINT = Word.signed(1L << 30);
+
     private static final int HANDLE_BITS_COUNT = 31;
     private static final SignedWord HANDLE_BITS_MASK = Word.signed((1L << HANDLE_BITS_COUNT) - 1);
     private static final int VALIDATION_BITS_SHIFT = HANDLE_BITS_COUNT;
-    private static final int VALIDATION_BITS_COUNT = 32;
+    private static final int VALIDATION_BITS_COUNT = 31;
     private static final SignedWord VALIDATION_BITS_MASK = Word.signed((1L << VALIDATION_BITS_COUNT) - 1).shiftLeft(VALIDATION_BITS_SHIFT);
+    private static final SignedWord WEAK_HANDLE_FLAG = Word.signed(1L << 62);
     private static final SignedWord MSB = Word.signed(1L << 63);
-    private static final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl(JNIObjectHandles.nullHandle().add(1), HANDLE_BITS_MASK, JNIObjectHandles.nullHandle());
+
+    // Strong global handles will occupy the lower half of the global handles range
+    public static final SignedWord STRONG_GLOBAL_RANGE_MIN = JNIObjectHandles.nullHandle().add(1);;
+    public static final SignedWord STRONG_GLOBAL_RANGE_MAX = HANDLE_RANGE_SPLIT_POINT.subtract(1);
+
+    // Weak global handles will occupy the upper half of the global handles range
+    public static final SignedWord WEAK_GLOBAL_RANGE_MIN = HANDLE_RANGE_SPLIT_POINT;
+    public static final SignedWord WEAK_GLOBAL_RANGE_MAX = HANDLE_BITS_MASK;
+
+    private static final ObjectHandlesImpl strongGlobalHandles
+            = new ObjectHandlesImpl(STRONG_GLOBAL_RANGE_MIN, STRONG_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
+    private static final ObjectHandlesImpl weakGlobalHandles
+            = new ObjectHandlesImpl(WEAK_GLOBAL_RANGE_MIN, WEAK_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInRange(JNIObjectHandle handle) {
@@ -317,6 +332,19 @@ final class JNIGlobalHandles {
         return Word.unsigned(isolateHash);
     }
 
+    /**
+     * Encodes a raw {@code ObjectHandle} into a strong {@code JNIObjectHandle}.
+     * * A strong handle guarantees the referenced object remains alive as long as
+     * the handle itself exists.
+     * * The handle is encoded by:
+     * 1. Asserting the handle fits within the available bit range.
+     * 2. Inserting validation bits (derived from the isolate hash) for security.
+     * 3. Setting the Most Significant Bit (MSB, bit 63) to mark it as an encoded handle.
+     * 4. The WEAK_HANDLE_FLAG bit (bit 62) remains 0.
+     *
+     * @param handle The raw, unencoded handle to the Java object.
+     * @return The resulting strong JNI object handle with embedded metadata.
+     */
     private static JNIObjectHandle encode(ObjectHandle handle) {
         SignedWord h = (Word) handle;
         if (JNIObjectHandles.haveAssertions()) {
@@ -330,6 +358,24 @@ final class JNIGlobalHandles {
         return (JNIObjectHandle) h;
     }
 
+    /**
+     * Encodes a raw {@code ObjectHandle} into a weak {@code JNIObjectHandle}.
+     * * A weak handle allows the referenced object to be garbage collected even
+     * if the handle exists. The handle will be cleared when the object dies.
+     * * This method calls {@link #encodeStrong(ObjectHandle)} to perform all
+     * common encoding steps, and then explicitly sets the {@code WEAK_HANDLE_FLAG}
+     * bit (bit 62) to mark the handle as weak.
+     *
+     * @param handle The raw, unencoded handle to the Java object.
+     * @return The resulting weak JNI object handle with embedded metadata.
+     */
+    private static JNIObjectHandle encodeWeak(ObjectHandle handle) {
+        SignedWord h = (Word) encodeStrong(handle);
+        h = h.or(WEAK_HANDLE_FLAG);
+        assert isInRange((JNIObjectHandle) h);
+        return (JNIObjectHandle) h;
+    }
+
     private static ObjectHandle decode(JNIObjectHandle handle) {
         assert isInRange(handle);
         assert ((Word) handle).and(VALIDATION_BITS_MASK).unsignedShiftRight(VALIDATION_BITS_SHIFT)
@@ -338,35 +384,48 @@ final class JNIGlobalHandles {
     }
 
     static <T> T getObject(JNIObjectHandle handle) {
-        return globalHandles.get(decode(handle));
+        SignedWord handleValue = (Word) handle;
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
+            return strongGlobalHandles.get(decode(handle));
+        }
+
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
+            return weakGlobalHandles.get(decode((handle)));
+        }
+
+        throw new IllegalArgumentException("Invalid handle");
     }
 
     static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
-        assert isInRange(handle);
-        if (globalHandles.isWeak(decode(handle))) {
+        SignedWord handleValue = (Word) handle;
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
+            return JNIObjectRefType.Global;
+        }
+
+        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
             return JNIObjectRefType.WeakGlobal;
         }
-        return JNIObjectRefType.Global;
+        return JNIObjectRefType.Invalid;
     }
 
     static JNIObjectHandle create(Object obj) {
-        return encode(globalHandles.create(obj));
+        return encode(strongGlobalHandles.create(obj));
     }
 
     static void destroy(JNIObjectHandle handle) {
-        globalHandles.destroy(decode(handle));
+        strongGlobalHandles.destroy(decode(handle));
     }
 
     static JNIObjectHandle createWeak(Object obj) {
-        return encode(globalHandles.createWeak(obj));
+        return encodeWeak(weakGlobalHandles.create(obj));
     }
 
     static void destroyWeak(JNIObjectHandle weakRef) {
-        globalHandles.destroyWeak(decode(weakRef));
+        weakGlobalHandles.destroy(decode(weakRef));
     }
 
     public static long computeCurrentCount() {
-        return globalHandles.computeCurrentCount();
+        return strongGlobalHandles.computeCurrentCount() + weakGlobalHandles.computeCurrentCount();
     }
 }
 
