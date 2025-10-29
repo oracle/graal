@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LinkAtBuildTimeSupport {
 
-    static final class Options {
+    public static final class Options {
         @APIOption(name = "link-at-build-time", defaultValue = "")//
         @Option(help = "file:doc-files/LinkAtBuildTimeHelp.txt")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LinkAtBuildTime = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
