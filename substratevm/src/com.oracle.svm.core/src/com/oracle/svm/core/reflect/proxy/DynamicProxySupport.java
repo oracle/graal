@@ -30,15 +30,16 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -108,7 +109,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(AccessCondition condition, Class<?>... interfaces) {
+    public synchronized void addProxyClass(AccessCondition condition, boolean preserved, Class<?>... interfaces) {
         VMError.guarantee(condition instanceof TypeReachabilityCondition && ((TypeReachabilityCondition) condition).isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
@@ -116,15 +117,18 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
          */
         Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
-
-        if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
+        ConditionalRuntimeValue<Object> conditionalValue = proxyCache.get(key);
+        if (conditionalValue == null) {
+            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), createProxyClass(intfs, preserved));
+            proxyCache.put(key, conditionalValue);
+        } else if (!preserved) {
+            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
-        proxyCache.get(key).getConditions().addCondition(condition);
+        conditionalValue.getDynamicAccessMetadata().addCondition(condition);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static Object createProxyClass(Class<?>[] interfaces) {
+    private static Object createProxyClass(Class<?>[] interfaces, boolean preserved) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
@@ -147,14 +151,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
              * be allocated at run time.
              */
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+            reflectionSupport.register(AccessCondition.unconditional(), false, preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
 
             /*
              * The proxy class reflectively looks up the methods of the interfaces it implements to
              * pass a Method object to InvocationHandler.
              */
             for (Class<?> intf : interfaces) {
-                RuntimeReflection.register(intf.getMethods());
+                reflectionSupport.register(AccessCondition.unconditional(), false, preserved, intf.getMethods());
             }
             return clazz;
         } catch (Throwable t) {
@@ -197,7 +202,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
 
-        if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
+        if (clazzOrError == null || !clazzOrError.getDynamicAccessMetadata().satisfied()) {
             throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
@@ -225,6 +230,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             throw incompatibleClassLoaders(loader, interfaces);
         }
         return clazz;
+    }
+
+    public boolean isProxyPreserved(Class<?>... interfaces) {
+        ProxyCacheKey key = new ProxyCacheKey(interfaces);
+        if (proxyCache.get(key) instanceof ConditionalRuntimeValue<Object> entry) {
+            return entry.getDynamicAccessMetadata().isPreserved();
+        }
+        return false;
     }
 
     private static RuntimeException incompatibleClassLoaders(ClassLoader provided, Class<?>[] interfaces) {

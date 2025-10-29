@@ -44,7 +44,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class PythonByteTests extends RegexTestBase {
 
@@ -59,8 +59,8 @@ public class PythonByteTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.LATIN_1;
+    Encoding getTRegexEncoding() {
+        return Encoding.LATIN_1;
     }
 
     @Test

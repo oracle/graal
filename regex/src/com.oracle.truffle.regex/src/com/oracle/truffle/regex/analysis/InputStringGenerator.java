@@ -67,7 +67,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -200,7 +200,7 @@ public final class InputStringGenerator {
             return forward ? index + nPrepended < elements.size() : index + nPrepended > 0;
         }
 
-        private InputString toTString(Random rng, Encodings.Encoding encoding) {
+        private InputString toTString(Random rng, Encoding encoding) {
             CodePointSet anyChar = ALLOWED_CHARACTERS.createIntersectionSingleRange(encoding.getFullSet());
             int prefixLength = (int) (clampedGauss(rng) * 20);
             int suffixLength = (int) (clampedGauss(rng) * 20);
@@ -230,7 +230,7 @@ public final class InputStringGenerator {
             int iBeforeMatch = matchStart - (int) (clampedGauss(rng) * matchStart);
             int iAfterMatch = (int) (clampedGauss(rng, 0.05) * Math.min(10, Math.max(0, elements.size() - nPrepended)));
             int fromIndex = iBeforeMatch + iAfterMatch;
-            if (encoding == Encodings.UTF_16_RAW) {
+            if (encoding == Encoding.UTF_16_RAW) {
                 char[] chars = new char[codepoints.length];
                 for (int i = 0; i < codepoints.length; i++) {
                     chars[i] = (char) codepoints[i];
@@ -242,11 +242,11 @@ public final class InputStringGenerator {
             return new InputString(string, translateIndex(string, encoding, codepoints, fromIndex), translateIndex(string, encoding, codepoints, matchStart));
         }
 
-        private static int translateIndex(TruffleString string, Encodings.Encoding encoding, int[] codepoints, int index) {
+        private static int translateIndex(TruffleString string, Encoding encoding, int[] codepoints, int index) {
             TruffleString.Encoding tsEncoding = encoding.getTStringEncoding();
-            if (encoding == Encodings.UTF_32) {
+            if (encoding.isUTF32()) {
                 return index;
-            } else if (encoding == Encodings.UTF_16) {
+            } else if (encoding.isUTF16()) {
                 int cpIndex = index;
                 for (int i = 1; i < index; i++) {
                     int prevCp = codepoints[i - 1];

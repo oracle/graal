@@ -74,6 +74,8 @@ public interface RuntimeMetadataDecoder {
 
     boolean isNegative(int modifiers);
 
+    boolean isPreserved(int modifiers);
+
     class ElementDescriptor {
         private final Class<?> declaringClass;
 

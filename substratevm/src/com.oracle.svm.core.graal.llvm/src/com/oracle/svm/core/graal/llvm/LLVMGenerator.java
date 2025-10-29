@@ -113,6 +113,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
@@ -582,8 +583,8 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
 
     @Override
     public Variable emitMove(Value input) {
-        if (input instanceof LLVMVariable) {
-            return (LLVMVariable) input;
+        if (LIRValueUtil.isVariable(input) && LIRValueUtil.asVariable(input) instanceof LLVMVariable) {
+            return LIRValueUtil.asVariable(input);
         } else if (input instanceof LLVMValueWrapper) {
             return new LLVMVariable(getVal(input));
         }
@@ -619,7 +620,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         } else if (LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
             source = builder.buildPtrToInt(source);
         }
-        ((LLVMVariable) dst).set(source);
+        ((LLVMVariable) LIRValueUtil.asVariable(dst)).set(source);
     }
 
     @Override

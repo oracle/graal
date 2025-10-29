@@ -24,13 +24,29 @@
  */
 package org.graalvm.polybench;
 
+import org.graalvm.polybench.ast.Decl.Compound;
+import org.graalvm.polybench.ast.Decl.Subroutine;
+import org.graalvm.polybench.ast.Decl.Variable;
+import org.graalvm.polybench.ast.Expr.Atom.Int;
+import org.graalvm.polybench.ast.Expr.Atom.Null;
+import org.graalvm.polybench.ast.Expr.BinaryOp;
+import org.graalvm.polybench.ast.Expr.ConstructorCall;
+import org.graalvm.polybench.ast.Expr.ListLengthCall;
+import org.graalvm.polybench.ast.Expr.Reference.Ident;
+import org.graalvm.polybench.ast.Operator;
+import org.graalvm.polybench.ast.Stat;
+import org.graalvm.polybench.ast.Stat.Assign;
+import org.graalvm.polybench.ast.Stat.Block;
+import org.graalvm.polybench.ast.Stat.Return;
+import org.graalvm.polybench.ast.Tree.Program.Builder;
+
 import java.util.Optional;
 
 /**
  * Summarizes the results of a polybench benchmark with an average value computed from iteration
  * datapoints.
  */
-class AverageSummary implements Summary {
+class AverageSummary implements Summary, StageableClass {
     @Override
     public Optional<Double> postprocess(double[] results) {
         double sum = 0;
@@ -43,5 +59,44 @@ class AverageSummary implements Summary {
     @Override
     public String toString() {
         return "AverageSummary{}";
+    }
+
+    @Override
+    public boolean stageClass(Builder programBuilder) {
+        Stat thenBranch;
+        Stat elseBranch;
+        try (Compound.Builder classBuilder = new Compound.Builder(programBuilder, "AverageSummary", null)) {
+            try (Subroutine.Builder methodBuilder = new Subroutine.Builder(classBuilder, "postprocess", new Variable[]{Variable.of("results")})) {
+                methodBuilder.append(Variable.of("sum", new Int(0)));
+                try (Stat.Foreach.Builder foreachBuilder = new Stat.Foreach.Builder(methodBuilder, Variable.of("result"), new Ident("results"))) {
+                    foreachBuilder.append(new Assign(new Ident("sum"),
+                                    new BinaryOp(new Ident("sum"), new Ident("result"), Operator.PLUS)));
+                }
+                methodBuilder.append(Variable.of("resultsLength", new ListLengthCall(new Ident("results"))));
+                // if (resultsLength > 0)
+                try (Block.Builder thenBranchBuilder = new Block.Builder(null)) {
+                    thenBranchBuilder.append(new Return(new BinaryOp(new Ident("sum"), new Ident("resultsLength"), Operator.DIV)));
+                    thenBranch = thenBranchBuilder.build();
+                }
+                try (Block.Builder elseBranchBuilder = new Block.Builder(null)) {
+                    elseBranchBuilder.append(new Return(new Null()));
+                    elseBranch = elseBranchBuilder.build();
+                }
+                methodBuilder.append(new Stat.If(new BinaryOp(new Ident("resultsLength"), new Int(0), Operator.GREATER_THAN), thenBranch, elseBranch));
+            }
+            return true;
+        } catch (UnsupportedOperationException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean stageSingletonInitialization(Builder programBuilder, String singleton) {
+        try {
+            programBuilder.append(Variable.of(singleton, ConstructorCall.of(new Ident("AverageSummary"))));
+            return true;
+        } catch (UnsupportedOperationException e) {
+            return false;
+        }
     }
 }

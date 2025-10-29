@@ -8,5 +8,5 @@ any = [
 files = ["mx_sdk_vm*.py"]
 any = [
     "gilles.m.duboscq@oracle.com",
-    "benoit.daloze@oracle.com",
+    "danilo.ansaloni@oracle.com",
 ]

@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -43,6 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * Type which {@linkplain Inject injects} individual members into its original type (and can alias
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  *
  * @see SubstitutionType
  */
-public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
+public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaType original;
 
@@ -235,7 +236,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return original;
     }
 

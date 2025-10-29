@@ -43,8 +43,8 @@ import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEn
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE;
-import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16;
-import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16_FOREIGN_ENDIAN;
+import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32_FOREIGN_ENDIAN;
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -108,7 +108,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         GraalError.guarantee(array.getPlatformKind() == AArch64Kind.QWORD, "pointer value expected");
         GraalError.guarantee(offset.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
-        if (encoding == UTF_8 || encoding == UTF_16) {
+        if (encoding == UTF_8 || encoding.isUTF16()) {
             GraalError.guarantee(result.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         } else {
             GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
@@ -126,16 +126,16 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
     private static boolean needConsecutiveVectors(CalcStringAttributesEncoding encoding, boolean assumeValid) {
         // variants using the LD1 instruction need consecutive vector registers
-        return encoding == UTF_8 && !assumeValid || encoding == UTF_32;
+        return encoding == UTF_8 && !assumeValid || encoding.isUTF32();
     }
 
     private static int getNumberOfTempRegisters(CalcStringAttributesEncoding encoding, boolean assumeValid) {
         switch (encoding) {
             case LATIN1:
             case BMP:
-            case UTF_32:
+            case UTF_32, UTF_32_FOREIGN_ENDIAN:
                 return 1;
-            case UTF_16:
+            case UTF_16, UTF_16_FOREIGN_ENDIAN:
                 return 2;
             case UTF_8:
                 return assumeValid ? 2 : 5;
@@ -152,10 +152,12 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                 return 4;
             case UTF_8:
                 return assumeValid ? 8 : 17;
-            case UTF_16:
+            case UTF_16, UTF_16_FOREIGN_ENDIAN:
                 return 8;
             case UTF_32:
                 return 11;
+            case UTF_32_FOREIGN_ENDIAN:
+                return 12;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
         }
@@ -184,10 +186,10 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                 case UTF_8:
                     emitUTF8(crb, asm, arr, len, tmp, ret, end);
                     break;
-                case UTF_16:
+                case UTF_16, UTF_16_FOREIGN_ENDIAN:
                     emitUTF16(crb, asm, arr, len, tmp, ret, end);
                     break;
-                case UTF_32:
+                case UTF_32, UTF_32_FOREIGN_ENDIAN:
                     emitUTF32(asm, arr, len, tmp, ret, end);
                     break;
                 default:
@@ -1020,6 +1022,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_16}.
      */
     private void emitUTF16(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
+        boolean foreignEndian = encoding == UTF_16_FOREIGN_ENDIAN;
         assert stride.log2 == 1 : stride;
         Label tailLessThan32 = new Label();
         Label tailLessThan32Continue = new Label();
@@ -1059,7 +1062,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // convert length to byte length
         asm.lsl(64, len, len, 1);
 
-        asm.neon.moveVI(FullReg, ElementSize.HalfWord, vecMask, (short) 0xff80);
+        asm.neon.moveVI(FullReg, ElementSize.HalfWord, vecMask, (short) (foreignEndian ? 0x80ff : 0xff80));
         asm.neon.moveVI(FullReg, ElementSize.Byte, vecMaskSurrogates, assumeValid ? 0x36 : 0x1b);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
@@ -1095,7 +1098,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.bind(latinLoop);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
         asm.bind(latinContinue);
-        asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+        utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
         cbnzVector(asm, ElementSize.Byte, vecTmp1, vecArray2, tmp, false, bmpContinue);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, latinLoop);
@@ -1104,7 +1107,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
         asm.bind(latinFoundTail);
-        asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+        utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
         cbnzVector(asm, ElementSize.Byte, vecTmp1, vecArray2, tmp, false, bmpFoundTail);
         asm.mov(tmp, CR_8BIT);
         asm.orr(64, ret, tmp, ret, ShiftType.LSL, 32);
@@ -1114,7 +1117,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(bmpLoop);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+        utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
         asm.bind(bmpContinue);
         utf16MatchSurrogates(asm, vecArray2, vecTmp1, vecMaskSurrogates);
         cbnzVector(asm, ElementSize.Byte, vecTmp2, vecTmp1, tmp, true, surrogateFound);
@@ -1124,7 +1127,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // 32 byte bmp loop tail
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+        utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
         asm.bind(bmpFoundTail);
         utf16MatchSurrogates(asm, vecArray2, vecTmp1, vecMaskSurrogates);
         cbnzVector(asm, ElementSize.Byte, vecTmp2, vecTmp1, tmp, true, surrogateFoundTail);
@@ -1159,7 +1162,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.bind(surrogateLoop);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
             // extract upper bytes
-            asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+            utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
             // identify high surrogates ((upper byte >> 2) == 0x36)
             asm.neon.ushrVVI(FullReg, ElementSize.Byte, vecTmp1, vecArray2, 2);
             asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMaskSurrogates);
@@ -1182,7 +1185,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.and(32, len, asRegister(length), 15);
             asm.cbz(64, len, skipTail);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-            asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+            utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
             loadDataSectionAddress(crb, asm, tmp, maskTail);
             asm.fldr(128, vecTmp1, AArch64Address.createRegisterOffsetAddress(128, tmp, len, false));
             asm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp1);
@@ -1228,7 +1231,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.align(PREFERRED_LOOP_ALIGNMENT);
             asm.bind(surrogateLoop);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-            asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+            utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
             asm.bind(surrogateContinue);
             // set vecArray1 = vecPrev[15]:vecArray2[1:16]
             asm.neon.extVVV(FullReg, vecArray1, vecPrev, vecArray2, 15);
@@ -1261,7 +1264,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // 32 byte surrogate loop tail
             asm.mov(64, arr, refAddress);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-            asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecArray2, vecArray1, vecArray2);
+            utf16ExtractHighBytes(asm, foreignEndian, vecArray2, vecArray1, vecArray2);
             loadDataSectionAddress(crb, asm, tmp, maskTail);
             asm.and(32, tmp2, asRegister(length), 15);
             asm.add(64, tmp, tmp, 16);
@@ -1360,6 +1363,14 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.jmp(tailLessThan32Continue);
     }
 
+    private static void utf16ExtractHighBytes(AArch64MacroAssembler asm, boolean foreignEndian, Register vecDst, Register vecSrc1, Register vecSrc2) {
+        if (foreignEndian) {
+            asm.neon.uzp1VVV(FullReg, ElementSize.Byte, vecDst, vecSrc1, vecSrc2);
+        } else {
+            asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecDst, vecSrc1, vecSrc2);
+        }
+    }
+
     private static void utf16SubtractMatched(AArch64MacroAssembler asm, Register tmp, Register ret, Register vecTmp1) {
         asm.neon.ushrVVI(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, 7);
         asm.neon.addvSV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1);
@@ -1379,6 +1390,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_32}.
      */
     private void emitUTF32(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
+        boolean foreignEndian = encoding == UTF_32_FOREIGN_ENDIAN;
         assert stride.log2 == 2 : stride;
         Label tailLessThan64 = new Label();
         Label tailLessThan32 = new Label();
@@ -1415,12 +1427,19 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         Register vecMask = asRegister(vectorTemp[8]);
         Register vecMaskBroken = asRegister(vectorTemp[9]);
         Register vecMaskOutOfRange = asRegister(vectorTemp[10]);
+        Register vecMaskANDBroken = foreignEndian ? asRegister(vectorTemp[11]) : null;
 
         // convert length to byte length
         asm.lsl(64, len, len, 2);
 
-        asm.neon.moveVI(FullReg, Word, vecMask, 0xffffff80);
-        asm.neon.moveVI(FullReg, Word, vecMaskBroken, 0x1b);
+        if (foreignEndian) {
+            asm.neon.moveVI(FullReg, Word, vecMask, 0x80ffffff);
+            asm.neon.moveVI(FullReg, Word, vecMaskBroken, 0x00d80000);
+            asm.neon.moveVI(FullReg, Word, vecMaskANDBroken, 0x00f80000);
+        } else {
+            asm.neon.moveVI(FullReg, Word, vecMask, 0xffffff80);
+            asm.neon.moveVI(FullReg, Word, vecMaskBroken, 0x1b);
+        }
         asm.neon.moveVI(FullReg, Word, vecMaskOutOfRange, 0x10ffff);
 
         // subtract 64 from len. if the result is negative, jump to branch for less than 64 bytes
@@ -1452,15 +1471,26 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.orrVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
         asm.bind(tailLessThan64Continue);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
-        asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
+        if (foreignEndian) {
+            // convert mask to 0x00ffffff
+            asm.neon.moveVI(FullReg, Word, vecMask, 0x00ffffff);
+        } else {
+            // convert mask to 0xffffff00
+            asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
+        }
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, latinFoundTail);
         asm.mov(ret, CR_7BIT);
         asm.jmp(end);
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(latinFound);
-        // convert mask to 0xffffff00
-        asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
+        if (foreignEndian) {
+            // convert mask to 0x00ffffff
+            asm.neon.moveVI(FullReg, Word, vecMask, 0x00ffffff);
+        } else {
+            // convert mask to 0xffffff00
+            asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 1);
+        }
         asm.jmp(latinContinue);
 
         // 64 byte latin1 loop
@@ -1486,15 +1516,26 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.orrVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
         asm.bind(latinFoundTail);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
-        asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
+        if (foreignEndian) {
+            // convert mask to 0x0000ffff
+            asm.neon.ushrVVI(FullReg, Word, vecMask, vecMask, 8);
+        } else {
+            // convert mask to 0xffff0000
+            asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
+        }
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, bmpFoundTail);
         asm.mov(ret, CR_8BIT);
         asm.jmp(end);
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(bmpFound);
-        // convert mask to 0xffff0000
-        asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
+        if (foreignEndian) {
+            // convert mask to 0x0000ffff
+            asm.neon.ushrVVI(FullReg, Word, vecMask, vecMask, 8);
+        } else {
+            // convert mask to 0xffff0000
+            asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 8);
+        }
         asm.mov(ret, 0);
         asm.jmp(bmpContinue);
 
@@ -1509,7 +1550,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.bind(bmpContinue);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, astralContinue);
-        utf32CheckInvalidBMP(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, tmp, returnBroken);
+        utf32CheckInvalidBMP(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskANDBroken, tmp, returnBroken);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, bmpLoop);
 
@@ -1523,7 +1564,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.bind(bmpFoundTail);
         asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
         cbnzVector(asm, Word, vecTmp2, vecTmp2, tmp, true, astralFoundTail);
-        utf32CheckInvalidBMP(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, tmp, returnBroken);
+        utf32CheckInvalidBMP(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskANDBroken, tmp, returnBroken);
         asm.mov(ret, CR_16BIT);
         asm.jmp(end);
 
@@ -1533,7 +1574,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.ld1MultipleVVVV(FullReg, ElementSize.Byte, vecArray1, vecArray2, vecArray3, vecArray4,
                         createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, arr, 64));
         asm.bind(astralContinue);
-        utf32CheckInvalid(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskOutOfRange, tmp, returnBroken);
+        utf32CheckInvalid(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskOutOfRange, vecMaskANDBroken, tmp, returnBroken);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, astralLoop);
 
@@ -1542,7 +1583,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.ld1MultipleVVVV(FullReg, ElementSize.Byte, vecArray1, vecArray2, vecArray3, vecArray4,
                         createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, arr, 64));
         asm.bind(astralFoundTail);
-        utf32CheckInvalid(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskOutOfRange, tmp, returnBroken);
+        utf32CheckInvalid(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskOutOfRange, vecMaskANDBroken, tmp, returnBroken);
         asm.mov(ret, CR_VALID);
         asm.jmp(end);
 
@@ -1601,7 +1642,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.mov(ret, CR_BROKEN);
     }
 
-    private static void utf32CheckInvalid(AArch64MacroAssembler asm,
+    private void utf32CheckInvalid(AArch64MacroAssembler asm,
                     Register vecArray1,
                     Register vecArray2,
                     Register vecArray3,
@@ -1612,13 +1653,27 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                     Register vecTmp4,
                     Register vecMaskBroken,
                     Register vecMaskOutOfRange,
+                    Register vecMaskANDBroken,
                     Register tmp,
                     Label returnBroken) {
-        // right-shift string contents (copy) by 11
-        asm.neon.ushrVVI(FullReg, Word, vecTmp1, vecArray1, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp2, vecArray2, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp3, vecArray3, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp4, vecArray4, 11);
+        if (encoding == UTF_32_FOREIGN_ENDIAN) {
+            // AND string contents (copy) with 0x00f80000
+            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp3, vecArray3, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp4, vecArray4, vecMaskANDBroken);
+            // convert to native endian for umaxVVV
+            asm.neon.rev32VV(FullReg, ElementSize.Byte, vecArray1, vecArray1);
+            asm.neon.rev32VV(FullReg, ElementSize.Byte, vecArray2, vecArray2);
+            asm.neon.rev32VV(FullReg, ElementSize.Byte, vecArray3, vecArray3);
+            asm.neon.rev32VV(FullReg, ElementSize.Byte, vecArray4, vecArray4);
+        } else {
+            // right-shift string contents (copy) by 11
+            asm.neon.ushrVVI(FullReg, Word, vecTmp1, vecArray1, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp2, vecArray2, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp3, vecArray3, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp4, vecArray4, 11);
+        }
         // identify codepoints larger than 0x10ffff
         asm.neon.umaxVVV(FullReg, Word, vecArray1, vecArray1, vecArray2);
         asm.neon.umaxVVV(FullReg, Word, vecArray3, vecArray3, vecArray4);
@@ -1640,7 +1695,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         cbnzVector(asm, Word, vecArray1, vecArray1, tmp, true, returnBroken);
     }
 
-    private static void utf32CheckInvalidBMP(AArch64MacroAssembler asm,
+    private void utf32CheckInvalidBMP(AArch64MacroAssembler asm,
                     Register vecArray1,
                     Register vecArray2,
                     Register vecArray3,
@@ -1650,15 +1705,25 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                     Register vecTmp3,
                     Register vecTmp4,
                     Register vecMaskBroken,
+                    Register vecMaskANDBroken,
                     Register tmp,
                     Label returnBroken) {
-        // right-shift string contents (copy) by 11
-        asm.neon.ushrVVI(FullReg, Word, vecTmp1, vecArray1, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp2, vecArray2, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp3, vecArray3, 11);
-        asm.neon.ushrVVI(FullReg, Word, vecTmp4, vecArray4, 11);
+        if (encoding == UTF_32_FOREIGN_ENDIAN) {
+            // AND string contents (copy) with 0x00f80000
+            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp3, vecArray3, vecMaskANDBroken);
+            asm.neon.andVVV(FullReg, vecTmp4, vecArray4, vecMaskANDBroken);
+        } else {
+            // right-shift string contents (copy) by 11
+            asm.neon.ushrVVI(FullReg, Word, vecTmp1, vecArray1, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp2, vecArray2, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp3, vecArray3, 11);
+            asm.neon.ushrVVI(FullReg, Word, vecTmp4, vecArray4, 11);
+        }
         // identify codepoints in the forbidden UTF-16 surrogate range [0xd800-0xdfff]
-        // ((codepoint >> 11) == 0x1b)
+        // native endian: ((codepoint >> 11) == 0x1b)
+        // foreign endian: ((codepoint & 0x00f80000) == 0x00d80000)
         asm.neon.cmeqVVV(FullReg, Word, vecTmp1, vecTmp1, vecMaskBroken);
         asm.neon.cmeqVVV(FullReg, Word, vecTmp2, vecTmp2, vecMaskBroken);
         asm.neon.cmeqVVV(FullReg, Word, vecTmp3, vecTmp3, vecMaskBroken);

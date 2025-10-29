@@ -125,6 +125,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -269,7 +270,7 @@ public abstract class NativeImage extends AbstractImage {
     private static Class<? extends CHeader.Header> cHeader(HostedMethod entryPointStub) {
         /* check if method is annotated */
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub((CEntryPointCallStubMethod) entryPointStub.wrapped.wrapped);
-        CHeader methodAnnotation = entryPoint.getDeclaredAnnotation(CHeader.class);
+        CHeader methodAnnotation = AnnotationUtil.getAnnotation(entryPoint, CHeader.class);
         if (methodAnnotation != null) {
             return methodAnnotation.value();
         }
@@ -277,7 +278,7 @@ public abstract class NativeImage extends AbstractImage {
         /* check if enclosing classes are annotated */
         AnalysisType enclosingType = entryPoint.getDeclaringClass();
         while (enclosingType != null) {
-            CHeader enclosing = enclosingType.getDeclaredAnnotation(CHeader.class);
+            CHeader enclosing = AnnotationUtil.getAnnotation(enclosingType, CHeader.class);
             if (enclosing != null) {
                 return enclosing.value();
             }

@@ -86,6 +86,6 @@ class Util_java_lang_reflect_ReflectAccess {
 
     static void copyAccessibleObject(Target_java_lang_reflect_AccessibleObject copy, Target_java_lang_reflect_AccessibleObject accessibleObject) {
         copy.typeAnnotations = accessibleObject.typeAnnotations;
-        copy.conditions = accessibleObject.conditions;
+        copy.dynamicAccessMetadata = accessibleObject.dynamicAccessMetadata;
     }
 }

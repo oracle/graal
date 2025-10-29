@@ -61,10 +61,20 @@ public class GraphNode extends AbstractNode {
         this(graph, new InstanceContent());
     }
 
+    /**
+     * Long names can cause rendering problems with GTK so limit their size.  The actual
+     * name is always available in the property panel.
+     */
+    private static final int DISPLAY_NAME_LIMIT = 2000;
+
     private GraphNode(InputGraph graph, InstanceContent content) {
         super(Children.LEAF, new AbstractLookup(content));
         this.graph = graph;
-        this.setDisplayName(graph.getName());
+        String name = graph.getName();
+        if (name.length() > DISPLAY_NAME_LIMIT) {
+            name = name.substring(0, DISPLAY_NAME_LIMIT) + "...";
+        }
+        this.setDisplayName(name);
         content.add(graph);
 
         final GraphViewer viewer = Lookup.getDefault().lookup(GraphViewer.class);

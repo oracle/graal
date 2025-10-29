@@ -228,9 +228,13 @@ suite = {
                 "compiler:GRAAL",
             ],
             "requiresConcealed" : {
-                "java.base" : ["jdk.internal.module"],
+                "java.base" : [
+                    "jdk.internal.module",
+                    "sun.reflect.annotation"
+                ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.runtime"
                 ]
@@ -242,6 +246,10 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "jacoco" : "include",
+
+            # Direct reference to jdk.vm.ci.meta.annotation.Annotated
+            # causes spotbugs analysis to fail with "missing class" error.
+            "spotbugs": "false",
         },
 
         "com.oracle.svm.common": {
@@ -378,6 +386,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
@@ -606,6 +615,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.common",
                     "jdk.vm.ci.runtime"
@@ -618,6 +628,10 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "include",
+
+            # Direct reference to jdk.vm.ci.meta.annotation.Annotated
+            # causes spotbugs analysis to fail with "missing class" error.
+            "spotbugs": "false",
         },
 
         "com.oracle.graal.pointsto.standalone": {
@@ -634,7 +648,8 @@ suite = {
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -682,6 +697,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                 ]
             },
@@ -793,6 +809,7 @@ suite = {
                     "jdk.internal.foreign.abi.aarch64",
                     "jdk.internal.foreign.abi.aarch64.macos",
                     "jdk.internal.foreign.abi.aarch64.linux",
+                    "jdk.internal.foreign.layout",
                     "jdk.internal.loader",
                     "jdk.internal.reflect",
                 ],
@@ -1275,7 +1292,8 @@ suite = {
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.stack",
                     "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation"
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1364,6 +1382,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.stack"
                 ]
@@ -1574,6 +1593,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.common",
                 ]
@@ -1623,6 +1643,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                 ],
                 "java.base" : [

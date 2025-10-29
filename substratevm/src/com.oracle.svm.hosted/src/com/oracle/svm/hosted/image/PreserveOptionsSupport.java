@@ -217,28 +217,28 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             /* Register every single-interface proxy */
             // GR-62293 can't register proxies from jdk modules.
             if (c.getModule() == null && c.isInterface()) {
-                proxy.registerProxy(always, c);
+                proxy.registerProxy(always, true, c);
             }
 
             try {
                 for (Field declaredField : c.getDeclaredFields()) {
-                    reflection.register(always, false, declaredField);
+                    reflection.register(always, false, true, declaredField);
                 }
             } catch (LinkageError e) {
                 /* If we can't link we can not register for reflection */
             }
             if (SubstrateOptions.JNI.getValue()) {
                 final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
-                jni.register(always, c);
+                jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, false, declaredMethod);
+                        jni.register(always, false, true, declaredMethod);
                     }
                     for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, false, declaredConstructor);
+                        jni.register(always, false, true, declaredConstructor);
                     }
                     for (Field declaredField : c.getDeclaredFields()) {
-                        jni.register(always, false, declaredField);
+                        jni.register(always, false, true, declaredField);
                     }
                 } catch (LinkageError e) {
                     /* If we can't link we can not register for JNI and reflection */
@@ -247,11 +247,13 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, true, c);
+            }
 
             /* Register resource bundles */
             if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
-                resources.addResourceBundles(always, c.getTypeName());
+                resources.addResourceBundles(always, true, c.getTypeName());
             }
         });
 
@@ -261,30 +263,30 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.registerAllFields(always, c);
-            reflection.registerAllMethodsQuery(always, false, c);
-            serialization.register(always, c);
+            reflection.registerAllFields(always, true, c);
+            reflection.registerAllMethodsQuery(always, false, true, c);
+            serialization.register(always, true, c);
         });
 
         for (String className : classLoaderSupport.getClassNamesToPreserve()) {
             if (!classesOrPackagesToIgnore.contains(className)) {
-                reflection.registerClassLookup(always, className);
+                reflection.registerClassLookup(always, true, className);
             }
         }
     }
 
     private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
-        reflection.register(always, false, c);
+        reflection.register(always, true, c);
 
-        reflection.registerAllDeclaredFields(always, c);
-        reflection.registerAllDeclaredMethodsQuery(always, false, c);
-        reflection.registerAllDeclaredConstructorsQuery(always, false, c);
-        reflection.registerAllConstructorsQuery(always, false, c);
-        reflection.registerAllClassesQuery(always, c);
-        reflection.registerAllDeclaredClassesQuery(always, c);
-        reflection.registerAllNestMembersQuery(always, c);
-        reflection.registerAllPermittedSubclassesQuery(always, c);
+        reflection.registerAllDeclaredFields(always, true, c);
+        reflection.registerAllDeclaredMethodsQuery(always, false, true, c);
+        reflection.registerAllDeclaredConstructorsQuery(always, false, true, c);
+        reflection.registerAllConstructorsQuery(always, false, true, c);
+        reflection.registerAllClassesQuery(always, true, c);
+        reflection.registerAllDeclaredClassesQuery(always, true, c);
+        reflection.registerAllNestMembersQuery(always, true, c);
+        reflection.registerAllPermittedSubclassesQuery(always, true, c);
         reflection.registerAllRecordComponentsQuery(always, c);
         reflection.registerAllSignersQuery(always, c);
     }

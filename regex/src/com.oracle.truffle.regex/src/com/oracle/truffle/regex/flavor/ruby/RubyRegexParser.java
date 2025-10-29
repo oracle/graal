@@ -77,7 +77,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -123,7 +123,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         for (char ctypeChar : new Character[]{'d', 'h', 's', 'w'}) {
             CodePointSet charSet = UNICODE_CHAR_CLASSES.get(ctypeChar);
             char complementCTypeChar = Character.toUpperCase(ctypeChar);
-            CodePointSet complementCharSet = charSet.createInverse(Encodings.UTF_32);
+            CodePointSet complementCharSet = charSet.createInverse(Encoding.UTF_32);
             UNICODE_CHAR_CLASSES.put(complementCTypeChar, complementCharSet);
             ASCII_CHAR_CLASSES.put(ctypeChar, asciiRange.createIntersectionSingleRange(charSet));
             ASCII_CHAR_CLASSES.put(complementCTypeChar, complementCharSet.union(nonAsciiRange));
@@ -131,12 +131,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
         UNICODE_POSIX_CHAR_CLASSES = new HashMap<>(14);
         ASCII_POSIX_CHAR_CLASSES = new HashMap<>(14);
-        CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
+        CompilationBuffer buffer = new CompilationBuffer(Encoding.UTF_32);
 
         CodePointSet blank = UNICODE.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
         CodePointSet cntrl = UNICODE.getProperty("General_Category=Control");
         CodePointSet graph = space.union(UNICODE.getProperty("General_Category=Control")).union(UNICODE.getProperty("General_Category=Surrogate")).union(
-                        UNICODE.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
+                        UNICODE.getProperty("General_Category=Unassigned")).createInverse(Encoding.UTF_32);
         UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
         UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
         UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
@@ -1109,7 +1109,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private CodePointSet getUnicodeCharClass(char className) {
-        if (inSource.getEncoding() == Encodings.ASCII) {
+        if (inSource.getEncoding() == Encoding.ASCII) {
             return ASCII_CHAR_CLASSES.get(className);
         }
 
@@ -1117,7 +1117,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private CodePointSet getUnicodePosixCharClass(String className) {
-        if (inSource.getEncoding() == Encodings.ASCII) {
+        if (inSource.getEncoding() == Encoding.ASCII) {
             return ASCII_POSIX_CHAR_CLASSES.get(className);
         }
 
@@ -1282,7 +1282,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         property = CodePointSet.getEmpty();
                     }
                     if (negative) {
-                        property = property.createInverse(Encodings.UTF_32);
+                        property = property.createInverse(Encoding.UTF_32);
                     }
                     if (inCharClass) {
                         curCharClass.addSet(property);

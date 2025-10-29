@@ -40,6 +40,7 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeGenTool;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
@@ -147,7 +148,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     private static ValueNode createJSBody(AnalysisMethod method, HostedGraphKit kit, ValueNode[] argNodes, Stamp returnStamp,
                     JSBody.JSCode jsCode, Function<CodeGenTool, String> codeSupplier) {
-        boolean declaresResource = AnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
+        boolean declaresResource = AnnotationUtil.isAnnotationPresent(method.getDeclaringClass(), JavaScriptResource.class);
         return kit.appendWithUnwind(new JSBodyWithExceptionNode(jsCode, method, argNodes, returnStamp, null, declaresResource, codeSupplier));
     }
 

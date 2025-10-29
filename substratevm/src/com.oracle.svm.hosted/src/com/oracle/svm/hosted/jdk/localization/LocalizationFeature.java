@@ -303,7 +303,6 @@ public class LocalizationFeature implements InternalFeature {
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
-
     }
 
     /**

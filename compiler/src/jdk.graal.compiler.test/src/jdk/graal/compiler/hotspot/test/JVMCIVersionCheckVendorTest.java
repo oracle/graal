@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,8 +44,8 @@ public class JVMCIVersionCheckVendorTest extends GraalCompilerTest {
 
     private static final Map<String, Map<String, JVMCIVersionCheck.Version>> VERSION_MAP = CollectionsUtil.mapOf("99",
                     CollectionsUtil.mapOf(
-                                    DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion("99+99", 1),
-                                    "Vendor Specific", JVMCIVersionCheck.createLabsJDKVersion("99.0.1", 1)));
+                                    DEFAULT_VENDOR_ENTRY, JVMCIVersionCheck.createLabsJDKVersion("99+99", "myrelease", 1),
+                                    "Vendor Specific", JVMCIVersionCheck.createLabsJDKVersion("99.0.1", "myrelease", 1)));
 
     private static void expect(String javaVmVendor, String expected) {
         var props = JVMCIVersionCheckTest.createTestProperties("99", null, javaVmVendor);
@@ -55,12 +55,12 @@ public class JVMCIVersionCheckVendorTest extends GraalCompilerTest {
 
     @Test
     public void testVendorDefault() {
-        expect("Vendor Default", "99+99-jvmci-b01");
+        expect("Vendor Default", "99+99-jvmci-myrelease-b01");
     }
 
     @Test
     public void testVendorSpecific() {
-        expect("Vendor Specific", "99.0.1-jvmci-b01");
+        expect("Vendor Specific", "99.0.1-jvmci-myrelease-b01");
     }
 
 }

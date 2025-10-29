@@ -44,7 +44,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageInfo;
@@ -72,6 +71,7 @@ import jdk.graal.compiler.libgraal.truffle.LibGraalTruffleHostEnvironmentLookup;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashMap;

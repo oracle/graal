@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.util.List;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.AnnotationsContainer;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -47,7 +48,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * this case, a {@link BaseLayerType} is created using information from the base layer and wrapped
  * in an {@link AnalysisType} to replace this missing type is the new layer.
  */
-public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType, OriginalClassProvider {
+public class BaseLayerType extends AnnotationsContainer implements ResolvedJavaType, OriginalClassProvider {
     /**
      * The type corresponding to this {@link BaseLayerType} can be created later while building the
      * new layer. To avoid both types having the same name, the name of the {@link BaseLayerType} is

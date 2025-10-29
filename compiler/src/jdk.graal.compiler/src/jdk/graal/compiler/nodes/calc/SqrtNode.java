@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_16;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
@@ -62,6 +64,21 @@ public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements Arithme
     @Override
     protected UnaryOp<Sqrt> getOp(ArithmeticOpTable table) {
         return table.getSqrt();
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        ValueNode canonical = super.canonical(tool, forValue);
+        if (canonical != this) {
+            return canonical;
+        }
+        if (tool.allUsagesAvailable() && hasExactlyOneUsage() &&
+                        singleUsage() instanceof FloatConvertNode convertUsage && convertUsage.op == FloatConvert.D2F &&
+                        forValue instanceof FloatConvertNode convertInput && convertInput.op == FloatConvert.F2D) {
+            /* This is (float) Math.abs((double) floatInput). Narrow it to a float sqrt. */
+            return FloatConvertNode.create(FloatConvert.F2D, new SqrtNode(convertInput.getValue()), NodeView.from(tool));
+        }
+        return this;
     }
 
     @Override

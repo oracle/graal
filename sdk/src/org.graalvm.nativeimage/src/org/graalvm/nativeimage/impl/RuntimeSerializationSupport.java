@@ -56,7 +56,11 @@ public interface RuntimeSerializationSupport<C> {
 
     void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
 
-    void register(C condition, Class<?> clazz);
+    default void register(C condition, Class<?>... classes) {
+        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+    }
+
+    void register(C condition, boolean preserved, Class<?> clazz);
 
     void register(C condition, String clazz);
 

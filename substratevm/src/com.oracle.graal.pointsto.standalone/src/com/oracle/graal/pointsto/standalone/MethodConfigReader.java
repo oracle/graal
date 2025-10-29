@@ -106,7 +106,7 @@ public class MethodConfigReader {
                         validMethodsNum.incrementAndGet();
                     } catch (Throwable t) {
                         // Checkstyle: Allow raw info or warning printing - begin
-                        debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method " + method + " as analysis root method. Reason: " + t.getMessage());
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method %s as analysis root method. Reason: %s", method, t.getMessage());
                         // Checkstyle: Allow raw info or warning printing - end
                     }
                 }

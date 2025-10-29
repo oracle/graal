@@ -201,6 +201,13 @@ public abstract class JTTTestSuite {
     }
 
     /**
+     * Runs the currently compiled JS image.
+     */
+    protected static void testFileAgainstNoBuild(String... args) {
+        runJS(args, 0);
+    }
+
+    /**
      * Runs the currently compiled JS image and, asserts the given {@code exitCode} and checks its
      * output using the {@code lineChecker} consumer.
      */
@@ -226,7 +233,7 @@ public abstract class JTTTestSuite {
     /**
      * Runs the currently compiled JS image and compares its result against the given class run in a
      * Java runtime.
-     *
+     * <p>
      * It also checks the expected exit code.
      */
     protected static void testClassNoBuildWithExitCode(int exitCode, Class<?> c, String... args) {
@@ -244,7 +251,7 @@ public abstract class JTTTestSuite {
     /**
      * Runs the currently compiled JS image and compares its result against the given class run in a
      * Java runtime using the {@code lineChecker} consumer.
-     *
+     * <p>
      * It also checks the expected exit code.
      */
     protected static void testClassNoBuildWithExitCode(int exitCode, Class<?> c, String[] args, BiConsumer<String[], String[]> lineChecker) {

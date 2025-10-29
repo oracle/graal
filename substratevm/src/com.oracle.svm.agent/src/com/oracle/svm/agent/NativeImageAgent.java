@@ -83,6 +83,7 @@ import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
@@ -439,7 +440,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private static boolean checkJVMVersion(JvmtiEnv jvmti) {
         String agentVersion = System.getProperty("java.vm.version");
-        int agentMajorVersion = Runtime.version().feature();
+        int agentMajorVersion = JavaVersionUtil.JAVA_SPEC;
 
         String vmVersion = Support.getSystemProperty(jvmti, "java.vm.version");
         if (vmVersion == null) {

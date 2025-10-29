@@ -34,8 +34,8 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -59,7 +59,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
         super(original);
         this.message = deleteAnnotation.value();
-        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(deleteAnnotation);
+        this.injectedAnnotations = List.of(AnnotationUtil.asAnnotationValue(deleteAnnotation));
     }
 
     @Override

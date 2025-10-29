@@ -304,9 +304,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return super().default_stages()
 
     def layers(self, bm_suite_args: List[str]) -> List[Layer]:
-        if self.benchmarkName() == "micronaut-pegasus":
+        layered_benchmarks = ["micronaut-pegasus", "micronaut-shopcart"]
+        if self.benchmarkName() in layered_benchmarks:
             return [Layer(0, True), Layer(1, False)]
-        # Currently, "micronaut-pegasus" is the only benchmark that supports running with layers
         # Support for other benchmarks, or even suites? (GR-64772)
         mx.abort(f"The '{self.benchmarkName()}' benchmark does not support layered native images!")
 

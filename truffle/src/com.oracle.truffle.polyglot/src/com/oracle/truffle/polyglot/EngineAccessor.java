@@ -1435,16 +1435,37 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isKnownLoggerId(String id) {
-            return PolyglotLoggers.getInternalIds().contains(id) || LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+        public boolean isKnownLoggerId(Object loggerCache, String id) {
+            if (PolyglotLoggers.getInternalIds().contains(id)) {
+                return true;
+            }
+            if (loggerCache == PolyglotLoggers.LoggerCache.DEFAULT) {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                return LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+            } else {
+                PolyglotEngineImpl polyglotEngine = ((PolyglotLoggers.LoggerCache) loggerCache).getOwner().getEngine();
+                return polyglotEngine.idToLanguage.containsKey(id) || polyglotEngine.idToInstrument.containsKey(id);
+            }
         }
 
         @Override
-        public Collection<String> getKnownLoggerIds() {
-            List<String> ids = new ArrayList<>();
-            ids.addAll(PolyglotLoggers.getInternalIds());
-            ids.addAll(LanguageCache.languages().keySet());
-            ids.addAll(InstrumentCache.load().keySet());
+        public Collection<String> getKnownLoggerIds(Object loggerCache) {
+            List<String> ids = new ArrayList<>(PolyglotLoggers.getInternalIds());
+            if (loggerCache == PolyglotLoggers.LoggerCache.DEFAULT) {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                ids.addAll(LanguageCache.languages().keySet());
+                ids.addAll(InstrumentCache.load().keySet());
+            } else {
+                PolyglotEngineImpl polyglotEngine = ((PolyglotLoggers.LoggerCache) loggerCache).getOwner().getEngine();
+                ids.addAll(polyglotEngine.idToLanguage.keySet());
+                ids.addAll(polyglotEngine.idToInstrument.keySet());
+            }
             Collections.sort(ids);
             return ids;
         }

@@ -82,6 +82,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -352,7 +353,7 @@ public class HostedConfiguration {
      * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, Set<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(ValueBased.class)) {
+        if (!type.isArray() && !immutableTypes.contains(type) && !AnnotationUtil.isAnnotationPresent(type, ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }
     }

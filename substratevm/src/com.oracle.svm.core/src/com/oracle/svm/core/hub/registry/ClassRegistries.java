@@ -300,13 +300,17 @@ public final class ClassRegistries implements ParsingContext {
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
-        ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
-        if (type == null) {
-            throw new NoClassDefFoundError(name);
-        }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) singleton().getRegistry(loader);
-        return registry.defineClass(type, b, off, len, info);
+        if (name != null) {
+            ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
+            Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
+            if (type == null) {
+                throw new NoClassDefFoundError(name);
+            }
+            return registry.defineClass(type, b, off, len, info);
+        } else {
+            return registry.defineClass(null, b, off, len, info);
+        }
     }
 
     @SuppressWarnings("unchecked")

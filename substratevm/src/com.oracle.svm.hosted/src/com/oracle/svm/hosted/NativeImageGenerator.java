@@ -55,6 +55,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.analysis.ai.AbstractInterpretationDriver;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -73,6 +74,7 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -106,7 +108,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.DirectMethodProcessingHandler;
@@ -262,7 +263,9 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -985,8 +988,12 @@ public class NativeImageGenerator {
 
                 loader.initBuilderModules();
 
+                ImageSingletons.add(APIDeprecationSupport.class,
+                                new APIDeprecationSupport(ReflectionFeature.Options.TrackDeprecatedRegistrationUsage.getValue()));
+
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
+                DynamicAccessSupport.setRegistrationSealed();
                 setDefaultLibCIfMissing();
                 if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
                     setAndVerifyMainEntryPoint(access, entryPoints);
@@ -1202,7 +1209,7 @@ public class NativeImageGenerator {
         } else {
             analysisFactory = new PointsToAnalysisFactory();
         }
-        SubstrateAnnotationExtractor annotationExtractor = (SubstrateAnnotationExtractor) loader.classLoaderSupport.annotationExtractor;
+        SubstrateAnnotationExtractor annotationExtractor = loader.classLoaderSupport.annotationExtractor;
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, analysisFactory, annotationExtractor);
     }
 
@@ -1785,7 +1792,7 @@ public class NativeImageGenerator {
     private void checkUniverse() {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
+                if ((method.isInvoked() || method.isReachable()) && AnnotationUtil.getAnnotation(method, Fold.class) == null) {
                     checkName(bb, method);
                 }
             }

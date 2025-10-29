@@ -38,7 +38,6 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
-import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -195,8 +194,10 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
             if (restrictedType.isAssignableFrom(method.getDeclaringClass())) {
                 // Allow violation in methods of the restricted type itself and its subclasses.
             } else if (isIllegalUsage(method, cn.getX(), cn.getY(), context)) {
-                throw new VerificationError("Verification of " + restrictedClass.getName() + " usage failed: Comparing " + cn.getX() + " and " + cn.getY() + " in " + method +
-                                " must use .equals() for object equality, not '==' or '!='");
+                throw new VerificationError(cn, "Verification of %s usage failed: Comparing %s and %s must use .equals() for object equality, not '==' or '!='",
+                                restrictedClass.getName(),
+                                cn.getX(),
+                                cn.getY());
             }
         }
     }

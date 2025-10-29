@@ -41,7 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 
 /**
  * Represents a literal string inside the regular expression that can be searched for before
@@ -49,41 +49,27 @@ import com.oracle.truffle.regex.tregex.string.AbstractString;
  */
 public class InnerLiteral {
 
-    private final AbstractString literal;
-    private final AbstractString mask;
+    private final TruffleString literal;
+    private final TruffleString.WithMask mask;
     private final int maxPrefixSize;
+    private final int encodedLength;
 
-    private final TruffleString literalTString;
-    private final TruffleString.WithMask maskTString;
-
-    public InnerLiteral(AbstractString literal, AbstractString mask, int maxPrefixSize) {
-        this.literal = literal;
-        this.mask = mask;
+    public InnerLiteral(AbstractStringBuffer literal, AbstractStringBuffer mask, int maxPrefixSize) {
         this.maxPrefixSize = maxPrefixSize;
-        this.literalTString = literal.asTString();
-        this.maskTString = mask == null ? null : mask.asTStringMask(literalTString);
+        this.encodedLength = literal.length();
+        this.literal = literal.asTString();
+        this.mask = mask == null ? null : mask.asTStringMask(this.literal);
     }
 
-    /**
-     * The literal string.
-     */
-    public AbstractString getLiteral() {
+    public TruffleString getLiteral() {
         return literal;
-    }
-
-    public TruffleString getLiteralContent() {
-        return literalTString;
     }
 
     /**
      * An optional mask for matching the string in ignore-case mode.
      */
-    public AbstractString getMask() {
+    public TruffleString.WithMask getMask() {
         return mask;
-    }
-
-    public TruffleString.WithMask getMaskContent() {
-        return hasMask() ? maskTString : null;
     }
 
     public boolean hasMask() {
@@ -97,5 +83,9 @@ public class InnerLiteral {
      */
     public int getMaxPrefixSize() {
         return maxPrefixSize;
+    }
+
+    public int getEncodedLength() {
+        return encodedLength;
     }
 }

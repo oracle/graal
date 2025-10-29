@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
 
@@ -251,7 +251,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
         if (isLowerCase(c)) {
             return cps;
         } else {
-            return cps.createInverse(Encodings.UTF_32);
+            return cps.createInverse(Encoding.UTF_32);
         }
     }
 

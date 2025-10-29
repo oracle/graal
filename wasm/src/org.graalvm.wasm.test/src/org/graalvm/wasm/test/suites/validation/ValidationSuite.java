@@ -167,7 +167,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.MALFORMED),
                         binaryCase(
                                         "Table - import with invalid elemtype",
-                                        "Invalid element type for table import: 0x6F should = 0x70",
+                                        "Invalid element type for table import: -17 should = -16",
                                         // (import "a" "b" (table 0 1 externref))
                                         "00 61 73 6D 01 00 00 00 02 09 01 01 61 01 62 01 6F 00 01",
                                         Failure.Type.MALFORMED),
@@ -220,13 +220,13 @@ public class ValidationSuite extends WasmFileSuite {
                         // The type `C.types[x]` must be defined in the context.
                         stringCase(
                                         "Function - invalid type index",
-                                        "unknown type: 1 should be < 1",
+                                        "Function type variable 1 out of range. (max 0)",
                                         "(type (func (result i32))) (func (export \"f\") (type 1))",
                                         Failure.Type.INVALID),
                         stringCase(
                                         "Function - invalid type index",
-                                        "unknown type: 4294967254 should be < 1",
-                                        "(type (func (result i32))) (func (export \"f\") (type 4294967254))",
+                                        "Function type variable 1073741823 out of range. (max 0)",
+                                        "(type (func (result i32))) (func (export \"f\") (type 1073741823))",
                                         Failure.Type.INVALID),
 
                         // Under the context `C'`, the expression `express` must be valid with type

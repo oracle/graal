@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Information on a method that can be looked up and called via JNI.
  */
-public final class JNIAccessibleMethod extends JNIAccessibleMember {
+public final class JNIAccessibleMethod extends JNIAccessibleMember implements PreservableJNIElement {
     public static final int VTABLE_INDEX_STATICALLY_BOUND_METHOD = -1;
     public static final int VTABLE_INDEX_NOT_YET_COMPUTED = -2;
     public static final int INTERFACE_TYPEID_CLASS_TABLE = -1;
@@ -57,7 +57,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     public static final int NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE = -1;
 
     public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleMethod(jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK);
+        return new JNIAccessibleMethod(jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK, false);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -79,7 +79,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         return metaAccess.lookupJavaField(ReflectionUtil.lookupField(JNIAccessibleMethod.class, name.toString()));
     }
 
-    private final int modifiers;
+    private int modifiers;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private int vtableIndex = VTABLE_INDEX_NOT_YET_COMPUTED;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
@@ -104,9 +104,10 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @SuppressWarnings("unused") private CodePointer valistNonvirtualWrapper;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers) {
+    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers, boolean preserved) {
         super(declaringClass);
-        this.modifiers = modifiers;
+        assert (modifiers & RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK) == 0;
+        this.modifiers = modifiers | (preserved ? RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK : 0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -171,5 +172,15 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         this.arrayNonvirtualWrapper = arrayNonvirtual;
         this.valistNonvirtualWrapper = valistNonvirtual;
         setHidingSubclasses(hidingSubclasses);
+    }
+
+    @Override
+    public boolean isPreserved() {
+        return (modifiers & RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK) != 0;
+    }
+
+    @Override
+    public void setNotPreserved() {
+        modifiers = modifiers & (~RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK);
     }
 }

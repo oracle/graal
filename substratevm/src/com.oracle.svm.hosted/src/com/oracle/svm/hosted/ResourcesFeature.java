@@ -210,7 +210,7 @@ public class ResourcesFeature implements InternalFeature {
             if (conditionalResource != null) {
                 VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
                 classInitializationSupport.addForTypeReachedTracking(((TypeReachabilityCondition) condition).getType());
-                conditionalResource.getConditions().addCondition(condition);
+                conditionalResource.getDynamicAccessMetadata().addCondition(condition);
             }
         }
 
@@ -258,7 +258,7 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResourceBundles(AccessCondition condition, String name) {
+        public void addResourceBundles(AccessCondition condition, boolean preserved, String name) {
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
         }

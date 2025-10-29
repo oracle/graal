@@ -27,18 +27,19 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.util.AnnotationUtil;
 
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredImageSingleton
@@ -53,7 +54,7 @@ public final class CFunctionLinkages {
     }
 
     public CGlobalDataInfo addOrLookupMethod(ResolvedJavaMethod method) {
-        if (method.getAnnotation(NodeIntrinsic.class) != null || method.getAnnotation(Word.Operation.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, NodeIntrinsic.class) != null || AnnotationUtil.getAnnotation(method, Word.Operation.class) != null) {
             return null;
         }
         return nameToFunction.computeIfAbsent(linkageName(method), symbolName -> {
@@ -71,7 +72,7 @@ public final class CFunctionLinkages {
     }
 
     private static String getLinkageNameFromAnnotation(ResolvedJavaMethod method) {
-        CFunction cFunctionAnnotation = method.getAnnotation(CFunction.class);
+        CFunction cFunctionAnnotation = AnnotationUtil.getAnnotation(method, CFunction.class);
         if (cFunctionAnnotation != null) {
             return cFunctionAnnotation.value();
         }

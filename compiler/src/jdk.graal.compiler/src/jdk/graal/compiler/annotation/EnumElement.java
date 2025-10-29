@@ -45,8 +45,12 @@ public final class EnumElement {
      *
      * @param enumType the {@linkplain Enum enum type}
      * @param name the {@linkplain Enum#name() name} of the enum
+     * @throws IllegalArgumentException if {@code enumType} is not an enum type
      */
     public EnumElement(ResolvedJavaType enumType, String name) {
+        if (!enumType.isEnum()) {
+            throw new IllegalArgumentException(enumType.toClassName() + " is not an enum type");
+        }
         this.enumType = enumType;
         this.name = name;
     }

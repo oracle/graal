@@ -43,6 +43,7 @@ import java.util.function.BiFunction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -224,7 +225,7 @@ public class SymbolicSnippetEncoder {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            if (method.getAnnotation(Fold.class) != null) {
+            if (AnnotationValueSupport.getAnnotationValue(method, Fold.class) != null) {
                 delayedInvocationPluginMethods.add(method);
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
@@ -235,7 +236,7 @@ public class SymbolicSnippetEncoder {
 
         @Override
         public void notifyAfterInline(ResolvedJavaMethod methodToInline) {
-            assert methodToInline.getAnnotation(Fold.class) == null : methodToInline;
+            assert AnnotationValueSupport.getAnnotationValue(methodToInline, Fold.class) == null : methodToInline;
         }
     }
 
@@ -430,7 +431,7 @@ public class SymbolicSnippetEncoder {
     }
 
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
-        assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
+        assert AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         SnippetKey key = new SnippetKey(method, original, receiver);
         findSnippetMethod(method);
 

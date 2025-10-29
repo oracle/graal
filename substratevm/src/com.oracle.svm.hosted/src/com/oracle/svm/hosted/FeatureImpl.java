@@ -47,8 +47,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -96,6 +99,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -195,6 +199,26 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectiveAccess getReflectiveAccess() {
+            return ReflectiveAccessImpl.singleton();
+        }
+
+        @Override
+        public ResourceAccess getResourceAccess() {
+            return ResourceAccessImpl.singleton();
+        }
+
+        @Override
+        public JNIAccess getJNIAccess() {
+            return JNIAccessImpl.singleton();
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccessImpl.singleton();
         }
     }
 
@@ -415,15 +439,15 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAllocated(Class<?> clazz) {
-            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz));
+            registerAsUnsafeAllocated(getMetaAccess().lookupJavaType(clazz), false);
         }
 
-        public void registerAsUnsafeAllocated(AnalysisType aType) {
+        public void registerAsUnsafeAllocated(AnalysisType aType, boolean preserved) {
             if (aType.isAbstract()) {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
-            classForNameSupport.registerUnsafeAllocated(AccessCondition.unconditional(), aType.getJavaClass());
+            classForNameSupport.registerUnsafeAllocated(AccessCondition.unconditional(), aType.getJavaClass(), preserved);
         }
 
         @Override
@@ -453,7 +477,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
-            assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            assert !AnnotationUtil.isAnnotationPresent(aField, Delete.class);
             return aField.registerAsUnsafeAccessed(reason);
         }
 
@@ -586,7 +610,7 @@ public class FeatureImpl {
          * before/during analysis only in some builds when the initialization happened fast enough,
          * resulting in unstable number of reachable methods and unstable decisions of the
          * simulation of class initializers.
-         * 
+         *
          * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
          */
         public void allowStableFieldFoldingBeforeAnalysis(Field field) {

@@ -34,6 +34,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -69,7 +70,7 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
          * the class loader of the using class into account. So we look at the annotation directly
          * for now.
          */
-        if (field.isAnnotationPresent(jdk.internal.vm.annotation.Stable.class)) {
+        if (AnnotationUtil.isAnnotationPresent(field, jdk.internal.vm.annotation.Stable.class)) {
             stable = true;
         } else {
             stable = super.isStableField(field, tool);

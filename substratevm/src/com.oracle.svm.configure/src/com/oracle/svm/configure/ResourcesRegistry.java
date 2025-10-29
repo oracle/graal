@@ -54,7 +54,7 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
     void ignoreResources(C condition, String pattern, Object origin);
 
     @Override
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, boolean preserved, String name);
 
     @Override
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);

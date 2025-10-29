@@ -54,7 +54,6 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
@@ -588,7 +587,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 }
                 ast.getProperties().setCharClasses();
             }
-            if (ast.getEncoding() == Encodings.UTF_16 && Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+            if (ast.getEncoding().isUTF16() && Constants.SURROGATES.intersects(characterClass.getCharSet())) {
                 ast.getProperties().setLoneSurrogates();
             }
         }
