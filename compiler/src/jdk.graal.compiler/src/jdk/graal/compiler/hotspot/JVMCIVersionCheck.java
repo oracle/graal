@@ -58,8 +58,8 @@ public final class JVMCIVersionCheck {
     // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25+37", "25.1", 7),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25+37", "25.1", 7)));
+                                    "Oracle Corporation", createLabsJDKVersion("25.0.1+8", "25.1", 8),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.1+8", "25.1", 8)));
     // Checkstyle: resume stable iteration order check
 
     private static final int NA = 0;
@@ -246,9 +246,9 @@ public final class JVMCIVersionCheck {
             return Objects.hashCode(this.jdkVersion) ^ Objects.hashCode(this.releaseName) ^ this.jvmciBuild;
         }
 
-        public static final String AS_TAG_FORMAT_RELEASE_NAME = "%s-jvmci-%s-b%02d";
+        public static final String AS_TAG_FORMAT_RELEASE_NAME = "jvmci-%s-b%02d";
+        public static final String TO_STRING_FORMAT_RELEASE_NAME = "%s-jvmci-%s-b%02d";
         public static final String AS_TAG_FORMAT_22_AND_LATER = "%s-jvmci-b%02d";
-        public static final String AS_TAG_FORMAT_21_AND_EARLIER = "jvmci-%d.%d-b%02d";
 
         @Override
         public String toString() {
@@ -256,7 +256,7 @@ public final class JVMCIVersionCheck {
                 return jdkVersion.toString();
             }
             if (releaseName != null) {
-                return String.format(AS_TAG_FORMAT_RELEASE_NAME, jdkVersion, releaseName, jvmciBuild);
+                return String.format(TO_STRING_FORMAT_RELEASE_NAME, jdkVersion, releaseName, jvmciBuild);
             } else {
                 return String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
             }
@@ -265,7 +265,15 @@ public final class JVMCIVersionCheck {
         public String printFormat(PrintFormat format) {
             return switch (format) {
                 case TUPLE -> String.format("%s,%s,%d", jdkVersion, releaseName, jvmciBuild);
-                case AS_TAG -> toString();
+                case AS_TAG -> {
+                    if (isOpenJDK()) {
+                        yield jdkVersion.toString();
+                    } else if (releaseName != null) {
+                        yield String.format(AS_TAG_FORMAT_RELEASE_NAME, releaseName, jvmciBuild);
+                    } else {
+                        yield String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
+                    }
+                }
             };
         }
 

@@ -79,8 +79,7 @@ public class JVMCIVersionCheckMain extends GraalCompilerTest {
         String out = runMainCaptureOut("--min-version", "--as-tag");
         Assert.assertNotNull(out);
         Assert.assertFalse(out.contains("No minimum JVMCI version specified for JDK version"));
-        // check that the output is a valid version
-        Runtime.Version.parse(out.strip());
+        Assert.assertTrue(out.startsWith("jvmci-"));
     }
 
     @Test(expected = IllegalArgumentException.class)
