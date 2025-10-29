@@ -1339,18 +1339,17 @@ public class TruffleGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode offset, ValueNode value, ValueNode location) {
-            ValueNode locationArgument = location;
-            if (locationArgument.isConstant()) {
+            if (location.isConstant()) {
                 LocationIdentity locationIdentity;
                 boolean forceLocation;
-                if (locationArgument.isNullConstant()) {
+                if (location.isNullConstant()) {
                     locationIdentity = LocationIdentity.any();
                     forceLocation = false;
-                } else if (locationArgument.asJavaConstant().equals(anyConstant)) {
+                } else if (location.asJavaConstant().equals(anyConstant)) {
                     locationIdentity = LocationIdentity.any();
                     forceLocation = true;
                 } else {
-                    locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
+                    locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                     forceLocation = true;
                 }
                 b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceLocation));
@@ -1384,7 +1383,7 @@ public class TruffleGraphBuilderPlugins {
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
                 }
             } catch (Throwable t) {
-                debug.handle(t);
+                throw debug.handle(t);
             }
         }
     }
@@ -1418,7 +1417,7 @@ public class TruffleGraphBuilderPlugins {
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: unsafeCast arguments could not reduce to a constant: %s, %s, %s", type, nonNull, isExactType);
                 }
             } catch (Throwable t) {
-                debug.handle(t);
+                throw debug.handle(t);
             }
         }
     }
@@ -1426,8 +1425,7 @@ public class TruffleGraphBuilderPlugins {
     static BailoutException failPEConstant(GraphBuilderContext b, ValueNode value) {
         StringBuilder sb = new StringBuilder();
         sb.append(value);
-        if (value instanceof ValuePhiNode) {
-            ValuePhiNode valuePhi = (ValuePhiNode) value;
+        if (value instanceof ValuePhiNode valuePhi) {
             sb.append(" (");
             for (Node n : valuePhi.inputs()) {
                 sb.append(n);
@@ -1450,8 +1448,7 @@ public class TruffleGraphBuilderPlugins {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
             ValueNode curValue = value;
-            if (curValue instanceof BoxNode) {
-                BoxNode boxNode = (BoxNode) curValue;
+            if (curValue instanceof BoxNode boxNode) {
                 curValue = boxNode.getValue();
             }
             if (curValue.isConstant()) {
