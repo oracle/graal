@@ -117,11 +117,13 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
         }
         if (originalTypeFlow instanceof FieldTypeFlow || originalTypeFlow instanceof ArrayElementsTypeFlow) {
             // field and array flows are not call site sensitive and thus not cloneable
+            assert !originalTypeFlow.isSaturated() : "Saturated flows should not be accessed here: " + originalTypeFlow;
             return originalTypeFlow.getState();
         }
         TypeState result = TypeState.forEmpty();
         for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
             TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
+            assert !clonedTypeFlow.isSaturated() : "Saturated flows should not be accessed here: " + clonedTypeFlow;
             TypeState cloneState = clonedTypeFlow.getState();
             /*
              * Make a shallow copy of the clone state, i.e., only the types and not the concrete
