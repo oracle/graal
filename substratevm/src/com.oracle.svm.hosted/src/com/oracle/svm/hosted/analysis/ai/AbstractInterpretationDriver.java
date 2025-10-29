@@ -3,9 +3,15 @@ package com.oracle.svm.hosted.analysis.ai;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.access.inter.AccessPathIntervalInterAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.intra.IntraDataFlowIntervalAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
+import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
 import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
+import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
@@ -55,15 +61,26 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void prepareAnalyses() throws IOException {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.INFO);
-        logger.log("Example of logging", LoggerVerbosity.INFO);
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(debug, "myLogger", LoggerVerbosity.DEBUG);
+        logger.log("Example of logging", LoggerVerbosity.DEBUG);
 
-        /*
-          We can instantiate an existing analyzer or implement a new one in {@link IntraProceduralAnalyzer} and {@link InterProceduralAnalyzer}
-          If we wish to use analyzers during the native image build, we must register them here.
-          To get started quickly, we can use the sample analyzer wrappers provided in {@link com.oracle.svm.hosted.analysis.ai.example}.
-         */
-        var analyzer = new IntraDataFlowIntervalAnalyzerWrapper().getAnalyzer();
+        /* The example below shows how to create and register an intra-procedural data-flow interval analyzer. */
+
+        /* 1. Define domain (or use existing) */
+        AbstractMemory initialDomain = new AbstractMemory();
+
+        /* 2. Create interpreter */
+        DataFlowIntervalAbstractInterpreter interpreter =
+                new DataFlowIntervalAbstractInterpreter();
+
+        /* 3. Build analyzer */
+        var analyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
+                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
+                .registerChecker(new DivisionByZeroChecker())
+                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+                .build();
+
+        /* 4. Register with manager */
         analyzerManager.registerAnalyzer(analyzer);
     }
 }
