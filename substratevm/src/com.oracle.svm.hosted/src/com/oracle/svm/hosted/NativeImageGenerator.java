@@ -106,7 +106,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.DirectMethodProcessingHandler;
@@ -262,7 +261,9 @@ import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -1196,7 +1197,7 @@ public class NativeImageGenerator {
         } else {
             analysisFactory = new PointsToAnalysisFactory();
         }
-        SubstrateAnnotationExtractor annotationExtractor = (SubstrateAnnotationExtractor) loader.classLoaderSupport.annotationExtractor;
+        SubstrateAnnotationExtractor annotationExtractor = loader.classLoaderSupport.annotationExtractor;
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, analysisFactory, annotationExtractor);
     }
 
@@ -1779,7 +1780,7 @@ public class NativeImageGenerator {
     private void checkUniverse() {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
+                if ((method.isInvoked() || method.isReachable()) && AnnotationUtil.getAnnotation(method, Fold.class) == null) {
                     checkName(bb, method);
                 }
             }

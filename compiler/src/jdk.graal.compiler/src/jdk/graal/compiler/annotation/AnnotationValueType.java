@@ -78,6 +78,29 @@ public final class AnnotationValueType {
     }
 
     /**
+     * Determines if the type of {@code elementValue} matches {@code elementType}.
+     *
+     * @param elementValue a value of a type returned by {@link AnnotationValue#get}
+     * @param elementType an annotation element type (i.e. the return type of an annotation
+     *            interface method)
+     */
+    public static boolean matchesElementType(Object elementValue, ResolvedJavaType elementType) {
+        if (elementValue instanceof AnnotationValue av) {
+            return elementType.equals(av.getAnnotationType());
+        }
+        if (elementValue instanceof ResolvedJavaType) {
+            return elementType.getName().equals("Ljava/lang/Class;");
+        }
+        if (elementValue instanceof EnumElement ee) {
+            return ee.enumType.equals(elementType);
+        }
+        if (elementType.isPrimitive()) {
+            return elementValue.getClass() == elementType.getJavaKind().toBoxedJavaClass();
+        }
+        return elementType.toJavaName().equals(elementValue.getClass().getName());
+    }
+
+    /**
      * Gets the element types for the annotation represented by this object.
      *
      * @return a map from element name to element type

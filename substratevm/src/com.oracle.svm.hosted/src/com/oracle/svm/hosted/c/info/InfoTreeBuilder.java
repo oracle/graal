@@ -66,6 +66,7 @@ import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -214,7 +215,7 @@ public class InfoTreeBuilder {
     }
 
     public static String getTypedefName(ResolvedJavaType type) {
-        CTypedef typedefAnnotation = type.getAnnotation(CTypedef.class);
+        CTypedef typedefAnnotation = AnnotationUtil.getAnnotation(type, CTypedef.class);
         return typedefAnnotation != null ? typedefAnnotation.name() : null;
     }
 
@@ -228,7 +229,7 @@ public class InfoTreeBuilder {
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
         for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            if (!AnnotationSubstitutionProcessor.isIncluded(method.getAnnotation(TargetElement.class), ((AnalysisType) method.getDeclaringClass()).getJavaClass(), method)) {
+            if (!AnnotationSubstitutionProcessor.isIncluded(AnnotationUtil.getAnnotation(method, TargetElement.class), ((AnalysisType) method.getDeclaringClass()).getJavaClass(), method)) {
                 continue;
             }
 
@@ -522,7 +523,7 @@ public class InfoTreeBuilder {
     }
 
     private boolean validInterfaceDefinition(ResolvedJavaType type, Class<? extends Annotation> annotationClass) {
-        assert type.getAnnotation(annotationClass) != null;
+        assert AnnotationUtil.getAnnotation(type, annotationClass) != null;
 
         if (!type.isInterface() || !nativeLibs.isPointerBase(type)) {
             nativeLibs.addError("Annotation @" + ClassUtil.getUnqualifiedName(annotationClass) + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
@@ -555,7 +556,7 @@ public class InfoTreeBuilder {
     }
 
     private String getCPointerToTypeName(ResolvedJavaType type) {
-        CPointerTo pointerToAnnotation = type.getAnnotation(CPointerTo.class);
+        CPointerTo pointerToAnnotation = AnnotationUtil.getAnnotation(type, CPointerTo.class);
         Class<?> pointerToType = pointerToAnnotation.value();
         String nameOfCType = pointerToAnnotation.nameOfCType();
 
@@ -589,7 +590,7 @@ public class InfoTreeBuilder {
     }
 
     private String getRawPointerToTypeName(ResolvedJavaType type) {
-        RawPointerTo pointerToAnnotation = type.getAnnotation(RawPointerTo.class);
+        RawPointerTo pointerToAnnotation = AnnotationUtil.getAnnotation(type, RawPointerTo.class);
         Class<?> pointerToType = pointerToAnnotation.value();
 
         RawStructure pointerToRawStructAnnotation;
@@ -620,10 +621,10 @@ public class InfoTreeBuilder {
     }
 
     private static String getStructName(ResolvedJavaType type) {
-        CStruct structAnnotation = type.getAnnotation(CStruct.class);
+        CStruct structAnnotation = AnnotationUtil.getAnnotation(type, CStruct.class);
 
         if (structAnnotation == null) {
-            RawStructure rsanno = type.getAnnotation(RawStructure.class);
+            RawStructure rsanno = AnnotationUtil.getAnnotation(type, RawStructure.class);
             assert rsanno != null : "Unexpected struct type " + type;
             return getSimpleJavaName(type);
         }
@@ -664,7 +665,7 @@ public class InfoTreeBuilder {
             return;
         }
 
-        CEnum annotation = type.getAnnotation(CEnum.class);
+        CEnum annotation = AnnotationUtil.getAnnotation(type, CEnum.class);
         String name = annotation.value();
         if (name.isEmpty()) {
             name = "int";
@@ -706,7 +707,7 @@ public class InfoTreeBuilder {
         ResolvedJavaType originalType = originalProviders.getMetaAccess().lookupJavaType(enumValue);
         assert enumValue.isNonNull() && originalType.equals(((WrappedElement) enumInfo.getAnnotatedElement()).getWrapped());
 
-        CEnumConstant fieldAnnotation = field.getAnnotation(CEnumConstant.class);
+        CEnumConstant fieldAnnotation = AnnotationUtil.getAnnotation(field, CEnumConstant.class);
         String name = "";
         boolean includeInLookup = true;
         if (fieldAnnotation != null) {

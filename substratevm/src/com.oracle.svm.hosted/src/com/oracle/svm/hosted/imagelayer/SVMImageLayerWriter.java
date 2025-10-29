@@ -69,7 +69,6 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -171,6 +170,7 @@ import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -930,7 +930,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        return !AnnotationAccess.isAnnotationPresent(field, Delete.class) &&
+        return !AnnotationUtil.isAnnotationPresent(field, Delete.class) &&
                         ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                         field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers() && field.installableInLayer();
     }

@@ -88,6 +88,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -263,7 +264,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private boolean isAnnotationPresent(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
-            return AnnotationAccess.isAnnotationPresent(substitutionField, annotationClass);
+            return AnnotationUtil.isAnnotationPresent(substitutionField, annotationClass);
         }
         return false;
     }
@@ -346,7 +347,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public void registerUnsafeAccessedFields(BigBang bb) {
         for (var entry : unsafeAccessedFields.entrySet()) {
             AnalysisField targetField = bb.getMetaAccess().lookupJavaField(entry.getKey());
-            assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
+            assert !AnnotationUtil.isAnnotationPresent(targetField, Delete.class);
             targetField.registerAsUnsafeAccessed(entry.getValue());
         }
         /* Prevent later additions that would go unnoticed. */
@@ -500,7 +501,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            if (AnnotationAccess.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotatedMethod);
             }
 
@@ -510,7 +511,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
-            if (AnnotationAccess.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+            if (AnnotationUtil.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
                 throw UserError.abort("@Uninterruptible may only be combined with @AnnotateOriginal if the original method is effectively final: %s", annotatedMethod);
             }
 

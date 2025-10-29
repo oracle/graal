@@ -37,12 +37,11 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -93,6 +92,7 @@ import com.oracle.svm.hosted.webimage.name.WebImageNamingConvention;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
@@ -341,6 +341,6 @@ public class WebImageFeature implements InternalFeature {
         /*
          * Methods annotated with @JS are never trivial.
          */
-        return AnnotationAccess.isAnnotationPresent(callee, JS.class);
+        return AnnotationUtil.isAnnotationPresent(callee, JS.class);
     }
 }

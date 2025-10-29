@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -83,7 +84,7 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
             if (!hostVM.platformSupported(analysisClass)) {
                 return true;
-            } else if (analysisClass.isAnnotationPresent(Delete.class)) {
+            } else if (AnnotationUtil.isAnnotationPresent(analysisClass, Delete.class)) {
                 return true; // accesses would fail at runtime
             }
         } catch (UnsupportedFeatureException ignored) {
@@ -103,11 +104,11 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
             if (!hostVM.platformSupported(aMethod)) {
                 return true;
-            } else if (aMethod.isAnnotationPresent(Delete.class)) {
+            } else if (AnnotationUtil.isAnnotationPresent(aMethod, Delete.class)) {
                 return true; // accesses would fail at runtime
-            } else if (aMethod.isAnnotationPresent(Fold.class)) {
+            } else if (AnnotationUtil.isAnnotationPresent(aMethod, Fold.class)) {
                 return true; // accesses can contain hosted elements
-            } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
+            } else if (aMethod.isSynthetic() && AnnotationUtil.isAnnotationPresent(aMethod.getDeclaringClass(), TargetClass.class)) {
                 /*
                  * Synthetic methods are usually methods injected by javac to provide access to
                  * private fields or methods (access$NNN). In substitution classes, the referenced
@@ -135,7 +136,7 @@ public class SubstitutionReflectivityFilter implements InternalFeature {
             if (!hostVM.platformSupported(aField)) {
                 return true;
             }
-            if (aField.isAnnotationPresent(Delete.class) || aField.isAnnotationPresent(InjectAccessors.class)) {
+            if (AnnotationUtil.isAnnotationPresent(aField, Delete.class) || AnnotationUtil.isAnnotationPresent(aField, InjectAccessors.class)) {
                 return true; // accesses would fail at runtime
             }
         } catch (UnsupportedFeatureException ignored) {

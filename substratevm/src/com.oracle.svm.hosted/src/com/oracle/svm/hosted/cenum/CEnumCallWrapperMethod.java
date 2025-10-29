@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.cenum;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
 import java.lang.reflect.Modifier;
 import java.util.List;
@@ -38,13 +39,12 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
@@ -59,8 +59,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * or {@link CEnumValue}.
  */
 public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
-    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(CEnumCallWrapperMethod.class, "uninterruptibleAnnotationHolder")));
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
+                    newAnnotationValue(Uninterruptible.class,
+                                    "reason", CALLED_FROM_UNINTERRUPTIBLE_CODE,
+                                    "mayBeInlined", true));
 
     private final NativeLibraries nativeLibraries;
 
@@ -77,10 +79,10 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
         /* Annotate @CEnumValue methods with @Uninterruptible. */
-        if (original.getAnnotation(CEnumValue.class) != null) {
+        if (AnnotationUtil.getAnnotation(original, CEnumValue.class) != null) {
             return INJECTED_ANNOTATIONS;
         }
-        return null;
+        return List.of();
     }
 
     @Override
@@ -99,11 +101,11 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     private ValueNode createInvoke(AnalysisMethod method, HostedGraphKit kit, AnalysisType returnType, ValueNode arg) {
-        if (method.getAnnotation(CEnumLookup.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, CEnumLookup.class) != null) {
             /* Call a method that converts the primitive value to a Java enum. */
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
             return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg, true);
-        } else if (method.getAnnotation(CEnumValue.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(method, CEnumValue.class) != null) {
             /* Call a method that converts a Java enum to a primitive value. */
             ResolvedJavaType declaringType = method.getDeclaringClass();
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);
@@ -111,10 +113,5 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
         }
 
         throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    @SuppressWarnings("unused")
-    private static void uninterruptibleAnnotationHolder() {
     }
 }

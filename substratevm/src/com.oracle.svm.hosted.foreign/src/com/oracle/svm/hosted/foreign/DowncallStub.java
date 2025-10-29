@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.foreign;
 
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
+
 import java.util.List;
 
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -42,7 +44,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ReflectionUtil;
@@ -104,13 +105,10 @@ class DowncallStub extends NonBytecodeMethod {
         this.nep = nep;
     }
 
-    @Uninterruptible(reason = "See DowncallStub.getInjectedAnnotations.", calleeMustBe = false)
-    @SuppressWarnings("unused")
-    private static void uninterruptibleAnnotationForAllowHeapAccessHolder() {
-    }
-
-    private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationForAllowHeapAccessHolder")));
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = List.of(
+                    newAnnotationValue(Uninterruptible.class,
+                                    "reason", "See DowncallStub.getInjectedAnnotations.",
+                                    "calleeMustBe", false));
 
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
@@ -123,7 +121,7 @@ class DowncallStub extends NonBytecodeMethod {
         if (nep.allowHeapAccess()) {
             return INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS;
         }
-        return null;
+        return List.of();
     }
 
     /**
