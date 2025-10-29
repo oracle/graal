@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.log;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
@@ -122,7 +123,7 @@ public final class AbstractInterpretationLogger {
         log(summaryManager.getCacheStats(), LoggerVerbosity.SUMMARY);
     }
 
-    public void printGraph(AnalysisMethod root, ControlFlowGraph graph) {
+    public void printGraph(AnalysisMethod root, ControlFlowGraph graph, GraphTraversalHelper graphTraversalHelper) {
         if (graph == null) {
             throw new IllegalArgumentException("ControlFlowGraph is null");
         }
@@ -130,6 +131,15 @@ public final class AbstractInterpretationLogger {
         log("Graph of AnalysisMethod: " + root, LoggerVerbosity.DEBUG);
         for (HIRBlock block : graph.getBlocks()) {
             log(block.toString(), LoggerVerbosity.DEBUG);
+            log("Block predecessors: ", LoggerVerbosity.DEBUG);
+            for (HIRBlock predecessor : graphTraversalHelper.getPredecessors(block)) {
+                log("\t" + predecessor.toString(), LoggerVerbosity.DEBUG);
+            }
+
+            log("Block successors: ", LoggerVerbosity.DEBUG);
+            for (HIRBlock successor : graphTraversalHelper.getSuccessors(block)) {
+                log("\t" + successor.toString(), LoggerVerbosity.DEBUG);
+            }
 
             for (Node node : block.getNodes()) {
                 log(node.toString(), LoggerVerbosity.DEBUG);
@@ -191,6 +201,62 @@ public final class AbstractInterpretationLogger {
 
     public String getLogFilePath() {
         return logFilePath;
+    }
+
+    /**
+     * Export a graph to JSON format for sharing and analysis.
+     * This is useful for getting help with abstract interpretation analysis.
+     *
+     * @param cfg The control flow graph
+     * @param method The analysis method
+     * @param outputPath Path to write the JSON file
+     */
+    public void exportGraphToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
+        try {
+            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
+                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+            exporter.exportToJson(cfg, method, outputPath);
+            log("Graph exported to JSON: " + outputPath, LoggerVerbosity.INFO);
+        } catch (Exception e) {
+            log("Failed to export graph to JSON: " + e.getMessage(), LoggerVerbosity.INFO);
+        }
+    }
+
+    /**
+     * Export a graph to text format for manual inspection.
+     *
+     * @param cfg The control flow graph
+     * @param method The analysis method
+     * @param outputPath Path to write the text file
+     */
+    public void exportGraphToText(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
+        try {
+            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
+                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+            exporter.exportToText(cfg, method, outputPath);
+            log("Graph exported to text: " + outputPath, LoggerVerbosity.INFO);
+        } catch (Exception e) {
+            log("Failed to export graph to text: " + e.getMessage(), LoggerVerbosity.INFO);
+        }
+    }
+
+    /**
+     * Export a graph to compact format for quick sharing.
+     *
+     * @param graph The structured graph
+     * @param cfg The control flow graph
+     * @param method The analysis method
+     * @param outputPath Path to write the text file
+     */
+    public void exportGraphToCompact(StructuredGraph graph, ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
+        try {
+            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
+                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+            exporter.exportToCompact(graph, cfg, method, outputPath);
+            log("Graph exported to compact format: " + outputPath, LoggerVerbosity.INFO);
+        } catch (Exception e) {
+            log("Failed to export graph to compact format: " + e.getMessage(), LoggerVerbosity.INFO);
+        }
     }
 
     private static class ANSI {
