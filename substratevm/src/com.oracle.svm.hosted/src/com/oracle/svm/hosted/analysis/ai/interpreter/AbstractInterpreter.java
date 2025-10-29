@@ -21,7 +21,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
      * @param source          the node from which the edge originates
      * @param target          the node to which the edge goes
      * @param abstractState   of the analyzed method
-     * @param iteratorContext optional context information from the fixpoint iterator (can be null)
+     * @param iteratorContext optional context information from the fixpoint iterator
      */
     void execEdge(Node source, Node target, AbstractState<Domain> abstractState, IteratorContext iteratorContext);
 
@@ -32,35 +32,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
      * @param node            to interpret
      * @param abstractState   of the analyzed method
      * @param invokeCallBack  callback that can be used to analyze the summary of invokes
-     * @param iteratorContext optional context information from the fixpoint iterator (can be null)
+     * @param iteratorContext optional context information from the fixpoint iterator
      */
     void execNode(Node node, AbstractState<Domain> abstractState, InvokeCallBack<Domain> invokeCallBack, IteratorContext iteratorContext);
-
-    // TODO: remove this once we have everything ready for iteratorContext
-
-    /**
-     * Interpret the effect of executing an edge between two nodes {@link AbstractState}.
-     * Default implementation that calls the context-aware version with null context.
-     * For backward compatibility with implementations that don't need context.
-     *
-     * @param source        the node from which the edge originates
-     * @param target        the node to which the edge goes
-     * @param abstractState of the analyzed method
-     */
-    default void execEdge(Node source, Node target, AbstractState<Domain> abstractState) {
-        execEdge(source, target, abstractState, null);
-    }
-
-    /**
-     * Interpret the effect of executing a Graal IR node within given {@link AbstractState}.
-     * Default implementation that calls the context-aware version with null context.
-     * For backward compatibility with implementations that don't need context.
-     *
-     * @param node           to interpret
-     * @param abstractState  of the analyzed method
-     * @param invokeCallBack callback that can be used to analyze the summary of invokes
-     */
-    default void execNode(Node node, AbstractState<Domain> abstractState, InvokeCallBack<Domain> invokeCallBack) {
-        execNode(node, abstractState, invokeCallBack, null);
-    }
 }

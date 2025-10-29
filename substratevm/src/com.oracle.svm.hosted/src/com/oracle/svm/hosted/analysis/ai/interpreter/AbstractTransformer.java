@@ -21,17 +21,6 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         AbstractInterpreter<Domain> abstractInterpreter, InvokeCallBack<Domain> analyzeDependencyCallback) {
 
     /**
-     * Performs semantic transformation of the given {@link Node},
-     * For efficiency it modifies the post-condition of {@param node}
-     *
-     * @param node          to analyze
-     * @param abstractState current abstract state during fixpoint iteration
-     */
-    public void analyzeNode(Node node, AbstractState<Domain> abstractState) {
-        analyzeNode(node, abstractState, null);
-    }
-
-    /**
      * Performs semantic transformation of the given {@link Node} with iterator context.
      * For efficiency, it modifies the post-condition of {@param node}
      *
@@ -40,22 +29,7 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
      * @param context       optional context information from the fixpoint iterator
      */
     public void analyzeNode(Node node, AbstractState<Domain> abstractState, IteratorContext context) {
-        if (abstractState.getState(node).isRestrictedFromExecution()) {
-            return;
-        }
         abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback, context);
-    }
-
-    /**
-     * Performs semantic transformation of an edge between two {@link Node}s.
-     * For efficiency, it modifies the pre-condition of the {@param target} Node.
-     *
-     * @param source        the node from which the edge originates
-     * @param target        the node to which the edge goes
-     * @param abstractState abstract state during fixpoint iteration
-     */
-    public void analyzeEdge(Node source, Node target, AbstractState<Domain> abstractState) {
-        analyzeEdge(source, target, abstractState, null);
     }
 
     /**
@@ -68,76 +42,50 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
      * @param context       optional context information from the fixpoint iterator
      */
     public void analyzeEdge(Node source, Node target, AbstractState<Domain> abstractState, IteratorContext context) {
-        if (abstractState.getState(source).isRestrictedFromExecution()) {
-            abstractState.getState(target).markRestrictedFromExecution();
-            return;
-        }
-
         abstractInterpreter.execEdge(source, target, abstractState, context);
     }
 
-    /**
-     * Collect post-conditions from the CFG predecessors of the given {@link HIRBlock}.
-     *
-     * @param block         the {@link HIRBlock} into which we are merging invariants
-     * @param abstractState abstract state during fixpoint iteration
-     */
-    public void collectInvariantsFromCfgPredecessors(HIRBlock block, AbstractState<Domain> abstractState, GraphTraversalHelper graphTraversalHelper) {
-        collectInvariantsFromCfgPredecessors(block, abstractState, graphTraversalHelper, null);
-    }
-
-    /**
-     * Collect post-conditions from the CFG predecessors of the given {@link HIRBlock} with context.
-     *
-     * @param block         the {@link HIRBlock} into which we are merging invariants
-     * @param abstractState abstract state during fixpoint iteration
-     * @param context       optional context information from the fixpoint iterator
-     */
     public void collectInvariantsFromCfgPredecessors(HIRBlock block, AbstractState<Domain> abstractState,
                                                      GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
         Node blockBeginNode = graphTraversalHelper.getBeginNode(block);
-        for (int i = 0; i < graphTraversalHelper.getPredecessorCount(block); i++) {
-            HIRBlock predecessor = block.getPredecessorAt(i);
-            Node predecessorEndNode = graphTraversalHelper.getEndNode(predecessor);
-            analyzeEdge(predecessorEndNode, blockBeginNode, abstractState, context);
-        }
+        collectInvariantsFromCfgPredecessors(blockBeginNode, abstractState, graphTraversalHelper, context);
     }
 
     /**
-     * Performs semantic transformation of an edge between two {@link HIRBlock}s.
+     * Collects invariants from all CFG predecessors of the given {@link Node}.
      *
-     * @param sourceBlock      the head from which the edge originates
-     * @param destinationBlock the head to which the edge goes
-     * @param abstractState    abstract state during fixpoint iteration
+     * @param node                 the node whose predecessors to analyze
+     * @param abstractState        abstract state during fixpoint iteration
+     * @param graphTraversalHelper helper to traverse the graph
+     * @param context              optional context information from the fixpoint iterator
      */
-    public void analyzeEdge(HIRBlock sourceBlock, HIRBlock destinationBlock, AbstractState<Domain> abstractState) {
-        analyzeEdge(sourceBlock, destinationBlock, abstractState, null);
-    }
+    public void collectInvariantsFromCfgPredecessors(Node node, AbstractState<Domain> abstractState,
+                                                     GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        HIRBlock currentBlock = (context != null) ? context.getBlockForNode(node) : null;
 
-    /**
-     * Performs semantic transformation of an edge between two {@link HIRBlock}s with context.
-     *
-     * @param sourceBlock      the head from which the edge originates
-     * @param destinationBlock the head to which the edge goes
-     * @param abstractState    abstract state during fixpoint iteration
-     * @param context          optional context information from the fixpoint iterator
-     */
-    public void analyzeEdge(HIRBlock sourceBlock, HIRBlock destinationBlock, AbstractState<Domain> abstractState, IteratorContext context) {
-        for (Node sourceNode : sourceBlock.getNodes()) {
-            for (Node destinationNode : destinationBlock.getNodes()) {
-                analyzeEdge(sourceNode, destinationNode, abstractState, context);
+        // FIXME: this is retarded bacause but safe, because we only have BasicIteratorContext implementing the IteratorContext interface
+        if (currentBlock != null && context instanceof com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext basicContext) {
+            int predCount = graphTraversalHelper.getPredecessorCount(currentBlock);
+            logger.log("Collecting invariants from " + predCount + " CFG predecessors for node: " + node,
+                    LoggerVerbosity.DEBUG);
+
+            for (int i = 0; i < predCount; i++) {
+                HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
+                Node predecessor = graphTraversalHelper.getEndNode(predBlock);
+
+                basicContext.setEdgeTraversal(predBlock, currentBlock);
+                logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
+
+                if (predecessor != null) {
+                    analyzeEdge(predecessor, node, abstractState, context);
+                }
+            }
+        } else {
+            for (Node predecessor : graphTraversalHelper.getNodeCfgPredecessors(node)) {
+                analyzeEdge(predecessor, node, abstractState, context);
             }
         }
-    }
-
-    /**
-     * Performs semantic transformation of the given {@link HIRBlock}.
-     *
-     * @param block         the head to analyze
-     * @param abstractState abstract state during fixpoint iteration
-     */
-    public void analyzeBlock(HIRBlock block, AbstractState<Domain> abstractState, GraphTraversalHelper graphTraversalHelper) {
-        analyzeBlock(block, abstractState, graphTraversalHelper, null);
     }
 
     /**
@@ -151,9 +99,33 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
                              GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
+
+        Node previousNode = null;
         for (Node node : block.getNodes()) {
-            analyzeEdge(graphTraversalHelper.getNodePredecessor(node), node, abstractState, context);
+            if (previousNode == null) {
+                boolean isLoopHeaderDuringWidening = false;
+                if (context != null && node instanceof jdk.graal.compiler.nodes.LoopBeginNode) {
+                    /* Check if we're in widening phase (visit count > 0) */
+                    if (context instanceof com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext basicContext) {
+                        int visitCount = basicContext.getNodeVisitCount(node);
+                        isLoopHeaderDuringWidening = (visitCount > 0);
+                    }
+                }
+
+                if (!isLoopHeaderDuringWidening) {
+                    collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper, context);
+                } else {
+                    logger.log("  Skipping invariant collection for loop header (using extrapolated pre-condition)",
+                              LoggerVerbosity.DEBUG);
+                }
+            } else {
+                /* Subsequent nodes in block: use previous node's post-condition as pre-condition */
+                Domain prevPost = abstractState.getPostCondition(previousNode);
+                abstractState.setPreCondition(node, prevPost);
+            }
+
             analyzeNode(node, abstractState, context);
+            previousNode = node;
         }
     }
 }

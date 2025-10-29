@@ -52,6 +52,7 @@ public abstract class FixpointIteratorBase<
             this.cfgGraph = bbUtil.getGraph(method);
             analyzerMetadata.addToMethodGraphMap(method, cfgGraph);
         }
+        logger.exportGraphToJson(cfgGraph, analysisMethod, analysisMethod + ":CFG_BeforeAbsint");
         this.abstractState = new AbstractState<>(initialDomain, cfgGraph);
         this.graphTraversalHelper = new GraphTraversalHelper(cfgGraph, analyzerMetadata.getIteratorPolicy().direction());
         this.iteratorContext = new BasicIteratorContext(graphTraversalHelper);
@@ -92,11 +93,20 @@ public abstract class FixpointIteratorBase<
     protected void extrapolate(Node node) {
         var state = abstractState.getState(node);
         int visitedAmount = iteratorContext.getNodeVisitCount(node);
+        logger.log("Before extrapolation: pre = " + abstractState.getPreCondition(node), LoggerVerbosity.DEBUG);
+        logger.log("Before extrapolation: post = " + abstractState.getPostCondition(node), LoggerVerbosity.DEBUG);
+        var newPre = abstractState.getPreCondition(node).copyOf();
+
         if (visitedAmount < analyzerMetadata.getMaxJoinIterations()) {
-            abstractState.setPreCondition(node, abstractState.getPostCondition(node).join(abstractState.getPreCondition(node)));
+            logger.log("Extrapolating (join) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
+            newPre.joinWith(abstractState.getPostCondition(node));
         } else {
-            abstractState.setPreCondition(node, abstractState.getPostCondition(node).widen(abstractState.getPreCondition(node)));
+            logger.log("Extrapolating (widen) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
+            newPre.widenWith(abstractState.getPostCondition(node));
         }
+
+        logger.log("After extrapolation: newPre = " + newPre, LoggerVerbosity.DEBUG);
+        abstractState.setPreCondition(node, newPre);
 
         iteratorContext.incrementNodeVisitCount(node);
         if (iteratorContext.getNodeVisitCount(node) > analyzerMetadata.getMaxWidenIterations() + analyzerMetadata.getMaxJoinIterations()) {
