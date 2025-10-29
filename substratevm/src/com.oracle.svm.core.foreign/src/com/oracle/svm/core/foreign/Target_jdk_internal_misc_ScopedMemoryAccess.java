@@ -226,8 +226,32 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     @TargetElement(onlyWith = SharedArenasEnabled.class)
     @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E> void storeIntoMemorySegmentScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<E> e, int length,
+                    V v,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorOperation<AbstractMemorySegmentImpl, V> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
     public static <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>> void storeIntoMemorySegmentMasked(Class<? extends V> vmClass, Class<M> maskClass, Class<E> e,
                     int length, V v, M m,
+                    AbstractMemorySegmentImpl msp, long offset,
+                    VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
+        throw SharedArenasEnabled.vectorAPIUnsupported();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = SharedArenasEnabled.class)
+    @AlwaysInline("Safepoints must be visible in caller")
+    private static <V extends VectorSupport.Vector<E>, E, M extends VectorSupport.VectorMask<E>> void storeIntoMemorySegmentMaskedScopedInternal(MemorySessionImpl session,
+                    Class<? extends V> vmClass, Class<M> maskClass,
+                    Class<E> e, int length, V v, M m,
                     AbstractMemorySegmentImpl msp, long offset,
                     VectorSupport.StoreVectorMaskedOperation<AbstractMemorySegmentImpl, V, M> defaultImpl) {
         throw SharedArenasEnabled.vectorAPIUnsupported();
