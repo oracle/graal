@@ -25,19 +25,20 @@
 
 package jdk.graal.compiler.graphio.parsing;
 
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import jdk.graal.compiler.graphio.parsing.BinaryReader.EnumValue;
 import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
+import jdk.graal.compiler.graphio.parsing.TemplateParser.TemplatePart;
 import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
 import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputBlock;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
 
 /**
  * Interface for building IGV data from the stream.
@@ -219,14 +220,21 @@ public interface Builder {
     final class NodeClass {
         public final String className;
         public final String nameTemplate;
+        private final List<TemplatePart> templateParts;
         public final List<TypedPort> inputs;
         public final List<Port> sux;
+        private String shortString;
 
         NodeClass(String className, String nameTemplate, List<TypedPort> inputs, List<Port> sux) {
             this.className = className;
             this.nameTemplate = nameTemplate;
+            this.templateParts = jdk.graal.compiler.graphio.parsing.TemplateParser.parseTemplate(nameTemplate);
             this.inputs = inputs;
             this.sux = sux;
+        }
+
+        public List<TemplatePart> getTemplateParts() {
+            return templateParts;
         }
 
         @Override
@@ -265,13 +273,18 @@ public interface Builder {
         }
 
         String toShortString() {
-            int lastDot = className.lastIndexOf('.');
-            String localShortName = className.substring(lastDot + 1);
-            if (localShortName.endsWith("Node") && !localShortName.equals("StartNode") && !localShortName.equals(CLASS_ENDNODE)) {
-                return localShortName.substring(0, localShortName.length() - 4);
-            } else {
-                return localShortName;
+            String s = shortString;
+            if (s == null) {
+                int lastDot = className.lastIndexOf('.');
+                String localShortName = className.substring(lastDot + 1);
+                if (localShortName.endsWith("Node") && !localShortName.equals("StartNode") && !localShortName.equals(CLASS_ENDNODE)) {
+                    s = localShortName.substring(0, localShortName.length() - 4);
+                } else {
+                    s = localShortName;
+                }
+                shortString = s;
             }
+            return shortString;
         }
     }
 }

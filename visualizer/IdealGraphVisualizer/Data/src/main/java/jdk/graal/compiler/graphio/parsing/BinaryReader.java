@@ -24,6 +24,31 @@
  */
 package jdk.graal.compiler.graphio.parsing;
 
+import jdk.graal.compiler.graphio.parsing.Builder.Length;
+import jdk.graal.compiler.graphio.parsing.Builder.LengthToString;
+import jdk.graal.compiler.graphio.parsing.Builder.ModelControl;
+import jdk.graal.compiler.graphio.parsing.Builder.Node;
+import jdk.graal.compiler.graphio.parsing.Builder.NodeClass;
+import jdk.graal.compiler.graphio.parsing.Builder.Port;
+import jdk.graal.compiler.graphio.parsing.Builder.TypedPort;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GRAPH;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GROUP;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.CLOSE_GROUP;
@@ -50,31 +75,6 @@ import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_POOL;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_SUBGRAPH;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_TRUE;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.STREAM_PROPERTIES;
-
-import java.io.EOFException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import jdk.graal.compiler.graphio.parsing.Builder.Length;
-import jdk.graal.compiler.graphio.parsing.Builder.LengthToString;
-import jdk.graal.compiler.graphio.parsing.Builder.ModelControl;
-import jdk.graal.compiler.graphio.parsing.Builder.Node;
-import jdk.graal.compiler.graphio.parsing.Builder.NodeClass;
-import jdk.graal.compiler.graphio.parsing.Builder.Port;
-import jdk.graal.compiler.graphio.parsing.Builder.TypedPort;
-import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
-import jdk.graal.compiler.graphio.parsing.model.Group;
-import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * The class reads the Graal binary dump format. All model object creation or property value
@@ -474,15 +474,33 @@ public class BinaryReader implements GraphParser, ModelControl {
 
     public static final class EnumKlass extends Klass {
         public final String[] values;
+        public final EnumValue[] enums;
+        private volatile int hashCode = 0;
 
         public EnumKlass(String name, String[] values) {
             super(name);
             this.values = values;
+            this.enums = new EnumValue[values.length];
+            for (int i = 0; i < values.length; i++) {
+                this.enums[i] = new EnumValue(this, i);
+            }
+        }
+
+        EnumValue get(int ordinal) {
+            if (ordinal >= 0 && ordinal < enums.length) {
+                return enums[ordinal];
+            }
+            return new EnumValue(this, ordinal);
         }
 
         @Override
         public int hashCode() {
-            return super.hash * 31 + Arrays.hashCode(values);
+            int h = hashCode;
+            if (h == 0) {
+                h = Objects.hash(super.hashCode(), Arrays.hashCode(values));
+                hashCode = h;
+            }
+            return h;
         }
 
         @Override
@@ -648,7 +666,7 @@ public class BinaryReader implements GraphParser, ModelControl {
             case POOL_ENUM: {
                 EnumKlass enumClass = readPoolObject(EnumKlass.class);
                 int ordinal = dataSource.readInt();
-                obj = new EnumValue(enumClass, ordinal);
+                obj = enumClass.get(ordinal);
                 break;
             }
             case POOL_NODE_CLASS: {

@@ -288,9 +288,13 @@ public abstract class Properties implements Iterable<Property<Object>> {
         }
 
         public LinkedHashMapProperties(Properties p) {
-            this(p.size());
-            for (Property<?> prop : p) {
-                map.put(prop.getName(), prop.getValue());
+            if (p instanceof LinkedHashMapProperties hash) {
+                map = new LinkedHashMap<>(hash.map);
+            } else {
+                map = new LinkedHashMap<>(p.size());
+                for (Property<?> prop : p) {
+                    map.put(prop.getName(), prop.getValue());
+                }
             }
         }
 
@@ -301,6 +305,17 @@ public abstract class Properties implements Iterable<Property<Object>> {
         @Override
         public int size() {
             return map.size();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o instanceof LinkedHashMapProperties hash) {
+                if (size() != hash.size()) {
+                    return false;
+                }
+                return map.equals(hash.map);
+            }
+            return super.equals(o);
         }
 
         @Override
