@@ -75,6 +75,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return outcome;
         }
 
+        // TODO: think how to handle this better
         List<Domain> actualArgs = convertActualArgs(invoke, callerState);
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerState.getPreCondition(invokeNode), actualArgs);
 
@@ -133,10 +134,11 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         logger.logSummariesStats(summaryManager);
     }
 
+    // TODO: fix this
     private List<Domain> convertActualArgs(Invoke invoke, AbstractState<Domain> callerState) {
         List<Domain> result = new ArrayList<>();
         for (Node argument : invoke.callTarget().arguments()) {
-            abstractTransformer.analyzeNode(argument, callerState);
+//            abstractTransformer.analyzeNode(argument, callerState, );
             result.add(callerState.getPostCondition(argument));
         }
         return result;

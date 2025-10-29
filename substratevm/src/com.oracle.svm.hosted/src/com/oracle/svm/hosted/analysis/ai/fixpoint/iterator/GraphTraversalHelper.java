@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Helper class for direction-aware traversal of control flow graphs.
+ */
 public class GraphTraversalHelper {
 
     private final ControlFlowGraph cfgGraph;
@@ -41,6 +44,35 @@ public class GraphTraversalHelper {
         return direction == IteratorDirection.FORWARD
                 ? block.getPredecessorAt(idx)
                 : block.getSuccessorAt(idx);
+    }
+
+    public Iterable<HIRBlock> getBlocks() {
+        if (direction == IteratorDirection.FORWARD) {
+            return List.of(cfgGraph.getBlocks());
+        }
+
+        List<HIRBlock> blockList = new ArrayList<>();
+        Collections.addAll(blockList, cfgGraph.getBlocks());
+        Collections.reverse(blockList);
+        return blockList;
+    }
+
+    public Iterable<HIRBlock> getPredecessors(HIRBlock block) {
+        int count = getPredecessorCount(block);
+        List<HIRBlock> predecessors = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            predecessors.add(getPredecessorAt(block, i));
+        }
+        return predecessors;
+    }
+
+    public Iterable<HIRBlock> getSuccessors(HIRBlock block) {
+        int count = getSuccessorCount(block);
+        List<HIRBlock> successors = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            successors.add(getSuccessorAt(block, i));
+        }
+        return successors;
     }
 
     public int getPredecessorCount(HIRBlock block) {
@@ -78,13 +110,10 @@ public class GraphTraversalHelper {
                 : cfgGraph.getBlocks()[cfgGraph.getBlocks().length - 1].getEndNode();
     }
 
-    /**
-     * When traversing a basic block, we know that each node has only one predecessor in that block ( except the head node )
-     */
-    public Node getNodePredecessor(Node node) {
+    public Iterable<? extends Node> getNodeCfgPredecessors(Node node) {
         return direction == IteratorDirection.FORWARD
-                ? node.predecessor()
-                : node.cfgSuccessors().iterator().next();
+                ? node.cfgPredecessors()
+                : node.cfgSuccessors();
     }
 
     public Iterable<? extends Node> getNodeCfgSuccessors(Node current) {
