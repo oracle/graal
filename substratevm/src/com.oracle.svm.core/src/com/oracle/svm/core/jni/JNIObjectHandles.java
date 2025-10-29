@@ -315,23 +315,6 @@ final class JNIGlobalHandles {
     private static final SignedWord HANDLE_RANGE_SPLIT_POINT = Word.signed(1L << 30);
 
     // Strong global handles will occupy the lower half of the global handles range
-    public static final SignedWord STRONG_GLOBAL_RANGE_MIN = JNIObjectHandles.nullHandle().add(1);
-    ;
-    public static final SignedWord STRONG_GLOBAL_RANGE_MAX = HANDLE_RANGE_SPLIT_POINT.subtract(1);
-
-    // Weak global handles will occupy the upper half of the global handles range
-    public static final SignedWord WEAK_GLOBAL_RANGE_MIN = HANDLE_RANGE_SPLIT_POINT;
-    public static final SignedWord WEAK_GLOBAL_RANGE_MAX = HANDLE_BITS_MASK;
-
-    private static final ObjectHandlesImpl strongGlobalHandles
-            = new ObjectHandlesImpl(STRONG_GLOBAL_RANGE_MIN, STRONG_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
-    private static final ObjectHandlesImpl weakGlobalHandles
-            = new ObjectHandlesImpl(WEAK_GLOBAL_RANGE_MIN, WEAK_GLOBAL_RANGE_MAX, JNIObjectHandles.nullHandle());
-
-    // Define the mid-point to split the range in half
-    private static final SignedWord HANDLE_RANGE_SPLIT_POINT = Word.signed(1L << 30);
-
-    // Strong global handles will occupy the lower half of the global handles range
     public static final SignedWord STRONG_GLOBAL_RANGE_MIN = JNIObjectHandles.nullHandle().add(1);;
     public static final SignedWord STRONG_GLOBAL_RANGE_MAX = HANDLE_RANGE_SPLIT_POINT.subtract(1);
 
