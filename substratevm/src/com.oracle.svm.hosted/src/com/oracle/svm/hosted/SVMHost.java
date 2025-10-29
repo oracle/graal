@@ -251,7 +251,12 @@ public class SVMHost extends HostVM {
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
-    private Set<ResolvedJavaField> sharedLayerExcludedFields;
+    private final Set<ResolvedJavaField> sharedLayerExcludedFields;
+    /**
+     * Some modules contain native methods that should never be in the image, as they are either
+     * hosted only, or currently unsupported in layered images.
+     */
+    protected final Set<Module> sharedLayerForbiddenModules;
     private final ResolvedJavaType optionKeyType;
     private final ResolvedJavaType featureType;
 
@@ -264,12 +269,6 @@ public class SVMHost extends HostVM {
 
     private final boolean trackDynamicAccess;
     private DynamicAccessDetectionSupport dynamicAccessDetectionSupport = null;
-
-    /**
-     * Some modules contain native methods that should never be in the image, as they are either
-     * hosted only, or currently unsupported in layered images.
-     */
-    private final Set<Module> forbiddenModules = new HashSet<>();
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -302,7 +301,11 @@ public class SVMHost extends HostVM {
         }
         layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
         if (buildingSharedLayer) {
-            initializeSharedLayerExcludedFields();
+            sharedLayerExcludedFields = initializeSharedLayerExcludedFields();
+            sharedLayerForbiddenModules = initializeSharedLayerForbiddenModules();
+        } else {
+            sharedLayerExcludedFields = null;
+            sharedLayerForbiddenModules = null;
         }
         layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
@@ -1009,41 +1012,60 @@ public class SVMHost extends HostVM {
         return originalMetaAccess.lookupJavaField(ReflectionUtil.lookupField(declaringClass, fieldName));
     }
 
-    private void initializeSharedLayerExcludedFields() {
-        sharedLayerExcludedFields = new HashSet<>();
+    private Set<ResolvedJavaField> initializeSharedLayerExcludedFields() {
+        Set<ResolvedJavaField> excludedFields = new HashSet<>();
+
         /*
          * These fields need to be folded as they are used in snippets, and they must be accessed
          * without producing reads with side effects.
          */
-
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
 
         /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
 
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
          * FastThreadLocalBytes.getSizeSupplier
          */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
+        excludedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
         /* This field cannot be written to (see documentation) */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
+        excludedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
         /* This field can contain a reference to a Thread, which is not allowed in the heap */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
+        excludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
+
+        return excludedFields;
+    }
+
+    protected Set<Module> initializeSharedLayerForbiddenModules() {
+        Set<Module> forbiddenModules = new HashSet<>();
+        forbiddenModules.add(JVMCI.class.getModule());
+        addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
+        addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
+        addForbiddenModule(forbiddenModules, "com.oracle.truffle.polyglot.JDKSupport");
+        addForbiddenModule(forbiddenModules, "com.oracle.truffle.runtime.hotspot.libgraal.LibGraal");
+        return forbiddenModules;
+    }
+
+    protected static void addForbiddenModule(Set<Module> sharedLayerForbiddenModules, String className) {
+        Class<?> clazz = ReflectionUtil.lookupClass(true, className);
+        if (clazz != null) {
+            sharedLayerForbiddenModules.add(clazz.getModule());
+        }
     }
 
     /** If it's not one of the known builder types it must be an original VM type. */
@@ -1555,26 +1577,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Set<Module> getForbiddenModules() {
-        if (forbiddenModules.isEmpty()) {
-            forbiddenModules.add(JVMCI.class.getModule());
-            Class<?> llvm = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
-            if (llvm != null) {
-                forbiddenModules.add(llvm.getModule());
-            }
-            Class<?> javacpp = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
-            if (javacpp != null) {
-                forbiddenModules.add(javacpp.getModule());
-            }
-            Class<?> truffle = ReflectionUtil.lookupClass(true, "com.oracle.truffle.polyglot.JDKSupport");
-            if (truffle != null) {
-                forbiddenModules.add(truffle.getModule());
-            }
-            Class<?> libGraal = ReflectionUtil.lookupClass(true, "com.oracle.truffle.runtime.hotspot.libgraal.LibGraal");
-            if (libGraal != null) {
-                forbiddenModules.add(libGraal.getModule());
-            }
-        }
-        return forbiddenModules;
+    public Set<Module> getSharedLayerForbiddenModules() {
+        return sharedLayerForbiddenModules;
     }
 }
