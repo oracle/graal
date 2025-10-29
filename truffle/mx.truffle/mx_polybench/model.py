@@ -692,6 +692,8 @@ class PolybenchBenchmarkSuite(
             guest_vm_config = "interpreter"
         else:
             guest_vm_config = "default"
+        if "-Dpython.EnableBytecodeDSLInterpreter=true" in self.vmArgs(bm_suite_args):
+            guest_vm_config += "-bc-dsl"
         return guest_vm, guest_vm_config
 
     def rules(self, output, benchmarks, bmSuiteArgs):
