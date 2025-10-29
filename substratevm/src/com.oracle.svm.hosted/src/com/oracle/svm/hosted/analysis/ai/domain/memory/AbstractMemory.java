@@ -63,7 +63,6 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         env.remove(v);
     }
 
-    // Store helpers
     public void writeStore(AccessPath p, IntInterval val) {
         Objects.requireNonNull(p);
         Objects.requireNonNull(val);
@@ -146,23 +145,23 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
     public void applySummary(AbstractMemory summary, Map<String, AccessPath> placeholderToActualRoot) {
         Objects.requireNonNull(summary);
         Objects.requireNonNull(placeholderToActualRoot);
-        // Apply store entries
+        /* Apply store entries */
         for (Map.Entry<AccessPath, IntInterval> e : summary.store.entrySet()) {
             AccessPath phPath = e.getKey();
             if (phPath.getRootKind() != AccessPath.RootKind.PLACEHOLDER) {
-                // if the summary contains non-placeholder roots, either merge or skip; here we skip
+                /* if the summary contains non-placeholder roots, either merge or skip; here we skip */
                 continue;
             }
             String phRoot = phPath.getRootName();
             AccessPath actualRoot = placeholderToActualRoot.get(phRoot);
-            if (actualRoot == null) continue; // no mapping -> skip conservatively
+            if (actualRoot == null) continue;
             AccessPath actual = actualRoot;
             for (String f : phPath.getFields()) actual = actual.appendField(f);
-            // weak join into caller store
+            /* weak join into caller store */
             writeStore(actual, e.getValue());
         }
 
-        // Apply env mappings: if callee bound a placeholder local, map it to caller actual if provided
+        /* Apply env mappings: if callee bound a placeholder local, map it to caller actual if provided */
         for (Map.Entry<Var, AccessPath> e : summary.env.entrySet()) {
             AccessPath vpath = e.getValue();
             if (vpath.getRootKind() == AccessPath.RootKind.PLACEHOLDER) {
@@ -172,7 +171,6 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         }
     }
 
-    // --- AbstractDomain API ---
     @Override
     public boolean isBot() {
         return isBot;
@@ -189,12 +187,12 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         if (this.isBot()) return true;
         if (other.isTop()) return true;
         if (this.isTop()) return other.isTop();
-        // env: for each binding in this.env, other.env must have identical mapping
+        /* env: for each binding in this.env, other.env must have identical mapping */
         for (Map.Entry<Var, AccessPath> e : this.env.entrySet()) {
             AccessPath otherP = other.env.get(e.getKey());
             if (otherP == null || !otherP.equals(e.getValue())) return false;
         }
-        // store: for each entry in this.store, other.store must have an interval >= (i.e., otherInterval contains this interval)
+        /* store: for each entry in this.store, other.store must have an interval >= (i.e., otherInterval contains this interval) */
         for (Map.Entry<AccessPath, IntInterval> e : this.store.entrySet()) {
             IntInterval otherI = other.store.get(e.getKey());
             if (otherI == null) return false;
@@ -247,7 +245,7 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
                 this.store.put(e.getKey(), e.getValue().copyOf());
             return;
         }
-        // generic join: env keep mapping only when equal in both sides
+        /* generic join: env keep mapping only when equal in both sides */
         Set<Var> keys = new HashSet<>();
         keys.addAll(this.env.keySet());
         keys.addAll(other.env.keySet());
@@ -255,7 +253,7 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         for (Var v : keys) {
             AccessPath a = this.env.get(v);
             AccessPath b = other.env.get(v);
-            if (a != null && b != null && a.equals(b)) newEnv.put(v, a);
+            if (a != null && a.equals(b)) newEnv.put(v, a);
         }
         this.env.clear();
         this.env.putAll(newEnv);
@@ -288,7 +286,6 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         }
         if (this.isBot) {
             this.isBot = other.isBot;
-            this.isTop = other.isTop;
             this.env.clear();
             this.env.putAll(other.env);
             this.store.clear();
@@ -297,7 +294,7 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
             return;
         }
 
-        // env: keep only equal mappings
+        /* env: keep only equal mappings */
         Set<Var> keys = new HashSet<>();
         keys.addAll(this.env.keySet());
         keys.addAll(other.env.keySet());
@@ -310,7 +307,7 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
         this.env.clear();
         this.env.putAll(newEnv);
 
-        // store: union of keys with widened intervals
+        /* store: union of keys with widened intervals */
         Set<AccessPath> skeys = new HashSet<>();
         skeys.addAll(this.store.keySet());
         skeys.addAll(other.store.keySet());
@@ -337,7 +334,6 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
             return;
         }
         if (this.isTop) {
-            // meet(top, other) = other
             this.isTop = false;
             this.env.clear();
             this.env.putAll(other.env);
@@ -347,11 +343,10 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
             return;
         }
         if (other.isTop) {
-            // meet(this, top) = this
             return;
         }
 
-        // env: intersection where equal
+        /* env: intersection where equal */
         Map<Var, AccessPath> newEnv = new HashMap<>();
         for (Map.Entry<Var, AccessPath> e : this.env.entrySet()) {
             AccessPath b = other.env.get(e.getKey());
