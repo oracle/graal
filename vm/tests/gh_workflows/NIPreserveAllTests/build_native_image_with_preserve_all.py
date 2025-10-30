@@ -47,7 +47,6 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-
 def generate_matrix(path_to_data, libs_per_job, delimiter):
     '''
     Generates a matrix in the format of GAV coordinate tuples (depending on the selected number of libraries per action job) for GitHub actions.
@@ -102,7 +101,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
     for gav in coordinates_list:
         group_id, artifact_id, version = gav.rstrip().split(':')
 
-        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}'], check = True)
+        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}'], check=True)
 
         _generate_effective_pom(group_id, artifact_id, version)
         _generate_image_entry_point()
