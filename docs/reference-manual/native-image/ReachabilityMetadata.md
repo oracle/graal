@@ -21,10 +21,11 @@ Small binaries allow fast application startup and low memory footprint, however 
 To ensure inclusion of necessary dynamically-accessed elements into the native binary, the `native-image` builder requires **reachability metadata** (hereinafter referred to as *metadata*). 
 Providing the builder with correct and exhaustive reachability metadata guarantees application correctness and ensures compatibility with third-party libraries at runtime. 
 
-Metadata can be provided to the `native-image` builder in the following ways:
-- By [computing metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#image-build-time-vs-image-run-time) and storing required elements into the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
-- By [providing the _reachability-metadata.json_ file(s)](#specifying-metadata-with-json) stored in the _META-INF/native-image/&lt;group.Id&gt;/&lt;artifactId&gt;/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
-- For more advanced use cases, where classpath scanning or build-time initialization is needed.
+You can provide reachability metadata to the `native-image` builder using the following methods:
+- [Compute metadata in code](#computing-metadata-in-code) [when the native binary is built](NativeImageBasics.md#build-time-vs-run-time) and store the required elements in the [initial heap of the native binary](NativeImageBasics.md#native-image-heap).
+- Place one or more [_reachability-metadata.json_ files](#specifying-metadata-with-json) in the _META-INF/native-image/&lt;groupId&gt;/&lt;artifactId&gt;/_ directory on the classpath. For more information about how to collect metadata for your application automatically, see [Collecting Metadata Automatically](AutomaticMetadataCollection.md).
+- Use the `-H:Preserve=<classpath-selector>` flag. For detailed instructions, please refer to the `-H:Preserve=` [documentation](BuildOptions.md#preserving-packages-modules-or-classes).
+- Use the [Feature API](https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/hosted/Feature.java) for advanced use cases where classpath scanning is necessary to compute correct metadata.
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
