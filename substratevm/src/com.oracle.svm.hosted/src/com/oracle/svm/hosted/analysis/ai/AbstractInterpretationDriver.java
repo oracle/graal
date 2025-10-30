@@ -2,14 +2,12 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.analysis.ai.analyses.access.inter.AccessPathIntervalInterAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
-import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.intra.IntraDataFlowIntervalAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
-import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
+import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -44,7 +42,7 @@ public class AbstractInterpretationDriver {
             /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
-                engine.executeAbstractInterpretation(AbsintMode.INTRA_ANALYZE_MAIN_ONLY);
+                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_MAIN_ONLY);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

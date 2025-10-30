@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorPhase;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -28,15 +28,16 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     public WtoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
                                AbstractTransformer<Domain> abstractTransformer,
-                               AnalyzerMetadata analyzerMetadata) {
+                               AnalysisContext analysisContext) {
 
-        super(method, initialDomain, abstractTransformer, analyzerMetadata);
-        if (analyzerMetadata.containsMethodWto(method)) {
-            this.weakTopologicalOrdering = analyzerMetadata.getMethodWtoMap().get(method);
+        super(method, initialDomain, abstractTransformer, analysisContext);
+        var cache = analysisContext.getMethodGraphCache();
+        if (cache.containsMethodWto(method)) {
+            this.weakTopologicalOrdering = cache.getMethodWtoMap().get(method);
         } else {
             logger.log("Computing Weak Topological Ordering for " + method.getQualifiedName(), LoggerVerbosity.DEBUG);
             this.weakTopologicalOrdering = new WeakTopologicalOrdering(graphTraversalHelper);
-            analyzerMetadata.addToMethodWtoMap(method, weakTopologicalOrdering);
+            cache.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
         logger.log("Weak Topological Ordering for " + method.getQualifiedName() + ": ", LoggerVerbosity.DEBUG);
         logger.log(weakTopologicalOrdering.toString(), LoggerVerbosity.DEBUG);
@@ -54,12 +55,12 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
 
         iteratorContext.setConverged(true);
         logger.log("Finished WTO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(analyzerMetadata.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 
     private void analyzeComponent(WtoComponent component) {
-        logger.log("Analyzing component: " + component.toString(), LoggerVerbosity.DEBUG);
+        logger.log("Analyzing component: " + component, LoggerVerbosity.DEBUG);
         if (component instanceof WtoVertex vertex) {
             analyzeVertex(vertex);
         } else if (component instanceof WtoCycle cycle) {
@@ -68,7 +69,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     }
 
     private void analyzeVertex(WtoVertex vertex) {
-        logger.log("Analyzing vertex: " + vertex.toString(), LoggerVerbosity.DEBUG);
+        logger.log("Analyzing vertex: " + vertex, LoggerVerbosity.DEBUG);
         Node node = graphTraversalHelper.getBeginNode(vertex.block());
 
         /* Track node visits (used for isFirstVisit and widening decisions) */
@@ -81,7 +82,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     }
 
     private void analyzeCycle(WtoCycle cycle) {
-        logger.log("Analyzing cycle: " + cycle.toString(), LoggerVerbosity.DEBUG);
+        logger.log("Analyzing cycle: " + cycle, LoggerVerbosity.DEBUG);
         boolean iterate = true;
         Node headBegin = cycle.head().getBeginNode();
 

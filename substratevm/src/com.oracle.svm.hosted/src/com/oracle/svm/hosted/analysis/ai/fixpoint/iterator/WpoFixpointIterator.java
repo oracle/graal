@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
@@ -42,16 +42,23 @@ public final class WpoFixpointIterator<
     public WpoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
                                AbstractTransformer<Domain> abstractTransformer,
-                               AnalyzerMetadata analyzerMetadata) {
-        super(method, initialDomain, abstractTransformer, analyzerMetadata);
-        if (analyzerMetadata.containsMethodWpo(method)) {
-            this.weakPartialOrdering = analyzerMetadata.getMethodWpoMap().get(method);
+                               AnalysisContext analysisContext) {
+        super(method, initialDomain, abstractTransformer, analysisContext);
+        var cache = analysisContext.getMethodGraphCache();
+        if (cache.containsMethodWpo(method)) {
+            this.weakPartialOrdering = cache.getMethodWpoMap().get(method);
         } else {
             this.weakPartialOrdering = new WeakPartialOrdering(graphTraversalHelper);
-            analyzerMetadata.addToMethodWpoMap(method, weakPartialOrdering);
+            cache.addToMethodWpoMap(method, weakPartialOrdering);
         }
-
         this.entry = graphTraversalHelper.getEntryBlock();
+    }
+
+    public WpoFixpointIterator(AnalysisMethod method,
+                               Domain initialDomain,
+                               AbstractTransformer<Domain> abstractTransformer,
+                               AnalyzerMetadata analyzerMetadata) {
+        this(method, initialDomain, abstractTransformer, analyzerMetadata.getAnalysisContext());
     }
 
     @Override
@@ -60,7 +67,7 @@ public final class WpoFixpointIterator<
         buildWorkNodes();
         runAnalysis();
         logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(analyzerMetadata.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 
@@ -103,9 +110,9 @@ public final class WpoFixpointIterator<
             List<WorkNode> successors = workNode.update();
 
             for (WorkNode successor : successors) {
-                if (successor.decrementRefCount() == 0) {
-                    workQueue.add(successor);
-                }
+//                if (successor.decrementRefCount() == 0) {
+                workQueue.add(successor);
+//                }
             }
         }
     }
@@ -135,17 +142,11 @@ public final class WpoFixpointIterator<
             this.refCount = new AtomicInteger(weakPartialOrdering.getNumPredecessors(index));
         }
 
-        void addSuccessor(WorkNode workNode) {
-            successors.add(workNode);
-        }
+        void addSuccessor(WorkNode workNode) { successors.add(workNode); }
+        void addPredecessor(WorkNode workNode) { predecessors.add(workNode); }
+        void setHead(WorkNode head) { this.head = head; }
 
-        void addPredecessor(WorkNode workNode) {
-            predecessors.add(workNode);
-        }
-
-        void setHead(WorkNode head) {
-            this.head = head;
-        }
+        int decrementRefCount() { return refCount.decrementAndGet(); }
 
         List<WorkNode> update() {
             return switch (kind) {
@@ -199,13 +200,6 @@ public final class WpoFixpointIterator<
         }
 
         void handleIrreducible() {
-            for (Map.Entry<Integer, Integer> entry : weakPartialOrdering.getIrreducibles(index).entrySet()) {
-                nodeToWork.get(weakPartialOrdering.getNode(entry.getKey())).refCount.addAndGet(entry.getValue());
-            }
-        }
-
-        int decrementRefCount() {
-            return refCount.decrementAndGet();
         }
     }
 }

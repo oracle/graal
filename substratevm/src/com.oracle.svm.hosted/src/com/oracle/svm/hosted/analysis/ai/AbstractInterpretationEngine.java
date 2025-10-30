@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.config.AbsintMode;
+import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
@@ -36,17 +36,25 @@ public class AbstractInterpretationEngine {
 
         AtomicReference<AnalysisMethod> tempRoot = new AtomicReference<>();
         bb.getUniverse().getMethods().forEach(method -> {
-            if (method.getName().equals("main") && method.getParameters().length == 1 && method.toParameterList().getFirst().getWrapped().getName().equals("[Ljava/lang/String;")) {
+            if (method.getName().equals("main") && method.getParameters().length == 1 &&
+                    method.toParameterList()
+                            .getFirst()
+                            .getWrapped()
+                            .getName().
+                            equals("[Ljava/lang/String;")) {
                 tempRoot.set(method);
             }
         });
         this.root = tempRoot.get();
-        this.invokedMethods = bb.getUniverse().getMethods().stream().filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
+        this.invokedMethods = bb.getUniverse()
+                .getMethods()
+                .stream()
+                .filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
     }
 
-    public void executeAbstractInterpretation(AbsintMode absintMode) throws IOException {
+    public void executeAbstractInterpretation(AnalyzerMode analyzerMode) throws IOException {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        switch (absintMode) {
+        switch (analyzerMode) {
             case INTRA_ANALYZE_MAIN_ONLY -> {
                 logger.log("Running intra-procedural analysis on main method only.", LoggerVerbosity.INFO);
             }
@@ -61,27 +69,27 @@ public class AbstractInterpretationEngine {
             }
         }
 
-        if (absintMode.isMainOnly() && (root == null)) {
+        if (analyzerMode.isMainOnly() && (root == null)) {
             AnalysisError.shouldNotReachHere("Main method not provided in 'main-only' mode");
         }
 
         for (var analyzer : analyzerManager.getAnalyzers()) {
-            executeAnalyzer(analyzer, absintMode);
+            executeAnalyzer(analyzer, analyzerMode);
         }
 
         logger.log("Finished Abstract Interpretation, the output can be found at: " + logger.getLogFilePath(), LoggerVerbosity.INFO);
     }
 
-    private void executeAnalyzer(Analyzer<?> analyzer, AbsintMode absintMode) {
+    private void executeAnalyzer(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzer instanceof InterProceduralAnalyzer) {
-            executeInterProceduralAnalysis(analyzer, absintMode);
+            executeInterProceduralAnalysis(analyzer, analyzerMode);
             return;
         }
-        executeIntraProceduralAnalysis(analyzer, absintMode);
+        executeIntraProceduralAnalysis(analyzer, analyzerMode);
     }
 
-    private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AbsintMode absintMode) {
-        if (absintMode.isMainOnly()) {
+    private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
+        if (analyzerMode.isMainOnly()) {
             try {
                 analyzer.runAnalysis(root);
                 return;
@@ -99,8 +107,8 @@ public class AbstractInterpretationEngine {
         });
     }
 
-    private void executeInterProceduralAnalysis(Analyzer<?> analyzer, AbsintMode absintMode) {
-        if (absintMode.isMainOnly()) {
+    private void executeInterProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
+        if (analyzerMode.isMainOnly()) {
             try {
                 analyzer.runAnalysis(root);
                 return;
