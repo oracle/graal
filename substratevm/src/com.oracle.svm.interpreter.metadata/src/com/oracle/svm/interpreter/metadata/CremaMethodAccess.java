@@ -32,7 +32,6 @@ import java.util.List;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
@@ -103,20 +102,6 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
         }
         Symbol<Signature> signature = SymbolsSupport.getSignatures().lookupValidSignature(sb.toString());
         return holder.lookupMethod(name, signature);
-    }
-
-    static Symbol<Signature> toSymbol(InterpreterUnresolvedSignature jvmciSignature, SignatureSymbols signatures) {
-        // hidden classes and SVM stable proxy name contain a `.`, replace with a `+`
-        StringBuilder sb = new StringBuilder();
-        sb.append('(');
-        for (int i = 0; i < jvmciSignature.getParameterCount(false); i++) {
-            sb.append(jvmciSignature.getParameterType(i, null).getName().replace('.', '+'));
-        }
-        sb.append(')');
-        sb.append(jvmciSignature.getReturnType(null).getName().replace('.', '+'));
-        Symbol<Signature> symbol = signatures.getOrCreateValidSignature(ByteSequence.create(sb.toString()));
-        assert symbol != null : jvmciSignature;
-        return symbol;
     }
 
     static JavaType toJavaType(Symbol<Type> typeSymbol) {

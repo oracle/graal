@@ -58,6 +58,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaVersion;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
@@ -283,7 +284,7 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        Symbol<Signature> signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
+        Symbol<Signature> signatureSymbol = toSymbol(signature);
         return new InterpreterResolvedJavaMethod(nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, signatureSymbol, code,
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
@@ -296,10 +297,24 @@ public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaM
                     byte[] code, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable,
                     ReferenceConstant<FunctionPointerHolder> nativeEntryPoint, int vtableIndex, int gotOffset, int enterStubOffset, int methodId) {
         Symbol<Name> nameSymbol = SymbolsSupport.getNames().getOrCreate(name);
-        Symbol<Signature> signatureSymbol = CremaMethodAccess.toSymbol(signature, SymbolsSupport.getSignatures());
+        Symbol<Signature> signatureSymbol = toSymbol(signature);
         int flags = createFlags(modifiers, declaringClass, signatureSymbol, isSubstitutedNative, originalMethod);
         return new InterpreterResolvedJavaMethod(originalMethod, nameSymbol, maxLocals, maxStackSize, flags, declaringClass, signature, signatureSymbol, code,
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+    }
+
+    private static Symbol<Signature> toSymbol(InterpreterUnresolvedSignature jvmciSignature) {
+        // hidden classes and SVM stable proxy name contain a `.`, replace with a `+`
+        StringBuilder sb = new StringBuilder();
+        sb.append('(');
+        for (int i = 0; i < jvmciSignature.getParameterCount(false); i++) {
+            sb.append(jvmciSignature.getParameterType(i, null).getName().replace('.', '+'));
+        }
+        sb.append(')');
+        sb.append(jvmciSignature.getReturnType(null).getName().replace('.', '+'));
+        Symbol<Signature> symbol = SymbolsSupport.getSignatures().getOrCreateValidSignature(ByteSequence.create(sb.toString()));
+        assert symbol != null : jvmciSignature;
+        return symbol;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
