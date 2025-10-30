@@ -175,8 +175,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             /* In a closed type world all subtypes known. */
             return true;
         }
-        /* Array and leaf types are by definition closed. */
-        return type.isArray() || type.isLeaf();
+        /*
+         * Array and leaf types are by definition closed. Core types are considered as closed to
+         * allow optimizations to be applied on them.
+         */
+        return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
     }
 
     @Override

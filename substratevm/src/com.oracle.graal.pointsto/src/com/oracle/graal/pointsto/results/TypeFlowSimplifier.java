@@ -347,18 +347,13 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
          * 2. The receiver TypeFlow's type is a closed type, so it may be not extended in a later
          * layer.
          *
-         * 3. The receiver TypeFlow's type is a core type, so it may be not extended in a later
-         * layer. (GR-70846: This check condition will be merged with the previous one once core
-         * types are fully considered as closed.)
-         *
-         * 4. The receiver TypeFlow is not saturated.
+         * 3. The receiver TypeFlow is not saturated.
          *
          * Otherwise, when the receiver's analysis results are incomplete, then it is possible for
          * more types to be observed in subsequent layers.
          */
         boolean receiverAnalysisResultsComplete = strengthenGraphs.isClosedTypeWorld ||
-                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || analysis.getHostVM().isCoreType(invokeFlow.getReceiverType()) ||
-                                        !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
+                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
 
         if (callTarget.invokeKind().isDirect()) {
             /*
