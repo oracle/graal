@@ -1,6 +1,6 @@
-package com.oracle.svm.hosted.analysis.ai.config;
+package com.oracle.svm.hosted.analysis.ai.analyzer;
 
-public enum AbsintMode {
+public enum AnalyzerMode {
     INTRA_ANALYZE_MAIN_ONLY,
     INTRA_ANALYZE_ALL_INVOKED_METHODS,
     INTER_ANALYZE_FROM_MAIN_ONLY,

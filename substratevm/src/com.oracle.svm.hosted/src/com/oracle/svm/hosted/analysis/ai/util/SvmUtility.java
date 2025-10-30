@@ -14,6 +14,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Fundamentally, its purpose is to act as a wrapper around {@link BigBang} to
  * get more sophisticated access to svm metadata.
  */
+// TODO: rename this to something more sensible such as ...Provider or AnalysisUtility
 public final class SvmUtility {
 
     private static SvmUtility instance;

@@ -77,6 +77,16 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         return lowerBound == NEG_INF && upperBound == POS_INF;
     }
 
+    /* Helper: returns true if the lower bound is -infinity sentinel. */
+    public boolean isLowerInfinite() {
+        return lowerBound == NEG_INF;
+    }
+
+    /* Helper: returns true if the upper bound is +infinity sentinel. */
+    public boolean isUpperInfinite() {
+        return upperBound == POS_INF;
+    }
+
     @Override
     public boolean leq(IntInterval other) {
         if (isBot()) {

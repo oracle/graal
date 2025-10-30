@@ -8,12 +8,20 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import java.util.List;
 
 /**
- * Interface for a checker that verifies the correctness of an abstract state.
- * The checker can be used to identify potential issues in the abstract state
+ * Interface for a checker on an annotated CFG ( CFG with computed pre-post conditions from abstract interpretation ).
+ * The checker can in theory be used to:
+ * 1. identify potential issues in the abstract state
+ * 2. modify the abstract state to reflect some findings
+ * 3. modify the CFG ( {@link StructuredGraph} ) based on the abstract state
+ * 4. report findings to users
+ * 5. Produce facts based on the abstract state, and insert assertions in the CFG
  * and suggest modifications to the associated {@link StructuredGraph}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
+
+// TODO : The checker will probably need a lot more things than it currently requires.
+// TODO: Think about this when we get to producing assertions
 public interface Checker<Domain extends AbstractDomain<Domain>> {
 
     /**
