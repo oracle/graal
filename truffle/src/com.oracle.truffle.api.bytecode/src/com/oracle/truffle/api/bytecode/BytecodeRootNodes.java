@@ -220,8 +220,8 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      * blocking.
      * <p>
      * The same tracer instance can only be attached once. If the tracer is already installed for
-     * this {@code BytecodeRootNodes} instance, the behavior is implementation specific. The order
-     * in which multiple tracers are invoked is unspecified.
+     * this {@code BytecodeRootNodes} instance, then this method has no effect. The order in which
+     * multiple tracers are invoked is unspecified.
      * <p>
      * If this bytecode interpreter was generated without instruction tracing support (for example
      * using {@code @GenerateBytecode(enableInstructionTracing = false)}), this method throws
@@ -242,6 +242,9 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
     /**
      * Unregisters a previously installed {@link InstructionTracer} from this
      * {@code BytecodeRootNodes} instance.
+     * <p>
+     * Note that currently when all instruction tracers were removed, the trace instructions remain
+     * in the bytecode. This may be improved in the future.
      * <p>
      * If this bytecode interpreter was generated without instruction tracing support (for example
      * using {@code @GenerateBytecode(enableInstructionTracing = false)}), this method throws
@@ -270,7 +273,7 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      * @since 25.1
      */
     @SuppressWarnings("unused")
-    protected void updateInstructionTracers(InstructionTracer[] tracers) {
+    protected void updateGlobalInstructionTracers(InstructionTracer[] tracers) {
         // nothing to do if not supported
     }
 

@@ -9891,7 +9891,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createAddInstructionTracer());
                 this.add(createRemoveInstructionTracer());
                 this.add(createFindInstructionTracerAccess());
-                this.add(createUpdateInstructionTracers());
+                this.add(createUpdateGlobalInstructionTracers());
             }
 
             if (model.enableSerialization) {
@@ -10014,8 +10014,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createUpdateInstructionTracers() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "updateInstructionTracers", new String[]{"tracers"});
+        private CodeExecutableElement createUpdateGlobalInstructionTracers() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "updateGlobalInstructionTracers", new String[]{"tracers"});
             CodeTreeBuilder b = ex.createBuilder();
             b.startDeclaration(configEncoder.asType(), "encoder").staticReference(configEncoder.asType(), "INSTANCE").end();
             b.startStatement();
@@ -10323,7 +10323,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         void lazyInit() {
-            TypeMirror superType = BytecodeDSLCodeGenerator.findAbstractDescriptorType(abstractBuilderType);
+            TypeMirror superType = BytecodeDSLCodeGenerator.findBytecodeVariantType(abstractBuilderType);
             if (superType == null) {
                 // regular case
                 superType = generic(types.BytecodeDescriptor, model.getTemplateType().asType(), model.languageClass, builder.asType());
@@ -10464,7 +10464,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
             b.string("language");
             b.string("nodes");
-            b.string("updateConfig(language, BytecodeConfigEncoderImpl.decode(config))");
+            b.string("withGlobalConfig(language, BytecodeConfigEncoderImpl.decode(config))");
             b.end(2);
 
             b.startStatement().startCall("parser", "parse");
@@ -10969,10 +10969,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 .createInitBuilder().tree(createFastAccessFieldInitializer(false));
                 this.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), types.ByteArraySupport, "SAFE_BYTES")) //
                                 .createInitBuilder().startCall("SAFE_ACCESS.getByteArraySupport").end();
-                this.add(createGetName());
+                this.add(createGetDescriptor());
             }
 
-            private CodeExecutableElement createGetName() {
+            private CodeExecutableElement createGetDescriptor() {
                 CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "getDescriptor");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();

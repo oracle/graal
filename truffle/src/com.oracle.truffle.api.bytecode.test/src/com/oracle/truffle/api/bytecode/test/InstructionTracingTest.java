@@ -126,6 +126,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
         instructions.clear();
 
         node.getRootNodes().removeInstructionTracer(t);
+        assertEquals(42, node.getCallTarget().call(42));
         assertTrue(instructions.isEmpty());
     }
 
@@ -503,12 +504,6 @@ public class InstructionTracingTest extends AbstractInstructionTest {
         InstructionTracingLanguage language = setupLanguage(cb);
         InstructionTracingRootNode node = BYTECODE.create(language, BytecodeConfig.DEFAULT, this::emitWhileLoopRoot).getNode(0);
 
-        node.getCallTarget().call(42);
-
-        node = BYTECODE.create(language, BytecodeConfig.DEFAULT, (b) -> {
-            emitWhileLoopRoot(b);
-        }).getNode(0);
-
         node.getCallTarget().call(100);
 
         tearDownContext(); // print histogram
@@ -588,9 +583,8 @@ public class InstructionTracingTest extends AbstractInstructionTest {
 
         node.getCallTarget().call(100);
 
-        latch.await();
-        boolean found = false;
         latch.await(20, TimeUnit.SECONDS);
+        boolean found = false;
         synchronized (messages) {
             for (String string : messages) {
                 if (string.startsWith("[bc] Instruction histogram for")) {

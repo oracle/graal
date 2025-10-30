@@ -128,19 +128,6 @@ final class BytecodeEngineData {
         BytecodeDescriptor.enableEngineDescriptorLookup();
     }
 
-    synchronized void removeEngineTracerFactory(Function<BytecodeDescriptor<?, ?, ?>, InstructionTracer> tracer) {
-        if (engineTracerFactories == null) {
-            return;
-        }
-        Map<BytecodeDescriptor<?, ?, ?>, InstructionTracer> tracers = engineTracerFactories.remove(tracer);
-        if (tracers == null) {
-            throw new IllegalArgumentException("tracer factory not registered");
-        }
-        for (var entry : tracers.entrySet()) {
-            getDescriptor(entry.getKey()).removeInstructionTracer(entry.getValue());
-        }
-    }
-
     static BytecodeEngineData get(TruffleLanguage<?> language) {
         Object languageInstance = BytecodeAccessor.LANGUAGE.getPolyglotLanguageInstance(language);
         Object sharingLayer = BytecodeAccessor.ENGINE.getSharingLayer(languageInstance);
@@ -255,7 +242,7 @@ final class BytecodeEngineData {
                 r.updateImpl(this.configEncoder, encoding);
             }
             if ((encoding & this.traceInstructionEncoding) != 0) {
-                r.updateInstructionTracers(this.descriptorTracers);
+                r.updateGlobalInstructionTracers(this.descriptorTracers);
             }
         }
 

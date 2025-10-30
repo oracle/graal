@@ -123,17 +123,17 @@ public final class HistogramInstructionTracer implements InstructionTracer {
      * group clause. This will perform quite poor for heavily concurrent workloads. For those its
      * better to not use any filters or groups.
      */
-    private volatile LRUCache cache;
+    private volatile LastTraceCache cache;
     private final Counters counters;
     private final AtomicLong[] rootCounters; // one less indirection
 
     HistogramInstructionTracer(BytecodeDescriptor<?, ?, ?> descriptor,
                     Predicate<BytecodeNode> bytecodeFilter,
-                    GroupClause[] groupClause) {
+                    GroupClause[] groupClauses) {
         Objects.requireNonNull(descriptor);
         this.descriptor = descriptor;
         this.filterClause = bytecodeFilter;
-        this.groupClauses = groupClause;
+        this.groupClauses = groupClauses;
         this.counters = new Counters(operationCodeTableSize(descriptor), groupClauses == null);
         this.rootCounters = counters.data;
     }
@@ -165,7 +165,7 @@ public final class HistogramInstructionTracer implements InstructionTracer {
          */
         boolean filter = this.filterClause != null; // pe-constant
         boolean group = this.groupClauses != null; // pe-constant
-        LRUCache c;
+        LastTraceCache c;
         AtomicLong[] counterArray;
         if (!filter && !group) {
             // fast-path implementation
@@ -201,7 +201,7 @@ public final class HistogramInstructionTracer implements InstructionTracer {
     }
 
     @TruffleBoundary
-    private LRUCache updateCache(BytecodeNode bytecode, int compiledTier) {
+    private LastTraceCache updateCache(BytecodeNode bytecode, int compiledTier) {
         Counters c = this.counters;
         if (groupClauses != null) {
             Thread t = Thread.currentThread();
@@ -213,7 +213,7 @@ public final class HistogramInstructionTracer implements InstructionTracer {
         }
         boolean included = filterClause != null ? filterClause.test(bytecode) : true;
         assert c.data != null; // must be leaf
-        return new LRUCache(bytecode, c.data, included, compiledTier, Thread.currentThread());
+        return new LastTraceCache(bytecode, c.data, included, compiledTier, Thread.currentThread());
     }
 
     /**
@@ -555,7 +555,8 @@ public final class HistogramInstructionTracer implements InstructionTracer {
                 return;
             }
 
-            if (this.subGroups != null && !this.subGroups.isEmpty()) {
+            if (this.subGroups != null) {
+                assert !this.subGroups.isEmpty();
                 // Sort groups for deterministic output
                 List<Map.Entry<Object, Histogram>> entries = new ArrayList<>(this.subGroups.entrySet());
                 entries.sort(Map.Entry.comparingByValue(Comparator.comparingLong(Histogram::getInstructionsExecuted).reversed()));
@@ -682,7 +683,7 @@ public final class HistogramInstructionTracer implements InstructionTracer {
         }
     }
 
-    private record LRUCache(BytecodeNode bytecodeNode, AtomicLong[] counters, boolean included, int compiledTier, Thread thread) {
+    private record LastTraceCache(BytecodeNode bytecodeNode, AtomicLong[] counters, boolean included, int compiledTier, Thread thread) {
     }
 
 }

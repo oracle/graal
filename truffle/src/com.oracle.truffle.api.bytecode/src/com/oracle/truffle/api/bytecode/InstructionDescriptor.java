@@ -48,7 +48,7 @@ import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 
 /**
  * Descriptor for a concrete bytecode instruction. Instances describe static properties of an
- * instruction kind, for example name, length and arguments.
+ * instruction, for example name, length and arguments.
  *
  * @since 25.1
  */

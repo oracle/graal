@@ -81,7 +81,7 @@ public final class PrintInstructionTracer implements InstructionTracer {
     private final Consumer<String> out;
     private final Predicate<BytecodeNode> filter;
     private final AtomicLong executedInstructions = new AtomicLong();
-    private volatile LRUCache cache;
+    private volatile LastTraceCache cache;
 
     PrintInstructionTracer(Consumer<String> out, Predicate<BytecodeNode> filter) {
         this.out = out;
@@ -140,19 +140,19 @@ public final class PrintInstructionTracer implements InstructionTracer {
         return newBuilder((s) -> out.println(s));
     }
 
-    private LRUCache updateCache(BytecodeNode bytecode) {
+    private LastTraceCache updateCache(BytecodeNode bytecode) {
         RootNode rootNode = bytecode.getRootNode();
         String name = rootNode.getQualifiedName();
         if (name == null) {
             name = "<unnamed>";
         }
         boolean included = filter != null ? filter.test(bytecode) : true;
-        return new LRUCache(bytecode, name, included);
+        return new LastTraceCache(bytecode, name, included);
     }
 
     @TruffleBoundary
     private void traceInstruction(InstructionAccess access, BytecodeNode bytecode, int bytecodeIndex) {
-        LRUCache c = this.cache;
+        LastTraceCache c = this.cache;
         if (c == null || c.bytecodeNode != bytecode) {
             c = updateCache(bytecode);
             this.cache = c;
@@ -229,6 +229,6 @@ public final class PrintInstructionTracer implements InstructionTracer {
      * This avoids recomputing node name and filter status for every single instruction of the same
      * node.
      */
-    record LRUCache(BytecodeNode bytecodeNode, String rootName, boolean included) {
+    private record LastTraceCache(BytecodeNode bytecodeNode, String rootName, boolean included) {
     }
 }

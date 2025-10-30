@@ -169,7 +169,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             }
         }
 
-        TypeMirror descriptorType = findAbstractDescriptorType(abstractBuilderType.asType());
+        TypeMirror descriptorType = findBytecodeVariantType(abstractBuilderType.asType());
         TypeMirror returnType = generic(context.getType(List.class), descriptorType);
 
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.STATIC), returnType, "variants");
@@ -204,12 +204,12 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         constructor.createBuilder().statement("super(token)");
         abstractBuilderType.add(constructor);
 
-        abstractBuilderType.add(new AbstractBytecodeDescriptorElement(templateType.asType(), model.languageClass, abstractBuilderType.asType()));
+        abstractBuilderType.add(new BytecodeVariantElement(templateType.asType(), model.languageClass, abstractBuilderType.asType()));
 
         return abstractBuilderType;
     }
 
-    public static TypeMirror findAbstractDescriptorType(TypeMirror builderType) {
+    public static TypeMirror findBytecodeVariantType(TypeMirror builderType) {
         TypeElement e = findInnerClass(ElementUtils.castTypeElement(builderType), "BytecodeVariant");
         if (e == null) {
             return null;
@@ -248,8 +248,8 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         return false;
     }
 
-    static final class AbstractBytecodeDescriptorElement extends CodeTypeElement {
-        AbstractBytecodeDescriptorElement(TypeMirror rootType, TypeMirror languageClass, TypeMirror builderType) {
+    static final class BytecodeVariantElement extends CodeTypeElement {
+        BytecodeVariantElement(TypeMirror rootType, TypeMirror languageClass, TypeMirror builderType) {
             super(Set.of(PUBLIC, STATIC, Modifier.ABSTRACT), ElementKind.CLASS, null, "BytecodeVariant");
             setSuperClass(generic(ProcessorContext.types().BytecodeDescriptor, rootType, languageClass, builderType));
 

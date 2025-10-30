@@ -169,7 +169,7 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "" + //
                     "Trace every executed bytecode instruction. " + //
                     "Very high overhead, use only for debugging, never in production. " + //
-                    "Supported only by bytecode DSL interpreters. " + //
+                    "Supported only by Bytecode DSL interpreters. " + //
                     "Combine with engine.BytecodeMethodFilter and engine.BytecodeLanguageFilter to limit output.")//
     public static final OptionKey<Boolean> TraceBytecode = new OptionKey<>(false);
 
@@ -178,12 +178,12 @@ final class PolyglotEngineOptions {
                     "Set to 'true' to enable basic mode or use a comma separated list to configure grouping (e.g. source,root)." + //
                     "Available groupings are root, tier, source, language, thread." + //
                     "This feature adds high overhead, use for profiling in non-production runs only. " + //
-                    "Supported only by bytecode DSL interpreters. " + //
-                    "Prints when the engine is closed by default, or periodically if BytecodeStatisticsInterval > 0.") //
+                    "Supported only by Bytecode DSL interpreters. " + //
+                    "Prints when the engine is closed by default, or periodically if BytecodeHistogramInterval > 0.") //
     public static final OptionKey<List<BytecodeHistogramGrouping>> BytecodeHistogram = new OptionKey<>(null, createBytecodeHistogramType());
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "" + //
-                    "Print and reset the opcode histogram at a fixed interval while BytecodeStatistics is enabled. " + //
+                    "Print and reset the opcode histogram at a fixed interval while BytecodeHistogram is enabled. " + //
                     "Use 0 to disable periodic printing and print only once at shutdown. " + //
                     "Examples: 250ms, 2s, 1m.") //
     public static final OptionKey<Duration> BytecodeHistogramInterval = new OptionKey<>(Duration.ofMillis(0), createDurationType());
@@ -193,14 +193,14 @@ final class PolyglotEngineOptions {
                     "Provide a comma-separated list of includes, or excludes prefixed with '~'. " + //
                     "Empty means no restriction. " + //
                     "Whitespace around commas is ignored. " + //
-                    "Applies to engine.TraceBytecodes and engine.BytecodeStatistics.") //
+                    "Applies to engine.TraceBytecode and engine.BytecodeHistogram.") //
     public static final OptionKey<String> BytecodeMethodFilter = new OptionKey<>("");
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "" + //
                     "Limit tracing and statistics to specific language IDs. " + //
                     "Provide a comma-separated list of language IDs, for example: js, python. " + //
                     "Empty means that all languages are included. " + //
-                    "Applies to TraceBytecodes and BytecodeStatistics.") //
+                    "Applies to engine.TraceBytecode and engine.BytecodeHistogram.") //
     public static final OptionKey<String> BytecodeLanguageFilter = new OptionKey<>("");
 
     enum StaticObjectStorageStrategies {

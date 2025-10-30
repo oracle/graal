@@ -574,7 +574,7 @@ Note that source information updates [do _not_ invalidate compiled code](Runtime
 
 ### Tracing
 
-Bytecode DSL interpreters support instruction-level tracing. Tracing lets you observe execution of bytecode programs at runtime without modifying the program itself. It is designed for debugging, profiling, and tooling, not for steady-state production use.
+Bytecode DSL interpreters support instruction-level tracing. Tracing lets you observe the execution of bytecode programs at runtime without modifying the program itself. It is designed for debugging, profiling, and tooling, not for steady-state production use.
 
 `InstructionTracer` is a low-overhead callback interface. A tracer is notified immediately before each bytecode instruction executes:
 
@@ -620,30 +620,30 @@ roots.removeInstructionTracer(tracer);
 
 Key points:
 
-* onInstructionEnter(...) is called before every instruction executes.
-* Tracing runs on the hot path, so keep the callback cheap.
+* `onInstructionEnter(...)` is called before each instruction executes.
+* Tracing runs on the hot path, so it is important to keep the callback implementation computationally cheap.
 
-You attach either:
+You can attach tracers in two ways:
 
-* to one parsed unit (roots.addInstructionTracer(...)), or
-* globally for a whole language instance (BYTECODE.addInstructionTracer(language, ...)), which affects all existing and future roots from that interpreter in that language.
+* To a specific set of root nodes, `roots.addInstructionTracer(...)`, or
+* Globally for an entire language instance, `BYTECODE.addInstructionTracer(language, ...)`, which affects all existing and future roots from that interpreter in that language.
 
-#### Built-in tracers
+#### Built-in Tracers
 
-The API ships with two ready-made tracers in `com.oracle.truffle.api.bytecode.debug`:
+The API provides two ready-made tracers in `com.oracle.truffle.api.bytecode.debug`:
 
-* `PrintInstructionTracer` Prints each executed instruction with a counter and the root name.
-* `HistogramInstructionTracer` Counts how many times each instruction executes (optionally grouped by tier, thread, etc.). You can poll and reset:
+* `PrintInstructionTracer`: Prints each executed instruction with a counter and the root name.
+* `HistogramInstructionTracer`: Counts how many times each instruction executes (optionally grouped by tier, thread, etc.). You can poll and reset the counters.
 
 
-#### Tracing via Polyglot options
+#### Tracing via Polyglot Options
 
 You can also enable tracing and instruction histograms without writing any Java code, just by passing engine options when creating the Context. This installs internal tracers automatically.
 
-* `engine.TraceBytecode=true`  log each executed instruction.
-* `engine.BytecodeMethodFilter=<pattern>`  include or exclude roots. Supports both inclusion and exclusion (with ~):
-* `engine.BytecodeHistogram=...`  collect and dump per-instruction execution counts. Set to `true` to enable without grouping or provide a comma-separated list of the available groups: `source,root,tier,language,thread`.
-* `engine.BytecodeHistogramInterval=<duration>`  dump periodically instead of only on close.
+* `engine.TraceBytecode=true`: Log each executed instruction.
+* `engine.BytecodeMethodFilter=<pattern>`: Include or exclude roots. Supports both inclusion and exclusion (with `~`).
+* `engine.BytecodeHistogram=...`: Collect and dump per-instruction execution counts. Set to `true` to enable without grouping, or provide a comma-separated list of available groups: `source,root,tier,language,thread`.
+* `engine.BytecodeHistogramInterval=<duration>`: Dump statistics periodically instead of only when the context is closed.
 
 Sample output `engine.TraceBytecode=true`:
 

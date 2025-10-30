@@ -192,7 +192,7 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         BytecodeDescriptorElement() {
             super(Set.of(PUBLIC, STATIC, ABSTRACT), ElementKind.CLASS, null, "Bytecode");
 
-            TypeMirror superType = abstractBuilderType == null ? null : BytecodeDSLCodeGenerator.findAbstractDescriptorType(abstractBuilderType);
+            TypeMirror superType = abstractBuilderType == null ? null : BytecodeDSLCodeGenerator.findBytecodeVariantType(abstractBuilderType);
             if (superType == null) {
                 // regular case
                 superType = generic(types.BytecodeDescriptor, model.getTemplateType().asType(), model.languageClass, builder.asType());

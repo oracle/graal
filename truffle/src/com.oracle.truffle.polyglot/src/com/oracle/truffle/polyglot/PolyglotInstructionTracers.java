@@ -75,7 +75,7 @@ final class PolyglotInstructionTracers {
     private final Pair<List<LanguageInfo>, List<LanguageInfo>> languageFilter;
     private final Pair<List<String>, List<String>> methodFilter;
     private final Function<BytecodeDescriptor<?, ?, ?>, PrintInstructionTracer> tracingFactory;
-    private final Function<BytecodeDescriptor<?, ?, ?>, HistogramInstructionTracer> statisticsFactory;
+    private final Function<BytecodeDescriptor<?, ?, ?>, HistogramInstructionTracer> histogramFactory;
     private final ScheduledExecutorService intervalExecutor;
 
     PolyglotInstructionTracers(PolyglotSharingLayer layer) {
@@ -154,23 +154,23 @@ final class PolyglotInstructionTracers {
                 }
             }
 
-            this.statisticsFactory = (descriptor) -> b.build(descriptor);
+            this.histogramFactory = (descriptor) -> b.build(descriptor);
 
-            Duration statisticsInterval = options.get(PolyglotEngineOptions.BytecodeHistogramInterval);
-            if (!statisticsInterval.isZero()) {
+            Duration histogramInterval = options.get(PolyglotEngineOptions.BytecodeHistogramInterval);
+            if (!histogramInterval.isZero()) {
                 this.intervalExecutor = Executors.newSingleThreadScheduledExecutor();
                 this.intervalExecutor.scheduleAtFixedRate(
                                 this::dumpAndReset,
-                                statisticsInterval.toMillis(),
-                                statisticsInterval.toMillis(),
+                                histogramInterval.toMillis(),
+                                histogramInterval.toMillis(),
                                 TimeUnit.MILLISECONDS);
             } else {
                 this.intervalExecutor = null;
             }
 
-            EngineAccessor.BYTECODE.registerInstructionTracerFactory(layer, statisticsFactory);
+            EngineAccessor.BYTECODE.registerInstructionTracerFactory(layer, histogramFactory);
         } else {
-            this.statisticsFactory = null;
+            this.histogramFactory = null;
             this.intervalExecutor = null;
         }
     }
@@ -188,7 +188,7 @@ final class PolyglotInstructionTracers {
     }
 
     private void dumpAndReset() {
-        List<HistogramInstructionTracer> engineTracers = EngineAccessor.BYTECODE.getEngineInstructionTracers(layer, statisticsFactory);
+        List<HistogramInstructionTracer> engineTracers = EngineAccessor.BYTECODE.getEngineInstructionTracers(layer, histogramFactory);
         TruffleLogger logger = layer.engine.getEngineLogger();
         for (HistogramInstructionTracer t : engineTracers) {
             logger.info("[bc] " + t.getHistogramAndReset().dump());

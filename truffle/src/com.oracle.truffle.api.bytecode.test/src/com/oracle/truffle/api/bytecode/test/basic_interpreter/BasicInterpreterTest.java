@@ -497,6 +497,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return ex.value;
         // }
         // return 0;
+
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot();
 
