@@ -31,6 +31,7 @@ import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 
 import java.lang.reflect.Executable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -236,6 +237,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
     private Consumer<CallTreeInfo> blocklistChecker = _ -> {
     };
+    private List<Runnable> afterInstallRuntimeConfig;
 
     public HostedProviders getHostedProviders() {
         return hostedProviders;
@@ -247,6 +249,27 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
     public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
         this.universeFactory = universeFactory;
+    }
+
+    /**
+     * Registers a {@code callback} to be invoked after
+     * {@link #beforeAnalysis(BeforeAnalysisAccess)} completes the
+     * {@link #installRuntimeConfig(BeforeAnalysisAccessImpl) runtime configuration setup}.
+     *
+     * <p>
+     * This hook is used by {@code TruffleFeature} to initialize {@code KnownTruffleTypes}, which
+     * are required by {@code SubstrateTruffleUniverseFactory}. The {@code KnownTruffleTypes} must
+     * be initialized after {@link #installRuntimeConfig(BeforeAnalysisAccessImpl)} has executed,
+     * but before the remaining logic in {@link #beforeAnalysis(BeforeAnalysisAccess)}, since that
+     * phase already relies on {@link SubstrateUniverseFactory} to create {@link SubstrateMethod}
+     * instances.
+     * </p>
+     */
+    public synchronized void addAfterInstallRuntimeConfigCallback(Runnable callback) {
+        if (afterInstallRuntimeConfig == null) {
+            afterInstallRuntimeConfig = new ArrayList<>();
+        }
+        afterInstallRuntimeConfig.add(callback);
     }
 
     @SuppressWarnings("unused")
@@ -431,6 +454,18 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) c;
         installRuntimeConfig(config);
+
+        List<Runnable> callbacks;
+        synchronized (this) {
+            if (afterInstallRuntimeConfig != null) {
+                callbacks = List.copyOf(afterInstallRuntimeConfig);
+            } else {
+                callbacks = List.of();
+            }
+        }
+        for (Runnable callback : callbacks) {
+            callback.run();
+        }
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);

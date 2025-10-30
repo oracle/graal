@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -181,7 +182,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         @Override
         protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
             Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(method);
-            PartialEvaluationMethodInfo methodInfo = computePartialEvaluationMethodInfo(config.runtime(), method, declaredAnnotationValues, getTypes());
+            PartialEvaluationMethodInfo methodInfo = computePartialEvaluationMethodInfo(config.runtime(), method, declaredAnnotationValues, getTypes(), Function.identity());
             /*
              * We can canonicalize the instances to reduce space required in the cache. There are
              * only a small number of possible instances of PartialEvaluationMethodInfo as it just
@@ -206,7 +207,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         @Override
         protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
             Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(field);
-            return computeConstantFieldInfo(field, declaredAnnotationValues, getTypes());
+            return computeConstantFieldInfo(field, declaredAnnotationValues, getTypes(), Function.identity());
         }
     }
 }

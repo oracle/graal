@@ -557,7 +557,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             Class<?> c = Class.forName(className);
             m.put(className, c);
         } catch (ClassNotFoundException e) {
-            throw new NoClassDefFoundError(className);
+            // Ignored: jdk.internal.event.Event is optional
         }
         return m;
     }
@@ -1172,7 +1172,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
-    public boolean isJavaInstrumentationActive() {
+    public final boolean isJavaInstrumentationActive() {
         return JFRListener.isActive();
     }
 

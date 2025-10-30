@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.util.OriginalClassProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -51,23 +53,22 @@ import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.annotation.Annotated;
 
 public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFactory {
 
     private final SubstrateTruffleRuntime truffleRuntime;
     private final ConcurrentMap<PartialEvaluationMethodInfo, PartialEvaluationMethodInfo> canonicalMethodInfos = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantFieldInfo, ConstantFieldInfo> canonicalFieldInfos = new ConcurrentHashMap<>();
-    private final KnownTruffleTypes types;
+    private final TruffleFeature truffleFeature;
 
-    public SubstrateTruffleUniverseFactory(SubstrateTruffleRuntime truffleRuntime, KnownTruffleTypes types) {
+    public SubstrateTruffleUniverseFactory(SubstrateTruffleRuntime truffleRuntime, TruffleFeature truffleFeature) {
         this.truffleRuntime = truffleRuntime;
-        this.types = types;
+        this.truffleFeature = truffleFeature;
     }
 
     @Override
     public SubstrateMethod createMethod(AnalysisMethod aMethod, ImageCodeInfo imageCodeInfo, HostedStringDeduplication stringTable) {
-        PartialEvaluationMethodInfo peInfo = createPartialEvaluationMethodInfo(truffleRuntime, aMethod, types);
+        PartialEvaluationMethodInfo peInfo = createPartialEvaluationMethodInfo(truffleRuntime, aMethod, truffleFeature.getTypes());
         PartialEvaluationMethodInfo canonicalPeInfo = canonicalMethodInfos.computeIfAbsent(peInfo, k -> k);
         /*
          * A collection of all the flags that Truffle needs for partial evaluation. Most of this
@@ -81,8 +82,8 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     @Override
     public SubstrateField createField(AnalysisField aField, HostedStringDeduplication stringTable) {
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) aField);
-        ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, types);
+        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(aField);
+        ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, truffleFeature.getTypes(), OriginalClassProvider::getOriginalType);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
     }
@@ -91,8 +92,8 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method,
                     KnownTruffleTypes types) {
         SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
-        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues((Annotated) method);
-        var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types);
+        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(method);
+        var info = PartialEvaluator.computePartialEvaluationMethodInfo(runtime, method, annotations, types, OriginalClassProvider::getOriginalType);
         if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {

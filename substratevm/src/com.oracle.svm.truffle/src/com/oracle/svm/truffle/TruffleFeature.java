@@ -136,11 +136,13 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
+import com.oracle.svm.truffle.api.SubstrateKnownTruffleTypes;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -233,12 +235,24 @@ public class TruffleFeature implements InternalFeature {
     private final Set<ResolvedJavaMethod> warnMethods;
     private final Set<Pair<ResolvedJavaMethod, String>> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
+    /**
+     * Holds the {@link KnownTruffleTypes} instance, which is initialized lazily after
+     * {@link RuntimeCompilationFeature#beforeAnalysis(BeforeAnalysisAccess)} completes runtime
+     * configuration setup.
+     *
+     * @see RuntimeCompilationFeature#addAfterInstallRuntimeConfigCallback(Runnable)
+     */
+    private volatile KnownTruffleTypes types;
 
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         tempTargetAllowlistMethods = new HashSet<>();
         warnMethods = new HashSet<>();
         neverPartOfCompilationViolations = ConcurrentHashMap.newKeySet();
+    }
+
+    public KnownTruffleTypes getTypes() {
+        return types;
     }
 
     @Override
@@ -290,6 +304,12 @@ public class TruffleFeature implements InternalFeature {
         UserError.guarantee(runtime instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         truffleRuntime.resetHosted();
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
+        runtimeCompilationFeature.addAfterInstallRuntimeConfigCallback(() -> {
+            Providers providers = TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders();
+            types = new SubstrateKnownTruffleTypes(truffleRuntime, providers.getMetaAccess(), providers.getConstantReflection());
+        });
+        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime, this));
     }
 
     @Override
@@ -382,10 +402,7 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        KnownTruffleTypes types = partialEvaluator.getTypes();
         registerKnownTruffleFields(config, types);
-
-        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime, types));
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
