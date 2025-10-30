@@ -1,4 +1,6 @@
 public class ArrayIndexing {
+  private static int val;
+  private static int computed;
   public static void main(String[] args) {
     int[] a = new int[5];
     for (int i = 0; i < a.length; i++) {
@@ -6,8 +8,7 @@ public class ArrayIndexing {
     }
 
     int idx = 2;
-    int val = a[idx];
-    System.out.println("val=" + val);
+    val = a[idx];
 
     // index changed by branch
     if (val > 3) {
@@ -15,10 +16,8 @@ public class ArrayIndexing {
     } else {
       idx = 0;
     }
-    System.out.println("a[idx]=" + a[idx]);
 
     // boundary condition: use computed index
-    int computed = (a[1] / 2) + 1; // (2/2)+1 = 2
-    System.out.println("computed=" + computed + ", a[computed]=" + a[computed]);
+    computed = (a[1] / 2) + 1; // (2/2)+1 = 2
   }
 }

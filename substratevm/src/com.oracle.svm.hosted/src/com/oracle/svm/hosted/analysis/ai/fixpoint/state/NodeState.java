@@ -10,12 +10,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  */
 public final class NodeState<Domain extends AbstractDomain<Domain>> {
 
-    /**
-     * Remove this once {@link com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter}
-     * outperforms {@link com.oracle.svm.hosted.analysis.ai.analyses.access.AccessPathIntervalAbstractInterpreter}
-     */
-    private boolean restrictedFromExecution = false;
-
     private Domain preCondition;
     private Domain postCondition;
 
@@ -43,15 +37,6 @@ public final class NodeState<Domain extends AbstractDomain<Domain>> {
 
     public void setPostCondition(Domain postCondition) {
         this.postCondition = postCondition.copyOf();
-    }
-
-    public boolean isRestrictedFromExecution() {
-        return restrictedFromExecution;
-    }
-
-    // TODO: remove this once we have dataflow interpreter handled
-    public void markRestrictedFromExecution() {
-        restrictedFromExecution = true;
     }
 
     @Override
