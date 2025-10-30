@@ -1,30 +1,24 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorStrategy;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 
 /**
- * Factory class for creating different types of fixpoint iterators
- * NOTE:
- * We have to differentiate between creating fixpoint iterators for intra-procedural and inter-procedural analysis payload.
- * Because inter-procedural analysis takes into account that the analysis can encounter same methods multiple times and tries
- * to save time by caching important internal structures of iterators for analysisMethods, we first check these caches and call the appropriate constructor.
- * On the other hand, intra-procedural analysis should run on a single analysisMethod and does not need to cache anything, so we call the appropriate constructor directly.
+ * Factory class for creating different types of fixpoint iterators.
  */
 public final class FixpointIteratorFactory {
 
     public static <Domain extends AbstractDomain<Domain>> FixpointIterator<Domain> createIterator(AnalysisMethod method,
                                                                                                   Domain initialDomain,
-                                                                                                  AbstractTransformer<Domain> abstractTransformer, AnalyzerMetadata analyzerMetadata) {
-        return switch (analyzerMetadata.getIterationStrategy()) {
-            case IteratorStrategy.WTO ->
-                    new WtoFixpointIterator<>(method, initialDomain, abstractTransformer, analyzerMetadata);
-            case IteratorStrategy.WPO ->
-                    new WpoFixpointIterator<>(method, initialDomain, abstractTransformer, analyzerMetadata);
-            default -> new WorkListFixpointIterator<>(method, initialDomain, abstractTransformer, analyzerMetadata);
+                                                                                                  AbstractTransformer<Domain> abstractTransformer,
+                                                                                                  AnalysisContext analysisContext) {
+        return switch (analysisContext.getIteratorPolicy().strategy()) {
+            case IteratorStrategy.WTO -> new WtoFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
+            case IteratorStrategy.WPO -> new WpoFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
+            default -> new WorkListFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
         };
     }
 }

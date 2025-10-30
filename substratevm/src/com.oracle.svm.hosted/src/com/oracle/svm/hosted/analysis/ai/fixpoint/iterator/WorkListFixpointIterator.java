@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
@@ -25,8 +25,8 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
     public WorkListFixpointIterator(AnalysisMethod method,
                                     Domain initialDomain,
                                     AbstractTransformer<Domain> abstractTransformer,
-                                    AnalyzerMetadata analyzerMetadata) {
-        super(method, initialDomain, abstractTransformer, analyzerMetadata);
+                                    AnalysisContext analysisContext) {
+        super(method, initialDomain, abstractTransformer, analysisContext);
     }
 
     @Override
@@ -71,7 +71,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
 
         iteratorContext.setConverged(true);
         logger.log("Finished WorkList fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(analyzerMetadata.getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
+        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 }

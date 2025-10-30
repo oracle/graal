@@ -6,7 +6,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalyzerMetadata;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
@@ -44,10 +44,10 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             AbstractInterpreter<Domain> abstractInterpreter,
             CheckerManager checkerManager,
             AnalysisMethodFilterManager methodFilterManager,
-            AnalyzerMetadata analyzerMetadata,
+            AnalysisContext analysisContext,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
-        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analyzerMetadata);
+        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analysisContext);
         this.callStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
     }
@@ -104,7 +104,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analyzerMetadata);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
         fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
         logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
         AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
@@ -123,7 +123,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return;
         }
 
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analyzerMetadata);
+        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
 
         callStack.push(root);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();

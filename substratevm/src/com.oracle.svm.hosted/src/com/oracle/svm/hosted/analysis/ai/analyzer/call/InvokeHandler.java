@@ -8,7 +8,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
 /**
- * Interface for analyzing invokes in the context of abstract interpretation.
+ * Interface for handling method invocations during abstract interpretation.
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
@@ -21,17 +21,17 @@ public interface InvokeHandler<Domain extends AbstractDomain<Domain>> {
      * @param invoke      the representation of the invocation to be handled
      * @param invokeNode  the graph node corresponding to the invocation
      * @param callerState the abstract state of the caller at the point of the {@param invoke}
-     * @return the outcome of the analysis of the call (status, + summary if status is ok)
+     * @return outcome of the analysis of the called method
      */
     AnalysisOutcome<Domain> handleInvoke(Invoke invoke,
                                          Node invokeNode,
                                          AbstractState<Domain> callerState);
 
     /**
-     * The starting point of the analysis.to md
+     * The starting point of the analysis
      * We receive an {@link AnalysisMethod} and we start our abstract interpretation from this analysisMethod as the starting point.
      *
-     * @param root the root {@link AnalysisMethod} that the abstract interpretation analysis starts from
+     * @param root the {@link AnalysisMethod} that the abstract interpretation analysis starts from
      */
     void handleRootInvoke(AnalysisMethod root);
 }
