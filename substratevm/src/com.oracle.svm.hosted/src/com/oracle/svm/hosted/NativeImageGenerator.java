@@ -321,6 +321,7 @@ import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -1301,6 +1302,10 @@ public class NativeImageGenerator {
         bb.addRootClass(Object[].class, false, false).registerAsInstantiated(rootClassReason);
         bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInstantiated(rootClassReason);
         bb.addRootClass(PointerBase[].class, false, false).registerAsInstantiated(rootClassReason);
+
+        bb.addRootClass(ClassLoaders.appClassLoader().getClass(), false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(ClassLoaders.platformClassLoader().getClass(), false, false).registerAsInstantiated(rootClassReason);
+        bb.addRootClass(BootLoaderSupport.getBootLoader().getClass(), false, false).registerAsInstantiated(rootClassReason);
 
         /* MethodRef can conceal use of MethodPointer and MethodOffset until after analysis. */
         bb.addRootClass(MethodPointer.class, false, true);

@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
@@ -65,12 +64,14 @@ import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -483,8 +484,19 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        // GR-57649 generalize code if needed in more places
-        ClassLoader loader = clazz.getClassLoader();
+        ClassLoader loader;
+        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+            /*
+             * We are getting called before analysis, DynamicHubs are not available at this point.
+             * This is acceptable because those graphs will not be used by the analysis later.
+             */
+            // GR-57649 generalize code if needed in more places
+            loader = clazz.getClassLoader();
+        } else {
+            /* Get loader from DynamicHub. The one from the hosted clazz can be different. */
+            loader = ((SVMHost) aUniverse.hostVM()).dynamicHub(clazz).getClassLoader();
+        }
+
         JavaConstant result;
         if (loader == null) {
             result = JavaConstant.NULL_POINTER;

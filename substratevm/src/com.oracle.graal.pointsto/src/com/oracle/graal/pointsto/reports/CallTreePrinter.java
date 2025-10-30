@@ -110,7 +110,8 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return ReportUtils.loaderName(methodNode.method.getDeclaringClass()) + ':' + methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
+            var hostVM = methodNode.method.getUniverse().hostVM();
+            return hostVM.loaderName(methodNode.method.getDeclaringClass()) + ':' + methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
         }
 
     }
@@ -140,7 +141,7 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT) + " id=" + id;
+            return method.getUniverse().hostVM().loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT) + " id=" + id;
         }
     }
 
@@ -307,7 +308,7 @@ public final class CallTreePrinter {
     private void printUsedMethods(PrintWriter out) {
         List<String> methodsList = new ArrayList<>();
         for (AnalysisMethod method : methodToNode.keySet()) {
-            methodsList.add(ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT));
+            methodsList.add(method.getUniverse().hostVM().loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT));
         }
         methodsList.sort(null);
         for (String name : methodsList) {
@@ -334,7 +335,8 @@ public final class CallTreePrinter {
                     name = packagePrefix(name);
                 }
             }
-            classSet.add(ReportUtils.loaderName(type) + ':' + name);
+
+            classSet.add(type.getUniverse().hostVM().loaderName(type) + ':' + name);
         }
         return classSet;
     }

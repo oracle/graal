@@ -132,6 +132,11 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
         }
         return osVersionValue = "Unknown";
     }
+
+    @Override
+    protected String jvmLibSuffix() {
+        return ".dylib";
+    }
 }
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)

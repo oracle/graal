@@ -319,24 +319,4 @@ public class ReportUtils {
             }
         }
     }
-
-    public static String loaderName(AnalysisType type) {
-        var declaringJavaClass = type.getJavaClass();
-        if (declaringJavaClass == null) {
-            return "err";
-        }
-        return loaderName(declaringJavaClass.getClassLoader());
-    }
-
-    public static String loaderName(ClassLoader loader) {
-        if (loader == null) {
-            return "null";
-        }
-        var loaderName = loader.getName();
-        if (loaderName == null || loaderName.isBlank()) {
-            return loader.getClass().getName();
-        } else {
-            return loaderName;
-        }
-    }
 }
