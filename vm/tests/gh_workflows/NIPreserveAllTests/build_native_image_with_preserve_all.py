@@ -92,7 +92,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
     while running the option -H:Preserve=module=ALL-UNNAMED, preserving everything on the classpath.
 
     The classpath contains all compile, runtime and transitive dependencies of the given library, while
-    the image entrypoint is an empty main.
+    the image entry point is an empty main.
 
     If the image build fails with a "--initialize-at-build-time" error, retries the build with the additional
     "--initialize-at-build-time" argument until the build completes successfully, or a different error occurs.
@@ -103,7 +103,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
         group_id, artifact_id, version = gav.rstrip().split(':')
 
         _generate_effective_pom(group_id, artifact_id, version)
-        _generate_image_entrypoint()
+        _generate_image_entry_point()
 
         classpath = subprocess.check_output(['mvn', '-q', 'exec:exec', '-Dexec.executable=echo', '-Dexec.args=%classpath']).decode('utf-8').strip()
         
@@ -248,7 +248,7 @@ def _parse_mvn_dependency_list(dependency_list):
             dependencies.append((group_id, artifact_id, version))
     return dependencies
 
-def _generate_image_entrypoint():
+def _generate_image_entry_point():
     '''
     Generates and compiles a Java class with an empty main method,
     placing it under target/classes of the current directory.
