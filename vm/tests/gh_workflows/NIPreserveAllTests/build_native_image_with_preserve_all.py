@@ -102,6 +102,8 @@ def preserve_all(native_image_path, coordinates, delimiter):
     for gav in coordinates_list:
         group_id, artifact_id, version = gav.rstrip().split(':')
 
+        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}'], check = True)
+
         _generate_effective_pom(group_id, artifact_id, version)
         _generate_image_entry_point()
 
