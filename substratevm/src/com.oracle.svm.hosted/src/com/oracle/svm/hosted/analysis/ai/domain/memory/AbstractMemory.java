@@ -27,6 +27,9 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
     private final Map<Var, AccessPath> env;
     private final Map<AccessPath, IntInterval> store;
 
+    // Additional may-alias environment for multi-root bindings
+    private final Map<Var, AliasSet> envMulti = new HashMap<>();
+
     public AbstractMemory() {
         this.isBot = false;
         this.isTop = false;
@@ -409,5 +412,62 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
             }
         }
         return tempNames.toArray(new String[0]);
+    }
+
+    public void bindVarToMany(Var v, Set<AccessPath> paths) {
+        Objects.requireNonNull(v);
+        Objects.requireNonNull(paths);
+        ensureNotBotTop();
+        // clear singleton mapping and record multi
+        env.remove(v);
+        envMulti.put(v, AliasSet.ofSet(paths));
+    }
+
+    public AliasSet lookupVarSet(Var v) {
+        AliasSet multi = envMulti.get(v);
+        if (multi != null && !multi.isEmpty()) return multi;
+        AccessPath single = env.get(v);
+        if (single != null) return AliasSet.of(single);
+        return AliasSet.ofSet(new HashSet<>());
+    }
+
+    public void removeVarFromMulti(Var v) {
+        envMulti.remove(v);
+    }
+
+    /** Read from a set of access paths after applying a transform (e.g., append field or array wildcard) */
+    public IntInterval readFrom(AliasSet aliasSet, java.util.function.Function<AccessPath, AccessPath> pathTransform) {
+        IntInterval acc = new IntInterval();
+        acc.setToBot();
+        for (AccessPath p : aliasSet.paths()) {
+            AccessPath tp = pathTransform.apply(p);
+            IntInterval val = readStore(tp);
+            acc.joinWith(val);
+        }
+        return acc;
+    }
+
+    /** Write to a set of access paths; strong update if singleton, else weak update to each element. */
+    public void writeTo(AliasSet aliasSet, java.util.function.Function<AccessPath, AccessPath> pathTransform, IntInterval val) {
+        if (aliasSet.isSingleton()) {
+            AccessPath p = aliasSet.paths().iterator().next();
+            writeStoreStrong(pathTransform.apply(p), val);
+        } else {
+            for (AccessPath p : aliasSet.paths()) {
+                writeStore(pathTransform.apply(p), val);
+            }
+        }
+    }
+
+    public AliasSet lookupLocalSetByName(String localName) {
+        return lookupVarSet(Var.local(localName));
+    }
+
+    public AliasSet lookupParamSetByName(String paramName) {
+        return lookupVarSet(Var.param(paramName));
+    }
+
+    public AliasSet lookupTempSetByName(String tempName) {
+        return lookupVarSet(Var.temp(tempName));
     }
 }

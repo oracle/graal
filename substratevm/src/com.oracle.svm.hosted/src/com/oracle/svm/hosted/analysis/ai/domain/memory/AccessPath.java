@@ -36,6 +36,11 @@ public final class AccessPath {
         return new AccessPath(RootKind.ALLOC_SITE, Objects.requireNonNull(allocId), Collections.emptyList());
     }
 
+    public static AccessPath forAllocSiteWithContext(String allocSiteId, String contextSignature) {
+        String name = Objects.requireNonNull(allocSiteId) + "@" + Objects.requireNonNull(contextSignature);
+        return new AccessPath(RootKind.ALLOC_SITE, name, Collections.emptyList());
+    }
+
     public static AccessPath forPlaceholder(String placeholder) {
         return new AccessPath(RootKind.PLACEHOLDER, Objects.requireNonNull(placeholder), Collections.emptyList());
     }
