@@ -1,0 +1,62 @@
+[
+    {
+        "group_id": "org.slf4j",
+        "artifact_id": "slf4j-api",
+        "version": "2.0.16",
+        "rank": 2
+    },
+    {
+        "group_id": "org.jetbrains.kotlin",
+        "artifact_id": "kotlin-stdlib",
+        "version": "2.0.20",
+        "rank": 3
+    },
+    {
+        "group_id": "com.google.guava",
+        "artifact_id": "guava",
+        "version": "33.3.0-jre",
+        "rank": 5
+    },
+    {
+        "group_id": "org.jetbrains.kotlin",
+        "artifact_id": "kotlin-stdlib-jdk8",
+        "version": "2.0.20",
+        "rank": 7
+    },
+    {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.13.0",
+        "rank": 8
+    },
+    {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.17.2",
+        "rank": 9
+    },
+    {
+        "group_id": "org.apache.commons",
+        "artifact_id": "commons-lang3",
+        "version": "3.17.0",
+        "rank": 10
+    },
+    {
+        "group_id": "commons-io",
+        "artifact_id": "commons-io",
+        "version": "2.16.1",
+        "rank": 11
+    },
+    {
+        "group_id": "ch.qos.logback",
+        "artifact_id": "logback-classic",
+        "version": "1.5.8",
+        "rank": 12
+    },
+    {
+        "group_id": "org.projectlombok",
+        "artifact_id": "lombok",
+        "version": "1.18.34",
+        "rank": 13
+    }
+]
