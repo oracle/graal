@@ -119,4 +119,8 @@ public final class CallStack {
         }
         return sb.toString();
     }
+
+    public Deque<AnalysisMethod> getCallStack() {
+        return callStack;
+    }
 }

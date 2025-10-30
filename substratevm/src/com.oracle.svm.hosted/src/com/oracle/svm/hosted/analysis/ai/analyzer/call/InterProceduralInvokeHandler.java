@@ -5,6 +5,8 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
@@ -104,13 +106,20 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
-        fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
-        logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
-        AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
-        summary.finalizeSummary(invokeAbstractState);
-        summaryManager.putSummary(calleeMethod, summary);
-        callStack.pop();
+        String ctxSig = CallContext.buildKCFASignature(callStack.getCallStack(), 1);
+        CallContext<Domain> ctx = new CallContext<>(callStack.getCallStack(), ctxSig, actualArgs);
+        CallContextHolder.set(ctx);
+        try {
+            FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
+            fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
+            logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
+            AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
+            summary.finalizeSummary(invokeAbstractState);
+            summaryManager.putSummary(calleeMethod, summary);
+        } finally {
+            CallContextHolder.clear();
+            callStack.pop();
+        }
 
         /* At this point, we are finished with the fixpoint iteration and updated the summary cache */
         checkerManager.runCheckers(targetAnalysisMethod, callerState);
@@ -123,15 +132,22 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return;
         }
 
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
+        String ctxSig = CallContext.buildKCFASignature(callStack.getCallStack(), 1);
+        CallContext<Domain> ctx = new CallContext<>(callStack.getCallStack(), ctxSig, java.util.List.of());
+        CallContextHolder.set(ctx);
+        try {
+            FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
 
-        callStack.push(root);
-        AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
-        callStack.pop();
+            callStack.push(root);
+            AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
+            callStack.pop();
 
-        checkerManager.runCheckers(root, abstractState);
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logSummariesStats(summaryManager);
+            checkerManager.runCheckers(root, abstractState);
+            AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+            logger.logSummariesStats(summaryManager);
+        } finally {
+            CallContextHolder.clear();
+        }
     }
 
     // TODO: fix this

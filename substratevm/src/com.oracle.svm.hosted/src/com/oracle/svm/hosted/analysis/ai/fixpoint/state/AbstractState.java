@@ -116,10 +116,11 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
      *
      * @return the abstract context of the {@link ReturnNode}
      */
+    // TODO: take a look at how we are doing this
     public Domain getReturnDomain() {
         Domain returnDomain = initialDomain.copyOf();
         for (Node node : stateMap.keySet()) {
-            if (node instanceof ReturnNode && !stateMap.get(node).isRestrictedFromExecution()) {
+            if (node instanceof ReturnNode){
                 returnDomain.joinWith(getPostCondition(node));
             }
         }
