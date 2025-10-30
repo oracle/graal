@@ -117,7 +117,6 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local all_os_arches = [
     "linux-amd64",
     "linux-aarch64",
-    "darwin-amd64",
     "darwin-aarch64",
     "windows-amd64"
   ],

@@ -273,27 +273,22 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "compiler-test-labsjdk-latest-darwin-amd64": {},
     "compiler-test-labsjdk-latest-windows-amd64": {},
 
     "compiler-test_zgc-labsjdk-latest-darwin-aarch64": {},
-    "compiler-test_zgc-labsjdk-latest-darwin-amd64": {},
     "compiler-test_zgc-labsjdk-latest-linux-aarch64": {},
     "compiler-test_zgc-labsjdk-latest-linux-amd64": {},
 
     "compiler-ctw-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw-labsjdk-latest-darwin-amd64": {},
     "compiler-ctw-labsjdk-latest-linux-aarch64": {},
     "compiler-ctw-labsjdk-latest-windows-amd64": {},
 
     "compiler-ctw_zgc-labsjdk-latest-linux-amd64": {},
 
     "compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
-    "compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
     "compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
     "compiler-ctw_economy-labsjdk-latest-windows-amd64": {},
 
-    "compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": {},
 
     "compiler-bootstrap_full-labsjdk-latest-linux-amd64": {},
     "compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": {},
@@ -334,7 +329,6 @@
 
     "compiler-test_serialgc-labsjdk-latest-linux-amd64": {},
     "compiler-test_serialgc-labsjdk-latest-linux-aarch64": {},
-    "compiler-test_serialgc-labsjdk-latest-darwin-amd64": {},
     "compiler-test_serialgc-labsjdk-latest-darwin-aarch64": {},
 
     "compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": {},
@@ -439,7 +433,6 @@
   local all_os_arches = [
     "linux-amd64",
     "linux-aarch64",
-    "darwin-amd64",
     "darwin-aarch64",
     "windows-amd64"
   ],
@@ -490,7 +483,6 @@
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
-      "darwin-amd64",
       "darwin-aarch64"
     ]
     for task in [
@@ -526,7 +518,6 @@
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
-      "darwin-amd64",
       "darwin-aarch64"
     ]
     for task in [

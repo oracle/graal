@@ -151,31 +151,7 @@ $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar c
 
 ### macOS
 
-On macOS there is nothing like `dlmopen` available, therefore `jvm-ce` does not work. However, there is another mode available where libraries can be executed via Sulong (internally called `nfi-llvm`). This requires the OpenJDK libraries to be compiled with the Sulong toolchain, such builds are available through `mx fetch-jdk` with a `-llvm` suffix. Unfortunately this mode is only supported on `darwin-amd64`, so on an Apple Silicon machine the `x86_64` emulator Rosetta 2 must be used:
-
-```bash
-$ arch -arch x86_64 zsh
-
-$ export MX_PYTHON=`xcode-select -p`/usr/bin/python3
-$ file $MX_PTYHON
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64:Mach-O 64-bit executable arm64]
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture x86_64):	Mach-O 64-bit executable x86_64
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture arm64):	Mach-O 64-bit executable arm64
-
-$ # the important part above is that there is also a Mach-O included for x86_64
-
-$ cd $graal/espresso
-$ mx fetch-jdk # fetch JDK latest, 21 and 21-llvm
-
-$ export ESPRESSO_JAVA_HOME=<JDK21 path for amd64>
-$ export LLVM_JAVA_HOME=<JDK21-llvm path for amd64>
-$ export JAVA_HOME=<JDK-latest path for amd64>
-
-$ # Note: ESPRESSO_JAVA_HOME and LLVM_JAVA_HOME must match regarding version.
-
-$ mx --env jvm-ce-llvm build
-
-```
+On macOS there is nothing like `dlmopen` available, therefore `jvm-ce` does not work.
 
 
 ## _Espressoⁿ_ Java-ception

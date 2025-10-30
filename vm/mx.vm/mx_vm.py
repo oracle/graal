@@ -94,7 +94,6 @@ ce_no_native_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insigh
 # Main GraalVMs
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-aarch64')
-mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-darwin')
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs

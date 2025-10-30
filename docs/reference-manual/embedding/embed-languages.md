@@ -714,7 +714,6 @@ For example, to configure a dependency on isolated Python for Linux amd64, add t
 Supported platform classifiers are:
 * `linux-amd64`
 * `linux-aarch64`
-* `darwin-amd64`
 * `darwin-aarch64`
 * `windows-amd64`
 
