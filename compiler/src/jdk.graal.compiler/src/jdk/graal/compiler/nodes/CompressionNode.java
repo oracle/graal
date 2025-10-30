@@ -130,10 +130,8 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue instanceof ConstantNode constant) {
-            if (isCompressible(constant.getValue())) {
-                return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(),
-                                constant.isDefaultStable(), tool.getMetaAccess());
-            }
+            return ConstantNode.forConstant(stamp(NodeView.DEFAULT), convert(constant.getValue(), tool.getConstantReflection()), constant.getStableDimension(),
+                            constant.isDefaultStable(), tool.getMetaAccess());
         } else if (forValue instanceof CompressionNode other) {
             if (op != other.op && encoding.equals(other.encoding)) {
                 return other.getValue();
