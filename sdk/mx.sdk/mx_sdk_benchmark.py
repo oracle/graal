@@ -1469,7 +1469,11 @@ class NativeImageVM(StageAwareGraalVm):
         return [mx_benchmark.JsonFixedFileRule(f, template, keys) for f in stats_files]
 
     def image_build_statistics_rules(self, benchmarks):
-        objects_list = ["total_array_store",
+        """
+        This method generates rules to collect metrics produced by ImageBuildStatistics.
+        """
+        # Corresponds to BytecodeExceptionKinds.
+        exception_kinds = ["total_array_store",
                         "total_assertion_error_nullary",
                         "total_assertion_error_object",
                         "total_class_cast",
@@ -1481,10 +1485,27 @@ class NativeImageVM(StageAwareGraalVm):
                         "total_null_pointer",
                         "total_out_of_bounds"]
         metric_objects = ["total_devirtualized_invokes"]
-        for obj in objects_list:
+        for obj in exception_kinds:
             metric_objects.append(obj + "_after_parse_canonicalization")
             metric_objects.append(obj + "_before_high_tier")
             metric_objects.append(obj + "_after_high_tier")
+
+        # Example for the bench server: 'invoke-static-after-strengthen-graphs'
+        strengthen_graphs_counters = [
+            "method",
+            "block",
+            "is_null",
+            "instance_of",
+            "prim_cmp",
+            "invoke_static",
+            "invoke_direct",
+            "invoke_indirect",
+            "load_field",
+            "constant",
+        ]
+        for counter in strengthen_graphs_counters:
+            metric_objects.append("total_" + counter + "_before_strengthen_graphs")
+            metric_objects.append("total_" + counter + "_after_strengthen_graphs")
         rules = []
         for i in range(0, len(metric_objects)):
             rules += self._get_image_build_stats_rules({
