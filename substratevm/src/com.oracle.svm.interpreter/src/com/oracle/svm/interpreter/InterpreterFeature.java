@@ -43,7 +43,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.Uninterruptible;
@@ -54,10 +56,13 @@ import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -198,7 +203,11 @@ public class InterpreterFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
         BuildTimeInterpreterUniverse.freshSingletonInstance();
-        AnalysisMethod interpreterRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.Root.class).getDeclaredMethods(false)[0];
+        AnalysisMetaAccess metaAccess = accessImpl.getMetaAccess();
+
+        AnalysisType interpreterRootType = metaAccess.lookupJavaType(Interpreter.Root.class);
+        AnalysisMethod interpreterRoot = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, interpreterRootType, "executeBodyFromBCI",
+                        InterpreterFrame.class, InterpreterResolvedJavaMethod.class, int.class, int.class, boolean.class);
 
         LocalVariableTable interpreterVariableTable = interpreterRoot.getLocalVariableTable();
         int interpreterMethodSlot = findLocalSlotByName("method", interpreterVariableTable.getLocalsAt(0)); // parameter
@@ -206,7 +215,9 @@ public class InterpreterFeature implements InternalFeature {
         // Local variable, search all locals.
         int bciSlot = findLocalSlotByName("curBCI", interpreterVariableTable.getLocals());
 
-        AnalysisMethod intrinsicRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.IntrinsicRoot.class).getDeclaredMethods(false)[0];
+        AnalysisType intrinsicRootType = metaAccess.lookupJavaType(Interpreter.IntrinsicRoot.class);
+        AnalysisMethod intrinsicRoot = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, intrinsicRootType, "execute",
+                        InterpreterFrame.class, InterpreterResolvedJavaMethod.class, SignaturePolymorphicIntrinsic.class, boolean.class);
 
         LocalVariableTable intrinsicVariableTable = intrinsicRoot.getLocalVariableTable();
         int intrinsicMethodSlot = findLocalSlotByName("method", intrinsicVariableTable.getLocalsAt(0)); // parameter
@@ -222,7 +233,7 @@ public class InterpreterFeature implements InternalFeature {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(intrinsicRoot);
 
         Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class, long.class);
-        leaveStub = accessImpl.getMetaAccess().lookupJavaMethod(leaveMethod);
+        leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
     }
 
