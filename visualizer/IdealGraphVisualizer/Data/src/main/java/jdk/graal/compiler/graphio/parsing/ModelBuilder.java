@@ -660,6 +660,14 @@ public class ModelBuilder implements Builder {
                     PROPNAME_ID,
                     PROPNAME_IDX, PROPNAME_BLOCK)));
 
+    private static boolean isSystemProperty(String key) {
+        return switch (key) {
+            case PROPNAME_HAS_PREDECESSOR, PROPNAME_NAME, PROPNAME_CLASS, PROPNAME_ID, PROPNAME_IDX, PROPNAME_BLOCK ->
+                    true;
+            default -> false;
+        };
+    }
+
     @Override
     public void setGroupName(String name, String shortName) {
         assert folder instanceof Group;
@@ -761,7 +769,7 @@ public class ModelBuilder implements Builder {
         assert currentNode != null;
         String k = key;
         if (!(value instanceof InputGraph)) {
-            if (SYSTEM_PROPERTIES.contains(key)) {
+            if (isSystemProperty(key)) {
                 k = NOT_DATA + k;
             }
             setProperty(k, value);
