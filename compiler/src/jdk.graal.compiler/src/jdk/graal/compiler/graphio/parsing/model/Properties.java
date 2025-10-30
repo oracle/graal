@@ -304,6 +304,48 @@ public abstract class Properties implements Iterable<Property<Object>> {
         }
 
         @Override
+        public boolean equals(Object o) {
+            if (o instanceof LinkedHashMapProperties hash) {
+                if (size() != hash.size()) {
+                    return false;
+                }
+                /*
+                 * Most Properties comparisons are for cases where they are the same or very similar
+                 * so efficiency is fairly important to loading speed. They are commonly ordered in
+                 * the same fashion so take advantage of that in the comparison
+                 */
+                Set<Map.Entry<String, Object>> set1 = map.entrySet();
+                Iterator<Map.Entry<String, Object>> iter1 = set1.iterator();
+
+                Set<Map.Entry<String, Object>> set2 = hash.map.entrySet();
+                Iterator<Map.Entry<String, Object>> iter2 = set2.iterator();
+                while (iter1.hasNext()) {
+                    var entry = iter1.next();
+                    // They are the same length so hasNext must be true
+                    Map.Entry<String, Object> next = iter2.next();
+                    if (entry.getKey().equals(next.getKey())) {
+                        if (!Objects.deepEquals(entry.getValue(), next.getValue())) {
+                            return false;
+                        }
+                        continue;
+                    }
+                    // Different key encountered so must resort to contains for all following values
+                    if (!Objects.deepEquals(entry.getValue(), hash.map.get(entry.getKey()))) {
+                        return false;
+                    }
+                    while (iter1.hasNext()) {
+                        entry = iter1.next();
+                        if (!Objects.deepEquals(entry.getValue(), hash.map.get(entry.getKey()))) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            return super.equals(o);
+        }
+
+        @Override
         public Property<?> atIndex(int index) {
             if (index >= size() || index < 0) {
                 throw new IndexOutOfBoundsException();
