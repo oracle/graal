@@ -91,6 +91,8 @@ import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 public class BinaryReader implements GraphParser, ModelControl {
     private static final Logger LOG = Logger.getLogger(BinaryReader.class.getName());
 
+    static final boolean TRACE_PARSE_TIME = false;
+
     private final Logger instLog;
 
     private final DataSource dataSource;
@@ -808,6 +810,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         hashStack.push(null);
 
         boolean restart = false;
+        long start = System.nanoTime();
         try {
             while (true) { // TERMINATION ARGUMENT: finite length of data source will result in
                            // EOFException eventually.
@@ -831,6 +834,11 @@ public class BinaryReader implements GraphParser, ModelControl {
         } finally {
             // also terminates the builder
             closeDanglingGroups();
+            long end = System.nanoTime();
+            if (TRACE_PARSE_TIME) {
+                System.err.println((System.currentTimeMillis() - timeStart) + " Parsed file in " + ((end - start) / 1000000) + " ms");
+            }
+
         }
         return builder.rootDocument();
     }
@@ -990,7 +998,10 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
+    private static final long timeStart = System.currentTimeMillis();
+
     private InputGraph parseGraph(int dumpId, String format, Object[] args, boolean toplevel) throws IOException {
+        long start = System.nanoTime();
         InputGraph g = builder.startGraph(dumpId, format, args);
         try {
             parseProperties();
@@ -1014,6 +1025,10 @@ public class BinaryReader implements GraphParser, ModelControl {
             // we have to finish the graph.
             reporter.popContext();
             g = builder.endGraph();
+            long end = System.nanoTime();
+            if (TRACE_PARSE_TIME) {
+                System.err.println((System.currentTimeMillis() - timeStart) + " Parsed " + dumpId + " " + String.format(format, args) + " in " + ((end - start) / 1000000) + " ms");
+            }
         }
         return g;
     }
