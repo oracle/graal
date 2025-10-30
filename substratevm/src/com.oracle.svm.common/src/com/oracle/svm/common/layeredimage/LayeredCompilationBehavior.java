@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
  * Used to specify how a method needs to be compiled when building layered images.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
 public @interface LayeredCompilationBehavior {
     /**
      * This state represents how a method should be compiled in layered images. The state of a
