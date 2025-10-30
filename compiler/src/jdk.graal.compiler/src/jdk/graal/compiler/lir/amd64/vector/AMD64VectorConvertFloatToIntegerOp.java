@@ -93,6 +93,7 @@ public class AMD64VectorConvertFloatToIntegerOp extends AMD64VectorInstruction {
     @Temp({REG, ILLEGAL}) protected Value compareMaskValue;
 
     private final OpcodeEmitter emitter;
+    private final AMD64Assembler.AMD64SIMDInstructionEncoding encoding;
     private final boolean canBeNaN;
     private final boolean canOverflow;
 
@@ -108,9 +109,10 @@ public class AMD64VectorConvertFloatToIntegerOp extends AMD64VectorInstruction {
         this.dstValue = dstValue;
         this.srcValue = srcValue;
         this.emitter = emitter;
+        this.encoding = AMD64Assembler.AMD64SIMDInstructionEncoding.forFeatures(((AMD64) tool.target().arch).getFeatures());
         if (canBeNaN || canOverflow) {
             AMD64Kind maskKind;
-            if (((AMD64) tool.target().arch).getFeatures().contains(AMD64.CPUFeature.AVX512F)) {
+            if (this.encoding == AMD64Assembler.AMD64SIMDInstructionEncoding.EVEX) {
                 GraalError.guarantee(Math.max(dstValue.getPlatformKind().getVectorLength(), srcValue.getPlatformKind().getVectorLength()) <= 16, "expect at most 16-element vectors");
                 maskKind = AMD64Kind.MASK16;
             } else {
@@ -130,7 +132,7 @@ public class AMD64VectorConvertFloatToIntegerOp extends AMD64VectorInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        if (masm.getFeatures().contains(AMD64.CPUFeature.AVX512F)) {
+        if (this.encoding == AMD64Assembler.AMD64SIMDInstructionEncoding.EVEX) {
             GraalError.guarantee(masm.supportsFullAVX512(), "expect full AVX-512 support");
             emitAVX512(crb, masm);
         } else {
