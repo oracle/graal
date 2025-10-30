@@ -2450,11 +2450,11 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementFor = "hasLanguage(Object)", replaceWith = "hasLanguageLegacy")
     public boolean hasLanguageId(Object receiver) {
-        return hasLanguage(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine() != null;
+        return hasLanguage(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine(this) != null;
     }
 
     protected final boolean hasLanguageLegacy(Object receiver) {
-        return hasLanguageId(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine() != null;
+        return hasLanguageId(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine(this) != null;
     }
 
     /**
@@ -2467,7 +2467,7 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementFor = "getLanguage(Object)", replaceWith = "getLanguageLegacy")
     public String getLanguageId(Object receiver) throws UnsupportedMessageException {
         Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
-        String id = InteropAccessor.ENGINE.getLanguageId(language);
+        String id = InteropAccessor.ENGINE.getLanguageId(this, language);
         if (id == null) {
             throw UnsupportedMessageException.create();
         }
@@ -2476,7 +2476,7 @@ public abstract class InteropLibrary extends Library {
 
     protected final Class<? extends TruffleLanguage<?>> getLanguageLegacy(Object receiver) throws UnsupportedMessageException {
         String id = getLanguageId(receiver);
-        Class<? extends TruffleLanguage<?>> clz = InteropAccessor.ENGINE.getLanguageClass(id);
+        Class<? extends TruffleLanguage<?>> clz = InteropAccessor.ENGINE.getLanguageClass(this, id);
         if (clz == null) {
             throw UnsupportedMessageException.create();
         }

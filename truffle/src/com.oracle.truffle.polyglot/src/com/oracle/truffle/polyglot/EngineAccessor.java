@@ -270,8 +270,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public String getLanguageId(Class<? extends TruffleLanguage<?>> languageClass) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+        public String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
             if (context == null) {
                 return null;
             }
@@ -280,8 +280,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         @SuppressWarnings("unchecked")
-        public Class<? extends TruffleLanguage<?>> getLanguageClass(String languageId) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
             if (context == null) {
                 return null;
             }
@@ -622,8 +622,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getCurrentPolyglotEngine() {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+        public Object getCurrentPolyglotEngine(Node anchor) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
             if (context == null) {
                 return null;
             }

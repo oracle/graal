@@ -1126,13 +1126,13 @@ public class ContextPreInitializationTest {
         // In context pre-initialization there is no sdk Context to set log handler,
         // logging is done to System.err
         BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
-            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine(null);
             TruffleLogger log = getEngineLogger(engine);
             log.log(Level.INFO, "preInit:info");
             log.log(Level.FINEST, "preInit:finest");
         });
         BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
-            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine(null);
             TruffleLogger log = getEngineLogger(engine);
             log.log(Level.INFO, "patch:info");
             log.log(Level.FINEST, "patch:finest");

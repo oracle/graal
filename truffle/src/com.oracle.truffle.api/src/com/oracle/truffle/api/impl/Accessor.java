@@ -391,7 +391,7 @@ public abstract class Accessor {
 
         public abstract Object getCurrentSharingLayer();
 
-        public abstract Object getCurrentPolyglotEngine();
+        public abstract Object getCurrentPolyglotEngine(Node anchor);
 
         public abstract CallTarget parseForLanguage(Object sourceLanguageContext, Source source, String[] argumentNames, boolean allowInternal);
 
@@ -629,9 +629,9 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLanguageView(Object polyglotLanguageContext, Object value);
 
-        public abstract String getLanguageId(Class<? extends TruffleLanguage<?>> languageClass);
+        public abstract String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(String languageId);
+        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 

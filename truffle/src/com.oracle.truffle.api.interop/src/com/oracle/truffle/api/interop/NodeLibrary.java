@@ -473,18 +473,6 @@ public abstract class NodeLibrary extends Library {
                 } catch (UnsupportedMessageException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
-            } else if (interop.hasLanguage(object)) {
-                /*
-                 * GR-69615: Remove deprecated InteropLibrary#hasLanguage and
-                 * InteropLibrary#getLanguage messages. We need to call hasLanguage even if
-                 * hasLanguageId provides a default implementation to support objects implementing
-                 * hasLanguage but delegating other messages using delegateTo.
-                 */
-                try {
-                    return InteropAccessor.ENGINE.getLanguageId(interop.getLanguage(object));
-                } catch (UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
             } else {
                 return null;
             }

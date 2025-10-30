@@ -53,7 +53,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.test.TestAPIAccessor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -805,24 +804,24 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     @ExportLibrary(InteropLibrary.class)
     static class ScopeTest implements TruffleObject {
 
-        boolean hasLanguage;
+        boolean hasLanguageId;
         boolean isScope;
         boolean hasScopeParent;
         boolean hasMembers;
-        Supplier<Class<? extends TruffleLanguage<?>>> getLanguage;
+        Supplier<String> getLanguageId;
         Supplier<Object> getScopeParent;
         Supplier<Object> getMembers;
 
         @ExportMessage
         @SuppressWarnings("static-method")
         boolean hasLanguageId() {
-            return hasLanguage;
+            return hasLanguageId;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         String getLanguageId() {
-            return TestAPIAccessor.engineAccess().getLanguageId(getLanguage.get());
+            return getLanguageId.get();
         }
 
         @ExportMessage
@@ -868,7 +867,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         ScopeTest v = new ScopeTest();
         InteropLibrary l = createLibrary(InteropLibrary.class, v);
 
-        v.hasLanguage = false;
+        v.hasLanguageId = false;
         v.isScope = false;
         v.hasScopeParent = false;
         v.getScopeParent = null;
@@ -890,8 +889,8 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         v.hasMembers = true;
         v.getMembers = () -> new Members();
         assertFails(() -> l.isScope(v), AssertionError.class); // It does not have a language
-        v.hasLanguage = true;
-        v.getLanguage = () -> ProxyLanguage.class;
+        v.hasLanguageId = true;
+        v.getLanguageId = () -> ProxyLanguage.ID;
         assertTrue(l.isScope(v));
 
         v.hasMembers = false;
@@ -926,8 +925,8 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         parentScope.isScope = true;
         parentScope.hasMembers = true;
         parentScope.getMembers = () -> new Members();
-        parentScope.hasLanguage = true;
-        parentScope.getLanguage = () -> ProxyLanguage.class;
+        parentScope.hasLanguageId = true;
+        parentScope.getLanguageId = () -> ProxyLanguage.ID;
         v.getScopeParent = () -> parentScope;
         assertTrue(l.isScope(v));
         assertTrue(l.hasScopeParent(v));
