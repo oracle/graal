@@ -24,23 +24,14 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.util.function.Function;
-
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * Special field value transformer which, instead of returning an object, returns an
- * {@link JavaConstant} of the transformed value.
+ * Wrapper for allowing a {@link JavaConstant} to be returned by a {@link FieldValueTransformer}.
+ * When {@link FieldValueTransformer#transform} returns a {@link JavaConstantWrapper}, then the
+ * constant will be installed "as is" within the image heap.
  */
-public interface ObjectToConstantFieldValueTransformer extends FieldValueTransformerWithAvailability {
-
-    JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant);
-
-    @Override
-    default Object transform(Object receiver, Object originalValue) {
-        throw VMError.intentionallyUnimplemented();
-    }
+public record JavaConstantWrapper(JavaConstant constant) {
 }
