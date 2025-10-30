@@ -54,13 +54,6 @@ public final class WpoFixpointIterator<
         this.entry = graphTraversalHelper.getEntryBlock();
     }
 
-    public WpoFixpointIterator(AnalysisMethod method,
-                               Domain initialDomain,
-                               AbstractTransformer<Domain> abstractTransformer,
-                               AnalyzerMetadata analyzerMetadata) {
-        this(method, initialDomain, abstractTransformer, analyzerMetadata.getAnalysisContext());
-    }
-
     @Override
     public AbstractState<Domain> iterateUntilFixpoint() {
         logger.log("Starting concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);

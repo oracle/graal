@@ -46,15 +46,15 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
 
         PentagonDomain<AccessPath> ifPost = abstractState.getPostCondition(ifNode);
 
-        if (ifPost.isBot() && target.equals(ifNode.trueSuccessor())) {
-            abstractState.getState(target).markRestrictedFromExecution();
-            return;
-        }
-
-        if (!ifPost.isBot() && target.equals(ifNode.falseSuccessor())) {
-            abstractState.getState(target).markRestrictedFromExecution();
-            return;
-        }
+//        if (ifPost.isBot() && target.equals(ifNode.trueSuccessor())) {
+//            abstractState.getState(target).markRestrictedFromExecution();
+//            return;
+//        }
+//
+//        if (!ifPost.isBot() && target.equals(ifNode.falseSuccessor())) {
+//            abstractState.getState(target).markRestrictedFromExecution();
+//            return;
+//        }
 
         /* Only handle integer less than conditions for now */
         if (!(ifNode.condition() instanceof IntegerLessThanNode lessThanNode)) {
