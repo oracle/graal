@@ -52,7 +52,7 @@ import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
@@ -145,7 +145,7 @@ import jdk.vm.ci.meta.JavaType;
  * entries encode the following:
  *
  * <pre>
- * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubTypeCheckUtil#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
+ * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
  * </pre>
  *
  * Thus, interfaceIDs encoded in hash tables must be > 0, to properly distinguish them from empty
@@ -154,8 +154,8 @@ import jdk.vm.ci.meta.JavaType;
  * The implementation of the open-world typechecks can be found in {@link OpenTypeWorldSnippets},
  * the loading of interface methods can be found in {@link OpenTypeWorldDispatchTableSnippets}. The
  * type check data for dynamic hubs is computed in
- * {@link DynamicHubTypeCheckUtil#computeOpenTypeWorldTypeCheckData} with the hashing function being
- * defined in {@link DynamicHubTypeCheckUtil#hash}.
+ * {@link DynamicHubUtils#computeOpenTypeWorldTypeCheckData} with the hashing function being defined
+ * in {@link DynamicHubUtils#hash}.
  */
 public final class TypeCheckBuilder {
     public static final int UNINITIALIZED_TYPECHECK_SLOTS = -1;
