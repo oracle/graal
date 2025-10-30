@@ -101,7 +101,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
     for gav in coordinates_list:
         group_id, artifact_id, version = gav.rstrip().split(':')
 
-        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}'], check=True)
+        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}', '-Dtransitive=false'], check=True)
 
         _generate_effective_pom(group_id, artifact_id, version)
         _generate_image_entry_point()
@@ -196,9 +196,9 @@ def _update_dependency_scopes(deps):
                     scope = dependency.find("m:scope", ns)
                     if scope is not None and scope.text == "provided":
                         scope.text = "compile"
-                    optional = dependency.find("m:optional", ns)
-                    if optional is not None and optional.text == "true":
-                        optional.text = "false"
+                    # optional = dependency.find("m:optional", ns)
+                    # if optional is not None and optional.text == "true":
+                        # optional.text = "false"
                 tree.write(pom_path, encoding="utf-8", xml_declaration=True)
             except Exception as e:
                 print(f"Warning: failed to patch {pom_path}: {e}")
