@@ -210,4 +210,20 @@ public final class JVMCIReflectionUtil {
         System.arraycopy(instanceFields, 0, allFields, staticFields.length, instanceFields.length);
         return Collections.unmodifiableList(Arrays.asList(allFields));
     }
+
+    /**
+     * Gets the package name for a {@link ResolvedJavaType}. This is the same as calling
+     * {@link Class#getPackageName()} on the underlying class.
+     * <p>
+     * Implementation derived from {@link Class#getPackageName()}.
+     */
+    public static String getPackageName(ResolvedJavaType type) {
+        ResolvedJavaType c = type.isArray() ? type.getElementalType() : type;
+        if (c.isPrimitive()) {
+            return "java.lang";
+        }
+        String cn = c.toClassName();
+        int dot = cn.lastIndexOf('.');
+        return (dot != -1) ? cn.substring(0, dot).intern() : "";
+    }
 }
