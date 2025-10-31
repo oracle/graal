@@ -1730,7 +1730,11 @@ JNIEXPORT jboolean JNICALL JVM_IsForeignLinkerSupported(void) {
 JNIEXPORT jboolean JNICALL
 JVM_IsStaticallyLinked(void) {
   IMPLEMENTED(JVM_IsStaticallyLinked);
+#ifdef ESPRESSO_NFI_STATIC
+  return JNI_TRUE;
+#else
   return JNI_FALSE;
+#endif
 }
 
 JNIEXPORT void JNICALL JVM_VirtualThreadStart(JNIEnv* env, jobject vthread) {

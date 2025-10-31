@@ -64,10 +64,15 @@ def create_ni_standalone(base_standalone_name, register_distribution):
                 f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:javavm>'
             ]
         else:
-            idx = layout['languages/java/lib/'].index('dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>')
-            layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
+            idx = layout['languages/java/lib/'].index('dependency:espresso:ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT/*')
+            if mx.is_darwin():
+                layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/fatpot/<lib:jvm>'
+            else:
+                layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
+
             idx = layout['bin/'].index('dependency:espresso:espresso')
             del layout['bin/'][idx]
+
             layout['bin/<exe:espresso>'] = f'dependency:espresso:{base_standalone}/bin/<exe:espresso>'
             layout['bin/<exe:java>'] = 'link:<exe:espresso>'
             layout['./'][0]['exclude'].append("bin/<exe:java>")

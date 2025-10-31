@@ -71,6 +71,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.ffi.NoNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIStaticLibNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -345,6 +346,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
                 if (OS.getCurrent() == OS.Linux) {
                     nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else if (OS.getCurrent() == OS.Darwin) {
+                    nativeBackend = NFIStaticLibNativeAccess.Provider.ID;
                 } else {
                     nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
