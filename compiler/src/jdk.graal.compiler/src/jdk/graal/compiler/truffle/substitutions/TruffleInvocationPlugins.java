@@ -58,6 +58,7 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
@@ -111,6 +112,7 @@ public class TruffleInvocationPlugins {
         registerFramePlugins(plugins);
         registerBytecodePlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
+        registerDynamicObjectPlugins(plugins);
     }
 
     private static void registerFramePlugins(InvocationPlugins plugins) {
@@ -826,6 +828,66 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
                 ThreadedSwitchNode threadedSwitchNode = b.add(new ThreadedSwitchNode(input));
                 b.push(input.getStackKind(), threadedSwitchNode);
+                return true;
+            }
+        });
+    }
+
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/object/UnsafeAccess;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.object.UnsafeAccess");
+        r.register(new OptionalInlineOnlyInvocationPlugin("hostUnsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                            ValueNode isExactType) {
+                if (!clazz.isConstant() || !nonNull.isConstant() || !isExactType.isConstant()) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+                ConstantReflectionProvider constantReflection = b.getConstantReflection();
+                ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
+                if (javaType == null) {
+                    b.push(JavaKind.Object, object);
+                    return true;
+                }
+
+                TypeReference type;
+                if (isExactType.asJavaConstant().asInt() != 0) {
+                    assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                    type = TypeReference.createExactTrusted(javaType);
+                } else {
+                    type = TypeReference.createTrusted(b.getAssumptions(), javaType);
+                }
+
+                boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
+                Stamp piStamp = StampFactory.object(type, trustedNonNull);
+
+                ValueNode valueAnchorNode;
+                if (condition.isConstant()) {
+                    if (condition.asJavaConstant().asInt() == 1) {
+                        // Nothing to do.
+                        valueAnchorNode = null;
+                    } else {
+                        valueAnchorNode = b.add(new ValueAnchorNode());
+                    }
+                } else {
+                    LogicNode compareNode = CompareNode.createCompareNode(CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true), constantReflection, NodeView.DEFAULT);
+                    if (compareNode instanceof LogicConstantNode logicConstantNode) {
+                        if (logicConstantNode.getValue()) {
+                            valueAnchorNode = null;
+                        } else {
+                            valueAnchorNode = b.add(new ValueAnchorNode());
+                        }
+                    } else {
+                        valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
+                    }
+                }
+
+                b.addPush(JavaKind.Object, PiNode.create(object, piStamp, valueAnchorNode));
                 return true;
             }
         });
