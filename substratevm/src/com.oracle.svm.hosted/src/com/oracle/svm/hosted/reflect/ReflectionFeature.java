@@ -318,7 +318,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * Querying Object members is allowed to enable these accesses on array classes, since those
          * don't define any additional members.
          */
-        reflectionData.registerClassMetadata(AccessCondition.unconditional(), Object.class);
+        reflectionData.registerClassMetadata(AccessCondition.unconditional(), Object.class, false);
     }
 
     @Override

@@ -55,7 +55,7 @@ public final class InternalReflectiveAccess implements ReflectiveAccess {
     public void register(AccessCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
             rrsInstance.register(condition, clazz);
-            rrsInstance.registerClassMetadata(condition, clazz);
+            rrsInstance.registerClassMetadata(condition, clazz, false);
         }
     }
 
@@ -89,7 +89,7 @@ public final class InternalReflectiveAccess implements ReflectiveAccess {
     public void registerForSerialization(AccessCondition condition, Class<?>... classes) {
         RuntimeSerializationSupport.singleton().register(condition, classes);
         for (Class<?> clazz : classes) {
-            rrsInstance.registerClassMetadata(condition, clazz);
+            rrsInstance.registerClassMetadata(condition, clazz, false);
         }
     }
 
