@@ -40,6 +40,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FL
 import static org.graalvm.nativeimage.dynamicaccess.AccessCondition.unconditional;
 
 import java.lang.annotation.AnnotationFormatError;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -85,7 +86,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
@@ -150,11 +150,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      */
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
-    private final Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> registeredFields = new ConcurrentHashMap<>();
+    private final Map<AnalysisType, Map<AnalysisField, RegisteredMemberData<Field>>> registeredFields = new ConcurrentHashMap<>();
     private final Set<AnalysisField> hidingFields = ConcurrentHashMap.newKeySet();
-    private final Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> registeredMethods = new ConcurrentHashMap<>();
+    private final Map<AnalysisType, Map<AnalysisMethod, RegisteredMemberData<Executable>>> registeredMethods = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, Object> methodAccessors = new ConcurrentHashMap<>();
     private final Set<AnalysisMethod> hidingMethods = ConcurrentHashMap.newKeySet();
+
+    private record RegisteredMemberData<T extends AnnotatedElement>(ConditionalRuntimeValue<T> member, boolean queriedOnly) {
+    }
 
     // Heap reflection data
     private final Set<DynamicHub> heapDynamicHubs = ConcurrentHashMap.newKeySet();
@@ -222,9 +225,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
         runConditionalInAnalysisTask(condition, (cnd) -> {
             registerClass(cnd, clazz, true, preserved);
-            if (FutureDefaultsOptions.completeReflectionTypes()) {
-                registerClassMetadata(cnd, clazz);
-            }
+            registerClassMetadata(cnd, clazz, preserved);
         });
     }
 
@@ -246,18 +247,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    public void registerClassMetadata(AccessCondition condition, Class<?> clazz) {
-        registerAllDeclaredFieldsQuery(condition, true, false, clazz);
-        registerAllFieldsQuery(condition, true, false, clazz);
-        registerAllDeclaredMethodsQuery(condition, true, false, clazz);
-        registerAllMethodsQuery(condition, true, false, clazz);
-        registerAllDeclaredConstructorsQuery(condition, true, false, clazz);
-        registerAllConstructorsQuery(condition, true, false, clazz);
-        registerAllDeclaredClassesQuery(condition, false, clazz);
-        registerAllClassesQuery(condition, false, clazz);
+    public void registerClassMetadata(AccessCondition condition, Class<?> clazz, boolean preserved) {
+        registerAllDeclaredFieldsQuery(condition, true, preserved, clazz);
+        registerAllFieldsQuery(condition, true, preserved, clazz);
+        registerAllDeclaredMethodsQuery(condition, true, preserved, clazz);
+        registerAllMethodsQuery(condition, true, preserved, clazz);
+        registerAllDeclaredConstructorsQuery(condition, true, preserved, clazz);
+        registerAllConstructorsQuery(condition, true, preserved, clazz);
+        registerAllDeclaredClassesQuery(condition, preserved, clazz);
+        registerAllClassesQuery(condition, preserved, clazz);
         registerAllRecordComponentsQuery(condition, clazz);
-        registerAllPermittedSubclassesQuery(condition, false, clazz);
-        registerAllNestMembersQuery(condition, false, clazz);
+        registerAllPermittedSubclassesQuery(condition, preserved, clazz);
+        registerAllNestMembersQuery(condition, preserved, clazz);
         registerAllSignersQuery(condition, clazz);
     }
 
@@ -466,24 +467,29 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         var classMethods = registeredMethods.computeIfAbsent(declaringType, _ -> new ConcurrentHashMap<>());
         var shouldRegisterReachabilityHandler = classMethods.isEmpty();
 
-        boolean registered = false;
-        ConditionalRuntimeValue<Executable> conditionalValue = classMethods.get(analysisMethod);
-        if (conditionalValue == null) {
-            var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectExecutable);
-            conditionalValue = classMethods.putIfAbsent(analysisMethod, newConditionalValue);
-            if (conditionalValue == null) {
-                conditionalValue = newConditionalValue;
-                registered = true;
+        boolean exists = classMethods.containsKey(analysisMethod);
+        ConditionalRuntimeValue<Executable> conditionalValue = classMethods.compute(analysisMethod, (_, methodData) -> {
+            if (methodData == null || (methodData.queriedOnly() && !queriedOnly)) {
+                /*
+                 * The dynamic access metadata needs to be reset when registering a queried-only
+                 * element as accessed.
+                 */
+                return new RegisteredMemberData<>(new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectExecutable), queriedOnly);
+            } else {
+                if (!preserved && methodData.queriedOnly() == queriedOnly) {
+                    var value = methodData.member();
+                    value.getDynamicAccessMetadata().setNotPreserved();
+                }
+                return methodData;
             }
-        } else if (!preserved) {
-            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
-        }
+        }).member();
+
         if (!queriedOnly) {
             /* queryOnly methods are conditioned by the type itself */
             conditionalValue.getDynamicAccessMetadata().addCondition(cnd);
         }
 
-        if (registered) {
+        if (!exists) {
             registerTypesForMethod(analysisMethod, reflectExecutable);
             Class<?> declaringClass = declaringType.getJavaClass();
 
@@ -642,12 +648,24 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         var classFields = registeredFields.computeIfAbsent(declaringClass, _ -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
-        var cndValue = classFields.computeIfAbsent(analysisField, _ -> new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectField));
-        if (exists) {
-            if (!preserved) {
-                cndValue.getDynamicAccessMetadata().setNotPreserved();
+
+        ConditionalRuntimeValue<Field> cndValue = classFields.compute(analysisField, (_, fieldData) -> {
+            if (fieldData == null || (fieldData.queriedOnly() && !queriedOnly)) {
+                /*
+                 * The dynamic access metadata needs to be reset when registering an element as
+                 * accessed
+                 */
+                return new RegisteredMemberData<>(new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), reflectField), queriedOnly);
+            } else {
+                if (!preserved && fieldData.queriedOnly() == queriedOnly) {
+                    var value = fieldData.member();
+                    value.getDynamicAccessMetadata().setNotPreserved();
+                }
+                return fieldData;
             }
-        } else {
+        }).member();
+
+        if (!exists) {
             registerTypesForField(analysisField, reflectField, queriedOnly);
 
             /*
@@ -1269,13 +1287,23 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields() {
         assert isSealed();
-        return Collections.unmodifiableMap(registeredFields);
+        return filterRegisteredMemberData(registeredFields);
     }
 
     @Override
     public Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables() {
         assert isSealed();
-        return Collections.unmodifiableMap(registeredMethods);
+        return filterRegisteredMemberData(registeredMethods);
+    }
+
+    private static <A, R extends AnnotatedElement> Map<AnalysisType, Map<A, ConditionalRuntimeValue<R>>> filterRegisteredMemberData(Map<AnalysisType, Map<A, RegisteredMemberData<R>>> map) {
+        /*
+         * Return only the ConditionalRuntimeValue, the queriedOnly boolean is not relevant once the
+         * builder is sealed.
+         */
+        return map.entrySet().stream().collect(
+                        Collectors.toUnmodifiableMap(Map.Entry::getKey, e -> e.getValue().entrySet().stream().collect(
+                                        Collectors.toUnmodifiableMap(Map.Entry::getKey, e2 -> e2.getValue().member()))));
     }
 
     @Override
