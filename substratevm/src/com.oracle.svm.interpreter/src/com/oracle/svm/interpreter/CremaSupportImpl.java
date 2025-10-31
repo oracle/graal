@@ -24,8 +24,24 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_CALLER_SENSITIVE;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_FIELD;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField;
+import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic;
+import static com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic.InvokeGeneric;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +66,10 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.JavaKind;
@@ -59,12 +78,17 @@ import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.ConstantValueAttribute;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
+import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
+import com.oracle.svm.espresso.shared.resolver.CallSiteType;
+import com.oracle.svm.espresso.shared.resolver.ResolvedCall;
 import com.oracle.svm.espresso.shared.vtable.MethodTableException;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.espresso.shared.vtable.PartialType;
@@ -86,6 +110,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CremaSupportImpl implements CremaSupport {
+    private final MethodHandleIntrinsics<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> methodHandleIntrinsics = new MethodHandleIntrinsics<>();
+
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType type) {
@@ -725,6 +751,12 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
+    public Object getStaticStorage(ResolvedJavaField resolved) {
+        InterpreterResolvedJavaField interpreterField = (InterpreterResolvedJavaField) resolved;
+        return interpreterField.getDeclaringClass().getStaticStorage(resolved.getType().getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
+    }
+
+    @Override
     public Object execute(ResolvedJavaMethod targetMethod, Object[] args) {
         return Interpreter.execute((InterpreterResolvedJavaMethod) targetMethod, args);
     }
@@ -732,5 +764,311 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object allocateInstance(ResolvedJavaType type) {
         return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
+    }
+
+    @Override
+    public ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature) {
+        return methodHandleIntrinsics.findIntrinsic((InterpreterResolvedJavaMethod) signaturePolymorphicMethod, signature, CremaRuntimeAccess.getInstance());
+    }
+
+    @Override
+    public Target_java_lang_invoke_MemberName resolveMemberName(Target_java_lang_invoke_MemberName mn, Class<?> caller) {
+        if (mn.resolved != null) {
+            return mn;
+        }
+        Class<?> declaringClass = mn.clazz;
+        Object type = mn.type;
+        String name = mn.name;
+        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
+        if (symbolicName == null) {
+            if (mn.isField()) {
+                throw new NoSuchFieldError(name);
+            } else {
+                assert mn.isInvocable();
+                throw new NoSuchMethodError(name);
+            }
+        }
+        if (declaringClass.isPrimitive()) {
+            return null;
+        }
+        InterpreterResolvedObjectType holder;
+        if (declaringClass.isArray()) {
+            holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(Object.class).getInterpreterType();
+        } else {
+            holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(declaringClass).getInterpreterType();
+        }
+        ByteSequence desc = asDescriptor(type);
+        boolean doAccessChecks = false;
+        // No constraints check on MemberName
+        boolean doConstraintsChecks = false;
+        InterpreterResolvedJavaType accessingType = null;
+        if (caller != null && !caller.isPrimitive()) {
+            accessingType = (InterpreterResolvedJavaType) DynamicHub.fromClass(caller).getInterpreterType();
+        }
+        int refKind = mn.getReferenceKind();
+        if (mn.isField()) {
+            Symbol<Type> t = SymbolsSupport.getTypes().lookupValidType(desc);
+            if (t == null) {
+                throw new NoSuchFieldError(name);
+            }
+            InterpreterResolvedJavaField field = CremaLinkResolver.resolveFieldSymbolOrThrow(CremaRuntimeAccess.getInstance(), accessingType, symbolicName, t, holder, doAccessChecks,
+                            doConstraintsChecks);
+            plantResolvedField(mn, field, refKind);
+            return mn;
+        }
+        if (mn.isConstructor()) {
+            if (symbolicName != ParserSymbols.ParserNames._init_) {
+                throw new LinkageError();
+            }
+            refKind = REF_invokeSpecial;
+        } else {
+            VMError.guarantee(mn.isMethod());
+        }
+        SignaturePolymorphicIntrinsic mhMethodId = getSignaturePolymorphicIntrinsicID(holder, refKind, symbolicName);
+
+        if (mhMethodId == InvokeGeneric) {
+            // Can not resolve InvokeGeneric, as we would miss the invoker and appendix.
+            throw new InternalError();
+        }
+        Symbol<Signature> sig = lookupSignature(desc, mhMethodId);
+        InterpreterResolvedJavaMethod m = CremaLinkResolver.resolveMethodSymbol(CremaRuntimeAccess.getInstance(), accessingType, symbolicName, sig, holder, holder.isInterface(), doAccessChecks,
+                        doConstraintsChecks);
+        var resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(CremaRuntimeAccess.getInstance(),
+                        accessingType, m, callSiteFromRefKind(refKind), holder);
+        plantResolvedMethod(mn, resolvedCall);
+        return mn;
+    }
+
+    private static void plantResolvedMethod(Target_java_lang_invoke_MemberName mn,
+                    ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
+        int methodFlags = getMethodFlags(resolvedCall);
+        InterpreterResolvedJavaMethod target = resolvedCall.getResolvedMethod();
+        mn.resolved = target;
+        mn.flags = methodFlags;
+        mn.clazz = target.getDeclaringClass().getJavaClass();
+    }
+
+    private static int getMethodFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
+        InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
+        int flags = resolvedMethod.getModifiers();
+        if (resolvedMethod.isCallerSensitive()) {
+            flags |= MN_CALLER_SENSITIVE;
+        }
+        if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
+            flags |= MN_IS_CONSTRUCTOR;
+            flags |= (REF_newInvokeSpecial << MN_REFERENCE_KIND_SHIFT);
+            return flags;
+        }
+        flags |= MN_IS_METHOD;
+        switch (resolvedCall.getCallKind()) {
+            case STATIC:
+                flags |= (REF_invokeStatic << MN_REFERENCE_KIND_SHIFT);
+                break;
+            case DIRECT:
+                flags |= (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
+                break;
+            case VTABLE_LOOKUP:
+                flags |= (REF_invokeVirtual << MN_REFERENCE_KIND_SHIFT);
+                break;
+            case ITABLE_LOOKUP:
+                flags |= (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
+                break;
+        }
+        return flags;
+    }
+
+    private static void plantResolvedField(Target_java_lang_invoke_MemberName mn, InterpreterResolvedJavaField field, int refKind) {
+        mn.resolved = field;
+        mn.flags = getFieldFlags(refKind, field);
+        mn.clazz = field.getDeclaringClass().getJavaClass();
+    }
+
+    private static int getFieldFlags(int refKind, InterpreterResolvedJavaField field) {
+        int res = field.getModifiers();
+        boolean isSetter = (refKind <= REF_putStatic) && !(refKind <= REF_getStatic);
+        res |= MN_IS_FIELD | ((field.isStatic() ? REF_getStatic : REF_getField) << MN_REFERENCE_KIND_SHIFT);
+        if (isSetter) {
+            res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
+        }
+        return res;
+    }
+
+    private static Symbol<Signature> lookupSignature(ByteSequence desc, SignaturePolymorphicIntrinsic iid) {
+        Symbol<Signature> signature;
+        if (iid != null) {
+            signature = SymbolsSupport.getSignatures().getOrCreateValidSignature(desc);
+        } else {
+            signature = SymbolsSupport.getSignatures().lookupValidSignature(desc);
+        }
+        if (signature == null) {
+            throw new NoSuchMethodError();
+        }
+        return signature;
+    }
+
+    private static CallSiteType callSiteFromRefKind(int refKind) {
+        if (refKind == REF_invokeVirtual) {
+            return CallSiteType.Virtual;
+        }
+        if (refKind == REF_invokeStatic) {
+            return CallSiteType.Static;
+        }
+        if (refKind == REF_invokeSpecial || refKind == REF_newInvokeSpecial) {
+            return CallSiteType.Special;
+        }
+        if (refKind == REF_invokeInterface) {
+            return CallSiteType.Interface;
+        }
+        throw VMError.shouldNotReachHere("refKind: " + refKind);
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/hotspot/share/prims/methodHandles.cpp#L735-L749")
+    private static SignaturePolymorphicIntrinsic getSignaturePolymorphicIntrinsicID(InterpreterResolvedObjectType resolutionKlass, int refKind, Symbol<Name> name) {
+        SignaturePolymorphicIntrinsic mhMethodId = null;
+        if (ParserKlass.isSignaturePolymorphicHolderType(resolutionKlass.getSymbolicType())) {
+            if (refKind == REF_invokeVirtual ||
+                            refKind == REF_invokeSpecial ||
+                            refKind == REF_invokeStatic) {
+                SignaturePolymorphicIntrinsic iid = SignaturePolymorphicIntrinsic.getId(name, resolutionKlass);
+                if (iid != null &&
+                                ((refKind == REF_invokeStatic) == (iid.isStaticSignaturePolymorphic()))) {
+                    mhMethodId = iid;
+                }
+            }
+        }
+        return mhMethodId;
+    }
+
+    private static ByteSequence asDescriptor(Object type) {
+        return switch (type) {
+            case MethodType mt -> methodTypeAsSignature(mt);
+            case Class<?> c -> typeAsDescriptor(c);
+            case String s -> ByteSequence.create(s);
+            default -> throw VMError.shouldNotReachHere(type.getClass().toString());
+        };
+    }
+
+    private static Symbol<Type> typeAsDescriptor(Class<?> c) {
+        return ((InterpreterResolvedJavaType) DynamicHub.fromClass(c).getInterpreterType()).getSymbolicType();
+    }
+
+    private static ByteSequence methodTypeAsSignature(MethodType mt) {
+        Class<?> returnType = mt.returnType();
+        int len = 2;
+        for (int i = 0; i < mt.parameterCount(); i++) {
+            Class<?> parameterType = mt.parameterType(i);
+            len += typeAsDescriptor(parameterType).length();
+        }
+        Symbol<Type> returnDescriptor = typeAsDescriptor(returnType);
+        len += returnDescriptor.length();
+        byte[] bytes = new byte[len];
+        int pos = 0;
+        bytes[pos++] = '(';
+        for (int i = 0; i < mt.parameterCount(); i++) {
+            Class<?> parameterType = mt.parameterType(i);
+            Symbol<Type> paramType = typeAsDescriptor(parameterType);
+            paramType.writeTo(bytes, pos);
+            pos += paramType.length();
+        }
+        bytes[pos++] = ')';
+        returnDescriptor.writeTo(bytes, pos);
+        pos += returnDescriptor.length();
+        assert pos == bytes.length;
+        return ByteSequence.wrap(bytes);
+    }
+
+    @Override
+    public Object invokeBasic(Target_java_lang_invoke_MemberName memberName, Object methodHandle, Object[] args) {
+        // This is AOT-compiled code calling MethodHandle.invokeBasic
+        InterpreterResolvedJavaMethod vmentry = InterpreterResolvedJavaMethod.fromMemberName(memberName);
+        Object[] basicArgs = new Object[args.length + 1];
+        basicArgs[0] = methodHandle;
+        System.arraycopy(args, 0, basicArgs, 1, args.length);
+        logIntrinsic("[from compiled] invokeBasic ", vmentry, basicArgs);
+        try {
+            return InterpreterToVM.dispatchInvocation(vmentry, basicArgs, false, false, false, false, true);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
+    }
+
+    @Override
+    public Object linkToVirtual(Object[] args) {
+        // This is AOT-compiled code calling MethodHandle.linkToVirtual
+        Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
+        InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
+        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        logIntrinsic("[from compiled] linkToVirtual ", target, basicArgs);
+        try {
+            return InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, false, true);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
+    }
+
+    @Override
+    public Object linkToStatic(Object[] args) {
+        // This is AOT-compiled code calling MethodHandle.linkToStatic
+        Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
+        InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
+        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        logIntrinsic("[from compiled] linkToStatic ", target, basicArgs);
+        try {
+            return InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
+    }
+
+    @Override
+    public Object linkToSpecial(Object[] args) {
+        // This is AOT-compiled code calling MethodHandle.linkToSpecial
+        Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
+        InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
+        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        logIntrinsic("[from compiled] linkToSpecial ", target, basicArgs);
+        try {
+            return InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
+    }
+
+    @Override
+    public Object linkToInterface(Object[] args) {
+        // This is AOT-compiled code calling MethodHandle.linkToInterface
+        Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
+        InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
+        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        logIntrinsic("[from compiled] linkToInterface ", target, basicArgs);
+        try {
+            return InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, true, true);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
+    }
+
+    private static void logIntrinsic(String value, InterpreterResolvedJavaMethod vmentry, Object[] basicArgs) {
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue() || !InterpreterOptions.InterpreterTrace.getValue()) {
+            return;
+        }
+        Log.log().string(value).string(vmentry.toString()).string(", args=");
+        for (int i = 0; i < basicArgs.length; i++) {
+            Object arg = basicArgs[i];
+            if (arg == null) {
+                Log.log().string("null");
+            } else {
+                Log.log().string(arg.getClass().getName());
+            }
+            if (i < basicArgs.length - 1) {
+                Log.log().string(", ");
+            }
+        }
+        Log.log().newline();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> RuntimeException uncheckedThrow(Throwable throwable) throws E {
+        throw (E) throwable;
     }
 }

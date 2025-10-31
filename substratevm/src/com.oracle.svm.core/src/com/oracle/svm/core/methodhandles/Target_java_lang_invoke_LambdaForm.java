@@ -30,6 +30,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -42,10 +44,18 @@ public final class Target_java_lang_invoke_LambdaForm {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = LambdaFormCacheTransformer.class)//
     volatile Object transformCache;
 
+    // isCompiled needs to be reset if vmentry is reset
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    boolean isCompiled;
+
     @Alias
     native String lambdaName();
 
+    @Alias
+    native void prepare();
+
     @Substitute
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     void compileToBytecode() {
         /*
          * Those lambda form types are required to be precompiled to bytecode during method handles
@@ -62,6 +72,7 @@ public final class Target_java_lang_invoke_LambdaForm {
      */
     @Substitute
     @SuppressWarnings("static-method")
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class)
     private boolean forceInterpretation() {
         return true;
     }
