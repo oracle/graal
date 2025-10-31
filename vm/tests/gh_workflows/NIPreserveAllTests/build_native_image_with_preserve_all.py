@@ -107,7 +107,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
         _generate_image_entry_point()
 
         classpath = subprocess.check_output(['mvn', '-q', 'exec:exec', '-Dexec.executable=echo', '-Dexec.args=%classpath']).decode('utf-8').strip()
-        
+
         base_command = [
             native_image_path,
             '-J-ea',
@@ -162,8 +162,8 @@ def _generate_effective_pom(group_id, artifact_id, version):
     while True:
         _update_dependency_scopes(dependencies)
         _generate_pom(dependencies)
-        
-        dependency_list = subprocess.check_output(['mvn', '-B', 'dependency:list']).decode('utf-8').rstrip()
+
+        dependency_list = subprocess.check_output(['mvn', '-B', 'dependency:list', '-DexcludeScope=system']).decode('utf-8').rstrip()
 
         detected_dependencies = _parse_mvn_dependency_list(dependency_list)
         before = len(dependencies)
@@ -196,9 +196,9 @@ def _update_dependency_scopes(deps):
                     scope = dependency.find("m:scope", ns)
                     if scope is not None and scope.text == "provided":
                         scope.text = "compile"
-                    # optional = dependency.find("m:optional", ns)
-                    # if optional is not None and optional.text == "true":
-                        # optional.text = "false"
+                    optional = dependency.find("m:optional", ns)
+                    if optional is not None and optional.text == "true":
+                        optional.text = "false"
                 tree.write(pom_path, encoding="utf-8", xml_declaration=True)
             except Exception as e:
                 print(f"Warning: failed to patch {pom_path}: {e}")
