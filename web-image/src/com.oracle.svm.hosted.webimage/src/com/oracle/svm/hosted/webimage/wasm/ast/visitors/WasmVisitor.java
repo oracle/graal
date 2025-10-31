@@ -278,6 +278,10 @@ public abstract class WasmVisitor {
                 visitBlockInstr(i);
                 visitIf(i);
             }
+            case Instruction.TryTable i -> {
+                visitBlockInstr(i);
+                visitTryTable(i);
+            }
             case Instruction.Try i -> {
                 visitBlockInstr(i);
                 visitTry(i);
@@ -337,8 +341,11 @@ public abstract class WasmVisitor {
         }
     }
 
-    public void visitBlockInstr(@SuppressWarnings("unused") Instruction.WasmBlock block) {
+    public void visitBlockInstr(Instruction.WasmBlock block) {
         visitId(block.getLabel());
+        if (block.hasResult()) {
+            visitType(block.getResult());
+        }
     }
 
     public void visitBlock(Instruction.Block block) {
@@ -355,6 +362,14 @@ public abstract class WasmVisitor {
         if (ifBlock.hasElse()) {
             visitInstructions(ifBlock.elseInstructions);
         }
+    }
+
+    public void visitTryTable(Instruction.TryTable tryBlock) {
+        for (Instruction.TryTable.Catch catchBlock : tryBlock.catchBlocks) {
+            visitId(catchBlock.tag);
+            visitId(catchBlock.label);
+        }
+        visitInstructions(tryBlock.instructions);
     }
 
     public void visitTry(Instruction.Try tryBlock) {

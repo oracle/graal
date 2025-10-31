@@ -185,16 +185,16 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
         module.constructActiveDataSegments();
         ((WebImageWasmHeapBreakdownProvider) HeapBreakdownProvider.singleton()).setActualTotalHeapSize((int) getFullImageHeapSize());
 
-        if (WebImageOptions.DebugOptions.VerificationPhases.getValue(options)) {
-            validateModule();
-        }
-
         emitJSCode();
 
         try (Writer writer = Files.newBufferedWriter(watFile)) {
             new WasmPrinter(writer).visitModule(module);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+
+        if (WebImageOptions.DebugOptions.VerificationPhases.getValue(options)) {
+            validateModule();
         }
 
         assembleWasmFile(watFile, wasmFile);

@@ -58,6 +58,8 @@ public class StackifierData implements ReconstructionData {
      */
     private HIRBlock[] blocks;
 
+    private ControlFlowGraph cfg;
+
     /**
      * Mapping from a basic block to its index in {@link #blocks}.
      */
@@ -90,6 +92,10 @@ public class StackifierData implements ReconstructionData {
 
     public HIRBlock[] getBlocks() {
         return blocks;
+    }
+
+    public ControlFlowGraph getCfg() {
+        return cfg;
     }
 
     public EconomicMap<HIRBlock, Scope> getEnclosingScope() {
@@ -134,6 +140,7 @@ public class StackifierData implements ReconstructionData {
 
     public void setSortedBlocks(HIRBlock[] sortedBlocks, ControlFlowGraph cfg) {
         this.blocks = sortedBlocks;
+        this.cfg = cfg;
         this.blockIndexSortOrder = new BlockMap<>(cfg);
         for (int i = 0; i < sortedBlocks.length; ++i) {
             this.blockIndexSortOrder.put(sortedBlocks[i], i);
