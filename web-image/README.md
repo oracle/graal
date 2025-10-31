@@ -5,7 +5,7 @@ WebAssembly module from Java code.
 
 ## Prerequisites
 
-Being part of Native Image, check out its [Quick Start Guide](../docs/reference-manual/native-image/contribute/DevelopingNativeImage.md)
+Being part of Native Image, see the [Quick Start Guide](../docs/reference-manual/native-image/contribute/DevelopingNativeImage.md)
 for all the prerequisites for building Native Image.
 
 In addition, Web Image also uses `wasm-as` from
