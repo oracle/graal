@@ -189,6 +189,16 @@ public abstract class WasmAssembler {
         }
     }
 
+    protected String getDetails() {
+        return "'%s' is part of the %s project (%s). At least version %s is required.".formatted(getExecutable(), getProjectName(), getURL(), getMinimumVersion());
+    }
+
+    protected abstract String getProjectName();
+
+    protected abstract String getURL();
+
+    protected abstract String getMinimumVersion();
+
     /**
      * The standard name of the assembler executable.
      */
@@ -243,6 +253,7 @@ public abstract class WasmAssembler {
         if (!pathOption.hasBeenSet()) {
             messages.add("A custom path to the " + getExecutable() + " executable can be set with the " + SubstrateOptionsParser.commandArgument(getPathOption(), "<path>") + " command-line option");
         }
+        messages.add(getDetails());
         messages.add("To prevent native-toolchain checking provide command-line option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.CheckToolchain, "-"));
         return UserError.abort(messages);
     }
@@ -395,6 +406,21 @@ public abstract class WasmAssembler {
         }
 
         @Override
+        protected String getProjectName() {
+            return "wabt";
+        }
+
+        @Override
+        protected String getURL() {
+            return "https://github.com/WebAssembly/wabt";
+        }
+
+        @Override
+        protected String getMinimumVersion() {
+            return "1.0.32";
+        }
+
+        @Override
         protected String getExecutable() {
             return "wat2wasm";
         }
@@ -437,6 +463,21 @@ public abstract class WasmAssembler {
 
         protected Binaryen(Path tempDirectory) {
             super(tempDirectory);
+        }
+
+        @Override
+        protected String getProjectName() {
+            return "Binaryen";
+        }
+
+        @Override
+        protected String getURL() {
+            return "https://github.com/WebAssembly/binaryen";
+        }
+
+        @Override
+        protected String getMinimumVersion() {
+            return "119";
         }
 
         @Override
