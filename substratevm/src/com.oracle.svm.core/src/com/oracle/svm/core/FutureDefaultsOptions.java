@@ -82,8 +82,9 @@ public class FutureDefaultsOptions {
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, COMPLETE_REFLECTION_TYPES);
 
-    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
-    public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS + ")";
+    public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS +
+                    ")";
+    public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
     private static final String DEFAULT_NAME = "<default-value>";
     public static final String SYSTEM_PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + OPTION_NAME + ".";
 

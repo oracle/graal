@@ -248,12 +248,13 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
 }
 
 JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
-    // see os_windows.cpp line 1367
-    static char path_buf[MAX_PATH];
-    if (GetTempPath(MAX_PATH, path_buf) <= 0) {
-        path_buf[0] = '\0';
+    // see os::get_temp_directory() in os_windows.cpp
+    WCHAR path_buf[MAX_PATH + 1];
+    DWORD len = GetTempPathW(MAX_PATH + 1, path_buf);
+    if (len == 0 || len > MAX_PATH + 1) {
+        return (*env)->NewString(env, NULL, 0); // empty on error/overflow
     }
-    return (*env)->NewStringUTF(env, path_buf);
+    return (*env)->NewString(env, path_buf, len);
 }
 
 jboolean VerifyFixClassname(char *utf_name) {

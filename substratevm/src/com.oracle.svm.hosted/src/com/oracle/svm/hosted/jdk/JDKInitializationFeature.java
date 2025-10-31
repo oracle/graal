@@ -186,9 +186,6 @@ public class JDKInitializationFeature implements InternalFeature {
              */
             rci.initializeAtBuildTime("sun.nio.fs.UnixPath", "Allow UnixPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
-
-            /* JrtFS support. */
-            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
         }
 
         rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
