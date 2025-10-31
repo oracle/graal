@@ -36,7 +36,6 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.word.WordFactory;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.
@@ -91,7 +90,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
         try (TruffleRuntimeScope truffleRuntimeScope = LibGraalTruffleHostEnvironment.openTruffleRuntimeScopeImpl()) {
-            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, runtimeClass, WordFactory.pointer(JAVA_INSTRUMENTATION_ACTIVE_ADDRESS.get()));
+            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, runtimeClass, Word.pointer(JAVA_INSTRUMENTATION_ACTIVE_ADDRESS.get()));
             this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
             assert JNIUtil.IsSameObject(env, hsRuntime(environment).getHandle(), runtimeLocalRef);
             return environment;

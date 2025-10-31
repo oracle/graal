@@ -58,8 +58,10 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
@@ -79,6 +81,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -180,8 +183,20 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
+    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
+        return super.getPartialEvaluationMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
         return super.getHostMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return super.getConstantFieldInfo(field);
     }
 
     private void teardownCompilerIsolate() {
