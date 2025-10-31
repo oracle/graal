@@ -42,6 +42,7 @@ package com.oracle.truffle.runtime.hotspot;
 
 import java.lang.reflect.Method;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.runtime.EngineData;
@@ -97,24 +98,38 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     private static final Method setSpeculationLog;
 
     /**
-     * Reflective reference to {@code InstalledCode.invalidate(boolean deoptimize)} so that this
+     * Reflective reference to
+     * {@code InstalledCode.invalidate(boolean deoptimize, int invalidationReason)} so that this
      * code can be compiled against older JVMCI API.
      */
-    @SuppressWarnings("unused") private static final Method invalidateInstalledCode;
+    @SuppressWarnings("unused") private static final Method invalidateInstalledCodeWithReasonMethodRef;
+    @SuppressWarnings("unused") private static final Method invalidateInstalledCodeWithoutReasonMethodRef;
+
+    /**
+     * Reflective reference to {@code HotSpotNmethod.getInvalidationReason()} and
+     * {@code HotSpotNmethod.getInvalidationReasonDescription()} so that this code can be compiled
+     * against older JVMCI API.
+     */
+    @SuppressWarnings("unused") private static final Method getInvalidationReasonMethodRef;
+    @SuppressWarnings("unused") private static final Method getInvalidationReasonDescriptionMethodRef;
 
     static {
-        Method method = null;
+        setSpeculationLog = findMethod(HotSpotNmethod.class, "setSpeculationLog", true, HotSpotSpeculationLog.class);
+        invalidateInstalledCodeWithReasonMethodRef = findMethod(HotSpotNmethod.class, "invalidate", false, boolean.class, int.class);
+        invalidateInstalledCodeWithoutReasonMethodRef = findMethod(InstalledCode.class, "invalidate", true, boolean.class);
+        getInvalidationReasonMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReason", false);
+        getInvalidationReasonDescriptionMethodRef = findMethod(HotSpotNmethod.class, "getInvalidationReasonDescription", false);
+    }
+
+    private static Method findMethod(Class<?> clazz, String methodName, boolean required, Class<?>... args) {
         try {
-            method = HotSpotNmethod.class.getDeclaredMethod("setSpeculationLog", HotSpotSpeculationLog.class);
+            return clazz.getMethod(methodName, args);
         } catch (NoSuchMethodException e) {
+            if (required) {
+                throw new InternalError(e);
+            }
+            return null;
         }
-        setSpeculationLog = method;
-        method = null;
-        try {
-            method = InstalledCode.class.getDeclaredMethod("invalidate", boolean.class);
-        } catch (NoSuchMethodException e) {
-        }
-        invalidateInstalledCode = method;
     }
 
     /**
@@ -127,9 +142,13 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
             return;
         }
 
-        if (oldCode != INVALID_CODE && invalidateInstalledCode != null) {
+        if (oldCode != INVALID_CODE) {
             try {
-                invalidateInstalledCode.invoke(oldCode, false);
+                if (invalidateInstalledCodeWithReasonMethodRef != null) {
+                    invalidateInstalledCodeWithReasonMethodRef.invoke(oldCode, false, ((HotSpotTruffleRuntime) runtime()).getJVMCIReplacedMethodInvalidationReason());
+                } else if (invalidateInstalledCodeWithoutReasonMethodRef != null) {
+                    invalidateInstalledCodeWithoutReasonMethodRef.invoke(oldCode, false);
+                }
             } catch (Error e) {
                 throw e;
             } catch (Throwable throwable) {
@@ -195,4 +214,56 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
         return HotSpotTruffleRuntimeServices.getCompilationSpeculationLog(this);
     }
 
+    @Override
+    protected void notifyDeoptimized(VirtualFrame frame) {
+        String reason = null;
+        try {
+            // This method may be called with {@code installedCode ==
+            // INVALID_CODE} when the call target is not a root compilation and
+            // the parent compilation was deoptimized.
+            if (this.installedCode != INVALID_CODE && getInvalidationReasonDescriptionMethodRef != null) {
+                reason = (String) getInvalidationReasonDescriptionMethodRef.invoke(this.installedCode);
+            }
+        } catch (Exception e) {
+            throw new InternalError(e);
+        } finally {
+            runtime().getListener().onCompilationDeoptimized(this, frame, reason);
+        }
+    }
+
+    private int getInvalidationReason() {
+        try {
+            if (getInvalidationReasonMethodRef != null) {
+                assert installedCode != INVALID_CODE : "Cannot get invalidation reason of INVALID_CODE";
+                return (int) getInvalidationReasonMethodRef.invoke(this.installedCode);
+            }
+        } catch (Exception e) {
+            throw new InternalError(e);
+        }
+        return 0;
+    }
+
+    /**
+     * When running as part of HotSpot we should pay special attention to CallTargets (CTs) that
+     * have been flushed from the code cache because they were cold (According to Code Cache's
+     * heuristics). Truffle's CallTargets' Profile counter don't decay. For that reason, we need
+     * special handling for cold (according to code cache heuristics) CTs that were flushed from the
+     * code cache. Otherwise, we can enter a recompilation cycle because Truffle will always see the
+     * method as hot (because the profile counters never reset). To handle this case we reset the CT
+     * profile whenever its prior compilation was invalidated because it was cold.
+     */
+    @Override
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        if (!super.prepareForCompilation(rootCompilation, compilationTier, lastTier)) {
+            return false;
+        }
+
+        if (installedCode != INVALID_CODE && getInvalidationReason() == ((HotSpotTruffleRuntime) runtime()).getColdMethodInvalidationReason()) {
+            resetCompilationProfile();
+            installedCode = INVALID_CODE;
+            runtime().getListener().onProfileReset(this);
+            return false;
+        }
+        return true;
+    }
 }
