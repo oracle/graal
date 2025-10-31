@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.svm.util.OriginalClassProvider;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -86,6 +89,14 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
         ConstantFieldInfo fieldInfo = PartialEvaluator.computeConstantFieldInfo(aField, annotations, truffleFeature.getTypes(), OriginalClassProvider::getOriginalType);
         ConstantFieldInfo canonicalFieldInfo = fieldInfo == null ? null : canonicalFieldInfos.computeIfAbsent(fieldInfo, k -> k);
         return new SubstrateTruffleField(aField, stringTable, canonicalFieldInfo);
+    }
+
+    @Override
+    public SubstrateType createType(AnalysisType analysisType, DynamicHub hub) {
+        SubstrateAnnotationExtractor extractor = (SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class);
+        Map<ResolvedJavaType, AnnotationValue> annotations = extractor.getDeclaredAnnotationValues(analysisType);
+        boolean valueType = annotations.containsKey(OriginalClassProvider.getOriginalType(truffleFeature.getTypes().CompilerDirectives_ValueType));
+        return new SubstrateTruffleType(analysisType.getJavaKind(), hub, valueType);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

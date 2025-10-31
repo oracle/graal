@@ -101,6 +101,11 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     @Override
+    public boolean isValueType(ResolvedJavaType type) {
+        return AnnotationValueSupport.getDeclaredAnnotationValue(types.CompilerDirectives_ValueType, type) != null;
+    }
+
+    @Override
     public PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method) {
         return methodInfoCache.get(method);
     }

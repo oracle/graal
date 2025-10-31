@@ -295,6 +295,8 @@ public abstract class PartialEvaluator {
 
     public abstract ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
 
+    public abstract boolean isValueType(ResolvedJavaType type);
+
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
         return EconomicMap.create();
     }
