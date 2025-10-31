@@ -35,6 +35,10 @@ import java.util.Iterator;
 
 import com.oracle.svm.configure.ConfigurationUsageException;
 
+/**
+ * A standalone tool for native-image. It is shipped as `native-image-utils` (previously
+ * `native-image-configure`).
+ */
 public abstract class ConfigurationCommand {
     protected static final int VALUE_INDEX = 1;
     protected static final int OPTION_INDEX = 0;

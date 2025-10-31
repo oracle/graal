@@ -63,11 +63,10 @@ To further filter the generated configuration, you can use `conditional-config-c
 ### Generating Conditional Configuration From Multiple Agent Runs
 
 Conditional configuration can be generated from multiple agent runs that reach different code paths in the application.
-Each agent run produces configuration with metadata. `native-image-utils` is then used to merge the collected data and produce a conditional configuration.
-To run the agent in this mode, add `experimental-conditional-config-part` to the agent's command line.
-Once all the agent runs have finished, you can generate a conditional configuration by invoking:
+Each agent run produces configuration with metadata. After all agent runs have finished, you can use `native-image-utils` is then used to merge the collected data and produce a conditional configuration.
+To generate a conditional configuration, invoke:
 ```shell
-native-image-utils generate-conditional --user-code-filter=<path-to-filter-file> --class-name-filter=<path-to-filter-file> --input-dir=<path-to-agent-run-output-1> --input-dir=<path-to-agent-run-ouput-2> ... --output-dir=<path-to-resulting-conditional-config>
+native-image-utils generate-conditional --user-code-filter=<path-to-filter-file> --class-name-filter=<path-to-filter-file> --input-dir=<path-to-agent-run-output-1> --input-dir=<path-to-agent-run-output-2> ... --output-dir=<path-to-resulting-conditional-config>
 ```
 where:
  - `--user-code-filter=<path-to-filter-file>`: path to an agent filter file that specifies user classes
