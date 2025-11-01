@@ -68,6 +68,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
@@ -81,6 +82,8 @@ import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.InstructionDescriptor;
+import com.oracle.truffle.api.bytecode.InstructionTracer;
 import com.oracle.truffle.api.bytecode.LocalVariable;
 import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.SourceInformationTree;
@@ -90,6 +93,7 @@ import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -97,7 +101,7 @@ import com.oracle.truffle.api.source.Source;
 @RunWith(Parameterized.class)
 public abstract class AbstractBasicInterpreterTest {
 
-    public record TestRun(BytecodeVariant bytecode, boolean testSerialize) {
+    public record TestRun(BytecodeVariant bytecode, boolean testSerialize, boolean testTracer) {
 
         public Class<? extends BasicInterpreter> interpreterClass() {
             return bytecode.getGeneratedClass();
@@ -137,7 +141,7 @@ public abstract class AbstractBasicInterpreterTest {
 
         @Override
         public String toString() {
-            return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + "]";
+            return interpreterClass().getSimpleName() + "[serialize=" + testSerialize + ",trace=" + testTracer + "]";
         }
 
         public int getFrameBaseSlots() {
@@ -261,8 +265,9 @@ public abstract class AbstractBasicInterpreterTest {
     public static List<TestRun> getParameters() {
         List<TestRun> result = new ArrayList<>();
         for (BytecodeVariant bc : allVariants()) {
-            result.add(new TestRun(bc, false));
-            result.add(new TestRun(bc, true));
+            result.add(new TestRun(bc, false, false));
+            result.add(new TestRun(bc, true, false));
+            result.add(new TestRun(bc, false, true));
         }
         return result;
     }
@@ -274,20 +279,20 @@ public abstract class AbstractBasicInterpreterTest {
     }
 
     public RootCallTarget parse(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
-        BytecodeRootNode rootNode = parseNode(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
+        BytecodeRootNode rootNode = parseNode(run, LANGUAGE, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
     public BasicInterpreter parseNode(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
-        return parseNode(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
+        return parseNode(run, LANGUAGE, rootName, builder);
     }
 
     public BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
-        return parseNodeWithSource(run.bytecode(), LANGUAGE, run.testSerialize, rootName, builder);
+        return parseNodeWithSource(run, LANGUAGE, rootName, builder);
     }
 
     public BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<BasicInterpreterBuilder> builder) {
-        return createNodes(run.bytecode(), LANGUAGE, run.testSerialize, config, builder);
+        return createNodes(run, LANGUAGE, config, builder);
     }
 
     public BytecodeConfig.Builder createBytecodeConfigBuilder() {
@@ -312,11 +317,39 @@ public abstract class AbstractBasicInterpreterTest {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeVariant bytecode,
-                    BytecodeDSLTestLanguage language, boolean testSerialize, BytecodeConfig config, BytecodeParser<BasicInterpreterBuilder> builder) {
-        BytecodeRootNodes<BasicInterpreter> result = bytecode.create(language, config, builder);
-        if (testSerialize) {
-            assertBytecodeNodesEqual(result, doRoundTrip(bytecode, language, config, result));
+    public static BytecodeRootNodes<BasicInterpreter> createNodes(TestRun run,
+                    BytecodeDSLTestLanguage language, BytecodeConfig config, BytecodeParser<BasicInterpreterBuilder> builder) {
+
+        BytecodeRootNodes<BasicInterpreter> result = run.bytecode.create(language, config, builder);
+        if (run.testSerialize) {
+            assertBytecodeNodesEqual(result, doRoundTrip(run, language, config, result));
+        }
+
+        if (run.testTracer) {
+            InstructionDescriptor traceInstruction = null;
+            for (InstructionDescriptor d : run.bytecode().getInstructionDescriptors()) {
+                if (d.getName().equals("trace.instruction")) {
+                    traceInstruction = d;
+                    break;
+                }
+            }
+            assertNotNull(traceInstruction);
+            final InstructionDescriptor trace = traceInstruction;
+            result.addInstructionTracer(new InstructionTracer() {
+
+                public void onInstructionEnter(InstructionAccess access, BytecodeNode bytecode, int bytecodeIndex, Frame frame) {
+                    assertInstruction(access, bytecode, bytecodeIndex);
+                }
+
+                @TruffleBoundary
+                private void assertInstruction(InstructionAccess access, BytecodeNode bytecode, int bytecodeIndex) {
+                    Instruction current = bytecode.getInstruction(bytecodeIndex);
+                    assertSame(trace, current.getDescriptor());
+                    Instruction traced = access.getTracedInstruction(bytecode, bytecodeIndex);
+                    assertEquals(traced.getBytecodeIndex(), current.getNextBytecodeIndex());
+                    assertEquals(traced.getOperationCode(), access.getTracedOperationCode(bytecode, bytecodeIndex));
+                }
+            });
         }
 
         for (BasicInterpreter interpreter : result.getNodes()) {
@@ -520,7 +553,7 @@ public abstract class AbstractBasicInterpreterTest {
     }
 
     public static BytecodeRootNodes<BasicInterpreter> doRoundTrip(
-                    BytecodeVariant bytecode,
+                    TestRun run,
                     BytecodeDSLTestLanguage language, BytecodeConfig config,
                     BytecodeRootNodes<BasicInterpreter> nodes) {
         // Perform a serialize-deserialize round trip.
@@ -532,40 +565,40 @@ public abstract class AbstractBasicInterpreterTest {
         }
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
         try {
-            return bytecode.deserialize(language, config, input, DESERIALIZER);
+            return run.bytecode().deserialize(language, config, input, DESERIALIZER);
         } catch (IOException e) {
             throw new AssertionError(e);
         }
     }
 
     public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
-        return AbstractBasicInterpreterTest.doRoundTrip(run.bytecode(), LANGUAGE, BytecodeConfig.DEFAULT, nodes);
+        return AbstractBasicInterpreterTest.doRoundTrip(run, LANGUAGE, BytecodeConfig.DEFAULT, nodes);
     }
 
     public static RootCallTarget parse(
-                    BytecodeVariant bytecode,
-                    BytecodeDSLTestLanguage language, boolean testSerialize, String rootName,
+                    TestRun run,
+                    BytecodeDSLTestLanguage language, String rootName,
                     BytecodeParser<BasicInterpreterBuilder> builder) {
-        BytecodeRootNode rootNode = parseNode(bytecode, language, testSerialize, rootName, builder);
+        BytecodeRootNode rootNode = parseNode(run, language, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
     public static BasicInterpreter parseNode(
-                    BytecodeVariant bytecode,
-                    BytecodeDSLTestLanguage language, boolean testSerialize,
+                    TestRun run,
+                    BytecodeDSLTestLanguage language,
                     String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
 
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(bytecode, language, testSerialize, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(run, language, BytecodeConfig.DEFAULT, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
     }
 
     public static BasicInterpreter parseNodeWithSource(
-                    BytecodeVariant bytecode,
-                    BytecodeDSLTestLanguage language, boolean testSerialize,
+                    TestRun run,
+                    BytecodeDSLTestLanguage language,
                     String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(bytecode, language, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(run, language, BytecodeConfig.WITH_SOURCE, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
@@ -702,4 +735,9 @@ public abstract class AbstractBasicInterpreterTest {
         emitThrow(b, value);
         b.endIfThen();
     }
+
+    public static List<Instruction> filterTrace(List<Instruction> instructions) {
+        return instructions.stream().filter((i) -> !i.getName().equals("trace.instruction")).toList();
+    }
+
 }

@@ -48,6 +48,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.ArrayList;
@@ -147,14 +148,19 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         return new ExpectedInstruction.Builder(name);
     }
 
-    private static void assertInstructionsEqual(List<Instruction> actualInstructions, ExpectedInstruction... expectedInstructions) {
+    private static void assertInstructionsEqual(List<Instruction> actualInstructionsOriginal, ExpectedInstruction... expectedInstructions) {
+        List<Instruction> actualInstructions = filterTrace(actualInstructionsOriginal);
         if (actualInstructions.size() != expectedInstructions.length) {
             fail(String.format("Expected %d instructions, but %d found.\nExpected: %s.\nActual: %s", expectedInstructions.length, actualInstructions.size(), expectedInstructions, actualInstructions));
         }
-        int bci = 0;
+        int bci = actualInstructions.get(0).getBytecodeIndex();
         for (int i = 0; i < expectedInstructions.length; i++) {
             assertInstructionEquals(actualInstructions.get(i), expectedInstructions[i].withBci(bci));
-            bci = actualInstructions.get(i).getNextBytecodeIndex();
+
+            if (i + 1 < actualInstructions.size()) {
+                bci = actualInstructions.get(i + 1).getBytecodeIndex();
+            }
+
         }
     }
 
@@ -2884,7 +2890,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         for (Instruction instruction : bytecode.getInstructions()) {
             int bci = instruction.getBytecodeIndex();
             if (startBci <= bci && bci < endBci) {
-                result.add(instruction.getName());
+                // filter trace instructions
+                if (!instruction.getName().equals("trace.instruction")) {
+                    result.add(instruction.getName());
+                }
             }
         }
         return result.toArray(new String[0]);
@@ -3149,19 +3158,22 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals("1 + 2", s3.getSourceSection().getCharacters().toString());
         assertEquals("return 1 + 2", s4.getSourceSection().getCharacters().toString());
 
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
+        if (!run.testTracer()) {
+            List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
-        assertEquals(0, s1.getStartBytecodeIndex());
-        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
+            assertEquals(0, s1.getStartBytecodeIndex());
+            assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
 
-        assertEquals(6, s2.getStartBytecodeIndex());
-        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
+            assertEquals(6, s2.getStartBytecodeIndex());
+            assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
 
-        assertEquals(0, s3.getStartBytecodeIndex());
-        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
+            assertEquals(0, s3.getStartBytecodeIndex());
+            assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
 
-        assertEquals(0, s4.getStartBytecodeIndex());
-        assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
+            assertEquals(0, s4.getStartBytecodeIndex());
+            assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
+        }
+
     }
 
     @Test

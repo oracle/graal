@@ -1466,17 +1466,30 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             if (model.hasYieldOperation()) {
+                if (model.enableInstructionTracing) {
+                    b.declaration(type(int.class), "oldConstantOffset", "oldBytecode.isInstructionTracingEnabled() ? 1 : 0");
+                    b.declaration(type(int.class), "newConstantOffset", "newBytecode.isInstructionTracingEnabled() ? 1 : 0");
+                }
+
                 // We need to patch the BytecodeNodes for continuations.
                 b.startFor().string("int i = 0; i < continuationsIndex; i = i + CONTINUATION_LENGTH").end().startBlock();
                 b.declaration(type(int.class), "constantPoolIndex", "continuations[i + CONTINUATION_OFFSET_CPI]");
                 b.declaration(type(int.class), "continuationBci", "continuations[i + CONTINUATION_OFFSET_BCI]");
 
+                if (model.enableInstructionTracing) {
+                    b.lineComment("The constant offset is 1 with instruction tracing enabled. See INSTRUCTION_TRACER_CONSTANT_INDEX.");
+                    b.lineComment("We need to align constant indices for the continuation root node updates.");
+                    b.declaration(type(int.class), "oldConstantPoolIndex", "constantPoolIndex - newConstantOffset + oldConstantOffset");
+                } else {
+                    b.declaration(type(int.class), "oldConstantPoolIndex", "constantPoolIndex");
+                }
+
                 b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
                 b.cast(continuationRootNodeImpl.asType());
-                b.string("oldBytecode.constants[constantPoolIndex]");
+                b.string("oldBytecode.constants[oldConstantPoolIndex]");
                 b.end();
 
-                b.startAssert().string("oldBytecode.constants[constantPoolIndex] == newBytecode.constants[constantPoolIndex]").end();
+                b.startAssert().string("oldBytecode.constants[oldConstantPoolIndex] == newBytecode.constants[constantPoolIndex]").end();
 
                 b.lineComment("locations may become null if they are no longer reachable.");
                 b.declaration(types.BytecodeLocation, "newLocation", "continuationBci == -1 ? null : newBytecode.getBytecodeLocation(continuationBci)");
@@ -1489,7 +1502,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(2);
                 b.end();
 
-                b.end();
+                b.end(); // for
             }
         }
 
@@ -4316,8 +4329,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startIf().string("state.rootOperationSp != -1").end().startBlock(); // {
             b.statement("state = state.getNext()");
             b.end(); // }
-
             b.statement("state.rootOperationSp = state.operationSp");
+            b.statement("state.instrumentations = instrumentations");
 
             Map<OperationField, String> initValues = new HashMap<>();
             initValues.put(operationFields.index, safeCastShort("numRoots++"));
@@ -4329,7 +4342,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.enableInstructionTracing) {
                 int mask = 1 << model.traceInstructionInstrumentationIndex;
-                b.startIf().string("parseBytecodes && (instrumentations & ").string("0x", Integer.toHexString(mask)).string(") != 0").end().startBlock();
+                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") != 0").end().startBlock();
                 b.statement("int constantIndex = state.addConstant(findOrCreateInstructionTracer())");
                 b.statement("assert constantIndex == INSTRUCTION_TRACER_CONSTANT_INDEX");
                 b.end();
@@ -5263,14 +5276,34 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             if (model.hasYieldOperation()) {
+
+                if (model.enableInstructionTracing) {
+                    b.declaration(type(int.class), "oldConstantOffset", "oldBytecodeNode.isInstructionTracingEnabled() ? 1 : 0");
+                    b.startDeclaration(type(int.class), "newConstantOffset");
+                    int mask = 1 << model.traceInstructionInstrumentationIndex;
+                    b.string("(this.instrumentations & ").string("0x", Integer.toHexString(mask)).string(") != 0 ? 1 : 0");
+                    b.end(); // delcaration
+                    b.statement("assert constants_.length - newConstantOffset == oldBytecodeNode.constants.length - oldConstantOffset");
+                } else {
+                    b.statement("assert constants_.length == oldBytecodeNode.constants.length");
+                }
+
                 /**
                  * Copy ContinuationRootNodes into new constant array *before* we update the new
                  * bytecode, otherwise a racy thread may read it as null
                  */
                 b.startFor().string("int i = 0; i < continuationsIndex; i = i + CONTINUATION_LENGTH").end().startBlock();
                 b.declaration(type(int.class), "constantPoolIndex", "continuations[i + CONTINUATION_OFFSET_CPI]");
+                if (model.enableInstructionTracing) {
+                    b.lineComment("The constant offset is 1 with instruction tracing enabled. See INSTRUCTION_TRACER_CONSTANT_INDEX.");
+                    b.lineComment("We need to align constant indices for the continuation root node updates.");
+                    b.declaration(type(int.class), "oldConstantPoolIndex", "constantPoolIndex - newConstantOffset + oldConstantOffset");
+                } else {
+                    b.declaration(type(int.class), "oldConstantPoolIndex", "constantPoolIndex");
+                }
                 b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                b.cast(continuationRootNodeImpl.asType()).string("oldBytecodeNode.constants[constantPoolIndex]");
+                b.cast(continuationRootNodeImpl.asType()).string("oldBytecodeNode.constants[oldConstantPoolIndex]");
+
                 b.end();
 
                 b.startStatement().startCall("ACCESS.writeObject");
@@ -5622,42 +5655,30 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case LOAD_ARGUMENT -> new String[]{safeCastShort(operation.getOperationBeginArgumentName(0))};
                 case LOAD_CONSTANT -> new String[]{"state.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
-                    String constantPoolIndex = buildEmitYieldInitializer(b, operation);
-                    yield new String[]{constantPoolIndex};
+                    b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
+                    yield new String[]{"constantPoolIndex"};
                 }
                 case CUSTOM, CUSTOM_YIELD, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, constantOperandValues);
                 case CUSTOM_SHORT_CIRCUIT -> throw new AssertionError("Tried to emit a short circuit instruction directly. These operations should only be emitted implicitly.");
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
-            buildEmitInstruction(b, null, operation.instruction, args);
-        }
 
-        private String buildEmitYieldInitializer(CodeTreeBuilder b, OperationModel operation) {
-            b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
-
-            b.declaration(type(int.class), "continuationBci");
-            b.startIf().string("state.reachable").end().startBlock();
-            b.statement("continuationBci = state.bci + " + operation.instruction.getInstructionLength());
-            b.end().startElseBlock();
-            b.statement("continuationBci = -1");
-            b.end();
-
-            b.startStatement().startCall("state.doEmitContinuation");
-            b.string("constantPoolIndex").string("continuationBci");
-
-            int stackEffect = getStackEffect(operation.instruction);
-            b.startGroup().string("state.currentStackHeight");
-            if (stackEffect > 0) {
-                b.string(" + " + stackEffect);
-            } else if (stackEffect < 0) {
-                b.string(" - " + (-stackEffect));
+            switch (operation.kind) {
+                case CUSTOM_YIELD:
+                case YIELD:
+                    buildEmitInstruction(b, "continuationBci", operation.instruction, args);
+                    b.startStatement().startCall("state.doEmitContinuation");
+                    b.string("constantPoolIndex").string("continuationBci != -1 ? continuationBci + " + operation.instruction.getInstructionLength() + " : -1");
+                    b.string("state.currentStackHeight");
+                    b.end();
+                    b.end(2); // statement + call
+                    b.end();
+                    break;
+                default:
+                    buildEmitInstruction(b, null, operation.instruction, args);
+                    break;
             }
-            b.end();
 
-            b.end(2); // statement + call
-            b.end();
-
-            return "constantPoolIndex";
         }
 
         private void buildEmitLabel(CodeTreeBuilder b, OperationModel operation) {
@@ -6075,7 +6096,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             yield constantOperandValues.get(constantIndex++);
                         } else if (operation.kind == OperationKind.CUSTOM_YIELD) {
                             // The continuation root is the last constant, after constant operands.
-                            yield buildEmitYieldInitializer(b, operation);
+                            b.declaration(type(short.class), "constantPoolIndex", "state.allocateContinuationConstant()");
+                            yield "constantPoolIndex";
                         } else {
                             throw new AssertionError("Operation has more constant immediates than constant operands: " + operation);
                         }
@@ -6849,9 +6871,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
-            b.declaration(type(int.class), "variadicSizePatchOffset", "state.bci + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset());
-            buildEmitInstructionStackEffect(b, null, model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1", createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
-            b.startReturn().string("variadicSizePatchOffset").end();
+            buildEmitInstructionStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
+                            createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
+            b.startReturn().string("createVariadicOffset + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset()).end();
             b.end().startElseBlock();
             String offset;
             if (model.maximumVariadicOffset > 0) {
@@ -12540,6 +12562,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (model.isBytecodeUpdatable() || model.hasYieldOperation()) {
                 this.add(createTransition());
             }
+            if (model.hasYieldOperation() && model.enableInstructionTracing) {
+                this.add(createIsInstructionTracingEnabled());
+            }
+
             if (model.isBytecodeUpdatable()) {
                 this.add(createToStableBytecodeIndex());
                 this.add(createFromStableBytecodeIndex());
@@ -12547,6 +12573,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createComputeNewBci());
             }
             this.add(createAdoptNodesAfterUpdate());
+        }
+
+        private CodeExecutableElement createIsInstructionTracingEnabled() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "isInstructionTracingEnabled");
+            ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn();
+            b.string("readValidBytecode(this.bytecodes, 0) == ").tree(createInstructionConstant(model.traceInstruction));
+            b.end();
+            return ex;
         }
 
         private CodeExecutableElement createGetLocalCount() {
@@ -19067,7 +19103,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStaticCall(type(String.class), "format");
             b.doubleQuote("%s(resume_bci=%s)");
             b.string("root");
-            b.string("location.getBytecodeIndex()");
+            b.string("location == null ? \"unreachable\" : location.getBytecodeIndex()");
             b.end(2);
             return ex;
         }

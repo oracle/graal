@@ -373,7 +373,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = b.getLocals();
         assertEquals(5, locals.size());
         assertEquals(42L, root.getCallTarget().call());
-        if (run.hasBlockScoping()) {
+        if (run.hasBlockScoping() && !run.testTracer()) {
             assertEquals(0, locals.get(0).getStartIndex());
             assertEquals(endBci, locals.get(0).getEndIndex());
             assertEquals("l0", locals.get(0).getName());

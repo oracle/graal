@@ -231,7 +231,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
         assertEquals(0, instructions.size());
         BYTECODE.addInstructionTracer(language, t);
 
-        assertInstructions(node,
+        assertInstructions(node, false,
                         "trace.instruction",
                         "load.argument",
                         "trace.instruction",
@@ -283,7 +283,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
             b.endRoot();
         }).getNode(0);
 
-        assertInstructions(node,
+        assertInstructions(node, false,
                         "trace.instruction",
                         "load.argument",
                         "trace.instruction",
@@ -358,7 +358,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
         };
         BYTECODE.addInstructionTracer(language, t);
 
-        assertInstructions(node,
+        assertInstructions(node, false,
                         "trace.instruction",
                         "load.argument",
                         "trace.instruction",
@@ -387,7 +387,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
             b.endRoot();
         }).getNode(0);
 
-        assertInstructions(newNode,
+        assertInstructions(newNode, false,
                         "trace.instruction",
                         "load.argument",
                         "trace.instruction",
