@@ -124,8 +124,15 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         BytecodeNode bytecode = node.getBytecodeNode();
         List<Instruction> instructions = bytecode.getInstructionsAsList();
-        assertInstructionSourceSection(instructions.get(0), source, 7, 1);
-        assertInstructionSourceSection(instructions.get(1), source, 0, 8);
+        if (run.testTracer()) {
+            assertInstructionSourceSection(instructions.get(0), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(1), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(2), source, 0, 8);
+            assertInstructionSourceSection(instructions.get(3), source, 0, 8);
+        } else {
+            assertInstructionSourceSection(instructions.get(0), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(1), source, 0, 8);
+        }
 
         assertSourceInformationTree(bytecode, est("return 1", est("1")));
 
@@ -303,7 +310,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BytecodeNode bytecode = node.getBytecodeNode();
         List<Instruction> instructions = bytecode.getInstructionsAsList();
         assertInstructionSourceSection(instructions.get(0), source, 7, 1);
-        assertTrue(!instructions.get(1).getSourceSection().isAvailable());
+        assertTrue(!instructions.get(run.testTracer() ? 3 : 1).getSourceSection().isAvailable());
 
         assertSourceInformationTree(bytecode, ExpectedSourceTree.expectedSourceTreeUnavailable(est("1")));
     }
@@ -389,17 +396,42 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertSourceSection(root.getSourceSection(), source1, 0, source1.getLength());
 
         List<Instruction> instructions = root.getBytecodeNode().getInstructionsAsList();
-        assertInstructionSourceSection(instructions.get(0), source1, 0, source1.getLength());
-        assertInstructionSourceSection(instructions.get(1), source1, 0, source1.getLength());
-        assertInstructionSourceSection(instructions.get(2), source1, 1, 2);
-        assertInstructionSourceSection(instructions.get(3), source1, 1, 2);
-        assertInstructionSourceSection(instructions.get(4), source2, 3, 4);
-        assertInstructionSourceSection(instructions.get(5), source2, 5, 1);
-        assertInstructionSourceSection(instructions.get(6), source2, 3, 4);
-        assertInstructionSourceSection(instructions.get(7), source1, 1, 2);
-        assertInstructionSourceSection(instructions.get(8), source1, 1, 2);
-        assertInstructionSourceSection(instructions.get(9), source1, 0, source1.getLength());
-        assertInstructionSourceSection(instructions.get(10), source1, 0, source1.getLength());
+        if (run.testTracer()) {
+            assertInstructionSourceSection(instructions.get(0), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(1), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(2), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(3), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(4), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(5), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(6), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(7), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(8), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(9), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(10), source2, 5, 1);
+            assertInstructionSourceSection(instructions.get(11), source2, 5, 1);
+            assertInstructionSourceSection(instructions.get(12), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(13), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(14), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(15), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(16), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(17), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(18), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(19), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(20), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(21), source1, 0, source1.getLength());
+        } else {
+            assertInstructionSourceSection(instructions.get(0), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(1), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(2), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(3), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(4), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(5), source2, 5, 1);
+            assertInstructionSourceSection(instructions.get(6), source2, 3, 4);
+            assertInstructionSourceSection(instructions.get(7), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(8), source1, 1, 2);
+            assertInstructionSourceSection(instructions.get(9), source1, 0, source1.getLength());
+            assertInstructionSourceSection(instructions.get(10), source1, 0, source1.getLength());
+        }
 
         assertSourceInformationTree(root.getBytecodeNode(),
                         est("abc", est("bc", est("3456", est("5")))));
@@ -911,8 +943,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = nodes.getNode(0);
         assertSourceSection(node.getSourceSection(), source, 0, 8);
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
-        assertInstructionSourceSection(instructions.get(0), source, 7, 1);
-        assertInstructionSourceSection(instructions.get(1), source, 0, 8);
+
+        if (run.testTracer()) {
+            assertInstructionSourceSection(instructions.get(0), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(1), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(2), source, 0, 8);
+            assertInstructionSourceSection(instructions.get(3), source, 0, 8);
+        } else {
+            assertInstructionSourceSection(instructions.get(0), source, 7, 1);
+            assertInstructionSourceSection(instructions.get(1), source, 0, 8);
+        }
+
     }
 
     @Test

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -69,14 +70,14 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Parameters(name = "{0}")
-    public static List<Class<? extends BasicInterpreter>> getInterpreterClasses() {
-        return AbstractBasicInterpreterTest.allInterpreters();
+    public static List<BytecodeVariant> getBytecodeVariants() {
+        return AbstractBasicInterpreterTest.allVariants();
     }
 
-    @Parameter(0) public Class<? extends BasicInterpreter> interpreterClass;
+    @Parameter(0) public BytecodeVariant bytecode;
 
     private boolean hasBoxingElimination() {
-        return new AbstractBasicInterpreterTest.TestRun(interpreterClass, false).hasBoxingElimination();
+        return new AbstractBasicInterpreterTest.TestRun(bytecode, false).hasBoxingElimination();
     }
 
     Context context;
@@ -123,7 +124,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR1() {
-        BasicInterpreter root = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
+        BasicInterpreter root = parseNode(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
             b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
@@ -223,7 +224,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR2() {
-        BasicInterpreter root = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
+        BasicInterpreter root = parseNode(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, "osrRoot", b -> {
             b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
@@ -341,7 +342,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testCompiles() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstants", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "addTwoConstants", b -> {
             b.beginRoot();
 
             b.beginReturn();
@@ -365,7 +366,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testMultipleReturns() {
         // return 30 + (arg0 ? 12 : (return 123; 0))
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "multipleReturns", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "multipleReturns", b -> {
             b.beginRoot();
 
             b.beginReturn();
@@ -403,7 +404,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testStoreInvalidatesCode() {
         assumeTrue(hasBoxingElimination());
-        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             BytecodeLocal x = b.createLocal("x", null);
             b.beginStoreLocal(x);
@@ -463,7 +464,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testBytecodeNodeStoreInvalidatesCode() {
         assumeTrue(hasBoxingElimination());
-        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             BytecodeLocal x = b.createLocal("x", null);
             b.beginStoreLocal(x);
@@ -537,7 +538,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testMaterializedStoreInvalidatesCode() {
         assumeTrue(hasBoxingElimination());
-        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             BytecodeLocal x = b.createLocal("x", null);
             b.beginStoreLocal(x);
@@ -615,7 +616,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testMaterializedAccessorStoreInvalidatesCode() {
         assumeTrue(hasBoxingElimination());
-        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<BasicInterpreter> rootNodes = createNodes(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot();
             BytecodeLocal x = b.createLocal("x", null);
             b.beginStoreLocal(x);
@@ -688,7 +689,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testInstrumentation() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstantsInstrumented", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "addTwoConstantsInstrumented", b -> {
             b.beginRoot();
 
             b.beginReturn();
@@ -710,7 +711,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         // Instrumentation should invalidate the compiled code.
         root.getRootNodes().update(
-                        BasicInterpreterBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+                        bytecode.newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
         assertNotCompiled(target);
 
         // The instrumented interpreter should be recompiled.
@@ -723,7 +724,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testYield() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYield", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "addYield", b -> {
             b.beginRoot();
 
             b.beginReturn();
@@ -763,7 +764,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testYieldInstrumentation() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYieldInstrumented", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "addYieldInstrumented", b -> {
             b.beginRoot();
 
             b.beginReturn();
@@ -797,7 +798,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         // Instrumentation should invalidate the compiled code.
         root.getRootNodes().update(
-                        BasicInterpreterBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+                        bytecode.newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
         assertNotCompiled(target);
         assertNotCompiled(continuationCallTarget);
 
@@ -815,7 +816,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompiledSourceInfo() {
         Source s = Source.newBuilder("test", "return sourcePosition", "compiledSourceInfo").build();
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "compiledSourceInfo", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "compiledSourceInfo", b -> {
             b.beginSource(s);
             b.beginSourceSection(0, 21);
             b.beginRoot();
@@ -863,7 +864,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testTagInstrumentation() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "tagInstrumentation", b -> {
+        BasicInterpreter root = parseNodeForCompilation(bytecode, "tagInstrumentation", b -> {
             b.beginRoot();
 
             // i = 0
@@ -990,8 +991,9 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         return c;
     }
 
-    private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForCompilation(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNode(interpreterClass, BytecodeDSLTestLanguage.REF.get(null), false, rootName, builder);
+    private static BasicInterpreter parseNodeForCompilation(BytecodeVariant bytecode,
+                    String rootName, BytecodeParser<BasicInterpreterBuilder> builder) {
+        BasicInterpreter result = parseNode(bytecode, BytecodeDSLTestLanguage.REF.get(null), false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }

@@ -108,7 +108,7 @@ public final class BytecodeConfig {
      *
      * @since 24.2
      */
-    public static class Builder {
+    public static final class Builder {
         private final BytecodeConfigEncoder encoder;
         private long encoding;
 
@@ -152,6 +152,17 @@ public final class BytecodeConfig {
             Objects.requireNonNull(instrumentation);
             long encodedTag = encoder.encodeInstrumentation(instrumentation);
             assert encodedTag != SOURCE_ENCODING && Long.bitCount(encodedTag) == 1 : "generated code invariant violated";
+            this.encoding |= encodedTag;
+            return this;
+        }
+
+        /**
+         * Internal way to attach instruction tracer instrumentation. Encoding the instrumentation
+         * tag does nothing if tracing is enabled for this interpreter.
+         */
+        Builder addInstructionTracing() {
+            CompilerAsserts.neverPartOfCompilation();
+            long encodedTag = encoder.encodeInstrumentation(InstructionTracer.class);
             this.encoding |= encodedTag;
             return this;
         }

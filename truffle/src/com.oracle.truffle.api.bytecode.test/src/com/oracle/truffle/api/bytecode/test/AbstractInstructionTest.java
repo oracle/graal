@@ -52,6 +52,7 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
 
 public class AbstractInstructionTest {
 
@@ -81,8 +82,11 @@ public class AbstractInstructionTest {
         return new QuickeningCounts(node.quickeningCount.get(), node.specializeCount.get());
     }
 
-    public static void assertInstructions(BytecodeRootNode node, String... expectedInstructions) {
+    public static void assertInstructions(BytecodeRootNode node, boolean filterTrace, String... expectedInstructions) {
         List<Instruction> actualInstructions = node.getBytecodeNode().getInstructionsAsList();
+        if (filterTrace) {
+            actualInstructions = AbstractBasicInterpreterTest.filterTrace(actualInstructions);
+        }
         if (actualInstructions.size() != expectedInstructions.length) {
             throw throwBytecodeNodeAssertion(node, expectedInstructions, String.format("Invalid instruction size. Expected %s got %s.", expectedInstructions.length, actualInstructions.size()));
         }
@@ -94,6 +98,10 @@ public class AbstractInstructionTest {
                                 i, expectedInstruction, actualInstruction.getName()));
             }
         }
+    }
+
+    public static void assertInstructions(BytecodeRootNode node, String... expectedInstructions) {
+        assertInstructions(node, true, expectedInstructions);
     }
 
     private static AssertionError throwBytecodeNodeAssertion(BytecodeRootNode node, String[] expectedInstructions, String message) {

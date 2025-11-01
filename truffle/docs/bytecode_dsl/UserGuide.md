@@ -30,6 +30,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
   - [Source information](#source-information)
   - [Instrumentation](#instrumentation)
   - [Reparsing](#reparsing)
+  - [Tracing](#tracing)
   - [Bytecode introspection](#bytecode-introspection)
   - [Reachability analysis](#reachability-analysis)
   - [Interpreter optimizations](#interpreter-optimizations)
@@ -570,6 +571,133 @@ To reduce footprint, it is recommended for the parser to parse directly from sou
 Reparsing updates the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) for a given root node.
 When the bytecode instructions change, any compiled code for the root node is invalidated, and the old bytecode is invalidated in order to transition active (on-stack) invocations to the new bytecode.
 Note that source information updates [do _not_ invalidate compiled code](RuntimeCompilation.md#source-information).
+
+### Tracing
+
+Bytecode DSL interpreters support instruction-level tracing. Tracing lets you observe the execution of bytecode programs at runtime without modifying the program itself. It is designed for debugging, profiling, and tooling, not for steady-state production use.
+
+`InstructionTracer` is a low-overhead callback interface. A tracer is notified immediately before each bytecode instruction executes:
+
+```java
+// 1. Build a bytecode root normally.
+BytecodeRootNodes<MyBytecodeRootNode> roots =
+    MyBytecodeRootNodeGen.BYTECODE.create(language, BytecodeConfig.DEFAULT, (b) -> {
+        b.beginRoot();
+        b.beginReturn();
+        b.emitLoadArgument(0);
+        b.endReturn();
+        b.endRoot();
+    });
+
+MyBytecodeRootNode root = roots.getNode(0);
+
+// 2. Define a tracer.
+InstructionTracer tracer = new InstructionTracer() {
+    @Override
+    public void onInstructionEnter(
+            InstructionAccess access,
+            BytecodeNode bytecode,
+            int bci,
+            Frame frame) {
+        // Print the next instruction about to run
+        System.out.println(access.getTracedInstruction(bytecode, bci));
+    }
+};
+
+// 3a. Attach the tracer to just these roots:
+roots.addInstructionTracer(tracer);
+
+// 3b. Or attach it to *all* roots of this interpreter in this language:
+// MyBytecodeRootNodeGen.BYTECODE.addInstructionTracer(language, tracer);
+
+// 4. Run guest code.
+Object result = root.getCallTarget().call(42);
+
+// 5. Detach when done.
+roots.removeInstructionTracer(tracer);
+// or: MyBytecodeRootNodeGen.BYTECODE.removeInstructionTracer(language, tracer);
+```
+
+Key points:
+
+* `onInstructionEnter(...)` is called before each instruction executes.
+* Tracing runs on the hot path, so it is important to keep the callback implementation computationally cheap.
+
+You can attach tracers in two ways:
+
+* To a specific set of root nodes, `roots.addInstructionTracer(...)`, or
+* Globally for an entire language instance, `BYTECODE.addInstructionTracer(language, ...)`, which affects all existing and future roots from that interpreter in that language.
+
+#### Built-in Tracers
+
+The API provides two ready-made tracers in `com.oracle.truffle.api.bytecode.debug`:
+
+* `PrintInstructionTracer`: Prints each executed instruction with a counter and the root name.
+* `HistogramInstructionTracer`: Counts how many times each instruction executes (optionally grouped by tier, thread, etc.). You can poll and reset the counters.
+
+
+#### Tracing via Polyglot Options
+
+You can also enable tracing and instruction histograms without writing any Java code, just by passing engine options when creating the Context. This installs internal tracers automatically.
+
+* `engine.TraceBytecode=true`: Log each executed instruction.
+* `engine.BytecodeMethodFilter=<pattern>`: Include or exclude roots. Supports both inclusion and exclusion (with `~`).
+* `engine.BytecodeHistogram=...`: Collect and dump per-instruction execution counts. Set to `true` to enable without grouping, or provide a comma-separated list of available groups: `source,root,tier,language,thread`.
+* `engine.BytecodeHistogramInterval=<duration>`: Dump statistics periodically instead of only when the context is closed.
+
+Sample output `engine.TraceBytecode=true`:
+
+```
+[bc]      1:while-loop.demo:[002] 001 load.argument                   index(0)                                                   
+[bc]      2:while-loop.demo:[008] 012 store.local                     local_offset(0) local_index(0) child0(0002)                
+[bc]      3:while-loop.demo:[014] 009 load.local                      local_offset(0) local_index(0)                             
+[bc]      4:while-loop.demo:[01c] 033 c.GreaterZero                   child0(0014) state_0(0) node(null)                         
+[bc]      5:while-loop.demo:[026] 01c branch.false                    branch_target(005e) branch_profile(0:never executed) child0(001c)
+[bc]      6:while-loop.demo:[036] 009 load.local                      local_offset(0) local_index(0)                             
+[bc]      7:while-loop.demo:[03e] 02f c.Decrement                     child0(0036) state_0(0) node(null)                         
+[bc]      8:while-loop.demo:[048] 012 store.local                     local_offset(0) local_index(0) child0(003e)                
+[bc]      9:while-loop.demo:[054] 01b branch.backward                 branch_target(0012) loop_header_branch_profile(0:never executed)
+[bc]     10:while-loop.demo:[014] 009 load.local                      local_offset(0) local_index(0)                             
+[bc]     11:while-loop.demo:[01c] 033 c.GreaterZero                   child0(0014) state_0(0) node(null)                         
+[bc]     12:while-loop.demo:[026] 01c branch.false                    branch_target(005e) branch_profile(0:never executed) child0(001c)
+[bc]     13:while-loop.demo:[036] 009 load.local                      local_offset(0) local_index(0)                             
+[bc]     14:while-loop.demo:[03e] 02f c.Decrement                     child0(0036) state_0(0) node(null)                         
+[bc]     15:while-loop.demo:[048] 012 store.local                     local_offset(0) local_index(0) child0(003e)                
+```
+
+Sample output `engine.BytecodeHistogram=tier` :
+
+```
+[bc] Instruction histogram for: com.oracle.truffle.api.bytecode.test.InstructionTracingTest$InstructionTracingRootNode
+  -----------------------------------------
+   Count  | Percent | Group / Instruction
+  -----------------------------------------
+     794  |    78.8 | ▶ Tier 1: Profiled Interpreter
+     222  |    22.0 |   00d load.local$Int$unboxed
+     112  |    11.1 |   01b branch.backward
+     112  |    11.1 |   01e branch.false$Boolean
+     112  |    11.1 |   035 c.GreaterZero$Int$unboxed
+     110  |    10.9 |   016 store.local$Int$Int
+     110  |    10.9 |   031 c.Decrement$Int$unboxed
+       6  |     0.6 |   009 load.local
+       2  |     0.2 |   012 store.local
+       2  |     0.2 |   01c branch.false
+       2  |     0.2 |   026 return
+       2  |     0.2 |   02f c.Decrement
+       2  |     0.2 |   033 c.GreaterZero
+     214  |    21.2 | ▶ Tier 0: Unprofiled Interpreter
+      60  |     6.0 |   009 load.local
+      32  |     3.2 |   012 store.local
+      30  |     3.0 |   01b branch.backward
+      30  |     3.0 |   01c branch.false
+      30  |     3.0 |   02f c.Decrement
+      30  |     3.0 |   033 c.GreaterZero
+       2  |     0.2 |   001 load.argument
+  -----------------------------------------
+  Total executed instructions: 1008
+```
+
+
 
 
 ### Bytecode introspection

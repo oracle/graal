@@ -830,7 +830,13 @@ public abstract class Accessor {
 
         public abstract DispatchOutputStream getEngineOut(Object engine);
 
+        public abstract <T> T getOrCreateBytecodeData(Object languageInstance, Function<Object, T> create);
+
         public abstract InputStream getEngineIn(Object engine);
+
+        public abstract void forEachLoadedRootNode(Object sharingLayer, Consumer<RootNode> rootNodeUpdater);
+
+        public abstract Object getSharingLayer(Object languageInstance);
 
     }
 
@@ -973,6 +979,7 @@ public abstract class Accessor {
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
         public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
+
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -1469,6 +1476,19 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class BytecodeSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.bytecode.BytecodeAccessor$BytecodeSupportImpl";
+
+        protected BytecodeSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract void registerInstructionTracerFactory(Object hostLanguage, Function<? extends Object, ? extends Object> tracerFactory);
+
+        public abstract <T> List<T> getEngineInstructionTracers(Object hostLanguage, Function<? extends Object, T> tracerFactory);
+    }
+
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
     }
@@ -1496,6 +1516,7 @@ public abstract class Accessor {
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
         private static final Accessor.MemorySupport MEMORY_SUPPORT;
+        private static final Accessor.BytecodeSupport BYTECODE;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1515,6 +1536,7 @@ public abstract class Accessor {
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
             MEMORY_SUPPORT = loadSupport(MemorySupport.IMPL_CLASS_NAME);
             STRINGS = loadSupport(StringsSupport.IMPL_CLASS_NAME);
+            BYTECODE = loadSupport(BytecodeSupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1609,6 +1631,10 @@ public abstract class Accessor {
 
     public final HostSupport hostSupport() {
         return Constants.HOST;
+    }
+
+    public final BytecodeSupport bytecodeSupport() {
+        return Constants.BYTECODE;
     }
 
     public final IOSupport ioSupport() {

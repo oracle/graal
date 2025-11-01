@@ -87,11 +87,12 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
         benchmarkSpec = getBenchmarkSpec();
         String benchMethod = getBenchmarkMethod(params);
         callTarget = switch (benchMethod) {
-            case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
-            case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
-            case "bytecodeDSLThreadedAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeThreadedAllOpts.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLThreadedAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeThreadedAllOpts.BYTECODE, null,
+                            benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLUncached" -> {
-                var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.class, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
+                var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
                 node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
                 yield node.getCallTarget();
             }

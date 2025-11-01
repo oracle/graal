@@ -47,13 +47,13 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeLocation;
-import com.oracle.truffle.api.bytecode.BytecodeTier;
 
 public class YieldTest extends AbstractBasicInterpreterTest {
 
@@ -243,7 +243,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // }
         // @formatter:on
 
-        RootCallTarget root = parse("yieldFromFinally", b -> {
+        BasicInterpreter root = parseNode("yieldFromFinally", b -> {
             b.beginRoot();
 
             b.beginTryFinally(() -> {
@@ -269,7 +269,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        ContinuationResult r1 = (ContinuationResult) root.call();
+        ContinuationResult r1 = (ContinuationResult) root.getCallTarget().call();
         assertEquals(1L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);

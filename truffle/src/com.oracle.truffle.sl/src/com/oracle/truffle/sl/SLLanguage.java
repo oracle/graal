@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl;
 
+import static com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen.BYTECODE;
+
 import java.io.PrintStream;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -95,7 +97,6 @@ import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.bytecode.SLBytecodeRootNode;
-import com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen;
 import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLBuiltinAstNode;
 import com.oracle.truffle.sl.nodes.SLBuiltinAstNodeGen;
@@ -355,7 +356,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, NodeFactory<? extends SLBuiltinNode> factory) {
-        SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(this, BytecodeConfig.DEFAULT, (b) -> {
+        SLBytecodeRootNode node = BYTECODE.create(this, BytecodeConfig.DEFAULT, (b) -> {
             b.beginSource(BUILTIN_SOURCE);
             b.beginSourceSectionUnavailable();
             b.beginRoot();

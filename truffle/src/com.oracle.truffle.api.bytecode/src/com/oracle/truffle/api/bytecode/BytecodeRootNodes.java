@@ -208,6 +208,76 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
     }
 
     /**
+     * Registers an {@link InstructionTracer} for this {@code BytecodeRootNodes} instance.
+     * <p>
+     * This is a local variant of
+     * {@link BytecodeDescriptor#addInstructionTracer(TruffleLanguage, InstructionTracer)}: it only
+     * affects the root nodes contained in this {@code BytecodeRootNodes} object, not all bytecode
+     * roots for the entire language.
+     * <p>
+     * Tracer invocation happens on the language execution thread, at instruction granularity, and
+     * may run at very high frequency. Implementations should avoid unnecessary allocation or
+     * blocking.
+     * <p>
+     * The same tracer instance can only be attached once. If the tracer is already installed for
+     * this {@code BytecodeRootNodes} instance, then this method has no effect. The order in which
+     * multiple tracers are invoked is unspecified.
+     * <p>
+     * If this bytecode interpreter was generated without instruction tracing support (for example
+     * using {@code @GenerateBytecode(enableInstructionTracing = false)}), this method throws
+     * {@link UnsupportedOperationException}.
+     *
+     * @param tracer the tracer to install
+     * @throws IllegalArgumentException if {@code tracer} is exclusive to a different
+     *             {@link BytecodeDescriptor} (see
+     *             {@link InstructionTracer#getExclusiveBytecodeDescriptor()})
+     * @throws UnsupportedOperationException if instruction tracing is not enabled for this
+     *             interpreter
+     * @since 25.1
+     */
+    public void addInstructionTracer(InstructionTracer tracer) {
+        throw failUnsupported();
+    }
+
+    /**
+     * Unregisters a previously installed {@link InstructionTracer} from this
+     * {@code BytecodeRootNodes} instance.
+     * <p>
+     * Note that currently when all instruction tracers were removed, the trace instructions remain
+     * in the bytecode. This may be improved in the future.
+     * <p>
+     * If this bytecode interpreter was generated without instruction tracing support (for example
+     * using {@code @GenerateBytecode(enableInstructionTracing = false)}), this method throws
+     * {@link UnsupportedOperationException}.
+     *
+     * @param tracer the tracer to remove
+     * @throws IllegalArgumentException if {@code tracer} is exclusive to a different
+     *             {@link BytecodeDescriptor} (see
+     *             {@link InstructionTracer#getExclusiveBytecodeDescriptor()})
+     * @throws UnsupportedOperationException if instruction tracing is not enabled for this
+     *             interpreter
+     * @since 25.1
+     */
+    public void removeInstructionTracer(InstructionTracer tracer) {
+        throw failUnsupported();
+    }
+
+    private static UnsupportedOperationException failUnsupported() {
+        return new UnsupportedOperationException(
+                        "Instruction tracing is not enabled for this bytecode root node. Enable with @GenerateBytecode(enableInstructionTracing=true) to use instruction tracing.");
+    }
+
+    /**
+     * Internal callback to the generated code to notify when global instruction tracers change.
+     *
+     * @since 25.1
+     */
+    @SuppressWarnings("unused")
+    protected void updateGlobalInstructionTracers(InstructionTracer[] tracers) {
+        // nothing to do if not supported
+    }
+
+    /**
      * Returns a string representation of a {@link BytecodeRootNodes}.
      *
      * @since 24.2
