@@ -27,7 +27,7 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
     /**
      * Get a simple description of the checker.
      * This description will then be displayed in logs.
-     * E.g "Check for null pointer dereference"
+     * E.g. "Check for null pointer dereference"
      *
      * @return a description of the checker
      */

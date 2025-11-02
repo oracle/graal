@@ -50,7 +50,8 @@ public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>
             }
         }
 
-        IgvDumper.dumpPhase(method, graph, "After phase Abstract Interpretation Pentagon Analysis");
+        // TODO: Enable dumping again when
+//        IgvDumper.dumpPhase(method, graph, "After phase Abstract Interpretation Pentagon Analysis");
         return checkerResults;
     }
 
