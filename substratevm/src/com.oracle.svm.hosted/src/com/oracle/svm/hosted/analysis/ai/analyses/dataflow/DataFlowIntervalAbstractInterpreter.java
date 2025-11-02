@@ -162,23 +162,21 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 top.setToTop();
                 bindNodeResult(node, top, post);
             }
-        } else if (node instanceof ArrayLengthNode) {
-            if (node instanceof ArrayLengthNode aln) {
-                Node arr = aln.array();
-                if (arr instanceof NewArrayNode newArr) {
-                    Node lenNode = newArr.length();
-                    if (lenNode instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
-                        long v = cn.asJavaConstant().asLong();
-                        IntInterval exact = new IntInterval(v, v);
-                        bindNodeResult(node, exact, post);
-                    } else {
-                        IntInterval len = new IntInterval(0, IntInterval.POS_INF);
-                        bindNodeResult(node, len, post);
-                    }
+        } else if (node instanceof ArrayLengthNode aln) {
+            Node arr = aln.array();
+            if (arr instanceof NewArrayNode newArr) {
+                Node lenNode = newArr.length();
+                if (lenNode instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                    long v = cn.asJavaConstant().asLong();
+                    IntInterval exact = new IntInterval(v, v);
+                    bindNodeResult(node, exact, post);
                 } else {
                     IntInterval len = new IntInterval(0, IntInterval.POS_INF);
                     bindNodeResult(node, len, post);
                 }
+            } else {
+                IntInterval len = new IntInterval(0, IntInterval.POS_INF);
+                bindNodeResult(node, len, post);
             }
         } else if (node instanceof NewInstanceNode nii) {
             String aid = "alloc" + Integer.toHexString(System.identityHashCode(nii));

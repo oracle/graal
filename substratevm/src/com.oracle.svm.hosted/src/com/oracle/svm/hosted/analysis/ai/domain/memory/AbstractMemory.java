@@ -215,6 +215,15 @@ public class AbstractMemory extends AbstractDomain<AbstractMemory> {
     }
 
     @Override
+    public int hashCode() {
+        int result = Boolean.hashCode(isBot);
+        result = 31 * result + Boolean.hashCode(isTop);
+        result = 31 * result + env.hashCode();
+        result = 31 * result + store.hashCode();
+        return result;
+    }
+
+    @Override
     public void setToBot() {
         isBot = true;
         isTop = false;
