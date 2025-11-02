@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.context;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -124,10 +125,58 @@ public interface IteratorContext {
      */
     HIRBlock getBlockForNode(Node node);
 
+    /**
+     * Check if this is the first visit to the given node.
+     *
+     * @param node The node to check
+     * @return true if this is the first visit
+     */
     boolean isFirstVisit(Node node);
 
+
+    /**
+     * Get the basic block analyzed prior to the current one.
+     *
+     * @return The previous HIRBlock, or null if not available
+     */
     HIRBlock getPreviousBlock();
 
     int getPreviousBlockIndex();
-}
 
+    /**
+     * Get the GraphTraversalHelper associated with this iterator context.
+     */
+    GraphTraversalHelper getGraphTraversalHelper();
+
+    int getNodeVisitCount(Node node);
+
+    void setEdgeTraversal(HIRBlock sourceBlock, HIRBlock targetBlock);
+
+    /**
+     * Get a compact call-context signature (e.g., k-CFA call string) attached to this iterator
+     * instance by the invoke handler.
+     */
+    String getCallContextSignature();
+
+    void setCallContextSignature(String signature);
+
+    /**
+     * Decide whether the iterator wants the transformer to collect/merge CFG predecessors
+     * into the given node's pre-condition. This allows the iterator to centralize
+     * policy about seeding/extrapolation/widening (e.g. skip merging when a loop header
+     * already has an extrapolated pre-condition).
+     *
+     * @param node the node for which to decide predecessor collection
+     * @return true if predecessors should be collected and merged, false to skip
+     */
+    default boolean shouldCollectPredecessors(Node node) {
+        if (node == null) {
+            return true;
+        }
+        if (isLoopHeader(node)) {
+            int visitCount = getNodeVisitCount(node);
+            return visitCount == 0;
+        }
+        return true;
+    }
+}

@@ -25,7 +25,7 @@ public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     @Override
     public void runAnalysis(AnalysisMethod method) {
         AnalysisContext analysisContext = new AnalysisContext(iteratorPolicy, checkerManager, methodFilterManager);
-        IntraProceduralInvokeHandler<Domain> callHandler = new IntraProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analysisContext);
+        IntraProceduralInvokeHandler<Domain> callHandler = new IntraProceduralInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext);
         callHandler.handleRootInvoke(method);
     }
 

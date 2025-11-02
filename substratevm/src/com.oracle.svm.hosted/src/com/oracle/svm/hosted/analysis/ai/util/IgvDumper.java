@@ -7,19 +7,21 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
+// TODO: this will have to be reworked to get BigBang instance from AnalysisServices
 public class IgvDumper {
 
     @SuppressWarnings("try")
     public static StructuredGraph dumpPhase(AnalysisMethod method, StructuredGraph graph, String phaseName) {
-        BigBang bb = SvmUtility.getInstance().getBigBang();
-        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
-
-        try (DebugContext.Scope s = debug.scope("AbstractInterpretationAnalysis", graph)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, phaseName);
-            return graph;
-        } catch (Throwable ex) {
-            throw debug.handle(ex);
-        }
+//        BigBang bb = SvmUtility.getInstance().getBigBang();
+//        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
+//        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
+//
+//        try (DebugContext.Scope s = debug.scope("AbstractInterpretationAnalysis", graph)) {
+//            debug.dump(DebugContext.BASIC_LEVEL, graph, phaseName);
+//            return graph;
+//        } catch (Throwable ex) {
+//            throw debug.handle(ex);
+//        }
+        return graph;
     }
 }

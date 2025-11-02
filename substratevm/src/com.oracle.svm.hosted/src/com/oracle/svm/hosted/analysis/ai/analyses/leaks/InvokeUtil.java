@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.leaks;
 
-import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -20,7 +20,7 @@ public class InvokeUtil {
             return false;
         }
         ResolvedJavaType classType = invoke.getTargetMethod().getDeclaringClass();
-        ResolvedJavaType autoCloseableType = SvmUtility.getInstance().lookUpType(AutoCloseable.class);
+        ResolvedJavaType autoCloseableType = AnalysisServices.getInstance().lookUpType(AutoCloseable.class);
 
         if (!autoCloseableType.isAssignableFrom(classType)) {
             return false;

@@ -12,7 +12,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
@@ -44,8 +44,8 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         if (cache.containsMethodGraph(method)) {
             this.cfgGraph = cache.getMethodGraph().get(method);
         } else {
-            var bbUtil = SvmUtility.getInstance();
-            this.cfgGraph = bbUtil.getGraph(method);
+            var services = AnalysisServices.getInstance();
+            this.cfgGraph = services.getGraph(method);
             cache.addToMethodGraphMap(method, cfgGraph);
         }
         logger.exportGraphToJson(cfgGraph, analysisMethod, analysisMethod.getName() + ":CFG_BeforeAbsint");
@@ -59,11 +59,6 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         return abstractState;
     }
 
-    /**
-     * Gets the iterator context that provides information to interpreters.
-     *
-     * @return the iterator context
-     */
     public IteratorContext getIteratorContext() {
         return iteratorContext;
     }

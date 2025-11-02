@@ -5,12 +5,8 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContext;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
@@ -44,12 +40,10 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
     public InterProceduralInvokeHandler(
             Domain initialDomain,
             AbstractInterpreter<Domain> abstractInterpreter,
-            CheckerManager checkerManager,
-            AnalysisMethodFilterManager methodFilterManager,
             AnalysisContext analysisContext,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
-        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analysisContext);
+        super(initialDomain, abstractInterpreter, analysisContext);
         this.callStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
     }
@@ -67,12 +61,6 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         } catch (Exception e) {
             /* For some reason we are not able to get the AnalysisMethod of the Invoke */
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
-            logger.log(outcome.toString(), LoggerVerbosity.INFO);
-            return outcome;
-        }
-
-        if (methodFilterManager.shouldSkipMethod(targetAnalysisMethod)) {
-            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
@@ -106,18 +94,16 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        String ctxSig = CallContext.buildKCFASignature(callStack.getCallStack(), 1);
-        CallContext<Domain> ctx = new CallContext<>(callStack.getCallStack(), ctxSig, actualArgs);
-        CallContextHolder.set(ctx);
+        String ctxSig = /* build k-CFA signature */ com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
+            fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
             fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
             logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
             AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
             summary.finalizeSummary(invokeAbstractState);
             summaryManager.putSummary(calleeMethod, summary);
         } finally {
-            CallContextHolder.clear();
             callStack.pop();
         }
 
@@ -132,11 +118,10 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return;
         }
 
-        String ctxSig = CallContext.buildKCFASignature(callStack.getCallStack(), 1);
-        CallContext<Domain> ctx = new CallContext<>(callStack.getCallStack(), ctxSig, java.util.List.of());
-        CallContextHolder.set(ctx);
+        String ctxSig = /* build k-CFA signature */ com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
+            fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
 
             callStack.push(root);
             AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
@@ -146,7 +131,6 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
             logger.logSummariesStats(summaryManager);
         } finally {
-            CallContextHolder.clear();
         }
     }
 

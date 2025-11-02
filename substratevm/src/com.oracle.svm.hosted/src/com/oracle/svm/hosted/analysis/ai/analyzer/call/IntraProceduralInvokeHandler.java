@@ -4,8 +4,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
@@ -26,10 +24,8 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
     public IntraProceduralInvokeHandler(Domain initialDomain,
                                         AbstractInterpreter<Domain> abstractInterpreter,
-                                        CheckerManager checkerManager,
-                                        AnalysisMethodFilterManager methodFilterManager,
                                         AnalysisContext analysisContext) {
-        super(initialDomain, abstractInterpreter, checkerManager, methodFilterManager, analysisContext);
+        super(initialDomain, abstractInterpreter, analysisContext);
     }
 
     @Override

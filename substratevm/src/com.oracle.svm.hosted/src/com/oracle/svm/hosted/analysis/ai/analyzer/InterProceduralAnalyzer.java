@@ -6,7 +6,6 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.util.InterAnalysisConstants;
 
 /**
  * An inter-procedural analyzer that performs an inter-procedural analysis on the given method.
@@ -16,7 +15,9 @@ import com.oracle.svm.hosted.analysis.ai.util.InterAnalysisConstants;
 public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
     private final SummaryFactory<Domain> summaryFactory;
+    // TODO: these constants should be configurable via the builder, currently they are hardcoded
     private final int maxRecursionDepth;
+    private static final int DEFAULT_MAX_RECURSION_DEPTH = 32;
 
     private InterProceduralAnalyzer(Builder<Domain> builder) {
         super(builder);
@@ -27,15 +28,14 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     @Override
     public void runAnalysis(AnalysisMethod method) {
         AnalysisContext analysisContext = new AnalysisContext(iteratorPolicy, checkerManager, methodFilterManager, summaryFactory, maxRecursionDepth);
-        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, abstractInterpreter, checkerManager
-                , methodFilterManager, analysisContext, summaryFactory, maxRecursionDepth);
+        InterProceduralInvokeHandler<Domain> callHandler = new InterProceduralInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext, summaryFactory, maxRecursionDepth);
         callHandler.handleRootInvoke(method);
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
 
         private final SummaryFactory<Domain> summaryFactory;
-        private int maxRecursionDepth = InterAnalysisConstants.MAX_RECURSION_DEPTH;
+        private int maxRecursionDepth = DEFAULT_MAX_RECURSION_DEPTH;
 
         public Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter, SummaryFactory<Domain> summaryFactory) {
             super(initialDomain, abstractInterpreter);
