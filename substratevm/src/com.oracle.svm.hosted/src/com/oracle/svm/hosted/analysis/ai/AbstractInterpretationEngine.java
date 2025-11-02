@@ -10,7 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.SvmUtility;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,31 +25,14 @@ public class AbstractInterpretationEngine {
     private final AnalyzerManager analyzerManager;
     private final List<AnalysisMethod> rootMethods;
     private final List<AnalysisMethod> invokedMethods;
-    private final AnalysisMethod root;
-    private final Inflation bb;
+    private final AnalysisMethod analysisRoot;
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Inflation bb) {
-        SvmUtility.getInstance(bb);
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb) {
+        var analysisServices = AnalysisServices.getInstance(bb);
         this.analyzerManager = analyzerManager;
-        this.bb = bb;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-
-        AtomicReference<AnalysisMethod> tempRoot = new AtomicReference<>();
-        bb.getUniverse().getMethods().forEach(method -> {
-            if (method.getName().equals("main") && method.getParameters().length == 1 &&
-                    method.toParameterList()
-                            .getFirst()
-                            .getWrapped()
-                            .getName().
-                            equals("[Ljava/lang/String;")) {
-                tempRoot.set(method);
-            }
-        });
-        this.root = tempRoot.get();
-        this.invokedMethods = bb.getUniverse()
-                .getMethods()
-                .stream()
-                .filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
+        this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint);
+        this.invokedMethods = analysisServices.getInvokedMethods();
     }
 
     public void executeAbstractInterpretation(AnalyzerMode analyzerMode) throws IOException {
@@ -69,7 +52,7 @@ public class AbstractInterpretationEngine {
             }
         }
 
-        if (analyzerMode.isMainOnly() && (root == null)) {
+        if (analyzerMode.isMainOnly() && (analysisRoot == null)) {
             AnalysisError.shouldNotReachHere("Main method not provided in 'main-only' mode");
         }
 
@@ -91,7 +74,7 @@ public class AbstractInterpretationEngine {
     private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzerMode.isMainOnly()) {
             try {
-                analyzer.runAnalysis(root);
+                analyzer.runAnalysis(analysisRoot);
                 return;
             } catch (IOException e) {
                 AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);
@@ -110,7 +93,7 @@ public class AbstractInterpretationEngine {
     private void executeInterProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzerMode.isMainOnly()) {
             try {
-                analyzer.runAnalysis(root);
+                analyzer.runAnalysis(analysisRoot);
                 return;
             } catch (IOException e) {
                 AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);

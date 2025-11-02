@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
@@ -25,14 +26,16 @@ import java.io.IOException;
  * which uses the registered analyzers to analyze the program.
  */
 public class AbstractInterpretationDriver {
+
     private final DebugContext debug;
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
 
-    public AbstractInterpretationDriver(DebugContext debug, Inflation bb) {
+
+    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod mainEntryPoint, Inflation bb) {
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
-        this.engine = new AbstractInterpretationEngine(analyzerManager, bb);
+        this.engine = new AbstractInterpretationEngine(analyzerManager, mainEntryPoint, bb);
     }
 
     /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */

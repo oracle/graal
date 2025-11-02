@@ -772,7 +772,9 @@ public class NativeImageGenerator {
     }
 
     private void runAbstractInterpretation(DebugContext debug) {
-        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, bb);
+        AnalysisError.guarantee(mainEntryPoint.getLeft() != null, "Main entry point not available");
+        AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
+        AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
         driver.run();
     }
 
