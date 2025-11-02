@@ -22,11 +22,11 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
 
     /**
      * Performs semantic transformation of the given {@link Node} with iterator context.
-     * For efficiency, it modifies the post-condition of {@param node}
+     * For efficiency, it modifies the post-condition of {@param node}.
      *
      * @param node          to analyze
      * @param abstractState current abstract state during fixpoint iteration
-     * @param context       optional context information from the fixpoint iterator
+     * @param context       context information from the fixpoint iterator
      */
     public void analyzeNode(Node node, AbstractState<Domain> abstractState, IteratorContext context) {
         abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback, context);
@@ -39,50 +39,36 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
      * @param source        the node from which the edge originates
      * @param target        the node to which the edge goes
      * @param abstractState abstract state during fixpoint iteration
-     * @param context       optional context information from the fixpoint iterator
+     * @param context       context information from the fixpoint iterator
      */
     public void analyzeEdge(Node source, Node target, AbstractState<Domain> abstractState, IteratorContext context) {
         abstractInterpreter.execEdge(source, target, abstractState, context);
     }
 
-    public void collectInvariantsFromCfgPredecessors(HIRBlock block, AbstractState<Domain> abstractState,
-                                                     GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
-        Node blockBeginNode = graphTraversalHelper.getBeginNode(block);
-        collectInvariantsFromCfgPredecessors(blockBeginNode, abstractState, graphTraversalHelper, context);
-    }
-
     /**
      * Collects invariants from all CFG predecessors of the given {@link Node}.
      *
-     * @param node                 the node whose predecessors to analyze
-     * @param abstractState        abstract state during fixpoint iteration
-     * @param graphTraversalHelper helper to traverse the graph
-     * @param context              optional context information from the fixpoint iterator
+     * @param node          the node whose predecessors to analyze
+     * @param abstractState abstract state during fixpoint iteration
+     * @param context       context information from the fixpoint iterator
      */
-    public void collectInvariantsFromCfgPredecessors(Node node, AbstractState<Domain> abstractState,
-                                                     GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
+    public void collectInvariantsFromCfgPredecessors(Node node, AbstractState<Domain> abstractState, IteratorContext context) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        HIRBlock currentBlock = (context != null) ? context.getBlockForNode(node) : null;
+        GraphTraversalHelper graphTraversalHelper = context.getGraphTraversalHelper();
+        HIRBlock currentBlock = context.getBlockForNode(node);
 
-        // FIXME: this is retarded bacause but safe, because we only have BasicIteratorContext implementing the IteratorContext interface
-        if (currentBlock != null && context instanceof com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext basicContext) {
-            int predCount = graphTraversalHelper.getPredecessorCount(currentBlock);
-            logger.log("Collecting invariants from " + predCount + " CFG predecessors for node: " + node,
-                    LoggerVerbosity.DEBUG);
+        int predCount = graphTraversalHelper.getPredecessorCount(currentBlock);
+        logger.log("Collecting invariants from " + predCount + " CFG predecessors for node: " + node,
+                LoggerVerbosity.DEBUG);
 
-            for (int i = 0; i < predCount; i++) {
-                HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
-                Node predecessor = graphTraversalHelper.getEndNode(predBlock);
+        for (int i = 0; i < predCount; i++) {
+            HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
+            Node predecessor = graphTraversalHelper.getEndNode(predBlock);
 
-                basicContext.setEdgeTraversal(predBlock, currentBlock);
-                logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
+            context.setEdgeTraversal(predBlock, currentBlock);
+            logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
 
-                if (predecessor != null) {
-                    analyzeEdge(predecessor, node, abstractState, context);
-                }
-            }
-        } else {
-            for (Node predecessor : graphTraversalHelper.getNodeCfgPredecessors(node)) {
+            if (predecessor != null) {
                 analyzeEdge(predecessor, node, abstractState, context);
             }
         }
@@ -90,33 +76,18 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
 
     /**
      * Performs semantic transformation of the given {@link HIRBlock} with context.
-     *
-     * @param block         the head to analyze
-     * @param abstractState abstract state during fixpoint iteration
-     * @param context       optional context information from the fixpoint iterator
      */
-    public void analyzeBlock(HIRBlock block, AbstractState<Domain> abstractState,
-                             GraphTraversalHelper graphTraversalHelper, IteratorContext context) {
+    public void analyzeBlock(HIRBlock block, AbstractState<Domain> abstractState, IteratorContext context) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
 
         Node previousNode = null;
         for (Node node : block.getNodes()) {
             if (previousNode == null) {
-                boolean isLoopHeaderDuringWidening = false;
-                if (context != null && node instanceof jdk.graal.compiler.nodes.LoopBeginNode) {
-                    /* Check if we're in widening phase (visit count > 0) */
-                    if (context instanceof com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext basicContext) {
-                        int visitCount = basicContext.getNodeVisitCount(node);
-                        isLoopHeaderDuringWidening = (visitCount > 0);
-                    }
-                }
-
-                if (!isLoopHeaderDuringWidening) {
-                    collectInvariantsFromCfgPredecessors(node, abstractState, graphTraversalHelper, context);
+                if (context.shouldCollectPredecessors(node)) {
+                    collectInvariantsFromCfgPredecessors(node, abstractState, context);
                 } else {
-                    logger.log("  Skipping invariant collection for loop header (using extrapolated pre-condition)",
-                              LoggerVerbosity.DEBUG);
+                    logger.log("  Skipping invariant collection for node (iterator policy)", LoggerVerbosity.DEBUG);
                 }
             } else {
                 /* Subsequent nodes in block: use previous node's post-condition as pre-condition */
