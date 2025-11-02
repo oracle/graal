@@ -78,7 +78,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
             abstractState.setPreCondition(node, initialDomain);
         }
         iteratorContext.setCurrentBlock(vertex.block());
-        abstractTransformer.analyzeBlock(vertex.block(), abstractState, graphTraversalHelper, iteratorContext);
+        abstractTransformer.analyzeBlock(vertex.block(), abstractState, iteratorContext);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
@@ -97,7 +97,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
             logger.log("Loop iteration (visit count: " + visitCount + ") for cycle: " + cycle, LoggerVerbosity.DEBUG);
             Domain oldPreCondition = abstractState.getPreCondition(headBegin).copyOf();
             iteratorContext.setCurrentBlock(cycle.head());
-            abstractTransformer.analyzeBlock(cycle.head(), abstractState, graphTraversalHelper, iteratorContext);
+            abstractTransformer.analyzeBlock(cycle.head(), abstractState, iteratorContext);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {

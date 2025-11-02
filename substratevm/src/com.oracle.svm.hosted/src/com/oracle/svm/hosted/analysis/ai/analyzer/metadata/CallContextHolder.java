@@ -7,29 +7,28 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  * Thread-local holder for the current CallContext so components that do not
  * receive it explicitly (e.g., interpreters) can query a compact context signature
  * to implement context-sensitive behaviors (like allocation-site sensitivity).
- * <p>
- * This is a pragmatic bridge until IteratorContext is extended to carry CallContext.
+ * This is a bridge until IteratorContext is extended to carry CallContext.
  */
 public final class CallContextHolder {
-    private static final ThreadLocal<CallContext<? extends AbstractDomain<?>>> CTX = new ThreadLocal<>();
+    private static final ThreadLocal<CallContext<? extends AbstractDomain<?>>> context = new ThreadLocal<>();
 
     private CallContextHolder() {
     }
 
     public static void set(CallContext<? extends AbstractDomain<?>> ctx) {
-        CTX.set(ctx);
+        context.set(ctx);
     }
 
     public static void clear() {
-        CTX.remove();
+        context.remove();
     }
 
     public static CallContext<? extends AbstractDomain<?>> get() {
-        return CTX.get();
+        return context.get();
     }
 
     public static String getSignatureOrEmpty() {
-        CallContext<? extends AbstractDomain<?>> ctx = CTX.get();
+        CallContext<? extends AbstractDomain<?>> ctx = context.get();
         return ctx == null ? "" : (ctx.contextSignature() == null ? "" : ctx.contextSignature());
     }
 

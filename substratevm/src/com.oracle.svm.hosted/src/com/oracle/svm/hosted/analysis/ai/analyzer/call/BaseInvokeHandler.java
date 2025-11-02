@@ -23,13 +23,11 @@ public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> i
     @SuppressWarnings("this-escape")
     public BaseInvokeHandler(Domain initialDomain,
                              AbstractInterpreter<Domain> abstractInterpreter,
-                             CheckerManager checkerManager,
-                             AnalysisMethodFilterManager methodFilterManager,
                              AnalysisContext analysisContext) {
         this.initialDomain = initialDomain;
         this.abstractTransformer = new AbstractTransformer<>(abstractInterpreter, this::handleInvoke);
-        this.checkerManager = checkerManager;
-        this.methodFilterManager = methodFilterManager;
         this.analysisContext = analysisContext;
+        this.checkerManager = analysisContext.getCheckerManager();
+        this.methodFilterManager = analysisContext.getMethodFilterManager();
     }
 }

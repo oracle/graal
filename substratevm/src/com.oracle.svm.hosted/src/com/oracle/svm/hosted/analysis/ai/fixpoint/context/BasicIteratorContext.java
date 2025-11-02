@@ -32,6 +32,7 @@ public class BasicIteratorContext implements IteratorContext {
     private IteratorPhase currentPhase;
     private boolean hasConverged;
     private int globalIterationCount;
+    private String callContextSignature;
 
     public BasicIteratorContext(GraphTraversalHelper graphTraversalHelper) {
         this.graphTraversalHelper = graphTraversalHelper;
@@ -42,6 +43,7 @@ public class BasicIteratorContext implements IteratorContext {
         this.hasConverged = false;
         this.previousBlock = null;
         this.abstractState = null;
+        this.callContextSignature = "";
     }
 
     @Override
@@ -230,6 +232,7 @@ public class BasicIteratorContext implements IteratorContext {
         previousBlock = null;
         currentPhase = IteratorPhase.ASCENDING;
         hasConverged = false;
+        callContextSignature = "";
     }
 
     @Override
@@ -266,6 +269,21 @@ public class BasicIteratorContext implements IteratorContext {
         return -1;
     }
 
+    @Override
+    public GraphTraversalHelper getGraphTraversalHelper() {
+        return graphTraversalHelper;
+    }
+
+    @Override
+    public String getCallContextSignature() {
+        return callContextSignature == null ? "" : callContextSignature;
+    }
+
+    @Override
+    public void setCallContextSignature(String signature) {
+        this.callContextSignature = signature;
+    }
+
     /**
      * Set the abstract state reference. Called by the fixpoint iterator.
      *
@@ -286,4 +304,3 @@ public class BasicIteratorContext implements IteratorContext {
         this.currentBlock = newBlock;
     }
 }
-

@@ -11,7 +11,6 @@ import java.util.List;
  */
 public final class CallStack {
 
-    // TODO: refactor this shit
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
     private final int maxRecursionDepth;
 
