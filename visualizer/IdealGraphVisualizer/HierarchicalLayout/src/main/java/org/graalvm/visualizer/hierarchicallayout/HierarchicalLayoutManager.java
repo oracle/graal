@@ -53,6 +53,7 @@ import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntUnaryOperator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.graalvm.visualizer.settings.layout.LayoutSettings.BOTH_SORT;
@@ -2360,6 +2361,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         private final SortedSet<LayoutLayer> lay = new TreeSet<>(LAYER_WIDTH_COMPARATOR);
 
         private void reassignLayers() {
+            int iterations = 0;
             layers = new LayoutLayer[layerCount];
             if (layerCount == 0) {
                 return;
@@ -2382,6 +2384,13 @@ public class HierarchicalLayoutManager implements LayoutManager {
                 down = false;
                 LayoutLayer layer = lay.first();
                 if (layer.getMinimalWidth() < avg) {
+                    break;
+                }
+                if (++iterations > 20000) {
+                    // This algorithm is not guaranteed to converge so limit the number of iterations.  Thie value
+                    // was picked based on processing some very large graphs.  The max number of iterations seen
+                    // for a successful layout was around 1500 so 20000 was chosen as a high bound.
+                    LOG.log(Level.INFO, "Too many iterations in assignLayers so giving up");
                     break;
                 }
                 layer.sort(NODE_WIDTH_COMPARATOR);
