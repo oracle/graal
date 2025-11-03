@@ -623,7 +623,7 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     static final int ANNOTATION_DEFAULT_VALUE = 3;
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
         if (isArray()) {
             return null;
         }

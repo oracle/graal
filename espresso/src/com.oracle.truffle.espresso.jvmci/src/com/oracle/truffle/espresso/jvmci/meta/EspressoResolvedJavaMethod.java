@@ -58,9 +58,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
+public final class EspressoResolvedJavaMethod extends AbstractAnnotated implements ResolvedJavaMethod {
     private static final int JVM_METHOD_MODIFIERS = PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | SYNCHRONIZED | BRIDGE | VARARGS | NATIVE | ABSTRACT | STRICT | SYNTHETIC;
     public static final Parameter[] NO_PARAMETERS = new Parameter[0];
 
@@ -349,7 +350,7 @@ public final class EspressoResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
         if (!hasAnnotations()) {
             return null;
         }

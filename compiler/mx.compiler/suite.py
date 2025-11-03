@@ -316,6 +316,7 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "21+",
+      "spotbugs": "false",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -330,6 +331,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.code"
         ],
       },
@@ -400,6 +402,7 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "jacoco" : "exclude",
+      "spotbugs": "false",
       "graalCompilerSourceEdition": "ignore",
     },
 

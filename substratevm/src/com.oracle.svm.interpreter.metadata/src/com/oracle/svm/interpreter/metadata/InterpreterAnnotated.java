@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.interpreter.metadata;
 
-import java.lang.annotation.Annotation;
-import java.util.List;
 import java.util.function.Function;
 
-import jdk.graal.compiler.debug.GraalError;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-/**
- * A container for an array of annotations.
- */
-public class AnnotationsContainer {
-    private final List<Annotation> annotations;
+public class InterpreterAnnotated implements Annotated {
 
-    public AnnotationsContainer(Annotation[] annotations) {
-        this.annotations = List.of(annotations);
-    }
-
-    /**
-     * Gets an immutable view of the contained annotations.
-     */
-    public List<Annotation> getContainedAnnotations() {
-        return annotations;
-    }
-
+    @Override
     public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
-        throw GraalError.unimplemented(this + ":" + parser);
+        throw VMError.intentionallyUnimplemented();
     }
 
+    @Override
     public AnnotationsInfo getTypeAnnotationInfo() {
-        throw GraalError.unimplemented(toString());
+        throw VMError.intentionallyUnimplemented();
     }
 }

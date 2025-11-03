@@ -31,19 +31,17 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class HostedElement implements AnnotatedElement {
+public abstract class HostedElement extends AbstractAnnotated implements AnnotatedElement {
 
     protected abstract AnnotatedElement getWrapped();
 
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
-        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
-    }
-
-    public AnnotationsInfo getTypeAnnotationInfo() {
-        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
+    @Override
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo(null);
     }
 
     @Override

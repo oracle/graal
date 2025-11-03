@@ -83,7 +83,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
  * also abstract methods for vtable calls.
  */
-public class InterpreterResolvedJavaMethod implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember {
+public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implements ResolvedJavaMethod, CremaMethodAccess, ResolvedMember {
     @Platforms(Platform.HOSTED_ONLY.class)//
     @SuppressWarnings("unchecked") //
     private static final Class<? extends Annotation> CALLER_SENSITIVE_CLASS = (Class<? extends Annotation>) ReflectionUtil.lookupClass("jdk.internal.reflect.CallerSensitive");

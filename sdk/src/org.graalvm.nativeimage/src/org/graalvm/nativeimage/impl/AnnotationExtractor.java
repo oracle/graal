@@ -71,7 +71,7 @@ public interface AnnotationExtractor {
     /**
      * Gets {@code element}'s annotation of type {@code annotationType} if such an annotation is
      * present, else null. This method will also search {@code element}'s superclasses if
-     * {@code annotationType} is {@linkplain Inherited inherited}.
+     * {@code annotationType} itself is annotated with {@linkplain Inherited inherited}.
      */
     default <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType) {
         Inherited inherited = annotationType.getAnnotation(Inherited.class);

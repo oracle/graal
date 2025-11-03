@@ -36,10 +36,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -59,18 +61,35 @@ public final class AnnotationUtil {
     @Platforms(Platform.HOSTED_ONLY.class)
     static class Lazy {
         static final AnnotatedObjectAccess instance;
+        static final Throwable initLocation;
         static {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
             instance = new AnnotatedObjectAccess();
+            initLocation = new Throwable("Lazy.instance created here:");
         }
     }
 
+    /**
+     * Used to ensure only one path through {@link #instance()} is taken per VM execution to prevent
+     * leaking data via {@link Lazy#instance}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static Boolean instanceIsSingleton;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static AnnotatedObjectAccess instance() {
-        if (ImageSingletons.contains(AnnotationExtractor.class)) {
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(AnnotationExtractor.class)) {
+            if (instanceIsSingleton == null) {
+                instanceIsSingleton = true;
+            } else if (!instanceIsSingleton) {
+                throw new GraalError(Lazy.initLocation, "Cannot use image singleton AnnotatedObjectAccess after Lazy.instance initialized");
+            }
             return (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
         }
-        // Fall back to singleton when outside scope of a Native Image build.
+        // Fall back to singleton when no AnnotationExtractor singleton is available (e.g.,
+        // running `mx unittest com.oracle.graal.pointsto.standalone.test`).
+        GraalError.guarantee(instanceIsSingleton == null || !instanceIsSingleton, "Cannot use image singleton AnnotatedObjectAccess and Lazy.instance in one process");
+        instanceIsSingleton = false;
         return Lazy.instance;
     }
 

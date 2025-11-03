@@ -261,6 +261,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ]
             },
             "javaCompliance" : "21+",
@@ -270,6 +271,7 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "jacoco" : "include",
+            "spotbugs": "false",
         },
 
         # Shade Cap'n Proto Runtime
@@ -432,7 +434,8 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -457,7 +460,8 @@ suite = {
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -481,7 +485,8 @@ suite = {
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -505,6 +510,7 @@ suite = {
                     "jdk.vm.ci.code.site",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.riscv64"
                 ],
             },
@@ -532,6 +538,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.code.site",
                 ],
@@ -562,6 +569,7 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
                     "jdk.vm.ci.riscv64"
@@ -588,6 +596,7 @@ suite = {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.amd64"
                 ],
             },
@@ -661,6 +670,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "jacoco" : "exclude",
+            "spotbugs": "false"
         },
 
         "com.oracle.graal.pointsto.standalone.test": {
@@ -678,6 +688,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ]
             },
             "checkstyle": "com.oracle.svm.test",
@@ -709,6 +720,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "spotbugs": "false",
             "jacoco" : "exclude", # experimental code not used in production
         },
 
@@ -1160,6 +1172,7 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
@@ -1219,8 +1232,9 @@ suite = {
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta"
-                ],
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+],
             },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
@@ -1262,7 +1276,8 @@ suite = {
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.amd64",
-                    "jdk.vm.ci.meta"
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
@@ -1323,6 +1338,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
@@ -1350,6 +1366,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "spotbugs": "false",
             "jacoco" : "exclude",
         },
 
@@ -1470,6 +1487,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "generatedDependencies": [
@@ -1501,6 +1519,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1545,6 +1564,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1622,6 +1642,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1673,6 +1694,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1697,6 +1719,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                 ],
                 "java.base" : [
                     "jdk.internal.misc", # Signal
@@ -1723,6 +1746,7 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.code",
                 ],
                 "java.base" : [
@@ -1845,6 +1869,7 @@ suite = {
                     "jdk.internal.vm.ci": [
                         "jdk.vm.ci.common",
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.services",
                         "jdk.vm.ci.runtime",
@@ -2076,6 +2101,7 @@ suite = {
                     "jdk.internal.vm.ci": [
                         "jdk.vm.ci.common",
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.services",
                         "jdk.vm.ci.runtime",
@@ -2184,6 +2210,7 @@ suite = {
                 "jdk.graal.compiler.options.OptionDescriptors",
               ],
               "requires" : [
+                "org.graalvm.nativeimage.configure",
                 "org.graalvm.nativeimage.builder",
                 "java.management",
                 "jdk.management",
@@ -2218,6 +2245,7 @@ suite = {
                 "requiresConcealed" : {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                     ],
                 },
                 "requires": [
@@ -2394,6 +2422,7 @@ suite = {
                 ],
                 "jdk.internal.vm.ci" : [
                   "jdk.vm.ci.meta",
+                  "jdk.vm.ci.meta.annotation",
                   "jdk.vm.ci.common",
                   "jdk.vm.ci.code",
                   "jdk.vm.ci.runtime",
@@ -2436,6 +2465,7 @@ suite = {
                     ],
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.common",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.runtime",
@@ -2605,6 +2635,7 @@ suite = {
                 "requiresConcealed": {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
+                        "jdk.vm.ci.meta.annotation",
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.amd64",
                         "jdk.vm.ci.aarch64",

@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.truffle.host;
 
+import java.util.Map;
+import java.util.function.Function;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -31,17 +37,10 @@ import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.util.Map;
-import java.util.function.Function;
 
 /**
  * This class manages Truffle resources used during host Java compilation. A host environment is
@@ -187,7 +186,7 @@ public abstract class TruffleHostEnvironment {
         boolean isBytecodeInterpreterSwitch = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitch));
         boolean isBytecodeInterpreterSwitchBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitchBoundary));
         boolean isInliningCutoff = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningCutoff));
-        boolean isInliningRoot = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningRoot));
+        boolean isInliningRoot = hostTypes.InliningRoot != null && declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningRoot));
         return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
     }
 
