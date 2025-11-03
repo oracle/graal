@@ -278,8 +278,8 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                                 for (int j = 0; j < instance.store().memories().count(); ++j) {
                                     WasmMemoryLibrary.getUncached().reset(instance.store().memories().memory(j));
                                 }
-                                for (int j = 0; j < instance.store().tables().tableCount(); ++j) {
-                                    instance.store().tables().table(j).reset();
+                                for (int j = 0; j < instance.module().tableCount(); ++j) {
+                                    instance.table(j).reset();
                                 }
                             }
                         }

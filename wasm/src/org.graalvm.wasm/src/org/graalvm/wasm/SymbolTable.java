@@ -1417,8 +1417,7 @@ public abstract class SymbolTable {
             } else {
                 wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType, this);
             }
-            final int address = store.tables().register(wasmTable);
-            instance.setTableAddress(index, address);
+            instance.setTable(index, wasmTable);
 
             store.linker().resolveTableInitialization(instance, index, initBytecode, initValue);
         });
@@ -1431,7 +1430,7 @@ public abstract class SymbolTable {
         importedTables.put(index, importedTable);
         importSymbol(importedTable);
         module().addLinkAction((context, store, instance, imports) -> {
-            instance.setTableAddress(index, UNINITIALIZED_ADDRESS);
+            instance.setTable(index, null);
             store.linker().resolveTableImport(store, instance, importedTable, index, initSize, maxSize, elemType, imports);
         });
     }

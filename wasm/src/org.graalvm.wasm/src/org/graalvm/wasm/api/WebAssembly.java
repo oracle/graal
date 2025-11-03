@@ -950,8 +950,7 @@ public class WebAssembly extends Dictionary {
         } else if (memoryIndex != null) {
             return instance.memory(memoryIndex);
         } else if (tableIndex != null) {
-            final int address = instance.tableAddress(tableIndex);
-            return instance.store().tables().table(address);
+            return instance.table(tableIndex);
         } else if (tagIndex != null) {
             return instance.tag(tagIndex);
         } else {
