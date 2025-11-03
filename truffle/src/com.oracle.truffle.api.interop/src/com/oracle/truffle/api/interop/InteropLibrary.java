@@ -2448,7 +2448,7 @@ public abstract class InteropLibrary extends Library {
      * @see #getLanguageId(Object)
      * @since 26.0
      */
-    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementFor = "hasLanguage(Object)", replaceWith = "hasLanguageLegacy")
+    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementOf = "hasLanguage(Object)", replacementMethod = "hasLanguageLegacy")
     public boolean hasLanguageId(Object receiver) {
         return hasLanguage(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine(this) != null;
     }
@@ -2464,7 +2464,7 @@ public abstract class InteropLibrary extends Library {
      * @see #hasLanguageId(Object)
      * @since 26.0
      */
-    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementFor = "getLanguage(Object)", replaceWith = "getLanguageLegacy")
+    @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageLegacy")
     public String getLanguageId(Object receiver) throws UnsupportedMessageException {
         Class<? extends TruffleLanguage<?>> language = getLanguage(receiver);
         String id = InteropAccessor.ENGINE.getLanguageId(this, language);
