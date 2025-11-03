@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -153,11 +152,24 @@ public class AnnotationValueSupport {
 
     /**
      * Cache for {@link #getAnnotationValue}. Building libgraal-ee shows that this cache grows to
-     * about 3K entries and there are about 30K accesses so no need to optimize further with an LRU
-     * cache.
+     * about 3K entries so the LRU cache is sized just above that (4096). This cache must not grow
+     * too large as there are Native Image tests that build numerous images in the one JVM process.
      */
     @LibGraalSupport.HostedOnly //
-    private static final Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotations = LibGraalSupport.INSTANCE == null ? Collections.synchronizedMap(new EconomicHashMap<>()) : null;
+    private static final Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotations;
+    static {
+        final int cacheMaxSize = 4096;
+        if (LibGraalSupport.INSTANCE == null) {
+            declaredAnnotations = Collections.synchronizedMap(new java.util.LinkedHashMap<>(cacheMaxSize, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Annotated, Map<ResolvedJavaType, AnnotationValue>> eldest) {
+                    return size() > cacheMaxSize;
+                }
+            });
+        } else {
+            declaredAnnotations = null;
+        }
+    }
 
     @LibGraalSupport.HostedOnly
     private static AnnotationValue getAnnotationValue0(Annotated annotated, Class<? extends Annotation> annotationType, boolean inherited) {

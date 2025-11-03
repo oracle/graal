@@ -522,7 +522,7 @@ public class AnnotatedObjectAccess {
         while (cur instanceof AnnotatedWrapper wrapper) {
             if (injectedAnnotationsCollector != null) {
                 List<AnnotationValue> injectedAnnotations = wrapper.getInjectedAnnotations();
-                if (injectedAnnotations != null) {
+                if (!injectedAnnotations.isEmpty()) {
                     injectedAnnotationsCollector.addAll(injectedAnnotations);
                 }
             }
