@@ -60,8 +60,9 @@ public final class ClassLoading {
     }
 
     /**
-     * Opens a scope in which class loading is not constrained by the reflection configuration. Once
-     * the returned {@link AutoCloseable} is closed, the previous state is restored.
+     * Opens a scope in which class loading is not constrained by the reflection configuration for
+     * the current thread. Once the returned {@link AutoCloseable} is closed, the previous state is
+     * restored.
      *
      * @throws IllegalStateException if class loading is not {@linkplain #isSupported() supported}.
      */
@@ -74,8 +75,8 @@ public final class ClassLoading {
 
     /**
      * Conditionally opens a scope in which class loading is not constrained by the reflection
-     * configuration. If {@code allowArbitraryClassLoading} is true, behaves like
-     * {@link #allowArbitraryClassLoading()}. Otherwise, it has no effect.
+     * configuration for the current thread. If {@code allowArbitraryClassLoading} is true, behaves
+     * like {@link #allowArbitraryClassLoading()}. Otherwise, it has no effect.
      *
      * @throws IllegalStateException if class loading is not {@linkplain #isSupported() supported}
      *             and {@code allowArbitraryClassLoading} is true.
