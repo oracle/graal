@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -10,18 +11,16 @@ import java.util.List;
 /**
  * Interface for a checker on an annotated CFG ( CFG with computed pre-post conditions from abstract interpretation ).
  * The checker can in theory be used to:
- * 1. identify potential issues in the abstract state
- * 2. modify the abstract state to reflect some findings
- * 3. modify the CFG ( {@link StructuredGraph} ) based on the abstract state
- * 4. report findings to users
+ * 1. Identify potential issues in the abstract state
+ * 2. Modify the abstract state to reflect some findings
+ * 3. Modify the CFG ( {@link StructuredGraph} ) based on the abstract state
+ * 4. Report findings to users
  * 5. Produce facts based on the abstract state, and insert assertions in the CFG
  * and suggest modifications to the associated {@link StructuredGraph}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
 
-// TODO : The checker will probably need a lot more things than it currently requires.
-// TODO: Think about this when we get to producing assertions
 public interface Checker<Domain extends AbstractDomain<Domain>> {
 
     /**
@@ -56,4 +55,16 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
      * @return true if the checker is compatible, false otherwise
      */
     boolean isCompatibleWith(AbstractState<?> abstractState);
+
+    /**
+     * Optional: produce facts derived from the analysis that other tools or subsequent
+     * checkers/phases can consume. By default, checkers that don't produce facts can ignore this.
+     *
+     * @param method the analysis method
+     * @param abstractState the abstract state computed by the analysis
+     * @return a list of CheckerFact objects describing derived facts
+     */
+    default List<Fact> produceFacts(AnalysisMethod method, AbstractState<Domain> abstractState) {
+        return List.of();
+    }
 }

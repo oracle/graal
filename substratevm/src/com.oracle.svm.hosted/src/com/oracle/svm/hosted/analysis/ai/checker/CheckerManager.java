@@ -1,10 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.checker.annotator.AssertInjector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +26,10 @@ public final class CheckerManager {
     public <Domain extends AbstractDomain<Domain>> void runCheckers(AnalysisMethod method, AbstractState<Domain> abstractState) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         List<CheckerSummary> checkerSummaries = new ArrayList<>();
-        logger.log("Running provided checkers on analysisMethod: " + method, LoggerVerbosity.CHECKER);
+        List<Fact> allFacts = new ArrayList<>();
+        logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
 
-        for (Checker<?> checker : checkers) {
+        for (var checker : checkers) {
             if (checker.isCompatibleWith(abstractState)) {
                 try {
                     @SuppressWarnings("unchecked")
@@ -34,6 +37,11 @@ public final class CheckerManager {
                     List<CheckerResult> checkerResults = typedChecker.check(method, abstractState);
                     CheckerSummary summary = new CheckerSummary(checker, checkerResults);
                     checkerSummaries.add(summary);
+
+                    List<Fact> facts = typedChecker.produceFacts(method, abstractState);
+                    if (facts != null && !facts.isEmpty()) {
+                        allFacts.addAll(facts);
+                    }
                 } catch (ClassCastException e) {
                     logger.log("Compatibility check error in " + checker.getDescription(),
                             LoggerVerbosity.CHECKER_ERR);
@@ -44,9 +52,17 @@ public final class CheckerManager {
             }
         }
 
-        for (CheckerSummary checkerSummary : checkerSummaries) {
-            logCheckerSummary(checkerSummary);
+        logger.log("Aggregated facts produced by checkers: " + allFacts, LoggerVerbosity.CHECKER);
+        AssertInjector.injectAnchors(abstractState.getCfgGraph().graph, allFacts);
+        try {
+            AbstractInterpretationLogger.dumpGraph(method, abstractState.getCfgGraph().graph, "GraalAF");
+        } catch (Exception e) {
+            logger.log("IGV dump failed: " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);
         }
+
+//        for (CheckerSummary checkerSummary : checkerSummaries) {
+//            logCheckerSummary(checkerSummary);
+//        }
     }
 
     private void logCheckerSummary(CheckerSummary checkerSummary) {
