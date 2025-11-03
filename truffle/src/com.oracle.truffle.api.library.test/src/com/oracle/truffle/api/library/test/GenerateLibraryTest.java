@@ -322,7 +322,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "readMember(Object, String)")
+        @Abstract(replacementOf = "readMember(Object, String)")
         public int readMember(Object receiver, Object name) {
             if (name instanceof String stringName) {
                 return readMember(receiver, stringName);
@@ -335,7 +335,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "read(Object, int)")
+        @Abstract(replacementOf = "read(Object, int)")
         public int read(Object receiver, long index) {
             if (Integer.MIN_VALUE <= index && index <= Integer.MAX_VALUE) {
                 return read(receiver, (int) index);
@@ -348,7 +348,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -411,29 +411,29 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return 100;
         }
 
-        @ExpectError("Cannot export both a deprecated message and a new message read that declares a replacement for it. " +
-                        "Remove the export of the deprecated message.")
+        @ExpectError("Cannot export both a deprecated message and a new message 'read' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
         @ExportMessage
         final int read(int index) {
             return Long.toString(index).length();
         }
 
-        @ExpectError("Cannot export both a deprecated message and a new message read that declares a replacement for it. " +
-                        "Remove the export of the deprecated message.")
+        @ExpectError("Cannot export both a deprecated message and a new message 'read' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
         @ExportMessage
         final int read(long index) {
             return Long.toString(index).length();
         }
 
-        @ExpectError("Cannot export both a deprecated message and a new message readUnsigned that declares a replacement for it. " +
-                        "Remove the export of the deprecated message.")
+        @ExpectError("Cannot export both a deprecated message and a new message 'readUnsigned' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
         @ExportMessage
         final int readUnsigned(int index) {
             return Integer.toUnsignedString(index).length();
         }
 
-        @ExpectError("Cannot export both a deprecated message and a new message readUnsigned that declares a replacement for it. " +
-                        "Remove the export of the deprecated message.")
+        @ExpectError("Cannot export both a deprecated message and a new message 'readUnsigned' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
         @ExportMessage
         final int readUnsigned(long index) {
             return Long.toUnsignedString(index).length();
@@ -470,7 +470,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementFor = "getLanguage(Object)", replacementWith = "getLanguageImpl")
+        @Abstract(replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageImpl")
         public String getLanguageId(Object receiver) {
             return TestLanguage.ID;
         }
@@ -514,8 +514,8 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     @SuppressWarnings({"deprecation", "static-method"})
     public static class ReplacementLegacyAndNew2 {
 
-        @ExpectError("Cannot export both a deprecated message getLanguage and a new message getLanguageId that declares a replacement for it. " +
-                        "Remove the export of the deprecated message.")
+        @ExpectError("Cannot export both a deprecated message 'getLanguage' and a new message 'getLanguageId' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
         @ExportMessage
         public Class<? extends TruffleLanguage<?>> getLanguage() {
             return TestLanguage.class;
@@ -536,7 +536,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replaced message readMember(Object, int) was not found. Specify an existing message with optional type arguments.")
-        @Abstract(replacementFor = "readMember(Object, int)")
+        @Abstract(replacementOf = "readMember(Object, int)")
         public int readMember(Object receiver, Object name) {
             if (name instanceof String stringName) {
                 return readMember(receiver, stringName);
@@ -555,7 +555,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -578,7 +578,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) throws Exception {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -601,7 +601,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
-        @Abstract(replacementFor = "readUnsigned(Object, int)", replacementWith = "readUnsignedLegacy")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
         public int readUnsigned(Object receiver, long index) {
             if (0 <= index && index <= 0xFFFFFFFFL) {
                 return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
@@ -622,19 +622,19 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return false;
         }
 
-        @Abstract(replacementWith = "isType")
+        @Abstract(replacementMethod = "isType")
         public Object replacedErr(Object receiver) {
             return receiver;
         }
 
         @ExpectError("The replacement method doReplaceNone does not exist.")
-        @Abstract(replacementFor = "isType", replacementWith = "doReplaceNone")
+        @Abstract(replacementOf = "isType", replacementMethod = "doReplaceNone")
         public boolean replaceWithNonexisting(Object receiver) {
             return receiver != null;
         }
 
-        @ExpectError("Message replace2 is a replacement of multiple messages. Arguments to replacementFor annotation have to be unique.")
-        @Abstract(replacementFor = "isType")
+        @ExpectError("Message replace2 is a replacement of multiple messages. Arguments to replacementOf annotation have to be unique.")
+        @Abstract(replacementOf = "isType")
         public boolean replace2(Object receiver) {
             return receiver != null;
         }
@@ -655,7 +655,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
         public double factorial(Object receiver, int n) {
             return n;
         }
@@ -683,7 +683,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
         public double factorial(Object receiver, int n) {
             return n;
         }

@@ -312,16 +312,36 @@ public @interface GenerateLibrary {
         String[] ifExportedAsWarning() default {};
 
         /**
-         * Specifies a message that is intended to be replaced by this message. If the specified
-         * message is not implemented, a default implementation is generated that delegates to this
-         * message. The message specification can include argument types in parentheses. When
-         * necessary, a custom implementation can be provided by a method specified in
-         * {@link #replacementWith()}.
+         * A tool to deprecate and replace messages during library evolution.
          * <p>
-         * The primary use case is to manage transitions from one message to another during the
-         * evolution of a library, where the new message is annotated as a replacement for an older,
-         * deprecated message. For example:
-         * 
+         * The primary use case is to facilitate transitions from one message to another by
+         * designating a new message as a replacement for an older, deprecated message. When this
+         * annotation is present, and the deprecated message is not explicitly implemented, a
+         * default implementation is generated that delegates from the deprecated message to its
+         * designated replacement. The message specification may optionally include argument types
+         * in parentheses. When delegation cannot be handled automatically, a custom implementation
+         * can be provided using {@link #replacementMethod()}.
+         * <p>
+         * The migration behavior between deprecated and replacement messages depends on whether the
+         * exporter (the library implementer) and the client (the library user) have migrated to the
+         * new API. The following combinations are supported:
+         * <ol>
+         * <li><b>Both exporter and client use the deprecated API:</b> The original deprecated
+         * message is used exactly as before deprecation. No delegation or generated replacement is
+         * involved.</li>
+         * <li><b>Exporter uses the deprecated API, client uses the new API:</b> The default
+         * implementation of the new message is used. It delegates to the exporter's implementation
+         * of the deprecated message.</li>
+         * <li><b>Exporter uses the new API, client uses the deprecated API:</b> The annotation
+         * processor generates an implementation of the deprecated message that delegates to the
+         * exporter's new message. When the default delegation is insufficient, the
+         * {@link #replacementMethod()} can be used to provide a custom conversion or adapter.</li>
+         * <li><b>Both exporter and client use the new API:</b> The generated deprecated message is
+         * no longer needed and can be safely removed once all usages have migrated.</li>
+         * </ol>
+         * <p>
+         * <b>Example:</b>
+         *
          * <pre>
          * &#64;GenerateLibrary
          * public abstract class ArrayLibrary extends Library {
@@ -332,16 +352,16 @@ public @interface GenerateLibrary {
          *         throw new UnsupportedOperationException();
          *     }
          *
-         *     &#64;Abstract(ifExported = "isArray", replacementFor = "read(Object, int)")
+         *     &#64;Abstract(ifExported = "isArray", replacementOf = "read(Object, int)")
          *     public int read(Object receiver, long index) {
          *         throw new UnsupportedOperationException();
          *     }
          * }
          * </pre>
          *
-         * In this example, the read message with a long index replaces the read message with an int
-         * index. When only {@code read(Object receiver, long index)} is implemented, the following
-         * message is generated:
+         * In this example, the {@code read(Object, long)} message replaces
+         * {@code read(Object, int)}. If only the new message is implemented, the following
+         * delegation is generated automatically:
          *
          * <pre>
          * public int read(Object receiver, int index) {
@@ -349,34 +369,38 @@ public @interface GenerateLibrary {
          * }
          * </pre>
          *
-         * Legacy code can still call the generated message, while implementations only need to
-         * provide the read message with the long argument.
+         * Legacy clients can continue calling the deprecated message, while exporters need only
+         * implement the new message signature.
          *
-         * @see #replacementWith()
+         * @see #replacementMethod()
          * @since 25.1
          */
-        String replacementFor() default "";
+        String replacementOf() default "";
 
         /**
-         * Specifies the name of a method that provides the replacement implementation.
+         * Specifies a method that provides a replacement implementation for a message.
          * <p>
-         * The {@link #replacementWith()} attribute can be used in two distinct modes:
+         * This annotation serves two related purposes, depending on how it is used:
          * <ol>
-         * <li><b>Custom replacement for {@link #replacementFor()}:</b> Use this mode when the
-         * message specified by {@link #replacementFor()} cannot be automatically delegated due to
-         * differences in argument semantics or conversion requirements. The specified replacement
-         * method will be used instead of a generated trivial delegation.</li>
-         * <li><b>Self-replacement method:</b> Use this mode to provide a fallback implementation
-         * for the annotated message itself. The self-replacement method is only used when the
-         * annotated message is not exported, but one of the messages listed in
-         * {@link #ifExported()} or {@link #ifExportedAsWarning()} is exported.</li>
+         * <li><b>Custom replacement for a {@link #replacementOf()} message:</b> Used when a
+         * deprecated message cannot be automatically delegated to its replacement due to
+         * differences in argument semantics, type conversions, or behavioral requirements. In this
+         * mode, the specified method implements the conversion or adaptation logic between the
+         * deprecated and replacement messages. The method must have a compatible signature and be
+         * accessible from the annotated message.</li>
+         * <li><b>Self-replacement method:</b> Used to provide a fallback implementation for the
+         * annotated message itself. The self-replacement method is invoked only when the annotated
+         * message is not exported, but one or more messages listed in {@link #ifExported()} or
+         * {@link #ifExportedAsWarning()} are exported. This allows non-exported messages to
+         * participate in message relationships without requiring explicit implementation by the
+         * user.</li>
          * </ol>
          *
          * <p>
-         * <b>Example - Custom replacement for {@link #replacementFor()}:</b>
-         * 
+         * <b>Example - Custom replacement for {@link #replacementOf()}:</b>
+         *
          * <pre>
-         * &#64;Abstract(ifExported = "isArray", replacementFor = "read(Object, int)", replacementWith = "readLegacy")
+         * &#64;Abstract(ifExported = "isArray", replacementOf = "read(Object, int)", replacementMethod = "readLegacy")
          * public int read(Object receiver, long unsignedIndex) {
          *     throw new UnsupportedOperationException();
          * }
@@ -387,12 +411,13 @@ public @interface GenerateLibrary {
          * }
          * </pre>
          *
-         * When the {@code int} and {@code long} indices are treated as unsigned, the automatic
-         * conversion would yield incorrect results, so a custom replacement method is required.
+         * In this example, automatic conversion between {@code int} and {@code long} indices would
+         * yield incorrect results because the index is treated as unsigned. The custom
+         * {@code readLegacy} method therefore provides the correct delegation logic.
          *
          * <p>
          * <b>Example - Self-replacement method:</b>
-         * 
+         *
          * <pre>
          * &#64;GenerateLibrary
          * public abstract static class SelfReplacementLibrary extends Library {
@@ -406,12 +431,12 @@ public @interface GenerateLibrary {
          *         throw new UnsupportedOperationException();
          *     }
          *
-         *     &#64;Abstract(ifExportedAsWarning = "canComputeFactorial", replacementWith = "factorialFixed")
+         *     &#64;Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
          *     public double factorial(Object receiver, int n) {
          *         throw new UnsupportedOperationException();
          *     }
          *
-         *     // Used only when factorial() is not exported but canComputeFactorial() is exported.
+         *     // Used only when factorial() is not exported but canComputeFactorial() is.
          *     protected final double factorialFixed(Object receiver, int n) {
          *         double f = n;
          *         for (int i = 2; i &lt; n; i++) {
@@ -422,10 +447,13 @@ public @interface GenerateLibrary {
          * }
          * </pre>
          *
-         * @see #replacementFor()
+         * In this example, {@code factorialFixed} serves as a fallback implementation for
+         * {@code factorial()} when it is not exported but another related message is.
+         *
+         * @see #replacementOf()
          * @since 25.1
          */
-        String replacementWith() default "";
+        String replacementMethod() default "";
     }
 
     /**

@@ -221,15 +221,15 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 Element currentEnclosingElement = exportedMessage.getMessageElement().getEnclosingElement();
                 if (ElementUtils.elementEquals(existingEnclosingElement, currentEnclosingElement)) {
                     LibraryMessage resolvedMessage = existing.getResolvedMessage();
-                    LibraryMessage replacementFor = resolvedMessage.getReplacementFor();
+                    LibraryMessage replacementOf = resolvedMessage.getReplacementOf();
                     String error;
-                    if (replacementFor != null && resolvedMessage.getDeprecatedOverloads().contains(replacementFor)) {
+                    if (replacementOf != null && resolvedMessage.getDeprecatedOverloads().contains(replacementOf)) {
                         /*
                          * Both the deprecated message and its replacement are being exported. This
                          * configuration is not supported; only the replacement should be exported.
                          */
-                        error = String.format("Cannot export both a deprecated message and a new message %s that declares a replacement for it. " +
-                                        "Remove the export of the deprecated message.", messageName);
+                        error = String.format("Cannot export both a deprecated message and a new message '%s' that declares a replacement for it. " +
+                                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.", messageName);
                     } else {
                         error = String.format("Duplicate exported library message %s.", messageName);
                     }
@@ -254,23 +254,24 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             Map<String, ExportMessageData> exportedMessages = library.getExportedMessages();
             for (ExportMessageData exportedMessage : exportedMessages.values()) {
                 LibraryMessage libraryMessage = exportedMessage.getResolvedMessage();
-                LibraryMessage replacementFor = libraryMessage.getReplacementFor();
+                LibraryMessage replacementOf = libraryMessage.getReplacementOf();
                 ExportMessageData replacedExport;
-                if (replacementFor != null && !libraryMessage.getDeprecatedOverloads().contains(replacementFor) && (replacedExport = exportedMessages.get(replacementFor.getName())) != null) {
+                if (replacementOf != null && !libraryMessage.getDeprecatedOverloads().contains(replacementOf) && (replacedExport = exportedMessages.get(replacementOf.getName())) != null) {
                     /*
                      * Both the deprecated message and its replacement are being exported. This
                      * configuration is not supported; only the replacement should be exported. The
-                     * check for replacementFor with the same message name is performed above to
+                     * check for replacementOf with the same message name is performed above to
                      * avoid reporting a misleading duplicate message error.
                      */
-                    String error = String.format("Cannot export both a deprecated message %s and a new message %s that declares a replacement for it. " +
-                                    "Remove the export of the deprecated message.", replacementFor.getName(), exportedMessage.getResolvedMessage().getName());
+                    String error = String.format("Cannot export both a deprecated message '%s' and a new message '%s' that declares a replacement for it. " +
+                                    "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.", replacementOf.getName(),
+                                    exportedMessage.getResolvedMessage().getName());
                     replacedExport.addError(error);
                 }
             }
             for (LibraryMessage message : library.getLibrary().getAllMethods()) {
-                ExecutableElement replaceWith = message.getReplaceWith();
-                if (replaceWith != null && message.getReplacementFor() == null) {
+                ExecutableElement replacementMethod = message.getReplacementMethod();
+                if (replacementMethod != null && message.getReplacementOf() == null) {
                     // Replacing this message, if not exported
                     if (!exportedMessages.containsKey(message.getName())) {
                         // Exported messages do not contain this message
@@ -287,14 +288,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                         if (shouldReplace) {
                             // We need to add an @ExportMessage annotation for the generated message
                             AnnotationMirror exportAnnotation = new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().ExportMessage);
-                            CodeExecutableElement replaceWithClone = CodeExecutableElement.clone(replaceWith);
+                            CodeExecutableElement replaceWithClone = CodeExecutableElement.clone(replacementMethod);
                             if (library.isExplicitReceiver()) {
                                 replaceWithClone.getModifiers().add(STATIC);
                             }
                             Element enclosing = ElementUtils.castTypeElement(library.getReceiverType());
                             replaceWithClone.setEnclosingElement(enclosing);
-                            replaceWith = replaceWithClone;
-                            ExportMessageData exportData = new ExportMessageData(library, message, replaceWith, exportAnnotation);
+                            replacementMethod = replaceWithClone;
+                            ExportMessageData exportData = new ExportMessageData(library, message, replacementMethod, exportAnnotation);
                             exportData.setSelfReplacement();
                             exportedElements.add(exportData);
                             exportedMessages.put(message.getName(), exportData);
@@ -518,7 +519,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 }
                             }
                         } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
-                            isAbstract = !exportLib.hasExportDelegation() && message.getReplacementFor() == null;
+                            isAbstract = !exportLib.hasExportDelegation() && message.getReplacementOf() == null;
                         } else {
                             isAbstract = false;
                         }

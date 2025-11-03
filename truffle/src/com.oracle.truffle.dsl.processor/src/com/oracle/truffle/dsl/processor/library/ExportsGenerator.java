@@ -788,7 +788,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         Map<NodeData, CodeTypeElement> sharedNodes = new HashMap<>();
 
         for (ExportMessageData export : messages.values()) {
-            if (export.isGenerated() && export.getResolvedMessage().getReplaceWith() == null) {
+            if (export.isGenerated() && export.getResolvedMessage().getReplacementMethod() == null) {
                 continue;
             }
             LibraryMessage message = export.getResolvedMessage();
@@ -921,9 +921,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     b.tree(originalBody);
                 }
             }
-            if (addReplacements) {
-                addReplacementFor(message, messages, cacheClass);
-            }
+        }
+
+        if (addReplacements) {
+            cacheClass.getEnclosedElements().addAll(createReplacementMethods(messages));
         }
 
         nodeConstants.addToClass(cacheClass);
@@ -931,56 +932,61 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return cacheClass;
     }
 
-    private static void addReplacementFor(LibraryMessage message, Map<String, ExportMessageData> messages, CodeTypeElement theClass) {
-        LibraryMessage replacementMessage = message.getReplacementFor();
-        if (replacementMessage != null) {
-            ExecutableElement replaceWith = message.getReplaceWith();
-            if (replaceWith != null) {
-                // We generate the `replacementMessage`
-                // that will automatically delegate to the `replaceWith` method
-                CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
-                if (replacementMessage.isDeprecated()) {
-                    GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
-                }
-                CodeTreeBuilder builder = replaceExecute.createBuilder();
-                builder.startReturn();
-                builder.startCall((String) null, replaceWith.getSimpleName().toString());
-                List<? extends VariableElement> messageParameters = replacementMessage.getExecutable().getParameters();
-                int size = messageParameters.size();
-                for (int i = 0; i < size; i++) {
-                    VariableElement messageParam = messageParameters.get(i);
-                    builder.string(messageParam.getSimpleName().toString());
-                }
-                builder.end(); // call
-                builder.end(); // return
-                theClass.getEnclosedElements().add(replaceExecute);
-            } else if (!messages.containsKey(replacementMessage.getName()) || parametersDiffer(replacementMessage, messages.get(replacementMessage.getName()).getResolvedMessage())) {
-                // We generate the `replacementMessage`
-                // that will automatically delegate to the current `message`.
-                CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
-                if (replacementMessage.isDeprecated()) {
-                    GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
-                }
-                CodeTreeBuilder builder = replaceExecute.createBuilder();
-                builder.startReturn();
-                builder.startCall(null, message.getExecutable());
-                List<? extends VariableElement> messageParameters = message.getExecutable().getParameters();
-                List<? extends VariableElement> replaceParameters = replaceExecute.getParameters();
-                int size = messageParameters.size();
-                for (int i = 0; i < size; i++) {
-                    VariableElement messageParam = messageParameters.get(i);
-                    VariableElement replaceParam = replaceParameters.get(i);
-                    if (ElementUtils.typeEquals(messageParam.asType(), replaceParam.asType())) {
-                        builder.string(replaceParam.getSimpleName().toString());
-                    } else {
-                        builder.string("(" + messageParam.asType() + ") " + replaceParam.getSimpleName());
+    private static List<? extends ExecutableElement> createReplacementMethods(Map<String, ExportMessageData> messages) {
+        List<ExecutableElement> replacementMethods = new ArrayList<>();
+        for (ExportMessageData export : messages.values()) {
+            LibraryMessage message = export.getResolvedMessage();
+            LibraryMessage replacementMessage = message.getReplacementOf();
+            if (replacementMessage != null) {
+                ExecutableElement replacementMethod = message.getReplacementMethod();
+                if (replacementMethod != null) {
+                    // We generate the `replacementMessage`
+                    // that will automatically delegate to the `replacementMethod` method
+                    CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
+                    if (replacementMessage.isDeprecated()) {
+                        GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
                     }
+                    CodeTreeBuilder builder = replaceExecute.createBuilder();
+                    builder.startReturn();
+                    builder.startCall((String) null, replacementMethod.getSimpleName().toString());
+                    List<? extends VariableElement> messageParameters = replacementMessage.getExecutable().getParameters();
+                    int size = messageParameters.size();
+                    for (int i = 0; i < size; i++) {
+                        VariableElement messageParam = messageParameters.get(i);
+                        builder.string(messageParam.getSimpleName().toString());
+                    }
+                    builder.end(); // call
+                    builder.end(); // return
+                    replacementMethods.add(replaceExecute);
+                } else if (!messages.containsKey(replacementMessage.getName()) || parametersDiffer(replacementMessage, messages.get(replacementMessage.getName()).getResolvedMessage())) {
+                    // We generate the `replacementMessage`
+                    // that will automatically delegate to the current `message`.
+                    CodeExecutableElement replaceExecute = CodeExecutableElement.cloneNoAnnotations(replacementMessage.getExecutable());
+                    if (replacementMessage.isDeprecated()) {
+                        GeneratorUtils.mergeSuppressWarnings(replaceExecute, "deprecation");
+                    }
+                    CodeTreeBuilder builder = replaceExecute.createBuilder();
+                    builder.startReturn();
+                    builder.startCall(null, message.getExecutable());
+                    List<? extends VariableElement> messageParameters = message.getExecutable().getParameters();
+                    List<? extends VariableElement> replaceParameters = replaceExecute.getParameters();
+                    int size = messageParameters.size();
+                    for (int i = 0; i < size; i++) {
+                        VariableElement messageParam = messageParameters.get(i);
+                        VariableElement replaceParam = replaceParameters.get(i);
+                        if (ElementUtils.typeEquals(messageParam.asType(), replaceParam.asType())) {
+                            builder.string(replaceParam.getSimpleName().toString());
+                        } else {
+                            builder.string("(" + messageParam.asType() + ") " + replaceParam.getSimpleName());
+                        }
+                    }
+                    builder.end(); // call
+                    builder.end(); // return
+                    replacementMethods.add(replaceExecute);
                 }
-                builder.end(); // call
-                builder.end(); // return
-                theClass.getEnclosedElements().add(replaceExecute);
             }
         }
+        return replacementMethods;
     }
 
     private static boolean parametersDiffer(LibraryMessage message1, LibraryMessage message2) {
@@ -1355,7 +1361,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         NodeConstants nodeConstants = new NodeConstants();
 
         for (ExportMessageData export : messages.values()) {
-            if (export.isGenerated() && export.getResolvedMessage().getReplaceWith() == null) {
+            if (export.isGenerated() && export.getResolvedMessage().getReplacementMethod() == null) {
                 continue;
             }
             LibraryMessage message = export.getResolvedMessage();
@@ -1418,10 +1424,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 addAcceptsAssertion(b, null);
                 b.tree(originalBody);
             }
-
-            if (addReplacements) {
-                addReplacementFor(message, messages, uncachedClass);
-            }
+        }
+        if (addReplacements) {
+            uncachedClass.getEnclosedElements().addAll(createReplacementMethods(messages));
         }
         nodeConstants.addToClass(uncachedClass);
         return uncachedClass;

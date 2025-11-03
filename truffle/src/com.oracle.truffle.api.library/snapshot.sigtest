@@ -78,8 +78,8 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.library
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
-meth public abstract !hasdefault java.lang.String replacementWith()
-meth public abstract !hasdefault java.lang.String replacementFor()
+meth public abstract !hasdefault java.lang.String replacementMethod()
+meth public abstract !hasdefault java.lang.String replacementOf()
 meth public abstract !hasdefault java.lang.String[] ifExported()
 meth public abstract !hasdefault java.lang.String[] ifExportedAsWarning()
 
@@ -287,9 +287,4 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
-
-CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
 

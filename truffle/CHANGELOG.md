@@ -26,8 +26,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-69649: Bytecode DSL now encodes primitive constant operands directly in the bytecode, reducing memory indirections in the interpreter. This optimization is enabled by default; you can configure it with `@GenerateBytecode(inlinePrimitiveConstants = true)`.
 * GR-68993: Added `HostCompilerDirectives.markThreadedSwitch(int)` to mark a switch statement within a loop as a candidate for threaded switch optimization.
 * GR-68993: Bytecode DSL: All bytecode interpreters are now using the threaded switch optimization by default. This new optimization can be configured using `@GenerateBytecode(enableThreadedSwitch=true|false)`.
-* GR-70086: Added `replacementFor` and `replacementWith` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
-* GR-34476 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
+* GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
+* GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 
 
 ## Version 25.0
@@ -61,17 +61,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-65616 Added `ExactMath.truncateToUnsignedInt(float)` and `ExactMath.truncateToUnsignedLong(double)` methods that remove the decimal part (round toward zero) of a floating point (float or double) value and convert it to a saturated unsigned integer (int or long) value. These methods are intrinsic candidates.
 * GR-65616 Added `ExactMath.unsignedToFloat(long)` and `ExactMath.unsignedToDouble(long)` methods to convert an unsigned `long` to the closest `float` and `double` value, respectively. These methods are intrinsic candidates.
-* GR-34476 Deprecated `Message.resolve(Class<?>, String`. Use `Message.resolve(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
-* GR-34476 Introduced object interop members and declared members. Member identifiers were changed from a String to an interop member object. See [Members Interop Migration](https://github.com/oracle/graal/blob/master/truffle/docs/MembersInteropMigration.md) for details.
-        * `InteropLibrary` messages which take a `String` member name are deprecated and new messages which take `Object` member are introduced.
-        * `InteropLibrary.getMembers()` is deprecated and replaced with `InteropLibrary.getMemberObjects()`.
-        * `InteropLibrary.lookupMembers()` is introduced to find member object by an interop string name.
-        * `InteropLibrary.hasDeclaredMembers()` and `InteropLibrary.getDeclaredMembers()` introduces declared members.
-        * `InteropLibrary.hasStaticReceiver()` and `InteropLibrary.getStaticReceiver()` introduces static members.
-        * `InteropLibrary.isMember()`, `InteropLibrary.getMemberSimpleName()` and `InteropLibrary.getMemberKind()` are introduced to represent a member object.
-        * `InteropLibrary.getSignatureNames()` and `InteropLibrary.getSignatureMetaObjects()` are introduced to represent a member signature.
-        * `UnknownMemberException` replaces the deprecated `UnknownIdentifierException`.
-        * Associated Debugger API additions: `DebugValue.getMembers()`, `DebugValue.isMember()`, `DebugValue.getMemberSimpleName()`, `DebugValue.getMemberKind()`, `DebugValue.isMemberValueReadable()`, `DebugValue.getMemberValue()`, `DebugValue.getSignatureNames()`, `DebugValue.getSignatureMetaObjects()`.
 
 ## Version 24.2.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

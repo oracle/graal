@@ -2734,8 +2734,6 @@ public class FlatNodeGenFactory {
             CodeTree init = callUncachedChildExecuteMethod(childExecution, type, frameState);
             builder.declaration(type.getReturnType(), local.getName(), init);
 
-            GeneratorUtils.mergeSuppressWarningsFrom(type.getMethod(), method);
-
             frameState.set(childExecution, local);
             effectiveEvaluatedCount++;
         }
@@ -2762,9 +2760,6 @@ public class FlatNodeGenFactory {
                 builder.tree(createThrowUnsupported(builder, originalFrameState, true));
             }
             generateTraceOnExceptionEnd(builder);
-            for (SpecializationData specializationData : compatibleSpecializations) {
-                GeneratorUtils.mergeSuppressWarningsFrom(specializationData.getMethod(), method);
-            }
         }
 
         return method;
@@ -2949,9 +2944,6 @@ public class FlatNodeGenFactory {
         FrameState originalFrameState = frameState.copy();
         SpecializationGroup group = createSpecializationGroups();
         CodeTree execution = visitSpecializationGroup(builder, null, group, executeAndSpecializeType, frameState, null);
-        for (SpecializationData specializationData : node.getReachableSpecializations()) {
-            GeneratorUtils.mergeSuppressWarningsFrom(specializationData.getMethod(), method);
-        }
 
         builder.tree(execution);
 
@@ -4073,7 +4065,6 @@ public class FlatNodeGenFactory {
         if (executedType.getMethod() != null) {
             executable = CodeExecutableElement.clone(executedType.getMethod());
             executable.getAnnotationMirrors().clear();
-            GeneratorUtils.mergeSuppressWarningsFrom(executedType.getMethod(), executable);
             executable.getModifiers().remove(ABSTRACT);
             for (VariableElement var : executable.getParameters()) {
                 ((CodeVariableElement) var).getAnnotationMirrors().clear();
