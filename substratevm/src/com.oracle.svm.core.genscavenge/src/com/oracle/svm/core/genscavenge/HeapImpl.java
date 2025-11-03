@@ -676,7 +676,7 @@ public final class HeapImpl extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(SerialAndEpsilonGCOptions.getNullRegionSize()))) {
             log.string("points into the protected memory between the heap base and the image heap");
             return true;
         }
