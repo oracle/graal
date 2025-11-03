@@ -754,18 +754,21 @@ public final class InterpreterToVM {
     public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, boolean isVirtual0, boolean forceStayInInterpreter, boolean preferStayInInterpreter,
                     boolean isInvokeInterface, boolean quiet)
                     throws SemanticJavaException {
-        boolean goThroughPLT;
+        // True if we need to go through the platform ABI, e.g. calling an entry point of a
+        // compilation unit.
+        boolean callCompiledTarget;
+
         boolean isVirtual = isVirtual0;
 
         if (forceStayInInterpreter) {
             // Force execution in the interpreter, transitively, for all callees in the call
             // subtree.
-            goThroughPLT = false;
+            callCompiledTarget = false;
         } else {
             // Not forced to transitively "stay in interpreter"; but still; it may be "preferred" to
             // execute this callee (and only this one) in the interpreter, if possible e.g. Step
             // Into.
-            goThroughPLT = !preferStayInInterpreter;
+            callCompiledTarget = !preferStayInInterpreter;
         }
 
         InterpreterResolvedObjectType seedDeclaringClass = seedMethod.getDeclaringClass();
@@ -776,7 +779,7 @@ public final class InterpreterToVM {
 
         CFunctionPointer calleeFtnPtr = Word.nullPointer();
 
-        if (goThroughPLT) {
+        if (callCompiledTarget) {
             if (seedMethod.hasNativeEntryPoint()) {
                 calleeFtnPtr = seedMethod.getNativeEntryPoint();
                 if (!quiet) {
@@ -789,16 +792,16 @@ public final class InterpreterToVM {
                  */
                 // InterpreterUtil.guarantee(!isVirtual, "leaveInterpreter is virtual %s",
                 // seedMethod);
-                goThroughPLT = false;
+                callCompiledTarget = false;
 
                 /* arguments to Log methods might have side-effects */
                 if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter("fall back to interp for compile entry ").string(seedMethod.toString()).string(" because it has not been compiled.").newline();
                 }
             } else if (seedMethod.getVTableIndex() == VTBL_ONE_IMPL) {
-                goThroughPLT = seedMethod.getOneImplementation().hasNativeEntryPoint();
+                callCompiledTarget = seedMethod.getOneImplementation().hasNativeEntryPoint();
             } else if (!isVirtual && seedMethod.hasVTableIndex()) {
-                goThroughPLT = false;
+                callCompiledTarget = false;
                 /* arguments to Log methods might have side-effects */
                 if (InterpreterTraceSupport.getValue() && !quiet) {
                     traceInterpreter("invokespecial: ").string(seedMethod.toString()).newline();
@@ -827,14 +830,14 @@ public final class InterpreterToVM {
             Class<?> seedClazz = seedDeclaringClass.getJavaClass();
             int vtableIndex = seedMethod.getVTableIndex();
 
-            if (goThroughPLT) {
+            if (callCompiledTarget) {
                 // determine virtual call target via SVM vtable dispatch
                 calleeFtnPtr = peekAtSVMVTable(seedClazz, thisClazz, vtableIndex, isInvokeInterface);
 
                 if (calleeFtnPtr.equal(InterpreterMethodPointerHolder.getMethodNotCompiledHandler())) {
                     // can happen e.g. due to devirtualization, need to stay in interpreter in
                     // this scenario
-                    goThroughPLT = false;
+                    callCompiledTarget = false;
 
                     /* arguments to Log methods might have side-effects */
                     if (InterpreterTraceSupport.getValue() && !quiet) {
@@ -850,7 +853,7 @@ public final class InterpreterToVM {
             /* arguments to Log methods might have side-effects */
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("found oneImpl: ").string(targetMethod.toString());
-                if (goThroughPLT) {
+                if (callCompiledTarget) {
                     calleeFtnPtr = targetMethod.getNativeEntryPoint();
                     traceInterpreter(" ... with compiled entry=").hex(calleeFtnPtr);
                 }
@@ -859,27 +862,27 @@ public final class InterpreterToVM {
             VMError.guarantee(targetMethod != null, "VTBL_ONE_IMPL implies that oneImplementation is available in seedMethod");
         }
 
-        if (!targetMethod.hasBytecodes() && !goThroughPLT && calleeFtnPtr.isNonNull()) {
-            goThroughPLT = true;
+        if (!targetMethod.hasBytecodes() && !callCompiledTarget && calleeFtnPtr.isNonNull()) {
+            callCompiledTarget = true;
             /* arguments to Log methods might have side-effects */
             if (InterpreterTraceSupport.getValue() && !quiet) {
                 traceInterpreter("cannot interpret ").string(targetMethod.toString()).string(" falling back to compiled version ").hex(calleeFtnPtr).newline();
             }
         }
 
-        if (!goThroughPLT && (targetMethod.isNative() && targetMethod.getSignaturePolymorphicIntrinsic() == null)) {
+        if (!callCompiledTarget && (targetMethod.isNative() && targetMethod.getSignaturePolymorphicIntrinsic() == null)) {
             /* no way to execute target in interpreter, fall back to compiled code */
             VMError.guarantee(targetMethod.hasNativeEntryPoint());
             calleeFtnPtr = targetMethod.getNativeEntryPoint();
             VMError.guarantee(calleeFtnPtr.isNonNull());
-            goThroughPLT = true;
+            callCompiledTarget = true;
         }
 
         /* arguments to Log methods might have side-effects */
         if (InterpreterOptions.InterpreterTraceSupport.getValue() && !quiet) {
             traceInterpreter(" ".repeat(Interpreter.logIndent.get()))
                             .string(" -> calling (")
-                            .string(goThroughPLT ? "plt" : "interp").string(") ")
+                            .string(callCompiledTarget ? "compiled" : "interp").string(") ")
                             .string(targetMethod.hasNativeEntryPoint() ? "(compiled entry available) " : "");
             if (targetMethod.hasNativeEntryPoint()) {
                 traceInterpreter("(addr: ").hex(calleeFtnPtr).string(" ) ");
@@ -891,7 +894,7 @@ public final class InterpreterToVM {
         }
 
         Object retObj = null;
-        if (goThroughPLT) {
+        if (callCompiledTarget) {
             VMError.guarantee(!forceStayInInterpreter);
             VMError.guarantee(calleeFtnPtr.isNonNull());
 
