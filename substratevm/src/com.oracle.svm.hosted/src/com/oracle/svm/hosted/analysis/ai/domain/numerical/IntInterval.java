@@ -369,4 +369,20 @@ public final class IntInterval extends AbstractDomain<IntInterval> {
         }
         return new IntInterval(lo, hi);
     }
+
+    public boolean isUpperBoundStrictlyLessThan(IntInterval iy) {
+        return upperBound < iy.lowerBound;
+    }
+
+    public boolean isLowerBoundGreaterOrEqual(IntInterval iy) {
+        return lowerBound >= iy.upperBound;
+    }
+
+    public boolean isSingleton() {
+        return !isBot() && !isTop() && !isLowerInfinite() && !isUpperInfinite() && lowerBound == upperBound;
+    }
+
+    public boolean upperLessThan(long lower) {
+        return upperBound < lower;
+    }
 }

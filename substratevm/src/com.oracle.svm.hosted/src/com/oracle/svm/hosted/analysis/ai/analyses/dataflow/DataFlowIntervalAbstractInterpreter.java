@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -14,24 +15,29 @@ import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.RightShiftNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
@@ -39,6 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<AbstractMemory> {
     private static final String NODE_PREFIX = "n";
@@ -60,6 +67,16 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                     return;
                 } else if (target.equals(ifNode.falseSuccessor())) {
                     AbstractMemory narrowed = narrowOnLessThan(post, itn, false);
+                    abstractState.getPreCondition(target).joinWith(narrowed);
+                    return;
+                }
+            } else if (cond instanceof IntegerEqualsNode eq) {
+                if (target.equals(ifNode.trueSuccessor())) {
+                    AbstractMemory narrowed = narrowOnEquals(post, eq, true);
+                    abstractState.getPreCondition(target).joinWith(narrowed);
+                    return;
+                } else if (target.equals(ifNode.falseSuccessor())) {
+                    AbstractMemory narrowed = narrowOnEquals(post, eq, false);
                     abstractState.getPreCondition(target).joinWith(narrowed);
                     return;
                 }
@@ -107,6 +124,40 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         return out;
     }
 
+    private AbstractMemory narrowOnEquals(AbstractMemory base, IntegerEqualsNode eq, boolean isTrue) {
+        AbstractMemory out = base.copyOf();
+        Node x = eq.getX();
+        Node y = eq.getY();
+        IntInterval ix = getNodeResultInterval(x, out);
+        IntInterval iy = getNodeResultInterval(y, out);
+        if (ix == null || iy == null) return out;
+
+        if (isTrue) {
+            // x == y => intersect
+            IntInterval nx = ix.copyOf();
+            nx.meetWith(iy);
+            IntInterval ny = iy.copyOf();
+            ny.meetWith(ix);
+            AccessPath px = out.lookupTempByName(nodeId(x));
+            if (px != null) out.writeStore(px, nx);
+            AccessPath py = out.lookupTempByName(nodeId(y));
+            if (py != null) out.writeStore(py, ny);
+        } else {
+            // x != y: interval domain cannot represent set difference precisely -> no refinement unless a point
+            if (isPoint(ix)) {
+                IntInterval ny = iy.copyOf();
+                AccessPath py = out.lookupTempByName(nodeId(y));
+                if (py != null) out.writeStore(py, ny);
+            }
+            if (isPoint(iy)) {
+                IntInterval nx = ix.copyOf();
+                AccessPath px = out.lookupTempByName(nodeId(x));
+                if (px != null) out.writeStore(px, nx);
+            }
+        }
+        return out;
+    }
+
     @Override
     public void execNode(Node node, AbstractState<AbstractMemory> abstractState, InvokeCallBack<AbstractMemory> invokeCallBack, IteratorContext iteratorContext) {
         AbstractMemory pre = abstractState.getPreCondition(node);
@@ -115,53 +166,52 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
         AbstractMemory post = pre.copyOf();
         if (node instanceof StoreFieldNode sfn) {
+            // Evaluate value first
             AbstractMemory afterVal = evalNode(sfn.value(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             IntInterval val = getNodeResultInterval(sfn.value(), afterVal);
-            AccessPath base = resolveFieldBase(sfn.object(), sfn.field(), afterVal);
-            AccessPath key = (base == null) ? AccessPath.forLocal("unknown") : base.appendField(sfn.field().getName());
+            // Alias-aware base
+            AliasSet bases = resolveFieldBaseSet(sfn.object(), sfn.field(), afterVal);
             post = afterVal.copyOf();
-            post.writeStore(key, val);
+            post.writeTo(bases, p -> p.appendField(sfn.field().getName()), val);
         } else if (node instanceof StoreIndexedNode sin) {
-            AbstractMemory afterVal = evalNode(sin.value(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+            // Evaluate value and index
+            AbstractMemory afterIdx = evalNode(sin.index(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+            AbstractMemory afterVal = evalNode(sin.value(), afterIdx, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             IntInterval val = getNodeResultInterval(sin.value(), afterVal);
 
-            Node arrayNode = sin.array();
-            AccessPath arrayBase = accessBaseForNodeEval(arrayNode, afterVal);
+            AliasSet bases = accessBaseSetForNodeEval(sin.array(), afterVal);
+            Function<AccessPath, AccessPath> idxTransform = indexTransform(sin.index(), afterVal);
 
-            if (arrayBase != null) {
-                AccessPath arrayPath = arrayBase.appendArrayWildcard();
-                post = afterVal.copyOf();
-                post.writeStore(arrayPath, val);
-            } else {
-                post = afterVal.copyOf();
-            }
+            post = afterVal.copyOf();
+            post.writeTo(bases, idxTransform, val);
         } else if (node instanceof LoadFieldNode lfn) {
-            Node obj = lfn.object();
             ResolvedJavaField field = lfn.field();
-            AccessPath base = resolveFieldBase(obj, field, post);
-            AccessPath key = (base == null) ? AccessPath.forLocal("unknown") : base.appendField(field.getName());
-            IntInterval val = post.readStore(key);
-
-            if (val.isTop() && field.isStatic() && field.getType().getJavaKind().isNumericInteger()) {
-                val = new IntInterval(0, 0);
-                logger.log("LoadField of uninitialized static field " + field.getName() +
-                          ", using default value [0, 0]", LoggerVerbosity.DEBUG);
-            }
-
-            bindNodeResult(node, val, post);
-        } else if (node instanceof LoadIndexedNode lin) {
-            Node arrayNode = lin.array();
-            AccessPath arrayBase = accessBaseForNodeEval(arrayNode, post);
-
-            if (arrayBase != null) {
-                AccessPath arrayPath = arrayBase.appendArrayWildcard();
-                IntInterval val = post.readStore(arrayPath);
+            if (lfn.object() == null || field.isStatic()) {
+                // Static field access: no object to evaluate
+                AliasSet bases = resolveFieldBaseSet(null, field, post);
+                IntInterval val = post.readFrom(bases, p -> p.appendField(field.getName()));
+                if (val.isTop() && field.getType().getJavaKind().isNumericInteger()) {
+                    val = new IntInterval(0, 0);
+                    logger.log("LoadField of uninitialized static field " + field.getName() +
+                              ", using default value [0, 0]", LoggerVerbosity.DEBUG);
+                }
                 bindNodeResult(node, val, post);
             } else {
-                IntInterval top = new IntInterval();
-                top.setToTop();
-                bindNodeResult(node, top, post);
+                // Instance field: ensure base evaluated
+                AbstractMemory afterObj = evalNode(lfn.object(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+                AliasSet bases = resolveFieldBaseSet(lfn.object(), field, afterObj);
+                IntInterval val = afterObj.readFrom(bases, p -> p.appendField(field.getName()));
+                bindNodeResult(node, val, afterObj);
+                post = afterObj;
             }
+        } else if (node instanceof LoadIndexedNode lin) {
+            AbstractMemory afterArr = evalNode(lin.array(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+            AbstractMemory afterIdx = evalNode(lin.index(), afterArr, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+            AliasSet bases = accessBaseSetForNodeEval(lin.array(), afterIdx);
+            Function<AccessPath, AccessPath> idxTransform = indexTransform(lin.index(), afterIdx);
+            IntInterval val = afterIdx.readFrom(bases, idxTransform);
+            bindNodeResult(node, val, afterIdx);
+            post = afterIdx;
         } else if (node instanceof ArrayLengthNode aln) {
             Node arr = aln.array();
             if (arr instanceof NewArrayNode newArr) {
@@ -213,9 +263,10 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             Set<Node> evalStack = new HashSet<>();
             for (Node usage : merge.usages()) {
                 if (usage instanceof PhiNode phi) {
-                    logger.log("Printing inputs of phiNode: " + phi, LoggerVerbosity.INFO);
+                    var logger2 = AbstractInterpretationLogger.getInstance();
+                    logger2.log("Printing inputs of phiNode: " + phi, LoggerVerbosity.INFO);
                     for (Node input : phi.inputs()) {
-                        logger.log("  Phi input: " + input, LoggerVerbosity.INFO);
+                        logger2.log("  Phi input: " + input, LoggerVerbosity.INFO);
                     }
                     post.joinWith(evalNode(phi, post, abstractState, invokeCallBack, evalStack, iteratorContext));
                 }
@@ -227,11 +278,15 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
     private AbstractMemory evalNode(Node node, AbstractMemory in, AbstractState<AbstractMemory> abstractState,
                                     InvokeCallBack<AbstractMemory> invokeCallBack, Set<Node> evalStack, IteratorContext iteratorContext) {
+        if (node == null) {
+            return in;
+        }
         if (node instanceof FixedNode || evalStack.contains(node)) {
             return in;
         }
 
         var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Evaluating node: " + node + " with input memory: " + in, LoggerVerbosity.INFO);
         logger.log("Evaluating node: " + node + " with input memory: " + in, LoggerVerbosity.INFO);
         evalStack.add(node);
         AbstractMemory mem = in.copyOf();
@@ -267,6 +322,21 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
             case IntegerLessThanNode integerLessThanNode -> {
                 return evalIntegerLessThanNode(integerLessThanNode, mem);
+            }
+            case IntegerBelowNode integerBelowNode -> {
+                return evalIntegerBelowNode(integerBelowNode, mem);
+            }
+            case LeftShiftNode leftShiftNode -> {
+                return evalLeftShiftNode(leftShiftNode, mem);
+            }
+            case RightShiftNode rightShiftNode -> {
+                return evalRightShiftNode(rightShiftNode, mem);
+            }
+            case UnsignedRightShiftNode unsignedRightShiftNode -> {
+                return evalUnsignedRightShiftNode(unsignedRightShiftNode, mem);
+            }
+            case IntegerEqualsNode integerEqualsNode -> {
+                return evalIntegerEqualsNode(integerEqualsNode, mem);
             }
             case ValueProxy valueProxy -> {
                 Node original = valueProxy.getOriginalNode();
@@ -364,7 +434,17 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             IntInterval v;
             if (isLoopHeader && !isFirstVisit && i == numInputs - 1) {
                 logger.log("    Evaluating back-edge with originalIn: " + originalIn, LoggerVerbosity.DEBUG);
-                v = evalBackEdgeValue(input, originalIn);
+                // Use the merge node post-condition (previous iteration result) to
+                // evaluate back-edge values. originalIn is the memory at the start
+                // of evaluating the phi in the current visit and does not reflect
+                // the previous iteration's post-state.
+                AbstractMemory mergePost = abstractState.getPostCondition(merge);
+                if (mergePost != null) {
+                    v = evalBackEdgeValue(input, mergePost);
+                } else {
+                    // Fallback: use originalIn when merge post-condition isn't available
+                    v = evalBackEdgeValue(input, originalIn);
+                }
                 logger.log("  Input[" + i + "]: " + input + " = " + v + " (computed from previous iteration)", LoggerVerbosity.DEBUG);
             } else {
                 v = getNodeResultInterval(input, originalIn);
@@ -372,6 +452,60 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
 
             acc.joinWith(v);
+        }
+
+        // Simple induction detection: if the back-edge is `phi + const` and phi is
+        // compared against a constant in the loop condition (phi < N), we can bound
+        // the phi to [init, N-1] immediately which prevents explosive growth.
+        if (isLoopHeader) {
+            try {
+                // back-edge node (last input)
+                Node backEdge = (numInputs > 0) ? phi.valueAt(numInputs - 1) : null;
+                Node initNode = (numInputs > 0) ? phi.valueAt(0) : null;
+                boolean isInduction = false;
+                long incr = 0L;
+
+                if (backEdge instanceof jdk.graal.compiler.nodes.calc.BinaryArithmeticNode<?> bin && bin instanceof AddNode) {
+                    Node x = bin.getX();
+                    Node y = bin.getY();
+                    // check if one operand is the phi itself (or a ValueProxy to it)
+                    boolean xIsPhi = (x == phi) || (x instanceof ValueProxy vpX && vpX.getOriginalNode() == phi);
+                    boolean yIsPhi = (y == phi) || (y instanceof ValueProxy vpY && vpY.getOriginalNode() == phi);
+                    Node other = xIsPhi ? y : (yIsPhi ? x : null);
+                    if (other instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                        incr = cn.asJavaConstant().asLong();
+                        if (incr > 0 && (xIsPhi || yIsPhi)) {
+                            isInduction = true;
+                        }
+                    }
+                }
+
+                if (isInduction) {
+                    // search for a loop condition using this phi: IntegerLessThanNode where phi is operand and other is constant
+                    for (Node u : phi.usages()) {
+                        if (u instanceof IntegerLessThanNode itn) {
+                            Node a = itn.getX();
+                            Node b = itn.getY();
+                            // find which side is phi
+                            Node otherSide = (a == phi || (a instanceof ValueProxy vp && vp.getOriginalNode() == phi)) ? b : ((b == phi || (b instanceof ValueProxy vp2 && vp2.getOriginalNode() == phi)) ? a : null);
+                            if (otherSide instanceof ConstantNode cn2 && cn2.asJavaConstant() != null && cn2.asJavaConstant().getJavaKind().isNumericInteger()) {
+                                long bound = cn2.asJavaConstant().asLong();
+                                // phi must be < bound, so upper = bound-1
+                                IntInterval initIv = getNodeResultInterval(initNode, originalIn);
+                                if (initIv == null) initIv = new IntInterval(); initIv.setToBot();
+                                long newLower = initIv.isBot() ? 0 : initIv.getLower();
+                                long newUpper = bound - 1;
+                                IntInterval bounded = new IntInterval(newLower, newUpper);
+                                logger.log("Detected induction phi " + phi + "; bounding to " + bounded, LoggerVerbosity.DEBUG);
+                                acc.meetWith(bounded);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                AbstractInterpretationLogger.getInstance().log("Induction detection failed: " + t.getMessage(), LoggerVerbosity.DEBUG);
+            }
         }
 
         bindNodeResult(phi, acc, mem);
@@ -456,16 +590,110 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         return mem;
     }
 
+    private AbstractMemory evalIntegerBelowNode(IntegerBelowNode node, AbstractMemory mem) {
+        IntInterval res = new IntInterval(0, 1);
+        bindNodeResult(node, res, mem);
+        return mem;
+    }
+
+    private AbstractMemory evalLeftShiftNode(LeftShiftNode node, AbstractMemory mem) {
+        IntInterval x = getNodeResultInterval(node.getX(), mem);
+        IntInterval s = getNodeResultInterval(node.getY(), mem);
+        IntInterval res = new IntInterval();
+        if (x.isBot() || s.isBot()) {
+            res.setToBot();
+        } else if (x.isTop() || s.isTop()) {
+            res.setToTop();
+        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+            long sh = s.getLower();
+            long factor = 1L << sh;
+            IntInterval f = new IntInterval(factor, factor);
+            res = x.mul(f);
+        } else {
+            res.setToTop();
+        }
+        bindNodeResult(node, res, mem);
+        return mem;
+    }
+
+    private AbstractMemory evalRightShiftNode(RightShiftNode node, AbstractMemory mem) {
+        IntInterval x = getNodeResultInterval(node.getX(), mem);
+        IntInterval s = getNodeResultInterval(node.getY(), mem);
+        IntInterval res = new IntInterval();
+        if (x.isBot() || s.isBot()) {
+            res.setToBot();
+        } else if (x.isTop() || s.isTop()) {
+            res.setToTop();
+        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+            long sh = s.getLower();
+            long div = 1L << sh;
+            if (!x.isLowerInfinite() && x.getLower() >= 0) {
+                long lo = x.getLower() / div;
+                long hi = x.getUpper() / div;
+                res = new IntInterval(lo, hi);
+            } else {
+                res.setToTop();
+            }
+        } else {
+            res.setToTop();
+        }
+        bindNodeResult(node, res, mem);
+        return mem;
+    }
+
+    private AbstractMemory evalUnsignedRightShiftNode(UnsignedRightShiftNode node, AbstractMemory mem) {
+        IntInterval x = getNodeResultInterval(node.getX(), mem);
+        IntInterval s = getNodeResultInterval(node.getY(), mem);
+        IntInterval res = new IntInterval();
+        if (x.isBot() || s.isBot()) {
+            res.setToBot();
+        } else if (x.isTop() || s.isTop()) {
+            res.setToTop();
+        } else if (s.isSingleton() && s.getLower() >= 0 && s.getLower() <= 63) {
+            long sh = s.getLower();
+            long div = 1L << sh;
+            if (!x.isLowerInfinite() && x.getLower() >= 0) {
+                long lo = x.getLower() / div;
+                long hi = x.getUpper() / div;
+                res = new IntInterval(lo, hi);
+            } else {
+                res.setToTop();
+            }
+        } else {
+            res.setToTop();
+        }
+        bindNodeResult(node, res, mem);
+        return mem;
+    }
+
+    private AbstractMemory evalIntegerEqualsNode(IntegerEqualsNode node, AbstractMemory mem) {
+        IntInterval res = new IntInterval(0, 1);
+        bindNodeResult(node, res, mem);
+        return mem;
+    }
+
     private static void bindNodeResult(Node node, IntInterval val, AbstractMemory mem) {
+        if (node == null) {
+            AbstractInterpretationLogger.getInstance().log("bindNodeResult called with null node, skipping", LoggerVerbosity.DEBUG);
+            return;
+        }
         String id = nodeId(node);
         AccessPath p = AccessPath.forLocal(id);
         mem.bindTempByName(id, p);
-        mem.writeStore(p, val.copyOf());
+        mem.writeStoreStrong(p, val.copyOf());
     }
 
     private static IntInterval getNodeResultInterval(Node node, AbstractMemory mem) {
-        String nid = nodeId(node);
         var logger = AbstractInterpretationLogger.getInstance();
+
+        if (node == null) {
+            logger.log("getNodeResultInterval called with null node, returning TOP", LoggerVerbosity.DEBUG);
+            IntInterval top = new IntInterval();
+            top.setToTop();
+            return top;
+        }
+
+        String nid = nodeId(node);
 
         if (node instanceof ConstantNode cn) {
             if (cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
@@ -483,35 +711,53 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         return result;
     }
 
-    private static AccessPath accessBaseForNodeEval(Node objNode, AbstractMemory mem) {
+    private static AliasSet accessBaseSetForNodeEval(Node objNode, AbstractMemory mem) {
         switch (objNode) {
             case null -> {
-                return null;
+                return AliasSet.of();
             }
             case ParameterNode pn -> {
-                return AccessPath.forLocal("param" + pn.index());
+                String pname = "param" + pn.index();
+                return mem.lookupParamSetByName(pname);
             }
             case NewInstanceNode nii -> {
                 String aid = "alloc" + Integer.toHexString(System.identityHashCode(nii));
-                return AccessPath.forAllocSite(aid);
+                return AliasSet.of(AccessPath.forAllocSite(aid));
             }
             case NewArrayNode nan -> {
                 String aid = "alloc" + Integer.toHexString(System.identityHashCode(nan));
-                return AccessPath.forAllocSite(aid);
+                return AliasSet.of(AccessPath.forAllocSite(aid));
             }
             default -> {
             }
         }
-        AccessPath p = mem.lookupTempByName(nodeId(objNode));
-        if (p != null) return p;
-        return null;
+        // Try from evaluated temp
+        AliasSet s = mem.lookupTempSetByName(nodeId(objNode));
+        if (s != null) return s;
+        return AliasSet.of();
     }
 
-    private static AccessPath resolveFieldBase(Node objNode, ResolvedJavaField field, AbstractMemory mem) {
+    private static AliasSet resolveFieldBaseSet(Node objNode, ResolvedJavaField field, AbstractMemory mem) {
         if (objNode == null) {
             String className = field.getDeclaringClass().getName();
-            return AccessPath.forStaticClass(className);
+            return AliasSet.of(AccessPath.forStaticClass(className));
         }
-        return accessBaseForNodeEval(objNode, mem);
+        return accessBaseSetForNodeEval(objNode, mem);
+    }
+
+    private static boolean isPoint(IntInterval v) {
+        return v != null && !v.isTop() && !v.isBot() && !v.isLowerInfinite() && !v.isUpperInfinite() && v.getLower() == v.getUpper();
+    }
+
+    private static Function<AccessPath, AccessPath> indexTransform(Node indexNode, AbstractMemory mem) {
+        IntInterval idx = getNodeResultInterval(indexNode, mem);
+        if (isPoint(idx)) {
+            long k = idx.getLower();
+            if (k >= Integer.MIN_VALUE && k <= Integer.MAX_VALUE) {
+                int ik = (int) k;
+                return p -> p.appendArrayIndex(ik);
+            }
+        }
+        return AccessPath::appendArrayWildcard;
     }
 }
