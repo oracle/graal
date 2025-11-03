@@ -181,7 +181,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final TypeElement exportDeclarationType;
     private final CustomOperationModel customOperationModel;
     private final boolean substituteThisToParent;
-    private boolean validateStaticMethod;
 
     /*
      * Parsing parent to detect recursions.
@@ -203,12 +202,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return Arrays.asList(types.Cached, types.CachedLibrary, types.Bind);
     }
 
-    public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent,
-                    boolean validateStaticMethod) {
+    public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
         NodeParser parser = new NodeParser(ParseMode.EXPORTED_MESSAGE, exportLibraryType, exportDeclarationType, null, substituteThisToParent);
         // the ExportsParse will take care of removing the specializations if the option is set
         parser.setGenerateSlowPathOnly(false);
-        parser.setValidateStaticMethod(validateStaticMethod);
         return parser;
     }
 
@@ -269,15 +266,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     @Override
     public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
         return annotations;
-    }
-
-    /**
-     * Enables or disables static method validation.
-     * <p>
-     * Static method validation must be disabled for self update specializations.
-     */
-    private void setValidateStaticMethod(boolean flag) {
-        this.validateStaticMethod = flag;
     }
 
     private NodeData parseRootType(TypeElement rootType) {
@@ -1412,7 +1400,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
             ExecutableElement specializationMethod = specialization.getMethod();
-            if (!specializationMethod.getModifiers().contains(Modifier.STATIC) && validateStaticMethod) {
+            if (!specializationMethod.getModifiers().contains(Modifier.STATIC)) {
                 nodeBound = true;
                 if (requireNodeUnbound) {
                     specialization.addError("@%s annotated nodes must declare static @%s methods. " +

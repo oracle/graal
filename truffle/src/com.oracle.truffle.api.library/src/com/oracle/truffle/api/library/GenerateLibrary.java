@@ -378,26 +378,20 @@ public @interface GenerateLibrary {
         String replacementOf() default "";
 
         /**
-         * Specifies a method that provides a replacement implementation for a message.
+         * Specifies a custom replacement method to handle delegation for a message declared with
+         * {@link #replacementOf()}.
          * <p>
-         * This annotation serves two related purposes, depending on how it is used:
-         * <ol>
-         * <li><b>Custom replacement for a {@link #replacementOf()} message:</b> Used when a
-         * deprecated message cannot be automatically delegated to its replacement due to
-         * differences in argument semantics, type conversions, or behavioral requirements. In this
-         * mode, the specified method implements the conversion or adaptation logic between the
-         * deprecated and replacement messages. The method must have a compatible signature and be
-         * accessible from the annotated message.</li>
-         * <li><b>Self-replacement method:</b> Used to provide a fallback implementation for the
-         * annotated message itself. The self-replacement method is invoked only when the annotated
-         * message is not exported, but one or more messages listed in {@link #ifExported()} or
-         * {@link #ifExportedAsWarning()} are exported. This allows non-exported messages to
-         * participate in message relationships without requiring explicit implementation by the
-         * user.</li>
-         * </ol>
+         * This attribute provides a way to manually implement delegation logic when automatic
+         * delegation from the deprecated message to its replacement cannot be generated correctly.
+         * Typical reasons include differences in argument semantics, necessary type conversions, or
+         * behavioral changes that cannot be inferred automatically.
+         * <p>
+         * This element is only valid when {@link #replacementOf()} is also set. Using it without
+         * {@code replacementOf} will result in a compilation error. The specified method must have
+         * a compatible signature and be accessible from the annotated message.
          *
          * <p>
-         * <b>Example - Custom replacement for {@link #replacementOf()}:</b>
+         * <b>Example:</b>
          *
          * <pre>
          * &#64;Abstract(ifExported = "isArray", replacementOf = "read(Object, int)", replacementMethod = "readLegacy")
@@ -411,44 +405,9 @@ public @interface GenerateLibrary {
          * }
          * </pre>
          *
-         * In this example, automatic conversion between {@code int} and {@code long} indices would
-         * yield incorrect results because the index is treated as unsigned. The custom
-         * {@code readLegacy} method therefore provides the correct delegation logic.
-         *
-         * <p>
-         * <b>Example - Self-replacement method:</b>
-         *
-         * <pre>
-         * &#64;GenerateLibrary
-         * public abstract static class SelfReplacementLibrary extends Library {
-         *
-         *     public boolean canComputeFactorial(Object receiver) {
-         *         return false;
-         *     }
-         *
-         *     &#64;Abstract(ifExported = "canComputeFactorial")
-         *     public double multiply(Object receiver, double a, double b) {
-         *         throw new UnsupportedOperationException();
-         *     }
-         *
-         *     &#64;Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
-         *     public double factorial(Object receiver, int n) {
-         *         throw new UnsupportedOperationException();
-         *     }
-         *
-         *     // Used only when factorial() is not exported but canComputeFactorial() is.
-         *     protected final double factorialFixed(Object receiver, int n) {
-         *         double f = n;
-         *         for (int i = 2; i &lt; n; i++) {
-         *             f = multiply(receiver, f, i);
-         *         }
-         *         return f;
-         *     }
-         * }
-         * </pre>
-         *
-         * In this example, {@code factorialFixed} serves as a fallback implementation for
-         * {@code factorial()} when it is not exported but another related message is.
+         * In this example, the deprecated {@code read(Object, int)} message cannot be automatically
+         * delegated to {@code read(Object, long)} because the index must be treated as unsigned.
+         * The custom {@code readLegacy} method therefore provides the correct conversion logic.
          *
          * @see #replacementOf()
          * @since 25.1

@@ -49,7 +49,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -622,6 +621,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
             return false;
         }
 
+        @ExpectError("The 'replacementMethod' attribute is only valid when 'replacementOf' is also specified.")
         @Abstract(replacementMethod = "isType")
         public Object replacedErr(Object receiver) {
             return receiver;
@@ -637,130 +637,6 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         @Abstract(replacementOf = "isType")
         public boolean replace2(Object receiver) {
             return receiver != null;
-        }
-    }
-
-    @GenerateLibrary
-    public abstract static class SelfReplacementsLibraryA extends Library {
-
-        public void noop(Object receiver) {
-        }
-
-        public boolean canComputeFactorial(Object receiver) {
-            return false;
-        }
-
-        @Abstract(ifExported = "canComputeFactorial")
-        public double multiply(Object receiver, double a, double b) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
-        public double factorial(Object receiver, int n) {
-            return n;
-        }
-
-        // Replaces factorial() only when factorial() is not exported
-        // and canComputeFactorial() is exported.
-        protected final double factorialFixed(Object receiver, int n) {
-            double f = n;
-            for (int i = 2; i < n; i++) {
-                f = multiply(receiver, f, i);
-            }
-            return f;
-        }
-    }
-
-    @GenerateLibrary
-    public abstract static class SelfReplacementsLibraryB extends Library {
-
-        public boolean canComputeFactorial(Object receiver) {
-            return false;
-        }
-
-        @Abstract(ifExported = "canComputeFactorial")
-        public double multiply(Object receiver, double a, double b) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Abstract(ifExportedAsWarning = "canComputeFactorial", replacementMethod = "factorialFixed")
-        public double factorial(Object receiver, int n) {
-            return n;
-        }
-
-        // Replaces factorial() only when factorial() is not exported
-        // and canComputeFactorial() is exported.
-        @SuppressWarnings("static-method")
-        protected final double factorialFixed(Object receiver, int n, @CachedLibrary(limit = "2") SelfReplacementsLibraryB helperLibrary) {
-            if (helperLibrary.canComputeFactorial(n)) {
-                double f = helperLibrary.factorial(n, n);
-                return f;
-            } else {
-                return -n;
-            }
-        }
-    }
-
-    @ExportLibrary(SelfReplacementsLibraryA.class)
-    public static final class SelfReplacementsLibraryImplA1 extends Object {
-
-        // Only to prevent from warning: Exported library has no effect.
-        @ExportMessage
-        void noop() {
-        }
-
-        // canComputeFactorial() is not implemented,
-        // we have only the default impl of factorial() that returns `n`.
-    }
-
-    @ExportLibrary(SelfReplacementsLibraryA.class)
-    @SuppressWarnings("static-method")
-    public static final class SelfReplacementsLibraryImplA3 extends Object {
-
-        @ExportMessage
-        boolean canComputeFactorial() {
-            return true;
-        }
-
-        @ExportMessage
-        double multiply(double a, double b) {
-            return a * b;
-        }
-
-        @ExportMessage
-        double factorial(int n) {
-            return 2 * n;
-        }
-    }
-
-    @ExportLibrary(SelfReplacementsLibraryB.class)
-    @SuppressWarnings({"static-method", "truffle-abstract-export"})
-    public static final class SelfReplacementsLibraryImplB3 extends Object {
-
-        @ExportMessage
-        boolean canComputeFactorial() {
-            return true;
-        }
-
-        @ExportMessage
-        double multiply(double a, double b) {
-            return a * b;
-        }
-    }
-
-    @ExpectError({"The following message(s) of library SelfReplacementsLibraryB are abstract and should be exported using:%"})
-    @ExportLibrary(SelfReplacementsLibraryB.class)
-    @SuppressWarnings("static-method")
-    public static final class SelfReplacementsLibraryImplBErr extends Object {
-
-        @ExportMessage
-        boolean canComputeFactorial() {
-            return true;
-        }
-
-        @ExportMessage
-        double multiply(double a, double b) {
-            return a * b;
         }
     }
 

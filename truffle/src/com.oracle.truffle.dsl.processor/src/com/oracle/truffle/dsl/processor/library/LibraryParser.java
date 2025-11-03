@@ -291,9 +291,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 ExecutableElement replacementMethod = parseAbstractReplacementWith(message, replaced, abstractMirror, "replacementMethod", allMethods);
 
                 if (replacementMethod != null && replaced == null) {
-                    Set<LibraryMessage> ifExported = new HashSet<>(message.getAbstractIfExported());
-                    ifExported.addAll(message.getAbstractIfExportedAsWarning());
-                    message.setReplacementOf(null, replacementMethod);
+                    message.addError("The 'replacementMethod' attribute is only valid when 'replacementOf' is also specified.");
                 }
                 if (replaced != null) {
                     if (!replacedMessages.add(replaced)) {

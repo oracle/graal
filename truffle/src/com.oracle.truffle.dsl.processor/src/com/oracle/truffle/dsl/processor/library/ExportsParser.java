@@ -269,42 +269,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     replacedExport.addError(error);
                 }
             }
-            for (LibraryMessage message : library.getLibrary().getAllMethods()) {
-                ExecutableElement replacementMethod = message.getReplacementMethod();
-                if (replacementMethod != null && message.getReplacementOf() == null) {
-                    // Replacing this message, if not exported
-                    if (!exportedMessages.containsKey(message.getName())) {
-                        // Exported messages do not contain this message
-                        // We'll generate the replacement when some message from isExported is
-                        // exported
-                        boolean shouldReplace = false;
-                        for (LibraryMessage expMessage : message.getAbstractIfExportedAsWarning()) {
-                            ExportMessageData messageData = exportedMessages.get(expMessage.getName());
-                            if (messageData != null) {
-                                shouldReplace = true;
-                                break;
-                            }
-                        }
-                        if (shouldReplace) {
-                            // We need to add an @ExportMessage annotation for the generated message
-                            AnnotationMirror exportAnnotation = new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().ExportMessage);
-                            CodeExecutableElement replaceWithClone = CodeExecutableElement.clone(replacementMethod);
-                            if (library.isExplicitReceiver()) {
-                                replaceWithClone.getModifiers().add(STATIC);
-                            }
-                            Element enclosing = ElementUtils.castTypeElement(library.getReceiverType());
-                            replaceWithClone.setEnclosingElement(enclosing);
-                            replacementMethod = replaceWithClone;
-                            ExportMessageData exportData = new ExportMessageData(library, message, replacementMethod, exportAnnotation);
-                            exportData.setSelfReplacement();
-                            exportedElements.add(exportData);
-                            exportedMessages.put(message.getName(), exportData);
-                            Set<LibraryMessage> generatedNames = generatedLibraryMessages.computeIfAbsent(library, (lib) -> new HashSet<>());
-                            generatedNames.add(message);
-                        }
-                    }
-                }
-            }
         }
 
         /*
@@ -1376,13 +1340,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             boolean isStaticMethod = element.getModifiers().contains(Modifier.STATIC);
-            boolean isForcedStatic = exportedElement.isSelfReplacement();
-            boolean isStatic = isStaticMethod || isForcedStatic;
-            if (!isStatic) {
+            if (!isStaticMethod) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
-            } else if (exportedElement.isSelfReplacement()) {
-                element.getParameters().set(0, new CodeVariableElement(exportedElement.getReceiverType(), "receiver"));
             }
 
             if (message.getName().equals("accepts")) {
@@ -1487,8 +1447,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         NodeData parsedNodeData = NodeParser.createExportParser(
                         exportedMessage.getExportsLibrary().getLibrary().getTemplateType().asType(),
                         exportedMessage.getExportsLibrary().getTemplateType(),
-                        exportedMessage.getExportsLibrary().hasExportDelegation(),
-                        !exportedMessage.isSelfReplacement()).parse(clonedType, false);
+                        exportedMessage.getExportsLibrary().hasExportDelegation()).parse(clonedType, false);
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
 
@@ -1536,7 +1495,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return false;
         }
 
-        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC) || exportedMessage.isSelfReplacement();
+        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC);
         int paramOffset = !explicitReceiver ? 1 : 0;
         List<? extends VariableElement> expectedParameters = libraryMethod.getParameters().subList(paramOffset, libraryMethod.getParameters().size());
         List<? extends VariableElement> exportedParameters = exportedMethod.getParameters().subList(0, realParameterCount);
@@ -1567,7 +1526,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             VariableElement exportedArg = exportedParameters.get(i);
             VariableElement libraryArg = expectedParameters.get(i);
             TypeMirror exportedArgType = exportedArg.asType();
-            TypeMirror libraryArgType = (explicitReceiver && !exportedMessage.isSelfReplacement() && i == 0) ? receiverType : libraryArg.asType();
+            TypeMirror libraryArgType = (explicitReceiver && i == 0) ? receiverType : libraryArg.asType();
             if (!typeEquals(exportedArgType, libraryArgType)) {
                 if (emitErrors) {
                     exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:%n    %s",
