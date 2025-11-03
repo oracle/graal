@@ -235,18 +235,20 @@ def _generate_pom(dependencies):
 
 def _parse_mvn_dependency_list(dependency_list):
     '''
-    Parses mvn dependency:list output and returns a list of (group_id, artifact_id, version).
+    Parses `mvn dependency:list` output and returns a list of (group_id, artifact_id, version).
+    Only dependencies with packaging type `jar` are included.
     Handles lines in the format:
-        [INFO]    <group_id>:<artifact_id>:jar:<version>:<scope>
+        [INFO]    <group_id>:<artifact_id>:<packaging>[:<classifier>]:<version>:<scope>
     '''
     dependencies = []
-    pattern = re.compile(r'^\[INFO\]\s+([\w\.\-]+):([\w\.\-]+):[\w\.\-]+:([\w\.\-]+):[\w\.\-]+')
+    pattern = re.compile(r'^\[INFO\]\s+([\w\.\-]+):([\w\.\-]+):([\w\.\-]+)(?::[\w\.\-]+)?:([\w\.\-]+):[\w\.\-]+')
     for line in dependency_list.splitlines():
         line = line.strip()
         dependency = pattern.match(line)
         if dependency:
-            group_id, artifact_id, version = dependency.groups()
-            dependencies.append((group_id, artifact_id, version))
+            group_id, artifact_id, packaging, version = dependency.groups()
+            if packaging == "jar":
+                dependencies.append((group_id, artifact_id, version))
     return dependencies
 
 def _generate_image_entry_point():
