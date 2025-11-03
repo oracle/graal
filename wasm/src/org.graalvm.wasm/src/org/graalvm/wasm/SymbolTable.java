@@ -1534,9 +1534,7 @@ public abstract class SymbolTable {
             } else {
                 wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, indexType64, shared, useUnsafeMemory, directByteBufferMemoryAccess, context);
             }
-            final int memoryAddress = store.memories().register(wasmMemory);
-            final WasmMemory allocatedMemory = store.memories().memory(memoryAddress);
-            instance.setMemory(index, allocatedMemory);
+            instance.setMemory(index, wasmMemory);
         });
     }
 

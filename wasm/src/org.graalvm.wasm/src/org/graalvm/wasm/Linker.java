@@ -481,11 +481,8 @@ public class Linker {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
-            final WasmMemory importedMemory;
-            final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
-            if (externalMemory != null) {
-                final int contextMemoryIndex = store.memories().register(externalMemory);
-                importedMemory = store.memories().memory(contextMemoryIndex);
+            WasmMemory importedMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
+            if (importedMemory != null) {
                 assert memoryIndex == importDescriptor.targetIndex();
             } else {
                 // WASIp1 memory import should have been resolved via ImportValueSupplier above.

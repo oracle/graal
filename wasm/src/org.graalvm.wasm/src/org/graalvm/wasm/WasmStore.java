@@ -68,7 +68,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 public final class WasmStore implements TruffleObject {
     private final WasmContext context;
     private final WasmLanguage language;
-    private final MemoryRegistry memoryRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
     private final FdManager filesManager;
@@ -78,7 +77,6 @@ public final class WasmStore implements TruffleObject {
         this.context = context;
         this.language = language;
         this.contextOptions = context.getContextOptions();
-        this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.filesManager = context.fdManager();
@@ -94,10 +92,6 @@ public final class WasmStore implements TruffleObject {
 
     public WasmLanguage language() {
         return language;
-    }
-
-    public MemoryRegistry memories() {
-        return memoryRegistry;
     }
 
     public Linker linker() {
