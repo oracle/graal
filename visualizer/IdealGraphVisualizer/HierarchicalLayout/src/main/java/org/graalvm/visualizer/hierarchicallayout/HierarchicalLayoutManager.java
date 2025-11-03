@@ -524,43 +524,43 @@ public class HierarchicalLayoutManager implements LayoutManager {
         cancelled = new AtomicBoolean(false);
     }
 
-    private void initSettings(LayoutSettingBean setting) {
+    private void initSettings() {
         // Boolean settings (cached once per instance)
-        bothSort = setting.get(Boolean.class, BOTH_SORT);
-        reverseSort = setting.get(Boolean.class, REVERSE_SORT);
-        dummyFirstSort = setting.get(Boolean.class, DUMMY_FIRST_SORT);
-        lastDownSweep = setting.get(Boolean.class, LAST_DOWN_SWEEP);
-        optimalUpVip = setting.get(Boolean.class, OPTIMAL_UP_VIP);
-        squashPosition = setting.get(Boolean.class, SQUASH_POSITION);
-        centerSimpleNodes = setting.get(Boolean.class, CENTER_SIMPLE_NODES);
-        meanNotMedian = setting.get(Boolean.class, MEAN_NOT_MEDIAN);
-        crossingSort = setting.get(Boolean.class, CROSSING_SORT);
-        noCrossingLayerReassign = setting.get(Boolean.class, NO_CROSSING_LAYER_REASSIGN);
-        lastUpCrossingSweep = setting.get(Boolean.class, LAST_UP_CROSSING_SWEEP);
-        irrelevantLayoutCode = setting.get(Boolean.class, IRRELEVANT_LAYOUT_CODE);
-        centerCrossingX = setting.get(Boolean.class, CENTER_CROSSING_X);
-        crossResetXFromNode = setting.get(Boolean.class, CROSS_RESET_X_FROM_NODE);
-        crossResetXFromMiddle = setting.get(Boolean.class, CROSS_RESET_X_FROM_MIDDLE);
-        spanByAngle = setting.get(Boolean.class, SPAN_BY_ANGLE);
-        noDummyLongEdges = setting.get(Boolean.class, NO_DUMMY_LONG_EDGES);
-        standalones = setting.get(Boolean.class, STANDALONES);
-        edgeBending = setting.get(Boolean.class, EDGE_BENDING);
-        decreaseLayerWidthDeviation = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION);
-        decreaseLayerWidthDeviationQuick = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_QUICK);
-        decreaseLayerWidthDeviationUp = setting.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_UP);
-        unreverseVips = setting.get(Boolean.class, UNREVERSE_VIPS);
-        noVip = setting.get(Boolean.class, NO_VIP);
-        crossReduceRouting = setting.get(Boolean.class, CROSS_REDUCE_ROUTING);
-        crossPositionDuring = setting.get(Boolean.class, CROSS_POSITION_DURING);
-        properCrossingClosestNode = setting.get(Boolean.class, PROPER_CROSSING_CLOSEST_NODE);
-        unknownCrossingNumber = setting.get(Boolean.class, UNKNOWN_CROSSING_NUMBER);
+        bothSort = settings.get(Boolean.class, BOTH_SORT);
+        reverseSort = settings.get(Boolean.class, REVERSE_SORT);
+        dummyFirstSort = settings.get(Boolean.class, DUMMY_FIRST_SORT);
+        lastDownSweep = settings.get(Boolean.class, LAST_DOWN_SWEEP);
+        optimalUpVip = settings.get(Boolean.class, OPTIMAL_UP_VIP);
+        squashPosition = settings.get(Boolean.class, SQUASH_POSITION);
+        centerSimpleNodes = settings.get(Boolean.class, CENTER_SIMPLE_NODES);
+        meanNotMedian = settings.get(Boolean.class, MEAN_NOT_MEDIAN);
+        crossingSort = settings.get(Boolean.class, CROSSING_SORT);
+        noCrossingLayerReassign = settings.get(Boolean.class, NO_CROSSING_LAYER_REASSIGN);
+        lastUpCrossingSweep = settings.get(Boolean.class, LAST_UP_CROSSING_SWEEP);
+        irrelevantLayoutCode = settings.get(Boolean.class, IRRELEVANT_LAYOUT_CODE);
+        centerCrossingX = settings.get(Boolean.class, CENTER_CROSSING_X);
+        crossResetXFromNode = settings.get(Boolean.class, CROSS_RESET_X_FROM_NODE);
+        crossResetXFromMiddle = settings.get(Boolean.class, CROSS_RESET_X_FROM_MIDDLE);
+        spanByAngle = settings.get(Boolean.class, SPAN_BY_ANGLE);
+        noDummyLongEdges = settings.get(Boolean.class, NO_DUMMY_LONG_EDGES);
+        standalones = settings.get(Boolean.class, STANDALONES);
+        edgeBending = settings.get(Boolean.class, EDGE_BENDING);
+        decreaseLayerWidthDeviation = settings.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION);
+        decreaseLayerWidthDeviationQuick = settings.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_QUICK);
+        decreaseLayerWidthDeviationUp = settings.get(Boolean.class, DECREASE_LAYER_WIDTH_DEVIATION_UP);
+        unreverseVips = settings.get(Boolean.class, UNREVERSE_VIPS);
+        noVip = settings.get(Boolean.class, NO_VIP);
+        crossReduceRouting = settings.get(Boolean.class, CROSS_REDUCE_ROUTING);
+        crossPositionDuring = settings.get(Boolean.class, CROSS_POSITION_DURING);
+        properCrossingClosestNode = settings.get(Boolean.class, PROPER_CROSSING_CLOSEST_NODE);
+        unknownCrossingNumber = settings.get(Boolean.class, UNKNOWN_CROSSING_NUMBER);
 
         // int and float settings
 
-        xAssignSweepCount = setting.get(Integer.class, X_ASSIGN_SWEEP_COUNT);
-        crossingSweepCount = setting.get(Integer.class, CROSSING_SWEEP_COUNT);
-        minEdgeAngle = setting.get(Integer.class, MIN_EDGE_ANGLE);
-        crossFactor = setting.get(Float.class, CROSS_FACTOR);
+        xAssignSweepCount = settings.get(Integer.class, X_ASSIGN_SWEEP_COUNT);
+        crossingSweepCount = settings.get(Integer.class, CROSSING_SWEEP_COUNT);
+        minEdgeAngle = settings.get(Integer.class, MIN_EDGE_ANGLE);
+        crossFactor = settings.get(Float.class, CROSS_FACTOR);
     }
 
     public int getMaxLayerLength() {
@@ -579,7 +579,7 @@ public class HierarchicalLayoutManager implements LayoutManager {
         nodes.clear();
         longEdges.clear();
 
-        initSettings(settings);
+        initSettings();
     }
 
     @Override
