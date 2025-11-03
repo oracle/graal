@@ -40,6 +40,7 @@
 #
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -96,17 +97,38 @@ def preserve_all(native_image_path, coordinates, delimiter):
     If the image build fails with a "--initialize-at-build-time" error, retries the build with the additional
     "--initialize-at-build-time" argument until the build completes successfully, or a different error occurs.
     '''
+    global os_name, os_arch, os_classifier
+    os_name = platform.system().lower()  # linux, windows, darwin
+    os_arch = platform.machine()         # x86_64, arm64, etc.
+    os_classifier = f"{os_name}-{os_arch}"
+
     coordinates_list = coordinates.split(delimiter)
 
     for gav in coordinates_list:
         group_id, artifact_id, version = gav.rstrip().split(':')
 
-        subprocess.run(['mvn', '-q', 'dependency:get', f'-Dartifact={group_id}:{artifact_id}:{version}', '-Dtransitive=false'], check=True)
+        subprocess.run([
+            'mvn',
+            '-q',
+            'dependency:get',
+            f'-Dartifact={group_id}:{artifact_id}:{version}',
+            '-Dtransitive=false',
+            f'-Dos.detected.arch={os_arch}',
+            f'-Dos.detected.classifier={os_classifier}',
+            f'-Dos.detected.name={os_name}'], check=True)
 
         _generate_effective_pom(group_id, artifact_id, version)
         _generate_image_entry_point()
 
-        classpath = subprocess.check_output(['mvn', '-q', 'exec:exec', '-Dexec.executable=echo', '-Dexec.args=%classpath']).decode('utf-8').strip()
+        classpath = subprocess.check_output([
+            "mvn",
+            "-q",
+            "exec:exec",
+            "-Dexec.executable=echo",
+            "-Dexec.args=%classpath",
+            f'-Dos.detected.arch={os_arch}',
+            f'-Dos.detected.classifier={os_classifier}',
+            f'-Dos.detected.name={os_name}']).decode('utf-8').strip()
 
         base_command = [
             native_image_path,
@@ -163,7 +185,14 @@ def _generate_effective_pom(group_id, artifact_id, version):
         _update_dependency_scopes(dependencies)
         _generate_pom(dependencies)
 
-        dependency_list = subprocess.check_output(['mvn', '-B', 'dependency:list', '-DexcludeScope=system']).decode('utf-8').rstrip()
+        dependency_list = subprocess.check_output([
+            'mvn',
+            '-B',
+            'dependency:list',
+            '-DexcludeScope=system',
+            f'-Dos.detected.arch={os_arch}',
+            f'-Dos.detected.classifier={os_classifier}',
+            f'-Dos.detected.name={os_name}']).decode('utf-8').rstrip()
 
         detected_dependencies = _parse_mvn_dependency_list(dependency_list)
         before = len(dependencies)
