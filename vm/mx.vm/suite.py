@@ -17,6 +17,7 @@ suite = {
       "read" : "https://github.com/oracle/graal.git",
       "write" : "git@github.com:oracle/graal.git",
     },
+    "capture_suite_commit_info": False,
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
