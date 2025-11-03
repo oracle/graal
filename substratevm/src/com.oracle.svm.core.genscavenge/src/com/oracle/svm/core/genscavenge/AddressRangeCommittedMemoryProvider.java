@@ -777,7 +777,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     private static RuntimeException reportUncommitFailedInterruptibly(Pointer mapBegin, UnsignedWord mappingSize) {
-        Log.log().string("Uncommitting ").unsigned(mappingSize).string(" bytes of unused memory at ").hex(mapBegin).string(" failed.").newline();
+        Log.log().string("Uncommitting ").unsigned(mappingSize).string(" bytes of unused memory at ").zhex(mapBegin).string(" failed.").newline();
         throw VMError.shouldNotReachHere(UNCOMMIT_FAILED_ERROR_MSG);
     }
 
