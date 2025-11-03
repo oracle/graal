@@ -53,6 +53,8 @@ from os.path import dirname, exists, isdir, join, abspath
 from typing import Set
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
+from mx_sdk_benchmark import JMHNativeImageBenchmarkMixin, JMHNativeImageDispatcher
+
 import mx
 import mx_benchmark
 import mx_gate
@@ -67,6 +69,7 @@ import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
 import mx_util
+from mx_benchmark import DataPoints, BenchmarkDispatcherState, BenchmarkDispatcher
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
@@ -77,7 +80,7 @@ _suite = mx.suite('truffle')
 # re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
-class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
+class JMHDistTruffleBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def name(self):
         return "truffle"
@@ -88,23 +91,43 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
     def subgroup(self):
         return "truffle"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
+    def filter_distribution(self, dist):
+        return dist.suite is _suite and super().filter_distribution(dist)
+
+    def successPatterns(self):
+        return super().successPatterns() + JMHNativeImageBenchmarkMixin.native_image_success_patterns()
+
     def extraVmArgs(self):
-        extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
+        extraVmArgs = super(JMHDistTruffleBenchmarkSuite, self).extraVmArgs()
         # org.graalvm.truffle.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         # org.graalvm.truffle.compiler.benchmark.* needs OptimizedTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED')
         return extraVmArgs
 
+    def get_dispatcher(self, state: BenchmarkDispatcherState) -> BenchmarkDispatcher:
+        if self.is_native_mode(state.bm_suite_args):
+            return JMHNativeImageDispatcher(state)
+        else:
+            return super().get_dispatcher(state)
+
+    def checkSamplesInPgo(self):
+        # Sampling does not support images that use runtime compilation.
+        return False
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         result = super().rules(out, benchmarks, bmSuiteArgs)
         result_file = self.get_jmh_result_file(bmSuiteArgs)
-        suite_name = self.benchSuiteName(bmSuiteArgs)
-        result.extend([
-            JMHJsonCompilationTimingRule(result_file, suite_name, "pe-time"),
-            JMHJsonCompilationTimingRule(result_file, suite_name, "compile-time"),
-            JMHJsonCompilationTimingRule(result_file, suite_name, "code-install-time"),
-        ])
+        if result_file:
+            suite_name = self.benchSuiteName(bmSuiteArgs)
+            result.extend([
+                JMHJsonCompilationTimingRule(result_file, suite_name, "pe-time"),
+                JMHJsonCompilationTimingRule(result_file, suite_name, "compile-time"),
+                JMHJsonCompilationTimingRule(result_file, suite_name, "code-install-time"),
+            ])
         return result
 
 class JMHJsonCompilationTimingRule(mx_benchmark.JMHJsonRule):
@@ -175,8 +198,8 @@ class JMHJsonCompilationTimingRule(mx_benchmark.JMHJsonRule):
             return unit[:-len("/op")]
         return unit
 
-mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
-#mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
+mx_benchmark.add_bm_suite(JMHDistTruffleBenchmarkSuite())
+# mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
