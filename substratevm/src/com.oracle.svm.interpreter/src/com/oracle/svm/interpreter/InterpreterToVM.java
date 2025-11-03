@@ -898,6 +898,12 @@ public final class InterpreterToVM {
             VMError.guarantee(!forceStayInInterpreter);
             VMError.guarantee(calleeFtnPtr.isNonNull());
 
+            // Note: This won't work when PLTGOT is involved, because each method will have its
+            // unique PLT stub address.
+            if (calleeFtnPtr.equal(InterpreterMethodPointerHolder.getMethodNotCompiledHandler())) {
+                VMError.shouldNotReachHere("Trying to dispatch to compiled code for AOT method " + seedMethod + " but it was not compiled because it was not seen as reachable by analysis");
+            }
+
             // wrapping of exceptions is done in leaveInterpreter
             retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, targetMethod.getDeclaringClass(), calleeArgs);
         } else {
