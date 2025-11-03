@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "7.58.1",
+    "mxversion": "7.65.0",
     "name": "web-image",
     "versionConflictResolution": "latest",
     "version": "1.0",
@@ -13,6 +13,7 @@ suite = {
             },
         ]
     },
+    "capture_suite_commit_info": False,
     "libraries": {
         # ------------- Libraries -------------
         "GOOGLE_CLOSURE": {
