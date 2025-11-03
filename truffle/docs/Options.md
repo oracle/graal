@@ -48,12 +48,17 @@ They are useful to users and language and tool implementers.
 
 <!-- BEGIN: expert-engine-options -->
 ```shell
+- `--engine.BytecodeHistogram=true|false|<group>[,<group>...]` : Collect and print a histogram of executed bytecode opcodes. Set to 'true' to enable basic mode or use a comma separated list to configure grouping (e.g. source,root).Available groupings are root, tier, source, language, thread.This feature adds high overhead, use for profiling in non-production runs only. Supported only by Bytecode DSL interpreters. Prints when the engine is closed by default, or periodically if BytecodeHistogramInterval > 0.
+- `--engine.BytecodeHistogramInterval` : Print and reset the opcode histogram at a fixed interval while BytecodeHistogram is enabled. Use 0 to disable periodic printing and print only once at shutdown. Examples: 250ms, 2s, 1m.
+- `--engine.BytecodeLanguageFilter` : Limit tracing and statistics to specific language IDs. Provide a comma-separated list of language IDs, for example: js, python. Empty means that all languages are included. Applies to engine.TraceBytecode and engine.BytecodeHistogram.
+- `--engine.BytecodeMethodFilter` : Limit tracing and statistics to selected methods. Provide a comma-separated list of includes, or excludes prefixed with '~'. Empty means no restriction. Whitespace around commas is ignored. Applies to engine.TraceBytecode and engine.BytecodeHistogram.
 - `--engine.PreinitializeContexts` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
 - `--engine.SourceCacheStatisticDetails` : Print source cache statistics for an engine when the engine is closed. With the details enabled, statistics for all individual sources are printed.
 - `--engine.SourceCacheStatistics` : Print source cache statistics for an engine when the engine is closed.
 - `--engine.SynchronousThreadLocalActionMaxWait=[0, inf)` : How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.
 - `--engine.SynchronousThreadLocalActionPrintStackTraces` : Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.
+- `--engine.TraceBytecode` : Trace every executed bytecode instruction. Very high overhead, use only for debugging, never in production. Supported only by Bytecode DSL interpreters. Combine with engine.BytecodeMethodFilter and engine.BytecodeLanguageFilter to limit output.
 - `--engine.TraceSourceCache` : Print information for source cache misses/evictions/failures.
 - `--engine.TraceSourceCacheDetails` : Print information for all source cache events including hits and uncached misses.
 - `--engine.TraceStackTraceInterval=[1, inf)` : Prints the stack trace for all threads for a time interval. By default 0, which disables the output.

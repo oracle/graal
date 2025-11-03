@@ -27,6 +27,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-69649: Bytecode DSL now encodes primitive constant operands directly in the bytecode, reducing memory indirections in the interpreter. This optimization is enabled by default; you can configure it with `@GenerateBytecode(inlinePrimitiveConstants = true)`.
 * GR-68993: Added `HostCompilerDirectives.markThreadedSwitch(int)` to mark a switch statement within a loop as a candidate for threaded switch optimization.
 * GR-68993: Bytecode DSL: All bytecode interpreters are now using the threaded switch optimization by default. This new optimization can be configured using `@GenerateBytecode(enableThreadedSwitch=true|false)`.
+* GR-71030: Bytecode DSL now generates a new `MyBytecodeRootNodeGen.Bytecode` class that can be accessed via the `MyBytecodeRootNodeGen.BYTECODE` singleton. This class which extends the added `BytecodeDescriptor` allows you to parse, serialize and deserialize bytecode nodes in addition to the already existing static methods in the generated code.
+* GR-71030: Bytecode DSL now provides an `InstructionDescriptor` generated implementation for the bytecode interpreter. The instructions can be accessed via the new BytecodeDescriptor like this: `MyBytecodeRootNodeGen.BYTECODE.getInstructionDescriptors()`. There is also `MyBytecodeRootNodeGen.BYTECODE.dump()` to produce a human-readable instruction format.
+* GR-71031: Added new method `BytecodeDescriptor.update(MyLanguage, BytecodeConfig)` to update the bytecode config for all current root nodes and root nodes created in the future of a language.
+* GR-51945: Bytecode DSL, added `InstructionTracer` with `onInstructionEnter(InstructionAccess, BytecodeNode, int, Frame)`. Tracers can be attached per root via `BytecodeRootNodes.addInstructionTracer(InstructionTracer)` and per descriptor via `BytecodeDescriptor.addInstructionTracer(TruffleLanguage, InstructionTracer)`. Attaching a tracer invalidates affected roots and may trigger reparse and comes at a significant cost.
+* GR-51945: Bytecode DSL: added instruction tracer reference implementations `PrintInstructionTracer` and `InstructionHistogramTracer`. These are intended for diagnostics.
+* GR-51945: Added option `engine.TraceBytecode` to enable printing each executed Bytecode DSL instruction. Use the `engine.BytecodeMethodFilter` option to print instructions only for a given method.
+* GR-51945: Added option `engine.BytecodeHistogram` to enable printing a bytecode histogram on engine close. Use `engine.BytecodeHistogramInterval` to configure the interval at which the histogram is reset and printed.
+
+
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

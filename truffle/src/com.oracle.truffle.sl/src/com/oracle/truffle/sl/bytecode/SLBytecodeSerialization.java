@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.bytecode;
 
+import static com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen.BYTECODE;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -50,8 +52,8 @@ import java.nio.ByteBuffer;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -123,7 +125,7 @@ public final class SLBytecodeSerialization {
 
     public static BytecodeRootNodes<SLBytecodeRootNode> deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(inputData));
-        return SLBytecodeRootNodeGen.deserialize(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
+        return BYTECODE.deserialize(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
             byte tag;
             switch (tag = buffer.readByte()) {
                 case CODE_SL_NULL:

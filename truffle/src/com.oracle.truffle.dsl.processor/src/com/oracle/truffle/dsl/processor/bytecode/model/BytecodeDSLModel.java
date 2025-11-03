@@ -80,16 +80,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public final TypeElement templateType;
     // The generated class.
     public final String modelName;
-    // The abstract builder class (different from builderType if GenerateBytecodeTestVariants used)
-    public final TypeMirror abstractBuilderType;
 
-    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name,
-                    TypeMirror abstractBuilderType) {
+    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name) {
         super(context, templateType, mirror);
         this.context = context;
         this.templateType = templateType;
         this.modelName = name;
-        this.abstractBuilderType = abstractBuilderType;
     }
 
     private int operationId = 1;
@@ -136,6 +132,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public String variadicStackLimit;
     public DSLExpression variadicStackLimitExpression;
 
+    public boolean enableInstructionTracing;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement interceptControlFlowException;
@@ -194,6 +191,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagYieldNullInstruction;
     public InstructionModel tagResumeInstruction;
     public InstructionModel clearLocalInstruction;
+    public InstructionModel traceInstruction;
+    public int traceInstructionInstrumentationIndex = -1;
 
     public ExportsData tagTreeNodeLibrary;
 
@@ -271,7 +270,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean isBytecodeUpdatable() {
-        return !getInstrumentations().isEmpty() || (enableTagInstrumentation && !getProvidedTags().isEmpty());
+        return hasInstrumentations() || (enableTagInstrumentation && !getProvidedTags().isEmpty());
     }
 
     public boolean hasYieldOperation() {
@@ -305,8 +304,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return op;
     }
 
+    public boolean hasInstrumentations() {
+        return !instrumentations.isEmpty() || enableInstructionTracing;
+    }
+
     public List<CustomOperationModel> getInstrumentations() {
         return instrumentations;
+    }
+
+    public int getInstrumentationsCount() {
+        return instrumentations.size() + (enableInstructionTracing ? 1 : 0);
     }
 
     public CustomOperationModel customRegularOperation(OperationKind kind, String name, String javadoc, TypeElement typeElement, AnnotationMirror mirror) {
@@ -466,7 +473,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        short currentId = 1;
+        short currentId = getInstructionStartIndex();
         for (InstructionModel m : newInstructions.values()) {
             m.setId(currentId++);
             m.validateAlignment();
@@ -485,6 +492,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
 
         this.instructions = newInstructions;
+    }
+
+    public short getInstructionStartIndex() {
+        return 1;
     }
 
     @Override

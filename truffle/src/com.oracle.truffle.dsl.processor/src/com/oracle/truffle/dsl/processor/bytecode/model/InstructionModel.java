@@ -100,6 +100,7 @@ public final class InstructionModel implements PrettyPrintable {
         TAG_YIELD,
         TAG_YIELD_NULL,
         TAG_RESUME,
+        TRACE_INSTRUCTION,
         INVALIDATE;
 
         public boolean isLocalVariableAccess() {
@@ -531,8 +532,14 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
+    public boolean isTraceInstrumentation() {
+        return kind == InstructionKind.TRACE_INSTRUCTION;
+    }
+
     public boolean isInstrumentation() {
-        if (isTagInstrumentation()) {
+        if (isTraceInstrumentation()) {
+            return true;
+        } else if (isTagInstrumentation()) {
             return true;
         } else if (kind == InstructionKind.CUSTOM) {
             return operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
