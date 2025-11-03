@@ -5989,3 +5989,72 @@ class MicronautHelloWorldWrkBenchmarkSuite(BaseMicronautHelloWorldBenchmarkSuite
 
 
 mx_benchmark.add_bm_suite(MicronautHelloWorldWrkBenchmarkSuite())
+
+
+class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, NativeImageBenchmarkMixin):
+
+    def get_jmh_result_file(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        Only generate a JMH result file in the run stage. Otherwise the file-based rule (see
+        :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
+        stage.
+        """
+        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode and self.stages_info.current_stage.is_image():
+            return None
+        return super().get_jmh_result_file(bm_suite_args)
+
+    def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        JMH benchmarks need to use the fallback mode if --jmh-run-individually is used.
+        The flag causes one native image to be built per JMH benchmark. This is fundamentally incompatible with the
+        default benchmarking mode of running each stage on its own because a benchmark will overwrite the intermediate
+        files of the previous benchmark if not all stages are run at once.
+
+        In the fallback mode, collection of performance data is limited. Only performance data of the ``run`` stage can
+        reliably be collected. Other metrics, such as image build statistics or profiling performance cannot reliably be
+        collected because they cannot be attributed so a specific individual JMH benchmark.
+        """
+        if self.jmhArgs(bm_suite_args).jmh_run_individually:
+            return "--jmh-run-individually is not compatible with selecting individual stages"
+        else:
+            return None
+
+    def extra_image_build_argument(self, benchmark, args):
+        # JMH does HotSpot-specific field offset checks in class initializers
+        return ['--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal'] + super(JMHNativeImageBenchmarkMixin, self).extra_image_build_argument(benchmark, args)
+
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        # JMH does not support forks with native-image. In the distant future we can capture this case.
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args, image_run_args)
+        return ['-f0'] + strip_args_with_number(['-f'], user_args)
+
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        # Don't waste time and energy collecting reflection config.
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        return ['-f0', '-wi', '1', '-i1'] + strip_args_with_number(['-f', '-wi', '-i'], user_args)
+
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
+        # Don't waste time profiling the same code but still wait for compilation on HotSpot.
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
+        return ['-f0', '-wi', '1', '-i3'] + strip_args_with_number(['-f', '-wi', '-i'], user_args)
+
+    @staticmethod
+    def native_image_success_patterns():
+        return SUCCESSFUL_STAGE_PATTERNS
+
+    def benchmarkName(self):
+        return self.name()
+
+
+class JMHJarBasedNativeImageBenchmarkMixin(JMHNativeImageBenchmarkMixin):
+    """Provides extra command line checking for JAR-based native image JMH suites."""
+
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        jmhOptions = self._extractJMHOptions(args)
+        for index, option in enumerate(jmhOptions):
+            argument = jmhOptions[index+1] if index + 1 < len(jmhOptions) else None
+            if option == '-f' and argument != '0':
+                mx.warn(f"JMH native images don't support -f with non-zero argument {argument}, ignoring it")
+            elif option.startswith('-jvmArgs'):
+                mx.warn(f"JMH native images don't support option {option}, ignoring it")
+        return super(JMHJarBasedNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
