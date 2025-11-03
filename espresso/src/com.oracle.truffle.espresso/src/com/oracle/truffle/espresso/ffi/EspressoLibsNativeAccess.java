@@ -45,13 +45,25 @@ import sun.misc.Unsafe;
 
 /**
  * Uses Espresso's implementation of standard JDK libraries, falling back to a delegate if the
- * implementation is missing.
- * <p>
- * This can be used in conjunction with option {@code 'java.GuestNativeAccess=no-native'} or
- * {@code env.isNativeAccessAllowed() == false} to prevent guest code from accessing the native
- * world, but still allowing the java standard library to work.
+ * implementation is missing. Espresso Libs is automatically enabled if native access is disabled
+ * (e.g., {@code java.GuestNativeAccess=no-native} or {@code env.isNativeAccessAllowed() == false}).
+ *
+ * Key implementation details:
+ * <ul>
+ * <li>Startup libraries (libnespresso, libjvm, libjimage) are substituted to prevent initialization
+ * of native environments such as {@link com.oracle.truffle.espresso.jni.JniEnv} .</li>
+ * <li>A custom guest FileSystem is backed by Truffle's VFS (see
+ * sun.nio.fs.TruffleFileSystemProvider). The semantics of the FileSystem is implemented in
+ * {@link com.oracle.truffle.espresso.io.TruffleIO} on the host side.</li>
+ * <li>Network functionality is implemented using host sockets, relying on
+ * {@code env.isSocketIOAllowed()
+ * == true}.</li>
+ * <li>Guest memory will be virtualized with (GR-70643).</li>
+ * </ul>
  *
  * @see com.oracle.truffle.espresso.libs.Libs
+ * @see com.oracle.truffle.espresso.io.TruffleIO
+ * @see com.oracle.truffle.espresso.libs.LibsState
  */
 public class EspressoLibsNativeAccess extends ContextAccessImpl implements NativeAccess {
 
