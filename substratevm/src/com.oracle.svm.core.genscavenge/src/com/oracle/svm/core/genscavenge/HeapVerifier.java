@@ -318,9 +318,9 @@ public class HeapVerifier {
             // Not all objects in the image heap have the remembered set bit in the header, so
             // we can't verify that this bit is set.
 
-        } else if (space.isOldSpace()) {
+        } else if (space.isOldSpace() || space.isMetaspace()) {
             if (SerialGCOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
-                Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                Log.log().string("Object ").zhex(ptr).string(" is in ").string(space.getName()).string(" chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
                 return false;
             }
         }
