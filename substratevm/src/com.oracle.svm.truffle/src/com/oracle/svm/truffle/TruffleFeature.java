@@ -235,24 +235,12 @@ public class TruffleFeature implements InternalFeature {
     private final Set<ResolvedJavaMethod> warnMethods;
     private final Set<Pair<ResolvedJavaMethod, String>> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
-    /**
-     * Holds the {@link KnownTruffleTypes} instance, which is initialized lazily after
-     * {@link RuntimeCompilationFeature#beforeAnalysis(BeforeAnalysisAccess)} completes runtime
-     * configuration setup.
-     *
-     * @see RuntimeCompilationFeature#addAfterInstallRuntimeConfigCallback(Runnable)
-     */
-    private volatile KnownTruffleTypes types;
 
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         tempTargetAllowlistMethods = new HashSet<>();
         warnMethods = new HashSet<>();
         neverPartOfCompilationViolations = ConcurrentHashMap.newKeySet();
-    }
-
-    public KnownTruffleTypes getTypes() {
-        return types;
     }
 
     @Override
@@ -307,9 +295,9 @@ public class TruffleFeature implements InternalFeature {
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         runtimeCompilationFeature.addAfterInstallRuntimeConfigCallback(() -> {
             Providers providers = TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders();
-            types = new SubstrateKnownTruffleTypes(truffleRuntime, providers.getMetaAccess(), providers.getConstantReflection());
+            ImageSingletons.add(KnownTruffleTypes.class, new SubstrateKnownTruffleTypes(truffleRuntime, providers.getMetaAccess(), providers.getConstantReflection()));
         });
-        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime, this));
+        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -402,7 +390,7 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        registerKnownTruffleFields(config, types);
+        registerKnownTruffleFields(config, ImageSingletons.lookup(KnownTruffleTypes.class));
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),

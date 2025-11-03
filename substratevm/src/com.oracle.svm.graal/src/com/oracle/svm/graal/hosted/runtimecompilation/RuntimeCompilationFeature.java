@@ -237,7 +237,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
     private Consumer<CallTreeInfo> blocklistChecker = _ -> {
     };
-    private List<Runnable> afterInstallRuntimeConfig;
+    private final List<Runnable> afterInstallRuntimeConfigCallbacks = new ArrayList<>();
 
     public HostedProviders getHostedProviders() {
         return hostedProviders;
@@ -265,11 +265,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
      * instances.
      * </p>
      */
-    public synchronized void addAfterInstallRuntimeConfigCallback(Runnable callback) {
-        if (afterInstallRuntimeConfig == null) {
-            afterInstallRuntimeConfig = new ArrayList<>();
-        }
-        afterInstallRuntimeConfig.add(callback);
+    public void addAfterInstallRuntimeConfigCallback(Runnable callback) {
+        afterInstallRuntimeConfigCallbacks.add(callback);
     }
 
     @SuppressWarnings("unused")
@@ -455,15 +452,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) c;
         installRuntimeConfig(config);
 
-        List<Runnable> callbacks;
-        synchronized (this) {
-            if (afterInstallRuntimeConfig != null) {
-                callbacks = List.copyOf(afterInstallRuntimeConfig);
-            } else {
-                callbacks = List.of();
-            }
-        }
-        for (Runnable callback : callbacks) {
+        for (Runnable callback : afterInstallRuntimeConfigCallbacks) {
             callback.run();
         }
 
