@@ -170,7 +170,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
                 initialize_args.update(new_args)
                 print("Retrying with new args:", ", ".join(new_args))
             else:
-                break
+                sys.exit(1)
 
 def _generate_effective_pom(group_id, artifact_id, version):
     '''
@@ -185,14 +185,24 @@ def _generate_effective_pom(group_id, artifact_id, version):
         _update_dependency_scopes(dependencies)
         _generate_pom(dependencies)
 
-        dependency_list = subprocess.check_output([
-            'mvn',
-            '-B',
-            'dependency:list',
-            '-DexcludeScope=system',
-            f'-Dos.detected.arch={os_arch}',
-            f'-Dos.detected.classifier={os_classifier}',
-            f'-Dos.detected.name={os_name}']).decode('utf-8').rstrip()
+        try:
+            dependency_list = subprocess.check_output([
+                'mvn',
+                '-B',
+                'dependency:list',
+                '-DexcludeScope=system',
+                f'-Dos.detected.arch={os_arch}',
+                f'-Dos.detected.classifier={os_classifier}',
+                f'-Dos.detected.name={os_name}'
+            ], stderr=subprocess.STDOUT)
+            dependency_list = dependency_list.decode('utf-8').rstrip()
+        except subprocess.CalledProcessError as e:
+            print("\nMaven dependency:list failed!")
+            print("Command:", " ".join(e.cmd))
+            print("\n--- Maven output ---\n")
+            if e.output:
+                print(e.output.decode('utf-8', errors='replace'))
+            raise
 
         detected_dependencies = _parse_mvn_dependency_list(dependency_list)
         before = len(dependencies)
