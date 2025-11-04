@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 /**
  * Represents the result of a check performed by a {@link Checker}.
@@ -6,7 +6,7 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 public enum CheckerStatus {
     INFO,
     WARNING,
-    ERROR;
+    ERROR, OK;
 
     @Override
     public String toString() {

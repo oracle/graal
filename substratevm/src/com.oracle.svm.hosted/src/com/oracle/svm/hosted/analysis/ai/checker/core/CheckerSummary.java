@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import java.util.LinkedList;
 import java.util.List;

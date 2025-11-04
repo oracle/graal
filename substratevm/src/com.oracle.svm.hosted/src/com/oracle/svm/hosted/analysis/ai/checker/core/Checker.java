@@ -1,7 +1,7 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.nodes.StructuredGraph;

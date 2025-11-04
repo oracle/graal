@@ -1,8 +1,11 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.facts.ConstantFact;
-import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;

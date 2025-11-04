@@ -1,10 +1,12 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.util.IgvDumper;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -18,12 +20,6 @@ import java.util.List;
 
 public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>> {
 
-    /**
-     * NOTE: This checker performs optimizations of a graph by deleting parts of the GraalIR that are unreachable at runtime
-     * This is done for demonstration purposes, the checkers should generally not modify the actual graphs of methods
-     * In the future, a specialized component can be done to handle the optimization logic based on the information
-     * inferred from the abstract interpretation.
-     */
     @Override
     public String getDescription() {
         return "Pentagon domain checker";
@@ -49,9 +45,6 @@ public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>
                 makeIfBranchUnreachable(ifNode, false, graph);
             }
         }
-
-        // TODO: Enable dumping again when
-//        IgvDumper.dumpPhase(method, graph, "After phase Abstract Interpretation Pentagon Analysis");
         return checkerResults;
     }
 

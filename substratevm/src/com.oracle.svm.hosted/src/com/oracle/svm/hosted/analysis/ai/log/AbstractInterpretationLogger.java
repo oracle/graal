@@ -8,11 +8,14 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -75,10 +78,6 @@ public final class AbstractInterpretationLogger {
             throw new IllegalStateException("Logger not initialized. Call getInstance(AnalysisMethod, DebugContext, String) first.");
         }
         return instance;
-    }
-
-    public DebugContext getDebugContext() {
-        return debugContext;
     }
 
     public void log(String message, LoggerVerbosity verbosity) {
@@ -207,14 +206,14 @@ public final class AbstractInterpretationLogger {
      * Export a graph to JSON format for sharing and analysis.
      * This is useful for getting help with abstract interpretation analysis.
      *
-     * @param cfg The control flow graph
-     * @param method The analysis method
+     * @param cfg        The control flow graph
+     * @param method     The analysis method
      * @param outputPath Path to write the JSON file
      */
     public void exportGraphToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
         try {
             com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
             exporter.exportToJson(cfg, method, outputPath);
             log("Graph exported to JSON: " + outputPath, LoggerVerbosity.INFO);
         } catch (Exception e) {
@@ -225,14 +224,14 @@ public final class AbstractInterpretationLogger {
     /**
      * Export a graph to text format for manual inspection.
      *
-     * @param cfg The control flow graph
-     * @param method The analysis method
+     * @param cfg        The control flow graph
+     * @param method     The analysis method
      * @param outputPath Path to write the text file
      */
     public void exportGraphToText(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
         try {
             com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
             exporter.exportToText(cfg, method, outputPath);
             log("Graph exported to text: " + outputPath, LoggerVerbosity.INFO);
         } catch (Exception e) {
@@ -243,15 +242,15 @@ public final class AbstractInterpretationLogger {
     /**
      * Export a graph to compact format for quick sharing.
      *
-     * @param graph The structured graph
-     * @param cfg The control flow graph
-     * @param method The analysis method
+     * @param graph      The structured graph
+     * @param cfg        The control flow graph
+     * @param method     The analysis method
      * @param outputPath Path to write the text file
      */
     public void exportGraphToCompact(StructuredGraph graph, ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
         try {
             com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
             exporter.exportToCompact(graph, cfg, method, outputPath);
             log("Graph exported to compact format: " + outputPath, LoggerVerbosity.INFO);
         } catch (Exception e) {
@@ -266,6 +265,37 @@ public final class AbstractInterpretationLogger {
         public static final String YELLOW = "\033[0;33m";
         public static final String BLUE = "\033[0;34m";
         public static final String PURPLE = "\033[0;35m";
+    }
+
+    public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
+        if (method == null || graph == null) {
+            System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
+            return;
+        }
+
+        AnalysisServices services;
+        try {
+            services = AnalysisServices.getInstance();
+        } catch (IllegalStateException ise) {
+            System.err.println("dumpGraph: AnalysisServices not initialized; skipping dump for method=" + method + ", phase=" + phaseName);
+            return;
+        }
+
+        var bb = services.getInflation();
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
+
+        String scopeName = phaseName == null ? "" : phaseName;
+        try (DebugContext.Scope s = debug.scope(scopeName, graph)) {
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "After phase " + phaseName);
+        } catch (Throwable ex) {
+            try {
+                throw debug.handle(ex);
+            } catch (Throwable inner) {
+                System.err.println("dumpGraph: failed to dump graph for method=" + method + ", phase=" + phaseName + ": " + inner.getMessage());
+                inner.printStackTrace(System.err);
+            }
+        }
     }
 }
 

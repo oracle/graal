@@ -1,12 +1,13 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.checker.annotator.AssertInjector;
+import com.oracle.svm.hosted.analysis.ai.checker.annotator.RewriterOrchestrator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,16 +54,14 @@ public final class CheckerManager {
         }
 
         logger.log("Aggregated facts produced by checkers: " + allFacts, LoggerVerbosity.CHECKER);
+        FactAggregator aggregator = FactAggregator.aggregate(allFacts);
+        RewriterOrchestrator.apply(method, abstractState.getCfgGraph().graph, aggregator);
         AssertInjector.injectAnchors(abstractState.getCfgGraph().graph, allFacts);
         try {
             AbstractInterpretationLogger.dumpGraph(method, abstractState.getCfgGraph().graph, "GraalAF");
         } catch (Exception e) {
             logger.log("IGV dump failed: " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);
         }
-
-//        for (CheckerSummary checkerSummary : checkerSummaries) {
-//            logCheckerSummary(checkerSummary);
-//        }
     }
 
     private void logCheckerSummary(CheckerSummary checkerSummary) {

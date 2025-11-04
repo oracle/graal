@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 /*
  * Represents the result of a check performed by a checker.

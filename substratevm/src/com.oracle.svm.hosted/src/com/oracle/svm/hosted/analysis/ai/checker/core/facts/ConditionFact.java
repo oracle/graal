@@ -1,6 +1,5 @@
-package com.oracle.svm.hosted.analysis.ai.checker.facts;
+package com.oracle.svm.hosted.analysis.ai.checker.core.facts;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import jdk.graal.compiler.graph.Node;
 
 /**

@@ -1,6 +1,9 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.graph.Node;

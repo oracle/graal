@@ -7,8 +7,11 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.BranchTruthChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConditionTruthChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantPropagationChecker;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.IndexSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -53,7 +56,7 @@ public class AbstractInterpretationDriver {
     }
 
     /**
-     * This is the entry method for setting up analyses in GraalAIF.
+     * This is the entry method for setting up analyses in GraalAF.
      * We can:
      * 1. Provide the {@link com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer} to the {@link AnalyzerManager}.
      * These analyzers will then run as a part of the Native Image compilation process.
@@ -75,13 +78,16 @@ public class AbstractInterpretationDriver {
                 new DataFlowIntervalAbstractInterpreter();
 
         /* 3. Build analyzer */
-        var analyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
+        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
-                .registerChecker(new DivisionByZeroChecker())
+                .registerChecker(new ConstantPropagationChecker())
+                .registerChecker(new ConditionTruthChecker())
+                .registerChecker(new BranchTruthChecker())
+                .registerChecker(new IndexSafetyChecker())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
 
         /* 4. Register with manager */
-        analyzerManager.registerAnalyzer(analyzer);
+        analyzerManager.registerAnalyzer(intraDataFlowAnalyzer);
     }
 }

@@ -1,6 +1,9 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.util.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.analyses.leaks.set.ResourceId;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
