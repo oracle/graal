@@ -99,4 +99,8 @@ final class ResolvedJavaModuleImpl implements ResolvedJavaModule {
         }
         throw new IllegalArgumentException("Unsupported ResolvedJavaModule implementation: " + module.getClass().getName());
     }
+
+    static void addReads(Module accessingModule, ResolvedJavaModule declaringModule) {
+        ModuleSupport.accessModule(ModuleSupport.Access.OPEN, accessingModule, toImpl(declaringModule).module);
+    }
 }
