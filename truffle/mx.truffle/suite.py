@@ -289,8 +289,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:POLYGLOT",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
+        "com.oracle.truffle.api.bytecode",
         "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
@@ -486,6 +485,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "requires" : [
+        "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",

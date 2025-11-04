@@ -131,7 +131,7 @@ public final class BytecodeLocation {
      */
     @Override
     public String toString() {
-        return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bytecodeIndex);
+        return String.format("BytecodeLocation[bytecode=%s, bci=%d]@%s", bytecodes, bytecodeIndex, getInstruction().toString());
     }
 
     /**

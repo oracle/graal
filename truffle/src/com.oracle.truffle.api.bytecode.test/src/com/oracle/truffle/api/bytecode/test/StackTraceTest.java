@@ -98,16 +98,16 @@ public class StackTraceTest extends AbstractInstructionTest {
 
     enum Interpreter {
 
-        CACHED_DEFAULT(StackTraceTestRootNodeCachedDefault.class, true),
-        UNCACHED_DEFAULT(StackTraceTestRootNodeUncachedDefault.class, false),
-        CACHED_BCI_IN_FRAME(StackTraceTestRootNodeCachedBciInFrame.class, true),
-        UNCACHED_BCI_IN_FRAME(StackTraceTestRootNodeUncachedBciInFrame.class, false);
+        CACHED_DEFAULT(StackTraceTestRootNodeCachedDefault.BYTECODE, true),
+        UNCACHED_DEFAULT(StackTraceTestRootNodeUncachedDefault.BYTECODE, false),
+        CACHED_BCI_IN_FRAME(StackTraceTestRootNodeCachedBciInFrame.BYTECODE, true),
+        UNCACHED_BCI_IN_FRAME(StackTraceTestRootNodeUncachedBciInFrame.BYTECODE, false);
 
-        final Class<? extends StackTraceTestRootNode> clazz;
+        final StackTraceTestRootNodeBuilder.BytecodeVariant variant;
         final boolean cached;
 
-        Interpreter(Class<? extends StackTraceTestRootNode> clazz, boolean cached) {
-            this.clazz = clazz;
+        Interpreter(StackTraceTestRootNodeBuilder.BytecodeVariant clazz, boolean cached) {
+            this.variant = clazz;
             this.cached = cached;
         }
     }
@@ -118,7 +118,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     record Run(Interpreter interpreter, int depth) {
         @Override
         public String toString() {
-            return interpreter.clazz.getSimpleName() + "(depth=" + depth + ")";
+            return interpreter.variant.getGeneratedClass().getSimpleName() + "(depth=" + depth + ")";
         }
     }
 
@@ -445,7 +445,6 @@ public class StackTraceTest extends AbstractInstructionTest {
                 return TruffleStackTrace.getStackTrace(ex);
             }
         }
-
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -485,8 +484,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     }
 
     private StackTraceTestRootNode parse(BytecodeParser<StackTraceTestRootNodeBuilder> parser) {
-        BytecodeRootNodes<StackTraceTestRootNode> nodes = StackTraceTestRootNodeBuilder.invokeCreate((Class<? extends StackTraceTestRootNode>) run.interpreter.clazz,
-                        LANGUAGE, BytecodeConfig.WITH_SOURCE, (BytecodeParser<? extends StackTraceTestRootNodeBuilder>) parser);
+        BytecodeRootNodes<StackTraceTestRootNode> nodes = run.interpreter.variant.create(LANGUAGE, BytecodeConfig.WITH_SOURCE, parser);
         StackTraceTestRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
         return root;
     }

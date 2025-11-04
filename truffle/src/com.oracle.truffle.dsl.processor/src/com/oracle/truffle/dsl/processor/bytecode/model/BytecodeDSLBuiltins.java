@@ -396,6 +396,11 @@ public class BytecodeDSLBuiltins {
             m.tagResumeInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
         }
 
+        if (m.enableInstructionTracing) {
+            m.traceInstruction = m.instruction(InstructionKind.TRACE_INSTRUCTION, "trace.instruction", m.signature(void.class));
+            m.traceInstructionInstrumentationIndex = m.getInstrumentations().size();
+        }
+
         // invalidate instructions should be the last instructions to add as it they depend on the
         // length of all other instructions
         if (m.isBytecodeUpdatable()) {
