@@ -207,7 +207,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         static SingletonTraitMap getAnnotatedTraits(Class<?> singletonClass, AnnotationExtractor extractor, boolean layeredBuild) {
             SingletonTraitMap traitMap = SingletonTraitMap.create();
             if (extractor != null) {
-                SingletonTraits annotation = extractor.extractAnnotation(singletonClass, SingletonTraits.class, false);
+                SingletonTraits annotation = extractor.extractAnnotation(singletonClass, SingletonTraits.class);
 
                 if (annotation != null) {
                     if (annotation.access() != null) {
@@ -630,7 +630,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             SingletonInfo info = configObjects.computeIfAbsent(key, k -> {
 
-                SingletonTraits annotation = extractor.extractAnnotation(k, SingletonTraits.class, false);
+                SingletonTraits annotation = extractor.extractAnnotation(k, SingletonTraits.class);
                 if (annotation != null) {
                     if (annotation.layeredInstallationKind() != null) {
                         var installationKindSupplierClass = annotation.layeredInstallationKind();

@@ -41,6 +41,7 @@
 package org.graalvm.nativeimage.impl;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
 
 import org.graalvm.nativeimage.Platform;
@@ -66,6 +67,16 @@ public interface AnnotationExtractor {
      * @see AnnotatedElement#getDeclaredAnnotation
      */
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
+
+    /**
+     * Gets {@code element}'s annotation of type {@code annotationType} if such an annotation is
+     * present, else null. This method will also search {@code element}'s superclasses if
+     * {@code annotationType} is {@linkplain Inherited inherited}.
+     */
+    default <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType) {
+        Inherited inherited = annotationType.getAnnotation(Inherited.class);
+        return extractAnnotation(element, annotationType, inherited == null);
+    }
 
     /**
      * Gets the {@link Annotation#annotationType()}s for all annotations on {@code element}. This
