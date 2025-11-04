@@ -53,21 +53,24 @@ import jdk.vm.ci.meta.annotation.Annotated;
  */
 public final class AnnotationUtil {
 
+    /**
+     * Lazily created singleton to be used when outside the scope of a Native Image build.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     static class Lazy {
         static final AnnotatedObjectAccess instance;
         static {
-            if (ImageSingletons.contains(AnnotationExtractor.class)) {
-                instance = (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
-            } else {
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
-                instance = new AnnotatedObjectAccess();
-            }
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
+            instance = new AnnotatedObjectAccess();
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static AnnotatedObjectAccess instance() {
+        if (ImageSingletons.contains(AnnotationExtractor.class)) {
+            return (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
+        }
+        // Fall back to singleton when outside scope of a Native Image build.
         return Lazy.instance;
     }
 
