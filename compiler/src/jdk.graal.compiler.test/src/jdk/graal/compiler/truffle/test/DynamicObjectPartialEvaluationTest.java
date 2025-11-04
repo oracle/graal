@@ -78,7 +78,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
     @Test
     public void testFieldLocation() {
         TestDynamicObject obj = newInstanceWithFields();
-        DynamicObject.PutNode.getUncached().put(obj, "key", 22);
+        DynamicObject.PutNode.getUncached().execute(obj, "key", 22);
 
         Object[] args = {obj, 22};
         OptimizedCallTarget callTarget = makeCallTarget(new TestDynamicObjectGetAndPutNode(), "testFieldStoreLoad");
@@ -106,7 +106,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
     @Test
     public void testArrayLocation() {
         TestDynamicObject obj = newInstanceWithoutFields();
-        DynamicObject.PutNode.getUncached().put(obj, "key", 22);
+        DynamicObject.PutNode.getUncached().execute(obj, "key", 22);
 
         Object[] args = {obj, 22};
         OptimizedCallTarget callTarget = makeCallTarget(new TestDynamicObjectGetAndPutNode(), "testArrayStoreLoad");
@@ -148,7 +148,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
             DynamicObject obj = (DynamicObject) arg0;
             if (frame.getArguments().length > 1) {
                 Object arg1 = frame.getArguments()[1];
-                putNode.put(obj, "key", (int) arg1);
+                putNode.execute(obj, "key", (int) arg1);
             }
             int val;
             while (true) {
@@ -156,14 +156,14 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
                 if (val >= 42) {
                     break;
                 }
-                putNode.put(obj, "key", val + 2);
+                putNode.execute(obj, "key", val + 2);
             }
             return val;
         }
 
         private int getInt(DynamicObject obj, Object key) {
             try {
-                return getNode.getIntOrDefault(obj, key, null);
+                return getNode.executeInt(obj, key, null);
             } catch (UnexpectedResultException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }

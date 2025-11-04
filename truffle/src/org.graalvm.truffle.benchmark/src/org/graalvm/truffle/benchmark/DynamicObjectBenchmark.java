@@ -41,6 +41,7 @@
 package org.graalvm.truffle.benchmark;
 
 import java.lang.invoke.MethodHandles;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -110,7 +111,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
             object = new MyDynamicObject(shared.rootShape);
             for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
                 String key = PROPERTY_KEYS[i];
-                DynamicObject.PutNode.getUncached().put(object, key, "testValue");
+                DynamicObject.PutNode.getUncached().execute(object, key, "testValue");
             }
         }
     }
@@ -123,7 +124,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     public void shapeTransitionMapContended(SharedEngineState shared, PerThreadContextState perThread) {
         for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
             DynamicObject object = new MyDynamicObject(shared.rootShape);
-            DynamicObject.PutNode.getUncached().put(object, PROPERTY_KEYS[i], "testValue");
+            DynamicObject.PutNode.getUncached().execute(object, PROPERTY_KEYS[i], "testValue");
             shared.assertSameShape(i, object.getShape());
         }
     }
@@ -136,7 +137,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     public void shapeTransitionMapUncontended(SharedEngineState shared, PerThreadContextState perThread) {
         for (int i = 0; i < PROPERTY_KEYS_PER_ITERATION; i++) {
             DynamicObject object = new MyDynamicObject(shared.rootShape);
-            DynamicObject.PutNode.getUncached().put(object, PROPERTY_KEYS[i], "testValue");
+            DynamicObject.PutNode.getUncached().execute(object, PROPERTY_KEYS[i], "testValue");
             shared.assertSameShape(i, object.getShape());
         }
     }
@@ -160,14 +161,15 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
             for (int i = 0; i < 10; i++) {
                 String key = PROPERTY_KEYS[i];
                 if (key.equals(SOME_KEY_INT)) {
-                    DynamicObject.PutNode.getUncached().put(object, key, i);
+                    DynamicObject.PutNode.getUncached().execute(object, key, i);
                 } else if (key.equals(SOME_KEY_LONG)) {
-                    DynamicObject.PutNode.getUncached().put(object, key, (long) i);
+                    DynamicObject.PutNode.getUncached().execute(object, key, (long) i);
                 } else if (key.equals(SOME_KEY_DOUBLE)) {
-                    DynamicObject.PutNode.getUncached().put(object, key, (double) i);
+                    DynamicObject.PutNode.getUncached().execute(object, key, (double) i);
                 } else {
-                    DynamicObject.PutNode.getUncached().put(object, key, "testValue");
+                    DynamicObject.PutNode.getUncached().execute(object, key, "testValue");
                 }
+                Objects.requireNonNull(DynamicObject.GetNode.getUncached().execute(object, key, null), key);
             }
         }
     }
@@ -177,7 +179,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public Object get(AccessNodeBenchState state) {
         DynamicObject object = state.object;
-        return state.getNode.getOrDefault(object, SOME_KEY, null);
+        return state.getNode.execute(object, SOME_KEY, null);
     }
 
     @Benchmark
@@ -185,7 +187,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public int getInt(AccessNodeBenchState state) throws UnexpectedResultException {
         DynamicObject object = state.object;
-        return state.getNode.getIntOrDefault(object, SOME_KEY_INT, null);
+        return state.getNode.executeInt(object, SOME_KEY_INT, null);
     }
 
     @Benchmark
@@ -193,7 +195,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public long getLong(AccessNodeBenchState state) throws UnexpectedResultException {
         DynamicObject object = state.object;
-        return state.getNode.getLongOrDefault(object, SOME_KEY_LONG, null);
+        return state.getNode.executeLong(object, SOME_KEY_LONG, null);
     }
 
     @Benchmark
@@ -201,7 +203,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public double getDouble(AccessNodeBenchState state) throws UnexpectedResultException {
         DynamicObject object = state.object;
-        return state.getNode.getDoubleOrDefault(object, SOME_KEY_DOUBLE, null);
+        return state.getNode.executeDouble(object, SOME_KEY_DOUBLE, null);
     }
 
     @Benchmark
@@ -209,7 +211,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void put(AccessNodeBenchState state) {
         DynamicObject object = state.object;
-        state.putNode.put(object, SOME_KEY, "updated value");
+        state.putNode.execute(object, SOME_KEY, "updated value");
     }
 
     @Benchmark
@@ -217,7 +219,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void putInt(AccessNodeBenchState state) {
         DynamicObject object = state.object;
-        state.putNode.put(object, SOME_KEY_INT, 42);
+        state.putNode.execute(object, SOME_KEY_INT, 42);
     }
 
     @Benchmark
@@ -225,7 +227,7 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void putLong(AccessNodeBenchState state) {
         DynamicObject object = state.object;
-        state.putNode.put(object, SOME_KEY_LONG, (long) 42);
+        state.putNode.execute(object, SOME_KEY_LONG, (long) 42);
     }
 
     @Benchmark
@@ -233,6 +235,6 @@ public class DynamicObjectBenchmark extends TruffleBenchmark {
     @CompilerControl(CompilerControl.Mode.DONT_INLINE)
     public void putDouble(AccessNodeBenchState state) {
         DynamicObject object = state.object;
-        state.putNode.put(object, SOME_KEY_DOUBLE, (double) 42);
+        state.putNode.execute(object, SOME_KEY_DOUBLE, (double) 42);
     }
 }

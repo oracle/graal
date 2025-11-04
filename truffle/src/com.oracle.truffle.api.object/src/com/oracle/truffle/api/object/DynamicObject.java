@@ -53,6 +53,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -122,7 +123,7 @@ import sun.misc.Unsafe;
  *                 @Cached TruffleString.EqualNode equalNode,
  *                 @Cached TruffleString cachedKey,
  *                 @Cached @Exclusive DynamicObject.GetNode getNode) {
- *     return getNode.getOrDefault(receiver, cachedKey, NULL_VALUE);
+ *     return getNode.execute(receiver, cachedKey, NULL_VALUE);
  * }
  * }
  *
@@ -132,7 +133,7 @@ import sun.misc.Unsafe;
  * @Specialization(limit = "3")
  * static Object read(MyDynamicObjectSubclass receiver, Object key,
  *                 @Cached DynamicObject.GetNode getNode) {
- *     return getNode.getOrDefault(receiver, key, NULL_VALUE);
+ *     return getNode.execute(receiver, key, NULL_VALUE);
  * }
  * }
  *
@@ -140,7 +141,7 @@ import sun.misc.Unsafe;
  * @ExportMessage
  * Object readMember(String name,
  *                 @Cached DynamicObject.GetNode getNode) throws UnknownIdentifierException {
- *     Object result = getNode.getOrDefault(this, name, null);
+ *     Object result = getNode.execute(this, name, null);
  *     if (result == null) {
  *         throw UnknownIdentifierException.create(name);
  *     }
@@ -349,11 +350,10 @@ public abstract class DynamicObject implements TruffleObject {
      * <p>
      * Specialized return type variants are available for when a primitive result is expected.
      *
-     * @see #getOrNull(DynamicObject, Object)
-     * @see #getOrDefault(DynamicObject, Object, Object)
-     * @see #getIntOrDefault(DynamicObject, Object, Object)
-     * @see #getLongOrDefault(DynamicObject, Object, Object)
-     * @see #getDoubleOrDefault(DynamicObject, Object, Object)
+     * @see #execute(DynamicObject, Object, Object)
+     * @see #executeInt(DynamicObject, Object, Object)
+     * @see #executeLong(DynamicObject, Object, Object)
+     * @see #executeDouble(DynamicObject, Object, Object)
      * @since 25.1
      */
     @GeneratePackagePrivate
@@ -366,13 +366,6 @@ public abstract class DynamicObject implements TruffleObject {
         GetNode() {
         }
 
-        /**
-         * The same as {@code getOrDefault(receiver, key, null)}.
-         */
-        public final Object getOrNull(DynamicObject receiver, Object key) {
-            return getOrDefault(receiver, key, null);
-        }
-
         // @formatter:off
         /**
          * Gets the value of an existing property or returns the provided default value if no such property exists.
@@ -383,18 +376,17 @@ public abstract class DynamicObject implements TruffleObject {
          * @Specialization(limit = "3")
          * static Object read(DynamicObject receiver, Object key,
          *                 @Cached DynamicObject.GetNode getNode) {
-         *     return getNode.getOrDefault(receiver, key, NULL_VALUE);
+         *     return getNode.execute(receiver, key, NULL_VALUE);
          * }
          * }
          *
          * @param key the property key
          * @param defaultValue value to be returned if the property does not exist
          * @return the property's value if it exists, else {@code defaultValue}.
+         * @since 25.1
          */
         // @formatter:on
-        public final Object getOrDefault(DynamicObject receiver, Object key, Object defaultValue) {
-            return executeImpl(receiver, key, defaultValue);
-        }
+        public abstract Object execute(DynamicObject receiver, Object key, Object defaultValue);
 
         /**
          * Gets the value of an existing property or returns the provided default value if no such
@@ -405,10 +397,10 @@ public abstract class DynamicObject implements TruffleObject {
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
          *             missing) is not an {@code int}
+         * @see #execute(DynamicObject, Object, Object)
+         * @since 25.1
          */
-        public final int getIntOrDefault(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            return executeImplInt(receiver, key, defaultValue);
-        }
+        public abstract int executeInt(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
 
         /**
          * Gets the value of an existing property or returns the provided default value if no such
@@ -419,10 +411,10 @@ public abstract class DynamicObject implements TruffleObject {
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
          *             missing) is not an {@code long}
+         * @see #execute(DynamicObject, Object, Object)
+         * @since 25.1
          */
-        public final long getLongOrDefault(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            return executeImplLong(receiver, key, defaultValue);
-        }
+        public abstract long executeLong(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
 
         /**
          * Gets the value of an existing property or returns the provided default value if no such
@@ -433,20 +425,10 @@ public abstract class DynamicObject implements TruffleObject {
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
          *             missing) is not an {@code double}
+         * @see #execute(DynamicObject, Object, Object)
+         * @since 25.1
          */
-        public final double getDoubleOrDefault(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException {
-            return executeImplDouble(receiver, key, defaultValue);
-        }
-
-        // private
-
-        abstract Object executeImpl(DynamicObject receiver, Object key, Object defaultValue);
-
-        abstract int executeImplInt(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
-
-        abstract long executeImplLong(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
-
-        abstract double executeImplDouble(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
+        public abstract double executeDouble(DynamicObject receiver, Object key, Object defaultValue) throws UnexpectedResultException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"guard", "key == cachedKey"}, limit = "SHAPE_CACHE_LIMIT", rewriteOn = UnexpectedResultException.class)
@@ -581,12 +563,12 @@ public abstract class DynamicObject implements TruffleObject {
      * Additional variants allow setting property flags, only setting the property if it's either
      * absent or present, and setting constant properties stored in the shape.
      *
-     * @see #put(DynamicObject, Object, Object)
-     * @see #putIfAbsent(DynamicObject, Object, Object)
-     * @see #putIfPresent(DynamicObject, Object, Object)
-     * @see #putWithFlags(DynamicObject, Object, Object, int)
-     * @see #putWithFlagsIfAbsent(DynamicObject, Object, Object, int)
-     * @see #putWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @see #execute(DynamicObject, Object, Object)
+     * @see #executeIfAbsent(DynamicObject, Object, Object)
+     * @see #executeIfPresent(DynamicObject, Object, Object)
+     * @see #executeWithFlags(DynamicObject, Object, Object, int)
+     * @see #executeWithFlagsIfAbsent(DynamicObject, Object, Object, int)
+     * @see #executeWithFlagsIfPresent(DynamicObject, Object, Object, int)
      * @see PutConstantNode
      * @since 25.1
      */
@@ -605,7 +587,7 @@ public abstract class DynamicObject implements TruffleObject {
          * Sets the value of an existing property or adds a new property if no such property exists.
          *
          * A newly added property will have flags 0; flags of existing properties will not be changed.
-         * Use {@link #putWithFlags} to set property flags as well.
+         * Use {@link #executeWithFlags} to set property flags as well.
          *
          * <h3>Usage example:</h3>
          *
@@ -613,17 +595,18 @@ public abstract class DynamicObject implements TruffleObject {
          * @ExportMessage
          * Object writeMember(String member, Object value,
          *                 @Cached DynamicObject.PutNode putNode) {
-         *     putNode.put(this, member, value);
+         *     putNode.execute(this, member, value);
          * }
          * }
          *
          * @param key the property key
          * @param value the value to be set
-         * @see #putIfPresent(DynamicObject, Object, Object)
-         * @see #putWithFlags(DynamicObject, Object, Object, int)
+         * @see #executeIfPresent (DynamicObject, Object, Object)
+         * @see #executeWithFlags (DynamicObject, Object, Object, int)
          */
         // @formatter:on
-        public final void put(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final void execute(DynamicObject receiver, Object key, Object value) {
             executeImpl(receiver, key, value, Flags.DEFAULT, 0);
         }
 
@@ -634,9 +617,10 @@ public abstract class DynamicObject implements TruffleObject {
          * @param value value to be set
          * @return {@code true} if the property was present and the value set, otherwise
          *         {@code false}
-         * @see #put(DynamicObject, Object, Object)
+         * @see #execute(DynamicObject, Object, Object)
          */
-        public final boolean putIfPresent(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeIfPresent(DynamicObject receiver, Object key, Object value) {
             return executeImpl(receiver, key, value, Flags.IF_PRESENT, 0);
         }
 
@@ -647,37 +631,43 @@ public abstract class DynamicObject implements TruffleObject {
          * @param value value to be set
          * @return {@code true} if the property was absent and the value set, otherwise
          *         {@code false}
-         * @see #put(DynamicObject, Object, Object)
+         * @see #execute(DynamicObject, Object, Object)
          */
-        public final boolean putIfAbsent(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeIfAbsent(DynamicObject receiver, Object key, Object value) {
             return executeImpl(receiver, key, value, Flags.IF_ABSENT, 0);
         }
 
         /**
-         * Like {@link #put(DynamicObject, Object, Object)}, but additionally assigns flags to the
-         * property. If the property already exists, its flags will be updated before the value is
-         * set.
+         * Like {@link #execute(DynamicObject, Object, Object)}, but additionally assigns flags to
+         * the property. If the property already exists, its flags will be updated before the value
+         * is set.
          *
          * @param key property identifier
          * @param value value to be set
          * @param propertyFlags flags to be set
-         * @see #put(DynamicObject, Object, Object)
+         * @see #execute(DynamicObject, Object, Object)
          */
-        public final void putWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final void executeWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             executeImpl(receiver, key, value, Flags.DEFAULT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
-         * Like {@link #putIfPresent(DynamicObject, Object, Object)} but also sets property flags.
+         * Like {@link #executeIfPresent(DynamicObject, Object, Object)} but also sets property
+         * flags.
          */
-        public final boolean putWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
-         * Like {@link #putIfAbsent(DynamicObject, Object, Object)} but also sets property flags.
+         * Like {@link #executeIfAbsent(DynamicObject, Object, Object)} but also sets property
+         * flags.
          */
-        public final boolean putWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
@@ -769,12 +759,12 @@ public abstract class DynamicObject implements TruffleObject {
      * Additional variants allow setting property flags, only setting the property if it's either
      * absent or present, and setting constant properties stored in the shape.
      *
-     * @see #putConstant(DynamicObject, Object, Object)
-     * @see #putConstantIfAbsent(DynamicObject, Object, Object)
-     * @see #putConstantIfPresent(DynamicObject, Object, Object)
-     * @see #putConstantWithFlags(DynamicObject, Object, Object, int)
-     * @see #putConstantWithFlagsIfAbsent(DynamicObject, Object, Object, int)
-     * @see #putConstantWithFlagsIfPresent(DynamicObject, Object, Object, int)
+     * @see #execute(DynamicObject, Object, Object)
+     * @see #executeIfAbsent(DynamicObject, Object, Object)
+     * @see #executeIfPresent(DynamicObject, Object, Object)
+     * @see #executeWithFlags(DynamicObject, Object, Object, int)
+     * @see #executeWithFlagsIfAbsent(DynamicObject, Object, Object, int)
+     * @see #executeWithFlagsIfPresent(DynamicObject, Object, Object, int)
      * @see PutNode
      * @since 25.1
      */
@@ -789,26 +779,27 @@ public abstract class DynamicObject implements TruffleObject {
         }
 
         /**
-         * Same as {@link #putConstantWithFlags}, except the property is added with 0 flags, and if
-         * the property already exists, its flags will <em>not</em> be updated.
+         * Same as {@link #executeWithFlags}, except the property is added with 0 flags, and if the
+         * property already exists, its flags will <em>not</em> be updated.
          */
-        public final void putConstant(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final void execute(DynamicObject receiver, Object key, Object value) {
             executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST, 0);
         }
 
         /**
-         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
-         * present.
+         * Like {@link #execute(DynamicObject, Object, Object)} but only if the property is present.
          */
-        public final boolean putConstantIfPresent(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeIfPresent(DynamicObject receiver, Object key, Object value) {
             return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST, 0);
         }
 
         /**
-         * Like {@link #putConstant(DynamicObject, Object, Object)} but only if the property is
-         * absent.
+         * Like {@link #execute(DynamicObject, Object, Object)} but only if the property is absent.
          */
-        public final boolean putConstantIfAbsent(DynamicObject receiver, Object key, Object value) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeIfAbsent(DynamicObject receiver, Object key, Object value) {
             return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST, 0);
         }
 
@@ -847,26 +838,29 @@ public abstract class DynamicObject implements TruffleObject {
          * @param key property identifier
          * @param value the constant value to be set
          * @param propertyFlags property flags or 0
-         * @see #putConstant(DynamicObject, Object, Object)
+         * @see #execute (DynamicObject, Object, Object)
          */
         // @formatter:on
-        public void putConstantWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final void executeWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
-         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
+         * Like {@link #executeWithFlags(DynamicObject, Object, Object, int)} but only if the
          * property is present.
          */
-        public final boolean putConstantWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
         /**
-         * Like {@link #putConstantWithFlags(DynamicObject, Object, Object, int)} but only if the
+         * Like {@link #executeWithFlags(DynamicObject, Object, Object, int)} but only if the
          * property is absent.
          */
-        public final boolean putConstantWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
+        @HostCompilerDirectives.InliningRoot
+        public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
         }
 
@@ -1031,7 +1025,7 @@ public abstract class DynamicObject implements TruffleObject {
                         @Cached DynamicObject.PutNode putNode) {
             for (int i = 0; i < getters.length; i++) {
                 PropertyGetter getter = getters[i];
-                putNode.putWithFlags(to, getter.getKey(), getter.get(from), getter.getFlags());
+                putNode.executeWithFlags(to, getter.getKey(), getter.get(from), getter.getFlags());
             }
         }
 
@@ -1041,7 +1035,7 @@ public abstract class DynamicObject implements TruffleObject {
             Property[] properties = from.getShape().getPropertyArray();
             for (int i = 0; i < properties.length; i++) {
                 Property property = properties[i];
-                PutNode.getUncached().putWithFlags(to, property.getKey(), property.get(from, false), property.getFlags());
+                PutNode.getUncached().executeWithFlags(to, property.getKey(), property.get(from, false), property.getFlags());
             }
         }
 
@@ -1302,7 +1296,7 @@ public abstract class DynamicObject implements TruffleObject {
          *     if ((getShapeFlagsNode.execute(receiver) & FROZEN) != 0) {
          *         throw UnsupportedMessageException.create();
          *     }
-         *     putNode.put(this, member, value);
+         *     putNode.execute(this, member, value);
          * }
          * }
          *
@@ -1383,7 +1377,7 @@ public abstract class DynamicObject implements TruffleObject {
          *     if (hasShapeFlagsNode.execute(receiver, FROZEN)) {
          *         throw UnsupportedMessageException.create();
          *     }
-         *     putNode.put(this, member, value);
+         *     putNode.execute(this, member, value);
          * }
          * }
          *

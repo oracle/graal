@@ -210,7 +210,8 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     Object readMember(String name,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Cached DynamicObject.GetNode getNode) throws UnknownIdentifierException {
-        Object result = getNode.getOrNull(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING));
+        Object key = fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING);
+        Object result = getNode.execute(this, key, null);
         if (result == null) {
             /* Property does not exist. */
             throw UnknownIdentifierException.create(name);
@@ -225,6 +226,6 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     void writeMember(String name, Object value,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Cached DynamicObject.PutNode putNode) {
-        putNode.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
+        putNode.execute(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
     }
 }

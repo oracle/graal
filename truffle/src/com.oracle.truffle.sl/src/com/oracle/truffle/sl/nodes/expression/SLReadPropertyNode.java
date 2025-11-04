@@ -95,7 +95,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
                     @Cached DynamicObject.GetNode getNode,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
         TruffleString nameTS = toTruffleStringNode.execute(node, name);
-        Object result = getNode.getOrNull(receiver, nameTS);
+        Object result = getNode.execute(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
             throw SLException.undefinedProperty(node, nameTS);

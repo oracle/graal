@@ -98,7 +98,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
                     @Bind Node node,
                     @Cached DynamicObject.PutNode putNode,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
-        putNode.put(receiver, toTruffleStringNode.execute(node, name), value);
+        putNode.execute(receiver, toTruffleStringNode.execute(node, name), value);
         return value;
     }
 

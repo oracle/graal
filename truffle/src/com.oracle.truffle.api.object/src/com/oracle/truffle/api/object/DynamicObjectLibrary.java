@@ -156,7 +156,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param key the property key
      * @param defaultValue value to be returned if the property does not exist
      * @return the property's value if it exists, else {@code defaultValue}.
-     * @see DynamicObject.GetNode#getOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract Object getOrDefault(DynamicObject object, Object key, Object defaultValue);
@@ -170,7 +170,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not an {@code int}
      * @see #getOrDefault(DynamicObject, Object, Object)
-     * @see DynamicObject.GetNode#getIntOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#executeInt(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -191,7 +191,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not a {@code double}
      * @see #getOrDefault(DynamicObject, Object, Object)
-     * @see DynamicObject.GetNode#getDoubleOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#executeDouble(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -212,7 +212,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @return the property's value if it exists, else {@code defaultValue}.
      * @throws UnexpectedResultException if the (default) value is not a {@code long}
      * @see #getOrDefault(DynamicObject, Object, Object)
-     * @see DynamicObject.GetNode#getLongOrDefault(DynamicObject, Object, Object)
+     * @see DynamicObject.GetNode#executeLong(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
@@ -247,7 +247,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @see #putLong(DynamicObject, Object, long)
      * @see #putIfPresent(DynamicObject, Object, Object)
      * @see #putWithFlags(DynamicObject, Object, Object, int)
-     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract void put(DynamicObject object, Object key, Object value);
@@ -256,7 +256,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Int-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putInt(DynamicObject object, Object key, int value) {
@@ -267,7 +267,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Double-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putDouble(DynamicObject object, Object key, double value) {
@@ -278,7 +278,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Long-typed variant of {@link #put}.
      *
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutNode#put(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public void putLong(DynamicObject object, Object key, long value) {
@@ -292,7 +292,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param value value to be set
      * @return {@code true} if the property was present and the value set, otherwise {@code false}
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutNode#putIfPresent(DynamicObject, Object, Object)
+     * @see DynamicObject.PutNode#executeIfPresent(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract boolean putIfPresent(DynamicObject object, Object key, Object value);
@@ -306,7 +306,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param flags flags to be set
      * @see #put(DynamicObject, Object, Object)
      * @see #setPropertyFlags(DynamicObject, Object, int)
-     * @see DynamicObject.PutNode#putWithFlags(DynamicObject, Object, Object, int)
+     * @see DynamicObject.PutNode#executeWithFlags(DynamicObject, Object, Object, int)
      * @since 20.2.0
      */
     public abstract void putWithFlags(DynamicObject object, Object key, Object value, int flags);
@@ -346,7 +346,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * @param value the constant value to be set
      * @param flags property flags or 0
      * @see #put(DynamicObject, Object, Object)
-     * @see DynamicObject.PutConstantNode#putConstant(DynamicObject, Object, Object)
+     * @see DynamicObject.PutConstantNode#execute(DynamicObject, Object, Object)
      * @since 20.2.0
      */
     public abstract void putConstant(DynamicObject object, Object key, Object value, int flags);

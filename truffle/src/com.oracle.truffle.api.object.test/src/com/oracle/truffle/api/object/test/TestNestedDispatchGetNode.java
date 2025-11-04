@@ -59,7 +59,7 @@ public abstract class TestNestedDispatchGetNode extends Node {
                     @Cached GetNode getNode,
                     @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
                     @Cached TestNestedDispatchNode nested) {
-        Object value = getNode.getOrDefault(obj, key, null);
+        Object value = getNode.execute(obj, key, null);
         if (hasProperty) {
             assert value != null;
             if (value instanceof DynamicObject) {
@@ -74,7 +74,7 @@ public abstract class TestNestedDispatchGetNode extends Node {
                     @Cached GetNode getNode,
                     @Cached(value = "obj.getShape().getProperty(key) != null", allowUncached = true) boolean hasProperty,
                     @Cached TestNestedDispatchNode nested) {
-        Object value = getNode.getOrDefault(obj, key, null);
+        Object value = getNode.execute(obj, key, null);
         if (hasProperty) {
             assert value != null;
             if (value instanceof DynamicObject) {

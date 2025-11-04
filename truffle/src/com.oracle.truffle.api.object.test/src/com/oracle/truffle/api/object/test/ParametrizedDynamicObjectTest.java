@@ -377,42 +377,42 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
 
         @Override
         public Object getOrDefault(DynamicObject object, Object key, Object defaultValue) {
-            return getNode.getOrDefault(object, key, defaultValue);
+            return getNode.execute(object, key, defaultValue);
         }
 
         @Override
         public int getIntOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
-            return getNode.getIntOrDefault(object, key, defaultValue);
+            return getNode.executeInt(object, key, defaultValue);
         }
 
         @Override
         public long getLongOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
-            return getNode.getLongOrDefault(object, key, defaultValue);
+            return getNode.executeLong(object, key, defaultValue);
         }
 
         @Override
         public double getDoubleOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
-            return getNode.getDoubleOrDefault(object, key, defaultValue);
+            return getNode.executeDouble(object, key, defaultValue);
         }
 
         @Override
         public void put(DynamicObject object, Object key, Object value) {
-            putNode.put(object, key, value);
+            putNode.execute(object, key, value);
         }
 
         @Override
         public boolean putIfPresent(DynamicObject object, Object key, Object value) {
-            return putNode.putIfPresent(object, key, value);
+            return putNode.executeIfPresent(object, key, value);
         }
 
         @Override
         public void putWithFlags(DynamicObject object, Object key, Object value, int flags) {
-            putNode.putWithFlags(object, key, value, flags);
+            putNode.executeWithFlags(object, key, value, flags);
         }
 
         @Override
         public void putConstant(DynamicObject object, Object key, Object value, int flags) {
-            putConstantNode.putConstantWithFlags(object, key, value, flags);
+            putConstantNode.executeWithFlags(object, key, value, flags);
         }
 
         @Override

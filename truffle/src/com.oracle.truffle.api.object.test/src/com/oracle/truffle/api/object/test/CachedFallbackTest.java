@@ -78,7 +78,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
             if (node != null) {
                 return node.execute(obj, key);
             } else {
-                return getNode.getOrDefault(obj, key, null);
+                return getNode.execute(obj, key, null);
             }
         }
     }
@@ -88,7 +88,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
             if (node != null) {
                 node.execute(obj, key, value);
             } else {
-                putNode.put(obj, key, value);
+                putNode.execute(obj, key, value);
             }
         }
     }
