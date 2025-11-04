@@ -713,6 +713,22 @@ public abstract class TruffleInstrument {
         }
 
         /**
+         * Retrieves the host language used in this environment. The returned language can be used
+         * to obtain the host language top scope object using {@link #getScope(LanguageInfo)}
+         * method.
+         *
+         * @since 25.1
+         */
+        @TruffleBoundary
+        public LanguageInfo getHostLanguage() {
+            try {
+                return InstrumentAccessor.engineAccess().getHostLanguage(polyglotInstrument);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
          * Returns a map {@link InstrumentInfo#getId() instrument id} to {@link InstrumentInfo
          * instrument info} of all instruments that are installed in the environment.
          *
@@ -985,36 +1001,12 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Returns the {@link LanguageInfo language info} for a given language id if available.
-         * Language classes are typically obtained by invoking the
-         * {@link InteropLibrary#getLanguageId(Object)} message. Throws an
-         * {@link IllegalArgumentException} if the provided language is not registered. Note that
-         * languages may be returned that are not contained in {@link #getLanguages()}. For example,
-         * values originating from the embedder like Java classes or {@link Proxy polyglot proxies}.
-         *
-         * @param languageId the language id
-         * @return the associated language info
-         * @throws IllegalArgumentException if the language id is not valid.
-         *
-         * @since 26.0
-         */
-        @TruffleBoundary
-        public LanguageInfo getLanguageInfo(String languageId) {
-            try {
-                Objects.requireNonNull(languageId);
-                return InstrumentAccessor.engineAccess().getLanguageInfo(polyglotInstrument, languageId);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
          * Wraps the provided value to provide language specific information for primitive and
          * foreign values. A typical implementation of a given language for this method does the
          * following:
          * <ul>
-         * <li>Return the current language as their associated
-         * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}.
+         * <li>Return the current language id as their associated
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguageId(Object) language}.
          * <li>Provide a language specific
          * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display
          * string} for primitive and foreign values.

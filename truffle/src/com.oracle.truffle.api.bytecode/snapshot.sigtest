@@ -676,7 +676,7 @@ CLSS public abstract com.oracle.truffle.api.bytecode.TagTreeNode
 cons protected init(java.lang.Object)
 intf com.oracle.truffle.api.bytecode.TagTree
 meth protected abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguage()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth protected abstract java.lang.String getLanguageId()
 meth protected java.lang.Class<?> dispatch()
 meth public com.oracle.truffle.api.bytecode.BytecodeNode getBytecodeNode()

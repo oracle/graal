@@ -2413,8 +2413,8 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      * @deprecated Use {@link #hasLanguageId(Object)}.
      */
-    @Deprecated
     @Abstract(ifExported = {"getLanguage"})
+    @Deprecated(since = "25.1")
     public boolean hasLanguage(Object receiver) {
         return false;
     }
@@ -2432,37 +2432,72 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      * @deprecated Use {@link #getLanguageId(Object)}.
      */
-    @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
-    @Deprecated
+    @Deprecated(since = "25.1")
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     /**
-     * Determines whether the given receiver provides a language identifier. For example, a stack
-     * frame object may provide a language identifier to indicate the language of the method it
-     * represents. Calling this message does not produce any observable side effects. The default
-     * implementation returns {@code false}.
+     * Returns {@code true} if the receiver originates from a language, else {@code false}.
+     * Primitive values or other shared interop value representations that are not associated with a
+     * language may return {@code false}. Values that originate from a language should return {code
+     * true}. Returns {@code false} by default.
+     * <p>
+     * The associated language allows tools to identify the original language of a value. If an
+     * instrument requests a
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#getLanguageView(LanguageInfo, Object)
+     * language view} then values that are already associated with a language will just return the
+     * same value. Otherwise {@link TruffleLanguage#getLanguageView(Object, Object)} will be invoked
+     * on the language. The returned language id may be also exposed to embedders in polyglot stack
+     * frame.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getLanguageId(Object)} and {@link #toDisplayString(Object, boolean)} must be
+     * implemented.
      *
      * @see #getLanguageId(Object)
-     * @since 26.0
+     * @see #toDisplayString(Object)
+     * @since 25.1
      */
     @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementOf = "hasLanguage(Object)", replacementMethod = "hasLanguageLegacy")
     public boolean hasLanguageId(Object receiver) {
-        return hasLanguage(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine(this) != null;
+        if (!hasLanguage(receiver)) {
+            return false;
+        }
+        Class<? extends TruffleLanguage<?>> language;
+        try {
+            language = getLanguage(receiver);
+        } catch (UnsupportedMessageException e) {
+            return false;
+        }
+        return InteropAccessor.ENGINE.getLanguageId(this, language) != null;
     }
 
     protected final boolean hasLanguageLegacy(Object receiver) {
-        return hasLanguageId(receiver) && InteropAccessor.ENGINE.getCurrentPolyglotEngine(this) != null;
+        if (!hasLanguageId(receiver)) {
+            return false;
+        }
+        String id;
+        try {
+            id = getLanguageId(receiver);
+        } catch (UnsupportedMessageException e) {
+            return false;
+        }
+        return InteropAccessor.ENGINE.getLanguageClass(this, id) != null;
     }
 
     /**
-     * Returns language id of the receiver. Throws {@code UnsupportedMessageException} when the
-     * receiver does not provide a {@link #hasLanguageId(Object) language id} or has no language id.
+     * Returns the language id of the receiver value. The returned language id must be non-null and
+     * represent a valid id of a {@link Registration registered} language. For more details see
+     * {@link #hasLanguageId(Object)}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #hasLanguageId(Object)} must be implemented.
      *
-     * @see #hasLanguageId(Object)
-     * @since 26.0
+     * @throws UnsupportedMessageException if and only if {@link #hasLanguageId(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 25.1
      */
     @Abstract(ifExported = {"hasLanguageId"}, ifExportedAsWarning = {"getLanguage"}, replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageLegacy")
     public String getLanguageId(Object receiver) throws UnsupportedMessageException {
@@ -2556,7 +2591,7 @@ public abstract class InteropLibrary extends Library {
      * @see TruffleLanguage#getLanguageView(Object, Object)
      * @since 20.1
      */
-    @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
+    @Abstract(ifExported = {"hasLanguageId", "getLanguageId", "hasLanguage", "getLanguage", "isScope"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
         if (allowSideEffects) {

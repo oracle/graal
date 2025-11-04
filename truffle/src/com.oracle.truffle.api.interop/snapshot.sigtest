@@ -56,7 +56,7 @@ meth public boolean hasHashEntries(java.lang.Object)
 meth public boolean hasIterator(java.lang.Object)
 meth public boolean hasIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean hasLanguage(java.lang.Object)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public boolean hasLanguageId(java.lang.Object)
 meth public boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
 meth public boolean hasMemberWriteSideEffects(java.lang.Object,java.lang.String)
@@ -122,7 +122,7 @@ meth public int getExceptionExitStatus(java.lang.Object) throws com.oracle.truff
 meth public int identityHashCode(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public int readBufferInt(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
 meth public java.lang.Object getDeclaringMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionCause(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionMessage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException

@@ -579,25 +579,12 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    @SuppressWarnings("deprecation")
     private LanguageInfo getObjectLanguageInfo(LanguageInfo defaultInfo, Object object) {
         assert object != null;
         if (INTEROP.hasLanguageId(object)) {
             try {
-                return env.getLanguageInfo(INTEROP.getLanguageId(object));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
-            }
-        } else if (INTEROP.hasLanguage(object)) {
-            /*
-             * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-             * messages. We need to call hasLanguage even if hasLanguageId provides a default
-             * implementation to support objects implementing hasLanguage but delegating other
-             * messages using delegateTo.
-             */
-            try {
-                return env.getLanguageInfo(INTEROP.getLanguage(object));
+                String languageId = INTEROP.getLanguageId(object);
+                return "host".equals(languageId) ? env.getHostLanguage() : env.getLanguages().get(languageId);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);

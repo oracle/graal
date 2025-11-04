@@ -1117,7 +1117,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    @SuppressWarnings("deprecation")
     public Object getLanguageView(Object receiver) {
         EngineAccessor.INTEROP.checkInteropType(receiver);
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
@@ -1132,69 +1131,33 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }
-        } else if (lib.hasLanguage(receiver)) {
-            /*
-             * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-             * messages. We need to call hasLanguage even if hasLanguageId provides a default
-             * implementation to support objects implementing hasLanguage but delegating other
-             * messages using delegateTo.
-             */
-            try {
-                if (!this.isCreated()) {
-                    throw PolyglotEngineException.illegalState("Language not yet created. Initialize the language first to request a language view.");
-                }
-                if (lib.getLanguage(receiver) == this.lazy.languageInstance.spi.getClass()) {
-                    return receiver;
-                }
-            } catch (UnsupportedMessageException e) {
-                throw shouldNotReachHere(e);
-            }
         }
         return getLanguageViewNoCheck(receiver);
     }
 
-    @SuppressWarnings("deprecation")
     private boolean validLanguageView(Object result) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
         try {
             Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
             String languageId = language.getId();
-            /*
-             * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-             * messages. We need to call hasLanguage even if hasLanguageId provides a default
-             * implementation to support objects implementing hasLanguage but delegating other
-             * messages using delegateTo.
-             */
-            assert lib.hasLanguageId(result) ? //
-                            languageId.equals(lib.getLanguageId(result)) : //
-                            lib.hasLanguage(result) && lib.getLanguage(result) == languageClass : String.format(
-                                            "The returned language view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
-                                                            "Fix the implementation of %s.getLanguageView to resolve this.",
-                                            languageId, languageId, languageClass.getTypeName());
+            assert lib.hasLanguageId(result) && languageId.equals(lib.getLanguageId(result)) : String.format(
+                            "The returned language view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
+                                            "Fix the implementation of %s.getLanguageView to resolve this.",
+                            languageId, languageId, languageClass.getTypeName());
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
         return true;
     }
 
-    @SuppressWarnings("deprecation")
     private boolean validScopedView(Object result, Node location) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
         String languageId = language.getId();
-        Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
         try {
-            /*
-             * GR-69615: Remove deprecated InteropLibrary#hasLanguage and InteropLibrary#getLanguage
-             * messages. We need to call hasLanguage even if hasLanguageId provides a default
-             * implementation to support objects implementing hasLanguage but delegating other
-             * messages using delegateTo.
-             */
-            assert lib.hasLanguageId(result) ? //
-                            languageId.equals(lib.getLanguageId(result)) : //
-                            lib.hasLanguage(result) && lib.getLanguage(result) == languageClass : String.format(
-                                            "The returned scoped view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
-                                                            "Fix the implementation of %s.getView to resolve this.",
-                                            languageId, languageId, location.getClass().getTypeName());
+            assert lib.hasLanguageId(result) && languageId.equals(lib.getLanguageId(result)) : String.format(
+                            "The returned scoped view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
+                                            "Fix the implementation of %s.getView to resolve this.",
+                            languageId, languageId, location.getClass().getTypeName());
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }

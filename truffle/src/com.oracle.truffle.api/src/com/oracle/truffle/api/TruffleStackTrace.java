@@ -270,7 +270,7 @@ public final class TruffleStackTrace extends Exception {
     }
 
     private static boolean isHostException(Throwable throwable) {
-        Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine(null);
+        Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
         if (polyglotEngine == null) {
             return false;
         }

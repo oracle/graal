@@ -168,7 +168,7 @@ final class ExceptionAccessor extends Accessor {
             if (hasGuestToHostCalls) {
                 // If we have guest to host calls, we need to merge in (or filter) the host frames.
                 Object polyglotEngine = polyglotContext == null
-                                ? ACCESSOR.engineSupport().getCurrentPolyglotEngine(null)
+                                ? ACCESSOR.engineSupport().getCurrentPolyglotEngine()
                                 : ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotContext);
                 items = mergeHostGuestFrames(throwable, stack, inHost, polyglotEngine);
             } else {

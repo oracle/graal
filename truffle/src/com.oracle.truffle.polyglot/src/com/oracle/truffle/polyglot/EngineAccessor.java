@@ -271,22 +271,42 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
-            if (context == null) {
+            PolyglotEngineImpl e = PolyglotFastThreadLocals.getEngine(anchor);
+            if (e == null) {
                 return null;
             }
-            return context.engine.getLanguage(languageClass, false).getId();
+            PolyglotLanguage l = e.getLanguage(languageClass, false);
+            if (l == null) {
+                // not in this isolate
+                return null;
+            }
+            return l.info.getId();
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
+            PolyglotEngineImpl e = PolyglotFastThreadLocals.getEngine(anchor);
+            if (e == null) {
+                return null;
+            }
+            PolyglotLanguage l = e.getLanguage(languageId, false);
+            if (l == null) {
+                // not in this isolate
+                return null;
+            }
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithEngine(e);
             if (context == null) {
                 return null;
             }
-            PolyglotLanguage language = context.engine.getLanguage(languageId, false);
-            return (Class<? extends TruffleLanguage<?>>) context.contexts[language.engineIndex].getLanguageInstance().spi.getClass();
+
+            PolyglotLanguageContext lc = context.contexts[l.engineIndex];
+            if (!lc.isCreated()) {
+                // language is available on the host, but not initialized
+                // we must not return the language class to avoid loading it
+                return null;
+            }
+            return (Class<? extends TruffleLanguage<?>>) lc.getLanguageInstance().spi.getClass();
         }
 
         @TruffleBoundary
@@ -301,11 +321,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass) {
             return ((VMObject) vmObject).getEngine().getLanguage(languageClass, true).info;
-        }
-
-        @Override
-        public LanguageInfo getLanguageInfo(Object vmObject, String languageId) {
-            return ((VMObject) vmObject).getEngine().getLanguage(languageId, true).info;
         }
 
         @Override
@@ -506,8 +521,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public LanguageInfo getHostLanguage(Object polyglotLanguageContext) {
-            return ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.hostLanguage.info;
+        public LanguageInfo getHostLanguage(Object vmObject) {
+            return ((VMObject) vmObject).getEngine().hostLanguage.info;
         }
 
         @Override
@@ -553,7 +568,6 @@ final class EngineAccessor extends Accessor {
             return LANGUAGE.getScope(requestedPolyglotLanguageContext.env);
         }
 
-        @SuppressWarnings("deprecation")
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
             if (lib.hasLanguageId(value)) {
@@ -562,41 +576,16 @@ final class EngineAccessor extends Accessor {
                 } catch (UnsupportedMessageException e) {
                     throw shouldNotReachHere(e);
                 }
-            } else if (lib.hasLanguage(value)) {
-                /*
-                 * GR-69615: Remove deprecated InteropLibrary#hasLanguage and
-                 * InteropLibrary#getLanguage messages. We need to call hasLanguage even if
-                 * hasLanguageId provides a default implementation to support objects implementing
-                 * hasLanguage but delegating other messages using delegateTo.
-                 */
-                try {
-                    return engine.getLanguage(lib.getLanguage(value), false);
-                } catch (UnsupportedMessageException e) {
-                    throw shouldNotReachHere(e);
-                }
             } else {
                 return null;
             }
         }
 
-        @SuppressWarnings("deprecation")
         static PolyglotLanguage getLanguageView(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
             if (lib.hasLanguageId(value)) {
                 try {
                     return engine.getLanguage(lib.getLanguageId(value), false);
-                } catch (UnsupportedMessageException e) {
-                    throw shouldNotReachHere(e);
-                }
-            } else if (lib.hasLanguage(value)) {
-                /*
-                 * GR-69615: Remove deprecated InteropLibrary#hasLanguage and
-                 * InteropLibrary#getLanguage messages. We need to call hasLanguage even if
-                 * hasLanguageId provides a default implementation to support objects implementing
-                 * hasLanguage but delegating other messages using delegateTo.
-                 */
-                try {
-                    return engine.getLanguage(lib.getLanguage(value), false);
                 } catch (UnsupportedMessageException e) {
                     throw shouldNotReachHere(e);
                 }
@@ -622,8 +611,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getCurrentPolyglotEngine(Node anchor) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(anchor);
+        public Object getCurrentPolyglotEngine() {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
                 return null;
             }

@@ -38,7 +38,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 
-* GR-69614: Replaced `InteropLibrary#hasLanguage` and `InteropLibrary#getLanguage` with `InteropLibrary#hasLanguageId` and `InteropLibrary#getLanguageId`, which support usage across heap boundaries (e.g., between polyglot isolates).
+* GR-69614: The methods `InteropLibrary#hasLanguage` and `InteropLibrary#getLanguage` have been replaced with `InteropLibrary#hasLanguageId` and `InteropLibrary#getLanguageId`. Language implementers are encouraged to update their code to the new API for proper support of polyglot isolates.
+* GR-69614: Added `TruffleInstrument.Env.getHostLanguage()` returning the host language info. This allows instruments to lookup the top scope of the host language using `Env.getScope(LanguageInfo)`.
+
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

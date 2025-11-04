@@ -1507,7 +1507,7 @@ public abstract class TruffleLanguage<C> {
      * this is the behavior of the object type that is being mapped to.
      * <p>
      * Every language view wrapper must return the current language as their associated
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. An
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguageId(Object) language}. An
      * {@link AssertionError} is thrown when a language view is requested if this contract is
      * violated.
      * <p>
@@ -1545,13 +1545,13 @@ public abstract class TruffleLanguage<C> {
      *     }
      *
      *     &#64;ExportMessage
-     *     boolean hasLanguage() {
+     *     boolean hasLanguageId() {
      *         return true;
      *     }
      *
      *     &#64;ExportMessage
-     *     Class&lt;? extends TruffleLanguage&lt;?&gt;&gt; getLanguage() {
-     *         return MyLanguage.class;
+     *     String getLanguageId() {
+     *         return MyLanguage.ID;
      *     }
      *
      *     &#64;ExportMessage
@@ -2889,26 +2889,6 @@ public abstract class TruffleLanguage<C> {
             try {
                 Objects.requireNonNull(languageClass);
                 return LanguageAccessor.engineAccess().getLanguageInfo(polyglotLanguageContext, languageClass);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
-        }
-
-        /**
-         * Returns the {@link LanguageInfo language info} for a given language id if available. The
-         * language id may be obtained with <code>InteropLibrary.getLanguageId(Object)</code>.
-         * Throws an {@link IllegalArgumentException} if the provided language is not registered.
-         *
-         * @param languageId the language identifier
-         * @return the associated language info
-         * @throws IllegalArgumentException if the language id is not valid.
-         * @since 26.0
-         */
-        @TruffleBoundary
-        public LanguageInfo getLanguageInfo(String languageId) {
-            try {
-                Objects.requireNonNull(languageId);
-                return LanguageAccessor.engineAccess().getLanguageInfo(polyglotLanguageContext, languageId);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

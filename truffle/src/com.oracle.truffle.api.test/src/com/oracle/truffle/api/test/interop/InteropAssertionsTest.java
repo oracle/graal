@@ -280,12 +280,44 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
+    public void testGetLanguageLegacy() throws UnsupportedMessageException {
+        setupEnv();
+        GetLanguageIdTest v = new GetLanguageIdTest();
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+        String testLanguageId = ProxyLanguage.ID;
+        Class<? extends TruffleLanguage<?>> testLanguage = ProxyLanguage.class;
+
+        v.hasLanguageId = false;
+        v.getLanguageId = null;
+        assertFalse(l.hasLanguage(v));
+        assertFails(() -> l.getLanguage(v), UnsupportedMessageException.class);
+
+        v.hasLanguageId = true;
+        v.getLanguageId = () -> testLanguageId;
+        assertTrue(l.hasLanguage(v));
+        assertEquals(testLanguage, l.getLanguage(v));
+
+        v.hasLanguageId = true;
+        v.getLanguageId = null;
+        assertFalse(l.hasLanguage(v));
+        assertFails(() -> l.getLanguage(v), UnsupportedMessageException.class);
+
+        v.hasLanguageId = true;
+        v.getLanguageId = () -> null;
+        assertFalse(l.hasLanguage(v));
+        assertFails(() -> l.getLanguage(v), UnsupportedMessageException.class);
+
+        v.hasLanguageId = false;
+        v.getLanguageId = () -> testLanguageId;
+        assertFails(() -> l.hasLanguage(v), AssertionError.class);
+        assertFails(() -> l.getLanguage(v), AssertionError.class);
+    }
+
+    @Test
     public void testGetLanguageId() throws UnsupportedMessageException {
         GetLanguageIdTest v = new GetLanguageIdTest();
         InteropLibrary l = createLibrary(InteropLibrary.class, v);
         String testLanguageId = ProxyLanguage.ID;
-
-        assertFails(() -> l.getSourceLocation(null), NullPointerException.class);
 
         v.hasLanguageId = false;
         v.getLanguageId = null;

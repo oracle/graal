@@ -3136,7 +3136,7 @@ public class LanguageSPITest {
             assertFails(() -> env.getLanguageInfo(InvalidLanguageClass.class), IllegalArgumentException.class);
 
             String hostLanguageId = InteropLibrary.getUncached().getLanguageId(env.asBoxedGuestValue(1));
-            assertEquals("host", env.getLanguageInfo(hostLanguageId).getId());
+            assertEquals("host", hostLanguageId);
         }
     }
 
