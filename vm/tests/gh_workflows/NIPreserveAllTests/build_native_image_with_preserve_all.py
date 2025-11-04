@@ -210,6 +210,8 @@ def _update_dependency_scopes(deps):
     Replaces the scopes of all provided scope dependencies with compile scope, so that
     the maven resolver doesn't omit them and their dependencies. Also makes all
     of the optional dependencies non-optional, so we don't omit them either.
+    Oracle/Graal dependencies are omitted by default, as they shouldn't
+    be on the build classpath.
     '''
     m2_repo = Path.home() / ".m2" / "repository"
     for (group_id, artifact_id), version in deps.items():
@@ -222,6 +224,9 @@ def _update_dependency_scopes(deps):
                 ns = {"m": "http://maven.apache.org/POM/4.0.0"}
                 ET.register_namespace('', ns["m"])
                 for dependency in root.findall(".//m:dependency", ns):
+                    group_id = dependency.find("m:groupId", ns)
+                    if group_id is not None and (group_id.text.startswith("com.oracle") or group_id.text.startswith("org.graalvm")):
+                        continue
                     scope = dependency.find("m:scope", ns)
                     if scope is not None and scope.text == "provided":
                         scope.text = "compile"
@@ -237,7 +242,7 @@ def _update_dependency_scopes(deps):
 def _generate_pom(dependencies):
     '''
     Writes a pom.xml file with the given dependencies (map of (group_id, artifact_id) -> version).
-    Also adds Maven Central, Jabylon and Google repositories.
+    Also adds Maven Central, Jabylon, Google and JBoss repositories.
     '''
     project = ET.Element("project", {
         "xmlns": "http://maven.apache.org/POM/4.0.0",
@@ -272,6 +277,10 @@ def _generate_pom(dependencies):
     ET.SubElement(repo_google, "id").text = "google"
     ET.SubElement(repo_google, "url").text = "https://maven.google.com/"
 
+    repo_jboss = ET.SubElement(repositories_element, "repository")
+    ET.SubElement(repo_jboss, "id").text = "jboss"
+    ET.SubElement(repo_jboss, "url").text = "https://repository.jboss.org/maven2/"
+
     xml_str = ET.tostring(project, encoding="utf-8")
     pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
     pom_path = Path.cwd() / "pom.xml"
@@ -280,6 +289,7 @@ def _generate_pom(dependencies):
 def _parse_mvn_dependency_list(dependency_list):
     '''
     Parses `mvn dependency:list` output and returns a list of (group_id, artifact_id, version).
+    Only dependencies with packaging type `jar` are included.
     Handles lines in the format:
         [INFO]    <group_id>:<artifact_id>:<packaging>[:<classifier>]:<version>:<scope>
     '''
