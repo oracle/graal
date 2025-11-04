@@ -1497,9 +1497,8 @@ public final class Interpreter {
                 missingType = unresolvedJavaType;
             }
             throw noClassDefFoundError(opcode, missingType);
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1512,10 +1511,8 @@ public final class Interpreter {
             return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
         } catch (UnsupportedResolutionException e) {
             return null;
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            // Unrelated to resolution, just propagate the error.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1533,9 +1530,8 @@ public final class Interpreter {
                 missingMethod = unresolvedJavaMethod;
             }
             throw noSuchMethodError(opcode, missingMethod);
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1553,9 +1549,8 @@ public final class Interpreter {
                 missingField = unresolvedJavaField;
             }
             throw noSuchFieldError(opcode, missingField);
-        } catch (ClassFormatError e) {
-            // Out of bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 

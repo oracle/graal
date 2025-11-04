@@ -1,6 +1,5 @@
 [[rule]]
 files = "*"
 all = [
-    "bernhard.urban-forster@oracle.com",
     "gilles.m.duboscq@oracle.com",
 ]

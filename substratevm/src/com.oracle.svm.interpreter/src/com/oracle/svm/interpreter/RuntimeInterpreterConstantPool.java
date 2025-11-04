@@ -26,6 +26,9 @@ package com.oracle.svm.interpreter;
 
 import java.lang.invoke.MethodType;
 
+import org.graalvm.nativeimage.impl.ClassLoading;
+
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
@@ -137,17 +140,25 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return string;
     }
 
-    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedJavaType accessingKlass) {
+    private static InterpreterResolvedObjectType resolveObjectType(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
+        DynamicHub hub = DynamicHub.fromClass(CremaSupport.singleton().resolveOrThrow(type, accessingClass));
+        assert !hub.isPrimitive();
+        return (InterpreterResolvedObjectType) hub.getInterpreterType();
+    }
+
+    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
         assert accessingKlass != null;
         assert tagAt(classIndex) == Tag.CLASS;
 
         Object entry = this.cachedEntries[classIndex];
         Symbol<Type> type = null;
 
+        boolean allowArbitraryClassLoading;
         if (entry == null) {
             // CP comes from dynamically loaded .class file.
             Symbol<Name> className = this.className(classIndex);
             type = SymbolsSupport.getTypes().fromClassNameEntry(className);
+            allowArbitraryClassLoading = true;
         } else if (entry instanceof UnresolvedJavaType unresolvedJavaType) {
             Throwable cause = unresolvedJavaType.getCause();
             if (cause != null) {
@@ -155,14 +166,15 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             }
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
+            allowArbitraryClassLoading = false;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved type, but got " + entry);
         }
 
         assert type != null;
 
-        try {
-            InterpreterResolvedObjectType result = CremaRuntimeAccess.getInstance().lookupOrLoadType(type, accessingKlass);
+        try (var _ = ClassLoading.allowArbitraryClassLoading(allowArbitraryClassLoading)) {
+            InterpreterResolvedObjectType result = resolveObjectType(type, accessingKlass);
             return result;
         } catch (LinkageError e) {
             // Comment from Hotspot:
@@ -201,7 +213,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaField.getDeclaringClass().getName());
             assert !TypeSymbols.isPrimitive(holderType) && !TypeSymbols.isArray(holderType);
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved field, but got " + entry);
         }
@@ -237,7 +249,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -275,7 +287,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -322,8 +334,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     }
 
     private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
-        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-        // GR-62339 check access
-        return clazz;
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
+            Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+            // GR-62339 check access
+            return clazz;
+        }
     }
 }
