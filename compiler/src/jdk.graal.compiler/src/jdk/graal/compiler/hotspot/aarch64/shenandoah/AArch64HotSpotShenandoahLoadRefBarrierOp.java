@@ -199,7 +199,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                     masm.str(64, addressReg, cArg1);
 
                     // Make the call
-                    AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : rtmp2, null);
+                    AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : rtmp2, null);
 
                     // Retrieve result and move to the result register.
                     AArch64Address cRet = (AArch64Address) crb.asAddress(cc.getReturn());

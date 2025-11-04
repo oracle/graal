@@ -312,6 +312,8 @@ public final class CompilerInterfaceDeclarations {
      * @param clazz the class
      * @param singleton {@code true} iff the class should be treated as a singleton (e.g., a
      *            provider)
+     * @param useLocalMirrorFallback {@code true} iff the methods of this class can be invoked with
+     *            local mirrors on the replaying VM as a fallback
      * @param mirrorLocator a method that can find the local mirror of a proxy during replay or
      *            {@code null}
      * @param methods the recording/replay behavior the methods - only needed for non-default
@@ -320,7 +322,7 @@ public final class CompilerInterfaceDeclarations {
      * @param methodCallsToRecordProvider provides the methods calls that should be recorded in the
      *            serialized compilation unit
      */
-    public record Registration(Class<?> clazz, boolean singleton, LocalMirrorLocator mirrorLocator,
+    public record Registration(Class<?> clazz, boolean singleton, boolean useLocalMirrorFallback, LocalMirrorLocator mirrorLocator,
                     UnmodifiableEconomicMap<CompilationProxy.SymbolicMethod, MethodRegistration> methods, Class<?>[] extraInterfaces,
                     MethodCallsToRecordProvider methodCallsToRecordProvider) {
         /**
@@ -451,6 +453,8 @@ public final class CompilerInterfaceDeclarations {
 
         private boolean singleton;
 
+        private boolean localMirrorFallback;
+
         private LocalMirrorLocator mirrorLocator;
 
         private final EconomicMap<CompilationProxy.SymbolicMethod, MethodRegistrationBuilder> methods;
@@ -461,6 +465,7 @@ public final class CompilerInterfaceDeclarations {
 
         RegistrationBuilder(Class<T> clazz, Class<?>... extraInterfaces) {
             this.clazz = clazz;
+            this.localMirrorFallback = true;
             this.methods = EconomicMap.create();
             this.extraInterfaces = extraInterfaces;
             this.methods.put(CompilationProxyBase.toStringMethod, MethodRegistrationBuilder.createDefault(CompilationProxyBase.toStringMethod));
@@ -473,6 +478,11 @@ public final class CompilerInterfaceDeclarations {
 
         public RegistrationBuilder<T> setSingleton(boolean newSingleton) {
             singleton = newSingleton;
+            return this;
+        }
+
+        public RegistrationBuilder<T> useLocalMirrorFallback(boolean enabled) {
+            localMirrorFallback = enabled;
             return this;
         }
 
@@ -532,7 +542,7 @@ public final class CompilerInterfaceDeclarations {
             while (cursor.advance()) {
                 registrations.put(cursor.getKey(), cursor.getValue().build());
             }
-            declarations.addRegistration(new Registration(clazz, singleton, mirrorLocator, registrations, extraInterfaces, methodCallsToRecordProvider));
+            declarations.addRegistration(new Registration(clazz, singleton, localMirrorFallback, mirrorLocator, registrations, extraInterfaces, methodCallsToRecordProvider));
         }
     }
 
@@ -663,6 +673,9 @@ public final class CompilerInterfaceDeclarations {
                     constantReflection.getMemoryAccessProvider())
                 .register(declarations);
         new RegistrationBuilder<>(HotSpotCodeCacheProvider.class).setSingleton(true)
+                // Avoid using the code cache of the replaying VM due to non-determinism (e.g., max call target offset).
+                .useLocalMirrorFallback(false)
+                .setDefaultValue(HotSpotCodeCacheProviderProxy.getMaxCallTargetOffsetMethod, -1L)
                 .setDefaultValueStrategy(HotSpotCodeCacheProviderProxy.installCodeMethod, null)
                 .setDefaultValueSupplier(HotSpotCodeCacheProviderProxy.installCodeMethod, CompilerInterfaceDeclarations::installCodeReplacement)
                 // Interpreter frame size is not tracked since the arguments are not serializable.
