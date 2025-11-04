@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -132,6 +133,15 @@ public final class JVMCIReflectionUtil {
      */
     public static ResolvedJavaMethod getDeclaredConstructor(MetaAccessProvider metaAccess, ResolvedJavaType declaringClass, Class<?>... parameterTypes) {
         return getDeclaredConstructor(false, metaAccess, declaringClass, parameterTypes);
+    }
+
+    /**
+     * Gets the constructors declared by {@code declaringClass}. Like
+     * {@link Class#getConstructors()}, this only returns public constructors and does not consider
+     * super classes.
+     */
+    public static ResolvedJavaMethod[] getConstructors(ResolvedJavaType declaringClass) {
+        return Arrays.stream(declaringClass.getDeclaredConstructors(false)).filter(ModifiersProvider::isPublic).toArray(ResolvedJavaMethod[]::new);
     }
 
     private static ResolvedJavaMethod findMethod(ResolvedJavaType declaringClass, ResolvedJavaMethod[] methods, String name, ResolvedJavaType... parameterTypes) {
