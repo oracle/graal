@@ -91,11 +91,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRAALVM_HOME: ${{ github.workspace }}/graalvm
-    timeout-minutes: 60
+    timeout-minutes: 120
     needs:  build-graalvm-and-populate-matrix
     strategy:
       fail-fast: false
-      matrix: 
+      matrix:
         coordinates: ${{ fromJson(needs. build-graalvm-and-populate-matrix.outputs.matrix).coordinates }}
     steps:
       - name: Checkout oracle/graal

@@ -237,6 +237,7 @@ def _update_dependency_scopes(deps):
 def _generate_pom(dependencies):
     '''
     Writes a pom.xml file with the given dependencies (map of (group_id, artifact_id) -> version).
+    Also adds Maven Central, Jabylon and Google repositories.
     '''
     project = ET.Element("project", {
         "xmlns": "http://maven.apache.org/POM/4.0.0",
@@ -257,6 +258,20 @@ def _generate_pom(dependencies):
         ET.SubElement(dependency_element, "version").text = version
         ET.SubElement(dependency_element, "scope").text = "compile"
 
+    repositories_element = ET.SubElement(project, "repositories")
+
+    repo_central = ET.SubElement(repositories_element, "repository")
+    ET.SubElement(repo_central, "id").text = "central"
+    ET.SubElement(repo_central, "url").text = "https://repo.maven.apache.org/maven2"
+
+    repo_jabylon = ET.SubElement(repositories_element, "repository")
+    ET.SubElement(repo_jabylon, "id").text = "jabylon"
+    ET.SubElement(repo_jabylon, "url").text = "https://www.jabylon.org/maven/"
+
+    repo_google = ET.SubElement(repositories_element, "repository")
+    ET.SubElement(repo_google, "id").text = "google"
+    ET.SubElement(repo_google, "url").text = "https://maven.google.com/"
+
     xml_str = ET.tostring(project, encoding="utf-8")
     pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
     pom_path = Path.cwd() / "pom.xml"
@@ -265,19 +280,17 @@ def _generate_pom(dependencies):
 def _parse_mvn_dependency_list(dependency_list):
     '''
     Parses `mvn dependency:list` output and returns a list of (group_id, artifact_id, version).
-    Only dependencies with packaging type `jar` are included.
     Handles lines in the format:
         [INFO]    <group_id>:<artifact_id>:<packaging>[:<classifier>]:<version>:<scope>
     '''
     dependencies = []
-    pattern = re.compile(r'^\[INFO\]\s+([\w\.\-]+):([\w\.\-]+):([\w\.\-]+)(?::[\w\.\-]+)?:([\w\.\-]+):[\w\.\-]+')
+    pattern = re.compile(r'^\[INFO\]\s+([\w\.\-]+):([\w\.\-]+):(?>[\w\.\-]+)(?::[\w\.\-]+)?:([\w\.\-]+):[\w\.\-]+')
     for line in dependency_list.splitlines():
         line = line.strip()
         dependency = pattern.match(line)
         if dependency:
-            group_id, artifact_id, packaging, version = dependency.groups()
-            if packaging == "jar":
-                dependencies.append((group_id, artifact_id, version))
+            group_id, artifact_id, version = dependency.groups()
+            dependencies.append((group_id, artifact_id, version))
     return dependencies
 
 def _generate_image_entry_point():
