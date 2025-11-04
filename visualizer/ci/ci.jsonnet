@@ -27,7 +27,7 @@
     run: [
       ["cd", "./compiler"],
       ["mx", "build" ],
-      ["mx", "benchmark", "dacapo:fop", "--", "-Djdk.graal.Dump=:1", "-Djdk.graal.PrintGraph=File", "-Djdk.graal.DumpPath=../IGV_Dumps"],
+      ["mx", "benchmark", "dacapo:fop", "--", "-Djdk.graal.Dump=:1", "-Djdk.graal.PrintGraph=File", "-Djdk.graal.DumpPath=../IGV_Dumps", "-Djdk.graal.ShowDumpFiles=false"],
       ["cd", "../visualizer"],
       ["mx", "--java-home=$TOOLS_JAVA_HOME", "build" ],
       ["mx", "--java-home=$TOOLS_JAVA_HOME", "igv", "-J-Digv.openfile.onstartup.and.close=../compiler/IGV_Dumps", "--nosplash"],
