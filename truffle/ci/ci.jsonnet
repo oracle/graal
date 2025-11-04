@@ -131,11 +131,15 @@
     timelimit: "45:00",
   },
 
+  local jmh_benchmark_daily_targets = std.join(",", [
+    "org.graalvm.truffle.benchmark.bytecode_dsl.SimpleBytecodeBenchmark"
+  ]),
+
   local jmh_benchmark = bench_common + {
     name: self.name_prefix + 'truffle-jmh-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
     notify_groups:: ["truffle_bench"],
     run+: [
-      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "org.graalvm.truffle.benchmark"],
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "org.graalvm.truffle.benchmark", "-e", jmh_benchmark_daily_targets],
     ],
     timelimit: "3:00:00",
     teardown: [
@@ -150,10 +154,17 @@
     ],
   },
 
-  local truffle_compiler_benchmark = bench_common + {
-    name: self.name_prefix + 'truffle-compiler-benchmark-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+  local jmh_benchmark_daily = bench_common + {
+    name: self.name_prefix + 'truffle-jmh-daily-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+    notify_groups:: ["truffle_bench"],
     run+: [
-      ["mx", "--java-home", "$JAVA_HOME", "benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "java-home", "--", "org.graalvm.truffle.compiler.benchmark", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "server", "--", jmh_benchmark_daily_targets],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "native-image", "--jvm-config", "default", "--", jmh_benchmark_daily_targets],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "server", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "10", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      self.upload,
+      self.mx_prefix + ["benchmark", "truffle:*", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--", "--jvm", "native-image", "--jvm-config", "default", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "10", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
       self.upload,
     ],
   },
@@ -182,6 +193,10 @@
     name_prefix: "bench-",
     timelimit: "04:00:00"
   },
+  local bench_daily  = common.daily + {
+    name_prefix: "bench-",
+    timelimit: "04:00:00"
+  },
 
   local jdk_21_oracle = common.oraclejdk21 + {truffle_jdk_name: "oraclejdk-21"},
   local jdk_latest_oracle = common.oraclejdkLatest + {truffle_jdk_name: "oraclejdk-latest"},
@@ -189,10 +204,10 @@
 
   local jdk_latest_graalvm_ce = jdk_latest_labs + common.deps.svm + {
     truffle_jdk_name: "graalvm-ce-latest",
-    mx_build_graalvm_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=lib:jvmcicompiler"],
+    mx_prefix: ["mx", "-p", "../vm", "--env", "ce"],
     run+: [
-        self.mx_build_graalvm_cmd + ["build", "--force-javac"],
-        ["set-export", "JAVA_HOME", self.mx_build_graalvm_cmd + ["--quiet", "--no-warning", "graalvm-home"]]
+        self.mx_prefix + ["build", "--force-javac"],
+        ["set-export", "JAVA_HOME", self.mx_prefix + ["--quiet", "--no-warning", "graalvm-home"]]
     ]
   },
 
@@ -249,9 +264,7 @@
     # Truffle Benchmarks
     [linux_amd64  + tier3  + jdk_latest_labs + jmh_benchmark_test],
     [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark],
-
-    # Truffle compilation benchmarks
-    [linux_amd64 + bench + jdk_latest_graalvm_ce + truffle_compiler_benchmark],
+    [bench_hw.x52 + bench_daily + jdk_latest_graalvm_ce + jmh_benchmark_daily],
   ]),
   builds: utils.add_defined_in(_builds, std.thisFile),
 }
