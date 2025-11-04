@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.call;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;

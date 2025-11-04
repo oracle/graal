@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.metadata;
 
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
+import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
