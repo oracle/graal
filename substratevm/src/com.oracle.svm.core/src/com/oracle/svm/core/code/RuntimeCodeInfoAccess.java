@@ -238,10 +238,9 @@ public final class RuntimeCodeInfoAccess {
     private static void protectCodeMemory(CodePointer codeStart, UnsignedWord codeSize, int permissions) {
         int result = VirtualMemoryProvider.get().protect(codeStart, codeSize, permissions);
         if (result != 0) {
-            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. This may be caused by " +
-                            "a. a too restrictive OS-limit of allowed memory mappings (see vm.max_map_count on Linux), " +
-                            "b. a too strict security policy if you are running on Security-Enhanced Linux (SELinux), or " +
-                            "c. a Native Image internal error.");
+            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. " +
+                            "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again." +
+                            "If you are running on Security-Enhanced Linux (SELinux), you may also need to check the configured security policy.");
         }
     }
 
