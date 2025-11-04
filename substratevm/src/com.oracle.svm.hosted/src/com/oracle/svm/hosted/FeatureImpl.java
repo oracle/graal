@@ -243,6 +243,14 @@ public class FeatureImpl {
             return bb.getMetaAccess();
         }
 
+        public AnalysisType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            return getMetaAccess().lookupJavaType(clazz);
+        }
+
         public boolean isReachable(Class<?> clazz) {
             return isReachable(getMetaAccess().lookupJavaType(clazz));
         }
