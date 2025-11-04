@@ -50,7 +50,6 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -145,13 +144,11 @@ import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
-import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ResolvedJavaPackage;
 
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
@@ -850,8 +847,7 @@ public class SVMHost extends HostVM {
 
         if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             for (Node n : graph.getNodes()) {
-                if (n instanceof StaticDeoptimizingNode) {
-                    StaticDeoptimizingNode node = (StaticDeoptimizingNode) n;
+                if (n instanceof StaticDeoptimizingNode node) {
 
                     if (node.getReason() == DeoptimizationReason.JavaSubroutineMismatch) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, "The bytecodes of the method " + method.format("%H.%n(%p)") +
@@ -966,32 +962,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean platformSupported(Annotated element) {
-        if (element instanceof ResolvedJavaType javaType) {
-            ResolvedJavaPackage p = JVMCIReflectionUtil.getPackage(javaType);
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-            ResolvedJavaType enclosingType;
-            try {
-                enclosingType = javaType.getEnclosingType();
-            } catch (LinkageError e) {
-                enclosingType = null;
-            }
-            if (enclosingType != null && !platformSupported(enclosingType)) {
-                return false;
-            }
-        }
-
-        Platforms platformsAnnotation = AnnotationUtil.getAnnotation(element, Platforms.class);
-        if (platform == null || platformsAnnotation == null) {
-            return true;
-        }
-        for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
-            if (platformGroup.isInstance(platform)) {
-                return true;
-            }
-        }
-        return false;
+        return loader.isPlatformSupported(element, platform) == ImageClassLoader.PlatformSupportResult.YES;
     }
 
     /**
@@ -1446,7 +1417,7 @@ public class SVMHost extends HostVM {
      * initialization</i>.</li>
      * <li>The field should be annotated with {@link Stable}.</li>
      * </ol>
-     * 
+     *
      * @see #stableFieldsToFoldBeforeAnalysis
      * @see SimulateClassInitializerSupport
      */

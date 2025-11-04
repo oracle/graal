@@ -29,6 +29,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -297,5 +298,19 @@ public final class JVMCIReflectionUtil {
      */
     public static URL getOrigin(ResolvedJavaType type) {
         return JVMCIReflectionUtilFallback.getOrigin(type);
+    }
+
+    /**
+     * Counts the number of superclasses as returned by {@link Class#getSuperclass()}.
+     * {@link java.lang.Object} and all primitive types are at depth 0 and all interfaces are at
+     * depth 1.
+     */
+    public static int countSuperclasses(ResolvedJavaType type) {
+        Objects.requireNonNull(type, "Must accept a non-null class argument");
+        int depth = 0;
+        for (var cur = type.getSuperclass(); cur != null; cur = cur.getSuperclass()) {
+            depth += 1;
+        }
+        return depth;
     }
 }

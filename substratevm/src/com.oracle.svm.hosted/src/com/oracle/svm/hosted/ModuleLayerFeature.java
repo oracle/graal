@@ -790,10 +790,10 @@ public class ModuleLayerFeature implements InternalFeature {
                             .flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ",")))
                             .collect(Collectors.toSet());
 
-            Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
+            Method classGetDeclaredFields0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
                 ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ModuleLayerFeature.class, Module.class);
-                Field[] moduleClassFields = (Field[]) classGetDeclaredMethods0Method.invoke(Module.class, false);
+                Field[] moduleClassFields = (Field[]) classGetDeclaredFields0Method.invoke(Module.class, false);
 
                 Field everyoneModuleField = findFieldByName(moduleClassFields, "EVERYONE_MODULE");
                 everyoneModuleField.setAccessible(true);
