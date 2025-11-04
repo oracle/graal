@@ -34,17 +34,17 @@ import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport {
     private final AtomicReference<PinnedObjectImpl> pinnedObjects = new AtomicReference<>();
@@ -67,7 +67,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         return result;
     }
 
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.")
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.")
     private void pushPinnedObject(PinnedObjectImpl pinned) {
         /*
          * To avoid ABA problems, the application may only push data. Other operations may only be
@@ -82,10 +82,10 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         pinObject(pinned.referent);
     }
 
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected abstract void pinObject(Object object);
 
-    @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
+    @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected abstract void unpinObject(Object object);
 
     /**
@@ -165,7 +165,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         }
 
         @Override
-        @Uninterruptible(reason = "Ensure that pinned object counts and PinnedObjects are consistent.")
+        @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.")
         public void close() {
             assert open : "Should not call close() on a closed PinnedObject.";
             open = false;

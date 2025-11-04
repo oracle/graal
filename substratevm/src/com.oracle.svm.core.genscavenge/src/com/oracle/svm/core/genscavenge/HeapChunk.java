@@ -43,11 +43,11 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -180,11 +180,15 @@ public final class HeapChunk {
         @RawField
         void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
 
+        /**
+         * The number of pinnings of objects in this chunk. This is at least the number of pinned
+         * objects, but higher when an object is pinned more than once.
+         */
         @RawField
-        int getPinnedObjectCount();
+        int getObjectPinCount();
 
         @RawFieldAddress
-        Pointer addressOfPinnedObjectCount();
+        Pointer addressOfObjectPinCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
