@@ -66,7 +66,7 @@ public final class ConfigurationCommandFileCommand extends ConfigurationCommand 
 
     @Override
     public String getUsage() {
-        return "native-image-configure command-file <command-file-path>";
+        return "native-image-utils command-file <command-file-path>";
     }
 
     @Override

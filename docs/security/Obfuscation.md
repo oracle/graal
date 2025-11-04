@@ -108,10 +108,10 @@ Obfuscated names are non-deterministic and may vary between builds.
 
 ### Deobfuscating Stack Traces
 
-To debug an obfuscated stack trace, save the stack trace to a file (for example, `obfuscated-stacktrace.log`) and use `native-image-configure` with the mapping file:
+To debug an obfuscated stack trace, save the stack trace to a file (for example, `obfuscated-stacktrace.log`) and use `native-image-utils` with the mapping file:
 
 ```bash
-native-image-configure deobfuscate --map-file=app.obfuscation-mapping.json --input-file=obfuscated-stacktrace.log
+native-image-utils deobfuscate --map-file=app.obfuscation-mapping.json --input-file=obfuscated-stacktrace.log
 
 Exception in thread "main" java.lang.RuntimeException: Something bad happened!
         at com.obfuscation.SecretClass.secretAlgorithm(SecretClass.java:14)
@@ -121,7 +121,7 @@ Exception in thread "main" java.lang.RuntimeException: Something bad happened!
 This restores the original names for debugging the issue, while keeping your distributed binary obfuscated.
 Log file lines not part of the stack trace remain unchanged.
 
-You can locate the `native-image-configure` tool in the same `bin` directory as `native-image`.
+You can locate the `native-image-utils` tool in the same `bin` directory as `native-image`.
 
 ## What Gets Obfuscated
 
@@ -149,7 +149,7 @@ JUnit-related code is automatically preserved for testing compatibility.
 ## Understanding the Mapping File
 
 When you use `export-mapping`, Native Image generates a JSON file named _\<image-name\>.obfuscation-mapping.json_ in your build artifacts.
-This file maps original symbol names to their obfuscated versions, allowing `native-image-configure deobfuscate` to reverse the process.
+This file maps original symbol names to their obfuscated versions, allowing `native-image-utils deobfuscate` to reverse the process.
 Mappings can change per build, so associate mapping files with specific build versions or IDs for reliable deobfuscation.
 
 The mapping file lists the `[original, obfuscated]` name pairs of modules, packages, source files, types (classes, records, interfaces, enums), and methods.
