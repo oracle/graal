@@ -38,7 +38,12 @@ import com.oracle.svm.configure.command.ConfigurationGenerateFiltersCommand;
 import com.oracle.svm.configure.command.ConfigurationHelpCommand;
 import com.oracle.svm.configure.command.ConfigurationProcessTraceCommand;
 import com.oracle.svm.configure.command.ConfigurationUnknownCommand;
+import com.oracle.svm.util.LogUtils;
 
+/**
+ * A standalone tool for native-image. It is shipped as `native-image-utils` (previously
+ * `native-image-configure`).
+ */
 public class ConfigurationTool {
     private static final int USAGE_ERROR_CODE = 2;
     private static final int INTERNAL_ERROR_CODE = 1;
@@ -67,6 +72,10 @@ public class ConfigurationTool {
     }
 
     public static void main(String[] arguments) {
+        String launcherName = System.getProperty("org.graalvm.launcher.executablename", "default");
+        if (launcherName.contains("native-image-configure")) {
+            LogUtils.warning("You are using the deprecated native-image-configure tool. Please switch to native-image-utils.");
+        }
         try {
             if (arguments.length == 0) {
                 throw new ConfigurationUsageException("No arguments provided.");
