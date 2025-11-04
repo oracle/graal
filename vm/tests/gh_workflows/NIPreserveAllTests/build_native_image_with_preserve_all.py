@@ -240,9 +240,9 @@ def _update_dependency_scopes(deps):
                     scope = dependency.find("m:scope", ns)
                     if scope is not None and scope.text == "provided":
                         scope.text = "compile"
-                    # optional = dependency.find("m:optional", ns)
-                    # if optional is not None and optional.text == "true":
-                        # optional.text = "false"
+                    optional = dependency.find("m:optional", ns)
+                    if optional is not None and optional.text == "true":
+                        optional.text = "false"
                 tree.write(pom_path, encoding="utf-8", xml_declaration=True)
             except Exception as e:
                 print(f"Warning: failed to patch {pom_path}: {e}")
