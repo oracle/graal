@@ -175,13 +175,6 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
-    private DynamicObject.HasShapeFlagsNode createHasShapeFlagsNode() {
-        return switch (run) {
-            case CACHED -> DynamicObject.HasShapeFlagsNode.create();
-            case UNCACHED -> DynamicObject.HasShapeFlagsNode.getUncached();
-        };
-    }
-
     private DynamicObject.ResetShapeNode createResetShapeNode() {
         return switch (run) {
             case CACHED -> DynamicObject.ResetShapeNode.create();
@@ -681,19 +674,22 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         final int flags = 0b101010;
 
         DynamicObject.GetShapeFlagsNode getShapeFlagsNode = createGetShapeFlagsNode();
-        DynamicObject.HasShapeFlagsNode hasShapeFlagsNode = createHasShapeFlagsNode();
         DynamicObject.SetShapeFlagsNode setShapeFlagsNode = createSetShapeFlagsNode();
         DynamicObject.AddShapeFlagsNode addShapeFlagsNode = createAddShapeFlagsNode();
 
         DynamicObject o1 = createEmpty();
         setShapeFlagsNode.execute(o1, flags);
         assertEquals(flags, getShapeFlagsNode.execute(o1));
-        assertTrue(hasShapeFlagsNode.execute(o1, flags));
-        assertTrue(hasShapeFlagsNode.execute(o1, 0b10));
-        assertFalse(hasShapeFlagsNode.execute(o1, 0b11));
+        assertTrue(hasShapeFlags(getShapeFlagsNode, o1, flags));
+        assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b10));
+        assertFalse(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
         addShapeFlagsNode.execute(o1, 0b1);
-        assertTrue(hasShapeFlagsNode.execute(o1, 0b11));
+        assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
         assertEquals(flags | 0b1, getShapeFlagsNode.execute(o1));
+    }
+
+    static boolean hasShapeFlags(DynamicObject.GetShapeFlagsNode getShapeFlagsNode, DynamicObject obj, int flags) {
+        return (getShapeFlagsNode.execute(obj) & flags) == flags;
     }
 
     @Test

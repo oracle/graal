@@ -1295,10 +1295,7 @@ public abstract class DynamicObject implements TruffleObject {
          * }
          * }
          *
-         * Note that {@link HasShapeFlagsNode} is more convenient for that particular pattern.
-         *
          * @return shape flags
-         * @see HasShapeFlagsNode
          * @see SetShapeFlagsNode
          * @see Shape.Builder#shapeFlags(int)
          * @see Shape#getFlags()
@@ -1333,85 +1330,6 @@ public abstract class DynamicObject implements TruffleObject {
         @NeverDefault
         public static GetShapeFlagsNode getUncached() {
             return DynamicObjectFactory.GetShapeFlagsNodeGen.getUncached();
-        }
-    }
-
-    /**
-     * Checks if the language-specific object shape flags include the given flags.
-     *
-     * @see #execute(DynamicObject, int)
-     * @since 25.1
-     */
-    @ImportStatic(DynamicObject.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class HasShapeFlagsNode extends Node {
-
-        HasShapeFlagsNode() {
-        }
-
-        // @formatter:off
-        /**
-         * Checks if the language-specific object shape flags contains the given flags, previously set using
-         * {@link SetShapeFlagsNode} or
-         * {@link Shape.Builder#shapeFlags(int)}. If no shape flags were explicitly set, the default of
-         * false is returned.
-         *
-         * These flags may be used to tag objects that possess characteristics that need to be queried
-         * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
-         *
-         * <h3>Usage example:</h3>
-         *
-         * {@snippet :
-         * @ExportMessage
-         * Object writeMember(String member, Object value,
-         *                 @Cached DynamicObject.HasShapeFlagsNode hasShapeFlagsNode,
-         *                 @Cached DynamicObject.PutNode putNode)
-         *                 throws UnsupportedMessageException {
-         *     if (hasShapeFlagsNode.execute(receiver, FROZEN)) {
-         *         throw UnsupportedMessageException.create();
-         *     }
-         *     putNode.execute(this, member, value);
-         * }
-         * }
-         *
-         * @return whether the shape flags contain (all of) the given flags
-         * @see GetShapeFlagsNode
-         * @see SetShapeFlagsNode
-         * @see Shape.Builder#shapeFlags(int)
-         * @see Shape#getFlags()
-         */
-        // @formatter:on
-        public abstract boolean execute(DynamicObject receiver, int flags);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "shape == cachedShape", limit = "1")
-        static boolean doCached(DynamicObject receiver, int flags,
-                        @Bind("receiver.getShape()") Shape shape,
-                        @Cached("shape") Shape cachedShape) {
-            return (cachedShape.getFlags() & flags) == flags;
-        }
-
-        @Specialization(replaces = "doCached")
-        static boolean doGeneric(DynamicObject receiver, int flags) {
-            return (receiver.getShape().getFlags() & flags) == flags;
-        }
-
-        /**
-         * @since 25.1
-         */
-        @NeverDefault
-        public static HasShapeFlagsNode create() {
-            return DynamicObjectFactory.HasShapeFlagsNodeGen.create();
-        }
-
-        /**
-         * @since 25.1
-         */
-        @NeverDefault
-        public static HasShapeFlagsNode getUncached() {
-            return DynamicObjectFactory.HasShapeFlagsNodeGen.getUncached();
         }
     }
 
