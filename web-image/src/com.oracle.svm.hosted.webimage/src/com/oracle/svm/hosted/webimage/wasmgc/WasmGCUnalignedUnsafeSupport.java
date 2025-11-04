@@ -371,11 +371,15 @@ public class WasmGCUnalignedUnsafeSupport {
     }
 
     /**
-     * Detect out of bounds access that is still within the same 4-byte word as the last element.
-     * {@code jdk.internal.misc.Unsafe#compareAndExchangeByte} uses int accesses that are out of
-     * bounds. For example, there might be an int access at the end of a byte array of length 5.
-     * Such accesses are undefined behaviour. We may therefore ignore such accesses instead of
-     * throwing an out-of-bounds exception.
+     * Detect out of bounds access that is still within the same 4-byte aligned 4-byte word as the
+     * last element. Such accesses are usually undefined behaviour, but to not produce unexpected
+     * behavior (i.e. a crash), out of bounds accesses where this method returns {@code true} should
+     * not crash and just return an arbitrary value and ignore any writes.
+     * <p>
+     * {@code jdk.internal.misc.Unsafe#compareAndExchangeByte} uses int accesses that may go out of
+     * bounds and does not expect a crash in that case, though it ignores the out-of-bounds bytes.
+     * For example, there might be an int access at the first element of a 1-element byte array.
+     *
      */
     private static boolean inWordRemainder(Object o, long offset) {
         int scaledOffset = getScaledOffset(o, offset);
