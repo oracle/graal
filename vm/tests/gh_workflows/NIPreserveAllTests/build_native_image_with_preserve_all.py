@@ -48,6 +48,18 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+os_name = platform.system().lower()  # linux, windows, darwin
+os_arch = platform.machine()         # x86_64, arm64, etc.
+os_classifier = f"{os_name}-{os_arch}"
+repositories = [
+    ("central", "https://repo.maven.apache.org/maven2"),
+    ("jabylon", "https://www.jabylon.org/maven/"),
+    ("google", "https://maven.google.com/"),
+    ("jboss", "https://repository.jboss.org/maven2/"),
+    ("redhat-ga", "https://maven.repository.redhat.com/ga/")
+]
+
+
 def generate_matrix(path_to_data, libs_per_job, delimiter):
     '''
     Generates a matrix in the format of GAV coordinate tuples (depending on the selected number of libraries per action job) for GitHub actions.
@@ -97,11 +109,6 @@ def preserve_all(native_image_path, coordinates, delimiter):
     If the image build fails with a "--initialize-at-build-time" error, retries the build with the additional
     "--initialize-at-build-time" argument until the build completes successfully, or a different error occurs.
     '''
-    global os_name, os_arch, os_classifier
-    os_name = platform.system().lower()  # linux, windows, darwin
-    os_arch = platform.machine()         # x86_64, arm64, etc.
-    os_classifier = f"{os_name}-{os_arch}"
-
     coordinates_list = coordinates.split(delimiter)
 
     for gav in coordinates_list:
@@ -235,11 +242,14 @@ def _update_dependency_scopes(deps):
                 ET.register_namespace('', ns["m"])
                 for dependency in root.findall(".//m:dependency", ns):
                     group_id = dependency.find("m:groupId", ns)
-                    if group_id is not None and (group_id.text.startswith("com.oracle") or group_id.text.startswith("org.graalvm")):
+                    if group_id is not None and group_id.text.startswith(("com.oracle", "org.graalvm")):
                         continue
                     scope = dependency.find("m:scope", ns)
-                    if scope is not None and scope.text == "provided":
-                        scope.text = "compile"
+                    if scope is not None:
+                        if scope.text == "system":
+                            continue
+                        if scope.text == "provided":
+                            scope.text = "compile"
                     optional = dependency.find("m:optional", ns)
                     if optional is not None and optional.text == "true":
                         optional.text = "false"
@@ -252,7 +262,7 @@ def _update_dependency_scopes(deps):
 def _generate_pom(dependencies):
     '''
     Writes a pom.xml file with the given dependencies (map of (group_id, artifact_id) -> version).
-    Also adds Maven Central, Jabylon, Google and JBoss repositories.
+    Also adds external repositories from which dependencies can be resolved to the pom file.
     '''
     project = ET.Element("project", {
         "xmlns": "http://maven.apache.org/POM/4.0.0",
@@ -275,21 +285,10 @@ def _generate_pom(dependencies):
 
     repositories_element = ET.SubElement(project, "repositories")
 
-    repo_central = ET.SubElement(repositories_element, "repository")
-    ET.SubElement(repo_central, "id").text = "central"
-    ET.SubElement(repo_central, "url").text = "https://repo.maven.apache.org/maven2"
-
-    repo_jabylon = ET.SubElement(repositories_element, "repository")
-    ET.SubElement(repo_jabylon, "id").text = "jabylon"
-    ET.SubElement(repo_jabylon, "url").text = "https://www.jabylon.org/maven/"
-
-    repo_google = ET.SubElement(repositories_element, "repository")
-    ET.SubElement(repo_google, "id").text = "google"
-    ET.SubElement(repo_google, "url").text = "https://maven.google.com/"
-
-    repo_jboss = ET.SubElement(repositories_element, "repository")
-    ET.SubElement(repo_jboss, "id").text = "jboss"
-    ET.SubElement(repo_jboss, "url").text = "https://repository.jboss.org/maven2/"
+    for repo_id, repo_url in repositories:
+        repo = ET.SubElement(repositories_element, "repository")
+        ET.SubElement(repo, "id").text = repo_id
+        ET.SubElement(repo, "url").text = repo_url
 
     xml_str = ET.tostring(project, encoding="utf-8")
     pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ")
