@@ -315,11 +315,17 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
-  if (max_level >= 24)
+  if (max_level >= 0x24)
   {
-    get_cpuid(24, &eax, &ebx, &ecx, &edx);
+    get_cpuid(0x24, &eax, &ebx, &ecx, &edx);
     _cpuid_info->std_cpuid24_eax.value = eax;
     _cpuid_info->std_cpuid24_ebx.value = ebx;
+  }
+
+  if (max_level >= 0x29)
+  {
+    get_cpuid(0x29, &eax, &ebx, &ecx, &edx);
+    _cpuid_info->std_cpuid29_ebx.value = ebx;
   }
 
   // topology
@@ -559,7 +565,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
     features->fRDPID = 1;
   if (_cpuid_info->sefsl1_cpuid7_edx.bits.apx_f != 0 &&
-      _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
+      _cpuid_info->xem_xcr0_eax.bits.apx_f != 0 &&
+      _cpuid_info->std_cpuid29_ebx.bits.apx_nci_ndd_nf != 0)
     features->fAPX_F = 1;
 
   // AMD|Hygon additional features.
