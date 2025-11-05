@@ -30,10 +30,22 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Mirror of org.graalvm.nativeimage.dynamicaccess.JNIAccess using JVMCI types.
+ */
 public interface JVMCIJNIAccess {
+    /**
+     * See org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, Class...).
+     */
     void register(AccessCondition condition, ResolvedJavaType... types);
 
+    /**
+     * See org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, Executable...).
+     */
     void register(AccessCondition condition, ResolvedJavaMethod... methods);
 
+    /**
+     * See org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, Field...).
+     */
     void register(AccessCondition condition, ResolvedJavaField... fields);
 }
