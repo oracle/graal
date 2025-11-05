@@ -59,7 +59,7 @@
   },
 
   local all_builds = [
-    common.post_merge + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
+    common.daily + linux_amd64 + common.labsjdkLatest + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(all_builds, std.thisFile),
