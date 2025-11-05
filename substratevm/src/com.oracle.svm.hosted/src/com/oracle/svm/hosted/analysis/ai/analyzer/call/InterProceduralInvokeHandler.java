@@ -5,6 +5,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
@@ -94,7 +95,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        String ctxSig = /* build k-CFA signature */ com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
+        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
@@ -108,6 +109,9 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
         }
 
         /* At this point, we are finished with the fixpoint iteration and updated the summary cache */
+        // TODO: we will have to think how to do this since we can't directly get analysis method from the invoke, also we probably don't want dumps of
+        // multiple methods into a single file
+//        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(invoke.get).graph, analysisMethod, abstractState);
         checkerManager.runCheckers(targetAnalysisMethod, callerState);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
@@ -126,9 +130,9 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             callStack.push(root);
             AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
             callStack.pop();
-
+            var logger = AbstractInterpretationLogger.getInstance();
+            logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root).graph, root, abstractState);
             checkerManager.runCheckers(root, abstractState);
-            AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
             logger.logSummariesStats(summaryManager);
         } finally {
         }

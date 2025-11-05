@@ -60,7 +60,6 @@ public final class WpoFixpointIterator<
         buildWorkNodes();
         runAnalysis();
         logger.log("Finished concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
-        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(analysisMethod).graph, analysisMethod, abstractState);
         return abstractState;
     }
 

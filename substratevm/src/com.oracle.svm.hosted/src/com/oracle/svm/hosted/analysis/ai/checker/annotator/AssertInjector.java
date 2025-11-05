@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.annotator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
@@ -16,9 +16,6 @@ import java.util.List;
 
 /**
  * Utility that writes a simple assertion harness derived from facts.
- * The harness is textual and intended as a starting point for either
- * (A) a runtime assertion injection phase, or
- * (B) a unit-test that verifies facts.
  */
 public final class AssertInjector {
 
@@ -51,15 +48,12 @@ public final class AssertInjector {
         if (graph == null || facts == null || facts.isEmpty()) {
             return;
         }
-        // Only inject if user opted in via system property
         String prop = System.getProperty("absint.inject.asserts", "false");
         if (!"true".equalsIgnoreCase(prop)) {
             return;
         }
 
-        // place anchors at start of method (conservative and non-invasive)
         StartNode start = graph.start();
-        // create a small debug file mapping anchor ids to fact strings
         String methodName = "unknown-method";
         Path outDir = Path.of("target", "assert-harness");
         try {

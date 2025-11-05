@@ -64,8 +64,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     public void execEdge(Node source, Node target, AbstractState<AbstractMemory> abstractState, IteratorContext iteratorContext) {
         AbstractMemory post = abstractState.getPostCondition(source);
 
-        // Special handling: when flowing into a LoopExit, also join the loop's end-state
-        // so heap effects from within the loop are visible after exiting.
         if (target instanceof LoopExitNode exit) {
             LoopBeginNode lb = exit.loopBegin();
             AbstractMemory acc = post.copyOf();
@@ -164,7 +162,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (ix == null || iy == null) return out;
 
         if (isTrue) {
-            // x == y => intersect
             IntInterval nx = ix.copyOf();
             nx.meetWith(iy);
             IntInterval ny = iy.copyOf();
@@ -174,7 +171,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             AccessPath py = out.lookupTempByName(nodeId(y));
             if (py != null) out.writeStore(py, ny);
         } else {
-            // x != y: interval domain cannot represent set difference precisely -> no refinement unless a point
             if (isPoint(ix)) {
                 IntInterval ny = iy.copyOf();
                 AccessPath py = out.lookupTempByName(nodeId(y));
@@ -194,7 +190,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private AbstractMemory narrowOnBelow(AbstractMemory base, IntegerBelowNode ib, boolean isTrue) {
-        // Only refine using unsigned relation when both sides are known non-negative.
         AbstractMemory out = base.copyOf();
         Node x = ib.getX();
         Node y = ib.getY();
@@ -213,7 +208,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 ny.setLower(Math.max(ny.getLower(), ix.getLower() + 1));
             }
         } else {
-            // x >= y
             if (!iy.isLowerInfinite()) {
                 nx.setLower(Math.max(nx.getLower(), iy.getLower()));
             }
@@ -236,26 +230,19 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
         AbstractMemory post = pre.copyOf();
         if (node instanceof StoreFieldNode sfn) {
-            // Evaluate value first
             AbstractMemory afterVal = evalNode(sfn.value(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             IntInterval val = getNodeResultInterval(sfn.value(), afterVal);
-            // Alias-aware base
             AliasSet bases = resolveFieldBaseSet(sfn.object(), sfn.field(), afterVal);
             post = afterVal.copyOf();
             post.writeTo(bases, p -> p.appendField(sfn.field().getName()), val);
         } else if (node instanceof StoreIndexedNode sin) {
-            // Evaluate array, then index, then value to ensure base binding exists
             AbstractMemory afterArr = evalNode(sin.array(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
-            // Evaluate value and index
             AbstractMemory afterIdx = evalNode(sin.index(), afterArr, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             AbstractMemory afterVal = evalNode(sin.value(), afterIdx, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             IntInterval val = getNodeResultInterval(sin.value(), afterVal);
-
             AliasSet bases = accessBaseSetForNodeEval(sin.array(), afterVal);
             Function<AccessPath, AccessPath> idxTransform = indexTransform(sin.index(), afterVal);
-
             post = afterVal.copyOf();
-            // Summary write (wildcard or precise if singleton)
             post.writeTo(bases, idxTransform, val);
 
             // If index is a small, bounded range, specialize per-index writes to improve precision
@@ -267,7 +254,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 long span = hi - lo;
                 if (span >= 0 && span <= MAX_INDEX_EXPANSION && hi <= Integer.MAX_VALUE) {
                     for (long k = lo; k <= hi; k++) {
-                        // Re-evaluate the store value with index bound to k
                         AbstractMemory memK = afterIdx.copyOf();
                         String idxId = nodeId(sin.index());
                         AccessPath ip = AccessPath.forLocal(idxId);
@@ -289,7 +275,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 if (val.isTop() && field.getType().getJavaKind().isNumericInteger()) {
                     val = new IntInterval(0, 0);
                     logger.log("LoadField of uninitialized static field " + field.getName() +
-                              ", using default value [0, 0]", LoggerVerbosity.DEBUG);
+                            ", using default value [0, 0]", LoggerVerbosity.DEBUG);
                 }
                 bindNodeResult(node, val, post);
             } else {
@@ -305,7 +291,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             AbstractMemory afterIdx = evalNode(lin.index(), afterArr, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             AliasSet bases = accessBaseSetForNodeEval(lin.array(), afterIdx);
             Function<AccessPath, AccessPath> idxTransform = indexTransform(lin.index(), afterIdx);
-            // Read precise index if possible, and also join with wildcard summary content
             IntInterval valPrecise = afterIdx.readFrom(bases, idxTransform);
             IntInterval valSummary = afterIdx.readFrom(bases, AccessPath::appendArrayWildcard);
             IntInterval val = valPrecise.copyOf();
@@ -373,9 +358,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
         } else if (node instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
-            AbstractMemory afterCond = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
-            // bindNodeResult happens inside eval; just adopt memory
-            post = afterCond;
+            post = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
         }
         logger.log("Computed post-condition: " + post + " for node: " + node, LoggerVerbosity.INFO);
         abstractState.setPostCondition(node, post);
@@ -585,7 +568,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                     Node other = xIsPhi ? y : (yIsPhi ? x : null);
                     if (other instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
                         incr = cn.asJavaConstant().asLong();
-                        if (incr > 0 && (xIsPhi || yIsPhi)) {
+                        if (incr > 0) {
                             isInduction = true;
                         }
                     }
@@ -603,7 +586,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                                 long bound = cn2.asJavaConstant().asLong();
                                 // phi must be < bound, so upper = bound-1
                                 IntInterval initIv = getNodeResultInterval(initNode, originalIn);
-                                if (initIv == null) initIv = new IntInterval(); initIv.setToBot();
+                                if (initIv == null) initIv = new IntInterval();
+                                initIv.setToBot();
                                 long newLower = initIv.isBot() ? 0 : initIv.getLower();
                                 long newUpper = bound - 1;
                                 IntInterval bounded = new IntInterval(newLower, newUpper);
@@ -888,7 +872,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             default -> {
             }
         }
-        // Try from evaluated temp
         AliasSet s = mem.lookupTempSetByName(nodeId(objNode));
         if (s != null) return s;
         return AliasSet.of();

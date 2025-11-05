@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker;
+package com.oracle.svm.hosted.analysis.ai.checker.annotator;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;

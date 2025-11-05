@@ -14,7 +14,7 @@ public record ConstantFact(Node node, long value) implements Fact {
 
     @Override
     public String describe() {
-        return Long.toString(value);
+        return node.toString() + " has constant value: " + Long.toString(value);
     }
 }
 

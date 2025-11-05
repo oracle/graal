@@ -53,7 +53,7 @@ public final class CheckerManager {
             }
         }
 
-        logger.log("Aggregated facts produced by checkers: " + allFacts, LoggerVerbosity.CHECKER);
+        logger.logFacts(allFacts);
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         RewriterOrchestrator.apply(method, abstractState.getCfgGraph().graph, aggregator);
         AssertInjector.injectAnchors(abstractState.getCfgGraph().graph, allFacts);
