@@ -990,6 +990,12 @@ public final class IntegerStamp extends PrimitiveStamp {
         return stamp.lowerBound() == CodeUtil.minValue(stamp.getBits());
     }
 
+    /** Returns {@code true} if the two stamps cannot have any common set bits. */
+    public static boolean bitwiseDisjoint(IntegerStamp x, IntegerStamp y) {
+        GraalError.guarantee(x.getBits() == y.getBits(), "must be compatible: %s / %s", x, y);
+        return (x.mayBeSet() & y.mayBeSet()) == 0;
+    }
+
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
 
                     new ArithmeticOpTable.UnaryOp.Neg() {
