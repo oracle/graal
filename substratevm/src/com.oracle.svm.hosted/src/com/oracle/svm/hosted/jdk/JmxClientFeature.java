@@ -33,9 +33,9 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeJNIAccess;
-import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeReflection;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 @AutomaticallyRegisteredFeature
 public class JmxClientFeature extends JNIRegistrationUtil implements InternalFeature {
