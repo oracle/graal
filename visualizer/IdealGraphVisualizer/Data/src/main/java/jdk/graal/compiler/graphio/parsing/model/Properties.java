@@ -114,8 +114,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
                     props.put(names[i], values[i]);
                 }
             } else {
-                P:
-                for (int i = 0; i < size; ++i) {
+                P: for (int i = 0; i < size; ++i) {
                     String n = names[i];
                     if (!excludes.contains(n)) {
                         for (String p : excludePrefixes) {
@@ -314,9 +313,11 @@ public abstract class Properties implements Iterable<Property<Object>> {
                 if (size() != hash.size()) {
                     return false;
                 }
-                // Most Properties comparisons are for cases where they are the same or very similar
-                // so efficiency is fairly important to loading speed.  They are commonly ordered in the
-                // same fashion so take advantage of that in the comparison
+                /*
+                 * Most Properties comparisons are for cases where they are the same or very similar
+                 * so efficiency is fairly important to loading speed. They are commonly ordered in
+                 * the same fashion so take advantage of that in the comparison
+                 */
                 Set<Map.Entry<String, Object>> set1 = map.entrySet();
                 Iterator<Map.Entry<String, Object>> iter1 = set1.iterator();
 
@@ -378,8 +379,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
             if (excludes.isEmpty() && excludePrefixes.length == 0) {
                 props.putAll(map);
             } else {
-                P:
-                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                P: for (Map.Entry<String, Object> entry : map.entrySet()) {
                     String n = entry.getKey();
                     if (!excludes.contains(n)) {
                         for (String p : excludePrefixes) {
@@ -769,10 +769,10 @@ public abstract class Properties implements Iterable<Property<Object>> {
         /**
          * Constructs a regular expression based matcher.
          *
-         * @param name        name of the property to search
-         * @param value       pattern
+         * @param name name of the property to search
+         * @param value pattern
          * @param entireMatch whether the matcher should only accept full matches
-         * @param flags       flags to use to compile the pattern defined by {@code value}
+         * @param flags flags to use to compile the pattern defined by {@code value}
          */
         public RegexpPropertyMatcher(String name, String value, boolean entireMatch, int flags) {
             if (name == null) {
@@ -889,7 +889,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
      * {@link #get(java.lang.String, java.lang.Class)} will throw an exception/assertion on
      * non-String values.
      *
-     * @param key      property key
+     * @param key property key
      * @param defValue value to be returned if the property is not defined or is {@code null}
      * @return String representation
      */

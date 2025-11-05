@@ -24,31 +24,6 @@
  */
 package jdk.graal.compiler.graphio.parsing;
 
-import jdk.graal.compiler.graphio.parsing.Builder.Length;
-import jdk.graal.compiler.graphio.parsing.Builder.LengthToString;
-import jdk.graal.compiler.graphio.parsing.Builder.ModelControl;
-import jdk.graal.compiler.graphio.parsing.Builder.Node;
-import jdk.graal.compiler.graphio.parsing.Builder.NodeClass;
-import jdk.graal.compiler.graphio.parsing.Builder.Port;
-import jdk.graal.compiler.graphio.parsing.Builder.TypedPort;
-import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
-import jdk.graal.compiler.graphio.parsing.model.Group;
-import jdk.graal.compiler.graphio.parsing.model.InputGraph;
-
-import java.io.EOFException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GRAPH;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.BEGIN_GROUP;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.CLOSE_GROUP;
@@ -75,6 +50,31 @@ import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_POOL;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_SUBGRAPH;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.PROPERTY_TRUE;
 import static jdk.graal.compiler.graphio.parsing.BinaryStreamDefs.STREAM_PROPERTIES;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import jdk.graal.compiler.graphio.parsing.Builder.Length;
+import jdk.graal.compiler.graphio.parsing.Builder.LengthToString;
+import jdk.graal.compiler.graphio.parsing.Builder.ModelControl;
+import jdk.graal.compiler.graphio.parsing.Builder.Node;
+import jdk.graal.compiler.graphio.parsing.Builder.NodeClass;
+import jdk.graal.compiler.graphio.parsing.Builder.Port;
+import jdk.graal.compiler.graphio.parsing.Builder.TypedPort;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 
 /**
  * The class reads the Graal binary dump format. All model object creation or property value
@@ -852,9 +852,9 @@ public class BinaryReader implements GraphParser, ModelControl {
         } finally {
             // also terminates the builder
             closeDanglingGroups();
-            long end = System.nanoTime();
             if (TRACE_PARSE_TIME) {
-                System.err.println((System.currentTimeMillis() - timeStart) + " Parsed file in " + ((end - start) / 1000000) + " ms");
+                long end = System.nanoTime();
+                System.err.println(((System.nanoTime() - timeStart) / 1_000_000) + " Parsed file in " + ((end - start) / 1_000_000) + " ms");
             }
 
         }
@@ -1016,7 +1016,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    private static final long timeStart = System.currentTimeMillis();
+    private static final long timeStart = System.nanoTime();
 
     private InputGraph parseGraph(int dumpId, String format, Object[] args, boolean toplevel) throws IOException {
         long start = System.nanoTime();
@@ -1043,9 +1043,9 @@ public class BinaryReader implements GraphParser, ModelControl {
             // we have to finish the graph.
             reporter.popContext();
             g = builder.endGraph();
-            long end = System.nanoTime();
             if (TRACE_PARSE_TIME) {
-                System.err.println((System.currentTimeMillis() - timeStart) + " Parsed " + dumpId + " " + String.format(format, args) + " in " + ((end - start) / 1000000) + " ms");
+                long end = System.nanoTime();
+                System.err.println(((System.nanoTime() - timeStart) / 1_000_000) + " Parsed " + dumpId + " " + String.format(format, args) + " in " + ((end - start) / 1000000) + " ms");
             }
         }
         return g;

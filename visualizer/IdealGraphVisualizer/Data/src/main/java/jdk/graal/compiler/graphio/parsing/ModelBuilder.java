@@ -25,19 +25,15 @@
 
 package jdk.graal.compiler.graphio.parsing;
 
-import jdk.graal.compiler.graphio.parsing.BinaryReader.EnumValue;
-import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
-import jdk.graal.compiler.graphio.parsing.model.Folder;
-import jdk.graal.compiler.graphio.parsing.model.FolderElement;
-import jdk.graal.compiler.graphio.parsing.model.GraphClassifier;
-import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
-import jdk.graal.compiler.graphio.parsing.model.Group;
-import jdk.graal.compiler.graphio.parsing.model.InputBlock;
-import jdk.graal.compiler.graphio.parsing.model.InputEdge;
-import jdk.graal.compiler.graphio.parsing.model.InputGraph;
-import jdk.graal.compiler.graphio.parsing.model.InputMethod;
-import jdk.graal.compiler.graphio.parsing.model.InputNode;
-import jdk.graal.compiler.graphio.parsing.model.Properties;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_BLOCK;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_CLASS;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_DUPLICATE;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_HAS_PREDECESSOR;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_ID;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_IDX;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_SHORT_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -52,15 +48,19 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_BLOCK;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_CLASS;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_DUPLICATE;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_HAS_PREDECESSOR;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_ID;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_IDX;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_SHORT_NAME;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
+import jdk.graal.compiler.graphio.parsing.BinaryReader.EnumValue;
+import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
+import jdk.graal.compiler.graphio.parsing.model.Folder;
+import jdk.graal.compiler.graphio.parsing.model.FolderElement;
+import jdk.graal.compiler.graphio.parsing.model.GraphClassifier;
+import jdk.graal.compiler.graphio.parsing.model.GraphDocument;
+import jdk.graal.compiler.graphio.parsing.model.Group;
+import jdk.graal.compiler.graphio.parsing.model.InputBlock;
+import jdk.graal.compiler.graphio.parsing.model.InputEdge;
+import jdk.graal.compiler.graphio.parsing.model.InputGraph;
+import jdk.graal.compiler.graphio.parsing.model.InputMethod;
+import jdk.graal.compiler.graphio.parsing.model.InputNode;
+import jdk.graal.compiler.graphio.parsing.model.Properties;
 
 /**
  * Builds a model based on SAX-like events. The expected sequence of events is:
@@ -663,7 +663,7 @@ public class ModelBuilder implements Builder {
     private static boolean isSystemProperty(String key) {
         return switch (key) {
             case PROPNAME_HAS_PREDECESSOR, PROPNAME_NAME, PROPNAME_CLASS, PROPNAME_ID, PROPNAME_IDX, PROPNAME_BLOCK ->
-                    true;
+                true;
             default -> false;
         };
     }

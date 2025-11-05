@@ -25,6 +25,12 @@
 
 package jdk.graal.compiler.graphio.parsing;
 
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import jdk.graal.compiler.graphio.parsing.BinaryReader.EnumValue;
 import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
 import jdk.graal.compiler.graphio.parsing.TemplateParser.TemplatePart;
@@ -33,12 +39,6 @@ import jdk.graal.compiler.graphio.parsing.model.Group;
 import jdk.graal.compiler.graphio.parsing.model.InputBlock;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.CLASS_ENDNODE;
 
 /**
  * Interface for building IGV data from the stream.
