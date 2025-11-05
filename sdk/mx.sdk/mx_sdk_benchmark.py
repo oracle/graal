@@ -1523,8 +1523,10 @@ class NativeImageVM(StageAwareGraalVm):
         return rules
 
     def image_build_timers_rules(self, benchmarks):
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout',
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', '(compile)', 'layout',
                            'image', 'write']
+        metric_object_mapper = {'(compile)': 'compile-step'}
+
         if not self.pgo_use_perf:
             # No debug info with perf, [GR-66850]
             measured_phases.append('dbginfo')
@@ -1532,6 +1534,7 @@ class NativeImageVM(StageAwareGraalVm):
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
             value_name = phase + "_time"
+            metric_object = metric_object_mapper.get(phase, phase)
             rules += self._get_image_build_stats_rules({
                 "bench-suite": self.config.benchmark_suite_name,
                 "benchmark": benchmarks[0],
@@ -1542,7 +1545,7 @@ class NativeImageVM(StageAwareGraalVm):
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
-                "metric.object": phase,
+                "metric.object": metric_object,
             }, [value_name])
             value_name = phase + "_memory"
             rules += self._get_image_build_stats_rules({
@@ -1555,7 +1558,7 @@ class NativeImageVM(StageAwareGraalVm):
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
-                "metric.object": phase + "_memory",
+                "metric.object": metric_object + "_memory",
             }, [value_name])
         return rules
 
