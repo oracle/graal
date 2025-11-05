@@ -35,9 +35,9 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeReflection;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.phases.util.Providers;
