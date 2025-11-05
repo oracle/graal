@@ -310,6 +310,109 @@ public @interface GenerateLibrary {
          * @since 23.0
          */
         String[] ifExportedAsWarning() default {};
+
+        /**
+         * A tool to deprecate and replace messages during library evolution.
+         * <p>
+         * The primary use case is to facilitate transitions from one message to another by
+         * designating a new message as a replacement for an older, deprecated message. When this
+         * annotation is present, and the deprecated message is not explicitly implemented, a
+         * default implementation is generated that delegates from the deprecated message to its
+         * designated replacement. The message specification may optionally include argument types
+         * in parentheses. When delegation cannot be handled automatically, a custom implementation
+         * can be provided using {@link #replacementMethod()}.
+         * <p>
+         * The migration behavior between deprecated and replacement messages depends on whether the
+         * exporter (the library implementer) and the client (the library user) have migrated to the
+         * new API. The following combinations are supported:
+         * <ol>
+         * <li><b>Both exporter and client use the deprecated API:</b> The original deprecated
+         * message is used exactly as before deprecation. No delegation or generated replacement is
+         * involved.</li>
+         * <li><b>Exporter uses the deprecated API, client uses the new API:</b> The default
+         * implementation of the new message is used. It delegates to the exporter's implementation
+         * of the deprecated message.</li>
+         * <li><b>Exporter uses the new API, client uses the deprecated API:</b> The annotation
+         * processor generates an implementation of the deprecated message that delegates to the
+         * exporter's new message. When the default delegation is insufficient, the
+         * {@link #replacementMethod()} can be used to provide a custom conversion or adapter.</li>
+         * <li><b>Both exporter and client use the new API:</b> The generated deprecated message is
+         * no longer needed and can be safely removed once all usages have migrated.</li>
+         * </ol>
+         * <p>
+         * <b>Example:</b>
+         *
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract class ArrayLibrary extends Library {
+         *
+         *     &#64;Abstract(ifExported = "isArray")
+         *     &#64;Deprecated
+         *     public int read(Object receiver, int index) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         *
+         *     &#64;Abstract(ifExported = "isArray", replacementOf = "read(Object, int)")
+         *     public int read(Object receiver, long index) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, the {@code read(Object, long)} message replaces
+         * {@code read(Object, int)}. If only the new message is implemented, the following
+         * delegation is generated automatically:
+         *
+         * <pre>
+         * public int read(Object receiver, int index) {
+         *     return read(receiver, (long) index);
+         * }
+         * </pre>
+         *
+         * Legacy clients can continue calling the deprecated message, while exporters need only
+         * implement the new message signature.
+         *
+         * @see #replacementMethod()
+         * @since 25.1
+         */
+        String replacementOf() default "";
+
+        /**
+         * Specifies a custom replacement method to handle delegation for a message declared with
+         * {@link #replacementOf()}.
+         * <p>
+         * This attribute provides a way to manually implement delegation logic when automatic
+         * delegation from the deprecated message to its replacement cannot be generated correctly.
+         * Typical reasons include differences in argument semantics, necessary type conversions, or
+         * behavioral changes that cannot be inferred automatically.
+         * <p>
+         * This element is only valid when {@link #replacementOf()} is also set. Using it without
+         * {@code replacementOf} will result in a compilation error. The specified method must have
+         * a compatible signature and be accessible from the annotated message.
+         *
+         * <p>
+         * <b>Example:</b>
+         *
+         * <pre>
+         * &#64;Abstract(ifExported = "isArray", replacementOf = "read(Object, int)", replacementMethod = "readLegacy")
+         * public int read(Object receiver, long unsignedIndex) {
+         *     throw new UnsupportedOperationException();
+         * }
+         *
+         * protected final int readLegacy(Object receiver, int index) {
+         *     long unsignedIndex = Integer.toUnsignedLong(index);
+         *     return read(receiver, unsignedIndex);
+         * }
+         * </pre>
+         *
+         * In this example, the deprecated {@code read(Object, int)} message cannot be automatically
+         * delegated to {@code read(Object, long)} because the index must be treated as unsigned.
+         * The custom {@code readLegacy} method therefore provides the correct conversion logic.
+         *
+         * @see #replacementOf()
+         * @since 25.1
+         */
+        String replacementMethod() default "";
     }
 
     /**

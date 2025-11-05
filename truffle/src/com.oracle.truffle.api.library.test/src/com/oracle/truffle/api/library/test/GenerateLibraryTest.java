@@ -41,8 +41,10 @@
 package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -53,6 +55,8 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
@@ -300,6 +304,340 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
         public abstract String messageString(CharSequence receiver);
 
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacementMessageReflection() {
+        assertEquals(String.class, Message.resolve(ReplacementsLibrary.class, "readMember").getParameterType(1));
+        assertTrue(Message.resolve(ReplacementsLibrary.class, "readMember").isDeprecated());
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibrary extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementOf = "readMember(Object, String)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int read(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementOf = "read(Object, int)")
+        public int read(Object receiver, long index) {
+            if (Integer.MIN_VALUE <= index && index <= Integer.MAX_VALUE) {
+                return read(receiver, (int) index);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) {
+            long unsignedIndex = Integer.toUnsignedLong(index);
+            return read(receiver, unsignedIndex);
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacy {
+
+        @ExportMessage
+        final int readMember(String name) {
+            return 1;
+        }
+
+        @ExportMessage
+        final int read(int index) {
+            return Integer.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(int index) {
+            return Integer.toUnsignedString(index).length();
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementNew {
+
+        @ExportMessage
+        final int readMember(Object name) {
+            return 100;
+        }
+
+        @ExportMessage
+        final int read(long index) {
+            return Long.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(long index) {
+            return Long.toUnsignedString(index).length();
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementLegacyAndNew {
+
+        @ExportMessage
+        final int readMember(Object name) {
+            return 100;
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message 'read' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
+        @ExportMessage
+        final int read(int index) {
+            return Long.toString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message 'read' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
+        @ExportMessage
+        final int read(long index) {
+            return Long.toString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message 'readUnsigned' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
+        @ExportMessage
+        final int readUnsigned(int index) {
+            return Integer.toUnsignedString(index).length();
+        }
+
+        @ExpectError("Cannot export both a deprecated message and a new message 'readUnsigned' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
+        @ExportMessage
+        final int readUnsigned(long index) {
+            return Long.toUnsignedString(index).length();
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacements() {
+        ReplacementsLibrary lib = LibraryFactory.resolve(ReplacementsLibrary.class).getUncached();
+        Object legacyObj = new ReplacementLegacy();
+        Object newObj = new ReplacementNew();
+
+        assertEquals(1, lib.readMember(legacyObj, "string"));
+        assertEquals(1, lib.readMember(legacyObj, (Object) "string"));
+        assertEquals(2, lib.read(legacyObj, 10));
+        assertEquals(2, lib.read(legacyObj, 10L));
+        assertEquals(10, lib.readUnsigned(legacyObj, -10));
+        assertEquals(10, lib.readUnsigned(legacyObj, 0XFFFFFFFA));
+
+        assertEquals(100, lib.readMember(newObj, "string"));
+        assertEquals(100, lib.readMember(newObj, (Object) "string"));
+        assertEquals(2, lib.read(newObj, 10));
+        assertEquals(2, lib.read(newObj, 10L));
+        assertEquals(10, lib.readUnsigned(newObj, -10));
+        assertEquals(20, lib.readUnsigned(newObj, -10L));
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibrary2 extends Library {
+
+        @Deprecated
+        public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageImpl")
+        public String getLanguageId(Object receiver) {
+            return TestLanguage.ID;
+        }
+
+        @SuppressWarnings("static-method")
+        protected final Class<? extends TruffleLanguage<?>> getLanguageImpl(Object receiver) {
+            return TestLanguage.class;
+        }
+    }
+
+    private static final class TestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        static final String ID = "test-language-id";
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacy2 {
+
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return TestLanguage.class;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementNew2 {
+
+        @ExportMessage
+        public String getLanguageId() {
+            return TestLanguage.ID;
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacyAndNew2 {
+
+        @ExpectError("Cannot export both a deprecated message 'getLanguage' and a new message 'getLanguageId' that declares a replacement for it. " +
+                        "Remove the @ExportMessage annotation from the deprecated methods to resolve this problem.")
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return TestLanguage.class;
+        }
+
+        @ExportMessage
+        public String getLanguageId() {
+            return TestLanguage.ID;
+        }
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibraryErrors1 extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replaced message readMember(Object, int) was not found. Specify an existing message with optional type arguments.")
+        @Abstract(replacementOf = "readMember(Object, int)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors2 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, String index) {
+            return index.length();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors3 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) throws Exception {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) throws Exception {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) throws ArrayIndexOutOfBoundsException {
+            return index;
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors4 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementOf = "readUnsigned(Object, int)", replacementMethod = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final long readUnsignedLegacy(Object receiver, int index) {
+            return index;
+        }
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibraryErrors5 extends Library {
+
+        @Abstract
+        public boolean isType(Object receiver) {
+            return false;
+        }
+
+        @ExpectError("The 'replacementMethod' attribute is only valid when 'replacementOf' is also specified.")
+        @Abstract(replacementMethod = "isType")
+        public Object replacedErr(Object receiver) {
+            return receiver;
+        }
+
+        @ExpectError("The replacement method doReplaceNone does not exist.")
+        @Abstract(replacementOf = "isType", replacementMethod = "doReplaceNone")
+        public boolean replaceWithNonexisting(Object receiver) {
+            return receiver != null;
+        }
+
+        @ExpectError("Message replace2 is a replacement of multiple messages. Arguments to replacementOf annotation have to be unique.")
+        @Abstract(replacementOf = "isType")
+        public boolean replace2(Object receiver) {
+            return receiver != null;
+        }
     }
 
     interface ExportsType {
