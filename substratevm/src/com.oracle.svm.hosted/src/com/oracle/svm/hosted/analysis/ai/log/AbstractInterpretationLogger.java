@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.log;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -9,6 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.util.GraphExporter;
 import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -17,11 +19,13 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Represents a logger for abstract interpretation analysis.
@@ -29,13 +33,17 @@ import java.util.Date;
 public final class AbstractInterpretationLogger {
 
     private static AbstractInterpretationLogger instance;
-    private final PrintWriter fileWriter;
-    private final DebugContext debugContext;
-    private final LoggerVerbosity loggerVerbosity;
+    private PrintWriter fileWriter;
     private final String logFilePath;
 
-    private AbstractInterpretationLogger(DebugContext debugContext,
-                                         String customFileName,
+    // Verbosity thresholds and output toggles
+    private LoggerVerbosity fileThreshold;
+    private LoggerVerbosity consoleThreshold;
+    private boolean colorEnabled = true;
+    private boolean consoleEnabled = true;
+    private boolean fileEnabled = true;
+
+    private AbstractInterpretationLogger(String customFileName,
                                          LoggerVerbosity loggerVerbosity) throws IOException {
         String fileName;
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -44,33 +52,26 @@ public final class AbstractInterpretationLogger {
         } else {
             fileName = "absint_" + timeStamp + ".log";
         }
-        this.logFilePath = new java.io.File(fileName).getAbsolutePath(); // Store the absolute path
-        this.fileWriter = new PrintWriter(new FileWriter(logFilePath, true));
-        this.debugContext = debugContext;
-        this.loggerVerbosity = loggerVerbosity;
+        this.logFilePath = new File(fileName).getAbsolutePath();
+        this.fileThreshold = loggerVerbosity == null ? LoggerVerbosity.INFO : loggerVerbosity;
+        this.consoleThreshold = this.fileThreshold;
+        instance = this;
     }
 
-    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
-                                                           String customFileName,
+    public static AbstractInterpretationLogger getInstance(String customFileName,
                                                            LoggerVerbosity loggerVerbosity) throws IOException {
         if (instance == null) {
-            instance = new AbstractInterpretationLogger(debugContext, customFileName, loggerVerbosity);
+            instance = new AbstractInterpretationLogger(customFileName, loggerVerbosity);
         }
         return instance;
     }
 
-    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
-                                                           String customFileName) throws IOException {
-        return getInstance(debugContext, customFileName, LoggerVerbosity.INFO);
+    public static AbstractInterpretationLogger getInstance(String customFileName) throws IOException {
+        return getInstance(customFileName, LoggerVerbosity.INFO);
     }
 
-    public static AbstractInterpretationLogger getInstance(DebugContext debugContext,
-                                                           LoggerVerbosity loggerVerbosity) throws IOException {
-        return getInstance(debugContext, null, loggerVerbosity);
-    }
-
-    public static AbstractInterpretationLogger getInstance(DebugContext debugContext) throws IOException {
-        return getInstance(debugContext, null, LoggerVerbosity.INFO);
+    public static AbstractInterpretationLogger getInstance(LoggerVerbosity loggerVerbosity) throws IOException {
+        return getInstance(null, loggerVerbosity);
     }
 
     public static AbstractInterpretationLogger getInstance() {
@@ -80,34 +81,102 @@ public final class AbstractInterpretationLogger {
         return instance;
     }
 
-    public void log(String message, LoggerVerbosity verbosity) {
-        String prefix = switch (verbosity) {
+    // Configuration setters (optional; preserve compatibility with existing construction)
+    public AbstractInterpretationLogger setFileThreshold(LoggerVerbosity threshold) {
+        if (threshold != null) this.fileThreshold = threshold;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setConsoleThreshold(LoggerVerbosity threshold) {
+        if (threshold != null) this.consoleThreshold = threshold;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setColorEnabled(boolean enabled) {
+        this.colorEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setConsoleEnabled(boolean enabled) {
+        this.consoleEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setFileEnabled(boolean enabled) {
+        this.fileEnabled = enabled;
+        return this;
+    }
+
+    private static class ANSI {
+        public static final String RESET = "\033[0m";
+        public static final String RED = "\033[0;31m";
+        public static final String GREEN = "\033[0;32m";
+        public static final String YELLOW = "\033[0;33m";
+        public static final String BLUE = "\033[0;34m";
+        public static final String PURPLE = "\033[0;35m";
+        public static final String CYAN = "\033[0;36m";
+        public static final String BOLD = "\033[1m";
+    }
+
+    private static String prefixFor(LoggerVerbosity v) {
+        return switch (v) {
             case CHECKER -> "[CHECKER] ";
             case CHECKER_ERR -> "[CHECKER_ERR] ";
             case CHECKER_WARN -> "[CHECKER_WARN] ";
+            case FACT -> "[FACT] ";
             case SUMMARY -> "[SUMMARY] ";
             case INFO -> "[INFO] ";
             case DEBUG -> "[DEBUG] ";
         };
+    }
 
-        /* Don't log debug info to file if debug verbosity is not set */
-        if (verbosity != LoggerVerbosity.DEBUG || isDebugEnabled()) {
-            fileWriter.println(prefix + message);
-            fileWriter.flush();
-        }
+    private static String colorFor(LoggerVerbosity v) {
+        return switch (v) {
+            case CHECKER -> ANSI.GREEN;
+            case CHECKER_WARN -> ANSI.YELLOW;
+            case CHECKER_ERR -> ANSI.RED;
+            case FACT -> ANSI.PURPLE;
+            case SUMMARY, DEBUG -> ANSI.BLUE;
+            case INFO -> ANSI.CYAN;
+        };
+    }
 
-        /* Log to console only if the logger verbosity is set to the same or higher level */
-        if (loggerVerbosity.compareTo(verbosity) < 0) {
+    private synchronized void ensureFileWriter() {
+        if (!fileEnabled) {
             return;
         }
+        if (fileWriter == null) {
+            try {
+                fileWriter = new PrintWriter(new FileWriter(logFilePath, true));
+            } catch (IOException ioe) {
+                fileEnabled = false;
+                System.err.println("[AI-LOGGER] Failed to (re)open log file '" + logFilePath + "': " + ioe.getMessage());
+            }
+        }
+    }
 
-        switch (verbosity) {
-            case CHECKER -> logChecker(message);
-            case CHECKER_WARN -> logCheckerWarn(message);
-            case CHECKER_ERR -> logCheckerErr(message);
-            case SUMMARY -> logSummary(message);
-            case INFO -> logInfo(message);
-            case DEBUG -> logDebug(message);
+    public synchronized void log(String message, LoggerVerbosity verbosity) {
+        String prefix = prefixFor(verbosity);
+        String ts = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+        String fileLine = ts + " " + prefix + message;
+
+        // File output with threshold (re-open lazily if closed)
+        if (fileEnabled && verbosity.compareTo(fileThreshold) <= 0) {
+            ensureFileWriter();
+            if (fileWriter != null) {
+                fileWriter.println(fileLine);
+                fileWriter.flush();
+            }
+        }
+
+        // Console output with threshold and color
+        if (consoleEnabled && verbosity.compareTo(consoleThreshold) <= 0) {
+            String colored = colorEnabled ? (colorFor(verbosity) + prefix + message + ANSI.RESET) : (prefix + message);
+            if (verbosity == LoggerVerbosity.CHECKER_ERR) {
+                System.err.println(colored);
+            } else {
+                System.out.println(colored);
+            }
         }
     }
 
@@ -170,32 +239,12 @@ public final class AbstractInterpretationLogger {
         }
     }
 
-    private void logChecker(String message) {
-        debugContext.log(ANSI.PURPLE + "[CHECKER] " + ANSI.RESET + message);
-    }
-
-    private void logCheckerErr(String message) {
-        debugContext.log(ANSI.RED + "[CHECKER_ERR] " + ANSI.RESET + message);
-    }
-
-    private void logCheckerWarn(String message) {
-        debugContext.log(ANSI.YELLOW + "[CHECKER_WARN] " + ANSI.RESET + message);
-    }
-
-    private void logSummary(String message) {
-        debugContext.log(ANSI.BLUE + "[SUMMARY] " + ANSI.RESET + message);
-    }
-
-    private void logInfo(String message) {
-        debugContext.log(ANSI.GREEN + "[INFO] " + ANSI.RESET + message);
-    }
-
-    private void logDebug(String message) {
-        debugContext.log("[DEBUG] " + message);
+    private void logFact(Fact fact) {
+        log(fact.describe(), LoggerVerbosity.FACT);
     }
 
     public boolean isDebugEnabled() {
-        return loggerVerbosity.compareTo(LoggerVerbosity.DEBUG) >= 0;
+        return fileThreshold == LoggerVerbosity.DEBUG || consoleThreshold == LoggerVerbosity.DEBUG;
     }
 
     public String getLogFilePath() {
@@ -212,61 +261,25 @@ public final class AbstractInterpretationLogger {
      */
     public void exportGraphToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
         try {
-            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
+            GraphExporter exporter =
+                    new GraphExporter();
             exporter.exportToJson(cfg, method, outputPath);
             log("Graph exported to JSON: " + outputPath, LoggerVerbosity.INFO);
         } catch (Exception e) {
-            log("Failed to export graph to JSON: " + e.getMessage(), LoggerVerbosity.INFO);
+            log("Failed to export graph to JSON: " + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
+        }
+    }
+
+    public void logFacts(List<Fact> facts) {
+        log("Aggregated facts produced by checkers:", LoggerVerbosity.FACT);
+        for (Fact fact : facts) {
+            logFact(fact);
         }
     }
 
     /**
-     * Export a graph to text format for manual inspection.
-     *
-     * @param cfg        The control flow graph
-     * @param method     The analysis method
-     * @param outputPath Path to write the text file
+     * Dump the StructuredGraph to IGV with a descriptive phase name.
      */
-    public void exportGraphToText(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
-        try {
-            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
-            exporter.exportToText(cfg, method, outputPath);
-            log("Graph exported to text: " + outputPath, LoggerVerbosity.INFO);
-        } catch (Exception e) {
-            log("Failed to export graph to text: " + e.getMessage(), LoggerVerbosity.INFO);
-        }
-    }
-
-    /**
-     * Export a graph to compact format for quick sharing.
-     *
-     * @param graph      The structured graph
-     * @param cfg        The control flow graph
-     * @param method     The analysis method
-     * @param outputPath Path to write the text file
-     */
-    public void exportGraphToCompact(StructuredGraph graph, ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
-        try {
-            com.oracle.svm.hosted.analysis.ai.util.GraphExporter exporter =
-                    new com.oracle.svm.hosted.analysis.ai.util.GraphExporter();
-            exporter.exportToCompact(graph, cfg, method, outputPath);
-            log("Graph exported to compact format: " + outputPath, LoggerVerbosity.INFO);
-        } catch (Exception e) {
-            log("Failed to export graph to compact format: " + e.getMessage(), LoggerVerbosity.INFO);
-        }
-    }
-
-    private static class ANSI {
-        public static final String RESET = "\033[0m";
-        public static final String RED = "\033[0;31m";
-        public static final String GREEN = "\033[0;32m";
-        public static final String YELLOW = "\033[0;33m";
-        public static final String BLUE = "\033[0;34m";
-        public static final String PURPLE = "\033[0;35m";
-    }
-
     public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
         if (method == null || graph == null) {
             System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
@@ -294,6 +307,20 @@ public final class AbstractInterpretationLogger {
             } catch (Throwable inner) {
                 System.err.println("dumpGraph: failed to dump graph for method=" + method + ", phase=" + phaseName + ": " + inner.getMessage());
                 inner.printStackTrace(System.err);
+            }
+        }
+    }
+
+    /**
+     * Close the underlying file writer (optional).
+     */
+    public synchronized void close() {
+        if (fileWriter != null) {
+            try {
+                fileWriter.flush();
+            } finally {
+                fileWriter.close();
+                fileWriter = null;
             }
         }
     }
