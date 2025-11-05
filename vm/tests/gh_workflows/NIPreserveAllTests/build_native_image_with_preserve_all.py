@@ -59,7 +59,6 @@ repositories = [
     ("redhat-ga", "https://maven.repository.redhat.com/ga/")
 ]
 
-
 def generate_matrix(path_to_data, libs_per_job, delimiter):
     '''
     Generates a matrix in the format of GAV coordinate tuples (depending on the selected number of libraries per action job) for GitHub actions.
