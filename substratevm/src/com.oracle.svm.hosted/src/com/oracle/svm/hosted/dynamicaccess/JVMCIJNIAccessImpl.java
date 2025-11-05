@@ -24,52 +24,52 @@
  */
 package com.oracle.svm.hosted.dynamicaccess;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-
+import com.oracle.svm.hosted.JNIAccessImpl;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Mirror of {@link RuntimeJNIAccess} using JVMCI types.
- * <p>
- * This API is deprecated; use {@link JVMCIJNIAccess} instead.
- */
-public final class JVMCIRuntimeJNIAccess {
-    /**
-     * @see RuntimeJNIAccess#register(Class...)
-     */
-    public static void register(ResolvedJavaType... types) {
+public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
+
+    private final JNIAccessImpl jniInstance;
+    private static JVMCIJNIAccess instance;
+
+    private JVMCIJNIAccessImpl() {
+        jniInstance = JNIAccessImpl.singleton();
+    }
+
+    public static JVMCIJNIAccess singleton() {
+        if (instance == null) {
+            instance = new JVMCIJNIAccessImpl();
+        }
+        return instance;
+    }
+
+    @Override
+    public void register(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
-            RuntimeJNIAccess.register(OriginalClassProvider.getJavaClass(type));
+            jniInstance.register(condition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
-    /**
-     * @see RuntimeJNIAccess#register(Executable...)
-     */
-    public static void register(ResolvedJavaMethod... methods) {
+    @Override
+    public void register(AccessCondition condition, ResolvedJavaMethod... methods) {
         for (ResolvedJavaMethod method : methods) {
-            RuntimeJNIAccess.register(OriginalMethodProvider.getJavaMethod(method));
+            jniInstance.register(condition, OriginalMethodProvider.getJavaMethod(method));
         }
     }
 
-    /**
-     * @see RuntimeJNIAccess#register(Field...)
-     */
-    public static void register(ResolvedJavaField... fields) {
+    @Override
+    public void register(AccessCondition condition, ResolvedJavaField... fields) {
         for (ResolvedJavaField field : fields) {
-            RuntimeJNIAccess.register(OriginalFieldProvider.getJavaField(field));
+            jniInstance.register(condition, OriginalFieldProvider.getJavaField(field));
         }
-    }
-
-    private JVMCIRuntimeJNIAccess() {
     }
 }

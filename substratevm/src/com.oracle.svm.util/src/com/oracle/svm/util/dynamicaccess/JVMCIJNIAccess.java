@@ -22,23 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.dynamicaccess;
+package com.oracle.svm.util.dynamicaccess;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
-import com.oracle.svm.util.OriginalClassProvider;
-
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
- */
-public class JVMCIAccessCondition {
+public interface JVMCIJNIAccess {
+    void register(AccessCondition condition, ResolvedJavaType... types);
 
-    /**
-     * @see AccessCondition#typeReached(Class)
-     */
-    public static AccessCondition typeReached(ResolvedJavaType type) {
-        return AccessCondition.typeReached(OriginalClassProvider.getJavaClass(type));
-    }
+    void register(AccessCondition condition, ResolvedJavaMethod... methods);
+
+    void register(AccessCondition condition, ResolvedJavaField... fields);
 }

@@ -2305,7 +2305,7 @@ suite = {
                     "org.graalvm.collections",
                 ],
                 "exports" : [
-                    """com.oracle.svm.util to org.graalvm.nativeimage.pointsto,
+                    """com.oracle.svm.util* to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder,
                            org.graalvm.nativeimage.configure,
                            org.graalvm.nativeimage.librarysupport,
