@@ -121,7 +121,6 @@ public class WebAssembly extends Dictionary {
 
         addMember("exn_alloc", new Executable(this::exnAlloc));
         addMember("exn_tag", new Executable(WebAssembly::exnTag));
-        addMember("exn_read", new Executable(WebAssembly::exnRead));
 
         addMember("module_imports", new Executable(WebAssembly::moduleImports));
         addMember("module_exports", new Executable(WebAssembly::moduleExports));
@@ -882,7 +881,7 @@ public class WebAssembly extends Dictionary {
         return tag.type().toString();
     }
 
-    public Object exnAlloc(Object[] args) {
+    public WasmRuntimeException exnAlloc(Object[] args) {
         checkArgumentCount(args, 1);
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
@@ -912,16 +911,6 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm exception");
         }
         return exn.tag();
-    }
-
-    public static Object exnRead(Object[] args) {
-        checkArgumentCount(args, 1);
-        if (!(args[0] instanceof WasmRuntimeException exn)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm exception");
-        }
-        // Should return exn.fields.
-        // WasmRuntimeException already exposes its fields as array elements.
-        return exn;
     }
 
     private static Object instanceExport(Object[] args) {
