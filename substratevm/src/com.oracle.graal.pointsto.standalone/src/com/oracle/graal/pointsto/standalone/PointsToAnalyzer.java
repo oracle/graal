@@ -323,11 +323,10 @@ public final class PointsToAnalyzer {
         registerEntryMethods();
         registerFeatures();
         int exitCode = 0;
-        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, classLoaderAccess, bigbang, debugContext);
+        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(bigbang);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
         try (Timer t = new Timer("analysis", analysisName)) {
-            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager, classLoaderAccess, bigbang,
-                            debugContext);
+            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(bigbang);
             bigbang.getUniverse().setConcurrentAnalysisAccess(config);
             bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
                 bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
@@ -338,7 +337,7 @@ public final class PointsToAnalyzer {
             reportException(e);
             exitCode = 1;
         }
-        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, classLoaderAccess, bigbang, debugContext);
+        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(bigbang);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.onAnalysisExit(onAnalysisExitAccess));
         AnalysisReporter.printAnalysisReports("pointsto_" + analysisName, options, StandaloneOptions.reportsPath(options, "reports").toString(), bigbang);
         bigbang.getUnsupportedFeatures().report(bigbang);
