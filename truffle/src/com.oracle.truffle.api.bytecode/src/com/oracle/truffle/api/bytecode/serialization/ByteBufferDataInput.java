@@ -93,7 +93,7 @@ public final class ByteBufferDataInput implements DataInput {
      */
     @Override
     public int skipBytes(int n) throws IOException {
-        int skip = buffer.remaining() > n ? buffer.remaining() : n;
+        int skip = buffer.remaining() < n ? buffer.remaining() : n;
         buffer.position(buffer.position() + skip);
         return skip;
     }
