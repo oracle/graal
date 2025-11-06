@@ -35,6 +35,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
                                    Domain initialDomain,
                                    AbstractTransformer<Domain> abstractTransformer,
                                    AnalysisContext analysisContext) {
+
         this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;
         this.initialDomain = initialDomain;

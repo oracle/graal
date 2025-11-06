@@ -6,8 +6,8 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.checker.annotator.AssertInjector;
-import com.oracle.svm.hosted.analysis.ai.checker.annotator.RewriterOrchestrator;
+import com.oracle.svm.hosted.analysis.ai.checker.optimize.RewriterOrchestrator;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,11 +54,11 @@ public final class CheckerManager {
         }
 
         logger.logFacts(allFacts);
+        StructuredGraph graph = abstractState.getCfgGraph().graph;
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
-        RewriterOrchestrator.apply(method, abstractState.getCfgGraph().graph, aggregator);
-        AssertInjector.injectAnchors(abstractState.getCfgGraph().graph, allFacts);
+        RewriterOrchestrator.apply(method, graph, aggregator);
         try {
-            AbstractInterpretationLogger.dumpGraph(method, abstractState.getCfgGraph().graph, "GraalAF");
+            AbstractInterpretationLogger.dumpGraph(method, graph, "GraalAF");
         } catch (Exception e) {
             logger.log("IGV dump failed: " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);
         }

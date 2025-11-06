@@ -278,7 +278,7 @@ public final class AbstractInterpretationLogger {
     }
 
     /**
-     * Dump the StructuredGraph to IGV with a descriptive phase name.
+     * Dump the resulting graph to IGV
      */
     public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
         if (method == null || graph == null) {
@@ -298,8 +298,7 @@ public final class AbstractInterpretationLogger {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
 
-        String scopeName = phaseName == null ? "" : phaseName;
-        try (DebugContext.Scope s = debug.scope(scopeName, graph)) {
+        try (DebugContext.Scope s = debug.scope("Abstract Interpretation", graph)) {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After phase " + phaseName);
         } catch (Throwable ex) {
             try {

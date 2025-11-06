@@ -14,6 +14,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -63,7 +64,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     @Override
     public void execEdge(Node source, Node target, AbstractState<AbstractMemory> abstractState, IteratorContext iteratorContext) {
         AbstractMemory post = abstractState.getPostCondition(source);
-
         if (target instanceof LoopExitNode exit) {
             LoopBeginNode lb = exit.loopBegin();
             AbstractMemory acc = post.copyOf();

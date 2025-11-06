@@ -7,7 +7,6 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConditionTruthChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantPropagationChecker;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.IndexSafetyChecker;
@@ -81,7 +80,7 @@ public class AbstractInterpretationDriver {
         /* 3. Build analyzer */
         var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
-//                .registerChecker(new ConstantPropagationChecker())
+                .registerChecker(new ConstantPropagationChecker())
 //                .registerChecker(new ConditionTruthChecker())
                 .registerChecker(new IndexSafetyChecker())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())

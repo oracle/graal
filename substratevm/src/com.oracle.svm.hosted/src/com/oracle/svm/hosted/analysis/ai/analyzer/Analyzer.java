@@ -16,8 +16,8 @@ import java.io.IOException;
 /**
  * Represents an abstract analyzer framework for performing analyses driven by a specific domain.
  * The analyzer uses transfer functions, interpreters, and iterator policies to compute analysis results.
- * It encapsulates logic for creating analysis payloads and facilitates method-specific analysis.
- * To create an intra-procedural analyzer, it is sufficient to provide the initial domain, and the node interpreter.
+ * It encapsulates the logic for creating analysis payloads and facilitates method-specific analysis.
+ * To create an intra-procedural analyzer, it is enough to provide the initial domain, and the node interpreter.
  * To create an inter-procedural analyzer, we need to also add an implementation of {@link Summary}, as well as logic
  * for creating the summary from an abstract context, which is handled by {@link SummaryFactory}.
  * We can also add additional parameters, like a list of checkers to be used during the analysis, or method filters,
