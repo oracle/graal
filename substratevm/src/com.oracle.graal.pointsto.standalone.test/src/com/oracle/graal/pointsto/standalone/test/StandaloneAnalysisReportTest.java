@@ -59,7 +59,8 @@ public class StandaloneAnalysisReportTest {
     }
 
     @Test
-    @Ignore
+    @Ignore // Since there is no class initialization, printing the object tree is not a meaningful
+            // operation at the moment.
     public void testPrintAnalysisObjectTree() throws IOException {
         PointstoAnalyzerTester tester = new PointstoAnalyzerTester(TEST_CLASS);
         Path testTmpDir = tester.createTestTmpDir();

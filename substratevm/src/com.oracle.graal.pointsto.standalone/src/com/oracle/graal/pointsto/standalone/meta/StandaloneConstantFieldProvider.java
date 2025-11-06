@@ -37,6 +37,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
 
     private final ConstantFieldProvider originalConstantFieldProvider;
+    /**
+     * In the default standalone mode configuration, this field is set to false and all classes are
+     * runtime initialized. We take all fields as not final, so that it doesn't read field value
+     * from current environment. Test com.oracle.graal.pointsto.test.ConstantFieldTest verifies this
+     * method.
+     **/
     private final boolean foldFinalFields;
 
     public StandaloneConstantFieldProvider(MetaAccessProvider metaAccess, ConstantFieldProvider originalConstantFieldProvider, boolean foldFinalFields) {
@@ -68,11 +74,6 @@ public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
         return foldFinalFields && originalConstantFieldProvider.isTrustedFinal(tool, field);
     }
 
-    /**
-     * In standalone mode, all classes are runtime initialized. We take all fields as not final, so
-     * that it doesn't read field value from current environment. Test
-     * com.oracle.graal.pointsto.test.ConstantFieldTest verifies this method.
-     **/
     @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
         return foldFinalFields && super.isFinalField(field, tool);

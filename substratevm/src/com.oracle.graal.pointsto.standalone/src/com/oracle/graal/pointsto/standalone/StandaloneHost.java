@@ -53,7 +53,8 @@ public class StandaloneHost extends HostVM {
     private final String imageName;
     /*
      * By default, there is no eager class initialization nor delayed class initialization in
-     * standalone analysis, so we don't need do any actual class initialization work here.
+     * standalone analysis, so we don't need do any actual class initialization work here. Setting
+     * this field to true changes that behavior and allows class initialization.
      */
     private final boolean initializeClasses;
 
@@ -93,9 +94,7 @@ public class StandaloneHost extends HostVM {
 
     @Override
     public void onTypeReachable(BigBang bb, AnalysisType type) {
-        if (!type.isReachable()) {
-            AnalysisError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + type);
-        }
+        AnalysisError.guarantee(type.isReachable(), "Registering and initializing a type that was not yet marked as reachable: %s", type.toJavaName());
         if (initializeClasses) {
             type.getWrapped().initialize();
         }

@@ -117,7 +117,7 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
              */
             return commonPoolSubstitution;
         }
-        return original.readFieldValue(field.wrapped, receiver);
+        return universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(field.wrapped, receiver));
     }
 
     @Override
