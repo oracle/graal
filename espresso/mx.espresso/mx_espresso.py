@@ -28,6 +28,7 @@ import signal
 import subprocess
 import argparse
 import sys
+import re
 from abc import ABCMeta, abstractmethod
 
 import mx
@@ -44,6 +45,7 @@ from mx_jackpot import jackpot
 from os.path import join, exists, dirname, relpath
 from import_order import verify_order, validate_format
 from mx_truffle import resolve_truffle_dist_names
+from mx_native import DefaultNativeProject
 
 _suite = mx.suite('espresso')
 
@@ -636,6 +638,74 @@ def register_espresso_runtime_resources(register_project, register_distribution,
         if extra_llvm_java_home_dep:
             register_distribution(extra_llvm_java_home_dep)
         register_espresso_runtime_resource(extra_java_home_dep, extra_llvm_java_home_dep, register_project, register_distribution, suite, False)
+
+class CustomLibJVMLinking(DefaultNativeProject):
+    def __init__(self, suite, name, deps, workingSets, **kwargs):
+        subDir = kwargs.pop('subDir')
+        d = join(suite.dir, subDir, kwargs.pop('dir'))
+        super(CustomLibJVMLinking, self).__init__(suite, name, subDir, [], deps, workingSets, d, 'shared_lib', **kwargs)
+
+    @staticmethod
+    def _extract_loaded_by_espresso():
+        source_path = join(_suite.dir, 'src', 'com.oracle.truffle.espresso', 'src', 'com', 'oracle', 'truffle', 'espresso', 'ffi', 'nfi', 'NFIStaticLibNativeAccess.java')
+        with open(source_path, "r", encoding="utf-8") as f:
+            # look for:
+            #    private static final Set<String> LOADED_BY_ESPRESSO = Set.of(...);
+            m = re.search(r'\bLOADED_BY_ESPRESSO\s*=\s*Set\.of\s*\(([a-z",\s]*)\)', f.read())
+            if not m:
+                raise RuntimeError("Could not find LOADED_BY_ESPRESSO = Set.of(")
+
+            # collect quoted strings from Set
+            return set(re.findall(r'\"([a-z]+)\"', m.group(1)))
+
+    @property
+    def ldflags(self):
+        platform = mx.get_os() + '-' + mx.get_arch()
+
+        assert mx.is_darwin(), "not supported yet: " + platform
+
+        # Most OpenJDK libraries are suitable for static linking, with the exception of
+        # libawt and related libs.
+        #
+        # This is also the minimum set of libraries required to make this approach work, as HotSpot
+        # always will load these and it would result into a namespace clash otherwise. Depending
+        # on the application ran by the host (next to Espresso) and by the guest, other libraries
+        # such as libmanagement make sense to include as well.
+        #
+        # As noted above, libawt only works with dynamic loading and thus only the host or the
+        # guest will be able to use it.
+        #
+        # Some libraries are not included as they are VM implementation specific (e.g. libsaproc).
+        #
+        #
+        # Hints for debugging on Darwin:
+        # - --log.level=ALL: Prints the reason why a library could not be loaded.
+        # - DYLD_PRINT_LIBRARIES=1: Verbose output of the dynamic linker, e.g. prints the full
+        #                           path of libraries that are attempted to be loaded.
+        # - breakpoint on dlopen/dlsym
+
+        darwin_linked_in_libs = {"attach", "extnet", "freetype", "j2gss", "j2pcsc", "j2pkcs11", "jaas",
+                                "java", "javajpeg", "jimage", "management_agent", "management_ext",
+                                "management", "mlib_image", "net", "nio", "osxkrb5", "prefs", "rmi", "sleef",
+                                "syslookup", "verify", "zip"}
+
+        expected_by_VM = CustomLibJVMLinking._extract_loaded_by_espresso()
+        missing_libs = expected_by_VM - darwin_linked_in_libs
+        assert not missing_libs, "missing libraries expected by the VM: " + str(missing_libs)
+
+        static_lib_dir = os.path.join(get_java_home_dep().java_home, "lib", "static", platform)
+        ldf = []
+
+        for jdk_static_lib in os.listdir(static_lib_dir):
+            if not jdk_static_lib.endswith('.a'):
+                continue
+
+            if jdk_static_lib[3:-2] not in darwin_linked_in_libs:
+                continue
+
+            ldf.append(f'-Wl,-force_load,{os.path.join(static_lib_dir, jdk_static_lib)}')
+
+        return ldf + super(CustomLibJVMLinking, self).ldflags
 
 
 def register_espresso_runtime_resource(java_home_dep, llvm_java_home_dep, register_project, register_distribution, suite, is_main):

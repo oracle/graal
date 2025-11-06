@@ -165,8 +165,13 @@ $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar c
 
 ### macOS
 
-On macOS there is nothing like `dlmopen` available, therefore `jvm-ce` does not work.
+Nothing like `dlmopen` is available on macOS. Instead we default to `nfi-staticlib` for the JVM mode, which statically links in (most) of the OpenJDK libraries into `libjvm.dylib`.
+A notable exception is `libawt.dylib` and its related libraries, which only work via dynamic loading.
+This means in practice only the host _or_ the guest can use AWT, but not both at the same time.
 
+
+Currently `nfi-staticlib` only works for one Espresso context. Using `nfi-staticlib` with more than one context will likely result in a SIGSEGV in `libtrufflenfi.dylib`.
+We are exploring how to implement support for multiple contexts (GR-71082).
 
 ## _Espressoⁿ_ Java-ception
 
