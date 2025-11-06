@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class DynamicObjectSupport {
@@ -53,7 +54,8 @@ final class DynamicObjectSupport {
     }
 
     static void setShapeWithStoreFence(DynamicObject object, Shape shape) {
-        if (shape.isShared()) {
+        // unconditional fence in the interpreter to avoid an extra shared shape branch
+        if (CompilerDirectives.inInterpreter() || shape.isShared()) {
             VarHandle.storeStoreFence();
         }
         object.setShape(shape);
