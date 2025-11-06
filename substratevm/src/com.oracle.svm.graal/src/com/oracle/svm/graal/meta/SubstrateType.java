@@ -53,6 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public class SubstrateType implements SharedType {
     private final JavaKind kind;
@@ -380,18 +381,33 @@ public class SubstrateType implements SharedType {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
+    private RuntimeException annotationsUnimplemented() {
+        return VMError.unimplemented("Annotations are not available for JIT compilation at image run time: " + toClassName());
+    }
+
+    @Override
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
     @Override
     public Annotation[] getAnnotations() {
-        return DynamicHub.toClass(getHub()).getAnnotations();
+        throw annotationsUnimplemented();
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return DynamicHub.toClass(getHub()).getDeclaredAnnotations();
+        throw annotationsUnimplemented();
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        // Once GR-70556 is resolved: throw annotationsUnimplemented();
         return DynamicHub.toClass(getHub()).getAnnotation(annotationClass);
     }
 

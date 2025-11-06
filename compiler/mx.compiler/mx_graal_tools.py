@@ -63,7 +63,9 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
         os.chmod(executable, 0o777)
 
-    launch = [executable]
+    # the current launcher .conf file enables assertions so explicitly disable them until a new IGV
+    # distribution is built
+    launch = [executable, '-J-da']
     if jdkhome:
         launch += ['--jdkhome', jdkhome]
 

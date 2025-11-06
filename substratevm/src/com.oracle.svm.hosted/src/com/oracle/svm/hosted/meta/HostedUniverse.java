@@ -45,9 +45,9 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -108,7 +108,7 @@ import jdk.vm.ci.meta.Signature;
  * </ol>
  *
  * Layered Model for Static Analysis Universes
- * 
+ *
  * <pre>
  * +--------------------------------------------------------------+
  * |                        Hosted Universe                       |
@@ -140,7 +140,7 @@ import jdk.vm.ci.meta.Signature;
  * |      class files found on image class and module path        |
  * +--------------------------------------------------------------+
  * </pre>
- * 
+ *
  * Not covered in this documentation is the "substrate universe", i.e., elements that are used for
  * JIT compilation at image run time when a native image contains the GraalVM compiler itself. JIT
  * compilation is only used when a native image contains a Truffle language, e.g., the JavaScript

@@ -158,8 +158,10 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             optionProvider.getHostedValues().put(SubstrateOptions.ParseRuntimeOptions, false);
         }
 
-        // force closed-world
+        // GR-71032 support open type world hub layout
+        // force closed type world and hub layout
         optionProvider.getHostedValues().put(SubstrateOptions.ClosedTypeWorld, true);
+        optionProvider.getHostedValues().put(SubstrateOptions.ClosedTypeWorldHubLayout, true);
 
         CompilerBackend backend = WebImageOptions.getBackend(classLoader);
 

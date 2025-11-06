@@ -48,7 +48,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -195,7 +195,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link InputOps#indexOf(TruffleString, int, int, TruffleString.CodePointSet, Encodings.Encoding, TruffleString.ByteIndexOfCodePointSetNode)}
+     * {@link InputOps#indexOf(TruffleString, int, int, TruffleString.CodePointSet, Encoding, TruffleString.ByteIndexOfCodePointSetNode)}
      * which we call an {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.

@@ -198,7 +198,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
                 masm.loadAddress(rscratch1, address);
                 masm.str(64, rscratch1, cArg0);
 
-                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : rscratch1, null);
+                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : rscratch1, null);
                 assert cc.getReturn().equals(Value.ILLEGAL) : cc + " " + callTarget;
 
                 masm.jmp(slowContinuation);
@@ -383,7 +383,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator implements AArch64ReadBarrier
                     masm.loadAddress(ref, address);
                 }
                 masm.str(64, addressReg, cArg1);
-                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : scratch1, null);
+                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : scratch1, null);
                 masm.ldr(64, ref, cArg0);
 
                 masm.jmp(continuation);

@@ -38,11 +38,8 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -62,7 +59,11 @@ import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -375,7 +376,7 @@ public final class FieldValueInterceptionSupport {
      * intercept the value and return 0 / null.
      */
     private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
-        if (field.getAnnotation(InjectAccessors.class) != null) {
+        if (AnnotationUtil.getAnnotation(field, InjectAccessors.class) != null) {
             assert !field.isAccessed();
             return JavaConstant.defaultForKind(value.getJavaKind());
         }
@@ -410,7 +411,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, AnalysisField aField) {
-        LayeredFieldValue layeredFieldValue = aField.getAnnotation(LayeredFieldValue.class);
+        LayeredFieldValue layeredFieldValue = AnnotationUtil.getAnnotation(aField, LayeredFieldValue.class);
         if (layeredFieldValue != null) {
             var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
             return new FieldValueTransformation(OriginalClassProvider.getJavaClass(oField.getType()), transformer);
@@ -419,7 +420,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {
-        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
+        UnknownObjectField unknownObjectField = AnnotationUtil.getAnnotation(field, UnknownObjectField.class);
         if (unknownObjectField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isObject(), field);
             return new FieldValueComputer(
@@ -427,7 +428,7 @@ public final class FieldValueInterceptionSupport {
                             extractAnnotationTypes(field, unknownObjectField.types(), unknownObjectField.fullyQualifiedTypes()),
                             unknownObjectField.canBeNull());
         }
-        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
+        UnknownPrimitiveField unknownPrimitiveField = AnnotationUtil.getAnnotation(field, UnknownPrimitiveField.class);
         if (unknownPrimitiveField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isPrimitive(), field);
             return new FieldValueComputer(

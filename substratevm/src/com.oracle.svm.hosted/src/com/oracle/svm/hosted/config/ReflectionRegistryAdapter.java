@@ -63,7 +63,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     public void registerType(AccessCondition condition, Class<?> type) {
         super.registerType(condition, type);
         if (Proxy.isProxyClass(type)) {
-            proxyRegistry.registerProxy(condition, type.getInterfaces());
+            proxyRegistry.registerProxy(condition, false, type.getInterfaces());
         }
     }
 
@@ -89,19 +89,19 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
                 reflectionSupport.registerClassLookupException(condition, reflectionName, classLookupException);
             } else if (throwMissingRegistrationErrors() && jniAccessible & classLookupException instanceof ClassNotFoundException) {
                 String jniName = ClassNameSupport.typeNameToJNIName(namedDescriptor.name());
-                jniSupport.registerClassLookup(condition, jniName);
+                jniSupport.registerClassLookup(condition, false, jniName);
             }
         }
     }
 
     @Override
     public void registerPublicClasses(AccessCondition condition, Class<?> type) {
-        reflectionSupport.registerAllClassesQuery(condition, type);
+        reflectionSupport.registerAllClassesQuery(condition, false, type);
     }
 
     @Override
     public void registerDeclaredClasses(AccessCondition condition, Class<?> type) {
-        reflectionSupport.registerAllDeclaredClassesQuery(condition, type);
+        reflectionSupport.registerAllDeclaredClassesQuery(condition, false, type);
     }
 
     @Override
@@ -111,12 +111,12 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
 
     @Override
     public void registerPermittedSubclasses(AccessCondition condition, Class<?> type) {
-        reflectionSupport.registerAllPermittedSubclassesQuery(condition, type);
+        reflectionSupport.registerAllPermittedSubclassesQuery(condition, false, type);
     }
 
     @Override
     public void registerNestMembers(AccessCondition condition, Class<?> type) {
-        reflectionSupport.registerAllNestMembersQuery(condition, type);
+        reflectionSupport.registerAllNestMembersQuery(condition, false, type);
     }
 
     @Override
@@ -127,11 +127,11 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerPublicFields(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         if (queriedOnly && reflectionSupport instanceof ReflectionDataBuilder reflectionDataBuilder) {
-            reflectionDataBuilder.registerAllFieldsQuery(condition, true, type);
+            reflectionDataBuilder.registerAllFieldsQuery(condition, true, false, type);
         } else if (!queriedOnly) {
-            reflectionSupport.registerAllFields(condition, type);
+            reflectionSupport.registerAllFields(condition, false, type);
             if (jniAccessible) {
-                jniSupport.register(condition, false, type.getFields());
+                jniSupport.register(condition, false, false, type.getFields());
             }
         }
     }
@@ -139,50 +139,50 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerDeclaredFields(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         if (queriedOnly && reflectionSupport instanceof ReflectionDataBuilder reflectionDataBuilder) {
-            reflectionDataBuilder.registerAllDeclaredFieldsQuery(condition, true, type);
+            reflectionDataBuilder.registerAllDeclaredFieldsQuery(condition, true, false, type);
         } else if (!queriedOnly) {
-            reflectionSupport.registerAllDeclaredFields(condition, type);
+            reflectionSupport.registerAllDeclaredFields(condition, false, type);
             if (jniAccessible) {
-                jniSupport.register(condition, false, type.getDeclaredFields());
+                jniSupport.register(condition, false, false, type.getDeclaredFields());
             }
         }
     }
 
     @Override
     public void registerPublicMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        reflectionSupport.registerAllMethodsQuery(condition, queriedOnly, type);
+        reflectionSupport.registerAllMethodsQuery(condition, queriedOnly, false, type);
         if (!queriedOnly && jniAccessible) {
-            jniSupport.register(condition, false, type.getMethods());
+            jniSupport.register(condition, false, false, type.getMethods());
         }
     }
 
     @Override
     public void registerDeclaredMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        reflectionSupport.registerAllDeclaredMethodsQuery(condition, queriedOnly, type);
+        reflectionSupport.registerAllDeclaredMethodsQuery(condition, queriedOnly, false, type);
         if (!queriedOnly && jniAccessible) {
-            jniSupport.register(condition, false, type.getDeclaredMethods());
+            jniSupport.register(condition, false, false, type.getDeclaredMethods());
         }
     }
 
     @Override
     public void registerPublicConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        reflectionSupport.registerAllConstructorsQuery(condition, queriedOnly, type);
+        reflectionSupport.registerAllConstructorsQuery(condition, queriedOnly, false, type);
         if (!queriedOnly && jniAccessible) {
-            jniSupport.register(condition, false, type.getConstructors());
+            jniSupport.register(condition, false, false, type.getConstructors());
         }
     }
 
     @Override
     public void registerDeclaredConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, type);
+        reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, false, type);
         if (!queriedOnly && jniAccessible) {
-            jniSupport.register(condition, false, type.getDeclaredConstructors());
+            jniSupport.register(condition, false, false, type.getDeclaredConstructors());
         }
     }
 
     @Override
     public void registerAsSerializable(AccessCondition condition, Class<?> clazz) {
-        serializationSupport.register(condition, clazz);
+        serializationSupport.register(condition, false, clazz);
     }
 
     @Override
@@ -194,7 +194,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     protected void registerField(AccessCondition condition, boolean allowWrite, boolean jniAccessible, Field field) {
         super.registerField(condition, allowWrite, jniAccessible, field);
         if (jniAccessible) {
-            jniSupport.register(condition, allowWrite, field);
+            jniSupport.register(condition, allowWrite, false, field);
         }
     }
 
@@ -202,7 +202,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     protected void registerFieldNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String fieldName) {
         super.registerFieldNegativeQuery(condition, jniAccessible, type, fieldName);
         if (jniAccessible) {
-            jniSupport.registerFieldLookup(condition, type, fieldName);
+            jniSupport.registerFieldLookup(condition, false, type, fieldName);
         }
     }
 
@@ -210,7 +210,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     protected void registerExecutable(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
         super.registerExecutable(condition, queriedOnly, jniAccessible, executable);
         if (jniAccessible) {
-            jniSupport.register(condition, queriedOnly, executable);
+            jniSupport.register(condition, queriedOnly, false, executable);
         }
     }
 
@@ -218,7 +218,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     protected void registerMethodNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) {
         super.registerMethodNegativeQuery(condition, jniAccessible, type, methodName, methodParameterTypes);
         if (jniAccessible) {
-            jniSupport.registerMethodLookup(condition, type, methodName, getParameterTypes(methodParameterTypes));
+            jniSupport.registerMethodLookup(condition, false, type, methodName, getParameterTypes(methodParameterTypes));
         }
     }
 
@@ -226,7 +226,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     protected void registerConstructorNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, List<Class<?>> constructorParameterTypes) {
         super.registerConstructorNegativeQuery(condition, jniAccessible, type, constructorParameterTypes);
         if (jniAccessible) {
-            jniSupport.registerConstructorLookup(condition, type, getParameterTypes(constructorParameterTypes));
+            jniSupport.registerConstructorLookup(condition, false, type, getParameterTypes(constructorParameterTypes));
         }
     }
 }

@@ -71,7 +71,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -95,8 +95,6 @@ import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ModuleReferenceImpl;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.SystemModuleFinders;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * This feature:
@@ -206,7 +204,7 @@ public class ModuleLayerFeature implements InternalFeature {
      * This transformer delays the Module#open/exportedPackages fields computation until the
      * application layer.
      */
-    static class LayerPackagesTransformer implements ObjectToConstantFieldValueTransformer {
+    static class LayerPackagesTransformer implements FieldValueTransformer {
         final CrossLayerConstantRegistryFeature registry = CrossLayerConstantRegistryFeature.singleton();
         private final PackageType type;
         private final AnalysisType futureType;
@@ -217,14 +215,14 @@ public class ModuleLayerFeature implements InternalFeature {
         }
 
         @Override
-        public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
+        public Object transform(Object receiver, Object originalValue) {
             Module module = (Module) receiver;
             if (!LayeredModuleSingleton.singleton().getModules().contains(module)) {
                 /*
                  * Modules that are not processed by the LayeredModuleSingleton don't need to be
                  * delayed until the application layer.
                  */
-                return toConstant.apply(originalValue);
+                return originalValue;
             }
             /*
              * This key is unique because layered images require all modules to have a different
@@ -236,15 +234,15 @@ public class ModuleLayerFeature implements InternalFeature {
                  * Once the constant is finalized, or if the field was not reachable in any previous
                  * layer, the final constant can be computed and returned.
                  */
-                return toConstant.apply(originalValue);
+                return originalValue;
             } else {
                 if (registry.constantExists(keyName)) {
-                    return registry.getConstant(keyName);
+                    return new JavaConstantWrapper(registry.getConstant(keyName));
                 } else {
                     if (ProxyRenamingSubstitutionProcessor.isModuleDynamic(module)) {
                         LogUtils.warning("Dynamic module %s was found in runtime module opens/exports, which might lead to missing relations from the shared layers at runtime", module);
                     }
-                    return registry.registerFutureHeapConstant(keyName, futureType);
+                    return new JavaConstantWrapper(registry.registerFutureHeapConstant(keyName, futureType));
                 }
             }
         }

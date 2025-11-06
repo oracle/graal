@@ -207,6 +207,7 @@ public class RecordedOperationPersistence {
                             // Needed to deserialize array component types
                             HotSpotResolvedJavaMethod.class, HotSpotResolvedJavaField.class, HotSpotResolvedObjectType.class,
                             Object.class, ExceptionHandler.class, TriState.class, AllocatableValue.class, Value.class,
+                            ResolvedJavaMethod.class,
                             // Needed to deserialize Field objects
                             String.class,
             };

@@ -492,7 +492,7 @@ class PolybenchBenchmarkSuite(
             else:
                 self._native_mode: bool = suite.is_native_mode(bmSuiteArgs)
                 self._post_processors: List[DataPointsPostProcessor] = suite._get_post_processors(
-                    self.benchmark, self._native_mode
+                    self.benchmark, self._native_mode, self.bmSuiteArgs
                 )
 
         @property
@@ -525,6 +525,11 @@ class PolybenchBenchmarkSuite(
             if self.execution_context.native_mode:
                 self._image_cache.add(self._current_image)
             return datapoints
+
+    def use_stage_aware_benchmark_mixin_intercept_run(self):
+        if self.jvm(self.execution_context.bmSuiteArgs) == "cpython":
+            return True
+        return False
 
     def _resolve_current_benchmark(self, benchmarks) -> ResolvedPolybenchBenchmark:
         if benchmarks is None or len(benchmarks) != 1:
@@ -575,6 +580,9 @@ class PolybenchBenchmarkSuite(
 
     def _base_image_name(self) -> Optional[str]:
         """Overrides the image name used to build/run the image."""
+        if self.jvm(self.execution_context.bmSuiteArgs) == "cpython":
+            benchmark_sanitized = self.execution_context.benchmark.replace("/", "-").replace(".", "-")
+            return f"{benchmark_sanitized}-staged-benchmark"
         assert self._current_image, "Image should have been set already"
         return self._current_image.full_executable_name()
 
@@ -659,6 +667,9 @@ class PolybenchBenchmarkSuite(
                 return existing_config
             return dims["host-vm-config"] + "-" + edition
         else:
+            non_graal_vms = ["cpython"]
+            if self.jvm(bm_suite_args) in non_graal_vms:
+                return self.jvmConfig(bm_suite_args)
             # assume config used when building a GraalVM distribution
             return "graal-enterprise-libgraal-pgo" if edition == "ee" else "graal-core-libgraal"
 
@@ -681,6 +692,8 @@ class PolybenchBenchmarkSuite(
             guest_vm_config = "interpreter"
         else:
             guest_vm_config = "default"
+        if "-Dpython.EnableBytecodeDSLInterpreter=true" in self.vmArgs(bm_suite_args):
+            guest_vm_config += "-bc-dsl"
         return guest_vm, guest_vm_config
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -847,11 +860,11 @@ class PolybenchBenchmarkSuite(
             fork_info = self._suite.execution_context.fork_info
             # When running non-native benchmarks there is no concept of stages, there is only a single bench suite run.
             # So we store a pretend "run" stage to indicate that all datapoints (for this fork) have already been produced.
-            current_stage = (
-                Stage.from_string("run")
-                if not self._suite.execution_context.native_mode
-                else self._suite.stages_info.current_stage
-            )
+            current_stage = Stage.from_string("run")
+            try:
+                current_stage = self._suite.stages_info.current_stage
+            except AttributeError:
+                pass
             # Preserve this fork-stage's datapoints for eventual post-processing.
             self._fork_stage_datapoints[(fork_info.current_fork_index, current_stage)] = datapoints
             if (
@@ -959,20 +972,40 @@ class PolybenchBenchmarkSuite(
             )
             super().__init__(suite, selector_fn, key_fn, field, update_fn, lower_percentile, upper_percentile)
 
+    class GraalSpecificFieldsRemoverPostProcessor(DataPointsPostProcessor):
+        """
+        Removes all platform Graal specific fields from all the datapoints.
+        Used for cleaning up the bench results of a benchmark that runs on
+        a different platform (e.g. CPython).
+        The removed fields include:
+            * The "guest-vm" and "guest-vm-config" fields.
+            * All the "platform.*" fields.
+        """
+
+        def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+            return [{k: v for k, v in dp.items() if self._should_be_kept(k)} for dp in datapoints]
+
+        def _should_be_kept(self, key) -> bool:
+            return key not in ["guest-vm", "guest-vm-config"] and not key.startswith("platform.")
+
     def post_processors(self) -> List[DataPointsPostProcessor]:
         return self.execution_context.post_processors
 
-    def _get_post_processors(self, benchmark: str, native_mode: bool):
+    def _get_post_processors(self, benchmark: str, native_mode: bool, bm_suite_args: List[str]):
+        post_processors = []
+        if self.jvm(bm_suite_args) == "cpython":
+            post_processors += [PolybenchBenchmarkSuite.GraalSpecificFieldsRemoverPostProcessor()]
         if native_mode:
-            return [
+            post_processors += [
                 PolybenchBenchmarkSuite.NativeModeBenchmarkRenamingPostProcessor(self),
                 PolybenchBenchmarkSuite.NativeModeBuildSummaryPostProcessor(self, benchmark),
                 PolybenchBenchmarkSuite.NativeModeBenchmarkSummaryPostProcessor(self, benchmark),
             ]
         else:
-            return [
+            post_processors += [
                 PolybenchBenchmarkSuite.ServerModeBenchmarkSummaryPostProcessor(self, benchmark),
             ]
+        return post_processors
 
     @staticmethod
     def _get_metric_name(bench_output) -> Optional[str]:

@@ -27,17 +27,16 @@ package com.oracle.svm.hosted.substitute;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
-import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -97,17 +96,13 @@ public class FieldValueTransformation {
         Object receiverValue = receiver == null ? null : GraalAccess.getOriginalSnippetReflection().asObject(Object.class, receiver);
         Object originalValue = fetchOriginalValue(field, receiver);
 
-        Function<Object, JavaConstant> constantConverter = (obj) -> {
-            checkValue(obj, field);
-            return GraalAccess.getOriginalSnippetReflection().forBoxed(field.getJavaKind(), obj);
-        };
-
+        Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
         JavaConstant result;
-        if (fieldValueTransformer instanceof ObjectToConstantFieldValueTransformer objectToConstantFieldValueTransformer) {
-            result = objectToConstantFieldValueTransformer.transformToConstant(field, receiverValue, originalValue, constantConverter);
+        if (newValue instanceof JavaConstantWrapper(JavaConstant constant)) {
+            result = constant;
         } else {
-            Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
-            result = constantConverter.apply(newValue);
+            checkValue(newValue, field);
+            result = GraalAccess.getOriginalSnippetReflection().forBoxed(field.getJavaKind(), newValue);
         }
 
         assert result.getJavaKind() == field.getJavaKind();

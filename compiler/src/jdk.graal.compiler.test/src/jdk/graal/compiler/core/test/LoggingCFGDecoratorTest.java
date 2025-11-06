@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -38,7 +39,7 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
 
     public static int foo(int a) {
         int result = 0;
-        if (a == 0) {
+        if (GraalDirectives.injectBranchProbability(0.99, a == 0)) {
             result = 1;
         } else {
             result = 2;
@@ -76,20 +77,29 @@ public class LoggingCFGDecoratorTest extends GraalCompilerTest {
         ControlFlowGraph.LoggingCFGDecorator<?> dec = new ControlFlowGraph.LoggingCFGDecorator<>(o, visitor, cfg);
         cfg.visitDominatorTreeDefault(dec);
         String result = baos.toString();
-        assert result.contains(ExpectedOutput);
+        Assert.assertTrue(assertStringContains(result, ExpectedOutput));
     }
 
-    private static final String ExpectedOutput = "B0 [dom null, post dom null]\n" +
-                    "\tB1 [dom B0, post dom null]\n" +
-                    "\tB2 [dom B0, post dom null]\n" +
-                    "\tB3 [dom B0, post dom null]\n" +
-                    "Enter block B0 for TestIterator\n" +
-                    "\tEnter block B1 for TestIterator\n" +
-                    "\tExit block B1 with value 1 for TestIterator\n" +
-                    "\tEnter block B2 for TestIterator\n" +
-                    "\tExit block B2 with value 1 for TestIterator\n" +
-                    "\tEnter block B3 for TestIterator\n" +
-                    "\tExit block B3 with value 1 for TestIterator\n" +
-                    "Exit block B0 with value 1 for TestIterator";
+    private static boolean assertStringContains(String set, String key) {
+        if (!set.contains(key)) {
+            throw new AssertionError(String.format("String %s does not contain %s", set, key));
+        }
+        return true;
+    }
+
+    private static final String ExpectedOutput = """
+                    B0 [dom null, post dom null]
+                    \tB1 [dom B0, post dom null]
+                    \tB2 [dom B0, post dom null]
+                    \tB3 [dom B0, post dom null]
+                    Enter block B0 for TestIterator
+                    \tEnter block B1 for TestIterator
+                    \tExit block B1 with value 1 for TestIterator
+                    \tEnter block B2 for TestIterator
+                    \tExit block B2 with value 1 for TestIterator
+                    \tEnter block B3 for TestIterator
+                    \tExit block B3 with value 1 for TestIterator
+                    Exit block B0 with value 1 for TestIterator
+                    """.replace("\n", System.lineSeparator());
 
 }

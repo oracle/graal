@@ -56,7 +56,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         }
     }
 
-    private record StubDesc(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) implements JsonPrintable {
+    public record StubDesc(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) implements JsonPrintable {
         @Override
         public void printJson(JsonWriter writer) throws IOException {
             writer.appendObjectStart();

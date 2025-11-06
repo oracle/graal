@@ -36,6 +36,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.option.HostedOptionKey;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -144,6 +147,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     Object.class, Object[].class, CFunctionPointer.class);
 
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
+
+    public static final class Options {
+        @Option(help = "Emits a warning when the old programmatic registration API is used.", type = OptionType.User) public static final HostedOptionKey<Boolean> TrackDeprecatedRegistrationUsage = new HostedOptionKey<>(
+                        false);
+    }
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {

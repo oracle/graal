@@ -25,8 +25,11 @@
 package jdk.graal.compiler.truffle;
 
 import java.net.URI;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.annotation.EnumElement;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
@@ -35,8 +38,10 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
@@ -73,6 +78,7 @@ import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProv
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -147,9 +153,149 @@ public abstract class PartialEvaluator {
         lastTierDecodingPlugins.maybePrintIntrinsics(options);
     }
 
+    private static int getArrayDimensions(JavaType type) {
+        int dimensions = 0;
+        for (JavaType componentType = type; componentType.isArray(); componentType = componentType.getComponentType()) {
+            dimensions++;
+        }
+        return dimensions;
+    }
+
+    private static int actualStableDimensions(ResolvedJavaField field, int dimensions) {
+        if (dimensions == 0) {
+            return 0;
+        }
+        int arrayDim = getArrayDimensions(field.getType());
+        if (dimensions < 0) {
+            if (dimensions != -1) {
+                throw new IllegalArgumentException("Negative @CompilationFinal dimensions");
+            }
+            return arrayDim;
+        }
+        if (dimensions > arrayDim) {
+            throw new IllegalArgumentException(String.format("@CompilationFinal(dimensions=%d) exceeds declared array dimensions (%d) of field %s", dimensions, arrayDim, field));
+        }
+        return dimensions;
+    }
+
+    /**
+     * Gets an object describing how a read of {@code field} can be constant folded based on Truffle
+     * annotations.
+     *
+     * @param field the field for which to compute {@link ConstantFieldInfo}
+     * @param declaredAnnotationValues a map of method annotations keyed by their declaring
+     *            {@link ResolvedJavaType}
+     * @param types cached types known to the Truffle compiler
+     * @param unwrapType a function that unwraps a {@link ResolvedJavaType} obtained from
+     *            {@code types} to its underlying host {@link ResolvedJavaType}. In native-image,
+     *            known Truffle types are represented as {@code AnalysisType}, while the keys in
+     *            {@code declaredAnnotationValues} correspond to host JVMCI types. Therefore, each
+     *            {@code AnalysisType} must be unwrapped via
+     *            {@code OriginalClassProvider.getOriginalType(JavaType)} to correctly access the
+     *            corresponding annotation entries in {@code declaredAnnotationValues}.
+     *
+     * @return {@code null} if there are no constant folding related Truffle annotations on
+     *         {@code field}
+     */
+    public static ConstantFieldInfo computeConstantFieldInfo(ResolvedJavaField field,
+                    Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
+                    KnownTruffleTypes types, Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
+        if (declaredAnnotationValues.containsKey(unwrapType.apply(types.Node_Child))) {
+            return ConstantFieldInfo.CHILD;
+        }
+        if (declaredAnnotationValues.containsKey(unwrapType.apply(types.Node_Children))) {
+            return ConstantFieldInfo.CHILDREN;
+        }
+        AnnotationValue cf = declaredAnnotationValues.get(unwrapType.apply(types.CompilerDirectives_CompilationFinal));
+        if (cf != null) {
+            int dimensions = actualStableDimensions(field, cf.get("dimensions", Integer.class));
+            return ConstantFieldInfo.forDimensions(dimensions);
+        }
+        return null;
+    }
+
+    /**
+     * Computes {@link PartialEvaluationMethodInfo} for the given {@code method} based on its
+     * declared annotations.
+     *
+     * <p>
+     * This method analyzes the annotations present on {@code method}, provided in
+     * {@code declaredAnnotationValues}, and determines partial evaluation behavior such as loop
+     * explosion, inlining, and specialization characteristics.
+     * </p>
+     *
+     * @param runtime the Truffle runtime used to determine whether
+     *            {@linkplain TruffleCompilerRuntime#isJavaInstrumentationActive() flight recorder
+     *            instrumentation is active}
+     * @param method the method for which to compute {@link PartialEvaluationMethodInfo}
+     * @param declaredAnnotationValues a map of method annotations keyed by their declaring
+     *            {@link ResolvedJavaType}
+     * @param types cached types known to the Truffle compiler
+     * @param unwrapType a function that unwraps a {@link ResolvedJavaType} obtained from
+     *            {@code types} to its underlying host {@link ResolvedJavaType}. In native-image,
+     *            known Truffle types are represented as {@code AnalysisType}, while the keys in
+     *            {@code declaredAnnotationValues} correspond to host JVMCI types. Therefore, each
+     *            {@code AnalysisType} must be unwrapped via
+     *            {@code OriginalClassProvider.getOriginalType(JavaType)} to correctly access the
+     *            corresponding annotation entries in {@code declaredAnnotationValues}.
+     */
+    public static PartialEvaluationMethodInfo computePartialEvaluationMethodInfo(TruffleCompilerRuntime runtime,
+                    ResolvedJavaMethod method,
+                    Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
+                    KnownTruffleTypes types, Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
+        AnnotationValue truffleBoundary = declaredAnnotationValues.get(unwrapType.apply(types.CompilerDirectives_TruffleBoundary));
+        AnnotationValue truffleCallBoundary = declaredAnnotationValues.get(unwrapType.apply(types.TruffleCallBoundary));
+        boolean specialization = declaredAnnotationValues.get(unwrapType.apply(types.Specialization)) != null;
+        AnnotationValue explodeLoop = declaredAnnotationValues.get(unwrapType.apply(types.ExplodeLoop));
+
+        return new PartialEvaluationMethodInfo(getLoopExplosionKind(explodeLoop, unwrapType.apply(types.ExplodeLoop_LoopExplosionKind)),
+                        getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, true, types),
+                        getInlineKind(runtime, truffleBoundary, truffleCallBoundary, method, false, types),
+                        method.canBeInlined(),
+                        specialization);
+    }
+
+    private static LoopExplosionKind getLoopExplosionKind(AnnotationValue value, ResolvedJavaType expectedType) {
+        if (value == null) {
+            return LoopExplosionKind.NONE;
+        }
+        EnumElement enumElement = value.get("kind", EnumElement.class);
+        if (!expectedType.equals(enumElement.enumType)) {
+            throw new IllegalStateException("Incompatible ExplodeLoop change. ExplodeLoop.kind must be LoopExplosionKind.");
+        }
+        return Enum.valueOf(LoopExplosionKind.class, enumElement.name);
+    }
+
+    private static InlineKind getInlineKind(TruffleCompilerRuntime runtime, AnnotationValue truffleBoundary, AnnotationValue truffleCallBoundary,
+                    ResolvedJavaMethod method, boolean duringPartialEvaluation,
+                    KnownTruffleTypes types) {
+        if (truffleBoundary != null) {
+            if (duringPartialEvaluation) {
+                // Since this method is invoked by the bytecode parser plugins, which can be invoked
+                // by the partial evaluator, we want to prevent inlining across the boundary during
+                // partial evaluation,
+                // even if the TruffleBoundary allows inlining after partial evaluation.
+                if (truffleBoundary.get("transferToInterpreterOnException", Boolean.class)) {
+                    return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
+                } else {
+                    return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+            } else if (!truffleBoundary.get("allowInlining", Boolean.class)) {
+                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
+        } else if (truffleCallBoundary != null) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        } else if (FlightRecorderInstrumentation.isInstrumented(runtime, method, types)) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        }
+        return InlineKind.INLINE;
+    }
+
     public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);
 
     public abstract ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
+
+    public abstract boolean isValueType(ResolvedJavaType type);
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
         return EconomicMap.create();
@@ -558,6 +704,5 @@ public abstract class PartialEvaluator {
         public String getNodeClassName() {
             return delegate.getNodeClassName();
         }
-
     }
 }

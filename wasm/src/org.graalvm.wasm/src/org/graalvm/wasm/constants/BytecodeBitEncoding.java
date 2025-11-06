@@ -137,13 +137,18 @@ public class BytecodeBitEncoding {
     public static final int ELEM_SEG_OFFSET_ADDRESS_U16 = 0b0000_0010;
     public static final int ELEM_SEG_OFFSET_ADDRESS_I32 = 0b0000_0011;
 
-    public static final int ELEM_SEG_TYPE_FUNREF = 0b0001_0000;
-    public static final int ELEM_SEG_TYPE_EXTERNREF = 0b0010_0000;
-    public static final int ELEM_SEG_TYPE_EXNREF = 0b0011_0000;
+    public static final int ELEM_SEG_TYPE_MASK = 0b0011_0000;
+    public static final int ELEM_SEG_TYPE_I8 = 0b0001_0000;
+    public static final int ELEM_SEG_TYPE_I16 = 0b0010_0000;
+    public static final int ELEM_SEG_TYPE_I32 = 0b0011_0000;
 
     public static final int ELEM_SEG_MODE_VALUE = 0b0000_1111;
 
     // Elem items
+
+    public static final int ELEM_ITEM_REF_NULL_ENTRY_PREFIX = 0;
+    public static final int ELEM_ITEM_REF_FUNC_ENTRY_PREFIX = 1;
+    public static final int ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX = 2;
 
     public static final int ELEM_ITEM_TYPE_MASK = 0b1000_0000;
     public static final int ELEM_ITEM_TYPE_FUNCTION_INDEX = 0b0000_0000;

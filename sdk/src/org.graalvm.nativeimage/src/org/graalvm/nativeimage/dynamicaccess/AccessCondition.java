@@ -44,8 +44,15 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 /**
  * A condition that must be satisfied to register elements for dynamic access (i.e., reflection,
- * serialization, JNI access, resource access, and foreign access at run time). Conditions should be
- * used whenever possible to constrain unnecessary growth of the binary size.
+ * serialization, JNI access, resource access, and foreign access at run time).
+ * {@link AccessCondition} is used for programmatic metadata registration in conjunction with:
+ * <ul>
+ * <li>{@link ReflectiveAccess}</li>
+ * <li>{@link ResourceAccess}</li>
+ * <li>{@link JNIAccess}</li>
+ * <li>{@link ForeignAccess}</li>
+ * </ul>
+ * Conditions should be used whenever possible to constrain unnecessary growth of the binary size.
  * <p>
  * There are currently two types of conditions:
  * <ul>
@@ -101,7 +108,7 @@ public interface AccessCondition {
      *         // ConditionalType reached (already initialized) => element access allowed
      *     }
      * }
-     * 
+     *
      * class SuperType {
      *     static {
      *         // ConditionalType reached (subtype reached) => element access allowed

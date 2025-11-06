@@ -893,7 +893,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Debugger) {
+        if (verbosity == Verbosity.All) {
             return toString(this);
         } else if (verbosity == Verbosity.Name) {
             String res = super.toString(Verbosity.Name) + "@" + bci;

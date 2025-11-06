@@ -503,20 +503,22 @@ public class ReplayCompilationProxies implements CompilationProxies {
                         return proxyMapper.proxifyRecursive(result);
                     }
                 }
-                try {
-                    Object[] unproxifiedArgs = (Object[]) proxyMapper.unproxifyRecursive(args);
-                    if (registration.singleton()) {
-                        return proxyMapper.proxifyRecursive(callback.invoke(input, unproxifiedArgs));
+                if (registration.useLocalMirrorFallback()) {
+                    try {
+                        Object[] unproxifiedArgs = (Object[]) proxyMapper.unproxifyRecursive(args);
+                        if (registration.singleton()) {
+                            return proxyMapper.proxifyRecursive(callback.invoke(input, unproxifiedArgs));
+                        }
+                        Object localMirror = proxyInfo.localMirror;
+                        if (localMirror != null) {
+                            return proxyMapper.proxifyRecursive(callback.invoke(localMirror, unproxifiedArgs));
+                        }
+                    } catch (NotUnproxifiableException ignored2) {
+                        // Cannot unproxify the arguments: continue.
+                    } catch (InvocationTargetException exception) {
+                        // The result of the invocation is a thrown exception.
+                        throw exception.getTargetException();
                     }
-                    Object localMirror = proxyInfo.localMirror;
-                    if (localMirror != null) {
-                        return proxyMapper.proxifyRecursive(callback.invoke(localMirror, unproxifiedArgs));
-                    }
-                } catch (NotUnproxifiableException ignored2) {
-                    // Cannot unproxify the arguments: continue.
-                } catch (InvocationTargetException exception) {
-                    // The result of the invocation is a thrown exception.
-                    throw exception.getTargetException();
                 }
                 CompilerInterfaceDeclarations.OperationResultSupplier handler = registration.findFallbackHandler(method);
                 if (handler != null) {

@@ -26,17 +26,22 @@ package com.oracle.svm.interpreter;
 
 import java.lang.invoke.MethodType;
 
+import org.graalvm.nativeimage.impl.ClassLoading;
+
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -71,8 +76,20 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             case CLASS -> resolveClassConstant(cpi, accessingClass);
             case METHODTYPE -> resolveMethodType(cpi, accessingClass);
             case METHODHANDLE -> resolveMethodHandle(cpi, accessingClass);
+            case INVOKEDYNAMIC -> resolveInvokeDynamic(cpi, accessingClass);
             default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tag);
         };
+    }
+
+    private Object resolveInvokeDynamic(int cpi, InterpreterResolvedObjectType accessingClass) {
+        BootstrapMethodsAttribute bms = ((CremaResolvedObjectType) accessingClass).getBootstrapMethodsAttribute();
+        int bootstrapMethodAttrIndex = this.invokeDynamicBootstrapMethodAttrIndex(cpi);
+        BootstrapMethodsAttribute.Entry bsEntry = bms.at(bootstrapMethodAttrIndex);
+
+        Symbol<Signature> invokeSignature = this.invokeDynamicSignature(cpi);
+        Symbol<Type>[] parsedInvokeSignature = SymbolsSupport.getSignatures().parsed(invokeSignature);
+
+        return new ResolvedInvokeDynamicConstant(bsEntry, parsedInvokeSignature, this.invokeDynamicName(cpi));
     }
 
     private Object resolveMethodHandle(int cpi, InterpreterResolvedObjectType accessingClass) {
@@ -123,17 +140,25 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return string;
     }
 
-    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedJavaType accessingKlass) {
+    private static InterpreterResolvedObjectType resolveObjectType(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
+        DynamicHub hub = DynamicHub.fromClass(CremaSupport.singleton().resolveOrThrow(type, accessingClass));
+        assert !hub.isPrimitive();
+        return (InterpreterResolvedObjectType) hub.getInterpreterType();
+    }
+
+    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
         assert accessingKlass != null;
         assert tagAt(classIndex) == Tag.CLASS;
 
         Object entry = this.cachedEntries[classIndex];
         Symbol<Type> type = null;
 
+        boolean allowArbitraryClassLoading;
         if (entry == null) {
             // CP comes from dynamically loaded .class file.
             Symbol<Name> className = this.className(classIndex);
             type = SymbolsSupport.getTypes().fromClassNameEntry(className);
+            allowArbitraryClassLoading = true;
         } else if (entry instanceof UnresolvedJavaType unresolvedJavaType) {
             Throwable cause = unresolvedJavaType.getCause();
             if (cause != null) {
@@ -141,14 +166,15 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             }
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
+            allowArbitraryClassLoading = false;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved type, but got " + entry);
         }
 
         assert type != null;
 
-        try {
-            InterpreterResolvedObjectType result = CremaRuntimeAccess.getInstance().lookupOrLoadType(type, accessingKlass);
+        try (var _ = ClassLoading.allowArbitraryClassLoading(allowArbitraryClassLoading)) {
+            InterpreterResolvedObjectType result = resolveObjectType(type, accessingKlass);
             return result;
         } catch (LinkageError e) {
             // Comment from Hotspot:
@@ -187,7 +213,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaField.getDeclaringClass().getName());
             assert !TypeSymbols.isPrimitive(holderType) && !TypeSymbols.isArray(holderType);
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved field, but got " + entry);
         }
@@ -223,7 +249,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -261,7 +287,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodSignature = SymbolsSupport.getSignatures().getOrCreateValidSignature(unresolvedJavaMethod.getSignature().toMethodDescriptor());
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
-            holder = CremaRuntimeAccess.getInstance().lookupOrLoadType(holderType, accessingClass);
+            holder = resolveObjectType(holderType, accessingClass);
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -273,6 +299,24 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         // TODO(peterssen): Support MethodHandle invoke intrinsics.
 
         return interfaceMethod;
+    }
+
+    public Object[] getStaticArguments(BootstrapMethodsAttribute.Entry entry, InterpreterResolvedObjectType accessingClass) {
+        Object[] args = new Object[entry.numBootstrapArguments()];
+        for (int i = 0; i < entry.numBootstrapArguments(); i++) {
+            args[i] = switch (tagAt(entry.argAt(i))) {
+                case METHODHANDLE -> this.resolvedMethodHandleAt(entry.argAt(i), accessingClass);
+                case METHODTYPE -> this.resolvedMethodTypeAt(entry.argAt(i), accessingClass);
+                case CLASS -> this.resolveClassConstant(entry.argAt(i), accessingClass).getJavaClass();
+                case STRING -> this.resolveStringAt(entry.argAt(i));
+                case INTEGER -> this.intAt(entry.argAt(i));
+                case LONG -> this.longAt(entry.argAt(i));
+                case DOUBLE -> this.doubleAt(entry.argAt(i));
+                case FLOAT -> this.floatAt(entry.argAt(i));
+                default -> throw VMError.unimplemented("Unimplemented CP resolution for " + tagAt(entry.argAt(i)));
+            };
+        }
+        return args;
     }
 
     public static MethodType signatureToMethodType(Symbol<Type>[] signature, InterpreterResolvedObjectType accessingClass) {
@@ -290,8 +334,10 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     }
 
     private static Class<?> resolveSymbolAndAccessCheck(InterpreterResolvedObjectType accessingClass, Symbol<Type> type) {
-        Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
-        // GR-62339 check access
-        return clazz;
+        try (var _ = ClassLoading.allowArbitraryClassLoading()) {
+            Class<?> clazz = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
+            // GR-62339 check access
+            return clazz;
+        }
     }
 }

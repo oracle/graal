@@ -65,9 +65,9 @@ import com.oracle.graal.pointsto.standalone.plugins.StandaloneReplacementsImpl;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -82,7 +82,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.word.WordTypes;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -122,11 +121,10 @@ public final class PointsToAnalyzer {
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
         debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
         StandaloneHost standaloneHost = new StandaloneHost(options);
-        int wordSize = getWordSize();
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
 
-        JavaKind wordKind = JavaKind.fromWordSize(wordSize);
+        JavaKind wordKind = originalProviders.getWordTypes().getWordKind();
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
                         analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
@@ -228,23 +226,6 @@ public final class PointsToAnalyzer {
                 return fileName.toString();
             }
         }
-    }
-
-    private static int getWordSize() {
-        int wordSize;
-        String archModel = System.getProperty("sun.arch.data.model");
-        switch (archModel) {
-            case "64":
-                wordSize = AMD64Kind.QWORD.getSizeInBytes();
-                break;
-            case "32":
-                wordSize = AMD64Kind.DWORD.getSizeInBytes();
-                break;
-            default:
-                throw new RuntimeException("Property sun.arch.data.model should only be 64 or 32, but is " + archModel);
-
-        }
-        return wordSize;
     }
 
     /**

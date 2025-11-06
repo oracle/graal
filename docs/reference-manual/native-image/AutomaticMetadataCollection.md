@@ -20,7 +20,7 @@ To learn how to compute dynamic feature calls in code, see [Reachability Metadat
 * [Tracing Agent](#tracing-agent)
 * [Conditional Metadata Collection](#conditional-metadata-collection)
 * [Agent Advanced Usage](#agent-advanced-usage)
-* [Native Image Configure Tool](#native-image-configure-tool)
+* [Native Image Utils Tool](#native-image-utils-tool)
 
 ## Tracing Agent
 
@@ -160,10 +160,10 @@ However, for a better understanding of the execution, the agent can also write a
 $JAVA_HOME/bin/java -agentlib:native-image-agent=trace-output=/path/to/trace-file.json ...
 ```
 
-The `native-image-configure` tool can transform trace files to configuration files.
+The `native-image-utils` tool can transform trace files to configuration files.
 The following command reads and processes `trace-file.json` and generates a set of configuration files in the directory `/path/to/config-dir/`:
 ```shell
-native-image-configure generate --trace-input=/path/to/trace-file.json --output-dir=/path/to/config-dir/
+native-image-utils generate --trace-input=/path/to/trace-file.json --output-dir=/path/to/config-dir/
 ```
 
 ### Interoperability
@@ -179,16 +179,16 @@ In this case, it is necessary to provide the absolute path of the agent:
 The agent has options which are currently experimental and might be enabled in future releases, but can also be changed or removed entirely.
 See the [ExperimentalAgentOptions.md](ExperimentalAgentOptions.md) guide.
 
-## Native Image Configure Tool
+## Native Image Utils Tool
 
 When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but it results in multiple sets of configuration files.
-The `native-image-configure` tool can be used to merge these configuration files:
+The `native-image-utils` tool can be used to merge these configuration files:
 ```shell
-native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
+native-image-utils generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```
 
 This command reads one set of configuration files from `/path/to/config-dir-0/` and another from `/path/to/config-dir-1/` and then writes a set of configuration files that contains both of their information to `/path/to/merged-config-dir/`.
-An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-configure help` for all options.
+An arbitrary number of `--input-dir` arguments with sets of configuration files can be specified. See `native-image-utils help` for all options.
 
 ### Further Reading
 

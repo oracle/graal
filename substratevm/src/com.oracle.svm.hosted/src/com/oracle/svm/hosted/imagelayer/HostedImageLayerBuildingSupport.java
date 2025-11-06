@@ -69,6 +69,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shaded.org.capnproto.ReaderOptions;
 import com.oracle.svm.shaded.org.capnproto.Serialize;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -324,8 +325,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 ValueWithOrigin<String> valueWithOrigin = getLayerCreateValueWithOrigin(values);
                 String layerCreateValue = getLayerCreateValue(valueWithOrigin);
                 String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                throw UserError.abort("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
+                String message = String.format("Layer creation option '%s' from %s is not supported when building for platform %s/%s.",
                                 layerCreateArg, valueWithOrigin.origin(), platform.getOS(), platform.getArchitecture());
+                if (SubstrateOptions.LayerOptionVerification.getValue(values)) {
+                    throw UserError.abort("%s", message);
+                }
+                LogUtils.warning(message);
             }
         }
 
@@ -422,5 +427,17 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
     public static void registerBaseLayerTypes(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
         classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+    }
+
+    /**
+     * Native libraries can keep track of a state in C variables. Since native libraries are linked
+     * statically against each layer, the state is kept in a separate space for each layer. This
+     * means that if two methods access the same variable, but they are in a different layer, they
+     * will access to different instances. For this reason, all the native methods from a single
+     * native library need to be in the same layer. This method iterate through all native methods
+     * and try to include them in the current layer.
+     */
+    public static void registerNativeMethodsForBaseImage(BigBang bb, MetaAccessProvider originalMetaAccess, ImageClassLoader loader) {
+        loader.getApplicationClasses().forEach(clazz -> bb.tryRegisterNativeMethodsForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
     }
 }

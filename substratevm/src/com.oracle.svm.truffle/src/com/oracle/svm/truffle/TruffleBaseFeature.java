@@ -78,7 +78,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
@@ -116,6 +115,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -499,7 +500,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
-        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins());
+
+        /*
+         * SIMD intrinsics for TruffleString and ArrayUtils are implemented for AMD64 and AARCH64
+         * only, so they need to be turned off when compiling for WebImage.
+         */
+        Class<?> webImageFeature = ReflectionUtil.lookupClass(true, "com.oracle.svm.webimage.truffle.WebImageTruffleFeature");
+        boolean registerSIMDIntrinsics = webImageFeature == null || !ImageSingletons.contains(webImageFeature);
+        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), registerSIMDIntrinsics);
 
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
@@ -951,7 +959,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * @see #registerTruffleLibrariesAsInHeap
      */
     private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
-        if (type.isAnnotationPresent(GenerateLibrary.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
             LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
             /* Trigger computation of uncachedDispatch. */
@@ -959,7 +967,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Manually rescan the field since this is during analysis. */
             access.rescanField(factory, uncachedDispatchField, scanReason);
         }
-        if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, ExportLibrary.class) || AnnotationUtil.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */
             invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
                             Collections.singleton(Class.class), type.getJavaClass());
@@ -1245,7 +1253,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         private static final class StaticObjectPodBasedSupport {
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
-                PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
+                if (PodSupport.isPresent()) {
+                    PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
+                }
             }
 
         }

@@ -46,6 +46,10 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.Management;
 
+/**
+ * Class for maintaining state and providing utility in EspressoLibs mode. See
+ * {@link com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess}
+ */
 public class LibsState {
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, LibsState.class);
 

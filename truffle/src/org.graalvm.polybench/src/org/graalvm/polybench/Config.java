@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,12 +46,16 @@ public class Config {
     Metric metric;
     boolean evalSourceOnlyDefault;
     Summary summary;
+    Language stagingLanguage;
+    String stagingFilePath;
+    boolean logStagedProgram;
+    String stagedProgramLauncher;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
     private static final int UNINITIALIZED_ITERATIONS = -1;
-    private static final int DEFAULT_WARMUP = 20;
-    private static final int DEFAULT_ITERATIONS = 30;
+    public static final int DEFAULT_WARMUP = 20;
+    public static final int DEFAULT_ITERATIONS = 30;
 
     /**
      * Multi-context runs related configuration.

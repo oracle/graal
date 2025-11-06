@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -176,7 +177,7 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
         }
 
         int totalSize;
-        Class<? extends IntUnaryOperator> sizeProviderClass = info.getAnnotatedElement().getAnnotation(RawStructure.class).sizeProvider();
+        Class<? extends IntUnaryOperator> sizeProviderClass = AnnotationUtil.getAnnotation(info.getAnnotatedElement(), RawStructure.class).sizeProvider();
         if (sizeProviderClass == IntUnaryOperator.class) {
             /* No sizeProvider specified in the annotation, so no adjustment necessary. */
             totalSize = currentOffset;

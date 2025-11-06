@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.library;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -54,11 +55,16 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -274,12 +280,25 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
 
         // parse abstract methods
+        Set<LibraryMessage> replacedMessages = new HashSet<>();
         for (LibraryMessage message : model.getMethods()) {
             AnnotationMirror abstractMirror = ElementUtils.findAnnotationMirror(message.getExecutable(), types.GenerateLibrary_Abstract);
             if (abstractMirror != null) {
                 message.setAbstract(true);
                 message.getAbstractIfExported().addAll(parseAbstractIfExported(message, abstractMirror, "ifExported", messageByName));
                 message.getAbstractIfExportedAsWarning().addAll(parseAbstractIfExported(message, abstractMirror, "ifExportedAsWarning", messageByName));
+                LibraryMessage replaced = parseAbstractReplacementFor(message, abstractMirror, "replacementOf", messageByName);
+                ExecutableElement replacementMethod = parseAbstractReplacementWith(message, replaced, abstractMirror, "replacementMethod", allMethods);
+
+                if (replacementMethod != null && replaced == null) {
+                    message.addError("The 'replacementMethod' attribute is only valid when 'replacementOf' is also specified.");
+                }
+                if (replaced != null) {
+                    if (!replacedMessages.add(replaced)) {
+                        message.addError("Message " + message.getName() + " is a replacement of multiple messages. Arguments to replacementOf annotation have to be unique.");
+                    }
+                    message.setReplacementOf(replaced, replacementMethod);
+                }
             }
         }
 
@@ -350,6 +369,163 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             }
         }
         return abstractIfExportedMessages;
+    }
+
+    private static LibraryMessage parseAbstractReplacementFor(LibraryMessage message, AnnotationMirror abstractMirror, String replacementOfAttribute, Map<String, List<LibraryMessage>> messages) {
+        String replacementValue = ElementUtils.getAnnotationValue(String.class, abstractMirror, replacementOfAttribute);
+        if (replacementValue == null) {
+            return null;
+        }
+        String replacement = replacementValue.replaceAll("\\s", "");
+        if (replacement.isEmpty()) {
+            return null;
+        }
+        int signatureStart = replacement.indexOf('(');
+        if (signatureStart > 0) {
+            String base = replacement.substring(0, signatureStart);
+            List<LibraryMessage> list = messages.get(base);
+            if (list != null) {
+                ProcessorContext context = ProcessorContext.getInstance();
+                String[] typeNames = replacement.substring(signatureStart + 1, replacement.length() - 1).split(",");
+                List<TypeMirror> signature = new ArrayList<>(typeNames.length);
+                for (String typeName : typeNames) {
+                    TypeMirror parsedType = parseType(typeName, context);
+                    signature.add(parsedType);
+                    if (parsedType.getKind() == TypeKind.NONE) {
+                        message.addError(abstractMirror, null, "Cannot parse replaced message parameter type %s. Use a qualified name for declared types.", typeName);
+                    }
+                }
+                for (LibraryMessage msg : list) {
+                    List<? extends TypeMirror> parameterTypes = ((ExecutableType) msg.getExecutable().asType()).getParameterTypes();
+                    if (signature.size() == parameterTypes.size()) {
+                        boolean sameSignature = true;
+                        for (int i = 0; i < signature.size(); i++) {
+                            sameSignature = ElementUtils.typeEquals(signature.get(i), parameterTypes.get(i));
+                            if (!sameSignature) {
+                                break;
+                            }
+                        }
+                        if (sameSignature) {
+                            validateAssignableArguments(message, abstractMirror, msg);
+                            return msg;
+                        }
+                    }
+                }
+            }
+        } else {
+            List<LibraryMessage> list = messages.get(replacement);
+            for (LibraryMessage msg : list) {
+                if (replacement.equals(msg.getName())) {
+                    validateAssignableArguments(message, abstractMirror, msg);
+                    return msg;
+                }
+            }
+        }
+        message.addError(abstractMirror, null, "The replaced message %s was not found. Specify an existing message with optional type arguments.", replacementValue);
+        return null;
+    }
+
+    private static TypeMirror parseType(String typeName, ProcessorContext context) {
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        // Primitives
+        switch (typeName) {
+            case "boolean":
+                return typeUtils.getPrimitiveType(TypeKind.BOOLEAN);
+            case "byte":
+                return typeUtils.getPrimitiveType(TypeKind.BYTE);
+            case "short":
+                return typeUtils.getPrimitiveType(TypeKind.SHORT);
+            case "int":
+                return typeUtils.getPrimitiveType(TypeKind.INT);
+            case "long":
+                return typeUtils.getPrimitiveType(TypeKind.LONG);
+            case "char":
+                return typeUtils.getPrimitiveType(TypeKind.CHAR);
+            case "float":
+                return typeUtils.getPrimitiveType(TypeKind.FLOAT);
+            case "double":
+                return typeUtils.getPrimitiveType(TypeKind.DOUBLE);
+            case "void":
+                return typeUtils.getNoType(TypeKind.VOID);
+        }
+        // Arrays
+        if (typeName.endsWith("[]")) {
+            String elementType = typeName.substring(0, typeName.length() - 2);
+            TypeMirror elemMirror = parseType(elementType, context);
+            return typeUtils.getArrayType(elemMirror);
+        }
+        // Declared types with auto-import of java.lang.*
+        Elements elementUtils = context.getEnvironment().getElementUtils();
+        TypeElement el = elementUtils.getTypeElement(typeName);
+        if (el == null && !typeName.contains(".")) {
+            el = elementUtils.getTypeElement("java.lang." + typeName);
+        }
+        if (el != null) {
+            return el.asType();
+        }
+        return typeUtils.getNoType(TypeKind.NONE);
+    }
+
+    private static void validateAssignableArguments(LibraryMessage message, AnnotationMirror abstractMirror, LibraryMessage msg) {
+        ExecutableElement replacementMethodExecutable = message.getExecutable();
+        List<? extends VariableElement> replacementMethodParameters = replacementMethodExecutable.getParameters();
+        ExecutableElement replacedExecutable = msg.getExecutable();
+        List<? extends VariableElement> replacedParameters = replacedExecutable.getParameters();
+        int n = replacementMethodParameters.size();
+        assert n == replacedParameters.size() : replacementMethodParameters.toString() + replacedParameters.toString();
+        for (int i = 0; i < n; i++) {
+            TypeMirror replaced = replacedParameters.get(i).asType();
+            TypeMirror replacementMethod = replacementMethodParameters.get(i).asType();
+            boolean isAssignable = ElementUtils.isAssignable(replaced, replacementMethod);
+            if (!isAssignable) {
+                String sign = ElementUtils.getReadableSignature(message.getExecutable());
+                sign = sign.substring(sign.indexOf('('));
+                String replacementMethodMessage = message.getName() + sign;
+                sign = ElementUtils.getReadableSignature(msg.getExecutable());
+                sign = sign.substring(sign.indexOf('('));
+                String replacedMessage = msg.getName() + sign;
+                message.addError(abstractMirror, null, "Type %s is not assignable from %s, message %s can not be replaced with %s.", replacementMethod, replaced, replacedMessage,
+                                replacementMethodMessage);
+            }
+        }
+    }
+
+    private static ExecutableElement parseAbstractReplacementWith(LibraryMessage message, LibraryMessage replaced, AnnotationMirror abstractMirror, String replacementMethodAttribute,
+                    List<ExecutableElement> allMethods) {
+        String replacementMethodValue = ElementUtils.getAnnotationValue(String.class, abstractMirror, replacementMethodAttribute);
+        if (replacementMethodValue != null) {
+            String replacement = replacementMethodValue.replaceAll("\\s", "");
+            if (!replacement.isEmpty()) {
+                boolean hasWrongSignature = false;
+                for (ExecutableElement executable : allMethods) {
+                    String methodName = executable.getSimpleName().toString();
+                    if (replacement.equals(methodName)) {
+                        if (replaced == null || hasEqualSignature(replaced.getExecutable(), executable)) {
+                            return executable;
+                        } else {
+                            hasWrongSignature = true;
+                        }
+                    }
+                }
+                if (hasWrongSignature) {
+                    message.addError(abstractMirror, null, "The replacement method %s does not have signature and thrown types equal to the message %s it replaces.", replacement,
+                                    ElementUtils.getReadableSignature(replaced.getExecutable()));
+                } else {
+                    message.addError(abstractMirror, null, "The replacement method %s does not exist.", replacement);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasEqualSignature(ExecutableElement executable1, ExecutableElement executable2) {
+        if (!ElementUtils.typeEquals(executable1.getReturnType(), executable2.getReturnType())) {
+            return false;
+        }
+        if (!ElementUtils.parameterTypesEquals(executable1, executable2)) {
+            return false;
+        }
+        return ElementUtils.thrownTypesEquals(executable1, executable2);
     }
 
     private static void parseAssertions(Element element, AnnotationMirror mirror, TypeElement type, LibraryData model) {

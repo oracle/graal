@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.svm.util.AnnotationsContainer;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
@@ -50,7 +51,9 @@ import jdk.vm.ci.meta.SpeculationLog;
  * {@link BaseLayerMethod} is created and put in an {@link AnalysisMethod} to represent this missing
  * method, using the information from the base layer.
  */
-public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMethod {
+public class BaseLayerMethod extends AnnotationsContainer implements ResolvedJavaMethod {
+    private static final String CLINIT = "<clinit>";
+
     private final int id;
     private final ResolvedJavaType declaringClass;
     private final String name;
@@ -153,7 +156,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public boolean isClassInitializer() {
-        throw unimplemented();
+        return name.equals(CLINIT);
     }
 
     @Override

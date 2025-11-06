@@ -1083,10 +1083,10 @@ public class InliningUtil extends ValueMergeUtil {
                     if (okBci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
                         okBci = frameState.bci;
                     } else {
-                        assert okBci == frameState.bci : node.toString(Verbosity.Debugger);
+                        assert okBci == frameState.bci : node.toString(Verbosity.All);
                     }
                 } else {
-                    assert false : node.toString(Verbosity.Debugger);
+                    assert false : node.toString(Verbosity.All);
                 }
             }
         }

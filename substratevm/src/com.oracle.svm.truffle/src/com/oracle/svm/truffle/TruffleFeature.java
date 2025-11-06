@@ -136,11 +136,14 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
+import com.oracle.svm.truffle.api.SubstrateKnownTruffleTypes;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -151,6 +154,7 @@ import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -276,10 +280,24 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
+        TruffleRuntime runtime = Truffle.getRuntime();
+        if (runtime instanceof DefaultTruffleRuntime defaultTruffleRuntime) {
+            String errorMessage = defaultTruffleRuntime.getFallbackReason();
+            throw UserError.abort("""
+                            Failed to create the optimized Truffle runtime: %s
+                            Either fix the problem above or enable the fallback Truffle runtime by setting the system property `-Dtruffle.UseFallbackRuntime=true`.
+                            Execution without runtime compilation will negatively impact the guest application performance.
+                            """, errorMessage);
+        }
+        UserError.guarantee(runtime instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         truffleRuntime.resetHosted();
-        RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
+        runtimeCompilationFeature.addAfterInstallRuntimeConfigCallback(() -> {
+            Providers providers = TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders();
+            ImageSingletons.add(KnownTruffleTypes.class, new SubstrateKnownTruffleTypes(truffleRuntime, providers.getMetaAccess(), providers.getConstantReflection()));
+        });
+        runtimeCompilationFeature.setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -372,8 +390,7 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        registerKnownTruffleFields(config, partialEvaluator.getTypes());
-
+        registerKnownTruffleFields(config, ImageSingletons.lookup(KnownTruffleTypes.class));
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
@@ -479,13 +496,13 @@ public class TruffleFeature implements InternalFeature {
                 return INLINING_DISALLOWED;
             } else if (invocationPlugins.lookupInvocation(target, builder.getOptions()) != null) {
                 return INLINING_DISALLOWED;
-            } else if (target.getAnnotation(ExplodeLoop.class) != null) {
+            } else if (AnnotationUtil.getAnnotation(target, ExplodeLoop.class) != null) {
                 /*
                  * We cannot inline a method annotated with @ExplodeLoop, because then loops are no
                  * longer exploded.
                  */
                 return INLINING_DISALLOWED;
-            } else if (builder.getMethod().getAnnotation(ExplodeLoop.class) != null) {
+            } else if (AnnotationUtil.getAnnotation(builder.getMethod(), ExplodeLoop.class) != null) {
                 /*
                  * We cannot inline anything into a method annotated with @ExplodeLoop, because then
                  * loops of the inlined callee are exploded too.
@@ -537,7 +554,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
-        if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, TruffleBoundary.class) != null) {
             return true;
         } else if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
@@ -548,7 +565,7 @@ public class TruffleFeature implements InternalFeature {
         }
         if (!method.canBeInlined()) {
             return true;
-        } else if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+        } else if (AnnotationUtil.getAnnotation(method, TruffleCallBoundary.class) != null) {
             return true;
         }
         return false;
@@ -567,7 +584,7 @@ public class TruffleFeature implements InternalFeature {
         if (method == null) {
             return false;
         }
-        CompilerDirectives.TruffleBoundary truffleBoundary = method.getAnnotation(CompilerDirectives.TruffleBoundary.class);
+        TruffleBoundary truffleBoundary = AnnotationUtil.getAnnotation(method, TruffleBoundary.class);
         return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
@@ -1030,7 +1047,7 @@ public class TruffleFeature implements InternalFeature {
                 if (!(method instanceof AnalysisMethod)) {
                     throw VMError.shouldNotReachHere("method should be an analysis method");
                 }
-                if (method.getAnnotation(TruffleBoundary.class) != null) {
+                if (AnnotationUtil.getAnnotation(method, TruffleBoundary.class) != null) {
                     throw VMError.shouldNotReachHere("method used during runtime compilation must never be annotated with a truffle boundary");
                 }
                 runtimeCompiledMethods.add((AnalysisMethod) method);
@@ -1044,7 +1061,7 @@ public class TruffleFeature implements InternalFeature {
         int calleeCount = 0;
         for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
             for (ResolvedJavaMethod targetMethod : runtimeCompiledMethod.getInvokeTargets()) {
-                TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
+                TruffleBoundary truffleBoundary = AnnotationUtil.getAnnotation(targetMethod, TruffleBoundary.class);
                 if (truffleBoundary != null) {
                     ++callSiteCount;
                     if (foundBoundaries.contains(targetMethod)) {

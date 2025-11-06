@@ -45,7 +45,7 @@ import java.math.BigInteger;
 
 /**
  * Java representation of a JavaScript value.
- *
+ * <p>
  * The subclasses of this class represent JavaScript's six primitive data types and the object data
  * type. The JavaScript {@code Null} data type does not have a special representation -- the
  * JavaScript {@code null} value is directly mapped to the Java {@code null} value.
@@ -53,6 +53,42 @@ import java.math.BigInteger;
 public abstract class JSValue {
 
     JSValue() {
+    }
+
+    /**
+     * Attempts to coerce a given value to the specified Java type.
+     * <p>
+     * If the value is a {@link JSValue}, it will be converted using its {@code as(...)} method.
+     * Otherwise, the value is cast directly.
+     *
+     * @param value the value to coerce, which may be a {@code JSValue} or a native Java object
+     * @param cls the target Java class to coerce to
+     * @param <R> the return type
+     * @return the coerced value as an instance of {@code cls}
+     * @throws ClassCastException if the coercion fails or is unsupported
+     */
+    @SuppressWarnings("unchecked")
+    public static <R> R checkedCoerce(Object value, Class<R> cls) {
+        if (value instanceof JSValue jsResult) {
+            return jsResult.as(cls);
+        }
+        return (R) value;
+    }
+
+    /**
+     * Checks whether the given value is the JavaScript {@code undefined} value.
+     *
+     * @see #isUndefined()
+     */
+    public static boolean isUndefined(JSValue value) {
+        return value != null && value.isUndefined();
+    }
+
+    /**
+     * Checks whether this is the JavaScript {@code undefined} value.
+     */
+    public boolean isUndefined() {
+        return false;
     }
 
     public static JSUndefined undefined() {

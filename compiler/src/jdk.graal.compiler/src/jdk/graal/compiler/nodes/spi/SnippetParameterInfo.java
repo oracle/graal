@@ -30,10 +30,11 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
-import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
+import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -49,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class SnippetParameterInfo {
 
     public SnippetParameterInfo(ResolvedJavaMethod method) {
-        assert method.getAnnotation(Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
+        assert AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
         int parameterCount = method.getSignature().getParameterCount(method.hasReceiver());
         if (parameterCount > Integer.SIZE) {
             throw new UnsupportedOperationException("too many arguments");

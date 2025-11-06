@@ -43,11 +43,12 @@ public enum Verbosity {
      */
     Long,
     /**
-     * For use by a custom formatting facility in an IDE.
+     * All the other information plus all debug properties of the node, with any
+     * {@link jdk.vm.ci.code.BytecodePosition} properties filtered out.
      */
-    Debugger,
+    All,
     /**
-     * All the other information plus all debug properties of the node.
+     * Same as {@link #All} but with {@link jdk.vm.ci.code.BytecodePosition} properties included.
      */
-    All
+    AllVerbose,
 }

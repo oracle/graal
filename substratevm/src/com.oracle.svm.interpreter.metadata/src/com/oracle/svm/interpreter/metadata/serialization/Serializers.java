@@ -640,7 +640,7 @@ public final class Serializers {
                         String name = context.readReference(in);
                         int maxLocals = LEB128.readUnsignedInt(in);
                         int maxStackSize = LEB128.readUnsignedInt(in);
-                        int modifiers = LEB128.readUnsignedInt(in);
+                        int flags = LEB128.readUnsignedInt(in);
                         InterpreterResolvedObjectType declaringClass = context.readReference(in);
                         InterpreterUnresolvedSignature signature = context.readReference(in);
                         byte[] code = context.readReference(in);
@@ -654,14 +654,14 @@ public final class Serializers {
                         int enterStubOffset = LEB128.readUnsignedInt(in);
                         int methodId = LEB128.readUnsignedInt(in);
 
-                        return InterpreterResolvedJavaMethod.create(name, maxLocals, maxStackSize, modifiers, declaringClass, signature, code, exceptionHandlers, lineNumberTable, localVariableTable,
-                                        nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+                        return InterpreterResolvedJavaMethod.createForDeserialization(name, maxLocals, maxStackSize, flags, declaringClass, signature, code, exceptionHandlers, lineNumberTable,
+                                        localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
                     },
                     (context, out, value) -> {
                         String name = value.getName();
                         int maxLocals = value.getMaxLocals();
                         int maxStackSize = value.getMaxStackSize();
-                        int modifiers = value.getModifiers();
+                        int flags = value.getFlags();
                         InterpreterResolvedObjectType declaringClass = value.getDeclaringClass();
                         InterpreterUnresolvedSignature signature = value.getSignature();
                         byte[] code = value.getInterpretedCode();
@@ -682,7 +682,7 @@ public final class Serializers {
                         context.writeReference(out, name);
                         LEB128.writeUnsignedInt(out, maxLocals);
                         LEB128.writeUnsignedInt(out, maxStackSize);
-                        LEB128.writeUnsignedInt(out, modifiers);
+                        LEB128.writeUnsignedInt(out, flags);
                         context.writeReference(out, declaringClass);
                         context.writeReference(out, signature);
                         context.writeReference(out, code);

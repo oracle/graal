@@ -39,7 +39,8 @@ public abstract class StructuralInput {
         throw new Error("Illegal instance of StructuralInput. This class should be used in snippets only.");
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
+    // Only read by an annotation processor.
+    @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
     @Inherited
     public @interface MarkerType {

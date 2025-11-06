@@ -1,35 +1,36 @@
 [
     {
-        "name": "graalvm-community-java26",
+        "name": "graalvm-community-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
+        "override_name": "graalvm",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
     },
     {
         "name": "maven-bundle-ce",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"maven-resource-bundle",
         "artifacts": [
             {
@@ -40,9 +41,9 @@
         ]
     },
     {
-        "name": "js-native-standalone-svm-java26",
+        "name": "js-native-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graaljs",
         "artifacts": [
             {
@@ -57,11 +58,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -73,9 +69,9 @@
         ]
     },
     {
-        "name": "js-java-standalone-svm-java26",
+        "name": "js-java-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graaljs",
         "artifacts": [
             {
@@ -90,11 +86,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
@@ -106,9 +97,9 @@
         ]
     },
     {
-        "name": "nodejs-native-standalone-svm-java26",
+        "name": "nodejs-native-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graalnodejs",
         "artifacts": [
             {
@@ -123,11 +114,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -139,9 +125,9 @@
         ]
     },
     {
-        "name": "nodejs-java-standalone-svm-java26",
+        "name": "nodejs-java-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graalnodejs",
         "artifacts": [
             {
@@ -156,11 +142,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
@@ -172,9 +153,9 @@
         ]
     },
     {
-        "name": "python-native-standalone-svm-java26",
+        "name": "python-native-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graalpy",
         "artifacts": [
             {
@@ -189,11 +170,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -205,9 +181,9 @@
         ]
     },
     {
-        "name": "python-java-standalone-svm-java26",
+        "name": "python-java-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name":"graalpy",
         "artifacts": [
             {
@@ -222,11 +198,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
@@ -238,9 +209,9 @@
         ]
     },
     {
-        "name": "wasm-native-standalone-svm-java26",
+        "name": "wasm-native-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name": "graalwasm",
         "artifacts": [
             {
@@ -255,11 +226,6 @@
             },
             {
                 "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-{version}-macos-{arch}"
-            },
-            {
-                "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-{version}-macos-{arch}"
             },
@@ -271,9 +237,9 @@
         ]
     },
     {
-        "name": "wasm-java-standalone-svm-java26",
+        "name": "wasm-java-standalone-svm-java25",
         "core": true,
-        "jdk": "jdk_26",
+        "jdk": "jdk_25",
         "override_name": "graalwasm",
         "artifacts": [
             {
@@ -285,11 +251,6 @@
                 "os": "linux",
                 "arch": "aarch64",
                 "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64",
-                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",

@@ -116,11 +116,11 @@ public class ThreadedSwitchNode extends FloatingNode implements Canonicalizable,
                         pair.getLeft().setProbability(pair.getRight(), ProfileData.BranchProbabilityData.inferred(FREQUENT_PROBABILITY));
                     }
                     if (GraalOptions.TraceThreadedSwitchOptimization.getValue(tool.getOptions())) {
-                        TTY.println("%s marks %s - %s as candidate for threaded switch optimization.", this, loopBeginNode, switchNode);
+                        TTY.println("%s: %s marks %s - %s as candidate for threaded switch optimization.", graph().method().format("%h.%n"), this, loopBeginNode, switchNode);
                     }
                 } else {
                     if (GraalOptions.TraceThreadedSwitchOptimization.getValue(tool.getOptions())) {
-                        TTY.println("%s does not find a valid LoopBeginNode-SwitchNode pair. It stopped searching at %s.", this, current);
+                        TTY.println("%s: %s does not find a valid LoopBeginNode-SwitchNode pair. It stopped searching at %s.", graph().method().format("%h.%n"), this, current);
                     }
                 }
             }

@@ -1773,14 +1773,56 @@ public class ElementUtils {
         if (!nameEquals(e1.getSimpleName(), e2.getSimpleName())) {
             return false;
         }
-        if (e1.getParameters().size() != e2.getParameters().size()) {
-            return false;
-        }
         if (!typeEquals(e1.getReturnType(), e2.getReturnType())) {
             return false;
         }
-        for (int i = 0; i < e1.getParameters().size(); i++) {
+        return parameterTypesEquals(e1, e2);
+    }
+
+    public static boolean parameterTypesEquals(ExecutableElement e1, ExecutableElement e2) {
+        int numParams1 = e1.getParameters().size();
+        if (numParams1 != e2.getParameters().size()) {
+            return false;
+        }
+        for (int i = 0; i < numParams1; i++) {
             if (!typeEquals(e1.getParameters().get(i).asType(), e2.getParameters().get(i).asType())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static boolean thrownTypesEquals(ExecutableElement e1, ExecutableElement e2) {
+        List<TypeMirror> types1 = (List<TypeMirror>) e1.getThrownTypes();
+        List<TypeMirror> types2 = (List<TypeMirror>) e2.getThrownTypes();
+        int size = types1.size();
+        if (size != types2.size()) {
+            return false;
+        }
+        if (size > 1) {
+            // The thrown types can be in an arbitrary order.
+            // Sort them to be able to compare them in a linear pass.
+            types1 = new ArrayList<>(types1);
+            sortTypes(types1, false);
+            types2 = new ArrayList<>(types2);
+            sortTypes(types2, false);
+        }
+        for (int i = 0; i < size; i++) {
+            if (!typeEquals(types1.get(i), types2.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean parametersEquals(ExecutableElement e1, ExecutableElement e2) {
+        int numParams1 = e1.getParameters().size();
+        if (numParams1 != e2.getParameters().size()) {
+            return false;
+        }
+        for (int i = 0; i < numParams1; i++) {
+            if (!variableEquals(e1.getParameters().get(i), e2.getParameters().get(i))) {
                 return false;
             }
         }

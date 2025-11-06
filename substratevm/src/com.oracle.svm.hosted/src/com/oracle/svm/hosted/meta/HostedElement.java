@@ -28,24 +28,37 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public abstract class HostedElement implements AnnotatedElement {
 
     protected abstract AnnotatedElement getWrapped();
 
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
+    }
+
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
+    }
+
     @Override
     public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return getWrapped().isAnnotationPresent(annotationClass);
+        return AnnotationUtil.isAnnotationPresent((Annotated) getWrapped(), annotationClass);
     }
 
     @Override
     public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getWrapped().getAnnotation(annotationClass);
+        return AnnotationUtil.getAnnotation((Annotated) getWrapped(), annotationClass);
     }
 
     @Override
     public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return getWrapped().getDeclaredAnnotation(annotationClass);
+        throw GraalError.shouldNotReachHere("The getDeclaredAnnotation method is not supported");
     }
 
     @Override

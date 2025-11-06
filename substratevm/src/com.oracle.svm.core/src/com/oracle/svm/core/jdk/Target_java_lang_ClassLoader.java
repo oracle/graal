@@ -199,6 +199,10 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1056-L1096")
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
+        if (name == null) {
+            return null;
+        }
+
         /*
          * HotSpot supports both dot- and slash-names here as well as array types The only caller
          * (findLoadedClass) errors out on slash-names and array types so we assume dot-names
@@ -349,7 +353,8 @@ public final class Target_java_lang_ClassLoader {
                     @SuppressWarnings("unused") boolean initialize, int flags, Object classData) {
         // Note that if name is not null, it is a binary name in either / or .-form
         String actualName = name;
-        if (LambdaUtils.isLambdaClassName(name)) {
+        assert !(PredefinedClassesSupport.hasBytecodeClasses() && RuntimeClassLoading.isSupported());
+        if (!RuntimeClassLoading.isSupported() && LambdaUtils.isLambdaClassName(name)) {
             actualName += Digest.digest(b);
         }
         boolean isNestMate = (flags & ClassLoaderHelper.NESTMATE_CLASS) != 0;

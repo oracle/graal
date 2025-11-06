@@ -32,7 +32,6 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
@@ -43,11 +42,13 @@ import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public class SubstrateField implements SharedField {
 
@@ -157,19 +158,33 @@ public class SubstrateField implements SharedField {
         return declaringClass;
     }
 
+    private RuntimeException annotationsUnimplemented() {
+        return VMError.unimplemented("Annotations are not available for JIT compilation at image run time: " + format("%H.%n"));
+    }
+
+    @Override
+    public AnnotationsInfo getDeclaredAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        throw annotationsUnimplemented();
+    }
+
     @Override
     public Annotation[] getAnnotations() {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.unimplemented("Annotations are not available for JIT compilation at image run time");
+        throw annotationsUnimplemented();
     }
 
     @Override

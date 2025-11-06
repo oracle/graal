@@ -26,7 +26,7 @@
 package com.oracle.svm.webimage.wasmgc;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.webimage.api.JSError;
+import org.graalvm.webimage.api.ThrownFromJavaScript;
 import org.graalvm.webimage.api.JSValue;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -175,7 +175,7 @@ public class WasmGCJSConversion extends JSConversion {
             throw t;
         }
 
-        throw new JSError(thrownObject);
+        throw new ThrownFromJavaScript(thrownObject);
     }
 
     @Override

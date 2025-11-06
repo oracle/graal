@@ -51,7 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
@@ -79,7 +79,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return language;
     }
 
-    public Encodings.Encoding getEncoding() {
+    public Encoding getEncoding() {
         return source.getEncoding();
     }
 

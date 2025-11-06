@@ -92,6 +92,7 @@ public class CremaFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        methodHandleSetup();
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         try {
             enterVTableInterpreterStub = InterpreterStubSection.class.getMethod("enterVTableInterpreterStub", int.class, Pointer.class);
@@ -99,6 +100,16 @@ public class CremaFeature implements InternalFeature {
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    private static void methodHandleSetup() {
+        /*
+         * Get java.lang.invoke.LambdaForm.LF_FAILED initialized since we don't support perf counter
+         * creation at run-time. See Target_jdk_internal_perf_PerfCounter.
+         */
+        Class<?> lfClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm");
+        Method failedCompilationCounterMethod = ReflectionUtil.lookupMethod(lfClass, "failedCompilationCounter");
+        ReflectionUtil.invokeMethod(failedCompilationCounterMethod, null);
     }
 
     @Override

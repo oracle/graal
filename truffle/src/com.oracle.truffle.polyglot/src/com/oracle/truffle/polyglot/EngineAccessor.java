@@ -96,6 +96,7 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -156,6 +157,7 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final BytecodeSupport BYTECODE = ACCESSOR.bytecodeSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
 
@@ -1435,16 +1437,37 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isKnownLoggerId(String id) {
-            return PolyglotLoggers.getInternalIds().contains(id) || LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+        public boolean isKnownLoggerId(Object loggerCache, String id) {
+            if (PolyglotLoggers.getInternalIds().contains(id)) {
+                return true;
+            }
+            if (loggerCache == PolyglotLoggers.LoggerCache.DEFAULT) {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                return LanguageCache.languages().containsKey(id) || InstrumentCache.load().containsKey(id);
+            } else {
+                PolyglotEngineImpl polyglotEngine = ((PolyglotLoggers.LoggerCache) loggerCache).getOwner().getEngine();
+                return polyglotEngine.idToLanguage.containsKey(id) || polyglotEngine.idToInstrument.containsKey(id);
+            }
         }
 
         @Override
-        public Collection<String> getKnownLoggerIds() {
-            List<String> ids = new ArrayList<>();
-            ids.addAll(PolyglotLoggers.getInternalIds());
-            ids.addAll(LanguageCache.languages().keySet());
-            ids.addAll(InstrumentCache.load().keySet());
+        public Collection<String> getKnownLoggerIds(Object loggerCache) {
+            List<String> ids = new ArrayList<>(PolyglotLoggers.getInternalIds());
+            if (loggerCache == PolyglotLoggers.LoggerCache.DEFAULT) {
+                /*
+                 * TruffleLogger#getLogger() is invoked from a static initializer, no vmObject
+                 * anchor is available at this point.
+                 */
+                ids.addAll(LanguageCache.languages().keySet());
+                ids.addAll(InstrumentCache.load().keySet());
+            } else {
+                PolyglotEngineImpl polyglotEngine = ((PolyglotLoggers.LoggerCache) loggerCache).getOwner().getEngine();
+                ids.addAll(polyglotEngine.idToLanguage.keySet());
+                ids.addAll(polyglotEngine.idToInstrument.keySet());
+            }
             Collections.sort(ids);
             return ids;
         }
@@ -2279,6 +2302,35 @@ final class EngineAccessor extends Accessor {
         @Override
         public DispatchOutputStream getEngineOut(Object engine) {
             return ((PolyglotEngineImpl) engine).out;
+        }
+
+        @Override
+        public <T> T getOrCreateBytecodeData(Object languageInstance, Function<Object, T> create) {
+            PolyglotSharingLayer layer = (PolyglotSharingLayer) languageInstance;
+            if (layer == null) {
+                layer = (PolyglotSharingLayer) getCurrentSharingLayer();
+                if (layer == null) {
+                    // we can't support engine instruction tracers for disconnected code
+                    return null;
+                }
+            }
+            return layer.getOrCreateBytecodeData(create);
+        }
+
+        @Override
+        public void forEachLoadedRootNode(Object sharingLayer, Consumer<RootNode> rootNodeUpdater) {
+            PolyglotSharingLayer layer = (PolyglotSharingLayer) sharingLayer;
+            for (CallTarget target : EngineAccessor.INSTRUMENT.getLoadedCallTargets(layer.engine.instrumentationHandler)) {
+                rootNodeUpdater.accept(((RootCallTarget) target).getRootNode());
+            }
+        }
+
+        @Override
+        public Object getSharingLayer(Object languageInstance) {
+            if (languageInstance == null) {
+                return null;
+            }
+            return ((PolyglotLanguageInstance) languageInstance).sharing;
         }
 
     }

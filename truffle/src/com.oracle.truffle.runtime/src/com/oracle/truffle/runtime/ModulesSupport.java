@@ -95,8 +95,8 @@ public final class ModulesSupport {
             return "JVMCI is not enabled for this JVM. Enable JVMCI using -XX:+EnableJVMCI.";
         }
         if (ACCESSOR == null) {
-            return "The Truffle attach library is not available or cannot be loaded. " +
-                            "This can happen if the Truffle jar files are invalid or if Truffle is loaded multiple times in separate class loaders.";
+            String initializationError = getAccessorInitializationErrorMessage();
+            return "The Truffle attach library is not available or cannot be loaded. " + initializationError;
         }
         addExportsRecursive(layer, jvmciModule, module, seenModules);
         return null;
@@ -176,6 +176,20 @@ public final class ModulesSupport {
             return (ModulesAccessor) getModulesAccessor.invoke(null);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
+        }
+    }
+
+    /**
+     * Gets reflectively an error message when {@code ModulesAccessor} failed to initialize.
+     */
+    private static String getAccessorInitializationErrorMessage() {
+        try {
+            Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.JDKSupport", false, ModulesSupport.class.getClassLoader());
+            Method getModulesAccessor = resourceCacheClass.getDeclaredMethod("getInitializationErrorMessage");
+            getModulesAccessor.setAccessible(true);
+            return (String) getModulesAccessor.invoke(null);
+        } catch (Throwable throwable) {
+            return null;
         }
     }
 }

@@ -56,6 +56,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -1513,7 +1514,8 @@ public class SnippetTemplate {
         for (MethodCallTargetNode target : snippetCopy.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod targetMethod = target.targetMethod();
             if (targetMethod != null) {
-                assert targetMethod.getAnnotation(Fold.class) == null && targetMethod.getAnnotation(NodeIntrinsic.class) == null : "plugin should have been processed";
+                assert AnnotationValueSupport.getAnnotationValue(targetMethod, Fold.class) == null &&
+                                AnnotationValueSupport.getAnnotationValue(targetMethod, NodeIntrinsic.class) == null : "plugin should have been processed";
             }
         }
         return true;

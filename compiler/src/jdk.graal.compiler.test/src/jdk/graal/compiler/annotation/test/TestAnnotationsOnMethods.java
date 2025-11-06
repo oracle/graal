@@ -198,7 +198,7 @@ public class TestAnnotationsOnMethods extends TestAnnotationsBase {
         checkAnnotationValues(AnnotationTestInput.class.getDeclaredMethod("missingMember"));
         List<AnnotationValue> avList = checkAnnotationValues(AnnotationTestInput.class.getDeclaredMethod("addedMember"));
         try {
-            avList.getFirst().get("addedElement", Integer.class);
+            avList.getFirst().getInt("addedElement");
             throw new AssertionError("expected " + IllegalArgumentException.class.getName());
         } catch (IllegalArgumentException e) {
             Assert.assertEquals(MemberAdded.class.getName() + " missing element addedElement", e.getMessage());

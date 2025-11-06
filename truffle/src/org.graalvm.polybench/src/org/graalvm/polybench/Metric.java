@@ -132,5 +132,4 @@ public abstract class Metric {
 
     public void reset() {
     }
-
 }

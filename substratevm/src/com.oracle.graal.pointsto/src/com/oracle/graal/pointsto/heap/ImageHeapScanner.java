@@ -56,7 +56,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -147,7 +147,7 @@ public abstract class ImageHeapScanner {
              * For non-installable static fields we do not scan the constant value, but instead
              * inject its type state in the field flow. This will be propagated to any corresponding
              * field loads.
-             * 
+             *
              * GR-52421: the field state needs to be serialized from the base layer analysis
              */
             if (field.getStorageKind().isObject()) {
@@ -703,6 +703,10 @@ public abstract class ImageHeapScanner {
         });
     }
 
+    public void rescanField(Object receiver, Field reflectionField, ScanReason reason) {
+        rescanField(receiver, metaAccess.lookupJavaField(reflectionField), reason);
+    }
+
     /**
      * Trigger rescanning of an instance field. If the receiver value or field value were not
      * scanned before they will first be scanned and added to the shadow heap, then the value will
@@ -711,11 +715,10 @@ public abstract class ImageHeapScanner {
      * type ({@code Object[]}, {{@link Collection}, {@link Map} or {@link EconomicMap}} then its
      * elements will be rescanned too.
      */
-    public void rescanField(Object receiver, Field reflectionField, ScanReason reason) {
+    public void rescanField(Object receiver, AnalysisField field, ScanReason reason) {
         maybeRunInExecutor(unused -> {
-            AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
+            AnalysisType type = field.getType();
             if (type.isReachable()) {
-                AnalysisField field = metaAccess.lookupJavaField(reflectionField);
                 assert !field.isStatic() : field;
                 if (!field.isReachable()) {
                     return;

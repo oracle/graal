@@ -61,6 +61,7 @@ import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.AMD64Ternary;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove.AVXMoveToIntOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorShuffle;
@@ -451,6 +452,22 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
         AMD64ConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
         getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow, signedness));
+        return result;
+    }
+
+    /**
+     * Emit a vector floating point to integer conversion that needs fixup code to adjust the result
+     * to Java semantics.
+     */
+    protected AllocatableValue emitVectorFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow, Signedness signedness) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input).changeType(kind));
+        /*
+         * If the convert is a narrowing convert (e.g. D2F), we have to encode with the argument
+         * size instead of the result size.
+         */
+        AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
+        AMD64VectorConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
+        getLIRGen().append(new AMD64VectorConvertFloatToIntegerOp(getLIRGen(), emitter, size, result, input, canBeNaN, canOverflow, signedness));
         return result;
     }
 

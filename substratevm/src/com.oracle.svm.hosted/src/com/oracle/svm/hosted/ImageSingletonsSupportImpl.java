@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
@@ -430,7 +431,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
                         var kind = SingletonLayeredInstallationKind.getInstallationKind(trait);
                         if (forbiddenInstallationKinds.contains(kind)) {
-                            throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
+                            if (SubstrateOptions.LayerOptionVerification.getValue()) {
+                                throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
+                            }
                         }
                     });
                 }
@@ -633,10 +636,10 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                         var installationKindSupplierClass = annotation.layeredInstallationKind();
                         /*
                          * Initial Layer information should never be injected, as either
-                         * 
+                         *
                          * 1) We are building the initial layer, so it should be present in the
                          * configObject which it exists.
-                         * 
+                         *
                          * 2) We are building an extension layer, so it is not relevant for this
                          * layer.
                          */

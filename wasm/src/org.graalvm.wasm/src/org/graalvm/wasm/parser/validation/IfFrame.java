@@ -42,7 +42,7 @@
 package org.graalvm.wasm.parser.validation;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.BitSet;
 
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
@@ -56,25 +56,28 @@ class IfFrame extends ControlFrame {
 
     private final IntArrayList branchTargets;
     private final ArrayList<ExceptionHandler> exceptionHandlers;
+    private final ControlFrame parentFrame;
     private int falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        branchTargets = new IntArrayList();
-        exceptionHandlers = new ArrayList<>();
+    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int falseJumpLocation) {
+        super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+        this.branchTargets = new IntArrayList();
+        this.exceptionHandlers = new ArrayList<>();
+        this.parentFrame = parentFrame;
         this.falseJumpLocation = falseJumpLocation;
         this.elseBranch = false;
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return resultTypes();
     }
 
     @Override
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
-        final int location = bytecode.addBranchLocation();
+        initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
+        final int location = bytecode.addBranchLocation(RuntimeBytecodeGen.BranchOp.BR);
         bytecode.patchLocation(falseJumpLocation, bytecode.location());
         falseJumpLocation = location;
         elseBranch = true;
@@ -85,8 +88,17 @@ class IfFrame extends ControlFrame {
 
     @Override
     void exit(RuntimeBytecodeGen bytecode) {
-        if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+        if (!elseBranch) {
+            if (resultTypes().length != paramTypes().length) {
+                throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+            }
+            if (!isUnreachable()) {
+                for (int i = 0; i < resultTypes().length; i++) {
+                    if (!getSymbolTable().matchesType(resultTypes()[i], paramTypes()[i])) {
+                        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
+                    }
+                }
+            }
         }
         if (branchTargets.size() == 0 && exceptionHandlers.isEmpty()) {
             bytecode.patchLocation(falseJumpLocation, bytecode.location());
@@ -103,13 +115,8 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchLocation());
-    }
-
-    @Override
-    void addBranchIf(RuntimeBytecodeGen bytecode) {
-        branchTargets.add(bytecode.addBranchIfLocation());
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp) {
+        branchTargets.add(bytecode.addBranchLocation(branchOp));
     }
 
     @Override

@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.cenum;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,8 +51,8 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (AnnotationAccess.isAnnotationPresent(method, CEnumLookup.class) ||
-                        AnnotationAccess.isAnnotationPresent(method, CEnumValue.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method, CEnumLookup.class) ||
+                        AnnotationUtil.isAnnotationPresent(method, CEnumValue.class)) {
             return callWrappers.computeIfAbsent(method, v -> new CEnumCallWrapperMethod(nativeLibraries, v));
         } else {
             return method;

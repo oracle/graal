@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 
@@ -37,7 +38,6 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -158,33 +158,33 @@ public class JmxCommonFeature implements InternalFeature {
      */
     private static void configureProxy(BeforeAnalysisAccess access) {
         ProxyRegistry proxyRegistry = ImageSingletons.lookup(ProxyRegistry.class);
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("com.sun.management.GarbageCollectorMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("com.sun.management.GarbageCollectorMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("com.sun.management.OperatingSystemMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("com.sun.management.ThreadMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.BufferPoolMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.ClassLoadingMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.CompilationMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.GarbageCollectorMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("com.sun.management.OperatingSystemMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("com.sun.management.ThreadMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.BufferPoolMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.ClassLoadingMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.CompilationMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.GarbageCollectorMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.MemoryManagerMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.MemoryManagerMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.MemoryManagerMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.MemoryPoolMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.MemoryManagerMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.MemoryPoolMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.MemoryMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.MemoryMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.OperatingSystemMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.RuntimeMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("java.lang.management.ThreadMXBean"));
-        proxyRegistry.registerProxy(AccessCondition.unconditional(), access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.OperatingSystemMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.RuntimeMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("java.lang.management.ThreadMXBean"));
+        proxyRegistry.registerProxy(AccessCondition.unconditional(), false, access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
                         access.findClassByName("javax.management.NotificationEmitter"));
     }
 
     private static void configureJNI() {
-        JNIRuntimeAccess.register(Arrays.class);
-        JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Arrays.class, "asList", Object[].class));
+        RuntimeJNIAccess.register(Arrays.class);
+        RuntimeJNIAccess.register(ReflectionUtil.lookupMethod(Arrays.class, "asList", Object[].class));
     }
 
     /**

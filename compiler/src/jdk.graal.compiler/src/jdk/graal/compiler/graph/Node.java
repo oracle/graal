@@ -59,7 +59,6 @@ import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.internal.misc.Unsafe;
 
@@ -82,7 +81,7 @@ import jdk.internal.misc.Unsafe;
  * Nodes which are value numberable should implement the {@link ValueNumberable} interface.
  *
  * <h1>Assertions and Verification</h1>
- *
+ * <p>
  * The Node class supplies the {@link #assertTrue(boolean, String, Object...)} and
  * {@link #assertFalse(boolean, String, Object...)} methods, which will check the supplied boolean
  * and throw a VerificationError if it has the wrong value. Both methods will always either throw an
@@ -96,8 +95,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(GraalServices.getSavedProperty("debug.graal.TrackNodeCreationPosition"));
-
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
     static final int ALIVE_ID_START = 0;
@@ -108,7 +105,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Denotes a non-optional (non-null) node input. This should only be applied to fields of type
      * {@link Node} or {@link NodeInputList}.
-     *
+     * <p>
      * Nodes that update fields of type {@link Node} outside of their constructor should call
      * {@link Node#updateUsages(Node, Node)} just prior to the update.
      */
@@ -121,7 +118,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Denotes an optional (nullable) node input. This should only be applied to fields of type
      * {@link Node} or {@link NodeInputList}.
-     *
+     * <p>
      * Nodes that update fields of type {@link Node} outside of their constructor should call
      * {@link Node#updateUsages(Node, Node)} just prior to the update.
      */
@@ -229,7 +226,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Marker interface for nodes that contain other nodes. When the inputs to {@code this} change,
      * users of {@code this} should also be placed on the work list for canonicalization.
-     *
+     * <p>
      * To illustrate this consider the following IR shape:
      *
      * <pre>
@@ -239,7 +236,7 @@ public abstract class Node implements Cloneable, Formattable {
      *          /               |            \
      *       usage1          usage2          usage3
      * </pre>
-     *
+     * <p>
      * Now consider the following situation: this pattern is fully optimized, nothing can change.
      * However, when the input node {@code n1} of {@code IndirectInputCanonicalization} changes to a
      * new node {@code n2} suddenly the usage of {@code IndirectInputCanonicalization} can optimize
@@ -254,7 +251,7 @@ public abstract class Node implements Cloneable, Formattable {
      *          /               |            \
      *       usage1          usage2          usage3
      * </pre>
-     *
+     * <p>
      * The pattern could optimize for example to
      *
      * <pre>
@@ -264,9 +261,9 @@ public abstract class Node implements Cloneable, Formattable {
      *          /               |                     |
      *       usage1          usage2          usage3----
      * </pre>
-     *
+     * <p>
      * where {@code usage3} completely skips {@code IndirectInputCanonicalization} now.
-     *
+     * <p>
      * Note that this is called {@code IndirectInputChangedCanonicalization} because {@code n1} is
      * considered an indirect (transitive) input of {@code usage3}.
      */
@@ -275,7 +272,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * Marker interface for nodes where one input change can cause another input to optimize.
-     *
+     * <p>
      * Consider the following IR shape:
      *
      * <pre>
@@ -283,7 +280,7 @@ public abstract class Node implements Cloneable, Formattable {
      *               |               |
      *          IndirectInputCanonicalization
      * </pre>
-     *
+     * <p>
      * If now input {@code n1} is replaced by another node
      *
      * <pre>
@@ -291,7 +288,7 @@ public abstract class Node implements Cloneable, Formattable {
      *               |               |
      *          IndirectInputCanonicalization
      * </pre>
-     *
+     * <p>
      * this can cause n2 to optimize. This is especially relevant for local {@link Simplifiable}
      * simplifications based on single input/usage patterns. Thus, in order to incrementally trigger
      * the canonicalization of {@code n2} it is explicitly added to the worklist of the usage
@@ -322,7 +319,7 @@ public abstract class Node implements Cloneable, Formattable {
      * element denotes a specific usage so there can be duplicates in the list. For example, a
      * {@code ConstNode} modeling a compile constant that is added to itself will show up twice in
      * the usage list of the {@code AddNode}.
-     *
+     * <p>
      * The elements of the usage list in order are {@link #usage0}, {@link #usage1} and
      * {@link #extraUsages}. The first null entry terminates the list.
      */
@@ -336,34 +333,31 @@ public abstract class Node implements Cloneable, Formattable {
 
     public static final int NOT_ITERABLE = -1;
 
-    static class NodeStackTrace {
-        final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+    public static final String NODE_INSERTION_POSITION_NAME = "nodeInsertionPosition";
 
-        private String getString(String label) {
+    public static final String NODE_SOURCE_POSITION_NAME = "nodeSourcePosition";
+
+    /**
+     * Lazily constructed stack trace of the compiler call stack showing when a node was inserted
+     * into the graph.
+     */
+    static class NodeInsertionStackTrace {
+        final Throwable throwable = new Throwable();
+
+        @Override
+        public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (label != null) {
-                sb.append(label).append(": ");
-            }
-            for (StackTraceElement ste : stackTrace) {
+            sb.append(getClass().getSimpleName()).append(": ");
+            boolean first = true;
+            for (StackTraceElement ste : throwable.getStackTrace()) {
+                if (first) {
+                    first = false;
+                    continue;
+                }
                 sb.append("at ").append(ste.toString()).append('\n');
             }
             return sb.toString();
         }
-
-        String getStrackTraceString() {
-            return getString(null);
-        }
-
-        @Override
-        public String toString() {
-            return getString(getClass().getSimpleName());
-        }
-    }
-
-    static class NodeCreationStackTrace extends NodeStackTrace {
-    }
-
-    public static class NodeInsertionStackTrace extends NodeStackTrace {
     }
 
     @SuppressWarnings("this-escape")
@@ -376,9 +370,6 @@ public abstract class Node implements Cloneable, Formattable {
         this.nodeClass = c;
         id = INITIAL_ID;
         extraUsages = EMPTY_ARRAY;
-        if (TRACK_CREATION_POSITION) {
-            setCreationPosition(new NodeCreationStackTrace());
-        }
     }
 
     /**
@@ -903,14 +894,6 @@ public abstract class Node implements Cloneable, Formattable {
         setNodeInfo(NodeSourcePosition.class, null);
     }
 
-    public NodeCreationStackTrace getCreationPosition() {
-        return getNodeInfo(NodeCreationStackTrace.class);
-    }
-
-    public void setCreationPosition(NodeCreationStackTrace trace) {
-        setNodeInfo(NodeCreationStackTrace.class, trace);
-    }
-
     public NodeInsertionStackTrace getInsertionPosition() {
         return getNodeInfo(NodeInsertionStackTrace.class);
     }
@@ -961,10 +944,10 @@ public abstract class Node implements Cloneable, Formattable {
 
     /**
      * For each use of {@code this} in another node, replace it with {@code replacement}.
-     *
+     * <p>
      * This is shown by the graph transformation below where edges are from usages to inputs (e.g.
      * {@code this} is an input of {@code n0}).
-     *
+     * <p>
      * Before:
      *
      * <pre>
@@ -977,7 +960,7 @@ public abstract class Node implements Cloneable, Formattable {
      *    n0  n1 ..nN
      *
      * </pre>
-     *
+     * <p>
      * After:
      *
      * <pre>
@@ -989,7 +972,7 @@ public abstract class Node implements Cloneable, Formattable {
      *      /  |  \
      *    n0  n1 ..nN
      * </pre>
-     *
+     * <p>
      * If {@code replacement == null}, then the edges are simply removed.
      */
     public final void replaceAtUsages(Node replacement) {
@@ -1091,7 +1074,6 @@ public abstract class Node implements Cloneable, Formattable {
      *
      * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
      *            {@code this} from the graph after this method returns
-     *
      * @see #replaceAtUsages(Node)
      */
     private void replaceAtUsage(Node replacement, boolean forDeletion, Node usage) {
@@ -1114,7 +1096,6 @@ public abstract class Node implements Cloneable, Formattable {
      *
      * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
      *            {@code this} from the graph after this method returns
-     *
      * @see #replaceAtUsages(Node)
      */
     private void replaceAtMatchingUsages(Node replacement, Predicate<Node> filter, boolean forDeletion) {
@@ -1335,7 +1316,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Finds the first {@link Input} or {@link OptionalInput} in {@code this} whose value is
      * {@code oldInput} and replaces it with {@code newInput}. If the input is changed, the usage
      * info for {@code oldInput} and {@code newInput} is updated as well.
-     *
+     * <p>
      * Before {@code this.replaceFirstInput(n0, n2)}:
      *
      * <pre>
@@ -1347,7 +1328,7 @@ public abstract class Node implements Cloneable, Formattable {
      *           V
      *         this
      * </pre>
-     *
+     * <p>
      * After {@code this.replaceFirstInput(n0, n2)}:
      *
      * <pre>
@@ -1370,7 +1351,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Finds all {@link Input}s and {@link OptionalInput}s in {@code this} whose value is
      * {@code oldInput} and replaces them with {@code newInput}. If any input is changed, the usage
      * info for {@code oldInput} and {@code newInput} is updated as well.
-     *
+     * <p>
      * Before {@code this.replaceAllInputs(n0, n2)}:
      *
      * <pre>
@@ -1382,7 +1363,7 @@ public abstract class Node implements Cloneable, Formattable {
      *           V
      *         this
      * </pre>
-     *
+     * <p>
      * After {@code this.replaceAllInputs(n0, n2)}:
      *
      * <pre>
@@ -1729,15 +1710,11 @@ public abstract class Node implements Cloneable, Formattable {
         }
         NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {
-            map.put("nodeSourcePosition", pos);
-        }
-        NodeCreationStackTrace creation = getCreationPosition();
-        if (creation != null) {
-            map.put("nodeCreationPosition", creation.getStrackTraceString());
+            map.put(NODE_SOURCE_POSITION_NAME, pos);
         }
         NodeInsertionStackTrace insertion = getInsertionPosition();
         if (insertion != null) {
-            map.put("nodeInsertionPosition", insertion.getStrackTraceString());
+            map.put(NODE_INSERTION_POSITION_NAME, insertion);
         }
         return map;
     }
@@ -1763,11 +1740,16 @@ public abstract class Node implements Cloneable, Formattable {
                 return toString(Verbosity.Id) + "|" + toString(Verbosity.Name);
             case Long:
                 return toString(Verbosity.Short);
-            case Debugger:
+            case AllVerbose:
             case All: {
                 StringBuilder str = new StringBuilder();
                 str.append(toString(Verbosity.Short)).append(" { ");
                 for (Map.Entry<Object, Object> entry : getDebugProperties().entrySet()) {
+                    if (verbosity == Verbosity.All) {
+                        if (entry.getKey().equals(NODE_INSERTION_POSITION_NAME) || entry.getKey().equals(NODE_SOURCE_POSITION_NAME)) {
+                            continue;
+                        }
+                    }
                     str.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
                 }
                 str.append(" }");
@@ -1859,7 +1841,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Determines if this node's {@link NodeClass#getData() data} fields are equal to the data
      * fields of another node of the same type. Primitive fields are compared by value and
      * non-primitive fields are compared by {@link Objects#equals(Object, Object)}.
-     *
+     * <p>
      * The result of this method undefined if {@code other.getClass() != this.getClass()}.
      *
      * @param other a node of exactly the same type as {@code this}
@@ -1872,7 +1854,6 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Determines if {@code this} is equal to the other node while ignoring differences in
      * {@linkplain Successor control-flow} edges.
-     *
      */
     public final boolean dataFlowEquals(Node other) {
         return this == other || nodeClass == other.getNodeClass() && this.valueEquals(other) && nodeClass.equalInputs(this, other);
@@ -1893,7 +1874,7 @@ public abstract class Node implements Cloneable, Formattable {
     /**
      * Node subclasses should override this method if they need to specify a dynamically calculated
      * {@link NodeSize} value. If the node size is static please use {@link NodeInfo#size()}.
-     *
+     * <p>
      * NOTE: When overriding this method, make sure that *all* field reads are null checked (even if
      * Java semantics seemingly make the value of the field non-null). This is necessary because
      * node size estimates are needed even during graph decoding which, for some nodes, first

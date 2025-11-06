@@ -184,7 +184,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             }
 
-            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeCurrent);
+            var conditionsWithOrigins = shouldIncludeEntry(null, collector, relativeFilePath, entry.toUri(), includeCurrent);
             for (var conditionWithOrigin : conditionsWithOrigins) {
                 includeResource(collector, null, relativeFilePath, conditionWithOrigin.condition(), conditionWithOrigin.origin());
             }

@@ -129,8 +129,12 @@ public final class Truffle {
                  * This path is taken if a truffle runtime class is directly specified. In such case
                  * we try to export JVMCI to the module of that class.
                  */
-                maybeExportJVMCITo(runtimeClass);
-                return (TruffleRuntime) runtimeClass.getDeclaredConstructor().newInstance();
+                String errorMessage = maybeExportJVMCITo(runtimeClass);
+                if (errorMessage == null) {
+                    return (TruffleRuntime) runtimeClass.getDeclaredConstructor().newInstance();
+                } else {
+                    return new DefaultTruffleRuntime(errorMessage);
+                }
             } catch (Throwable e) {
                 // Fail fast for other errors
                 throw new InternalError(e);
@@ -166,16 +170,16 @@ public final class Truffle {
         return new DefaultTruffleRuntime(reason);
     }
 
-    private static void maybeExportJVMCITo(Class<?> runtimeClass) throws ReflectiveOperationException {
+    private static String maybeExportJVMCITo(Class<?> runtimeClass) throws ReflectiveOperationException {
         Class<?> modulesSupport;
         try {
             modulesSupport = Class.forName("com.oracle.truffle.runtime.ModulesSupport");
         } catch (ClassNotFoundException e) {
             // we ignore if modules support is not available.
             // this typically means that the runtime not on the module-path
-            return;
+            return null;
         }
-        modulesSupport.getMethod("exportJVMCI", Class.class).invoke(null, runtimeClass);
+        return (String) modulesSupport.getMethod("exportJVMCI", Class.class).invoke(null, runtimeClass);
     }
 
     @SuppressWarnings("deprecation")

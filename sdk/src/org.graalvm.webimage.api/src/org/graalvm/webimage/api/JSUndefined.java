@@ -56,6 +56,11 @@ public final class JSUndefined extends JSValue {
     }
 
     @Override
+    public boolean isUndefined() {
+        return true;
+    }
+
+    @Override
     public String typeof() {
         return "undefined";
     }

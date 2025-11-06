@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.dynamicaccessinference;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -48,24 +47,25 @@ import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -84,6 +84,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * Feature for controlling the optimization independent inference of invocations which would
@@ -465,7 +466,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
         }
 
         private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
-            AnnotatedElement annotated = null;
+            Annotated annotated = null;
             try {
                 if (element instanceof Executable) {
                     annotated = metaAccess.lookupJavaMethod((Executable) element);
@@ -483,7 +484,7 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
              * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will
              * return a substitution method that has the @Delete annotation.
              */
-            return annotated != null && annotated.isAnnotationPresent(Delete.class);
+            return annotated != null && AnnotationUtil.isAnnotationPresent(annotated, Delete.class);
         }
 
         private void registerBulkPlugin(InvocationPlugins invocationPlugins, ParsingReason reason, String methodName, Consumer<Class<?>> registrationCallback) {

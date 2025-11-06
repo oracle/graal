@@ -48,15 +48,15 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements R
     public void accept(AccessCondition condition, List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            registerProxy(condition, interfaces);
+            registerProxy(condition, false, interfaces);
         }
     }
 
     @Override
-    public Class<?> registerProxy(AccessCondition condition, Class<?>... interfaces) {
+    public Class<?> registerProxy(AccessCondition condition, boolean preserved, Class<?>... interfaces) {
         abortIfSealed();
         requireNonNull(interfaces, "interface", "proxy class creation");
-        registerConditionalConfiguration(condition, (cnd) -> dynamicProxySupport.addProxyClass(cnd, interfaces));
+        registerConditionalConfiguration(condition, (cnd) -> dynamicProxySupport.addProxyClass(cnd, preserved, interfaces));
         try {
             return dynamicProxySupport.getProxyClassHosted(interfaces);
         } catch (Throwable t) {

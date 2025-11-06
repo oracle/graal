@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.core.common.SuppressSVMWarnings;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.util.AnnotationUtil;
 
+import jdk.graal.compiler.core.common.SuppressSVMWarnings;
 import jdk.vm.ci.code.BytecodePosition;
 
 public class CallChecker {
@@ -70,10 +70,10 @@ public class CallChecker {
         if (illegalCalleesPattern.matcher(calleeName).find()) {
             String callerName = caller.getQualifiedName();
             if (targetCallersPattern.matcher(callerName).find()) {
-                SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
+                SuppressSVMWarnings suppress = AnnotationUtil.getAnnotation(caller, SuppressSVMWarnings.class);
                 AnalysisType callerType = caller.getDeclaringClass();
                 while (suppress == null && callerType != null) {
-                    suppress = callerType.getAnnotation(SuppressSVMWarnings.class);
+                    suppress = AnnotationUtil.getAnnotation(callerType, SuppressSVMWarnings.class);
                     callerType = callerType.getEnclosingType();
                 }
                 if (suppress != null) {

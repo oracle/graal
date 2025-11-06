@@ -233,13 +233,14 @@ public class ReplayCompilationRunner {
             EconomicMap<Object, Object> internPool = EconomicMap.create();
             for (Path file : inputFiles) {
                 try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
-                    try {
-                        reproducers.add(Reproducer.initializeFromFile(file.toString(), declarations, runtime, options,
-                                        factory, globalMetrics, out, internPool));
-                    } catch (Exception e) {
-                        out.println("Preparation failed for " + file + ": " + e);
-                    }
+                    reproducers.add(Reproducer.initializeFromFile(file.toString(), declarations, runtime, options,
+                                    factory, globalMetrics, out, internPool));
+                } catch (ReplayParserFailure failure) {
+                    out.printf("Preparation failed for %s: %s%n", file, failure.getMessage());
+                    return ExitStatus.Failure;
                 } catch (Exception e) {
+                    out.printf("Preparation failed for %s, which may be caused by breaking JVMCI or replay changes. The causing exception is:%n", file);
+                    e.printStackTrace(out);
                     return ExitStatus.Failure;
                 }
             }

@@ -77,8 +77,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkAsDeadVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * This class is used to generate regex ASTs. The provided methods append nodes to the AST.
@@ -562,12 +561,12 @@ public final class RegexASTBuilder {
 
     private void addNoLeadSurrogateBehind() {
         // (?:^|(?<=[^\uD800-\uDBFF]))
-        addCaretOrLookBehind(Constants.LEAD_SURROGATES.createInverse(Encodings.UTF_16));
+        addCaretOrLookBehind(Constants.LEAD_SURROGATES.createInverse(Encoding.UTF_16));
     }
 
     private void addNoTrailSurrogateAhead() {
         // (?:$|(?=[^\uDC00-\uDFFF]))
-        addDollarOrLookAhead(Constants.TRAIL_SURROGATES.createInverse(Encodings.UTF_16));
+        addDollarOrLookAhead(Constants.TRAIL_SURROGATES.createInverse(Encoding.UTF_16));
     }
 
     /**
