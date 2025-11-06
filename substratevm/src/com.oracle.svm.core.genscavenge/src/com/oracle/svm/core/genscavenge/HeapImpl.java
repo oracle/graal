@@ -764,24 +764,25 @@ public final class HeapImpl extends Heap {
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            if (info.isInAlignedReadOnly(ptr)) {
-                log.string("points into the image heap (read-only)");
+        for (ImageHeapInfo imageHeap : HeapImpl.getImageHeapInfos()) {
+            /* Check from most-specific to least-specific. */
+            if (imageHeap.isInAlignedReadOnlyRelocatable(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only relocatables)");
                 return true;
-            } else if (info.isInAlignedReadOnlyRelocatable(ptr)) {
-                log.string("points into the image heap (read-only relocatables)");
+            } else if (imageHeap.isInAlignedReadOnly(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only)");
                 return true;
-            } else if (info.isInAlignedWritablePatched(ptr)) {
-                log.string("points into the image heap (writable patched)");
+            } else if (imageHeap.isInAlignedWritablePatched(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable patched)");
                 return true;
-            } else if (info.isInAlignedWritable(ptr)) {
-                log.string("points into the image heap (writable)");
+            } else if (imageHeap.isInAlignedWritable(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable)");
                 return true;
-            } else if (info.isInUnalignedWritable(ptr)) {
-                log.string("points into the image heap (writable huge)");
+            } else if (imageHeap.isInUnalignedWritable(ptr)) {
+                log.string("points into the image heap (unaligned chunk, writable)");
                 return true;
-            } else if (info.isInUnalignedReadOnly(ptr)) {
-                log.string("points into the image heap (read-only huge)");
+            } else if (imageHeap.isInUnalignedReadOnly(ptr)) {
+                log.string("points into the image heap (unaligned chunk, read-only)");
                 return true;
             }
         }
