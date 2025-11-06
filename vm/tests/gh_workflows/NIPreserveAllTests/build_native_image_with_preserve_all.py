@@ -56,7 +56,9 @@ repositories = [
     ("jabylon", "https://www.jabylon.org/maven/"),
     ("google", "https://maven.google.com/"),
     ("jboss", "https://repository.jboss.org/maven2/"),
-    ("redhat-ga", "https://maven.repository.redhat.com/ga/")
+    ("redhat-ga", "https://maven.repository.redhat.com/ga/"),
+    ("terracotta", "https://repo.terracotta.org/maven2/"),
+    ("datanucleus", "https://www.datanucleus.org/downloads/maven2/")
 ]
 
 def generate_matrix(path_to_data, libs_per_job, delimiter):
@@ -169,7 +171,7 @@ def preserve_all(native_image_path, coordinates, delimiter):
                 print(f'Command: {' '.join(command)}')
                 break
 
-            matches = re.findall(r"--initialize-at-build-time=([\w.$]+)", output_str)
+            matches = re.findall(r"--initialize-at-build-time=([^\s']+)", output_str)
             new_args = {f"--initialize-at-build-time={m}" for m in matches}
 
             if new_args - initialize_args:
