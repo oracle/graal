@@ -573,7 +573,10 @@ public final class Interpreter {
     }
 
     private static Object[] unbasic(InterpreterFrame frame, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
-        Object[] arguments = frame.getArguments();
+        return unbasic(frame.getArguments(), targetSig, inclReceiver);
+    }
+
+    static Object[] unbasic(Object[] arguments, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
         int parameterCount = targetSig.getParameterCount(inclReceiver);
         Object[] res = new Object[parameterCount];
         int start = 0;
@@ -588,7 +591,7 @@ public final class Interpreter {
     }
 
     // Transforms ints to sub-words
-    public static Object unbasic(Object arg, JavaKind kind) {
+    private static Object unbasic(Object arg, JavaKind kind) {
         return switch (kind) {
             case Boolean -> (int) arg != 0;
             case Byte -> (byte) (int) arg;
@@ -598,7 +601,7 @@ public final class Interpreter {
         };
     }
 
-    private static Object rebasic(Object value, JavaKind returnType) {
+    static Object rebasic(Object value, JavaKind returnType) {
         // @formatter:off
         return switch (returnType) {
             case Boolean -> stackIntToBoolean((int) value);
