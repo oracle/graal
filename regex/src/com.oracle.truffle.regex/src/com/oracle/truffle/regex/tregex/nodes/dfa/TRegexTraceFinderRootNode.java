@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
@@ -55,8 +54,8 @@ public class TRegexTraceFinderRootNode extends RegexBodyNode {
     @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
     @Child private TRegexExecutorEntryNode entryNode;
 
-    public TRegexTraceFinderRootNode(RegexLanguage language, RegexSource source, PreCalculatedResultFactory[] preCalculatedResults, TRegexExecutorEntryNode entryNode) {
-        super(language, source);
+    public TRegexTraceFinderRootNode(RegexLanguage language, PreCalculatedResultFactory[] preCalculatedResults, TRegexExecutorEntryNode entryNode) {
+        super(language);
         this.preCalculatedResults = preCalculatedResults;
         this.entryNode = insert(entryNode);
     }

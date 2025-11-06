@@ -58,8 +58,8 @@ public abstract class RegexExecNode extends RegexBodyNode {
     private @Child InputReadNode charAtNode;
 
     public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUTF16Surrogates) {
-        super(language, source);
-        this.mustCheckUTF16Surrogates = getEncoding().isUTF16() && mustCheckUTF16Surrogates;
+        super(language);
+        this.mustCheckUTF16Surrogates = source.getOptions().getEncoding().isUTF16() && mustCheckUTF16Surrogates;
     }
 
     @Override
