@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.hub.crema;
 
-import java.util.List;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.espresso.classfile.ParserKlass;
@@ -48,8 +47,6 @@ public interface CremaSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
 
-    int getAfterFieldsOffset(DynamicHub hub);
-
     Target_java_lang_invoke_MemberName resolveMemberName(Target_java_lang_invoke_MemberName mn, Class<?> caller);
 
     Object invokeBasic(Target_java_lang_invoke_MemberName memberName, Object methodHandle, Object[] args);
@@ -64,19 +61,7 @@ public interface CremaSupport {
 
     Object getStaticStorage(ResolvedJavaField resolved);
 
-    interface CremaDispatchTable {
-        int vtableLength();
-
-        int itableLength(Class<?> iface);
-
-        int afterFieldsOffset(int superAfterFieldsOffset);
-
-        int[] getDeclaredInstanceReferenceFieldOffsets();
-    }
-
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
-
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
+    DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName, Module module, ClassLoader classLoader, Class<?> superClass, Class<?>[] superInterfaces);
 
     /**
      * Creates a new instance of {@code type} without running any constructor yet. The caller should
