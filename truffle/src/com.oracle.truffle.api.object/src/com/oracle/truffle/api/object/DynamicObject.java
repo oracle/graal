@@ -604,7 +604,7 @@ public abstract class DynamicObject implements TruffleObject {
         // @formatter:on
         @HostCompilerDirectives.InliningRoot
         public final void execute(DynamicObject receiver, Object key, Object value) {
-            executeImpl(receiver, key, value, Flags.DEFAULT, 0);
+            executeImpl(receiver, key, value, 0, Flags.DEFAULT);
         }
 
         /**
@@ -618,7 +618,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeIfPresent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, Flags.IF_PRESENT, 0);
+            return executeImpl(receiver, key, value, 0, Flags.IF_PRESENT);
         }
 
         /**
@@ -632,7 +632,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeIfAbsent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, Flags.IF_ABSENT, 0);
+            return executeImpl(receiver, key, value, 0, Flags.IF_ABSENT);
         }
 
         /**
@@ -647,7 +647,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final void executeWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.UPDATE_FLAGS, propertyFlags);
+            executeImpl(receiver, key, value, propertyFlags, Flags.DEFAULT | Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -656,7 +656,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, propertyFlags, Flags.IF_PRESENT | Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -665,33 +665,30 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, propertyFlags, Flags.IF_ABSENT | Flags.UPDATE_FLAGS);
         }
 
         // private
 
-        abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags);
+        abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {
                         "guard",
                         "key == cachedKey",
-                        "mode == cachedMode",
-                        "propertyFlags == cachedPropertyFlags",
+                        "propertyFlagsEqual(propertyFlags, mode, oldShape, newShape, oldProperty, newProperty)",
                         "newLocation == null || newLocation.canStoreValue(value)",
-        }, assumptions = "newShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
-        static boolean doCached(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags,
+        }, assumptions = "oldShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
+        static boolean doCached(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode,
                         @Bind("receiver.getShape()") Shape shape,
                         @Cached("shape") Shape oldShape,
                         @Bind("shape == oldShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("mode") int cachedMode,
-                        @Cached("propertyFlags") int cachedPropertyFlags,
                         @Cached("oldShape.getProperty(key)") Property oldProperty,
-                        @Cached("getNewShapeAndCheckOldShapeStillValid(key, value, cachedPropertyFlags, cachedMode, oldProperty, oldShape)") Shape newShape,
-                        @Cached("getNewLocation(oldShape, newShape, key, oldProperty)") Location newLocation,
-                        @Cached("newShape.getValidAbstractAssumption()") AbstractAssumption newShapeValidAssumption) {
-            // We use mode instead of cachedMode to fold it during host inlining
+                        @Cached("getNewShape(key, value, propertyFlags, mode, oldProperty, oldShape)") Shape newShape,
+                        @Cached("getNewProperty(oldShape, newShape, key, oldProperty)") Property newProperty,
+                        @Cached("getLocation(newProperty)") Location newLocation,
+                        @Cached("oldShape.getValidAbstractAssumption()") AbstractAssumption oldShapeValidAssumption) {
             CompilerAsserts.partialEvaluationConstant(mode);
             if ((mode & Flags.IF_ABSENT) != 0 && oldProperty != null) {
                 return false;
@@ -704,6 +701,7 @@ public abstract class DynamicObject implements TruffleObject {
 
             if (newShape != oldShape) {
                 DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
+                maybeUpdateShape(receiver, newShape);
             }
             return true;
         }
@@ -715,13 +713,13 @@ public abstract class DynamicObject implements TruffleObject {
          * still create new doCached instances, which is important once we see objects with the new
          * non-obsolete shape.
          */
-        @Specialization(guards = "!receiver.getShape().isValid()")
-        static boolean doInvalid(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+        @Specialization(guards = "!receiver.getShape().isValid()", excludeForUncached = true)
+        static boolean doInvalid(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode) {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
         @Specialization(replaces = {"doCached", "doInvalid"})
-        static boolean doGeneric(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+        static boolean doGeneric(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode) {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
@@ -772,7 +770,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final void execute(DynamicObject receiver, Object key, Object value) {
-            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST, 0);
+            executeImpl(receiver, key, value, 0, Flags.DEFAULT | Flags.CONST);
         }
 
         /**
@@ -780,7 +778,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeIfPresent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST, 0);
+            return executeImpl(receiver, key, value, 0, Flags.IF_PRESENT | Flags.CONST);
         }
 
         /**
@@ -788,7 +786,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeIfAbsent(DynamicObject receiver, Object key, Object value) {
-            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST, 0);
+            return executeImpl(receiver, key, value, 0, Flags.IF_ABSENT | Flags.CONST);
         }
 
         // @formatter:off
@@ -831,7 +829,7 @@ public abstract class DynamicObject implements TruffleObject {
         // @formatter:on
         @HostCompilerDirectives.InliningRoot
         public final void executeWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            executeImpl(receiver, key, value, Flags.DEFAULT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+            executeImpl(receiver, key, value, propertyFlags, Flags.DEFAULT | Flags.CONST | Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -840,7 +838,7 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeWithFlagsIfPresent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, Flags.IF_PRESENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, propertyFlags, Flags.IF_PRESENT | Flags.CONST | Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -849,33 +847,29 @@ public abstract class DynamicObject implements TruffleObject {
          */
         @HostCompilerDirectives.InliningRoot
         public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
-            return executeImpl(receiver, key, value, Flags.IF_ABSENT | Flags.CONST | Flags.UPDATE_FLAGS, propertyFlags);
+            return executeImpl(receiver, key, value, propertyFlags, Flags.IF_ABSENT | Flags.CONST | Flags.UPDATE_FLAGS);
         }
 
         // private
 
-        abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags);
+        abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {
                         "guard",
                         "key == cachedKey",
-                        "mode == cachedMode",
-                        "propertyFlags == cachedPropertyFlags",
-                        "newLocation == null || newLocation.canStoreConstant(value)",
-        }, assumptions = "newShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
-        static boolean doCached(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags,
+                        "propertyFlagsEqual(propertyFlags, mode, oldShape, newShape, oldProperty, newProperty)",
+                        "newProperty == null || newProperty.getLocation().canStoreConstant(value)",
+        }, assumptions = "oldShapeValidAssumption", limit = "SHAPE_CACHE_LIMIT")
+        static boolean doCached(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode,
                         @Bind("receiver.getShape()") Shape shape,
                         @Cached("shape") Shape oldShape,
                         @Bind("shape == oldShape") boolean guard,
                         @Cached("key") Object cachedKey,
-                        @Cached("mode") int cachedMode,
-                        @Cached("propertyFlags") int cachedPropertyFlags,
                         @Cached("oldShape.getProperty(key)") Property oldProperty,
-                        @Cached("getNewShapeAndCheckOldShapeStillValid(key, value, cachedPropertyFlags, cachedMode, oldProperty, oldShape)") Shape newShape,
-                        @Cached("getNewLocation(oldShape, newShape, key, oldProperty)") Location newLocation,
-                        @Cached("newShape.getValidAbstractAssumption()") AbstractAssumption newShapeValidAssumption) {
-            // We use mode instead of cachedMode to fold it during host inlining
+                        @Cached("getNewShape(key, value, propertyFlags, mode, oldProperty, oldShape)") Shape newShape,
+                        @Cached("getNewProperty(oldShape, newShape, key, oldProperty)") Property newProperty,
+                        @Cached("oldShape.getValidAbstractAssumption()") AbstractAssumption oldShapeValidAssumption) {
             CompilerAsserts.partialEvaluationConstant(mode);
             if ((mode & Flags.IF_ABSENT) != 0 && oldProperty != null) {
                 return false;
@@ -886,6 +880,7 @@ public abstract class DynamicObject implements TruffleObject {
 
             if (newShape != oldShape) {
                 DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
+                maybeUpdateShape(receiver, newShape);
             }
             return true;
         }
@@ -897,13 +892,13 @@ public abstract class DynamicObject implements TruffleObject {
          * still create new doCached instances, which is important once we see objects with the new
          * non-obsolete shape.
          */
-        @Specialization(guards = "!receiver.getShape().isValid()")
-        static boolean doInvalid(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+        @Specialization(guards = "!receiver.getShape().isValid()", excludeForUncached = true)
+        static boolean doInvalid(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode) {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
         @Specialization(replaces = {"doCached", "doInvalid"})
-        static boolean doGeneric(DynamicObject receiver, Object key, Object value, int mode, int propertyFlags) {
+        static boolean doGeneric(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode) {
             return ObsolescenceStrategy.putGeneric(receiver, key, value, propertyFlags, mode);
         }
 
@@ -922,6 +917,24 @@ public abstract class DynamicObject implements TruffleObject {
         public static PutConstantNode getUncached() {
             return DynamicObjectFactory.PutConstantNodeGen.getUncached();
         }
+    }
+
+    /**
+     * {@return true if the cache entry can be used with the passed property flags and mode}
+     *
+     * <ol>
+     * <li>ignore flags => new flags must equal old flags, if any, else passed flags</li>
+     * <li>update flags => new flags must equal passed flags</li>
+     * </ol>
+     */
+    static boolean propertyFlagsEqual(int propertyFlags, int mode, Shape oldShape, Shape newShape, Property oldProperty, Property newProperty) {
+        if (newProperty == null) {
+            assert oldProperty == null;
+            return (mode & Flags.IF_PRESENT) != 0;
+        }
+        return (mode & Flags.UPDATE_FLAGS) == 0
+                        ? oldShape == newShape || (oldProperty == null ? propertyFlags : oldProperty.getFlags()) == newProperty.getFlags()
+                        : propertyFlags == newProperty.getFlags();
     }
 
     static Shape getNewShape(Object cachedKey, Object value, int newPropertyFlags, int mode, Property existingProperty, Shape oldShape) {
@@ -947,22 +960,16 @@ public abstract class DynamicObject implements TruffleObject {
         }
     }
 
-    // defineProperty() might obsolete the oldShape and we don't handle invalid shape -> valid
-    // shape transitions on the fast path (in doCached)
-    static Shape getNewShapeAndCheckOldShapeStillValid(Object cachedKey, Object value, int newPropertyFlags, int putFlags, Property existingProperty, Shape oldShape) {
-        Shape newShape = getNewShape(cachedKey, value, newPropertyFlags, putFlags, existingProperty, oldShape);
-        if (!oldShape.isValid()) {
-            return oldShape; // return an invalid shape to not use this specialization
+    static Property getNewProperty(Shape oldShape, Shape newShape, Object cachedKey, Property oldProperty) {
+        if (newShape == oldShape) {
+            return oldProperty;
+        } else {
+            return newShape.getProperty(cachedKey);
         }
-        return newShape;
     }
 
-    static Location getNewLocation(Shape oldShape, Shape newShape, Object cachedKey, Property oldProperty) {
-        if (newShape == oldShape) {
-            return oldProperty == null ? null : oldProperty.getLocation();
-        } else {
-            return newShape.getLocation(cachedKey);
-        }
+    static Location getLocation(Property property) {
+        return property == null ? null : property.getLocation();
     }
 
     /**
