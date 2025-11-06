@@ -3,22 +3,27 @@
         "name": "graalvm-community-java25",
         "core": true,
         "jdk": "jdk_25",
+        "override_name": "graalvm",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
     },
