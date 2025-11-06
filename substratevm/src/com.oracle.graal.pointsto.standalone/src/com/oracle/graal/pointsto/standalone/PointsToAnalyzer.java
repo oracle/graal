@@ -120,7 +120,8 @@ public final class PointsToAnalyzer {
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
         debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
-        StandaloneHost standaloneHost = new StandaloneHost(options);
+        analysisName = getAnalysisName(mainEntryClass);
+        StandaloneHost standaloneHost = new StandaloneHost(options, analysisName, false, true);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
 
@@ -138,11 +139,9 @@ public final class PointsToAnalyzer {
         Replacements replacements = new StandaloneReplacementsImpl(aProviders, new ResolvedJavaMethodBytecodeProvider(), originalProviders.getCodeCache().getTarget());
         aProviders = aProviders.copyWith(replacements);
         standaloneHost.initializeProviders(aProviders);
-        analysisName = getAnalysisName(mainEntryClass);
         ClassInclusionPolicy classInclusionPolicy = new ClassInclusionPolicy.DefaultAllInclusionPolicy("Included in the base image");
         bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(),
                         debugContext, new TimerCollection(), classInclusionPolicy);
-        standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
