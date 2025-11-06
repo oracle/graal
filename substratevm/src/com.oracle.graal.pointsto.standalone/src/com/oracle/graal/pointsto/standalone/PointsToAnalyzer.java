@@ -131,7 +131,7 @@ public final class PointsToAnalyzer {
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aMetaAccess, aUniverse, originalProviders.getConstantReflection(),
                         originalProviders.getSnippetReflection());
-        StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
+        StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess, originalProviders.getConstantFieldProvider(), false);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider(aUniverse);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), null,
