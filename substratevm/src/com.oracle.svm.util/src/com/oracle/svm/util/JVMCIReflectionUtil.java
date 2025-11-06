@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -158,7 +159,7 @@ public final class JVMCIReflectionUtil {
             if (res == null) {
                 res = m;
             } else {
-                throw new GraalError("More than one method with signature %s in %s", res.format("%h(%p)"), declaringClass.toClassName());
+                throw new GraalError("More than one method with signature %s in %s", res.format("%H.%n(%p)"), declaringClass.toClassName());
             }
         }
         return res;
@@ -235,5 +236,19 @@ public final class JVMCIReflectionUtil {
         String cn = c.toClassName();
         int dot = cn.lastIndexOf('.');
         return (dot != -1) ? cn.substring(0, dot).intern() : "";
+    }
+
+    /**
+     * Gets the return type for a {@link ResolvedJavaMethod}. This is the same as calling
+     * {@link Method#getReturnType()} on the underlying method.
+     *
+     * @throws GraalError if the return type is not a {@link ResolvedJavaType}
+     */
+    public static ResolvedJavaType getResolvedReturnType(ResolvedJavaMethod m) {
+        JavaType returnType = m.getSignature().getReturnType(m.getDeclaringClass());
+        if (returnType instanceof ResolvedJavaType resolvedJavaType) {
+            return resolvedJavaType;
+        }
+        throw new GraalError("Method does not have a resolved return type: %s", m.format("%H.%n(%p)"));
     }
 }
