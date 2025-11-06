@@ -7,8 +7,8 @@ public class LoopSummation {
 
     // simple loop with incremental update
     for (int i = 0; i < n; i++) {
-      res += i;
+      sum += i;
     }
-
+    res = sum;
   }
 }
