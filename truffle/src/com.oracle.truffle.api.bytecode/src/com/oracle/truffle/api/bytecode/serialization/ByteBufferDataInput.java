@@ -53,7 +53,7 @@ import java.nio.ByteBuffer;
  * @see SerializationUtils#createDataInput(ByteBuffer)
  * @since 24.2
  */
-final class ByteBufferDataInput implements DataInput {
+public final class ByteBufferDataInput implements DataInput {
 
     private final ByteBuffer buffer;
     private char[] lineBuffer;
@@ -236,5 +236,12 @@ final class ByteBufferDataInput implements DataInput {
     @Override
     public String readUTF() throws IOException {
         return DataInputStream.readUTF(this);
+    }
+
+    /**
+     * Returns the position in the underlying byte buffer.
+     */
+    public int position() {
+        return buffer.position();
     }
 }
