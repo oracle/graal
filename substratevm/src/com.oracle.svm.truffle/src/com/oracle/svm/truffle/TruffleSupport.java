@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -36,7 +37,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
-import com.oracle.svm.truffle.api.SubstrateKnownTruffleTypes;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
@@ -57,7 +57,6 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.EconomyPartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
@@ -107,8 +106,7 @@ public class TruffleSupport {
         final GraphBuilderConfiguration.Plugins graphBuilderPlugins = runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins();
         SubstrateBackend substrateBackend = TruffleRuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
         substrateBackend.setRuntimeToRuntimeInvokeMethod(optimizedCallTargetMethod);
-        Providers providers = TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders();
-        SubstrateKnownTruffleTypes types = new SubstrateKnownTruffleTypes(runtime, providers.getMetaAccess(), providers.getConstantReflection());
+        KnownTruffleTypes types = ImageSingletons.lookup(KnownTruffleTypes.class);
         final TruffleTierConfiguration firstTier = new TruffleTierConfiguration(new EconomyPartialEvaluatorConfiguration(), substrateBackend,
                         TruffleRuntimeCompilationSupport.getFirstTierProviders(), TruffleRuntimeCompilationSupport.getFirstTierSuites(), TruffleRuntimeCompilationSupport.getFirstTierLirSuites(),
                         types);

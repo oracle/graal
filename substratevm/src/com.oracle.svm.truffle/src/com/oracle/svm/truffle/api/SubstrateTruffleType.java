@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle.phases;
+package com.oracle.svm.truffle.api;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.truffle.TruffleTierContext;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateType;
+import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+public class SubstrateTruffleType extends SubstrateType implements TruffleType {
 
-public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
+    private final boolean valueType;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateTruffleType(JavaKind kind, DynamicHub hub, boolean valueType) {
+        super(kind, hub);
+        this.valueType = valueType;
+    }
+
     @Override
-    protected void run(StructuredGraph graph, TruffleTierContext context) {
-        graph.checkCancellation();
-        for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
-            if (virtualObjectNode instanceof VirtualInstanceNode) {
-                VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
-                ResolvedJavaType type = virtualInstanceNode.type();
-                if (context.getPartialEvaluator().isValueType(type)) {
-                    virtualInstanceNode.setIdentity(false);
-                }
-            }
-        }
+    public boolean isValueType() {
+        return valueType;
     }
 }

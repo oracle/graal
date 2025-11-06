@@ -367,7 +367,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
             aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
-            SubstrateType newType = new SubstrateType(aType.getJavaKind(), hub);
+            SubstrateType newType = universeFactory.createType(aType, hub);
             sType = types.putIfAbsent(aType, newType);
             if (sType == null) {
                 sType = newType;
