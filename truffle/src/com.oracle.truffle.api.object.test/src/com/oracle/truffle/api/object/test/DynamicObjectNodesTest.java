@@ -377,6 +377,16 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertTrue(setNode.executeIfPresent(o2, key1, intval1));
         assertEquals(intval1, uncachedGet(o2, key1));
         assertSame(o1.getShape(), o2.getShape());
+        assertTrue(setNode.executeWithFlagsIfPresent(o2, key1, intval2, 0b0));
+        assertEquals(intval2, uncachedGet(o2, key1));
+        assertSame(o1.getShape(), o2.getShape());
+
+        assertTrue(setNode.executeWithFlagsIfPresent(o2, key1, intval1, 0b11));
+        assertEquals(intval1, uncachedGet(o2, key1));
+        assertEquals(0b11, uncachedGetPropertyFlags(o2, key1, -1));
+        assertTrue(setNode.executeWithFlagsIfPresent(o2, key1, intval2, 0b0));
+        assertEquals(intval2, uncachedGet(o2, key1));
+        assertEquals(0b0, uncachedGetPropertyFlags(o2, key1, -1));
 
         String strval1 = "asdf";
         setNode.execute(o1, key1, strval1);
@@ -388,17 +398,56 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         var containsKeyNode2 = createContainsKeyNode();
         assertFalse(DynamicObject.ContainsKeyNode.getUncached().execute(o1, key2));
         assertFalse(setNode2.executeIfPresent(o1, key2, strval2));
-        // assertTrue(setNode2.accepts(o1));
+        assertFalse(setNode2.executeWithFlagsIfPresent(o1, key2, strval2, 0b11));
         assertFalse(containsKeyNode2.execute(o1, key2));
         assertEquals(null, uncachedGet(o1, key2));
 
         setNode2.execute(o1, key2, strval2);
         assertTrue(DynamicObject.ContainsKeyNode.getUncached().execute(o1, key2));
         assertEquals(strval2, uncachedGet(o1, key2));
+        assertEquals(0, uncachedGetPropertyFlags(o1, key2, -1));
+        setNode2.executeWithFlags(o2, key2, strval2, 0b11);
+        assertTrue(DynamicObject.ContainsKeyNode.getUncached().execute(o2, key2));
+        assertEquals(strval2, uncachedGet(o2, key2));
+        assertEquals(0b11, uncachedGetPropertyFlags(o2, key2, -1));
 
         var setNode3 = createPutNode();
         assertTrue(setNode3.executeIfPresent(o1, key2, intval1));
         assertEquals(intval1, uncachedGet(o1, key2));
+    }
+
+    @Test
+    public void testPutIfAbsent() {
+        String key1 = "key1";
+        String key2 = "key2";
+        int intval1 = 42;
+        int intval2 = 43;
+        DynamicObject o1 = createEmpty();
+        DynamicObject o2 = createEmpty();
+        assertSame(o1.getShape(), o2.getShape());
+
+        var setNode = createPutNode();
+        assertTrue(setNode.executeIfAbsent(o1, key1, intval1));
+        assertTrue(setNode.executeWithFlagsIfAbsent(o2, key1, intval1, 0));
+        assertSame(o1.getShape(), o2.getShape());
+        assertEquals(intval1, uncachedGet(o1, key1));
+        assertEquals(intval1, uncachedGet(o2, key1));
+        assertEquals(0, uncachedGetPropertyFlags(o1, key1, -1));
+        assertEquals(0, uncachedGetPropertyFlags(o2, key1, -1));
+
+        Shape shapeBefore = o1.getShape();
+        assertFalse(setNode.executeIfAbsent(o1, key1, intval2));
+        assertFalse(setNode.executeWithFlagsIfAbsent(o1, key1, intval2, 0b11));
+        assertEquals(intval1, uncachedGet(o1, key1));
+        Shape shapeAfter = o1.getShape();
+        assertSame(shapeBefore, shapeAfter);
+
+        assertTrue(setNode.executeWithFlagsIfAbsent(o1, key2, intval2, 0b11));
+        assertTrue(setNode.executeIfAbsent(o2, key2, intval2));
+        assertEquals(intval2, uncachedGet(o1, key2));
+        assertEquals(intval2, uncachedGet(o2, key2));
+        assertEquals(0b11, uncachedGetPropertyFlags(o1, key2, -1));
+        assertEquals(0, uncachedGetPropertyFlags(o2, key2, -1));
     }
 
     @Test
@@ -1020,6 +1069,10 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
     private static Property uncachedGetProperty(DynamicObject obj, Object key) {
         return DynamicObject.GetPropertyNode.getUncached().execute(obj, key);
+    }
+
+    private static int uncachedGetPropertyFlags(DynamicObject obj, Object key, int defaultValue) {
+        return DynamicObject.GetPropertyFlagsNode.getUncached().execute(obj, key, defaultValue);
     }
 
     private static Object newObjectType() {
