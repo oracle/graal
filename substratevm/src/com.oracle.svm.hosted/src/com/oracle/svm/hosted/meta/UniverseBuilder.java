@@ -459,6 +459,14 @@ public class UniverseBuilder {
      * the secondary storage for monitor slots.
      */
     private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
+                    Boolean.class,
+                    Byte.class,
+                    Short.class,
+                    Character.class,
+                    Integer.class,
+                    Long.class,
+                    Float.class,
+                    Double.class,
                     String.class,
                     DynamicHub.class,
                     CEntryPointLiteral.class,
