@@ -130,12 +130,14 @@ public final class LambdaUtils {
     }
 
     /**
-     * Generates a signature for a given lambda type by hashing its composing parts. The signature
-     * is generated based on the methods invoked in the lambda's bytecode, the constructor parameter
-     * types, and the interfaces implemented by the lambda. Returns {@code null} if the lambda type
-     * does not have any invoked methods.
+     * Generates a signature for a given type by hashing its composing parts. The signature is
+     * generated based on the methods invoked in the bytecode of a public non-bridge method, the
+     * constructor parameter types, and the interfaces implemented by the type. Returns {@code null}
+     * if the selected declared method does not invoke any other method. The procedure should
+     * generate reasonable signatures for lambda proxy types, but it may fail to do so for general
+     * hidden classes.
      * <p>
-     * Starting from JDK17, the lambda classes can have additional interfaces that lambda should
+     * Starting from JDK17, lambda classes can have additional interfaces that lambda should
      * implement. This further means that lambda can have more than one public method (public and
      * not bridge).
      * <p>
@@ -144,33 +146,31 @@ public final class LambdaUtils {
      * parameters are Object types) and serves as a wrapper that casts parameters to specialized
      * types and calls an original method.
      *
-     * @param lambdaType the lambda type to generate a signature for
-     * @return a 32-character hexadecimal string representing the lambda's signature or {@code null}
-     *         if the lambda type does not have any invoked methods
+     * @param type the type to generate a signature for
+     * @return a 32-character hexadecimal string representing the type signature or {@code null} if
+     *         the selected declared method does not have any invokes
      */
-    public static String getSignature(ResolvedJavaType lambdaType) {
-        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
+    public static String getSignature(ResolvedJavaType type) {
         /*
          * Take only the first method to find invoked methods, because the result would be the same
-         * for all other methods.
+         * for all other methods (if it is a lambda type).
          */
-        List<JavaMethod> invokedMethods = findInvokedMethods(lambdaProxyMethods[0]);
+        List<JavaMethod> invokedMethods = Arrays.stream(type.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).findFirst().map(LambdaUtils::findInvokedMethods).orElse(List.of());
         if (invokedMethods.isEmpty()) {
             return null;
         }
-
-        /* Generate lambda signature by hashing its composing parts. */
+        /* Generate type signature by hashing its composing parts. */
         StringBuilder sb = new StringBuilder();
         /* Append invoked methods. */
         for (JavaMethod method : invokedMethods) {
             sb.append(method.format("%H.%n(%P)%R"));
         }
         /* Append constructor parameter types. */
-        for (JavaMethod ctor : lambdaType.getDeclaredConstructors()) {
+        for (JavaMethod ctor : type.getDeclaredConstructors()) {
             sb.append(ctor.format("%P"));
         }
         /* Append implemented interfaces. */
-        for (ResolvedJavaType iface : lambdaType.getInterfaces()) {
+        for (ResolvedJavaType iface : type.getInterfaces()) {
             sb.append(iface.toJavaName());
         }
         String signature = Digest.digestAsHex(sb.toString());
