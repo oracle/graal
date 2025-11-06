@@ -56,6 +56,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
@@ -63,10 +64,12 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
 import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.TypeCheckData;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
@@ -317,7 +320,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         /* Allocate DynamicHub. */
-        int hubNumVTableEntries = dispatchTable.vtableLength();
+        int hubNumVTableEntries = dispatchTable.cremaVTableLength(transitiveSuperInterfaces);
         DynamicHub hub = DynamicHub.allocate(externalName, superHub, interfacesEncoding, null,
                         sourceFile, modifiers, hubFlags, classLoader, simpleBinaryName, module, declaringClass, classSignature,
                         typeID, interfaceID,
@@ -463,19 +466,20 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     private static void fillVTable(DynamicHub hub, InterpreterResolvedJavaMethod[] vtable) {
-        long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
-        long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-        int i = 0;
-        for (InterpreterResolvedJavaMethod method : vtable) {
-            long offset = vTableBaseOffset + i * vTableEntrySize;
-            WordBase entry;
-            if (method.hasNativeEntryPoint()) {
-                entry = method.getNativeEntryPoint();
-            } else {
-                entry = getCremaStubForVTableIndex(i);
-            }
-            Word.objectToUntrackedPointer(hub).writeWord(Math.toIntExact(offset), entry);
-            i++;
+        int wordSize = ConfigurationValues.getTarget().wordSize;
+        assert KnownOffsets.singleton().getVTableEntrySize() == wordSize : "only word size is implemented at the moment";
+
+        Pointer hubStart = Word.objectToUntrackedPointer(hub);
+        Pointer hubEnd = LayoutEncoding.getMetaspaceObjectEnd(hub);
+
+        Pointer pos = hubStart.add(KnownOffsets.singleton().getVTableBaseOffset());
+        for (int i = 0; i < vtable.length; i++) {
+            InterpreterResolvedJavaMethod method = vtable[i];
+            WordBase entry = method.hasNativeEntryPoint() ? method.getNativeEntryPoint() : getCremaStubForVTableIndex(i);
+
+            pos.writeWord(0, entry);
+            pos = pos.add(wordSize);
+            assert pos.belowOrEqual(hubEnd);
         }
     }
 
@@ -882,6 +886,8 @@ public class CremaSupportImpl implements CremaSupport {
             return result;
         }
 
+        public abstract int cremaVTableLength(Class<?>[] interfaces);
+
         public abstract List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces);
     }
 
@@ -892,6 +898,17 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
+        public int cremaVTableLength(Class<?>[] interfaces) {
+            int result = 0;
+            for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
+                if (VTable.isVirtualEntry(method)) {
+                    result++;
+                }
+            }
+            return result;
+        }
+
+        @Override
         public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
             List<InterpreterResolvedJavaMethod> itable = new ArrayList<>();
             for (CremaPartialMethod method : partialType.getDeclaredMethodsList()) {
@@ -899,6 +916,7 @@ public class CremaSupportImpl implements CremaSupport {
                     itable.add(method.withITableIndex(itable.size()).asMethodAccess());
                 }
             }
+            assert itable.size() == cremaVTableLength(interfaces);
             return itable;
         }
 
@@ -922,6 +940,15 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         @Override
+        public int cremaVTableLength(Class<?>[] interfaces) {
+            int result = table.getVtable().size();
+            for (Class<?> intf : interfaces) {
+                result += getItableFor(intf).size();
+            }
+            return result;
+        }
+
+        @Override
         public List<InterpreterResolvedJavaMethod> cremaVTable(Class<?>[] interfaces) {
             List<InterpreterResolvedJavaMethod> vtable = toSimpleTable(table.getVtable());
             List<InterpreterResolvedJavaMethod> result = new ArrayList<>(vtable);
@@ -929,6 +956,7 @@ public class CremaSupportImpl implements CremaSupport {
                 List<InterpreterResolvedJavaMethod> itable = toSimpleTable(getItableFor(intf));
                 result.addAll(itable);
             }
+            assert cremaVTableLength(interfaces) == result.size();
             return result;
         }
 
