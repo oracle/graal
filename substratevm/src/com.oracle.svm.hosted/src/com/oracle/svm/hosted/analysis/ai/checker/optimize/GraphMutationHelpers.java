@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker.annotator;
+package com.oracle.svm.hosted.analysis.ai.checker.optimize;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -21,12 +21,6 @@ public final class GraphMutationHelpers {
     private GraphMutationHelpers() {
     }
 
-    /**
-     * Attempt to insert a runtime assertion into the graph for the given node.
-     * Returns true if the helper believes it performed a mutation. This stub
-     * conservatively attempts to add a ConstantNode to the graph (if possible)
-     * using reflection and logs the intended Invoke insertion.
-     */
     public static boolean insertAssertInvoke(StructuredGraph graph, Node targetNode, long constVal) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Request to insert assert for node: " + (targetNode == null ? "NULL" : targetNode.toString()) + " = " + constVal, LoggerVerbosity.CHECKER);
@@ -75,7 +69,6 @@ public final class GraphMutationHelpers {
                         continue;
                     }
                     if (ret == null) continue;
-                    // If return looks like a collection, try to add
                     if (ret instanceof Collection) {
                         try {
                             @SuppressWarnings("unchecked")
