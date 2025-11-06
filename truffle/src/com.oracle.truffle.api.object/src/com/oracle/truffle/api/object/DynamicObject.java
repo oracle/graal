@@ -1017,26 +1017,33 @@ public abstract class DynamicObject implements TruffleObject {
         public abstract void execute(DynamicObject from, DynamicObject to);
 
         @ExplodeLoop
-        @Specialization(guards = "shape == cachedShape", limit = "SHAPE_CACHE_LIMIT")
+        @Specialization(guards = {"from != to", "shape == cachedShape"}, limit = "SHAPE_CACHE_LIMIT")
         static void doCached(DynamicObject from, DynamicObject to,
                         @Bind("from.getShape()") @SuppressWarnings("unused") Shape shape,
                         @Cached("shape") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached(value = "createPropertyGetters(cachedShape)", dimensions = 1) PropertyGetter[] getters,
-                        @Cached DynamicObject.PutNode putNode) {
+                        @Cached(value = "createPutNodes(getters)") PutNode[] putNodes) {
             for (int i = 0; i < getters.length; i++) {
                 PropertyGetter getter = getters[i];
-                putNode.executeWithFlags(to, getter.getKey(), getter.get(from), getter.getFlags());
+                putNodes[i].executeWithFlags(to, getter.getKey(), getter.get(from), getter.getFlags());
             }
         }
 
         @TruffleBoundary
-        @Specialization(replaces = "doCached")
+        @Specialization(guards = {"from != to"}, replaces = "doCached")
         static void doGeneric(DynamicObject from, DynamicObject to) {
             Property[] properties = from.getShape().getPropertyArray();
             for (int i = 0; i < properties.length; i++) {
                 Property property = properties[i];
-                PutNode.getUncached().executeWithFlags(to, property.getKey(), property.get(from, false), property.getFlags());
+                Object value = property.get(from, false);
+                PutNode.getUncached().executeWithFlags(to, property.getKey(), value, property.getFlags());
             }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"from == to"})
+        static void doSameObject(DynamicObject from, DynamicObject to) {
+            // nothing to do
         }
 
         static PropertyGetter[] createPropertyGetters(Shape shape) {
@@ -1048,6 +1055,14 @@ public abstract class DynamicObject implements TruffleObject {
                 i++;
             }
             return getters;
+        }
+
+        static PutNode[] createPutNodes(PropertyGetter[] getters) {
+            PutNode[] putNodes = new PutNode[getters.length];
+            for (int i = 0; i < getters.length; i++) {
+                putNodes[i] = PutNode.create();
+            }
+            return putNodes;
         }
 
         /**
