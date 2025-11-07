@@ -9,14 +9,11 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import java.util.List;
 
 /**
- * Interface for a checker on an annotated CFG ( CFG with computed pre-post conditions from abstract interpretation ).
- * The checker can in theory be used to:
- * 1. Identify potential issues in the abstract state
- * 2. Modify the abstract state to reflect some findings
- * 3. Modify the CFG ( {@link StructuredGraph} ) based on the abstract state
- * 4. Report findings to users
- * 5. Produce facts based on the abstract state, and insert assertions in the CFG
- * and suggest modifications to the associated {@link StructuredGraph}.
+ * Checker interface focused on diagnostics and fact production.
+ * <p>
+ * Responsibilities now:
+ * - Provide human-readable diagnostics (errors / warnings) via {@link #check}.
+ * - Produce transformation / optimization facts via {@link #produceFacts}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
@@ -33,11 +30,8 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
     String getDescription();
 
     /**
-     * Check the given abstract state for potential erroneous behavior.
-     * Implementations can define what is considered erroneous.
-     * Based on the information in the {@link AbstractState},
-     * it is possible to modify the given {@link StructuredGraph} associated with the abstract state.
-     * For example, we can remove unreachable branches/nodes, replace some nodes with constants, etc.
+     * Diagnostic pass: derive error / warning results from the abstract state.
+     * Should NOT mutate the graph. Return an empty list if no diagnostics.
      *
      * @param method        the method to check
      * @param abstractState the abstract state map to check
@@ -46,10 +40,9 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
     List<CheckerResult> check(AnalysisMethod method, AbstractState<Domain> abstractState);
 
     /**
-     * Decide if the checker is compatible with the given abstract state.
+     * Compatibility guard to avoid domain mismatches.
      * The domain of the {@param abstractState} should be the same
      * (or convertable) to the {@link Domain} used in the checker.
-     * This is used to avoid ClassCastExceptions when checking the results.
      *
      * @param abstractState the abstract state map to check compatibility with
      * @return true if the checker is compatible, false otherwise
@@ -57,10 +50,10 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
     boolean isCompatibleWith(AbstractState<?> abstractState);
 
     /**
-     * Optional: produce facts derived from the analysis that other tools or subsequent
-     * checkers/phases can consume. By default, checkers that don't produce facts can ignore this.
+     * Fact production pass: emit optimization / transformation facts derived
+     * from the abstract state. These facts drive the FactApplier pipeline.
      *
-     * @param method the analysis method
+     * @param method        the analysis method
      * @param abstractState the abstract state computed by the analysis
      * @return a list of CheckerFact objects describing derived facts
      */

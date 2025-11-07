@@ -49,7 +49,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
             this.cfgGraph = services.getGraph(method);
             cache.addToMethodGraphMap(method, cfgGraph);
         }
-        logger.exportGraphToJson(cfgGraph, analysisMethod, analysisMethod.getName() + ":CFG_BeforeAbsint");
+        logger.exportGraphToJson(cfgGraph, analysisMethod, analysisMethod.getName() + "_before_absint");
         this.abstractState = new AbstractState<>(initialDomain, cfgGraph);
         this.graphTraversalHelper = new GraphTraversalHelper(cfgGraph, analysisContext.getIteratorPolicy().direction());
         this.iteratorContext = new BasicIteratorContext(graphTraversalHelper);

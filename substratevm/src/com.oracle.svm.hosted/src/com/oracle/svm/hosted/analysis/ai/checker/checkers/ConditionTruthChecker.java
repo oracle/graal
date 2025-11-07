@@ -20,7 +20,9 @@ import java.util.List;
 public final class ConditionTruthChecker implements Checker<AbstractMemory> {
 
     @Override
-    public String getDescription() { return "Condition truthness checker"; }
+    public String getDescription() {
+        return "Condition truthness checker";
+    }
 
     @Override
     public List<CheckerResult> check(AnalysisMethod method, AbstractState<AbstractMemory> abstractState) {
@@ -67,6 +69,8 @@ public final class ConditionTruthChecker implements Checker<AbstractMemory> {
     }
 
     @Override
-    public boolean isCompatibleWith(AbstractState<?> st) { return st.getInitialDomain() instanceof AbstractMemory; }
+    public boolean isCompatibleWith(AbstractState<?> st) {
+        return st.getInitialDomain() instanceof AbstractMemory;
+    }
 }
 

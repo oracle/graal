@@ -1,8 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core.facts;
 
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 
@@ -19,21 +17,35 @@ public final class IndexSafetyFact implements Fact {
         this.arrayLength = arrayLength;
     }
 
-    public boolean isInBounds() { return inBounds; }
-    public IntInterval getIndexRange() { return indexRange; }
-    public int getArrayLength() { return arrayLength; }
-    public Node getArrayAccess() { return access; }
+    public boolean isInBounds() {
+        return inBounds;
+    }
 
-    @Override
-    public String kind() { return "IndexSafety"; }
+    public IntInterval getIndexRange() {
+        return indexRange;
+    }
 
-    @Override
-    public String describe() {
-        String kind = (access instanceof LoadIndexedNode) ? "LoadIndexed" : (access instanceof StoreIndexedNode ? "StoreIndexed" : access.getClass().getSimpleName());
-        return kind + " indexRange=" + indexRange + " length=" + arrayLength + " safe=" + inBounds;
+    public int getArrayLength() {
+        return arrayLength;
+    }
+
+    public Node getArrayAccess() {
+        return access;
     }
 
     @Override
-    public Node node() { return access; }
+    public String kind() {
+        return "IndexSafety";
+    }
+
+    @Override
+    public String describe() {
+        return access + " guarded by= " +" indexRange=" + indexRange + " length=" + arrayLength + " safe=" + inBounds;
+    }
+
+    @Override
+    public Node node() {
+        return access;
+    }
 }
 

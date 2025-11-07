@@ -63,11 +63,11 @@ public class AbstractInterpretationDriver {
      * @throws IOException in case of I/O errors during logger initialization.
      */
     private void prepareAnalyses() throws IOException {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("myLogger", LoggerVerbosity.DEBUG)
-                .setConsoleEnabled(false)            // only write to file
-                .setFileEnabled(true)                // ensure file logging is on
-                .setFileThreshold(LoggerVerbosity.DEBUG)   // keep detailed logs in file
-                .setConsoleThreshold(LoggerVerbosity.INFO); // irrelevant since console disabled
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
+                .setConsoleEnabled(false)             /* only write to file */
+                .setFileEnabled(true)                /* ensure file logging is on */
+                .setFileThreshold(LoggerVerbosity.DEBUG)   /* keep detailed logs in file */
+                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
         debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
 
         /* 1. Define the abstract domain */

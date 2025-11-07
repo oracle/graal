@@ -58,6 +58,7 @@ public final class CheckerManager {
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         RewriterOrchestrator.apply(method, graph, aggregator);
         try {
+            logger.exportGraphToJson(graph.getLastCFG(), method, "CFG:after_abinst");
             AbstractInterpretationLogger.dumpGraph(method, graph, "GraalAF");
         } catch (Exception e) {
             logger.log("IGV dump failed: " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);

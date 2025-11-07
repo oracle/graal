@@ -14,7 +14,6 @@ import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class is responsible for running the abstract interpretation analyses,

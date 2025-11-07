@@ -1,15 +1,16 @@
 package com.oracle.svm.hosted.analysis.ai.checker.optimize;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.IndexSafetyFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConditionTruthFact;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -27,6 +28,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions.NO;
+import static jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions.YES;
+
 /**
  * Applies graph rewrites based on aggregated facts in a fixed, safe order, directly on the live graph.
  */
@@ -34,88 +38,53 @@ public final class RewriterOrchestrator {
 
     public static void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         var logger = AbstractInterpretationLogger.getInstance();
+
         eliminateBoundsChecks(aggregator, graph);
-//        GraphRewrite.sweepUnreachableFixed(graph);
+        GraphRewrite.sweepUnreachableFixed(graph);
+
+        applyAbstractInterpretationResults(method, graph);
     }
 
-    private static void foldBranches(StructuredGraph graph, FactAggregator aggregator) {
-        for (Fact f : aggregator.factsOfKind("Condition")) {
-            ConditionTruthFact cf = (ConditionTruthFact) f;
-            IfNode ifn = cf.ifNode();
-            if (isLikelyLoopGuard(ifn)) {
-                continue;
-            }
-            if (cf.truth() == ConditionTruthFact.Truth.ALWAYS_TRUE) {
-                GraphRewrite.foldIfTrue(graph, ifn);
-            } else if (cf.truth() == ConditionTruthFact.Truth.ALWAYS_FALSE) {
-                GraphRewrite.foldIfFalse(graph, ifn);
-            }
+    private static void applyAbstractInterpretationResults(AnalysisMethod method, StructuredGraph graph) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        if (!graph.verify()) {
+            logger.log("[RewriterOrchestrator] Graph verification failed before re-encode; aborting persistence.", LoggerVerbosity.CHECKER_ERR);
+            return;
         }
-    }
 
-    private static boolean isLikelyLoopGuard(IfNode ifn) {
-        // Heuristic 1: the condition uses a phi at a LoopBegin
-        ValueNode cond = ifn.condition();
-        if (usesLoopHeaderPhi(cond)) {
-            return true;
+        try {
+            var encoded = GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE);
+            var debug = graph.getDebug();
+            var testGraph = new StructuredGraph.Builder(debug.getOptions(), debug, graph.getAssumptions() != null ? YES : NO)
+                    .method(method)
+                    .trackNodeSourcePosition(graph.trackNodeSourcePosition())
+                    .recordInlinedMethods(graph.isRecordingInlinedMethods())
+                    .build();
+            new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, testGraph).decode(encoded);
+            method.setAnalyzedGraph(encoded);
+            logger.log("[RewriterOrchestrator] Persisted re-encoded graph (ai.persistRewrites=true), nodeCount=" + testGraph.getNodeCount(), LoggerVerbosity.CHECKER);
+        } catch (Throwable ex) {
+            logger.log("[RewriterOrchestrator] Re-encode validation failed: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + " (graph not persisted)", LoggerVerbosity.CHECKER_WARN);
         }
-        // Heuristic 2: one successor quickly reaches a LoopExit
-        return successorReachesLoopExit(ifn.trueSuccessor()) || successorReachesLoopExit(ifn.falseSuccessor());
-    }
-
-    private static boolean usesLoopHeaderPhi(ValueNode v) {
-        Set<ValueNode> seen = new HashSet<>();
-        ArrayDeque<ValueNode> work = new ArrayDeque<>();
-        work.add(v);
-        while (!work.isEmpty()) {
-            ValueNode cur = work.poll();
-            if (!seen.add(cur)) continue;
-            if (cur instanceof PhiNode phi) {
-                AbstractMergeNode m = phi.merge();
-                if (m instanceof LoopBeginNode) {
-                    return true;
-                }
-            }
-            if (cur instanceof ValueProxy vp) {
-                work.add(vp.getOriginalNode());
-            }
-            for (var in : cur.inputs()) {
-                if (in instanceof ValueNode vn) {
-                    work.add(vn);
-                }
-            }
-        }
-        return false;
-    }
-
-    private static boolean successorReachesLoopExit(Node begin) {
-        int steps = 0;
-        Node cur = begin;
-        Set<Node> seen = new HashSet<>();
-        // FIXME: limit to 16 steps to avoid infinite loops, but this is a heuristic, think of a better way
-        while (cur != null && steps < 16 && seen.add(cur)) {
-            if (cur instanceof LoopExitNode) return true;
-            var nexts = new ArrayDeque<FixedNode>();
-            for (var s : cur.successors()) {
-                if (s instanceof FixedNode fn) nexts.add(fn);
-            }
-            if (nexts.isEmpty()) break;
-            cur = nexts.poll();
-            steps++;
-        }
-        return false;
     }
 
     private static void eliminateBoundsChecks(FactAggregator aggregator, StructuredGraph graph) {
         List<Fact> idxFacts = aggregator.factsOfKind("IndexSafety");
-        for (Fact f : idxFacts) {
+        for (Fact f : idxFacts.reversed()) {
             IndexSafetyFact isf = (IndexSafetyFact) f;
             var n = isf.getArrayAccess();
             if (!isf.isInBounds()) continue;
-            if (n instanceof LoadIndexedNode || n instanceof StoreIndexedNode) {
-                Node guardIf = findGuardingIf(n);
-                if (guardIf == null) continue;
-                if (!(guardIf instanceof IfNode ifn)) continue;
+            if (!(n instanceof LoadIndexedNode) && !(n instanceof StoreIndexedNode)) {
+                continue;
+            }
+            Node guardIf = findGuardingIf(n);
+            if (!(guardIf instanceof IfNode ifn)) {
+                continue;
+            }
+            // FIXME: We are only folding index-bounds checks, not null checks.
+            var cond = ifn.condition();
+            if (cond instanceof jdk.graal.compiler.nodes.calc.IntegerBelowNode ||
+                cond instanceof jdk.graal.compiler.nodes.calc.IntegerLessThanNode) {
                 GraphRewrite.foldIfTrue(graph, ifn);
             }
         }
