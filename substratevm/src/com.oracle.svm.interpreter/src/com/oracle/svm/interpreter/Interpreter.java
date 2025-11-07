@@ -1401,7 +1401,8 @@ public final class Interpreter {
                         throw SemanticJavaException.raise(e);
                     }
                     BytecodeStream.patchIndyExtraCPI(code, curBCI, extraCPI);
-                    assert BytecodeStream.readCPI2Volatile(code, curBCI) == extraCPI;
+                    assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
+                    assert BytecodeStream.readCPI2(code, curBCI) == indyCPI;
                 }
                 CallSiteLink link = invokeDynamicConstant.getCallSiteLink(extraCPI);
                 while (!link.matchesCallSite(method, curBCI)) {
@@ -1411,7 +1412,7 @@ public final class Interpreter {
                      * still safe to use in `getCallSiteLink`. `matchesCallSite` ensures we have the
                      * full extraCPI.
                      */
-                    extraCPI = BytecodeStream.readCPI2Volatile(code, curBCI);
+                    extraCPI = BytecodeStream.readIndyExtraCPIVolatile(code, curBCI);
                     link = invokeDynamicConstant.getCallSiteLink(extraCPI);
                 }
                 if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {

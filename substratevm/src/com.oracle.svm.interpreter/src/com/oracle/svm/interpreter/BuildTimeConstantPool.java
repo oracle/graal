@@ -448,7 +448,7 @@ final class BuildTimeConstantPool {
                                 // in the CP.
                                 newAppendixCPI = appendixConstant(JavaConstant.NULL_POINTER);
                             }
-                            BytecodeStream.patchAppendixCPI(code, bci, newAppendixCPI);
+                            BytecodeStream.patchIndyExtraCPI(code, bci, newAppendixCPI);
                         }
 
                         BytecodeStream.patchCPI(code, bci, newCPI);
