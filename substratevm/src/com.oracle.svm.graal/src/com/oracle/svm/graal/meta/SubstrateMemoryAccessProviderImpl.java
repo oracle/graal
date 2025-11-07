@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.graal.meta;
 
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
@@ -37,6 +34,9 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -71,7 +71,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
 
     /**
      * Object constants can only be returned when we are 100% sure that the loaded value is really a
-     * valid object. Otherwise the GC will segfault. So we allow the read only when we find an
+     * valid object. Otherwise, the GC will segfault. So we allow the read only when we find an
      * instance field with the matching offset and type; or when accessing an Object[] array at an
      * in-range and correctly aligned position.
      */

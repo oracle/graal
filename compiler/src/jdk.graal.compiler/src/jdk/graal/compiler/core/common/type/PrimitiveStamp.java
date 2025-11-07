@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.core.common.type;
 
+import jdk.graal.compiler.core.common.spi.MemoryAccessExtensionProvider;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -77,7 +77,7 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
      * @param accessBits the number of bits to read from memory (must be 8, 16, 32 or 64)
      */
     protected JavaConstant readJavaConstant(MemoryAccessProvider provider, Constant base, long displacement, int accessBits) {
-        if (!isAligned(displacement, accessBits)) {
+        if (!isAligned(displacement, accessBits) && !supportsUnalignedReads(provider)) {
             // Avoid crash when performing unaligned reads (JDK-8275645)
             return null;
         }
@@ -90,6 +90,13 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
              */
             return null;
         }
+    }
+
+    private static boolean supportsUnalignedReads(MemoryAccessProvider provider) {
+        if (provider instanceof MemoryAccessExtensionProvider ext) {
+            return ext.supportsUnalignedReads();
+        }
+        return false;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.meta;
+package jdk.graal.compiler.core.common.spi;
 
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
-public interface SubstrateMemoryAccessProvider extends MemoryAccessProvider {
+/** Optional methods that a {@link jdk.vm.ci.meta.MemoryAccessProvider} may implement. */
+public interface MemoryAccessExtensionProvider extends MemoryAccessProvider {
     /**
-     * Reads a <b>compressed</b> Java {@link Object} reference using a base address, a displacement
-     * and the encoding of the reference.
-     *
-     * @see #readObjectConstant(Constant, long)
+     * If this method returns true, {@link #readPrimitiveConstant} may be called for unaligned
+     * reads.
      */
-    JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement, CompressEncoding encoding);
+    boolean supportsUnalignedReads();
 }
