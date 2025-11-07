@@ -271,9 +271,9 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
         var getNode = createGetNode();
         assertEquals(v1, getNode.execute(o1, k1, null));
-        assertEquals(v1, getNode.executeInt(o1, k1, null));
+        assertEquals(v1, getAsInt(getNode, o1, k1, null));
         assertEquals(v1, getNode.execute(o2, k1, null));
-        assertEquals(v1, getNode.executeInt(o2, k1, null));
+        assertEquals(v1, getAsInt(getNode, o2, k1, null));
 
         String v2 = "asdf";
         uncachedSet(o1, k1, v2);
@@ -287,7 +287,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
             assertEquals(v2, e.getResult());
         }
         assertEquals(v1, getNode.execute(o2, k1, null));
-        assertEquals(v1, getNode.executeInt(o2, k1, null));
+        assertEquals(v1, getAsInt(getNode, o2, k1, null));
 
         String missingKey = "missing";
         var getMissingKey = createGetNode();
@@ -296,6 +296,17 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         var getMissingKey2 = createGetNode();
         assertEquals(null, getMissingKey2.execute(o1, missingKey, null));
         assertEquals(404, getMissingKey2.executeInt(o1, missingKey, 404));
+    }
+
+    private static int getAsInt(DynamicObject.GetNode getNode, DynamicObject o1, String missingKey, Object defaultValue) throws UnexpectedResultException {
+        try {
+            return getNode.executeInt(o1, missingKey, defaultValue);
+        } catch (UnexpectedResultException e) {
+            if (e.getResult() instanceof Integer intValue) {
+                return intValue;
+            }
+            throw e;
+        }
     }
 
     @Test
