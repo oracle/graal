@@ -548,7 +548,8 @@ public final class Interpreter {
                 case LinkToStatic, LinkToSpecial, LinkToVirtual, LinkToInterface -> {
                     InterpreterResolvedJavaMethod resolutionSeed = getLinkToTarget(frame);
                     InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
-                    Object[] basicArgs = unbasic(frame, signature, false);
+                    boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
+                    Object[] basicArgs = unbasic(frame, signature, hasReceiver);
                     // This should integrate with the debugger GR-70801
                     boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceLinkTo(resolutionSeed, intrinsic, indent);
