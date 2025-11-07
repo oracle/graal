@@ -322,7 +322,7 @@ public final class GCImpl implements GC {
 
         ChunkBasedCommittedMemoryProvider.get().beforeGarbageCollection();
 
-        boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
+        boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false, forceFullGC);
         boolean outOfMemory = false;
 
         if (incremental) {
@@ -333,7 +333,7 @@ public final class GCImpl implements GC {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
             }
         }
-        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
+        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental, forceFullGC)) {
             long beginNanoTime = initialBeginNanoTime;
             if (incremental) {
                 beginNanoTime = System.nanoTime();

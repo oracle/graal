@@ -207,7 +207,7 @@ final class BasicCollectionPolicies {
     public static final class OnlyIncrementally extends BasicPolicy {
 
         @Override
-        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) {
             return false;
         }
 
@@ -220,7 +220,7 @@ final class BasicCollectionPolicies {
     public static final class OnlyCompletely extends BasicPolicy {
 
         @Override
-        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) {
             return followingIncrementalCollection || !shouldCollectYoungGenSeparately(false);
         }
 
@@ -238,7 +238,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) {
             throw VMError.shouldNotReachHere("Collection must not be initiated in the first place");
         }
 
@@ -255,8 +255,12 @@ final class BasicCollectionPolicies {
     public static final class BySpaceAndTime extends BasicPolicy {
 
         @Override
-        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
-            if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) {
+            boolean collectYoungSeparately = shouldCollectYoungGenSeparately(false);
+            if (forcedCompleteCollection && !collectYoungSeparately) {
+                return true;
+            }
+            if (!followingIncrementalCollection && collectYoungSeparately) {
                 return false;
             }
             return estimateUsedHeapAtNextIncrementalCollection().aboveThan(getMaximumHeapSize()) ||
