@@ -31,6 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.jfr.internal.PlatformEventType;
 import java.util.List;
 
+@SuppressWarnings({"unused", "static-method"}) //
 @TargetClass(className = "jdk.jfr.internal.settings.MethodSetting")
 public final class Target_jdk_jfr_internal_settings_MethodSetting {
     @Substitute
