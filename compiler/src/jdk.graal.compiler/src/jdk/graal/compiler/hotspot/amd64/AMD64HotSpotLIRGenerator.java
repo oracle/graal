@@ -311,7 +311,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
         HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
         AMD64 arch = (AMD64) target().arch;
@@ -327,7 +327,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
              */
             append(new AMD64VZeroUpper(arguments, getRegisterConfig()));
         }
-        super.emitForeignCallOp(linkage, targetAddress, result, arguments, temps, info);
+        super.emitForeignCallOp(linkage, result, arguments, temps, info);
 
         // Handle different return value locations
         Stub stub = getStub();

@@ -138,4 +138,14 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
     public GOTEntryAllocator getGOTEntryAllocator() {
         return gotEntryAllocator;
     }
+
+    @Override
+    public boolean shouldCallViaPLTGOT(SharedMethod caller, SharedMethod callee) {
+        return methodAddressResolutionSupport.shouldCallViaPLTGOT(caller, callee);
+    }
+
+    @Override
+    public int getMethodGotEntry(SharedMethod method) {
+        return gotEntryAllocator.getMethodGotEntry(method);
+    }
 }
