@@ -42,7 +42,6 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -63,7 +62,6 @@ import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
-import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -72,7 +70,6 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
-import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerMulHighNode;
 import jdk.graal.compiler.nodes.calc.RoundNode;
@@ -1216,10 +1213,11 @@ public class TruffleGraphBuilderPlugins {
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
+                        return true;
                     } else {
                         TypeReference type;
                         if (isExactType.asJavaConstant().asInt() != 0) {
-                            assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                            GraalError.guarantee(javaType.isConcrete(), "exact type is not a concrete class: %s", javaType);
                             type = TypeReference.createExactTrusted(javaType);
                         } else {
                             type = TypeReference.createTrusted(b.getAssumptions(), javaType);
@@ -1227,30 +1225,14 @@ public class TruffleGraphBuilderPlugins {
 
                         boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
                         Stamp piStamp = StampFactory.object(type, trustedNonNull);
-
-                        ConditionAnchorNode valueAnchorNode = null;
-                        if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
-                            // Nothing to do.
-                        } else {
-                            boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
-                                            NodeView.DEFAULT);
-
-                            if (compareNode instanceof LogicConstantNode) {
-                                LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
-                                if (logicConstantNode.getValue()) {
-                                    skipAnchor = true;
-                                }
-                            }
-
-                            if (!skipAnchor) {
-                                valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
-                            }
+                        ValueNode guard = null;
+                        // If the condition is the constant true then no guard is needed
+                        if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
+                            guard = b.add(ConditionAnchorNode.create(condition, constantReflection, b.getMetaAccess(), b.getOptions(), NodeView.DEFAULT));
                         }
-
-                        b.addPush(JavaKind.Object, trustedBox(type, types, PiNode.create(object, piStamp, valueAnchorNode)));
+                        b.addPush(JavaKind.Object, trustedBox(type, types, PiNode.create(object, piStamp, guard)));
+                        return true;
                     }
-                    return true;
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
@@ -1308,9 +1290,7 @@ public class TruffleGraphBuilderPlugins {
                 ValueNode guard = null;
                 // If the condition is the constant true then no guard is needed
                 if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
-                    LogicNode compare = b.add(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
-                                    ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
-                    guard = b.add(new ConditionAnchorNode(compare));
+                    guard = b.add(ConditionAnchorNode.create(condition, b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), NodeView.DEFAULT));
                 }
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, guard, forceLocation)));
                 return true;
