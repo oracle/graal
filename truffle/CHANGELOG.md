@@ -37,6 +37,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
+* GR-71245: Exposed `ByteBufferDataInput` as public and added a `position` method that returns the underlying buffer's position.
 
 
 ## Version 25.0
