@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
@@ -35,6 +37,10 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.Map;
+import java.util.function.Function;
 
 final class HotSpotTruffleHostEnvironment extends TruffleHostEnvironment {
 
@@ -80,7 +86,8 @@ final class HotSpotTruffleHostEnvironment extends TruffleHostEnvironment {
 
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            return runtime().getHostMethodInfo(method);
+            Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationValueSupport.getDeclaredAnnotationValues(method);
+            return computeHostMethodInfo(annotations, Function.identity());
         }
 
     }

@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.host;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -38,6 +39,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * This class manages Truffle resources used during host Java compilation. A host environment is
@@ -160,6 +164,31 @@ public abstract class TruffleHostEnvironment {
      */
     public TruffleRuntimeScope openTruffleRuntimeScope() {
         return null;
+    }
+
+    /**
+     * Computes a {@link HostMethodInfo} instance based on the annotations present on a given
+     * method.
+     *
+     * @param declaredAnnotationValues a map of method annotations keyed by their declaring
+     *            {@link ResolvedJavaType}
+     * @param unwrapType a function that unwraps a {@link ResolvedJavaType} obtained from
+     *            {@code hostTypes} to its underlying host {@link ResolvedJavaType}. In
+     *            native-image, known Truffle types are represented as {@code AnalysisType}, while
+     *            the keys in {@code declaredAnnotationValues} correspond to host JVMCI types.
+     *            Therefore, each {@code AnalysisType} must be unwrapped via
+     *            {@code OriginalClassProvider.getOriginalType(JavaType)} to correctly access the
+     *            corresponding annotation entries in {@code declaredAnnotationValues}.
+     */
+    protected final HostMethodInfo computeHostMethodInfo(Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues,
+                    Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
+        TruffleKnownHostTypes hostTypes = types();
+        boolean isTruffleBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.TruffleBoundary));
+        boolean isBytecodeInterpreterSwitch = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitch));
+        boolean isBytecodeInterpreterSwitchBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitchBoundary));
+        boolean isInliningCutoff = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningCutoff));
+        boolean isInliningRoot = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningRoot));
+        return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
     }
 
     @LibGraalService
