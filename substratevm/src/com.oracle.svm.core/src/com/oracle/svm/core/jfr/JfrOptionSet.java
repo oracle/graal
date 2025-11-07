@@ -75,10 +75,26 @@ public class JfrOptionSet {
     }
 
     public void validateAndAdjustMemoryOptions() {
+        maybeAdjustDefaults();
         ensureValidMinimumSizes();
         ensureValidMemoryRelations();
         adjustMemoryOptions();
         assert checkPostCondition();
+    }
+
+    /**
+     * We expect that Native Image executables will require lesser defaults than JFR on the JVM. So
+     * to reduce JFR native memory consumption, we use lower default values. We should not adjust
+     * default values too early (at build time) because if any settings are user defined, we
+     * shouldn't change any values.
+     */
+    private void maybeAdjustDefaults() {
+        if (!globalBufferSize.isUserValue() && !globalBufferCount.isUserValue() && !memorySize.isUserValue()) {
+            globalBufferSize.setValue(globalBufferSize.defaultValue / 2);
+            globalBufferCount.setValue(globalBufferCount.defaultValue / 2);
+            // Update record of total size
+            memorySize.setValue(globalBufferSize.getValue() * globalBufferCount.getValue());
+        }
     }
 
     private void ensureValidMinimumSizes() {
