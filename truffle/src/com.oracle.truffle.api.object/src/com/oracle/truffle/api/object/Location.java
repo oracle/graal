@@ -259,21 +259,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 long longValue = UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
                 return (int) longValue;
             }
-        } else if (this instanceof ObjectLocation objectLocation) {
-            Object value;
-            if (field == null) {
-                Object array = getObjectArray(store, guard);
-                long offset = getObjectArrayOffset();
-                value = UnsafeAccess.unsafeGetObject(array, offset, guard, this);
-            } else {
-                if (UseVarHandle) {
-                    value = field.varHandle().get(store);
-                } else {
-                    field.receiverCheck(store);
-                    value = UnsafeAccess.unsafeGetObject(store, getFieldOffset(), guard, this);
-                }
-            }
-            return expectInteger(CompilerDirectives.inInterpreter() ? value : objectLocation.assumedTypeCast(value, guard));
         }
         return getIntUnexpected(store, expectedShape, guard);
     }
@@ -300,21 +285,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 field.receiverCheck(store);
                 return UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
             }
-        } else if (this instanceof ObjectLocation objectLocation) {
-            Object value;
-            if (field == null) {
-                Object array = getObjectArray(store, guard);
-                long offset = getObjectArrayOffset();
-                value = UnsafeAccess.unsafeGetObject(array, offset, guard, this);
-            } else {
-                if (UseVarHandle) {
-                    value = field.varHandle().get(store);
-                } else {
-                    field.receiverCheck(store);
-                    value = UnsafeAccess.unsafeGetObject(store, getFieldOffset(), guard, this);
-                }
-            }
-            return expectLong(CompilerDirectives.inInterpreter() ? value : objectLocation.assumedTypeCast(value, guard));
         }
         return getLongUnexpected(store, expectedShape, guard);
     }
@@ -342,21 +312,6 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 long longValue = UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
                 return Double.longBitsToDouble(longValue);
             }
-        } else if (this instanceof ObjectLocation objectLocation) {
-            Object value;
-            if (field == null) {
-                Object array = getObjectArray(store, guard);
-                long offset = getObjectArrayOffset();
-                value = UnsafeAccess.unsafeGetObject(array, offset, guard, this);
-            } else {
-                if (UseVarHandle) {
-                    value = field.varHandle().get(store);
-                } else {
-                    field.receiverCheck(store);
-                    value = UnsafeAccess.unsafeGetObject(store, getFieldOffset(), guard, this);
-                }
-            }
-            return expectDouble(CompilerDirectives.inInterpreter() ? value : objectLocation.assumedTypeCast(value, guard));
         }
         return getDoubleUnexpected(store, expectedShape, guard);
     }
