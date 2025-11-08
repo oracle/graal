@@ -278,36 +278,79 @@ public final class AbstractInterpretationLogger {
     }
 
     /**
-     * Dump the resulting graph to IGV
+     * Session-style IGV dump helper that groups multiple dumps (e.g., per-applier) under a
+     * single top-level scope and uses Graal's dump levels (BASIC/INFO/INFO+1/ENABLED).
      */
-    public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
-        if (method == null || graph == null) {
-            System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
-            return;
+    public static final class IGVDumpSession implements AutoCloseable {
+        private final DebugContext debug;
+        private final StructuredGraph graph;
+        private final String scopeName;
+        private final DebugContext.Scope scope;
+        private boolean dumpedBefore;
+
+        private IGVDumpSession(DebugContext debug, StructuredGraph graph, String scopeName) throws Throwable {
+            this.debug = debug;
+            this.graph = graph;
+            this.scopeName = scopeName == null ? "AI_Session" : scopeName;
+            this.scope = this.debug.scope(this.scopeName, this.graph);
+            this.dumpedBefore = false;
         }
 
-        AnalysisServices services;
-        try {
-            services = AnalysisServices.getInstance();
-        } catch (IllegalStateException ise) {
-            System.err.println("dumpGraph: AnalysisServices not initialized; skipping dump for method=" + method + ", phase=" + phaseName);
-            return;
-        }
-
-        var bb = services.getInflation();
-        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
-
-        try (DebugContext.Scope s = debug.scope("Abstract Interpretation", graph)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, "After phase " + phaseName);
-        } catch (Throwable ex) {
-            try {
-                throw debug.handle(ex);
-            } catch (Throwable inner) {
-                System.err.println("dumpGraph: failed to dump graph for method=" + method + ", phase=" + phaseName + ": " + inner.getMessage());
-                inner.printStackTrace(System.err);
+        public void dumpBeforeSuite(String title, int count) {
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before %s (%d)", title, count);
+                dumpedBefore = true;
             }
         }
+
+        public void dumpApplierSubphase(String applierDescription) {
+            if (debug.isDumpEnabled(DebugContext.INFO_LEVEL + 1)) {
+                debug.dump(DebugContext.INFO_LEVEL + 1, graph, "After applier %s", applierDescription);
+            } else if (debug.isDumpEnabled(DebugContext.ENABLED_LEVEL) && dumpedBefore) {
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "After applier %s", applierDescription);
+            }
+        }
+
+        public void dumpAfterSuite(String title) {
+            if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "After %s", title);
+            } else if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+                debug.dump(DebugContext.INFO_LEVEL, graph, "After %s", title);
+            } else if (!dumpedBefore && debug.isDumpEnabled(DebugContext.ENABLED_LEVEL)) {
+                debug.dump(DebugContext.ENABLED_LEVEL, graph, "After %s", title);
+            }
+        }
+
+        @Override
+        public void close() {
+            scope.close();
+        }
+    }
+
+    /**
+     * Opens an {@link IGVDumpSession} using the graph's {@link DebugContext} when available or
+     * creating a new one if necessary. Returns null if dumping isn't possible (no services).
+     */
+    public static IGVDumpSession openIGVDumpSession(AnalysisMethod method, StructuredGraph graph, String scopeName) throws Throwable {
+        if (graph == null) {
+            return null;
+        }
+        DebugContext debug = graph.getDebug();
+        if (debug == null) {
+            if (method == null) {
+                return null;
+            }
+            AnalysisServices services;
+            try {
+                services = AnalysisServices.getInstance();
+            } catch (IllegalStateException ise) {
+                return null;
+            }
+            var bb = services.getInflation();
+            DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
+            debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
+        }
+        return new IGVDumpSession(debug, graph, scopeName);
     }
 
     /**
