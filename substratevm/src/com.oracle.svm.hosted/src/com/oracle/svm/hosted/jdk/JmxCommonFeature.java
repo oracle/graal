@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 
@@ -37,7 +38,6 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -183,8 +183,8 @@ public class JmxCommonFeature implements InternalFeature {
     }
 
     private static void configureJNI() {
-        JNIRuntimeAccess.register(Arrays.class);
-        JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Arrays.class, "asList", Object[].class));
+        RuntimeJNIAccess.register(Arrays.class);
+        RuntimeJNIAccess.register(ReflectionUtil.lookupMethod(Arrays.class, "asList", Object[].class));
     }
 
     /**

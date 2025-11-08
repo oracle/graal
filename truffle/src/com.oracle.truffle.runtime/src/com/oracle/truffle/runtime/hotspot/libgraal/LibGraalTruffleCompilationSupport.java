@@ -48,6 +48,7 @@ import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.runtime.debug.JFRListener;
 import com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope.DetachAction;
 
@@ -75,6 +76,7 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
         } catch (UnsatisfiedLinkError e) {
             // deliberately ignored, the entry points might not be there
         }
+        TruffleToLibGraalCalls3.initialize();
         TruffleToLibGraalCalls.initializeIsolate(isolateThreadId, LibGraalTruffleCompilationSupport.class);
     }
 
@@ -107,10 +109,27 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     public void registerRuntime(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
-            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime)) {
+            if (!registerRuntimeImpl(runtime)) {
                 throw new IllegalStateException("Truffle with libgraal cannot be loaded in multiple class loaders. Make sure Truffle is loaded with the system class loader.");
             }
         }
+    }
+
+    private static boolean registerRuntimeImpl(TruffleCompilerRuntime runtime) {
+        if (TruffleToLibGraalCalls3.REGISTER_RUNTIME_HANDLE != null) {
+            try {
+                return (boolean) TruffleToLibGraalCalls3.REGISTER_RUNTIME_HANDLE.invoke(getIsolateThread(), runtime, JFRListener.nativeState());
+            } catch (Throwable t) {
+                throw sthrow(RuntimeException.class, t);
+            }
+        } else {
+            return TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), runtime);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
+        throw (T) t;
     }
 
     @SuppressWarnings("try")
@@ -172,9 +191,19 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
     @SuppressWarnings("try")
     static long handle(TruffleCompilerRuntime runtime) {
         try (LibGraalScope scope = new LibGraalScope()) {
-            return scope.getIsolate().getSingleton(Handle.class, () -> {
-                return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass()));
-            }).getHandle();
+            return scope.getIsolate().getSingleton(Handle.class, () -> new Handle(initializeRuntimeImpl(runtime))).getHandle();
+        }
+    }
+
+    private static long initializeRuntimeImpl(TruffleCompilerRuntime runtime) {
+        if (TruffleToLibGraalCalls3.INITIALIZE_RUNTIME_HANDLE != null) {
+            try {
+                return (long) TruffleToLibGraalCalls3.INITIALIZE_RUNTIME_HANDLE.invoke(getIsolateThread(), runtime, runtime.getClass(), JFRListener.nativeState());
+            } catch (Throwable t) {
+                throw sthrow(RuntimeException.class, t);
+            }
+        } else {
+            return TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), runtime, runtime.getClass());
         }
     }
 

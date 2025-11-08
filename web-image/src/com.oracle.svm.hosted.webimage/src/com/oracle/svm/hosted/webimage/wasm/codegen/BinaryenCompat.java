@@ -27,11 +27,17 @@ package com.oracle.svm.hosted.webimage.wasm.codegen;
 
 import java.util.Objects;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.webimage.options.WebImageOptions;
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
 import com.oracle.svm.hosted.webimage.wasm.ast.visitors.WasmPrinter;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.site.Reference;
 
 /**
@@ -43,7 +49,23 @@ public class BinaryenCompat {
 
     public static class Options {
         @Option(help = "Use Binaryen (wasm-as) to assemble the final Wasm binary")//
-        public static final HostedOptionKey<Boolean> UseBinaryen = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> UseBinaryen = new HostedOptionKey<>(false) {
+            @Override
+            public Boolean getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+
+            @Override
+            public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                if (values.containsKey(this)) {
+                    return (Boolean) values.get(this);
+                }
+
+                // Binaryen is the default for WasmGC or when the new exception handling is used.
+                return WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC || !WebImageWasmOptions.LegacyExceptions.getValueOrDefault(values);
+            }
+        };
     }
 
     public static boolean usesBinaryen() {

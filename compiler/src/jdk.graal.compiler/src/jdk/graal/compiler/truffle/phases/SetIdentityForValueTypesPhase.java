@@ -30,20 +30,17 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        TruffleCompilerRuntime rt = context.runtime();
         for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualInstanceNode) {
                 VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
                 ResolvedJavaType type = virtualInstanceNode.type();
-                if (rt.isValueType(type)) {
+                if (context.getPartialEvaluator().isValueType(type)) {
                     virtualInstanceNode.setIdentity(false);
                 }
             }

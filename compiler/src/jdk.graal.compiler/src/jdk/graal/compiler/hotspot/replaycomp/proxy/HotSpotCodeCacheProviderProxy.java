@@ -111,7 +111,7 @@ public final class HotSpotCodeCacheProviderProxy extends HotSpotCodeCacheProvide
         return (SpeculationLog) handle(createSpeculationLogMethod, createSpeculationLogInvokable);
     }
 
-    private static final SymbolicMethod getMaxCallTargetOffsetMethod = method("getMaxCallTargetOffset", long.class);
+    public static final SymbolicMethod getMaxCallTargetOffsetMethod = method("getMaxCallTargetOffset", long.class);
     private static final InvokableMethod getMaxCallTargetOffsetInvokable = (receiver, args) -> ((HotSpotCodeCacheProvider) receiver).getMaxCallTargetOffset((long) args[0]);
 
     @Override

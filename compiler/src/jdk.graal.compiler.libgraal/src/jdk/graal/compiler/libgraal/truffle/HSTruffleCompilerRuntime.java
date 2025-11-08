@@ -24,14 +24,36 @@
  */
 package jdk.graal.compiler.libgraal.truffle;
 
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnIsolateShutdown;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
+import static org.graalvm.jniutils.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIMethodScope.scope;
+
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
+
 import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
@@ -47,32 +69,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JByteArray;
-import org.graalvm.jniutils.JNI.JClass;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNI.JString;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-
-import java.util.Arrays;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnIsolateShutdown;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
-import static org.graalvm.jniutils.JNIMethodScope.env;
-import static org.graalvm.jniutils.JNIMethodScope.scope;
 
 public final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
@@ -82,31 +79,23 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     private static final Class<?> TRANSLATED_EXCEPTION = LibGraalFeature.lookupClass("jdk.internal.vm.TranslatedException");
 
     private final ResolvedJavaType classLoaderDelegate;
+    private final CCharPointer javaInstrumentationActive;
     final TruffleFromLibGraalCalls calls;
 
-    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, JClass peer) {
+    HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, JClass peer, CCharPointer javaInstrumentationActive) {
         /*
          * Note global duplicates may happen if the compiler is initialized by a host compilation.
          */
         super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
+        this.javaInstrumentationActive = javaInstrumentationActive;
         this.calls = new TruffleFromLibGraalCalls(env, peer);
     }
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
     @Override
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        long methodHandle = HotSpotJVMCIRuntime.runtime().translate(method);
-        JByteArray hsByteArray = HSTruffleCompilerRuntimeGen.callGetPartialEvaluationMethodInfo(calls, env(), getHandle(), methodHandle);
-        CCharPointer buffer = StackValue.get(5);
-        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 5, buffer);
-        BinaryInput in = BinaryInput.create(buffer, 5);
-        LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[in.readByte()];
-        InlineKind peInlineKind = InlineKind.values()[in.readByte()];
-        InlineKind inlineKind = InlineKind.values()[in.readByte()];
-        boolean inlineable = in.readBoolean();
-        boolean isSpecializationMethod = in.readBoolean();
-        return new PartialEvaluationMethodInfo(loopExplosionKind, peInlineKind, inlineKind, inlineable, isSpecializationMethod);
+        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getMethodInfo()");
     }
 
     @Override
@@ -151,35 +140,9 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
         return HSTruffleCompilerRuntimeGen.callIsValueType(calls, env(), getHandle(), typeHandle);
     }
 
-    @TruffleFromLibGraal(GetConstantFieldInfo)
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        ResolvedJavaType enclosingType = field.getDeclaringClass();
-        boolean isStatic = field.isStatic();
-        ResolvedJavaField[] declaredFields = isStatic ? enclosingType.getStaticFields() : enclosingType.getInstanceFields(false);
-        int fieldIndex = -1;
-        for (int i = 0; i < declaredFields.length; i++) {
-            if (field.equals(declaredFields[i])) {
-                fieldIndex = i;
-                break;
-            }
-        }
-        if (fieldIndex == -1) {
-            throw new IllegalStateException(String.format(
-                            "%s field: %s declared in: %s is not in declared fields: %s",
-                            isStatic ? "Static" : "Instance",
-                            field,
-                            enclosingType,
-                            Arrays.toString(declaredFields)));
-        }
-        long typeHandle = HotSpotJVMCIRuntime.runtime().translate(enclosingType);
-        int rawValue = HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo(calls, env(), getHandle(), typeHandle, isStatic, fieldIndex);
-        return switch (rawValue) {
-            case Integer.MIN_VALUE -> null;
-            case -1 -> ConstantFieldInfo.CHILD;
-            case -2 -> ConstantFieldInfo.CHILDREN;
-            default -> ConstantFieldInfo.forDimensions(rawValue);
-        };
+        throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getConstantFieldInfo()");
     }
 
     @Override
@@ -251,5 +214,10 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     @TruffleFromLibGraal(OnIsolateShutdown)
     public void notifyShutdown(JNIEnv env) {
         HSTruffleCompilerRuntimeGen.callOnIsolateShutdown(calls, env, IsolateUtil.getIsolateID());
+    }
+
+    @Override
+    public boolean isJavaInstrumentationActive() {
+        return javaInstrumentationActive.isNonNull() && javaInstrumentationActive.read() != 0;
     }
 }

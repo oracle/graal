@@ -71,6 +71,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.ffi.NoNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIStaticLibNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -266,8 +267,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
-        this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
         this.nativeBackendId = setNativeBackendId(env);
+        this.useEspressoLibs = setUseEspressoLibs(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -345,6 +346,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
                 if (OS.getCurrent() == OS.Linux) {
                     nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else if (OS.getCurrent() == OS.Darwin) {
+                    nativeBackend = NFIStaticLibNativeAccess.Provider.ID;
                 } else {
                     nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
@@ -353,6 +356,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             }
         }
         return nativeBackend;
+    }
+
+    private boolean setUseEspressoLibs(final TruffleLanguage.Env env) {
+        // For no-native we turn on espressoLibs by default
+        boolean flagSet = env.getOptions().hasBeenSet(EspressoOptions.UseEspressoLibs);
+        boolean userFlag = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        if (nativeBackendId.equals(NoNativeAccess.Provider.ID)) {
+            if (flagSet && !userFlag) {
+                throw EspressoError.fatal("You should not set UseEspressoLibs to false with no-native backend!");
+            }
+            return true;
+        } else {
+            return userFlag;
+        }
     }
 
     @Override

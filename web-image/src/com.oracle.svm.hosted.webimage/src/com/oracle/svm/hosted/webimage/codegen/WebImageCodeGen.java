@@ -396,7 +396,7 @@ public abstract class WebImageCodeGen {
 
             codeBuffer.emitText(codeGenTool.vmClassName() + ".");
             WebImageEntryFunctionLowerer.FUNCTION.emitCall(codeGenTool, Emitter.of("load_cmd_args()"), Emitter.of("config"));
-            codeBuffer.emitText(".catch(console.error)");
+            codeBuffer.emitText(".catch(e => { console.error(e); throw e; })");
 
             codeBuffer.emitInsEnd();
         } else {

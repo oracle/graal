@@ -405,6 +405,38 @@ suite = {
             },
         },
 
+        # same as mokapot, but with statically linked OpenJDK libraries.
+        "com.oracle.truffle.espresso.fatpot": {
+            "class": "CustomLibJVMLinking",
+            "subDir": "src",
+            "dir": "com.oracle.truffle.espresso.mokapot",
+            "native": "shared_lib",
+            "deliverable": "jvm",
+            "platformDependent": True,
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror", "-std=c11", "-DESPRESSO_NFI_STATIC"],
+                        "ldflags": [
+                            "-Wl,-install_name,@rpath/libjvm.dylib",
+                            "-Wl,-rpath,@loader_path/.",
+                            "-Wl,-rpath,@loader_path/..",
+                            "-Wl,-current_version,1.0.0",
+                            "-Wl,-compatibility_version,1.0.0"
+                        ],
+                        "multitarget": {
+                            "compiler": ["host", "*"]
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "GR-66340: Darwin only for now",
+                    },
+                },
+            },
+        },
+
         "com.oracle.truffle.espresso.shadowed.asm" : {
             # Shadowed ASM library (org.ow2.asm:asm)
             "subDir" : "src",
@@ -654,6 +686,29 @@ suite = {
             "maven": False,
         },
 
+        "ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT": {
+            "type": "dir",
+            "platformDependent": True,
+            "platforms": "local",
+            "os": {
+                "darwin": {
+                    "layout": {
+                        "./fatpot/": [
+                            "dependency:espresso:com.oracle.truffle.espresso.fatpot/*/<multitarget_libc_selection>/<lib:jvm>",
+                        ]
+                    },
+                },
+                "<others>": {
+                    "layout": {
+                        "./": [
+                            "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                        ]
+                    },
+                },
+            },
+            "maven": False,
+        },
+
         "ESPRESSO_JVM_STANDALONE": {
             "type": "dir",
             "pruning_mode": "optional",
@@ -683,7 +738,7 @@ suite = {
                 ],
                 "languages/java/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                    "dependency:espresso:ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT/*",
                 ],
                 "languages/java/": [
                     {
@@ -765,10 +820,19 @@ suite = {
                 "darwin-aarch64",
                 "windows-amd64",
             ],
+            "pruning_mode": "optional",
             "layout": {
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                ],
+                "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
                 ],
                 "META-INF/resources/java/espresso-libs/<os>/<arch>/": "dependency:espresso:ESPRESSO_SUPPORT/*",
             },
@@ -841,7 +905,15 @@ suite = {
                 "lib/": [
                     # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
-                ]
+                ],
+                "lib/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
+                ],
             },
             "maven": False,
         },
@@ -853,6 +925,14 @@ suite = {
             "layout": {
                 "truffle/": [
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/*/<multitarget_libc_selection>/<lib:jvm>",
+                ],
+                "truffle/fatpot/": [
+                    {
+                        'source_type': 'dependency',
+                        'dependency': 'espresso:com.oracle.truffle.espresso.fatpot',
+                        'path': '*/<multitarget_libc_selection>/<lib:jvm>',
+                        'optional': True,
+                    },
                 ],
             },
             "maven": False,

@@ -1,7 +1,7 @@
 (;
   Wasm text file to verify the wat2wasm assembler works correctly.
 
-  Uses features from the exception handling proposal
+  Uses features from the legacy exception handling proposal
 ;)
 (module
   (tag $tag0 (param i32))

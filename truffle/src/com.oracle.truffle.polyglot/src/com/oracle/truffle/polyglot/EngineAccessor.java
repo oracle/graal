@@ -96,6 +96,7 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -156,6 +157,7 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final BytecodeSupport BYTECODE = ACCESSOR.bytecodeSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
 
@@ -2300,6 +2302,35 @@ final class EngineAccessor extends Accessor {
         @Override
         public DispatchOutputStream getEngineOut(Object engine) {
             return ((PolyglotEngineImpl) engine).out;
+        }
+
+        @Override
+        public <T> T getOrCreateBytecodeData(Object languageInstance, Function<Object, T> create) {
+            PolyglotSharingLayer layer = (PolyglotSharingLayer) languageInstance;
+            if (layer == null) {
+                layer = (PolyglotSharingLayer) getCurrentSharingLayer();
+                if (layer == null) {
+                    // we can't support engine instruction tracers for disconnected code
+                    return null;
+                }
+            }
+            return layer.getOrCreateBytecodeData(create);
+        }
+
+        @Override
+        public void forEachLoadedRootNode(Object sharingLayer, Consumer<RootNode> rootNodeUpdater) {
+            PolyglotSharingLayer layer = (PolyglotSharingLayer) sharingLayer;
+            for (CallTarget target : EngineAccessor.INSTRUMENT.getLoadedCallTargets(layer.engine.instrumentationHandler)) {
+                rootNodeUpdater.accept(((RootCallTarget) target).getRootNode());
+            }
+        }
+
+        @Override
+        public Object getSharingLayer(Object languageInstance) {
+            if (languageInstance == null) {
+                return null;
+            }
+            return ((PolyglotLanguageInstance) languageInstance).sharing;
         }
 
     }

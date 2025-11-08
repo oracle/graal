@@ -358,4 +358,12 @@ public interface TruffleCompilerRuntime {
      * silent.
      */
     boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException);
+
+    /**
+     * Returns {@code true} if Java VM level instrumentation, such as Java Flight Recorder, is
+     * enabled.
+     */
+    default boolean isJavaInstrumentationActive() {
+        return false;
+    }
 }

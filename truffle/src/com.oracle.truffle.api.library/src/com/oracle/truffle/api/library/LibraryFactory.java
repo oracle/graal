@@ -168,7 +168,7 @@ public abstract class LibraryFactory<T extends Library> {
     private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private volatile CachedAOTExports aot;
     private final ProxyExports proxyExports = new ProxyExports();
-    final Map<String, Message> nameToMessages;
+    final Map<String, List<Message>> nameToMessages;
     @CompilationFinal private volatile T uncachedDispatch;
 
     private final DynamicDispatchLibrary dispatchLibrary;
@@ -212,11 +212,11 @@ public abstract class LibraryFactory<T extends Library> {
         assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
         this.libraryClass = libraryClass;
         this.messages = Collections.unmodifiableList(messages);
-        Map<String, Message> messagesMap = new LinkedHashMap<>();
+        Map<String, List<Message>> messagesMap = new LinkedHashMap<>();
         for (Message message : getMessages()) {
             assert message.library == null;
             message.library = (LibraryFactory<Library>) this;
-            messagesMap.putIfAbsent(message.getSimpleName(), message);
+            messagesMap.computeIfAbsent(message.getSimpleName(), (name) -> new ArrayList<>(1)).add(message);
         }
         this.nameToMessages = messagesMap;
         this.dispatchLibrary = dynamicDispatchEnabled ? LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached() : null;
@@ -796,22 +796,50 @@ public abstract class LibraryFactory<T extends Library> {
         return null;
     }
 
-    static Message resolveMessage(Class<? extends Library> library, String message, boolean fail) {
+    static Message resolveMessage(Class<? extends Library> library, String message, Class<?>[] arguments, boolean fail) {
         Objects.requireNonNull(message);
         LibraryFactory<?> lib = resolveImpl(library, fail);
         if (lib == null) {
             assert !fail;
             return null;
         }
-        return resolveLibraryMessage(lib, message, fail);
+        return resolveLibraryMessage(lib, message, arguments, fail);
     }
 
-    private static Message resolveLibraryMessage(LibraryFactory<?> lib, String message, boolean fail) {
-        Message foundMessage = lib.nameToMessages.get(message);
-        if (fail && foundMessage == null) {
+    private static Message resolveLibraryMessage(LibraryFactory<?> lib, String message, Class<?>[] arguments, boolean fail) {
+        List<Message> foundMessage = lib.nameToMessages.get(message);
+        if (arguments == null) {
+            if (foundMessage != null) {
+                Message other = null;
+                for (Message m : foundMessage) {
+                    // return deprecated message first, for compatibility reasons.
+                    if (m.isDeprecated()) {
+                        return m;
+                    }
+                    other = m;
+                }
+                if (other != null) {
+                    return other;
+                }
+            }
+        } else {
+            if (foundMessage != null) {
+                outer: for (Message m : foundMessage) {
+                    if (m.getParameterCount() == arguments.length) {
+                        for (int i = 0; i < m.getParameterCount(); i++) {
+                            if (m.getParameterType(i) != arguments[i]) {
+                                continue outer;
+                            }
+                        }
+                        return m;
+                    }
+                }
+            }
+        }
+        if (fail) {
             throw new IllegalArgumentException(String.format("Unknown message '%s' for library '%s' specified.", message, lib.getLibraryClass().getName()));
         }
-        return foundMessage;
+        return null;
     }
 
     /**

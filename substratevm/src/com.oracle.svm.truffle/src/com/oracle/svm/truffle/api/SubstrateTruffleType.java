@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni;
+package com.oracle.svm.truffle.api;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.graal.meta.SubstrateType;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
-/**
- * Support for registering classes, methods and fields before and during the analysis so they are
- * accessible via JNI at image runtime.
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class JNIRuntimeAccess {
-    private JNIRuntimeAccess() {
+public class SubstrateTruffleType extends SubstrateType implements TruffleType {
+
+    private final boolean valueType;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateTruffleType(JavaKind kind, DynamicHub hub, boolean valueType) {
+        super(kind, hub);
+        this.valueType = valueType;
     }
 
-    public static void register(Class<?>... classes) {
-        RuntimeJNIAccess.register(classes);
-    }
-
-    public static void register(Executable... methods) {
-        RuntimeJNIAccess.register(methods);
-    }
-
-    public static void register(Field... fields) {
-        RuntimeJNIAccess.register(fields);
-    }
-
-    public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(AccessCondition.unconditional(), finalIsWritable, false, fields);
+    @Override
+    public boolean isValueType() {
+        return valueType;
     }
 }

@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -34,6 +36,8 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.FieldKey;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
@@ -50,6 +54,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
@@ -93,6 +98,11 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         return constantInfoCache.get(field);
+    }
+
+    @Override
+    public boolean isValueType(ResolvedJavaType type) {
+        return AnnotationValueSupport.getDeclaredAnnotationValue(types.CompilerDirectives_ValueType, type) != null;
     }
 
     @Override
@@ -176,7 +186,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
-            PartialEvaluationMethodInfo methodInfo = config.runtime().getPartialEvaluationMethodInfo(method);
+            Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(method);
+            PartialEvaluationMethodInfo methodInfo = computePartialEvaluationMethodInfo(config.runtime(), method, declaredAnnotationValues, getTypes(), Function.identity());
             /*
              * We can canonicalize the instances to reduce space required in the cache. There are
              * only a small number of possible instances of PartialEvaluationMethodInfo as it just
@@ -200,9 +211,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
-            return config.runtime().getConstantFieldInfo(field);
+            Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(field);
+            return computeConstantFieldInfo(field, declaredAnnotationValues, getTypes(), Function.identity());
         }
-
     }
-
 }

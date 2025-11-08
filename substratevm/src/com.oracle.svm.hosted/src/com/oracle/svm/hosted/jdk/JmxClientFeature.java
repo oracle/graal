@@ -25,13 +25,13 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -53,8 +53,8 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
     }
 
     private static void configureJNI() {
-        JNIRuntimeAccess.register(Boolean.class);
-        JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Boolean.class, "getBoolean", String.class));
+        RuntimeJNIAccess.register(Boolean.class);
+        RuntimeJNIAccess.register(ReflectionUtil.lookupMethod(Boolean.class, "getBoolean", String.class));
     }
 
     /**

@@ -87,8 +87,25 @@ import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
- * This class manages the set of file descriptors of a context. File descriptors are associated with
- * {@link String} paths and {@link Channel}s, their capabilities depending on the kind of channel.
+ * Provides IO functionality in EspressoLibs mode (see
+ * {@link com.oracle.truffle.espresso.ffi.EspressoLibsNativeAccess}). This requires managing the set
+ * of file descriptors of a context.
+ * <p>
+ * This class plays a crucial role in EspressoLibs mode. Every guest channel gets associated with a
+ * FileDescriptors which links to the corresponding host channel here {@link TruffleIO#files}. In
+ * substitutions of native IO methods we receive the FileDescriptor as an argument which is then
+ * used to retrieve the corresponding host channel. Then we can easily implement the semantics of
+ * the guest channel's native methods using this host channel. For example see
+ * {@link TruffleIO#readBytes(int, ByteBuffer)}.
+ * <p>
+ * For file IO the host channels is created over the Truffle API
+ * {@link TruffleFile#newByteChannel(Set, FileAttribute[])} making this class practically a binding
+ * layer between the guest file system (see sun.nio.fs.TruffleFileSystemProvider) and Truffle's
+ * Virtual File System (see {@link org.graalvm.polyglot.io.FileSystem}).
+ * <p>
+ * For socket IO, file descriptors are associated with host network channels (see
+ * {@link #openSocket(boolean, boolean, boolean, boolean)}).
+ * <p>
  * Adapted from GraalPy's PosixResources.
  */
 public final class TruffleIO implements ContextAccess {
@@ -163,6 +180,9 @@ public final class TruffleIO implements ContextAccess {
      * Context-local file-descriptor mappings.
      */
     private final EspressoContext context;
+    /**
+     * The mapping between guest FileDescriptors and host channels.
+     */
     private final Map<Integer, ChannelWrapper> files;
 
     // 0, 1 and 2 are reserved for standard streams.

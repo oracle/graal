@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.string.Encoding;
@@ -56,35 +57,43 @@ import com.oracle.truffle.regex.tregex.string.Encoding;
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
 
-    protected final RegexSource source;
-    private final RegexLanguage language;
-
     private SourceSection sourceSection;
 
-    protected RegexBodyNode(RegexLanguage language, RegexSource source) {
+    protected RegexBodyNode(RegexLanguage language) {
         super(language);
-        this.source = source;
-        this.language = language;
     }
 
     protected RegexBodyNode(RegexBodyNode copy) {
-        this(copy.language, copy.source);
+        this(copy.getRegexLanguage());
+    }
+
+    private RegexRootNode getRegexRootNode() {
+        Node parent = getParent();
+        if (parent instanceof RegexBodyNodeWrapper) {
+            parent = parent.getParent();
+        }
+        assert parent != null;
+        return (RegexRootNode) parent;
     }
 
     public RegexSource getSource() {
-        return source;
+        RegexSource source1 = getRegexRootNode().getSource();
+        CompilerAsserts.partialEvaluationConstant(source1);
+        return source1;
     }
 
     public RegexLanguage getRegexLanguage() {
-        return language;
+        return getRegexRootNode().getLanguage(RegexLanguage.class);
     }
 
     public Encoding getEncoding() {
-        return source.getEncoding();
+        Encoding encoding = getSource().getEncoding();
+        CompilerAsserts.partialEvaluationConstant(encoding);
+        return encoding;
     }
 
     public boolean isBooleanMatch() {
-        boolean booleanMatch = source.getOptions().isBooleanMatch();
+        boolean booleanMatch = getSource().getOptions().isBooleanMatch();
         CompilerAsserts.partialEvaluationConstant(booleanMatch);
         return booleanMatch;
     }
@@ -93,7 +102,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
-            String patternSrc = source.toStringEscaped();
+            String patternSrc = getSource().toStringEscaped();
             String name = patternSrc.length() > 30 ? patternSrc.substring(0, 30) + "..." : patternSrc;
             Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, name).internal(true).mimeType("application/js-regex").build();
             sourceSection = src.createSection(0, patternSrc.length());
@@ -119,8 +128,8 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @TruffleBoundary
     @Override
     public final String toString() {
-        String src = source.toStringEscaped();
-        return "tregex " + source.getSource().getName() + " " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
+        String src = getSource().toStringEscaped();
+        return "tregex " + getSource().getSource().getName() + " " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
     }
 
     protected String getEngineLabel() {

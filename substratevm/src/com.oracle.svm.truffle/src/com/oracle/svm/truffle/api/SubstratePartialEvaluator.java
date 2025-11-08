@@ -27,6 +27,7 @@ package com.oracle.svm.truffle.api;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -98,8 +99,13 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+    public final ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         return ((TruffleField) field).getConstantFieldInfo();
+    }
+
+    @Override
+    public final boolean isValueType(ResolvedJavaType type) {
+        return ((TruffleType) type).isValueType();
     }
 
     @Override
