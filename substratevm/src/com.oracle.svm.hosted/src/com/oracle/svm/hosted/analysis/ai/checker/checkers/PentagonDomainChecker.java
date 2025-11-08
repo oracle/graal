@@ -1,22 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.PentagonDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>> {
 
@@ -25,52 +15,10 @@ public class PentagonDomainChecker implements Checker<PentagonDomain<AccessPath>
         return "Pentagon domain checker";
     }
 
-    @Override
-    public List<CheckerResult> check(AnalysisMethod method, AbstractState<PentagonDomain<AccessPath>> abstractState) {
-        List<CheckerResult> checkerResults = new ArrayList<>();
-        StructuredGraph graph = abstractState.getCfgGraph().graph;
-
-        for (Node node : abstractState.getStateMap().keySet()) {
-            if (!(node instanceof IfNode ifNode)) {
-                continue;
-            }
-
-            if (abstractState.getPreCondition(node).isBot()) {
-                CheckerResult res = new CheckerResult(CheckerStatus.WARNING, "Unreachable node: " + ifNode.trueSuccessor().toString());
-                checkerResults.add(res);
-                makeIfBranchUnreachable(ifNode, true, graph);
-            } else if (abstractState.getPreCondition(node).isTop()) {
-                CheckerResult res = new CheckerResult(CheckerStatus.WARNING, "Unreachable node: " + ifNode.falseSuccessor().toString());
-                checkerResults.add(res);
-                makeIfBranchUnreachable(ifNode, false, graph);
-            }
-        }
-        return checkerResults;
-    }
+    // TODO: add check() implementation
 
     @Override
     public boolean isCompatibleWith(AbstractState<?> abstractState) {
         return abstractState.getInitialDomain() instanceof PentagonDomain;
-    }
-
-    private void makeIfBranchUnreachable(IfNode node, boolean trueUnreachable, StructuredGraph graph) {
-        // FIXME: this doesn't get propagated to other phases...
-        AbstractBeginNode killedBegin = node.successor(trueUnreachable);
-        AbstractBeginNode survivingBegin = node.successor(!trueUnreachable);
-
-        if (survivingBegin.hasUsages()) {
-            /*
-             * Even when we know that the IfNode is not necessary because the condition
-             * is statically proven, all PiNode that are anchored at the surviving
-             * branch must remain anchored at exactly this point. It would be wrong to
-             * anchor the PiNode at the BeginNode of the preceding block, because at
-             * that point the condition is not proven yet.
-             */
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
-            graph.addAfterFixed(survivingBegin, anchor);
-            survivingBegin.replaceAtUsages(anchor, InputType.Guard, InputType.Anchor);
-        }
-        graph.removeSplit(node, survivingBegin);
-        GraphUtil.killCFG(killedBegin);
     }
 }

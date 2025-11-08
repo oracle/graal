@@ -2,18 +2,15 @@ package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Checker interface focused on diagnostics and fact production.
- * <p>
- * Responsibilities now:
- * - Provide human-readable diagnostics (errors / warnings) via {@link #check}.
- * - Produce transformation / optimization facts via {@link #produceFacts}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
@@ -28,16 +25,6 @@ public interface Checker<Domain extends AbstractDomain<Domain>> {
      * @return a description of the checker
      */
     String getDescription();
-
-    /**
-     * Diagnostic pass: derive error / warning results from the abstract state.
-     * Should NOT mutate the graph. Return an empty list if no diagnostics.
-     *
-     * @param method        the method to check
-     * @param abstractState the abstract state map to check
-     * @return a list of {@link CheckerResult} for this check
-     */
-    List<CheckerResult> check(AnalysisMethod method, AbstractState<Domain> abstractState);
 
     /**
      * Compatibility guard to avoid domain mismatches.

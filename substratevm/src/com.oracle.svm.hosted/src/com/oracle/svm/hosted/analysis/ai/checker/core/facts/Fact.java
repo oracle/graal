@@ -7,7 +7,7 @@ import jdk.graal.compiler.graph.Node;
  */
 public interface Fact {
 
-    String kind();
+    FactKind kind();
 
     String describe();
 

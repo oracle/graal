@@ -2,16 +2,13 @@ package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -20,6 +17,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class ConstantPropagationChecker implements Checker<AbstractMemory> {
     private static final String NODE_PREFIX = "n";
@@ -34,34 +32,6 @@ public class ConstantPropagationChecker implements Checker<AbstractMemory> {
     @Override
     public String getDescription() {
         return "Constant propagation checker";
-    }
-
-    @Override
-    public List<CheckerResult> check(AnalysisMethod method, AbstractState<AbstractMemory> abstractState) {
-        List<CheckerResult> results = new ArrayList<>();
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-
-        for (Node node : abstractState.getStateMap().keySet()) {
-            AbstractMemory post = abstractState.getPostCondition(node);
-            if (post == null) continue;
-
-            String nid = nodeId(node);
-            try {
-                var p = post.lookupTempByName(nid);
-                if (p != null) {
-                    IntInterval v = post.readStore(p);
-                    if (v != null && !v.isTop() && !v.isBot() && !v.isLowerInfinite() && !v.isUpperInfinite() && v.getLower() == v.getUpper()) {
-                        long c = v.getLower();
-                        String detail = "Node constant: " + node + " = " + c;
-                        results.add(new CheckerResult(CheckerStatus.WARNING, detail));
-                    }
-                }
-            } catch (Exception e) {
-                logger.log("Error while checking node " + node + ": " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);
-            }
-        }
-
-        return results;
     }
 
     @Override

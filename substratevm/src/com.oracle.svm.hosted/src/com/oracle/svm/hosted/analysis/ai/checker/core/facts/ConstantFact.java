@@ -8,8 +8,8 @@ import jdk.graal.compiler.graph.Node;
 public record ConstantFact(Node node, long value) implements Fact {
 
     @Override
-    public String kind() {
-        return "constant";
+    public FactKind kind() {
+        return FactKind.CONSTANT;
     }
 
     @Override

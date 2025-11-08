@@ -2,9 +2,8 @@ package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerResult;
-import com.oracle.svm.hosted.analysis.ai.checker.core.CheckerStatus;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.IndexSafetyFact;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
@@ -26,6 +25,7 @@ import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 
@@ -37,38 +37,6 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
     @Override
     public String getDescription() {
         return "Array index safety checker";
-    }
-
-    @Override
-    public List<CheckerResult> check(AnalysisMethod method, AbstractState<AbstractMemory> abstractState) {
-        List<CheckerResult> results = new ArrayList<>();
-        var logger = AbstractInterpretationLogger.getInstance();
-        for (Node n : abstractState.getStateMap().keySet()) {
-            if (n instanceof LoadIndexedNode lin) {
-                var mem = pickMem(abstractState, lin);
-                if (mem == null) continue;
-                IntInterval idx = intervalOf(lin.index(), mem);
-                int len = constantArrayLenFromState(abstractState, lin.array());
-                if (len < 0) len = deriveLengthFromGuard(abstractState, lin.index());
-                if (isSafe(idx, len)) {
-                    results.add(new CheckerResult(CheckerStatus.OK, "Load index in-bounds: " + n + " idx=" + idx + " len=" + len));
-                } else {
-                    logger.log("[IndexSafetyChecker] Not safe or unknown: " + n + ", idx=" + idx + ", len=" + len, LoggerVerbosity.CHECKER);
-                }
-            } else if (n instanceof StoreIndexedNode sin) {
-                var mem = pickMem(abstractState, n);
-                if (mem == null) continue;
-                IntInterval idx = intervalOf(sin.index(), mem);
-                int len = constantArrayLenFromState(abstractState, sin.array());
-                if (len < 0) len = deriveLengthFromGuard(abstractState, sin.index());
-                if (isSafe(idx, len)) {
-                    results.add(new CheckerResult(CheckerStatus.OK, "Store index in-bounds: " + n + " idx=" + idx + " len=" + len));
-                } else {
-                    logger.log("[IndexSafetyChecker] Not safe or unknown: " + n + ", idx=" + idx + ", len=" + len, LoggerVerbosity.CHECKER);
-                }
-            }
-        }
-        return results;
     }
 
     @Override
@@ -84,8 +52,6 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
                 if (len < 0) len = deriveLengthFromGuard(abstractState, lin.index());
                 if (isSafe(idx, len)) {
                     facts.add(new IndexSafetyFact(lin, true, idx, len));
-                } else {
-                    logger.log("[IndexSafetyChecker] No fact for load: idx=" + idx + ", len=" + len, LoggerVerbosity.CHECKER);
                 }
             } else if (n instanceof StoreIndexedNode sin) {
                 var mem = pickMem(abstractState, sin);
@@ -95,8 +61,6 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
                 if (len < 0) len = deriveLengthFromGuard(abstractState, sin.index());
                 if (isSafe(idx, len)) {
                     facts.add(new IndexSafetyFact(sin, true, idx, len));
-                } else {
-                    logger.log("[IndexSafetyChecker] No fact for store: idx=" + idx + ", len=" + len, LoggerVerbosity.CHECKER);
                 }
             }
         }

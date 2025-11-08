@@ -34,8 +34,8 @@ public final class IndexSafetyFact implements Fact {
     }
 
     @Override
-    public String kind() {
-        return "IndexSafety";
+    public FactKind kind() {
+        return FactKind.BOUNDS_SAFETY;
     }
 
     @Override
