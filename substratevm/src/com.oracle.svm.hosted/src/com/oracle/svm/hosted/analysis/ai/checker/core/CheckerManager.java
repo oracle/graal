@@ -6,7 +6,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.checker.optimize.RewriterOrchestrator;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
@@ -24,73 +23,34 @@ public final class CheckerManager {
         checkers.add(checker);
     }
 
+    @SuppressWarnings("unchecked")
     public <Domain extends AbstractDomain<Domain>> void runCheckers(AnalysisMethod method, AbstractState<Domain> abstractState) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        List<CheckerSummary> checkerSummaries = new ArrayList<>();
-        List<Fact> allFacts = new ArrayList<>();
         logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
+        List<Fact> allFacts = new ArrayList<>();
 
         for (var checker : checkers) {
-            if (checker.isCompatibleWith(abstractState)) {
-                try {
-                    @SuppressWarnings("unchecked")
-                    Checker<Domain> typedChecker = (Checker<Domain>) checker;
-                    List<CheckerResult> checkerResults = typedChecker.check(method, abstractState);
-                    CheckerSummary summary = new CheckerSummary(checker, checkerResults);
-                    checkerSummaries.add(summary);
+            if (!checker.isCompatibleWith(abstractState)) {
+                continue;
+            }
+            var typedChecker = (Checker<Domain>) checker;
+            List<Fact> facts = typedChecker.produceFacts(method, abstractState);
 
-                    List<Fact> facts = typedChecker.produceFacts(method, abstractState);
-                    if (facts != null && !facts.isEmpty()) {
-                        allFacts.addAll(facts);
-                    }
-                } catch (ClassCastException e) {
-                    logger.log("Compatibility check error in " + checker.getDescription(),
-                            LoggerVerbosity.CHECKER_ERR);
-                }
-            } else {
-                logger.log("Skipping incompatible checker: " + checker.getDescription(),
-                        LoggerVerbosity.CHECKER);
+            if (facts != null && !facts.isEmpty()) {
+                allFacts.addAll(facts);
             }
         }
 
         logger.logFacts(allFacts);
         StructuredGraph graph = abstractState.getCfgGraph().graph;
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
-        RewriterOrchestrator.apply(method, graph, aggregator);
+        FactApplierSuite applierSuite = FactApplierSuite.fromRegistry(aggregator, true);
         try {
-            logger.exportGraphToJson(graph.getLastCFG(), method, "CFG:after_abinst");
-            AbstractInterpretationLogger.dumpGraph(method, graph, "GraalAF");
+            applierSuite.runAppliers(method, graph, aggregator);
         } catch (Exception e) {
             logger.log("IGV dump failed: " + e.getMessage(), LoggerVerbosity.CHECKER_ERR);
-        }
-    }
-
-    private void logCheckerSummary(CheckerSummary checkerSummary) {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        List<CheckerResult> errors = checkerSummary.getErrors();
-        List<CheckerResult> warnings = checkerSummary.getWarnings();
-        logger.log(checkerSummary.getChecker().getDescription(), LoggerVerbosity.CHECKER);
-
-        if (!errors.isEmpty()) {
-            logger.log("Number of errors: " + errors.size(), LoggerVerbosity.CHECKER);
-            for (CheckerResult error : errors) {
-                logger.log(error.details(), LoggerVerbosity.CHECKER_ERR);
-            }
-        } else {
-            logger.log("No errors reported", LoggerVerbosity.CHECKER);
-        }
-
-        if (!warnings.isEmpty()) {
-            logger.log("Number of warnings: " + warnings.size(), LoggerVerbosity.CHECKER);
-            for (CheckerResult warning : warnings) {
-                logger.log(warning.details(), LoggerVerbosity.CHECKER_WARN);
-            }
-        } else {
-            logger.log("No warnings reported", LoggerVerbosity.CHECKER);
-        }
-
-        if (errors.isEmpty() && warnings.isEmpty()) {
-            logger.log("Everything is OK", LoggerVerbosity.CHECKER);
+        } catch (Throwable e) {
+            return; // Avoid breaking the analysis pipeline
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker.optimize;
+package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
