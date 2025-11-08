@@ -1,14 +1,24 @@
-package com.oracle.svm.hosted.analysis.ai.checker.core;
+package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
+import java.util.Set;
+
 /**
- * Applies a specific kind of facts to a StructuredGraph. FactAppliers are run
+ * Applies a specific kind of fact to a StructuredGraph. FactAppliers are run
  * after all checkers have produced facts and those facts have been aggregated.
  * They must preserve graph invariants and avoid unsafe partial deletions.
  */
 public interface FactApplier {
+
+    /**
+     * @return the kinds of facts this applier can handle.
+     */
+    Set<FactKind> getApplicableFactKinds();
+
     /**
      * @return a human-readable description of this applier.
      */
@@ -20,4 +30,3 @@ public interface FactApplier {
      */
     void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator);
 }
-
