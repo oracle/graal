@@ -45,7 +45,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -99,12 +98,14 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeReflection;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -295,6 +296,13 @@ public class SubstrateGraphBuilderPlugins {
 
     public static <T> T asConstantObject(GraphBuilderContext b, Class<T> type, ValueNode node) {
         return StandardGraphBuilderPlugins.asConstantObject(b, type, node);
+    }
+
+    public static ResolvedJavaType asConstantType(GraphBuilderContext b, ValueNode node) {
+        if (node instanceof ConstantNode constantNode && constantNode.getValue() instanceof JavaConstant javaConstant && javaConstant.isNonNull()) {
+            return b.getConstantReflection().asJavaType(javaConstant);
+        }
+        return null;
     }
 
     public static int asConstantIntegerOrMinusOne(ValueNode node) {
@@ -739,18 +747,18 @@ public class SubstrateGraphBuilderPlugins {
      * them for reflection/unsafe access.
      */
     private static void interceptUpdaterInvoke(GraphBuilderContext b, ValueNode tclassNode, ValueNode fieldNameNode) {
-        Class<?> tclass = asConstantObject(b, Class.class, tclassNode);
+        ResolvedJavaType type = asConstantType(b, tclassNode);
         String fieldName = asConstantObject(b, String.class, fieldNameNode);
-        if (tclass != null && fieldName != null) {
+        if (type != null && fieldName != null) {
             try {
-                Field field = tclass.getDeclaredField(fieldName);
+                ResolvedJavaField field = JVMCIReflectionUtil.getDeclaredField(type, fieldName);
                 /*
                  * Register the holder class and the field for reflection. This also registers the
                  * field for unsafe access.
                  */
-                RuntimeReflection.register(tclass);
-                RuntimeReflection.register(field);
-            } catch (NoSuchFieldException e) {
+                JVMCIRuntimeReflection.register(type);
+                JVMCIRuntimeReflection.register(field);
+            } catch (NoSuchFieldError e) {
                 /*
                  * Ignore the exception. If the field does not exist, there will be an error at run
                  * time. That is then the same behavior as on HotSpot. The allocation of the
@@ -791,17 +799,15 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("objectFieldOffset", Receiver.class, Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
-                Class<?> clazz = asConstantObject(b, Class.class, classNode);
+                ResolvedJavaType type = asConstantType(b, classNode);
                 String fieldName = asConstantObject(b, String.class, nameNode);
-                if (clazz != null && fieldName != null) {
-                    Field targetField;
-                    try {
-                        targetField = clazz.getDeclaredField(fieldName);
-                    } catch (ReflectiveOperationException | LinkageError e) {
-                        return false;
+                if (type != null && fieldName != null) {
+                    ResolvedJavaField targetField = JVMCIReflectionUtil.getDeclaredField(false, type, fieldName);
+                    if (targetField != null) {
+                        return processFieldOffset(b, receiver, false, targetField);
                     }
-                    return processFieldOffset(b, receiver, targetField, false);
                 }
+                /* A NullPointerException will be thrown at run time for this call. */
                 return false;
             }
         });
@@ -819,8 +825,10 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 Field targetField = asConstantObject(b, Field.class, fieldNode);
                 if (targetField != null) {
-                    return processFieldOffset(b, receiver, targetField, isSunMiscUnsafe);
+                    ResolvedJavaField resolvedJavaField = b.getMetaAccess().lookupJavaField(targetField);
+                    return processFieldOffset(b, receiver, isSunMiscUnsafe, resolvedJavaField);
                 }
+                /* A NullPointerException will be thrown at run time for this call. */
                 return false;
             }
         });
@@ -840,8 +848,10 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 Field targetField = asConstantObject(b, Field.class, fieldNode);
                 if (targetField != null) {
-                    return processFieldOffset(b, receiver, targetField, isSunMiscUnsafe);
+                    ResolvedJavaField resolvedJavaField = b.getMetaAccess().lookupJavaField(targetField);
+                    return processFieldOffset(b, receiver, isSunMiscUnsafe, resolvedJavaField);
                 }
+                /* A NullPointerException will be thrown at run time for this call. */
                 return false;
             }
         });
@@ -869,8 +879,8 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static boolean processFieldOffset(GraphBuilderContext b, Receiver receiver, Field targetField, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe)) {
+    private static boolean processFieldOffset(GraphBuilderContext b, Receiver receiver, boolean isSunMiscUnsafe, ResolvedJavaField resolvedJavaField) {
+        if (!isValidField(resolvedJavaField, isSunMiscUnsafe)) {
             return false;
         }
 
@@ -880,15 +890,11 @@ public class SubstrateGraphBuilderPlugins {
          * The static analysis registers the field for unsafe access if the node remains in the
          * graph until then.
          */
-        b.addPush(JavaKind.Long, FieldOffsetNode.create(JavaKind.Long, b.getMetaAccess().lookupJavaField(targetField)));
+        b.addPush(JavaKind.Long, FieldOffsetNode.create(JavaKind.Long, resolvedJavaField));
         return true;
     }
 
-    private static boolean isValidField(Field targetField, boolean isSunMiscUnsafe) {
-        if (targetField == null) {
-            /* A NullPointerException will be thrown at run time for this call. */
-            return false;
-        }
+    private static boolean isValidField(ResolvedJavaField targetField, boolean isSunMiscUnsafe) {
         /*
          * sun.misc.Unsafe performs a few more checks than jdk.internal.misc.Unsafe to explicitly
          * disallow hidden classes and records.
@@ -897,13 +903,18 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processStaticFieldBase(GraphBuilderContext b, Receiver receiver, Field targetField, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe)) {
+        if (targetField == null) {
+            /* A NullPointerException will be thrown at run time for this call. */
+            return false;
+        }
+        ResolvedJavaField resolvedJavaField = b.getMetaAccess().lookupJavaField(targetField);
+        if (!isValidField(resolvedJavaField, isSunMiscUnsafe)) {
             return false;
         }
 
         /* Emits a null-check for the otherwise unused receiver. */
         receiver.get(true);
-        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(b.getMetaAccess().lookupJavaField(targetField)));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(resolvedJavaField));
         return true;
     }
 

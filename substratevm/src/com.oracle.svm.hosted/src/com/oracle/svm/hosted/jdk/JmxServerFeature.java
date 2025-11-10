@@ -35,7 +35,6 @@ import javax.management.remote.JMXServiceURL;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.VMInspectionOptions;
@@ -46,8 +45,12 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeReflection;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class JmxServerFeature implements InternalFeature {
@@ -71,7 +74,7 @@ public class JmxServerFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         handleNativeLibraries(access);
         registerJMXAgentResources();
-        configureReflection(access);
+        configureReflection((BeforeAnalysisAccessImpl) access);
         configureProxy(access);
         RuntimeSupport.getRuntimeSupport().addStartupHook(new ManagementAgentStartupHook());
     }
@@ -107,7 +110,7 @@ public class JmxServerFeature implements InternalFeature {
      * </li>
      * </ul>
      */
-    private static void configureReflection(BeforeAnalysisAccess access) {
+    private static void configureReflection(BeforeAnalysisAccessImpl access) {
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
             // The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
@@ -115,12 +118,11 @@ public class JmxServerFeature implements InternalFeature {
             if (p instanceof ManagementSupport.PlatformManagedObjectSupplier) {
                 continue;
             }
-            Class<?> clazz = p.getClass();
-            RuntimeReflection.register(clazz);
+            JVMCIRuntimeReflection.register(access.getMetaAccess().lookupJavaType(p.getClass()));
         }
 
-        Class<?> serviceProviderClass = access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider");
-        RuntimeReflection.register(serviceProviderClass);
-        RuntimeReflection.register(serviceProviderClass.getConstructors());
+        ResolvedJavaType serviceProviderClass = access.findTypeByName("com.sun.jmx.remote.protocol.rmi.ServerProvider");
+        JVMCIRuntimeReflection.register(serviceProviderClass);
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getConstructors(serviceProviderClass));
     }
 }

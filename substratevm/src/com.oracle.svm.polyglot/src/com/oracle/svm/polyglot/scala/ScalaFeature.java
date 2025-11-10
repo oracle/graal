@@ -24,23 +24,25 @@
  */
 package com.oracle.svm.polyglot.scala;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.dynamicaccess.JVMCIRuntimeReflection;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ScalaFeature implements InternalFeature {
 
@@ -76,8 +78,8 @@ public class ScalaFeature implements InternalFeature {
         plugins.appendNodePlugin(new ScalaAnalysisPlugin());
     }
 
-    private static boolean isValDef(Field[] fields, Method m) {
-        return Arrays.stream(fields).anyMatch(fd -> fd.getName().equals(m.getName()) && fd.getType().equals(m.getReturnType()));
+    private static boolean isValDef(ResolvedJavaField[] fields, ResolvedJavaMethod m) {
+        return Arrays.stream(fields).anyMatch(fd -> fd.getName().equals(m.getName()) && fd.getType().equals(JVMCIReflectionUtil.getResolvedReturnType(m)));
     }
 
     /**
@@ -87,27 +89,28 @@ public class ScalaFeature implements InternalFeature {
     private static void initializeScalaEnumerations(BeforeAnalysisAccess beforeAnalysisAccess) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) beforeAnalysisAccess;
 
-        Class<?> scalaEnum = access.findClassByName("scala.Enumeration");
+        AnalysisType scalaEnum = access.findTypeByName("scala.Enumeration");
         UserError.guarantee(scalaEnum != null, "%s", UNSUPPORTED_SCALA_VERSION);
-        Class<?> scalaEnumVal = access.findClassByName("scala.Enumeration$Val");
+        AnalysisType scalaEnumVal = access.findTypeByName("scala.Enumeration$Val");
         UserError.guarantee(scalaEnumVal != null, "%s", UNSUPPORTED_SCALA_VERSION);
-        Class<?> valueClass = access.findClassByName("scala.Enumeration$Value");
+        AnalysisType valueClass = access.findTypeByName("scala.Enumeration$Value");
         UserError.guarantee(valueClass != null, "%s", UNSUPPORTED_SCALA_VERSION);
 
-        access.findSubclasses(scalaEnum).forEach(enumClass -> {
+        access.findSubtypes(scalaEnum).forEach(enumClass -> {
             /* this is based on implementation of scala.Enumeration.populateNamesMap */
-            RuntimeReflection.registerAllDeclaredFields(enumClass);
+            JVMCIRuntimeReflection.registerAllDeclaredFields(enumClass);
             // all method relevant for Enums
-            Method[] relevantMethods = Arrays.stream(enumClass.getDeclaredMethods())
-                            .filter(m -> m.getParameterTypes().length == 0 &&
-                                            m.getDeclaringClass() != scalaEnum &&
-                                            valueClass.isAssignableFrom(m.getReturnType()) &&
-                                            isValDef(enumClass.getDeclaredFields(), m))
-                            .toArray(Method[]::new);
-            RuntimeReflection.register(relevantMethods);
+            ResolvedJavaMethod[] relevantMethods = Arrays.stream(enumClass.getDeclaredMethods(false))
+                            .filter(m -> m.getParameters().length == 0 &&
+                                            !scalaEnum.equals(m.getDeclaringClass()) &&
+                                            valueClass.isAssignableFrom(JVMCIReflectionUtil.getResolvedReturnType(m)) &&
+                                            (isValDef(enumClass.getInstanceFields(false), m) ||
+                                                            isValDef(enumClass.getStaticFields(), m)))
+                            .toArray(ResolvedJavaMethod[]::new);
+            JVMCIRuntimeReflection.register(relevantMethods);
             try {
-                RuntimeReflection.register(scalaEnumVal.getDeclaredMethod("id"));
-            } catch (NoSuchMethodException e) {
+                JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getDeclaredMethod(access.getMetaAccess(), scalaEnumVal, "id"));
+            } catch (NoSuchMethodError e) {
                 throw UserError.abort("%s", UNSUPPORTED_SCALA_VERSION);
             }
         });
