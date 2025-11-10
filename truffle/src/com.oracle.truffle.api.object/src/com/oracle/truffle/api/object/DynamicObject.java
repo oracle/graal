@@ -1050,6 +1050,10 @@ public abstract class DynamicObject implements TruffleObject {
         return ObsolescenceStrategy.updateShape(object);
     }
 
+    static boolean updateShape(DynamicObject object, Shape currentShape) {
+        return ObsolescenceStrategy.updateShape(object, currentShape);
+    }
+
     /**
      * Checks if this object contains a property with the given key.
      *
@@ -1188,7 +1192,7 @@ public abstract class DynamicObject implements TruffleObject {
 
         @TruffleBoundary
         static boolean removePropertyGeneric(DynamicObject receiver, Shape cachedShape, Property cachedProperty) {
-            updateShape(receiver);
+            updateShape(receiver, cachedShape);
             Shape oldShape = receiver.getShape();
             Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape);
 
@@ -1805,14 +1809,14 @@ public abstract class DynamicObject implements TruffleObject {
             assert cachedProperty != null;
             assert cachedProperty.getFlags() != propertyFlags;
 
-            updateShape(receiver);
+            updateShape(receiver, cachedShape);
 
             Shape oldShape = receiver.getShape();
             final Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape);
             Shape newShape = oldShape.setPropertyFlags(existingProperty, propertyFlags);
             if (newShape != oldShape) {
                 DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
-                updateShape(receiver);
+                updateShape(receiver, newShape);
             }
         }
 
@@ -1852,7 +1856,7 @@ public abstract class DynamicObject implements TruffleObject {
     static void maybeUpdateShape(DynamicObject store, Shape newShape) {
         CompilerAsserts.partialEvaluationConstant(newShape);
         if (!newShape.isValid()) {
-            updateShape(store);
+            updateShape(store, newShape);
         }
     }
 

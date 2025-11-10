@@ -57,7 +57,6 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.ExtLocations.ObjectLocation;
 import com.oracle.truffle.api.object.Transition.AbstractReplacePropertyTransition;
@@ -159,31 +158,13 @@ abstract class ObsolescenceStrategy {
     }
 
     @TruffleBoundary
-    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags) {
-        Shape shape = object.getShape();
-        Property existingProperty = shape.getProperty(key);
-        return putGeneric(object, key, value, newPropertyFlags, putFlags, shape, existingProperty);
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int mode) {
+        return putGeneric(object, key, value, newPropertyFlags, mode, null, null);
     }
 
     @TruffleBoundary
-    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags, Shape s, Property existingProperty) {
-        if (existingProperty == null) {
-            if (Flags.isPutIfPresent(putFlags)) {
-                return false;
-            }
-        } else {
-            if (Flags.isPutIfAbsent(putFlags)) {
-                return false;
-            } else if (!Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
-                existingProperty.getLocation().setSafe(object, value, false, false);
-                return true;
-            }
-        }
-        return putGenericSlowPath(object, key, value, newPropertyFlags, putFlags, s, existingProperty);
-    }
-
-    private static boolean putGenericSlowPath(DynamicObject object, Object key, Object value, int newPropertyFlags, int putFlags,
-                    Shape initialShape, Property propertyOfInitialShape) {
+    static boolean putGeneric(DynamicObject object, Object key, Object value, int newPropertyFlags, int mode,
+                    Shape cachedShape, Property propertyOfCachedShape) {
         CompilerAsserts.neverPartOfCompilation();
         updateShape(object);
         Shape oldShape;
@@ -191,42 +172,39 @@ abstract class ObsolescenceStrategy {
         Property property;
         do {
             oldShape = object.getShape();
-            final Property existingProperty = reusePropertyLookup(key, initialShape, propertyOfInitialShape, oldShape);
+            final Property existingProperty = reusePropertyLookup(key, cachedShape, propertyOfCachedShape, oldShape);
             if (existingProperty == null) {
-                if (Flags.isPutIfPresent(putFlags)) {
+                if (Flags.isPutIfPresent(mode)) {
                     return false;
                 } else {
-                    newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
+                    newShape = defineProperty(oldShape, key, value, newPropertyFlags, null, mode);
                     property = newShape.getProperty(key);
                 }
-            } else if (Flags.isPutIfAbsent(putFlags)) {
+            } else if (Flags.isPutIfAbsent(mode)) {
                 return false;
-            } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
-                newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
-                property = newShape.getProperty(key);
-            } else {
-                if (existingProperty.getLocation().canStore(value)) {
+            } else if (!Flags.isUpdateFlags(mode) || newPropertyFlags == existingProperty.getFlags()) {
+                if (existingProperty.getLocation().canStoreValue(value)) {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
-                    assert !Flags.isUpdateFlags(putFlags) || newPropertyFlags == existingProperty.getFlags();
-                    newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
+                    newShape = defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, mode);
                     property = newShape.getProperty(key);
                 }
+            } else {
+                newShape = defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, mode);
+                property = newShape.getProperty(key);
             }
         } while (updateShape(object));
 
         assert object.getShape() == oldShape;
+        assert !Flags.isPutIfAbsent(mode) || oldShape != newShape;
+
         Location location = property.getLocation();
+        location.setInternal(object, value, false, oldShape, newShape);
+
         if (oldShape != newShape) {
-            DynamicObjectSupport.grow(object, oldShape, newShape);
-            location.setSafe(object, value, false, true);
             DynamicObjectSupport.setShapeWithStoreFence(object, newShape);
             updateShape(object);
-        } else if (Flags.isPutIfAbsent(putFlags)) {
-            return false;
-        } else {
-            location.setSafe(object, value, false, false);
         }
         return true;
     }
@@ -503,11 +481,15 @@ abstract class ObsolescenceStrategy {
         }
     }
 
-    @TruffleBoundary
     static boolean updateShape(DynamicObject object) {
-        boolean changed = checkForObsoleteShapeAndMigrate(object);
-        // shape should be valid now, but we cannot assert this due to a possible race
-        return changed;
+        return updateShape(object, object.getShape());
+    }
+
+    static boolean updateShape(DynamicObject object, Shape currentShape) {
+        if (currentShape.isValid()) {
+            return false;
+        }
+        return migrateObsoleteShape(object, currentShape);
     }
 
     private static Shape ensureValid(Shape newShape) {
@@ -800,21 +782,14 @@ abstract class ObsolescenceStrategy {
         toProperty.getLocation().set(toObject, value, false, true);
     }
 
-    private static boolean checkForObsoleteShapeAndMigrate(DynamicObject store) {
-        Shape currentShape = store.getShape();
-        if (currentShape.isValid()) {
-            return false;
-        }
-        CompilerDirectives.transferToInterpreter();
-        return migrateObsoleteShape(currentShape, store);
-    }
-
-    private static boolean migrateObsoleteShape(Shape currentShape, DynamicObject store) {
+    @TruffleBoundary
+    private static boolean migrateObsoleteShape(DynamicObject store, Shape currentShape) {
         CompilerAsserts.neverPartOfCompilation();
         synchronized (currentShape.getMutex()) {
             if (!currentShape.isValid()) {
                 assert !currentShape.isShared();
                 reshape(store);
+                // shape should be valid now, but we cannot assert this due to a possible race
                 return true;
             }
             return false;
