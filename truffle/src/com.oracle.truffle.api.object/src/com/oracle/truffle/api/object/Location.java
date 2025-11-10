@@ -43,6 +43,8 @@ package com.oracle.truffle.api.object;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -201,26 +203,28 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @param guard the result of the shape check or {@code false}
      * @return the read value
      */
+    @SuppressWarnings("hiding")
     final Object getInternal(DynamicObject store, Shape expectedShape, boolean guard) {
+        DynamicObject receiver = unsafeNonNullCast(store);
         long idx = Integer.toUnsignedLong(index);
+        FieldInfo field = this.field;
         if (this instanceof ObjectLocation objectLocation) {
             Object base;
             long offset;
             Object value;
             if (field == null) {
-                base = getObjectArray(store, guard);
+                base = getObjectArray(receiver, guard);
                 offset = computeObjectArrayOffset(idx);
                 value = UnsafeAccess.unsafeGetObject(base, offset, guard, this);
             } else {
-                field.receiverCheck(store);
-                base = store;
-                offset = getFieldOffset();
+                base = field.unsafeReceiverCast(receiver);
+                offset = field.offset();
                 value = UnsafeAccess.unsafeGetObject(base, offset, guard, this);
             }
             return CompilerDirectives.inInterpreter() ? value : objectLocation.assumedTypeCast(value, guard);
         } else {
             if (field == null) {
-                Object array = getPrimitiveArray(store, guard);
+                Object array = getPrimitiveArray(receiver, guard);
                 long offset = computePrimitiveArrayOffset(idx);
                 if (isIntLocation()) {
                     return UnsafeAccess.unsafeGetInt(array, offset, guard, this);
@@ -229,11 +233,11 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 } else if (isDoubleLocation()) {
                     return UnsafeAccess.unsafeGetDouble(array, offset, guard, this);
                 } else {
-                    return ((ConstantLocation) this).get(store, guard);
+                    return ((ConstantLocation) this).get(receiver, guard);
                 }
             } else {
-                field.receiverCheck(store);
-                long longValue = UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
+                Object base = field.unsafeReceiverCast(receiver);
+                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
                 if (this instanceof IntLocation) {
                     return (int) longValue;
                 } else if (this instanceof LongLocation) {
@@ -250,18 +254,19 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
     final int getIntInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
+        DynamicObject receiver = unsafeNonNullCast(store);
         if (isIntLocation()) {
             if (field == null) {
-                Object array = getPrimitiveArray(store, guard);
+                Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
                 return UnsafeAccess.unsafeGetInt(array, offset, guard, this);
             } else {
-                field.receiverCheck(store);
-                long longValue = UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
+                Object base = field.unsafeReceiverCast(receiver);
+                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
                 return (int) longValue;
             }
         }
-        return getIntUnexpected(store, expectedShape, guard);
+        return getIntUnexpected(receiver, expectedShape, guard);
     }
 
     /**
@@ -277,17 +282,18 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
     final long getLongInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
+        DynamicObject receiver = unsafeNonNullCast(store);
         if (isLongLocation()) {
             if (field == null) {
-                Object array = getPrimitiveArray(store, guard);
+                Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
                 return UnsafeAccess.unsafeGetLong(array, offset, guard, this);
             } else {
-                field.receiverCheck(store);
-                return UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
+                Object base = field.unsafeReceiverCast(receiver);
+                return UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
             }
         }
-        return getLongUnexpected(store, expectedShape, guard);
+        return getLongUnexpected(receiver, expectedShape, guard);
     }
 
     /**
@@ -303,18 +309,19 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @see #getInternal(DynamicObject, Shape, boolean)
      */
     final double getDoubleInternal(DynamicObject store, Shape expectedShape, boolean guard) throws UnexpectedResultException {
+        DynamicObject receiver = unsafeNonNullCast(store);
         if (isDoubleLocation()) {
             if (field == null) {
-                Object array = getPrimitiveArray(store, guard);
+                Object array = getPrimitiveArray(receiver, guard);
                 long offset = getPrimitiveArrayOffset();
                 return UnsafeAccess.unsafeGetDouble(array, offset, guard, this);
             } else {
-                field.receiverCheck(store);
-                long longValue = UnsafeAccess.unsafeGetLong(store, getFieldOffset(), guard, this);
+                Object base = field.unsafeReceiverCast(receiver);
+                long longValue = UnsafeAccess.unsafeGetLong(base, field.offset(), guard, this);
                 return Double.longBitsToDouble(longValue);
             }
         }
-        return getDoubleUnexpected(store, expectedShape, guard);
+        return getDoubleUnexpected(receiver, expectedShape, guard);
     }
 
     /**
@@ -436,16 +443,19 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * Stores a value in this location. Grows the object if necessary. It is the caller's
      * responsibility to check that the value is compatible with this location first.
      *
-     * @param receiver storage object
+     * @param store storage object
      * @param value the value to be stored
      * @param guard the result of the shape check guarding this property write or {@code false}
      * @param oldShape the expected shape before the set
      * @param newShape the expected shape after the set
      * @see #canStoreValue(Object).
      */
-    final void setInternal(DynamicObject receiver, Object value, boolean guard, Shape oldShape, Shape newShape) {
+    @SuppressWarnings("hiding")
+    final void setInternal(DynamicObject store, Object value, boolean guard, Shape oldShape, Shape newShape) {
         assert canStoreValue(value) : value;
+        DynamicObject receiver = unsafeNonNullCast(store);
         long idx = Integer.toUnsignedLong(index);
+        FieldInfo field = this.field;
         boolean init = newShape != oldShape;
         if (init) {
             DynamicObjectSupport.grow(receiver, oldShape, newShape);
@@ -467,9 +477,8 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 offset = computeObjectArrayOffset(idx);
                 UnsafeAccess.unsafePutObject(base, offset, value, this);
             } else {
-                field.receiverCheck(receiver);
-                base = receiver;
-                offset = getFieldOffset();
+                base = field.unsafeReceiverCast(receiver);
+                offset = field.offset();
                 UnsafeAccess.unsafePutObject(base, offset, value, this);
             }
         } else { // primitive location
@@ -519,9 +528,9 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 assert isConstantLocation() : this;
                 return;
             }
-            field.receiverCheck(receiver);
-            long offset = getFieldOffset();
-            UnsafeAccess.unsafePutLong(receiver, offset, longValue, this);
+            Object base = field.unsafeReceiverCast(receiver);
+            long offset = field.offset();
+            UnsafeAccess.unsafePutLong(base, offset, longValue, this);
         }
     }
 
@@ -771,6 +780,20 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
 
     static Object getPrimitiveArray(DynamicObject store, boolean condition) {
         return UnsafeAccess.hostUnsafeCast(store.getPrimitiveStore(), int[].class, condition, true, true);
+    }
+
+    private static DynamicObject unsafeNonNullCast(DynamicObject receiver) {
+        /*
+         * The shape check already performs an implicit null check, so the receiver is guaranteed to
+         * be non-null here, but when compiling methods separately we might not know this yet.
+         * Hence, we use an unsafe cast in the interpreter to avoid compiling any null code paths.
+         * In PE OTOH, the redundant ValueAnchor+Pi would just mean extra work for the compiler.
+         */
+        if (CompilerDirectives.inInterpreter() && !ObjectStorageOptions.ReceiverCheck && ImageInfo.inImageCode()) {
+            return UnsafeAccess.hostUnsafeCast(receiver, DynamicObject.class, false, true, false);
+        } else {
+            return receiver;
+        }
     }
 
     static RuntimeException incompatibleLocationException() {
