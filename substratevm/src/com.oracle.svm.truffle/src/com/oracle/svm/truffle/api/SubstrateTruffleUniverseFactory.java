@@ -46,13 +46,13 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.truffle.ConstantFieldInfo;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 

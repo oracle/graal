@@ -28,10 +28,10 @@ import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 

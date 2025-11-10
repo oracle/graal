@@ -94,11 +94,13 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
 
     @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
     @Override
+    @SuppressWarnings("deprecation")
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getMethodInfo()");
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
         throw new UnsupportedOperationException("Use TruffleHostEnvironment#getHostMethodInfo()");
     }
@@ -141,6 +143,7 @@ public final class HSTruffleCompilerRuntime extends HSObject implements TruffleC
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         throw new UnsupportedOperationException("Use HotSpotPartialEvaluator#getConstantFieldInfo()");
     }

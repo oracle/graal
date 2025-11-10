@@ -30,7 +30,6 @@ import java.lang.invoke.MethodType;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
@@ -39,6 +38,7 @@ import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;

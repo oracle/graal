@@ -42,8 +42,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
-
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.debug.Assertions;
@@ -82,6 +80,7 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.JavaTypeProfile;

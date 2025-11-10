@@ -32,8 +32,6 @@ import java.util.function.Supplier;
 import jdk.graal.compiler.annotation.EnumElement;
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;

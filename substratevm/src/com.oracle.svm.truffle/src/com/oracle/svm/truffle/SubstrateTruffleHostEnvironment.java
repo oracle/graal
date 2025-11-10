@@ -33,10 +33,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
