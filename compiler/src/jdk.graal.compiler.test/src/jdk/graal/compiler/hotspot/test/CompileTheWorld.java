@@ -37,7 +37,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -73,6 +72,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.test.ModuleSupport;
 import jdk.graal.compiler.bytecode.Bytecodes;
@@ -841,12 +841,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             return false;
         }
         // Skip @Snippets for now
-        for (Annotation annotation : javaMethod.getAnnotations()) {
-            if (annotation.annotationType().equals(Snippet.class)) {
-                return false;
-            }
-        }
-        return true;
+        return AnnotationValueSupport.getAnnotationValue(javaMethod, Snippet.class) == null;
     }
 
     private int getHugeMethodLimit(GraalHotSpotVMConfig c) {

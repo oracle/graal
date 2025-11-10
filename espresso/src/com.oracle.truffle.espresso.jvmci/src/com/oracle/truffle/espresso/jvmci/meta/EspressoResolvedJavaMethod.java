@@ -27,7 +27,6 @@ import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceTyp
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.DECLARED_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.PARAMETER_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.TYPE_ANNOTATIONS;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaType.NO_ANNOTATIONS;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.BRIDGE;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SCOPED_METHOD;
 import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SYNTHETIC;
@@ -42,7 +41,6 @@ import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.STRICT;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -201,11 +199,6 @@ public final class EspressoResolvedJavaMethod extends AbstractAnnotated implemen
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        return getMirror().getParameterAnnotations();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         return getMirror().getGenericParameterTypes();
     }
@@ -284,32 +277,7 @@ public final class EspressoResolvedJavaMethod extends AbstractAnnotated implemen
         throw JVMCIError.unimplemented();
     }
 
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getMirror().getAnnotation(annotationClass);
-    }
-
     private native boolean hasAnnotations();
-
-    private native boolean hasParameterAnnotations();
-
-    private native boolean hasDefaultAnnotations();
-
-    @Override
-    public Annotation[] getAnnotations() {
-        if (!hasAnnotations()) {
-            return NO_ANNOTATIONS;
-        }
-        return getMirror().getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        if (!hasAnnotations()) {
-            return NO_ANNOTATIONS;
-        }
-        return getMirror().getDeclaredAnnotations();
-    }
 
     @Override
     public int getModifiers() {

@@ -47,7 +47,6 @@ import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.RecordCompone
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ReflectParameterMetadata;
 
 import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -69,7 +68,6 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -119,6 +117,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -129,6 +128,8 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * The runtime metadata encoder creates metadata for reflection objects (classes, fields, methods
@@ -438,7 +439,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         boolean trustedFinal = isTrustedFinal(reflectField);
         String signature = getSignature(reflectField);
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
-        Delete deleteAnnotation = AnnotationAccess.getAnnotation(hostedField, Delete.class);
+        Delete deleteAnnotation = AnnotationUtil.getAnnotation(hostedField, Delete.class);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalReflectField.getDynamicAccessMetadata();
         /* Fill encoders with the necessary values. */
@@ -527,7 +528,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         boolean isMethod = object instanceof Method;
 
         /* Register string and class values in annotations */
-        AnnotatedElement analysisObject = hostedObject.getWrapped();
+        Annotated analysisObject = hostedObject.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisObject);
         AnnotationValue[][] parameterAnnotations = isExecutable ? registerParameterAnnotationValues((AnalysisMethod) analysisObject) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
@@ -570,7 +571,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return includedClasses.toArray(HostedType.EMPTY_ARRAY);
     }
 
-    private AnnotationValue[] registerAnnotationValues(AnnotatedElement element) {
+    private AnnotationValue[] registerAnnotationValues(Annotated element) {
         AnnotationValue[] annotations = dataBuilder.getAnnotationData(element);
         for (AnnotationValue annotation : annotations) {
             registerValues(annotation);
@@ -596,7 +597,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return annotationDefault;
     }
 
-    private TypeAnnotationValue[] registerTypeAnnotationValues(AnnotatedElement element) {
+    private TypeAnnotationValue[] registerTypeAnnotationValues(Annotated element) {
         TypeAnnotationValue[] typeAnnotations = dataBuilder.getTypeAnnotationData(element);
         for (TypeAnnotationValue typeAnnotation : typeAnnotations) {
             AnnotationMetadataEncoder.registerTypeAnnotation(typeAnnotation, encoders);
@@ -801,8 +802,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             encoders.classes.addObject(type.getJavaClass());
             encoders.otherStrings.addObject(signature);
             /* Register string and class values in annotations */
-            AnnotationValue[] annotations = registerAnnotationValues(recordComponent);
-            TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(recordComponent);
+            ResolvedJavaRecordComponent rec = metaAccess.lookupJavaRecordComponent(recordComponent);
+            AnnotationValue[] annotations = registerAnnotationValues(rec);
+            TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(rec);
 
             metadata[i] = new RecordComponentMetadata(declaringType, name, type, signature, annotations, typeAnnotations);
         }

@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.jvmci.meta;
 
 import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.List;
@@ -120,8 +119,7 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        if (other instanceof EspressoResolvedArrayType) {
-            EspressoResolvedArrayType otherArrayType = (EspressoResolvedArrayType) other;
+        if (other instanceof EspressoResolvedArrayType otherArrayType) {
             if (otherArrayType.dimensions > dimensions) {
                 return elementalType.isAssignableFrom(otherArrayType);
             } else if (otherArrayType.dimensions == dimensions) {
@@ -323,21 +321,6 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return NO_ANNOTATIONS;
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return NO_ANNOTATIONS;
     }
 
     @Override

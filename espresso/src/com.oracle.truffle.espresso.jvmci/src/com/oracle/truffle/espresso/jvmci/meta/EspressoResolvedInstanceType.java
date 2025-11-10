@@ -33,7 +33,6 @@ import static java.lang.reflect.Modifier.INTERFACE;
 import static java.lang.reflect.Modifier.PUBLIC;
 import static java.util.Objects.requireNonNull;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -131,8 +130,7 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         requireNonNull(other);
-        if (other instanceof EspressoResolvedInstanceType) {
-            EspressoResolvedInstanceType otherType = (EspressoResolvedInstanceType) other;
+        if (other instanceof EspressoResolvedInstanceType otherType) {
             return getMirror().isAssignableFrom(otherType.getMirror());
         }
         if (other instanceof EspressoResolvedArrayType) {
@@ -546,21 +544,6 @@ public final class EspressoResolvedInstanceType extends EspressoResolvedObjectTy
     @Override
     public boolean isCloneableWithAllocation() {
         throw JVMCIError.unimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getMirror().getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return getMirror().getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return getMirror().getDeclaredAnnotations();
     }
 
     @Override

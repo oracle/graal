@@ -26,7 +26,6 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.function.Function;
 
@@ -59,7 +58,7 @@ public class SubstrateField implements SharedField {
     @UnknownObjectField(availability = AfterAnalysis.class) SubstrateType declaringClass;
     private final String name;
     private final int modifiers;
-    private int hashCode;
+    private final int hashCode;
 
     @UnknownPrimitiveField(availability = AfterCompilation.class) int location;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private boolean isAccessed;
@@ -170,21 +169,6 @@ public class SubstrateField implements SharedField {
 
     @Override
     public AnnotationsInfo getTypeAnnotationInfo() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         throw annotationsUnimplemented();
     }
 

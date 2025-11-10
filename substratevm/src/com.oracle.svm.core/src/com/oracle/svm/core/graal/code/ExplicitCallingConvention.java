@@ -29,9 +29,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -46,7 +47,7 @@ public @interface ExplicitCallingConvention {
     class Util {
         @Platforms(Platform.HOSTED_ONLY.class)
         public static SubstrateCallingConventionKind getCallingConventionKind(ResolvedJavaMethod method, boolean isEntryPoint) {
-            ExplicitCallingConvention explicitCallingConvention = AnnotationAccess.getAnnotation(method, ExplicitCallingConvention.class);
+            ExplicitCallingConvention explicitCallingConvention = AnnotationUtil.getAnnotation(method, ExplicitCallingConvention.class);
             if (explicitCallingConvention != null) {
                 return explicitCallingConvention.value();
             } else if (isEntryPoint) {

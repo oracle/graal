@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.function.Function;
 
@@ -322,21 +321,6 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     @Override
     public final boolean isSynthetic() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
