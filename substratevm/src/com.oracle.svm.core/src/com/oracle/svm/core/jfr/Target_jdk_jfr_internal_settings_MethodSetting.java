@@ -26,16 +26,19 @@
 
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import jdk.jfr.internal.PlatformEventType;
 import java.util.List;
 
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+
+import jdk.jfr.internal.PlatformEventType;
+import jdk.jfr.internal.settings.MethodSetting;
+
 @SuppressWarnings({"unused", "static-method"}) //
-@TargetClass(className = "jdk.jfr.internal.settings.MethodSetting")
+@TargetClass(value = MethodSetting.class)
 public final class Target_jdk_jfr_internal_settings_MethodSetting {
     @Substitute
-    protected void apply(PlatformEventType eventType, List<String> filters) {
+    private void apply(PlatformEventType eventType, List<String> filters) {
         SubstrateJVM.getLogging().logJfrSettingWarning("Method timing and tracing is not supported yet.");
     }
 }
