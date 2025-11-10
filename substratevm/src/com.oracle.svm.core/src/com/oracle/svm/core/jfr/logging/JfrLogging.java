@@ -59,17 +59,11 @@ public class JfrLogging {
         log(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
     }
 
-<<<<<<< HEAD
-=======
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrSettingWarning(String message) {
         int tagSetId = SubstrateUtil.cast(LogTag.JFR_SETTING, Target_jdk_jfr_internal_LogTag.class).id;
         log(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
-
     }
 
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
->>>>>>> 5d82b481f10 (substitute JFR method tracing and timing classes)
     public void log(int tagSetId, int level, String message) {
         if (message == null) {
             return;
