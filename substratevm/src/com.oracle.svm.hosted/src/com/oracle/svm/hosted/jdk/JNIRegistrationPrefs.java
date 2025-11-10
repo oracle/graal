@@ -44,14 +44,17 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.ResolvedJavaModule;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationPrefs extends JNIRegistrationUtil implements InternalFeature {
 
-    private static Optional<Module> requiredModule() {
-        return ModuleLayer.boot().findModule("java.prefs");
+    private static Optional<ResolvedJavaModule> requiredModule() {
+        return ResolvedJavaModuleLayer.boot().findModule("java.prefs");
     }
 
     @Override
@@ -61,7 +64,7 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        JavaNetHttpFeature.class.getModule().addReads(requiredModule().get());
+        HostModuleUtil.addReads(JavaNetHttpFeature.class, requiredModule().get());
     }
 
     @Override

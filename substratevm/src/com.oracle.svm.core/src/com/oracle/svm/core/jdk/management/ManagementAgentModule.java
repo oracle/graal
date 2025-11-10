@@ -29,7 +29,10 @@ import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ResolvedJavaModule;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 public class ManagementAgentModule {
 
@@ -42,9 +45,9 @@ public class ManagementAgentModule {
     static final String CONFIG_FILE_OPEN_FAILED;
 
     static {
-        Optional<Module> agentModule = ModuleLayer.boot().findModule("jdk.management.agent");
+        Optional<ResolvedJavaModule> agentModule = ResolvedJavaModuleLayer.boot().findModule("jdk.management.agent");
         if (agentModule.isPresent()) {
-            ManagementAgentModule.class.getModule().addReads(agentModule.get());
+            HostModuleUtil.addReads(ManagementAgentModule.class, agentModule.get());
             var agentClass = ReflectionUtil.lookupClass(false, "jdk.internal.agent.Agent");
             agentStartAgent = ReflectionUtil.lookupMethod(agentClass, "startAgent");
             agentError = ReflectionUtil.lookupMethod(agentClass, "error", String.class, String.class);

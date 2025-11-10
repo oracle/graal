@@ -24,12 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.util.ReflectionUtil;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
@@ -53,6 +47,13 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.loader.BuiltinClassLoader;
@@ -99,7 +100,7 @@ public class DynamicAccessDetectionSupport {
 
     public DynamicAccessDetectionSupport(AnalysisMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
-        boolean jdkUnsupportedModulePresent = ModuleLayer.boot().findModule("jdk.unsupported").isPresent();
+        boolean jdkUnsupportedModulePresent = ResolvedJavaModuleLayer.boot().findModule("jdk.unsupported").isPresent();
 
         put(reflectionMethods, Class.class, Set.of(
                         new MethodSignature("forName", String.class),
