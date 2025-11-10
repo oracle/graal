@@ -47,6 +47,8 @@ final class ObjectStorageOptions {
     private ObjectStorageOptions() {
     }
 
+    static final boolean ASSERTIONS_ENABLED = assertionsEnabled();
+
     static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
     static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
     static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
@@ -61,6 +63,10 @@ final class ObjectStorageOptions {
      * If set to true, use VarHandle rather than Unsafe to implement field accesses.
      */
     static final boolean UseVarHandle = booleanOption(OPTION_PREFIX + "UseVarHandle", false);
+    /**
+     * Enforce receiver type checks for unsafe field accesses.
+     */
+    static final boolean ReceiverCheck = booleanOption(OPTION_PREFIX + "ReceiverCheck", false) || ASSERTIONS_ENABLED;
 
     static final boolean TriePropertyMap = booleanOption(OPTION_PREFIX + "TriePropertyMap", true);
     static final boolean TrieTransitionMap = booleanOption(OPTION_PREFIX + "TrieTransitionMap", true);
@@ -93,5 +99,12 @@ final class ObjectStorageOptions {
     static boolean booleanOption(String name, boolean defaultValue) {
         String value = System.getProperty(name);
         return value == null ? defaultValue : value.equalsIgnoreCase("true");
+    }
+
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert (enabled = true) == true;
+        return enabled;
     }
 }
