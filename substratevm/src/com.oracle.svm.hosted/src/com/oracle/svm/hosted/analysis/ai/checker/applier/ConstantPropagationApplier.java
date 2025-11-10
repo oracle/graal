@@ -7,16 +7,23 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 
 import java.util.List;
 import java.util.Set;
 
 /**
  * Applies ConstantFact by replacing usages with ConstantNodes when beneficial.
- * Conservative and idempotent.
+ * Creates constants with the proper stamp in the same graph and avoids producing null inputs.
  */
 public final class ConstantPropagationApplier implements FactApplier{
 
@@ -42,16 +49,37 @@ public final class ConstantPropagationApplier implements FactApplier{
             if (!(f instanceof ConstantFact(Node node, long value))) {
                 continue;
             }
-            if (!node.isAlive()) {
+            if (node == null || !node.isAlive()) {
                 continue;
             }
-            if (node instanceof ConstantNode) {
-                continue; // already constant
+            if (!(node instanceof ValueNode vn)) {
+                continue;
             }
-            // Narrow long to int for Java int constants (interval analysis used numeric ints)
+            if (vn instanceof ConstantNode) {
+                continue;
+            }
+            if (vn instanceof PhiNode) {
+                continue;
+            }
+
+            Stamp stamp = vn.stamp(NodeView.DEFAULT);
+            if (!(stamp instanceof IntegerStamp intStamp)) {
+                continue;
+            }
+            long loMask = intStamp.getBits() >= 32 ? 0xFFFF_FFFFL : ((1L << intStamp.getBits()) - 1L);
             int intVal = (int) value;
-            ConstantNode cnode = ConstantNode.forInt(intVal); // graph association handled by insertion via replaceAtUsages
-            node.replaceAtUsages(cnode);
+
+            ConstantNode cnode = ConstantNode.forIntegerStamp(stamp, intVal, graph);
+            if (cnode.graph() == null) {
+                graph.addOrUnique(cnode);
+            }
+
+            vn.replaceAtUsages(cnode);
+
+            if (vn.isAlive() && vn.hasNoUsages() && !(vn instanceof jdk.graal.compiler.nodes.FixedNode)) {
+                GraphUtil.killWithUnusedFloatingInputs(vn);
+            }
+
             replaced++;
         }
         if (replaced > 0) {

@@ -12,6 +12,9 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -41,7 +44,6 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             logger.log("[BoundsCheckEliminator] No index safety facts.", LoggerVerbosity.CHECKER);
             return;
         }
-        int folded = 0;
         for (Fact f : idxFacts) {
             IndexSafetyFact isf = (IndexSafetyFact) f;
             if (!isf.isInBounds()) continue;
@@ -50,17 +52,10 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             Node guardIf = findGuardingIf(access);
             if (!(guardIf instanceof IfNode ifn)) continue;
             var cond = ifn.condition();
-            // Only fold integer below / less-than checks (exclude null pointer tests).
-            if (cond instanceof jdk.graal.compiler.nodes.calc.IntegerBelowNode ||
-                cond instanceof jdk.graal.compiler.nodes.calc.IntegerLessThanNode) {
+            if (cond instanceof IntegerBelowNode || cond instanceof IntegerLessThanNode) {
                 GraphRewrite.foldIfTrue(graph, ifn);
-                folded++;
             }
         }
-        if (folded > 0) {
-            GraphRewrite.sweepUnreachableFixed(graph);
-        }
-        logger.log("[BoundsCheckEliminator] Folded checks: " + folded, LoggerVerbosity.CHECKER);
     }
 
     private static Node findGuardingIf(Node n) {

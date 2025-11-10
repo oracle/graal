@@ -16,6 +16,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
@@ -44,7 +45,7 @@ public final class AbstractInterpretationLogger {
     private boolean fileEnabled = true;
 
     private AbstractInterpretationLogger(String customFileName,
-                                         LoggerVerbosity loggerVerbosity) throws IOException {
+                                         LoggerVerbosity loggerVerbosity) {
         String fileName;
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         if (customFileName != null && !customFileName.isEmpty()) {
@@ -59,29 +60,29 @@ public final class AbstractInterpretationLogger {
     }
 
     public static AbstractInterpretationLogger getInstance(String customFileName,
-                                                           LoggerVerbosity loggerVerbosity) throws IOException {
+                                                           LoggerVerbosity loggerVerbosity) {
         if (instance == null) {
             instance = new AbstractInterpretationLogger(customFileName, loggerVerbosity);
         }
         return instance;
     }
 
-    public static AbstractInterpretationLogger getInstance(String customFileName) throws IOException {
+    public static AbstractInterpretationLogger getInstance(String customFileName) {
         return getInstance(customFileName, LoggerVerbosity.INFO);
     }
 
-    public static AbstractInterpretationLogger getInstance(LoggerVerbosity loggerVerbosity) throws IOException {
+    public static AbstractInterpretationLogger getInstance(LoggerVerbosity loggerVerbosity) {
         return getInstance(null, loggerVerbosity);
     }
 
     public static AbstractInterpretationLogger getInstance() {
         if (instance == null) {
-            throw new IllegalStateException("Logger not initialized. Call getInstance(AnalysisMethod, DebugContext, String) first.");
+            instance = new AbstractInterpretationLogger("absint_noop", LoggerVerbosity.INFO);
+            instance.setConsoleEnabled(false).setFileEnabled(false);
         }
         return instance;
     }
 
-    // Configuration setters (optional; preserve compatibility with existing construction)
     public AbstractInterpretationLogger setFileThreshold(LoggerVerbosity threshold) {
         if (threshold != null) this.fileThreshold = threshold;
         return this;
@@ -254,20 +255,21 @@ public final class AbstractInterpretationLogger {
     /**
      * Export a graph to JSON format for sharing and analysis.
      * This is useful for getting help with abstract interpretation analysis.
-     *
-     * @param cfg        The control flow graph
+     * @param cfg The structured graph to export
      * @param method     The analysis method
      * @param outputPath Path to write the JSON file
      */
     public void exportGraphToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) {
         try {
-            GraphExporter exporter =
-                    new GraphExporter();
-            exporter.exportToJson(cfg, method, outputPath);
+            GraphExporter.exportToJson(cfg, method, outputPath);
             log("Graph exported to JSON: " + outputPath, LoggerVerbosity.INFO);
         } catch (Exception e) {
             log("Failed to export graph to JSON: " + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
         }
+    }
+
+    public void exportGraphToJson(StructuredGraph graph, AnalysisMethod method, String outputPath) {
+        exportGraphToJson(new ControlFlowGraphBuilder(graph).build(), method, outputPath);
     }
 
     public void logFacts(List<Fact> facts) {
@@ -331,7 +333,9 @@ public final class AbstractInterpretationLogger {
      * Opens an {@link IGVDumpSession} using the graph's {@link DebugContext} when available or
      * creating a new one if necessary. Returns null if dumping isn't possible (no services).
      */
+    @Deprecated // dumping to IGV is directly implemented in {@link FactApplierSuite}
     public static IGVDumpSession openIGVDumpSession(AnalysisMethod method, StructuredGraph graph, String scopeName) throws Throwable {
+        // TODO: the changes don't propagate to later phases, maybe check debug
         if (graph == null) {
             return null;
         }

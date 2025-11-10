@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * AbsMemory represents the product domain (env, store) used by access-path analyses.
- * - env: mapping from AbsVar -> AccessPath (which root a variable refers to)
+* - env: mapping from AbsVar -> AccessPath (which root a variable refers to)
  * - store: mapping from AccessPath -> IntInterval (heap/field values)
  * <p>
  * Lattice semantics:

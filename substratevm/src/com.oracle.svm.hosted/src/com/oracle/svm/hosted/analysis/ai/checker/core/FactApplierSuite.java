@@ -1,10 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.applier.CleanupApplier;
 import com.oracle.svm.hosted.analysis.ai.checker.applier.FactApplier;
 import com.oracle.svm.hosted.analysis.ai.checker.applier.FactApplierRegistry;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
@@ -14,10 +16,8 @@ import java.util.List;
  * Represents a suite of {@link FactApplier} instances to be run in sequence.
  */
 public final class FactApplierSuite {
-    private final List<FactApplier> appliers = new ArrayList<>();
 
-    public FactApplierSuite() {
-    }
+    private final List<FactApplier> appliers = new ArrayList<>();
 
     public FactApplierSuite(List<FactApplier> appliers) {
         if (appliers != null) {
@@ -25,23 +25,11 @@ public final class FactApplierSuite {
         }
     }
 
-
     public FactApplierSuite register(FactApplier applier) {
         if (applier != null) {
             appliers.add(applier);
         }
         return this;
-    }
-
-    /**
-     * Default suite containing the standard appliers available in this project.
-     */
-    public static FactApplierSuite defaultSuite() {
-        return new FactApplierSuite()
-                .register(new com.oracle.svm.hosted.analysis.ai.checker.applier.ConstantPropagationApplier())
-                .register(new com.oracle.svm.hosted.analysis.ai.checker.applier.ConditionTruthApplier())
-                .register(new com.oracle.svm.hosted.analysis.ai.checker.applier.BoundsCheckEliminatorApplier())
-                .register(new com.oracle.svm.hosted.analysis.ai.checker.applier.CleanupApplier());
     }
 
     /**
@@ -52,42 +40,43 @@ public final class FactApplierSuite {
         List<FactApplier> relevant = FactApplierRegistry.getRelevantAppliers(aggregator);
         FactApplierSuite suite = new FactApplierSuite(relevant);
         if (appendCleanup) {
-            suite.register(new com.oracle.svm.hosted.analysis.ai.checker.applier.CleanupApplier());
+            suite.register(new CleanupApplier());
         }
         return suite;
     }
 
     /**
-     * Executes the appliers in registration order. Dumps are delegated to the logger via a single
-     * IGV dump session so all sub-dumps are grouped under one top-level scope.
+     * Executes the appliers in registration order directly on the provided graph's debug context.
+     * Avoids creating a separate IGV session that could cause graph copies; we want in-place
+     * mutations to persist for later phases.
      */
-    public void runAppliers(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) throws Throwable {
+    public void runAppliers(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         var logger = AbstractInterpretationLogger.getInstance();
-        var session = AbstractInterpretationLogger.openIGVDumpSession(method, graph, "abstract interpretation");
-        if (session != null) {
-            try (AbstractInterpretationLogger.IGVDumpSession s = session) {
-                s.dumpBeforeSuite("abstract interpretation checkers", appliers.size());
-                for (FactApplier applier : appliers) {
-                    try {
-                        logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
-                        applier.apply(method, graph, aggregator);
-                    } catch (Throwable t) {
-                        logger.log("[FactApplier] Failed in " + applier.getDescription() + ": " + t.getMessage(), LoggerVerbosity.CHECKER_WARN);
-                    }
-                    s.dumpApplierSubphase(applier.getDescription());
+        if (graph == null) {
+            logger.log("[FactApplierSuite] Null graph; skipping appliers", LoggerVerbosity.CHECKER_WARN);
+            return;
+        }
+        DebugContext debug = graph.getDebug();
+        int idx = 0;
+        for (FactApplier applier : appliers) {
+            try (DebugContext.Scope _ = debug.scope("FactApplier:" + applier.getDescription(), graph)) {
+                logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
+                applier.apply(method, graph, aggregator);
+                if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+                    debug.dump(DebugContext.INFO_LEVEL, graph, "After applier %d: %s".formatted(++idx, applier.getDescription()));
                 }
-                s.dumpAfterSuite("abstract interpretation checkers");
-            }
-        } else {
-            // No debug context available: just run appliers
-            for (FactApplier applier : appliers) {
-                try {
-                    logger.log("[FactApplier] Applying (no IGV): " + applier.getDescription(), LoggerVerbosity.CHECKER);
-                    applier.apply(method, graph, aggregator);
-                } catch (Throwable t) {
-                    logger.log("[FactApplier] Failed (no IGV) in " + applier.getDescription() + ": " + t.getMessage(), LoggerVerbosity.CHECKER_WARN);
+
+                if (!graph.verify()) {
+                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(),
+                            LoggerVerbosity.CHECKER_WARN);
                 }
+                logger.exportGraphToJson(graph, method, "after-fact-applier-%d-%s".formatted(idx, applier.getDescription()));
+            } catch (Throwable t) {
+                logger.log("[FactApplier] Failed in " + applier.getDescription() + ": " + t.getMessage(), LoggerVerbosity.CHECKER_WARN);
             }
+        }
+        if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "After all fact appliers");
         }
     }
 }

@@ -45,7 +45,8 @@ public class GraphExporter {
      * @param outputPath Path to write the JSON file
      * @throws IOException If writing fails
      */
-    public void exportToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) throws IOException {
+    // TODO: we should have a separate method only for structuredGraph export
+    public static void exportToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) throws IOException {
         StructuredGraph graph = cfg.graph;
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
             writer.println("{");

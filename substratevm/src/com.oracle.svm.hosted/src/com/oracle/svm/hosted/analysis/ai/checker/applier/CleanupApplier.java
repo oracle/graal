@@ -21,7 +21,7 @@ public final class CleanupApplier implements FactApplier {
 
     @Override
     public String getDescription() {
-        return "Cleanup/DCE";
+        return "Cleanup";
     }
 
     @Override

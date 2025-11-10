@@ -45,6 +45,7 @@ public final class AnalysisServices {
         return inflation.getMetaAccess().lookupJavaType(clazz);
     }
 
+    // TODO: think of ways to work directly on structuredGraphs in WTO, because this is too costly I guess
     public ControlFlowGraph getGraph(AnalysisMethod method) {
         DebugContext debug = inflation.getDebug();
         StructuredGraph structuredGraph = method.decodeAnalyzedGraph(debug, null);

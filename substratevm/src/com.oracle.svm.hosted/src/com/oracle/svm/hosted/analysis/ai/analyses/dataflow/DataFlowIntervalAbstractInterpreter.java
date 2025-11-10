@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<AbstractMemory> {
+
     private static final String NODE_PREFIX = "n";
     private static final int MAX_INDEX_EXPANSION = 16;
 
@@ -288,14 +289,27 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 post = afterObj;
             }
         } else if (node instanceof LoadIndexedNode lin) {
+            // Evaluate array and index first to get the most precise interval information
             AbstractMemory afterArr = evalNode(lin.array(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             AbstractMemory afterIdx = evalNode(lin.index(), afterArr, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
             AliasSet bases = accessBaseSetForNodeEval(lin.array(), afterIdx);
             Function<AccessPath, AccessPath> idxTransform = indexTransform(lin.index(), afterIdx);
-            IntInterval valPrecise = afterIdx.readFrom(bases, idxTransform);
-            IntInterval valSummary = afterIdx.readFrom(bases, AccessPath::appendArrayWildcard);
-            IntInterval val = valPrecise.copyOf();
-            val.joinWith(valSummary);
+
+            IntInterval idxIv = getNodeResultInterval(lin.index(), afterIdx);
+            boolean preciseIndex = isPoint(idxIv);
+
+            IntInterval val;
+            if (preciseIndex) {
+                // Index is a singleton -> use only the precise cell value (do NOT pollute with wildcard)
+                val = afterIdx.readFrom(bases, idxTransform).copyOf();
+            } else {
+                // Fallback: combine precise/wildcard (may still be wildcard if transform is wildcard)
+                IntInterval precisePart = afterIdx.readFrom(bases, idxTransform);
+                IntInterval summaryPart = afterIdx.readFrom(bases, AccessPath::appendArrayWildcard);
+                val = precisePart.copyOf();
+                val.joinWith(summaryPart);
+            }
+
             bindNodeResult(node, val, afterIdx);
             post = afterIdx;
         } else if (node instanceof ArrayLengthNode aln) {

@@ -2,15 +2,11 @@ package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.graph.NodeFlood;
-import jdk.graal.compiler.nodes.AbstractEndNode;
-import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 
 /**
  * Simple graph rewriter helpers driven by facts from checkers.
@@ -33,72 +29,9 @@ public final class GraphRewrite {
     }
 
     /**
-     * Sweep unreachable fixed nodes by walking from StartNode and killing any fixed node not reached.
+     * Sweep unreachable nodes using Graal's DCE instead of custom floods to ensure consistency.
      */
     public static void sweepUnreachableFixed(StructuredGraph graph) {
-        StartNode start = graph.start();
-        if (start == null) {
-            AbstractInterpretationLogger.getInstance().log("[GraphRewrite] No StartNode found; skip sweep.", LoggerVerbosity.CHECKER);
-            return;
-        }
-
-        NodeFlood flood = graph.createNodeFlood();
-        flood.add(start);
-
-        Node.EdgeVisitor visitor = new Node.EdgeVisitor() {
-            @Override
-            public Node apply(Node n, Node succOrInput) {
-                if (succOrInput != null && succOrInput.isAlive()) {
-                    flood.add(succOrInput);
-                }
-                return succOrInput;
-            }
-        };
-
-        for (Node cur : flood) {
-            if (cur instanceof AbstractEndNode end) {
-                flood.add(end.merge());
-            } else {
-                cur.applySuccessors(visitor);
-                cur.applyInputs(visitor);
-            }
-        }
-
-        boolean changed = false;
-        for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-            if (flood.isMarked(guard.getAnchor().asNode())) {
-                flood.add(guard);
-                changed = true;
-            }
-        }
-        if (changed) {
-            for (Node cur : flood) {
-                if (cur instanceof AbstractEndNode end) {
-                    flood.add(end.merge());
-                } else {
-                    cur.applySuccessors(visitor);
-                    cur.applyInputs(visitor);
-                }
-            }
-        }
-
-        Node.EdgeVisitor removeUsageVisitor = new Node.EdgeVisitor() {
-            @Override
-            public Node apply(Node n, Node input) {
-                if (input != null && input.isAlive() && flood.isMarked(input)) {
-                    input.removeUsage(n);
-                }
-                return input;
-            }
-        };
-
-        var snapshot = graph.getNodes().snapshot();
-        for (Node node : snapshot) {
-            if (!flood.isMarked(node)) {
-                node.markDeleted();
-                node.applyInputs(removeUsageVisitor);
-                AbstractInterpretationLogger.getInstance().log("[GraphRewrite] Removed unreachable node: " + node, LoggerVerbosity.CHECKER);
-            }
-        }
+        new DeadCodeEliminationPhase().run(graph);
     }
 }

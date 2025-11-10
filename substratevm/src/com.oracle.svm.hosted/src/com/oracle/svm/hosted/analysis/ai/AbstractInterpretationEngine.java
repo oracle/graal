@@ -34,7 +34,7 @@ public class AbstractInterpretationEngine {
         this.invokedMethods = analysisServices.getInvokedMethods();
     }
 
-    public void executeAbstractInterpretation(AnalyzerMode analyzerMode) throws IOException {
+    public void executeAbstractInterpretation(AnalyzerMode analyzerMode) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         switch (analyzerMode) {
             case INTRA_ANALYZE_MAIN_ONLY -> {
