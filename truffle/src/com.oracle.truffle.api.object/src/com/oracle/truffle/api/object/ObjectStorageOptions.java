@@ -72,6 +72,9 @@ final class ObjectStorageOptions {
     /** Number of differing, compatible property locations allowed when merging shapes. */
     static final int MaxMergeDiff = Integer.getInteger(OPTION_PREFIX + "MaxMergeDiff", 2);
 
+    /** Number of shapes and keys to cache per access node before rewriting to the generic case. */
+    static final int CacheLimit = Integer.getInteger(OPTION_PREFIX + "CacheLimit", 5);
+
     // Debug options (should be final)
     static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
 

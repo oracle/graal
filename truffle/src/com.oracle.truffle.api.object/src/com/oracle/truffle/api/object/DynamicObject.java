@@ -330,7 +330,7 @@ public abstract class DynamicObject implements TruffleObject {
 
     // NODES
 
-    static final int SHAPE_CACHE_LIMIT = 5;
+    static final int SHAPE_CACHE_LIMIT = ObjectStorageOptions.CacheLimit;
 
     /**
      * Gets the value of a property or returns a default value if no such property exists.
