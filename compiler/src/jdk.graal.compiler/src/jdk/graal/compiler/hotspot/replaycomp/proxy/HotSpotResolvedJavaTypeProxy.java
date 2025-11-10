@@ -224,8 +224,8 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         handle(initializeMethod, initializeInvokable);
     }
 
-    private static final SymbolicMethod isLinkedMethod = method("isLinked");
-    private static final InvokableMethod isLinkedInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isLinked();
+    public static final SymbolicMethod isLinkedMethod = method("isLinked");
+    public static final InvokableMethod isLinkedInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).isLinked();
 
     @Override
     public final boolean isLinked() {
@@ -414,16 +414,16 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
         return (List<ResolvedJavaRecordComponent>) handle(getRecordComponentsMethod, getRecordComponentsInvokable);
     }
 
-    public static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
-    public static final InvokableMethod getDeclaredConstructorsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors();
+    private static final SymbolicMethod getDeclaredConstructorsMethod = method("getDeclaredConstructors");
+    private static final InvokableMethod getDeclaredConstructorsInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors();
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredConstructors() {
         return (ResolvedJavaMethod[]) handle(getDeclaredConstructorsMethod, getDeclaredConstructorsInvokable);
     }
 
-    private static final SymbolicMethod getDeclaredConstructorsBooleanMethod = method("getDeclaredConstructors", boolean.class);
-    private static final InvokableMethod getDeclaredConstructorsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors((Boolean) args[0]);
+    public static final SymbolicMethod getDeclaredConstructorsBooleanMethod = method("getDeclaredConstructors", boolean.class);
+    public static final InvokableMethod getDeclaredConstructorsBooleanInvokable = (receiver, args) -> ((HotSpotResolvedJavaType) receiver).getDeclaredConstructors((Boolean) args[0]);
 
     @Override
     public final ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {

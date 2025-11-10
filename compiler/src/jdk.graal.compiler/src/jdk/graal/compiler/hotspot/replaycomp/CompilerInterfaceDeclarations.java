@@ -807,7 +807,8 @@ public final class CompilerInterfaceDeclarations {
                     ResolvedJavaType holder = method.getDeclaringClass();
                     if (holder.isHidden()) {
                         ConstantPool constantPool = method.getConstantPool();
-                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsMethod, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsInvokable, null));
+                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.isLinkedMethod, HotSpotResolvedJavaTypeProxy.isLinkedInvokable, null));
+                        calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsBooleanMethod, HotSpotResolvedObjectTypeProxy.getDeclaredConstructorsBooleanInvokable, new Object[]{false}));
                         calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getInterfacesMethod, HotSpotResolvedObjectTypeProxy.getInterfacesInvokable, null));
                         calls.add(new MethodCallToRecord(holder, HotSpotResolvedObjectTypeProxy.getDeclaredMethodsBooleanMethod, HotSpotResolvedObjectTypeProxy.getDeclaredMethodsBooleanInvokable, new Object[]{false}));
                         calls.add(new MethodCallToRecord(method, HotSpotResolvedJavaMethodProxy.getConstantPoolMethod, HotSpotResolvedJavaMethodProxy.getConstantPoolInvokable, null));

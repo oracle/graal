@@ -73,7 +73,7 @@ public final class LambdaUtils {
         String signature = getSignature(lambdaType);
         if (signature == null) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
+            sb.append("Lambda without a signature: ").append(lambdaType.toClassName()).append(" (linked: ").append(lambdaType.isLinked()).append(")");
             for (ResolvedJavaMethod method : lambdaType.getDeclaredMethods(false)) {
                 sb.append("\n  Method: ").append(method);
             }
@@ -133,9 +133,9 @@ public final class LambdaUtils {
      * Generates a signature for a given type by hashing its composing parts. The signature is
      * generated based on the methods invoked in the bytecode of a public non-bridge method, the
      * constructor parameter types, and the interfaces implemented by the type. Returns {@code null}
-     * if the selected declared method does not invoke any other method. The procedure should
-     * generate reasonable signatures for lambda proxy types, but it may fail to do so for general
-     * hidden classes.
+     * if the type is not linked or the selected declared method does not invoke any other method.
+     * The procedure should generate reasonable signatures for lambda proxy types, but it may fail
+     * to do so for general hidden classes.
      * <p>
      * Starting from JDK17, lambda classes can have additional interfaces that lambda should
      * implement. This further means that lambda can have more than one public method (public and
@@ -148,9 +148,12 @@ public final class LambdaUtils {
      *
      * @param type the type to generate a signature for
      * @return a 32-character hexadecimal string representing the type signature or {@code null} if
-     *         the selected declared method does not have any invokes
+     *         the type is not linked or the selected declared method does not have any invokes
      */
     public static String getSignature(ResolvedJavaType type) {
+        if (!type.isLinked()) {
+            return null;
+        }
         /*
          * Take only the first method to find invoked methods, because the result would be the same
          * for all other methods (if it is a lambda type).
@@ -166,7 +169,7 @@ public final class LambdaUtils {
             sb.append(method.format("%H.%n(%P)%R"));
         }
         /* Append constructor parameter types. */
-        for (JavaMethod ctor : type.getDeclaredConstructors()) {
+        for (JavaMethod ctor : type.getDeclaredConstructors(false)) {
             sb.append(ctor.format("%P"));
         }
         /* Append implemented interfaces. */
