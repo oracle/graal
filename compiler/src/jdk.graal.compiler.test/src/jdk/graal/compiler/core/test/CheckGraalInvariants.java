@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -60,6 +59,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
@@ -463,10 +464,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 try (DebugContext debug = new Builder(options).build()) {
-                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+                                    boolean isSubstitution = AnnotationValueSupport.getAnnotationValue(method, Snippet.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
                                     try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("CheckingGraph", graph, method)) {
-                                        checkMethod(method);
+                                        checkMethod(method, metaAccess);
                                         graphBuilderSuite.apply(graph, context);
                                         // update phi stamps
                                         graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
@@ -675,17 +676,21 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
     }
 
-    private static void checkMethod(ResolvedJavaMethod method) {
-        if (method.getAnnotation(Snippet.class) == null) {
-            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-            for (int i = 0; i < parameterAnnotations.length; i++) {
-                for (Annotation a : parameterAnnotations[i]) {
-                    Class<? extends Annotation> annotationType = a.annotationType();
-                    if (annotationType == ConstantParameter.class || annotationType == VarargsParameter.class || annotationType == NonNullParameter.class) {
-                        VerificationError verificationError = new VerificationError("Parameter %d of %s is annotated with %s but the method is not annotated with %s", i, method,
-                                        annotationType.getSimpleName(),
-                                        Snippet.class.getSimpleName());
-                        throw verificationError;
+    private static void checkMethod(ResolvedJavaMethod method, MetaAccessProvider metaAccess) {
+        if (AnnotationValueSupport.getAnnotationValue(method, Snippet.class) == null) {
+            var parsed = AnnotationValueSupport.getParameterAnnotationValues(method);
+            if (parsed != null) {
+                for (int i = 0; i < parsed.values().size(); i++) {
+                    List<AnnotationValue> annotations = parsed.values().get(i);
+                    for (AnnotationValue a : annotations) {
+                        ResolvedJavaType annotationType = a.getAnnotationType();
+                        if (annotationType.equals(metaAccess.lookupJavaType(ConstantParameter.class)) ||
+                                        annotationType.equals(metaAccess.lookupJavaType(VarargsParameter.class)) ||
+                                        annotationType.equals(metaAccess.lookupJavaType(NonNullParameter.class))) {
+                            throw new VerificationError("Parameter %d of %s is annotated with %s but the method is not annotated with %s", i, method,
+                                            annotationType.toJavaName(false),
+                                            Snippet.class.getSimpleName());
+                        }
                     }
                 }
             }

@@ -403,22 +403,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean hasParameterAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.RuntimeVisibleParameterAnnotations) != null;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean hasDefaultAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.AnnotationDefault) != null;
-    }
-
-    @Substitution(hasReceiver = true)
     abstract static class GetRawAnnotationBytes extends SubstitutionNode {
         abstract @JavaType(byte[].class) StaticObject execute(StaticObject self, int category);
 

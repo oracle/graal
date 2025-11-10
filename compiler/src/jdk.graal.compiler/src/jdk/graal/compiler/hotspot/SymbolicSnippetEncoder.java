@@ -452,17 +452,13 @@ public class SymbolicSnippetEncoder {
             }
             for (; i < info.getParameterCount(); i++) {
                 if (info.isConstantParameter(i) || info.isVarargsParameter(i)) {
-                    JavaType type = method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
-                    if (type instanceof ResolvedJavaType resolvedJavaType) {
-                        if (info.isVarargsParameter(i)) {
-                            resolvedJavaType = resolvedJavaType.getElementalType();
-                        }
-                        assert resolvedJavaType.isPrimitive() || isGraalClass(resolvedJavaType) : method +
-                                        ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;
-                        ensureSnippetTypeAvailable(resolvedJavaType);
-                    } else {
-                        throw new InternalError(type.toString());
+                    ResolvedJavaType type = method.getSignature().getParameterType(i - offset, null).resolve(method.getDeclaringClass());
+                    if (info.isVarargsParameter(i)) {
+                        type = type.getElementalType();
                     }
+                    assert type.isPrimitive() || isGraalClass(type) : method +
+                                    ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;
+                    ensureSnippetTypeAvailable(type);
                 }
             }
             pendingSnippetGraphs.put(key, (compileOptions, snippetReplacements) -> buildGraph(method, original, receiver,

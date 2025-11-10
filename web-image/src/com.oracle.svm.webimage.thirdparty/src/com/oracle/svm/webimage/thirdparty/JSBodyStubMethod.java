@@ -29,8 +29,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -127,7 +125,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
         state.clearStack();
 
         JSBody.JSCode jsCode;
-        JavaScriptBody javaScriptBody = AnnotationAccess.getAnnotation(method, JavaScriptBody.class);
+        JavaScriptBody javaScriptBody = AnnotationUtil.getAnnotation(method, JavaScriptBody.class);
         assert javaScriptBody != null;
         Function<CodeGenTool, String> codeSupplier;
         if (javaScriptBody.javacall()) {

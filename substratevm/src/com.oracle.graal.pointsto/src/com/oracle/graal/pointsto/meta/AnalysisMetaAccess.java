@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.util.Optional;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
@@ -36,6 +37,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
@@ -52,6 +54,11 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     @Override
     public AnalysisType lookupJavaType(Class<?> clazz) {
         return (AnalysisType) super.lookupJavaType(clazz);
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent lookupJavaRecordComponent(RecordComponent recordComponent) {
+        return wrapped.lookupJavaRecordComponent(recordComponent);
     }
 
     @Override

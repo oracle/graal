@@ -145,11 +145,13 @@ import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ResolvedJavaPackage;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -185,6 +187,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class SVMHost extends HostVM {
@@ -957,8 +960,13 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean platformSupported(AnnotatedElement element) {
+        return platformSupported(GraalAccess.toAnnotated(element));
+    }
+
+    @Override
+    public boolean platformSupported(Annotated element) {
         if (element instanceof ResolvedJavaType javaType) {
-            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
+            ResolvedJavaPackage p = JVMCIReflectionUtil.getPackage(javaType);
             if (p != null && !platformSupported(p)) {
                 return false;
             }
@@ -972,23 +980,8 @@ public class SVMHost extends HostVM {
                 return false;
             }
         }
-        if (element instanceof Class<?> clazz) {
-            Package p = clazz.getPackage();
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-            Class<?> enclosingClass;
-            try {
-                enclosingClass = clazz.getEnclosingClass();
-            } catch (LinkageError e) {
-                enclosingClass = null;
-            }
-            if (enclosingClass != null && !platformSupported(enclosingClass)) {
-                return false;
-            }
-        }
 
-        Platforms platformsAnnotation = AnnotationAccess.getAnnotation(element, Platforms.class);
+        Platforms platformsAnnotation = AnnotationUtil.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;
         }

@@ -208,7 +208,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
 
         /* Invoke the prologue. This call is the only one that may be inlined. */
-        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
+        InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, AnnotationUtil.getParameterAnnotations(targetMethod), args);
         if (invokePrologue != null) {
             ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
             JavaKind prologueReturnKind = prologueMethod.getSignature().getReturnKind();
@@ -326,7 +326,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
         }
 
-        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), aTargetMethod.getParameterAnnotations());
+        ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), AnnotationUtil.getParameterAnnotations(aTargetMethod));
 
         /* Find the target method for the built-in. */
         CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
@@ -528,20 +528,21 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             boolean isLong = declaredType.getJavaKind() == JavaKind.Long;
             boolean designated = false;
 
-            for (Annotation ann : parameterAnnotations[i]) {
-                if (ann.annotationType() == IsolateContext.class) {
-                    UserError.guarantee(isIsolate || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
-                                    CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateContext.class.getSimpleName(), Isolate.class.getSimpleName(), targetMethod);
-                    designated = true;
-                    isIsolate = true;
-                } else if (ann.annotationType() == IsolateThreadContext.class) {
-                    UserError.guarantee(isThread || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
-                                    CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateThreadContext.class.getSimpleName(), IsolateThread.class.getSimpleName(), targetMethod);
-                    designated = true;
-                    isThread = true;
+            if (parameterAnnotations != null) {
+                for (Annotation ann : parameterAnnotations[i]) {
+                    if (ann.annotationType() == IsolateContext.class) {
+                        UserError.guarantee(isIsolate || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
+                                        CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateContext.class.getSimpleName(), Isolate.class.getSimpleName(), targetMethod);
+                        designated = true;
+                        isIsolate = true;
+                    } else if (ann.annotationType() == IsolateThreadContext.class) {
+                        UserError.guarantee(isThread || isLong, "@%s parameter %d is annotated with @%s, but does not have type %s: %s",
+                                        CEntryPoint.class.getSimpleName(), i, CEntryPoint.IsolateThreadContext.class.getSimpleName(), IsolateThread.class.getSimpleName(), targetMethod);
+                        designated = true;
+                        isThread = true;
+                    }
                 }
             }
-
             UserError.guarantee(!(isIsolate && isThread), "@%s parameter %d has a type as both an %s and a %s: %s",
                             CEntryPoint.class.getSimpleName(), i, Isolate.class.getSimpleName(), IsolateThread.class.getSimpleName(), targetMethod);
 

@@ -446,8 +446,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                  * doing the actual merging, ensures that concurrent updates to the flow are still
                  * merged correctly.
                  */
-                if (constantObject instanceof ConstantContextSensitiveObject) {
-                    ConstantContextSensitiveObject ct = (ConstantContextSensitiveObject) constantObject;
+                if (constantObject instanceof ConstantContextSensitiveObject ct) {
                     ct.setMergedWithUniqueConstantObject();
                     ct.mergeInstanceFieldsFlows(bb, uniqueConstant);
                 }
