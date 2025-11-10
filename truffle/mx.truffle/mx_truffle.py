@@ -153,6 +153,7 @@ class JMHJsonCompilationTimingRule(mx_benchmark.JMHJsonRule):
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.type": "numeric",
+                    "metric.object": "total",
                     # full name
                     "extra.jmh.benchmark" : benchmark,
                 }
