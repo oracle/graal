@@ -95,7 +95,13 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * </pre>
  *
  * @since 20.2.0
+ * @see DynamicObject
+ * @deprecated DynamicObjectLibrary has been replaced by more lightweight DynamicObject nodes.
+ *             Consult the javadoc of the individual messages for the corresponding API replacement,
+ *             or see {@link DynamicObject} for a list of new node-based APIs.
+ *             {@link DynamicObjectLibrary} will be removed in a future release.
  */
+@Deprecated(since = "25.1")
 @GenerateLibrary(defaultExportLookupEnabled = false, dynamicDispatchEnabled = false, pushEncapsulatingNode = false)
 @GenerateLibrary.DefaultExport(DynamicObjectLibraryImpl.class)
 public abstract class DynamicObjectLibrary extends Library {

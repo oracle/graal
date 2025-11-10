@@ -44,20 +44,20 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
+import java.util.List;
+
 import org.junit.Ignore;
 import org.junit.Test;
-
-import com.oracle.truffle.api.test.AbstractLibraryTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.util.List;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class CachedFallbackTest extends AbstractLibraryTest {
 
@@ -136,7 +136,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         assertTrue(library.accepts(o1));
         assertTrue(library.accepts(o2));
         library.put(o1, key1, val1);
@@ -164,10 +164,10 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library1 = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library1 = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         library1.put(o1, key1, val1);
         library1.put(o2, key1, val1);
-        DynamicObjectLibrary library2 = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library2 = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         library2.put(o1, key2, val2);
         library2.put(o2, key2, val2);
 

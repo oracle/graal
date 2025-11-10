@@ -46,11 +46,11 @@ import org.junit.runners.Parameterized.Parameter;
 
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest {
 
@@ -71,10 +71,10 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
 
     protected final DynamicObjectLibraryWrapper createLibrary(Object receiver) {
         return switch (run) {
-            case CACHED_LIBRARY -> wrap(adoptNode(DynamicObjectLibrary.getFactory().create(receiver)).get());
-            case UNCACHED_LIBRARY -> wrap(DynamicObjectLibrary.getFactory().getUncached(receiver));
-            case DISPATCHED_CACHED_LIBRARY -> wrap(adoptNode(DynamicObjectLibrary.getFactory().createDispatched(2)).get());
-            case DISPATCHED_UNCACHED_LIBRARY -> wrap(DynamicObjectLibrary.getUncached());
+            case CACHED_LIBRARY -> wrap(adoptNode(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(receiver)).get());
+            case UNCACHED_LIBRARY -> wrap(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().getUncached(receiver));
+            case DISPATCHED_CACHED_LIBRARY -> wrap(adoptNode(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().createDispatched(2)).get());
+            case DISPATCHED_UNCACHED_LIBRARY -> wrap(com.oracle.truffle.api.object.DynamicObjectLibrary.getUncached());
             case CACHED_NODES -> new NodesFakeDynamicObjectLibrary();
             case UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
         };
@@ -90,7 +90,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
     protected final DynamicObjectLibraryWrapper uncachedLibrary() {
         return switch (run) {
             case CACHED_LIBRARY, UNCACHED_LIBRARY, DISPATCHED_CACHED_LIBRARY, DISPATCHED_UNCACHED_LIBRARY ->
-                wrap(DynamicObjectLibrary.getUncached());
+                wrap(com.oracle.truffle.api.object.DynamicObjectLibrary.getUncached());
             case CACHED_NODES, UNCACHED_NODES -> UNCACHED_NODES_LIBRARY;
         };
     }
@@ -163,7 +163,7 @@ public abstract class ParametrizedDynamicObjectTest extends AbstractLibraryTest 
         public abstract Property[] getPropertyArray(DynamicObject object);
     }
 
-    protected static DynamicObjectLibraryWrapper wrap(DynamicObjectLibrary library) {
+    protected static DynamicObjectLibraryWrapper wrap(com.oracle.truffle.api.object.DynamicObjectLibrary library) {
         return new DynamicObjectLibraryWrapper() {
 
             @Override
