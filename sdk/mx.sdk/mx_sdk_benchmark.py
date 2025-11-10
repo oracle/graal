@@ -59,7 +59,7 @@ from os import PathLike
 from os.path import exists, basename
 from pathlib import Path
 from traceback import print_tb
-from typing import List, Optional, Set, Collection, Union, Iterable, Sequence, Callable, TextIO, Tuple
+from typing import List, Optional, Set, Collection, Union, Iterable, Sequence, Callable, TextIO, Tuple, Generator, Any
 
 import mx
 import mx_benchmark
@@ -72,7 +72,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
 from mx_util import Stage, StageName, Layer
-from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, SingleBenchmarkManager
+from mx_benchmark import BenchmarkDispatcher, BenchmarkDispatcherState, BenchmarkExecutionConfiguration, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, DataPoints, DataPoint, ForkInfo, SingleBenchmarkManager
 from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('sdk')
@@ -3901,6 +3901,27 @@ memUnitTable = {
     'GiB':  1024 * 1024 * 1024
 }
 
+def _try_parse_arg_with_number(parse_arg: str, args: List[str], i: int) -> Optional[Tuple[int, int]]:
+    """Tries to parse a numeric `parse_arg` from the `args` list starting at position `i`.
+
+    For single character arguments (e.g. `-X`) the space before the value might be omitted (e.g. `-X8`).
+
+    If the arg is found at the given index, returns a tuple of the parsed numeric value and the number of argument
+    values used to parse the value (either 1 or 2). Otherwise, returns None.
+    """
+    arg = args[i]
+    try:
+        if arg == parse_arg and i + 1 < len(args):
+            # full match - value is the next argument `-i 10`
+            return int(args[i+1]), 2
+        elif arg.startswith(parse_arg) and len(parse_arg) == 2 and parse_arg.startswith('-'):
+            # partial match at begin - either a different option or value without space separator `-i10`
+            remainder_arg = arg[len(parse_arg):]
+            return int(remainder_arg), 1
+    except ValueError:
+        # not a number - probably a different option
+        pass
+    return None
 
 def strip_args_with_number(strip_args, args):
     """Removes arguments (specified in `strip_args`) from `args`.
@@ -3913,35 +3934,21 @@ def strip_args_with_number(strip_args, args):
     if not isinstance(strip_args, list):
         strip_args = [strip_args]
 
-    def _strip_arg_with_number_gen(_strip_arg, _args):
-        skip_next = False
-        for arg in _args:
-            if skip_next:
-                # skip value of argument
-                skip_next = False
+    def _strip_arg_with_number_gen(_strip_arg: str, _args: List[str]):
+        i = 0
+        while i < len(_args):
+            if result := _try_parse_arg_with_number(_strip_arg, _args, i):
+                # strip arg found, skip over it
+                _, args_read = result
+                i += args_read
                 continue
-            if arg.startswith(_strip_arg):
-                if arg == _strip_arg:
-                    # full match - value is the next argument `-i 10`
-                    skip_next = True
-                    continue
-                # partial match at begin - either a different option or value without space separator `-i10`
-                if len(_strip_arg) == 2 and _strip_arg.startswith('-'):
-                    # only look at single character options
-                    remainder_arg = arg[len(_strip_arg):]
-                    try:
-                        int(remainder_arg)
-                        # remainder is a number - skip the current arg
-                        continue
-                    except ValueError:
-                        # not a number - probably a different option
-                        pass
             # add arg to result
-            yield arg
+            yield _args[i]
+            i += 1
 
     result = args
     for strip_arg in strip_args:
-        result = _strip_arg_with_number_gen(strip_arg, result)
+        result = list(_strip_arg_with_number_gen(strip_arg, result))
     return list(result)
 
 def adjust_arg_with_number(arg_name, new_value: int, user_args):
@@ -6058,3 +6065,68 @@ class JMHJarBasedNativeImageBenchmarkMixin(JMHNativeImageBenchmarkMixin):
             elif option.startswith('-jvmArgs'):
                 mx.warn(f"JMH native images don't support option {option}, ignoring it")
         return super(JMHJarBasedNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
+
+
+class JMHNativeImageDispatcher(BenchmarkDispatcher):
+    """Native image dispatcher that respects the JMH -f argument.
+
+    JMH forks are unsupported on NI (we would need to prepare a separate fork image, carefully propagate environment
+    variables, etc.). Instead, this dispatcher performs a single "image" stage followed by one "run" stage per requested
+    fork. Fork counts must be provided on the command line (it does not respect fork counts declared in the benchmark source).
+
+    NOTE: JMH normally reports aggregate data across all forks, but since this dispatcher invokes JMH multiple times, no
+    aggregation is performed, and the data produced may not be comparable. For example, across 10 forks, a p99 value reported by
+    JMH corresponds to the 99th percentile of the sample set from all 10 forks; in contrast, this dispatcher would produce 10
+    different p99 values, and the mean of these values is *not* the p99 of the entire sample set.
+    """
+    def __init__(self, state: BenchmarkDispatcherState):
+        super().__init__(state)
+        self.fork_count = JMHNativeImageDispatcher.parse_fork_count(state.suite.runArgs(state.bm_suite_args))
+        assert isinstance(state.suite, JMHNativeImageBenchmarkMixin)
+        self.suite: JMHNativeImageBenchmarkMixin = state.suite
+
+    @staticmethod
+    def parse_fork_count(run_args: List[str]) -> int:
+        fork_count = 1  # default value
+        i = 0
+        while i < len(run_args):
+            if result := _try_parse_arg_with_number("-f", run_args, i):
+                fork_count, args_read = result
+                i += args_read
+            else:
+                i += 1
+        mx.log(f"{fork_count} fork(s) requested.")
+        return fork_count
+
+    def validated_env_dispatch(self) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        self._verify_stages_not_explicitly_requested()
+        for bench_names in self.state.bench_names_list:
+            if bench_names is None:
+                continue
+            supported_benchmarks = [bench_name for bench_name in bench_names if not self.skip_platform_unsupported_benchmark(bench_name)]
+            if not supported_benchmarks:
+                continue
+            expanded_bm_suite_args = self.state.suite.expandBmSuiteArgs(supported_benchmarks, self.state.bm_suite_args)
+            for suite_args in expanded_bm_suite_args:
+                for stage in self._get_pre_run_stages():
+                    yield BenchmarkExecutionConfiguration(supported_benchmarks, self.state.mx_benchmark_args, JMHNativeImageDispatcher._inject_stage_arg(suite_args, str(stage.stage_name)), ForkInfo(0, 1))
+                for i in range(self.fork_count):
+                    if self.fork_count != 1:
+                        mx.log(f"Running fork {i+1}/{self.fork_count}.")
+                    yield BenchmarkExecutionConfiguration(supported_benchmarks, self.state.mx_benchmark_args, JMHNativeImageDispatcher._inject_stage_arg(suite_args, str(StageName.RUN)), ForkInfo(i, self.fork_count))
+
+    def _get_pre_run_stages(self) -> List[Stage]:
+        vm = self.suite.get_vm_registry().get_vm_from_suite_args(self.state.bm_suite_args)
+        effective_stages, _ = vm.prepare_stages(self.suite, self.state.bm_suite_args)
+        return [stage for stage in effective_stages if stage.stage_name != StageName.RUN]
+
+    @staticmethod
+    def _inject_stage_arg(bm_suite_args: List[str], stage_name: str) -> List[str]:
+        stage = Stage.from_string(stage_name)
+        return [f"-Dnative-image.benchmark.stages={stage}"] + bm_suite_args
+
+    def _verify_stages_not_explicitly_requested(self):
+        vm_args = self.state.suite.vmArgs(self.state.bm_suite_args)
+        if len(parse_prefixed_args("-Dnative-image.benchmark.stages=", vm_args)) > 0:
+            msg = f"Setting the VM option '-Dnative-image.benchmark.stages' is not supported when using {self.__class__.__name__} as a dispatcher!"
+            raise ValueError(msg)
