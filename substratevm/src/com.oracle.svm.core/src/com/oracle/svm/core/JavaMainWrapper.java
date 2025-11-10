@@ -77,15 +77,15 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.ApplicationLayerOnly;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
@@ -496,8 +496,8 @@ public class JavaMainWrapper {
             args.setVersion(4);
             args.setArgc(paramArgc);
             args.setArgv(paramArgv);
-            args.setIgnoreUnrecognizedArguments(false);
-            args.setExitWhenArgumentParsingFails(true);
+            args.setIgnoreUnrecognizedArgs(false);
+            args.setForJavaMainCall(true);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
             if (code != CEntryPointErrors.NO_ERROR) {
