@@ -29,7 +29,13 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.jfr.internal.tracing.PlatformTracer")
+import jdk.jfr.internal.tracing.PlatformTracer;
+
+/**
+ * This class is not supported at the moment. So, we completely replace it with an empty
+ * implementation to reduce the image size.
+ */
 @Substitute
+@TargetClass(value = PlatformTracer.class)
 public final class Target_jdk_jfr_internal_tracing_PlatformTracer {
 }
