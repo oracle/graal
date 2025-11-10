@@ -452,23 +452,36 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         IsolateArgumentParser.singleton().copyToRuntimeOptions();
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
-            boolean exitWhenArgumentParsingFails = true;
+            boolean forJavaMainCall = false;
             boolean ignoreUnrecognized = false;
             if (parameters.version() >= 4) {
-                ignoreUnrecognized = parameters.getIgnoreUnrecognizedArguments();
-                exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
+                ignoreUnrecognized = parameters.getIgnoreUnrecognizedArgs();
+                forJavaMainCall = parameters.getForJavaMainCall();
             }
 
             String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
             ArgsSupport.singleton().setInitialArgs(initialArgs);
             try {
                 String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
-                if (ImageSingletons.contains(JavaMainSupport.class)) {
-                    ImageSingletons.lookup(JavaMainSupport.class).mainArgs = remainingArgs;
+                if (forJavaMainCall) {
+                    if (ImageSingletons.contains(JavaMainSupport.class)) {
+                        ImageSingletons.lookup(JavaMainSupport.class).mainArgs = remainingArgs;
+                    } else {
+                        throw VMError.shouldNotReachHereAtRuntime();
+                    }
+                } else if (!ignoreUnrecognized && remainingArgs.length != 0) {
+                    /*
+                     * GR-73367: we currently don't recognize many commonly passed VM options like
+                     * module options, -ea, or --enable-native-access at runtime, so failing here
+                     * would be disruptive to existing code
+                     *
+                     * (Note: such options are passed as args to a Java main method above)
+                     */
+                    // return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
                 }
             } catch (IllegalArgumentException e) {
                 Log.logStream().println("Error: " + e.getMessage());
-                if (exitWhenArgumentParsingFails) {
+                if (forJavaMainCall) {
                     System.exit(1);
                 } else {
                     return CEntryPointErrors.ARGUMENT_PARSING_FAILED;

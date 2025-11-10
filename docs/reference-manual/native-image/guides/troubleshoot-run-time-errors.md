@@ -39,7 +39,7 @@ This can be avoided by eagerly checking for missing metadata.
 
 For diagnosing shared libraries built with Native Image, you can either:
 * specify `-R:MissingRegistrationReportingMode=Exit` when building a native shared library;
-* or specify `-XX:MissingRegistrationReportingMode=Exit` when the isolate is created. `graal_create_isolate_params_t` has `argc (_reserved_1)` and `argv (_reserved_2)` fields that can be used to pass C-style command-line options at run time. However, note that both fields are currently not public APIs.
+* or specify `-XX:MissingRegistrationReportingMode=Exit` when the isolate is created. `graal_create_isolate_params_t` has `argc` and `argv` fields that can be used to pass C-style command-line options at run time.
 
 ### 2. Set java.home Explicitly
 

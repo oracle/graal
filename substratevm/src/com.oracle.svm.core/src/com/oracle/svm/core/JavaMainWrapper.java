@@ -496,8 +496,8 @@ public class JavaMainWrapper {
             args.setVersion(4);
             args.setArgc(paramArgc);
             args.setArgv(paramArgv);
-            args.setIgnoreUnrecognizedArguments(false);
-            args.setExitWhenArgumentParsingFails(true);
+            args.setIgnoreUnrecognizedArgs(false);
+            args.setForJavaMainCall(true);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
             if (code != CEntryPointErrors.NO_ERROR) {
