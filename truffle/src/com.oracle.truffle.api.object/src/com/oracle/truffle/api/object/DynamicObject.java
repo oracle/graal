@@ -75,102 +75,86 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 import sun.misc.Unsafe;
 
-// @formatter:off
 /**
  * Represents a dynamic object, members of which can be dynamically added and removed at run time.
  *
- * To use it, extend {@link DynamicObject} and use nodes nested under DynamicObject such as {@link DynamicObject.GetNode} for object accesses.
+ * To use it, extend {@link DynamicObject} and use nodes nested under DynamicObject such as
+ * {@link DynamicObject.GetNode} for object accesses.
  *
  * When {@linkplain DynamicObject#DynamicObject(Shape) constructing} a {@link DynamicObject}, it has
  * to be initialized with an empty initial shape. Initial shapes are created using
- * {@link Shape#newBuilder()} and should ideally be shared per {@link TruffleLanguage} instance to allow
- * shape caches to be shared across contexts.
+ * {@link Shape#newBuilder()} and should ideally be shared per {@link TruffleLanguage} instance to
+ * allow shape caches to be shared across contexts.
  *
  * Subclasses can provide in-object dynamic field slots using the {@link DynamicField} annotation
  * and {@link Shape.Builder#layout(Class, Lookup) Shape.Builder.layout}.
  *
  * <p>
  * Example:
- * {@snippet :
- * public class MyObject extends DynamicObject implements TruffleObject {
- *     public MyObject(Shape shape) {
- *         super(shape);
- *     }
- * }
  *
- * Shape initialShape = Shape.newBuilder().layout(MyObject.class).build();
+ * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+ * "com.oracle.truffle.api.object.DynamicObjectSnippets.MyObject"}
  *
- * MyObject obj = new MyObject(initialShape);
- * }
+ * <h2>Using DynamicObject nodes</h2>
  *
- * <h2>General documentation about DynamicObject nodes</h2>
- *
- * DynamicObject nodes is the central interface for accessing and mutating properties and other state (flags,
- * dynamic type) of {@link DynamicObject}s.
- * All nodes provide cached and uncached variants.
+ * DynamicObject nodes is the central interface for accessing and mutating properties and other
+ * state (flags, dynamic type) of {@link DynamicObject}s. All nodes provide cached and uncached
+ * variants.
  *
  * <p>
- * Property keys are always compared using object identity ({@code ==}), never with {@code equals}.
- * This is because it is far more efficient for host inlining that way, and caching by {@code equals} is only needed in some cases.
- * If some keys might be {@code equals} but not have the same identity ({@code ==}),
- * it can be worthwhile to "intern" the key using an inline cache before using the DynamicObject node:
- * {@snippet :
- * import com.oracle.truffle.api.dsl.Cached.Exclusive;
- * import com.oracle.truffle.api.strings.TruffleString;
+ * Note: Property keys are always compared using object identity ({@code ==}), never with {@code
+ * equals}, for efficiency reasons. If the node is not used with a fixed key, and some keys might be
+ * {@code equals} but not have the same identity ({@code ==}), you must either intern the keys
+ * first, or cache the key by equality using an inline cache and use the cached key with the
+ * DynamicObject node to ensure equal keys with different identity will use the same cache entry and
+ * not overflow the cache:
  *
- * @Specialization(guards = "equalNode.execute(key, cachedKey, ENCODING)", limit = "3")
- * static Object read(MyDynamicObjectSubclass receiver, TruffleString key,
- *                 @Cached TruffleString.EqualNode equalNode,
- *                 @Cached TruffleString cachedKey,
- *                 @Cached @Exclusive DynamicObject.GetNode getNode) {
- *     return getNode.execute(receiver, cachedKey, NULL_VALUE);
- * }
- * }
+ * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+ * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetWithKeyEquals"}
  *
  * <h3>Usage examples:</h3>
  *
- * {@snippet :
- * @Specialization(limit = "3")
- * static Object read(MyDynamicObjectSubclass receiver, Object key,
- *                 @Cached DynamicObject.GetNode getNode) {
- *     return getNode.execute(receiver, key, NULL_VALUE);
- * }
- * }
+ * <h4>Simple use of {@link GetNode} with a pre-interned symbol key.</h4>
  *
- * {@snippet :
- * @ExportMessage
- * Object readMember(String name,
- *                 @Cached DynamicObject.GetNode getNode) throws UnknownIdentifierException {
- *     Object result = getNode.execute(this, name, null);
- *     if (result == null) {
- *         throw UnknownIdentifierException.create(name);
- *     }
- *     return result;
- * }
- * }
+ * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+ * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetSimple"}
+ *
+ * <h4>Implementing InteropLibrary messages using DynamicObject access nodes:</h4>
+ *
+ * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+ * "com.oracle.truffle.api.object.DynamicObjectSnippets.ReadMember"}
+ *
+ * Member name equality check omitted for brevity.
+ *
+ * <h4>Adding extra dynamic fields to a DynamicObject subclass:</h4>
+ *
+ * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+ * "com.oracle.truffle.api.object.DynamicObjectSnippets.MyObjectWithFields"}
  *
  * @see DynamicObject#DynamicObject(Shape)
  * @see Shape
  * @see Shape#newBuilder()
  * @see DynamicObject.GetNode
  * @see DynamicObject.ContainsKeyNode
+ * @see DynamicObject.PutNode
  * @see DynamicObject.GetPropertyNode
  * @see DynamicObject.GetPropertyFlagsNode
- * @see DynamicObject.PutNode
+ * @see DynamicObject.SetPropertyFlagsNode
+ * @see DynamicObject.CopyPropertiesNode
+ * @see DynamicObject.GetKeyArrayNode
+ * @see DynamicObject.GetPropertyArrayNode
+ * @see DynamicObject.RemoveKeyNode
  * @see DynamicObject.PutConstantNode
  * @see DynamicObject.GetDynamicTypeNode
  * @see DynamicObject.SetDynamicTypeNode
  * @see DynamicObject.GetShapeFlagsNode
  * @see DynamicObject.SetShapeFlagsNode
- * @see DynamicObject.GetKeyArrayNode
- * @see DynamicObject.GetPropertyArrayNode
- * @see DynamicObject.RemoveKeyNode
  * @see DynamicObject.UpdateShapeNode
+ * @see DynamicObject.ResetShapeNode
  * @see DynamicObject.IsSharedNode
  * @see DynamicObject.MarkSharedNode
  * @since 0.8 or earlier
  */
-// @formatter:on
 @SuppressWarnings("deprecation")
 public abstract class DynamicObject implements TruffleObject {
 
@@ -369,33 +353,36 @@ public abstract class DynamicObject implements TruffleObject {
         GetNode() {
         }
 
-        // @formatter:off
         /**
-         * Gets the value of an existing property or returns the provided default value if no such property exists.
+         * Gets the value of an existing property or returns the provided default value if no such
+         * property exists.
          *
-         * <h3>Usage example:</h3>
+         * <h3>Usage examples:</h3>
          *
-         * {@snippet :
-         * @Specialization(limit = "3")
-         * static Object read(DynamicObject receiver, Object key,
-         *                 @Cached DynamicObject.GetNode getNode) {
-         *     return getNode.execute(receiver, key, NULL_VALUE);
-         * }
-         * }
+         * <h4>Simple use of {@link GetNode} with a pre-interned symbol key.</h4>
          *
-         * @param key the property key
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetSimple"}
+         *
+         * <h4>Simple use of {@link GetNode} with a string key cached by equality.</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetWithKeyEquals"}
+         *
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param defaultValue value to be returned if the property does not exist
          * @return the property's value if it exists, else {@code defaultValue}.
          * @since 25.1
          */
-        // @formatter:on
         public abstract Object execute(DynamicObject receiver, Object key, Object defaultValue);
 
         /**
          * Gets the value of an existing property or returns the provided default value if no such
          * property exists.
          *
-         * @param key the property key
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param defaultValue the value to be returned if the property does not exist
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
@@ -409,7 +396,8 @@ public abstract class DynamicObject implements TruffleObject {
          * Gets the value of an existing property or returns the provided default value if no such
          * property exists.
          *
-         * @param key the property key
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param defaultValue the value to be returned if the property does not exist
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
@@ -423,7 +411,8 @@ public abstract class DynamicObject implements TruffleObject {
          * Gets the value of an existing property or returns the provided default value if no such
          * property exists.
          *
-         * @param key the property key
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param defaultValue the value to be returned if the property does not exist
          * @return the property's value if it exists, else {@code defaultValue}.
          * @throws UnexpectedResultException if the value (or default value if the property is
@@ -579,29 +568,30 @@ public abstract class DynamicObject implements TruffleObject {
         PutNode() {
         }
 
-        // @formatter:off
         /**
          * Sets the value of an existing property or adds a new property if no such property exists.
          *
-         * A newly added property will have flags 0; flags of existing properties will not be changed.
-         * Use {@link #executeWithFlags} to set property flags as well.
+         * A newly added property will have flags 0; flags of existing properties will not be
+         * changed. Use {@link #executeWithFlags} to set property flags as well.
          *
-         * <h3>Usage example:</h3>
+         * <h3>Usage examples:</h3>
          *
-         * {@snippet :
-         * @ExportMessage
-         * Object writeMember(String member, Object value,
-         *                 @Cached DynamicObject.PutNode putNode) {
-         *     putNode.execute(this, member, value);
-         * }
-         * }
+         * <h4>Simple use of {@link PutNode} with a pre-interned symbol key.</h4>
          *
-         * @param key the property key
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.PutSimple"}
+         *
+         * <h4>Simple use of {@link PutNode} with a string key cached by equality.</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.SetWithKeyEquals"}
+         *
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param value the value to be set
          * @see #executeIfPresent (DynamicObject, Object, Object)
          * @see #executeWithFlags (DynamicObject, Object, Object, int)
          */
-        // @formatter:on
         @HostCompilerDirectives.InliningRoot
         public final void execute(DynamicObject receiver, Object key, Object value) {
             executeImpl(receiver, key, value, 0, Flags.DEFAULT);
@@ -667,8 +657,6 @@ public abstract class DynamicObject implements TruffleObject {
         public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, propertyFlags, Flags.IF_ABSENT | Flags.UPDATE_FLAGS);
         }
-
-        // private
 
         abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode);
 
@@ -789,44 +777,41 @@ public abstract class DynamicObject implements TruffleObject {
             return executeImpl(receiver, key, value, 0, Flags.IF_ABSENT | Flags.CONST);
         }
 
-        // @formatter:off
         /**
-         * Adds a property with a constant value or replaces an existing one. If the property already
-         * exists, its flags will be updated.
+         * Adds a property with a constant value or replaces an existing one. If the property
+         * already exists, its flags will be updated.
          *
          * The constant value is stored in the shape rather than the object instance and a new shape
          * will be allocated if it does not already exist.
          *
-         * A typical use case for this method is setting the initial default value of a declared, but
-         * yet uninitialized, property. This defers storage allocation and type speculation until the
-         * first actual value is set.
+         * A typical use case for this method is setting the initial default value of a declared,
+         * but yet uninitialized, property. This defers storage allocation and type speculation
+         * until the first actual value is set.
          *
          * <p>
-         * Warning: this method will lead to a shape transition every time a new value is set and should
-         * be used sparingly (with at most one constant value per property) since it could cause an
-         * excessive amount of shapes to be created.
+         * Warning: this method will lead to a shape transition every time a new value is set and
+         * should be used sparingly (with at most one constant value per property) since it could
+         * cause an excessive amount of shapes to be created.
          * <p>
-         * Note: the value is strongly referenced from the shape property map. It should ideally be a
-         * value type or light-weight object without any references to guest language objects in order
-         * to prevent potential memory leaks from holding onto the Shape in inline caches. The Shape
-         * transition itself is weak, so the previous shapes will not hold strongly on the value.
+         * Note: the value is strongly referenced from the shape property map. It should ideally be
+         * a value type or light-weight object without any references to guest language objects in
+         * order to prevent potential memory leaks from holding onto the Shape in inline caches. The
+         * Shape transition itself is weak, so the previous shapes will not hold strongly on the
+         * value.
          *
          * <h3>Usage example:</h3>
          *
-         * {@snippet :
-         * // declare property
-         * putConstantNode.putConstant(receiver, key, NULL_VALUE);
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.PutConstant1"}
          *
-         * // initialize property
-         * putNode.put(receiver, key, value);
-         * }
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.PutConstant2"}
          *
          * @param key property identifier
          * @param value the constant value to be set
          * @param propertyFlags property flags or 0
          * @see #execute (DynamicObject, Object, Object)
          */
-        // @formatter:on
         @HostCompilerDirectives.InliningRoot
         public final void executeWithFlags(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             executeImpl(receiver, key, value, propertyFlags, Flags.DEFAULT | Flags.CONST | Flags.UPDATE_FLAGS);
@@ -849,8 +834,6 @@ public abstract class DynamicObject implements TruffleObject {
         public final boolean executeWithFlagsIfAbsent(DynamicObject receiver, Object key, Object value, int propertyFlags) {
             return executeImpl(receiver, key, value, propertyFlags, Flags.IF_ABSENT | Flags.CONST | Flags.UPDATE_FLAGS);
         }
-
-        // private
 
         abstract boolean executeImpl(DynamicObject receiver, Object key, Object value, int propertyFlags, int mode);
 
@@ -1082,22 +1065,20 @@ public abstract class DynamicObject implements TruffleObject {
         ContainsKeyNode() {
         }
 
-        // @formatter:off
         /**
          * Returns {@code true} if this object contains a property with the given key.
          *
-         * {@snippet :
-         * @ExportMessage
-         * boolean isMemberReadable(String name,
-         *                 @Cached DynamicObject.ContainsKeyNode containsKeyNode) {
-         *     return containsKeyNode.execute(this, name);
-         * }
-         * }
+         * <h3>Usage example:</h3>
          *
-         * @param key the property key
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.ContainsKey"}
+         *
+         * Member name equality check omitted for brevity.
+         *
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @return {@code true} if the object contains a property with this key, else {@code false}
          */
-        // @formatter:on
         public abstract boolean execute(DynamicObject receiver, Object key);
 
         @SuppressWarnings("unused")
@@ -1151,7 +1132,15 @@ public abstract class DynamicObject implements TruffleObject {
         /**
          * Removes the property with the given key from the object.
          *
-         * @param key the property key
+         * <h3>Usage example:</h3>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.RemoveKey"}
+         *
+         * Member name equality check omitted for brevity.
+         *
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @return {@code true} if the property was removed or {@code false} if property was not
          *         found
          */
@@ -1270,37 +1259,29 @@ public abstract class DynamicObject implements TruffleObject {
         GetShapeFlagsNode() {
         }
 
-        // @formatter:off
         /**
          * Gets the language-specific object shape flags previously set using
-         * {@link SetShapeFlagsNode} or
-         * {@link Shape.Builder#shapeFlags(int)}. If no shape flags were explicitly set, the default of
-         * 0 is returned.
+         * {@link SetShapeFlagsNode} or {@link Shape.Builder#shapeFlags(int)}. If no shape flags
+         * were explicitly set, the default of 0 is returned.
          *
-         * These flags may be used to tag objects that possess characteristics that need to be queried
-         * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
+         * These flags may be used to tag objects that possess characteristics that need to be
+         * queried efficiently on fast and slow paths. For example, they can be used to mark objects
+         * as frozen.
          *
          * <h3>Usage example:</h3>
          *
-         * {@snippet :
-         * @ExportMessage
-         * Object writeMember(String member, Object value,
-         *                 @Cached DynamicObject.GetShapeFlagsNode getShapeFlagsNode,
-         *                 @Cached DynamicObject.PutNode putNode)
-         *                 throws UnsupportedMessageException {
-         *     if ((getShapeFlagsNode.execute(receiver) & FROZEN) != 0) {
-         *         throw UnsupportedMessageException.create();
-         *     }
-         *     putNode.execute(this, member, value);
-         * }
-         * }
+         * <h4>Implementing frozen object check in writeMember:</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.WriteMember"}
+         *
+         * Member name equality check omitted for brevity.
          *
          * @return shape flags
          * @see SetShapeFlagsNode
          * @see Shape.Builder#shapeFlags(int)
          * @see Shape#getFlags()
          */
-        // @formatter:on
         public abstract int execute(DynamicObject receiver);
 
         @SuppressWarnings("unused")
@@ -1348,26 +1329,22 @@ public abstract class DynamicObject implements TruffleObject {
         SetShapeFlagsNode() {
         }
 
-        // @formatter:off
         /**
          * Sets language-specific object shape flags, changing the object's shape if need be.
          *
-         * These flags may be used to tag objects that possess characteristics that need to be queried
-         * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
+         * These flags may be used to tag objects that possess characteristics that need to be
+         * queried efficiently on fast and slow paths. For example, they can be used to mark objects
+         * as frozen.
          *
-         * Only the lowest 16 bits (i.e. values in the range 0 to 65535) are allowed, the remaining bits
-         * are currently reserved.
+         * Only the lowest 16 bits (i.e. values in the range 0 to 65535) are allowed, the remaining
+         * bits are currently reserved.
          *
          * <h3>Usage example:</h3>
          *
-         * {@snippet :
-         * @Specialization
-         * static void freeze(DynamicObject receiver,
-         *                 @Cached DynamicObject.GetShapeFlagsNode getShapeFlagsNode,
-         *                 @Cached DynamicObject.SetShapeFlagsNode setShapeFlagsNode) {
-         *     setShapeFlagsNode.execute(receiver, getShapeFlagsNode.execute(receiver) | FROZEN);
-         * }
-         * }
+         * <h4>Implementing frozen object check in writeMember:</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.SetShapeFlags"}
          *
          * @param newFlags the flags to set; must be in the range from 0 to 65535 (inclusive).
          * @return {@code true} if the object's shape changed, {@code false} if no change was made.
@@ -1375,7 +1352,6 @@ public abstract class DynamicObject implements TruffleObject {
          * @see GetShapeFlagsNode
          * @see Shape.Builder#shapeFlags(int)
          */
-        // @formatter:on
         public abstract boolean execute(DynamicObject receiver, int newFlags);
 
         @SuppressWarnings("unused")
@@ -1698,29 +1674,32 @@ public abstract class DynamicObject implements TruffleObject {
         GetPropertyFlagsNode() {
         }
 
-        // @formatter:off
         /**
          * Gets the property flags associated with the requested property key. Returns the
-         * {@code defaultValue} if the object contains no such property. If the property exists but no
-         * flags were explicitly set, returns the default of 0.
+         * {@code defaultValue} if the object contains no such property. If the property exists but
+         * no flags were explicitly set, returns the default of 0.
          *
          * <p>
          * Convenience method equivalent to:
          *
-         * {@snippet :
-         * @Specialization
-         * int getPropertyFlags(@Cached GetPropertyNode getPropertyNode) {
-         *     Property property = getPropertyNode.execute(object, key);
-         *     return property != null ? property.getFlags() : defaultValue;
-         * }
-         * }
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetPropertyEquivalent"}
          *
-         * @param key the property key
+         * <h3>Usage example:</h3>
+         *
+         * <h4>Implementing read-only property check in writeMember:</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.WriteMember"}
+         *
+         * Member name equality check omitted for brevity.
+         *
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @param defaultValue value to return if no such property exists
          * @return the property flags if the property exists, else {@code defaultValue}
          * @see GetPropertyNode
          */
-        // @formatter:on
         public abstract int execute(DynamicObject receiver, Object key, int defaultValue);
 
         @SuppressWarnings("unused")
@@ -1775,7 +1754,8 @@ public abstract class DynamicObject implements TruffleObject {
         /**
          * Sets the property flags associated with the requested property.
          *
-         * @param key the property key
+         * @param key the property key, compared by identity ({@code ==}), not equality
+         *            ({@code equals}). See {@link DynamicObject} for more information.
          * @return {@code true} if the property was found and its flags were changed, else
          *         {@code false}
          */
@@ -2085,7 +2065,6 @@ public abstract class DynamicObject implements TruffleObject {
         GetKeyArrayNode() {
         }
 
-        // @formatter:off
         /**
          * Gets a snapshot of the object's property keys, in insertion order. The returned array may
          * have been cached and must not be mutated.
@@ -2094,53 +2073,14 @@ public abstract class DynamicObject implements TruffleObject {
          *
          * <h3>Usage example:</h3>
          *
-         * The example below shows how the returned keys array could be translated to an interop array
-         * for use with InteropLibrary.
+         * The example below shows how the returned keys array could be translated to an interop
+         * array for use with InteropLibrary.
          *
-         * {@snippet :
-         * @ExportMessage
-         * Object getMembers(
-         *                 @Cached DynamicObject.GetKeyArrayNode getKeyArrayNode) {
-         *     return new Keys(getKeyArrayNode.execute(this));
-         * }
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.GetMembers"}
          *
-         * @ExportLibrary(InteropLibrary.class)
-         * static final class Keys implements TruffleObject {
-         *
-         *     @CompilationFinal(dimensions = 1) final Object[] keys;
-         *
-         *     Keys(Object[] keys) {
-         *         this.keys = keys;
-         *     }
-         *
-         *     @ExportMessage
-         *     boolean hasArrayElements() {
-         *         return true;
-         *     }
-         *
-         *     @ExportMessage
-         *     Object readArrayElement(long index) throws InvalidArrayIndexException {
-         *         if (!isArrayElementReadable(index)) {
-         *             throw InvalidArrayIndexException.create(index);
-         *         }
-         *         return keys[(int) index];
-         *     }
-         *
-         *     @ExportMessage
-         *     long getArraySize() {
-         *         return keys.length;
-         *     }
-         *
-         *     @ExportMessage
-         *     boolean isArrayElementReadable(long index) {
-         *         return index >= 0 && index < keys.length;
-         *     }
-         * }
-         * }
-         *
-         * @return a read-only array of the object's property keys.
+         * @return a read-only array of the object's property keys. Do not modify.
          */
-        // @formatter:on
         public abstract Object[] execute(DynamicObject receiver);
 
         @SuppressWarnings("unused")
@@ -2201,7 +2141,7 @@ public abstract class DynamicObject implements TruffleObject {
          * Similar to {@link GetKeyArrayNode} but allows the properties' flags to be queried
          * simultaneously which may be relevant for quick filtering.
          *
-         * @return a read-only array of the object's properties.
+         * @return a read-only array of the object's properties. Do not modify.
          * @see GetKeyArrayNode
          */
         public abstract Property[] execute(DynamicObject receiver);
