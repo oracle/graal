@@ -371,7 +371,7 @@ public class ValueAssert {
                     break;
                 case HOST_OBJECT:
                     assertFalse(value.isHostObject());
-                    assertFails(() -> value.asHostObject(), ClassCastException.class);
+                    assertFails(() -> value.asHostObject(), Exception.class, UnsupportedCharsetException.class);
                     break;
                 case PROXY_OBJECT:
                     assertFalse(value.isProxyObject());

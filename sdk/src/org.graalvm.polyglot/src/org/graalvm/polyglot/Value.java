@@ -1554,7 +1554,7 @@ public final class Value extends AbstractValue {
     /**
      * Returns the value of the pointer as <code>long</code> value.
      *
-     * @throws UnsupportedOperationException if the value is not a pointer.
+     * @throws ClassCastException if the value is not a pointer.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0
@@ -1586,8 +1586,9 @@ public final class Value extends AbstractValue {
     /**
      * Returns the original Java host language object.
      *
-     * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code> or the
-     *             Java host language object is allocated in a foreign heap.
+     * @throws ClassCastException if {@link #isHostObject()} is <code>false</code>
+     * @throws UnsupportedOperationException if Java host language object is allocated in a foreign
+     *             heap.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0
@@ -1621,7 +1622,7 @@ public final class Value extends AbstractValue {
      * Returns the unboxed instance of the {@link Proxy}. Proxies are not automatically boxed to
      * {@link #isHostObject() host objects} on host language call boundaries (Java methods).
      *
-     * @throws UnsupportedOperationException if a value is not a proxy object.
+     * @throws ClassCastException if a value is not a proxy object.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @since 19.0
