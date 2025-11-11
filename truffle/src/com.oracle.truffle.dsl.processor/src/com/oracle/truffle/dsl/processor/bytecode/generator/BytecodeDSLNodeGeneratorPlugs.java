@@ -178,7 +178,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             TypeMirror specializedType = instruction.signature.getSpecializedType(operandIndex);
             TypeMirror genericType = instruction.signature.getGenericType(operandIndex);
             TypeMirror specializationTargetType;
-            TypeMirror expectedType = instruction.isQuickening() ? specializedType : genericType;
+            TypeMirror expectedType;
 
             if (instruction.isQuickening()) {
                 if (instruction.filteredSpecializations != null) {
@@ -195,7 +195,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             String stackIndex = "$sp - " + (operandCount - operandIndex);
             ImplicitCastData cast = instruction.nodeData.getTypeSystem().lookupCast(expectedType, specializationTargetType);
 
-            if (instruction.getQuickeningRoot().needsBoxingElimination(model, operandIndex)) {
+            if (instruction.getQuickeningRoot().needsChildBciForBoxingElimination(model, operandIndex)) {
                 if (frameState.getMode().isFastPath()) {
                     b.startStatement();
                     if (!ElementUtils.typeEquals(expectedType, specializedType)) {

@@ -926,7 +926,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     case CUSTOM:
 
                         for (int i = 0; i < instruction.signature.dynamicOperandCount; i++) {
-                            if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
+                            if (instruction.getQuickeningRoot().needsChildBciForBoxingElimination(model, i)) {
                                 instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(i));
                             }
                         }

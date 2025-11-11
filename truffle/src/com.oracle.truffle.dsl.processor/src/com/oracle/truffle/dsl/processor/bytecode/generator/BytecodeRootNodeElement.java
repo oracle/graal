@@ -6565,7 +6565,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         int immediateIndex = 0;
                         boolean elseIf = false;
                         for (int valueIndex = 0; valueIndex < op.instruction.signature.dynamicOperandCount; valueIndex++) {
-                            if (op.instruction.needsBoxingElimination(model, valueIndex)) {
+                            if (op.instruction.needsChildBciForBoxingElimination(model, valueIndex)) {
                                 elseIf = b.startIf(elseIf);
                                 b.string("childIndex == " + valueIndex).end().startBlock();
 
