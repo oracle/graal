@@ -807,7 +807,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
             if (callerCallTarget.frameDescriptorEquals(parentFrameDescriptor)) {
                 callerCallNode.forceInlining();
-                callerCallTarget.callAndLoopCount += this.callAndLoopCount;
+                int oldLoopCallCount = callerCallTarget.callAndLoopCount;
+                int newLoopCallCount = oldLoopCallCount + this.callAndLoopCount;
+                callerCallTarget.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
                 return;
             }
             currentSingleCallNode = callerCallTarget.singleCallNode;
@@ -882,11 +884,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             assert !validate || OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
 
             OptimizedRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
-            if (engine.callTargetStatistics) {
-                this.initializedTimestamp = System.nanoTime();
-            } else {
-                this.initializedTimestamp = 0L;
-            }
+            this.initializedTimestamp = System.nanoTime();
             initialized = true;
         }
     }
@@ -1362,6 +1360,12 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     public final long getInitializedTimestamp() {
         return initializedTimestamp;
+    }
+
+    final void setInitializedTimestamp(long timestamp) {
+        if (initialized) {
+            initializedTimestamp = timestamp;
+        }
     }
 
     public final Map<String, Object> getDebugProperties() {
