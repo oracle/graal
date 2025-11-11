@@ -14,6 +14,7 @@ import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 /**
@@ -24,7 +25,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     protected final Domain initialDomain;
     protected final AbstractTransformer<Domain> abstractTransformer;
     protected final AnalysisContext analysisContext;
-    protected final ControlFlowGraph cfgGraph;
+    protected final StructuredGraph graph;
     protected final AbstractState<Domain> abstractState;
     protected final AbstractInterpretationLogger logger;
     protected final AnalysisMethod analysisMethod;
@@ -43,15 +44,16 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         this.analysisContext = analysisContext;
         var cache = analysisContext.getMethodGraphCache();
         if (cache.containsMethodGraph(method)) {
-            this.cfgGraph = cache.getMethodGraph().get(method);
+            this.graph = cache.getMethodGraph().get(method);
         } else {
             var services = AnalysisServices.getInstance();
-            this.cfgGraph = services.getGraph(method);
-            cache.addToMethodGraphMap(method, cfgGraph);
+            this.graph = services.getGraph(method);
+            cache.addToMethodGraphMap(method, graph);
         }
-        logger.exportGraphToJson(cfgGraph, analysisMethod, analysisMethod.getName() + "_before_absint");
-        this.abstractState = new AbstractState<>(initialDomain, cfgGraph);
-        this.graphTraversalHelper = new GraphTraversalHelper(cfgGraph, analysisContext.getIteratorPolicy().direction());
+
+        logger.exportGraphToJson(graph, analysisMethod, analysisMethod.getName() + "_before_absint");
+        this.abstractState = new AbstractState<>(initialDomain, graph);
+        this.graphTraversalHelper = new GraphTraversalHelper(graph, analysisContext.getIteratorPolicy().direction());
         this.iteratorContext = new BasicIteratorContext(graphTraversalHelper);
     }
 

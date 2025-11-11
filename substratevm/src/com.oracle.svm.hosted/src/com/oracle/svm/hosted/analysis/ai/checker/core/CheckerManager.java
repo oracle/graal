@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -50,24 +50,21 @@ public final class CheckerManager {
         }
 
         logger.logFacts(allFacts);
-        StructuredGraph graph = abstractState.getCfgGraph().graph;
+        StructuredGraph graph = abstractState.getGraph();
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         FactApplierSuite applierSuite = FactApplierSuite.fromRegistry(aggregator, true);
         applierSuite.runAppliers(method, graph, aggregator);
         if (persistRewrites) {
-            logger.log( "[CheckerManager] Persisting rewrites to method graph.", LoggerVerbosity.CHECKER);
-            for (var reference : method.getEncodedNodeReferences()) {
-                logger.log( "[CheckerManager] encoded node reference: " + reference.toString(), LoggerVerbosity.CHECKER);
-            }
+            applyAbstractInterpretationResults(method, graph);
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
-            logger.log("[CheckerManager] Method graph updated after rewrites.", LoggerVerbosity.CHECKER);
-            for (var reference : method.getEncodedNodeReferences()) {
-                logger.log( "[CheckerManager] encoded node reference: " + reference.toString(), LoggerVerbosity.CHECKER);
-            }
-
-
         } else {
             logger.log("[CheckerManager] Skipping persistence of rewrites (persistRewrites=false)", LoggerVerbosity.CHECKER_WARN);
         }
+    }
+
+    private void applyAbstractInterpretationResults(AnalysisMethod method, StructuredGraph graph) {
+        EncodedGraph encoded = GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE);
+        AnalysisParsedGraph newParsed = new AnalysisParsedGraph(encoded, method.isIntrinsicMethod());
+        method.setAnalyzedGraph(newParsed.getEncodedGraph());
     }
 }

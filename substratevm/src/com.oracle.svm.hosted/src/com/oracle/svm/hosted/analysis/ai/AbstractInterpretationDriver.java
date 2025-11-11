@@ -15,6 +15,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 
 /**
  * The entry point of the abstract interpretation framework.
@@ -51,9 +52,8 @@ public class AbstractInterpretationDriver {
     /**
      * This is the entry method for setting up analyses in GraalAF.
      * We can:
-     * 1. Provide the {@link com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer} to the {@link AnalyzerManager}.
-     * These analyzers will then run as a part of the Native Image compilation process.
-     * 2. Create and configure the {@link AbstractInterpretationLogger}, most importantly the name of the dump-file and verbosity.
+     * 1. Register {@link Analyzer} instances to the {@link AnalyzerManager}.
+     * 2. Create and configure the {@link AbstractInterpretationLogger}.
      */
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)

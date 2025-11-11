@@ -122,7 +122,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return;
         }
 
-        String ctxSig = /* build k-CFA signature */ com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
+        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
@@ -131,10 +131,11 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
             callStack.pop();
             var logger = AbstractInterpretationLogger.getInstance();
-            logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root).graph, root, abstractState);
+            logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root), root, abstractState);
             checkerManager.runCheckers(root, abstractState);
             logger.logSummariesStats(summaryManager);
         } finally {
+            // Ensure the call stack is cleared in case of an exception
         }
     }
 

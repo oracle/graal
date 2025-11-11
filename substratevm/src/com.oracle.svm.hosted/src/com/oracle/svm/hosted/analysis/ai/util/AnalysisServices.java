@@ -16,6 +16,7 @@ import java.util.List;
  * AnalysisServices centralizes access to svm utilities needed by the analysis framework:
  */
 public final class AnalysisServices {
+
     private static AnalysisServices instance;
     private final Inflation inflation;
 
@@ -45,14 +46,13 @@ public final class AnalysisServices {
         return inflation.getMetaAccess().lookupJavaType(clazz);
     }
 
-    // TODO: think of ways to work directly on structuredGraphs in WTO, because this is too costly I guess
-    public ControlFlowGraph getGraph(AnalysisMethod method) {
+    public StructuredGraph getGraph(AnalysisMethod method) {
         DebugContext debug = inflation.getDebug();
-        StructuredGraph structuredGraph = method.decodeAnalyzedGraph(debug, null);
-        if (structuredGraph == null) {
+        StructuredGraph graph = method.decodeAnalyzedGraph(debug, null);
+        if (graph == null) {
             throw AnalysisError.interruptAnalysis("Unable to get graph for analysisMethod: " + method);
         }
-        return new ControlFlowGraphBuilder(structuredGraph).build();
+        return graph;
     }
 
     public List<AnalysisMethod> getInvokedMethods() {

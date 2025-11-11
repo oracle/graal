@@ -11,6 +11,7 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
  * shared across methods and call graphs.
  */
 public final class AnalysisContext {
+
     private final IteratorPolicy iteratorPolicy;
     private final CheckerManager checkerManager;
     private final AnalysisMethodFilterManager methodFilterManager;

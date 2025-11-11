@@ -12,7 +12,6 @@ import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -70,41 +69,24 @@ public class AbstractInterpretationEngine {
         executeIntraProceduralAnalysis(analyzer, analyzerMode);
     }
 
+
     private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzerMode.isMainOnly()) {
-            try {
-                analyzer.runAnalysis(analysisRoot);
-                return;
-            } catch (IOException e) {
-                AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);
-            }
+            analyzer.runAnalysis(analysisRoot);
+            return;
         }
 
-        invokedMethods.parallelStream().forEach(method -> {
-            try {
-                analyzer.runAnalysis(method);
-            } catch (IOException e) {
-                AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);
-            }
-        });
+        invokedMethods.parallelStream().forEach(analyzer::runAnalysis);
     }
 
     private void executeInterProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzerMode.isMainOnly()) {
-            try {
-                analyzer.runAnalysis(analysisRoot);
-                return;
-            } catch (IOException e) {
-                AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);
-            }
+            analyzer.runAnalysis(analysisRoot);
+            return;
         }
 
         for (var method : rootMethods) {
-            try {
-                analyzer.runAnalysis(method);
-            } catch (IOException e) {
-                AnalysisError.shouldNotReachHere("IOException during analysis of main method", e);
-            }
+            analyzer.runAnalysis(method);
         }
     }
 }

@@ -43,7 +43,7 @@ public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Do
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root).graph, root, abstractState);
+        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root), root, abstractState);
         checkerManager.runCheckers(root, abstractState);
     }
 }

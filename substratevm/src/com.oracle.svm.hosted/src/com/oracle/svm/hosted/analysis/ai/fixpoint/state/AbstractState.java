@@ -4,6 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 import java.util.HashMap;
@@ -19,11 +20,11 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
 
     private final Domain initialDomain;
     private final Map<Node, NodeState<Domain>> stateMap;
-    private final ControlFlowGraph cfgGraph;
+    private final StructuredGraph graph;
 
-    public AbstractState(Domain initialDomain, ControlFlowGraph cfgGraph) {
+    public AbstractState(Domain initialDomain, StructuredGraph graph) {
         this.initialDomain = initialDomain;
-        this.cfgGraph = cfgGraph;
+        this.graph = graph;
         this.stateMap = new HashMap<>();
     }
 
@@ -47,8 +48,8 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         return getState(node).getPreCondition();
     }
 
-    public ControlFlowGraph getCfgGraph() {
-        return cfgGraph;
+    public StructuredGraph getGraph() {
+        return graph;
     }
 
     public Domain getPostCondition(Node node) {
@@ -116,7 +117,6 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
      *
      * @return the abstract context of the {@link ReturnNode}
      */
-    // TODO: take a look at how we are doing this
     public Domain getReturnDomain() {
         Domain returnDomain = initialDomain.copyOf();
         for (Node node : stateMap.keySet()) {
@@ -128,13 +128,13 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Get the start node of the control flow graph.
+     * Get the start node of the graph.
      * This is done to allow more flexibility when handling inter-procedural calls.
      *
      * @return the start node of the control flow graph
      */
     private Node getStartNode() {
-        for (Node node : cfgGraph.graph.getNodes()) {
+        for (Node node : graph.getNodes()) {
             if (node instanceof StartNode) {
                 return node;
             }

@@ -2,7 +2,9 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorDirection;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.ArrayList;
@@ -19,6 +21,15 @@ public class GraphTraversalHelper {
 
     public GraphTraversalHelper(ControlFlowGraph cfgGraph, IteratorDirection direction) {
         this.cfgGraph = cfgGraph;
+        this.direction = direction;
+    }
+
+    public GraphTraversalHelper(StructuredGraph graph, IteratorDirection direction) {
+        ControlFlowGraph cfg = graph.getLastCFG();
+        if (cfg == null) {
+            cfg = new ControlFlowGraphBuilder(graph).build();
+        }
+        this.cfgGraph = cfg;
         this.direction = direction;
     }
 
