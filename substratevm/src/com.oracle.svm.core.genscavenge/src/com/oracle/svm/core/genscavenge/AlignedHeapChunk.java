@@ -89,10 +89,10 @@ public final class AlignedHeapChunk {
         Pointer addressOfObjectPinCount();
 
         @RawField
-        boolean getShouldSweepInsteadOfCompact();
+        boolean getSweep();
 
         @RawField
-        void setShouldSweepInsteadOfCompact(boolean value);
+        void setSweep(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -100,7 +100,7 @@ public final class AlignedHeapChunk {
         assert chunk.isNonNull();
         assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
-        chunk.setShouldSweepInsteadOfCompact(false);
+        chunk.setSweep(false);
     }
 
     public static void reset(AlignedHeader chunk) {

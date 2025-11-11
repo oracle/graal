@@ -233,7 +233,7 @@ final class CompactingOldGeneration extends OldGeneration {
         Object result = original;
         if (ObjectHeaderImpl.isIdentityHashFieldOptional() &&
                         ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) &&
-                        !originalChunk.getShouldSweepInsteadOfCompact()) {
+                        !originalChunk.getSweep()) {
             /*
              * This object's identity hash code is based on its current address, which we expect to
              * change during compaction, so we must add a field to store it, which increases the
@@ -274,10 +274,10 @@ final class CompactingOldGeneration extends OldGeneration {
         }
         assert originalSpace == space;
         if (ObjectHeaderImpl.isMarked(obj)) {
-            assert chunk.getShouldSweepInsteadOfCompact();
+            assert chunk.getSweep();
             return true;
         }
-        chunk.setShouldSweepInsteadOfCompact(true);
+        chunk.setSweep(true);
         ObjectHeaderImpl.setMarked(obj);
         pushOntoMarkStack(obj);
         return true;
@@ -449,9 +449,9 @@ final class CompactingOldGeneration extends OldGeneration {
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (chunk.getShouldSweepInsteadOfCompact()) {
+            if (chunk.getSweep()) {
                 ObjectMoveInfo.visit(chunk, sweepingVisitor);
-                chunk.setShouldSweepInsteadOfCompact(false);
+                chunk.setSweep(false);
             } else {
                 compactingVisitor.init(chunk);
                 ObjectMoveInfo.visit(chunk, compactingVisitor);
