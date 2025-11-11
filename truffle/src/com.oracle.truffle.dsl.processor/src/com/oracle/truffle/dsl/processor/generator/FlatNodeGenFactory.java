@@ -2628,11 +2628,8 @@ public class FlatNodeGenFactory {
 
     public CodeExecutableElement createExecuteMethod(CodeTypeElement clazz, CodeExecutableElement baseMethod,
                     List<SpecializationData> specializations, boolean skipStateChecks) {
-        final List<SpecializationData> allSpecializations = specializations;
         int signatureSize = node.getPolymorphicExecutable().getSignatureParameters().size();
         ExecutableTypeData type = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false, true);
-
-        List<SpecializationData> implementedSpecializations = allSpecializations;
         CodeExecutableElement method = createExecuteMethod(type);
         method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningRoot));
         FrameState frameState = FrameState.load(this, type, Integer.MAX_VALUE, NodeExecutionMode.FAST_PATH, method);
@@ -2643,9 +2640,9 @@ public class FlatNodeGenFactory {
         }
         clazz.add(method);
         CodeTreeBuilder builder = method.createBuilder();
-        SpecializationGroup group = SpecializationGroup.create(implementedSpecializations);
+        SpecializationGroup group = SpecializationGroup.create(specializations);
         frameState.setSkipStateChecks(skipStateChecks);
-        builder.tree(createFastPath(builder, implementedSpecializations, group, type, frameState));
+        builder.tree(createFastPath(builder, specializations, group, type, frameState));
         return method;
     }
 
@@ -3619,7 +3616,7 @@ public class FlatNodeGenFactory {
             return null;
         }
         NodeExecutionData currentExecution = node.getChildExecutions().get(guard.getSignatureIndex());
-        if (plugs.canBoxingEliminateType(currentExecution, guard.getType())) {
+        if (plugs.canEliminateTypeGuard(currentExecution, guard.getType())) {
             return guard;
         }
         return null;

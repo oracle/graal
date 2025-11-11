@@ -761,7 +761,7 @@ public final class InstructionModel implements PrettyPrintable {
         if (signature.isVariadicParameter(valueIndex)) {
             return false;
         }
-        if (model.isBoxingEliminated(signature.getSpecializedType(valueIndex))) {
+        if (model.isBoxingEliminated(signature.getDynamicOperandType(valueIndex))) {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {

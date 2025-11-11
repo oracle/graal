@@ -964,7 +964,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), before.get(i).type()));
         }
         for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
+            result.add(createNodeChildAnnotation("child" + i, signature.getDynamicOperandType(i)));
         }
         List<ConstantOperandModel> after = operation.constantOperands.after();
         for (int i = 0; i < after.size(); i++) {
@@ -1031,7 +1031,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 ex.addParameter(new CodeVariableElement(before.get(i).type(), operation.getConstantOperandBeforeName(i)));
             }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
+                ex.addParameter(new CodeVariableElement(signature.getDynamicOperandType(i), "child" + i + "Value"));
             }
             List<ConstantOperandModel> after = operation.constantOperands.after();
             for (int i = 0; i < after.size(); i++) {
@@ -1052,17 +1052,34 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      */
     private void createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement generatedNode, Signature signature,
                     String operationName) {
+
+        /*
+         * We erase all specialized types. Without boxing elimination we cannot specialize any of
+         * the signature types in the instruction. If we introduce the notion of static types in the
+         * future we might be able to use more of the type information.
+         */
+        Signature erasedSignature = signature;
+        for (int i = 0; i < erasedSignature.getDynamicOperandTypes().size(); i++) {
+            TypeMirror targetType;
+            if (erasedSignature.isVariadicParameter(i)) {
+                targetType = context.getType(Object[].class);
+            } else {
+                targetType = context.getType(Object.class);
+            }
+            erasedSignature = erasedSignature.specializeDynamicOperandType(i, targetType);
+        }
+
         String instructionName = "c." + operationName;
         InstructionModel instr;
         if (customOperation.isEpilogExceptional()) {
             // We don't emit bytecode for this operation. Allocate an InstructionModel but don't
             // register it as an instruction.
-            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, signature);
+            instr = new InstructionModel(InstructionKind.CUSTOM, instructionName, erasedSignature);
         } else {
-            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, signature);
+            instr = parent.instruction(InstructionKind.CUSTOM, instructionName, erasedSignature);
         }
         instr.nodeType = generatedNode;
-        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
+        instr.nodeData = parseGeneratedNode(customOperation, generatedNode, erasedSignature);
 
         customOperation.operation.setInstruction(instr);
         if (customOperation.operation.variadicReturn) {
