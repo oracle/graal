@@ -66,7 +66,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
     static final Object OTHER_VALUE = new Object();
     static final ReflectionLibrary OTHER_VALUE_UNCACHED = ReflectionLibrary.getFactory().getUncached(OTHER_VALUE);
-    private static final Message MESSAGE_GET_HOST_OBJECT = Message.resolve(InteropLibrary.class, "getHostObject");
+    private static final Message MESSAGE_GET_HOST_OBJECT = Message.resolveExact(InteropLibrary.class, "getHostObject", Object.class);
 
     final PolyglotContextImpl receiverContext;
     final Object delegate;
