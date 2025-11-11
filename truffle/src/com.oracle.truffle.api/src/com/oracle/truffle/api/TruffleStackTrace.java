@@ -269,15 +269,7 @@ public final class TruffleStackTrace extends Exception {
     }
 
     private static boolean isHostException(Throwable throwable) {
-        try {
-            return LanguageAccessor.ENGINE.isHostException(throwable);
-        } catch (Throwable t) {
-            if (LanguageAccessor.ENGINE.isCancelExecution(t)) {
-                return false;
-            } else {
-                throw t;
-            }
-        }
+        return LanguageAccessor.ENGINE.isHostException(throwable);
     }
 
     private static final class TracebackElement {
