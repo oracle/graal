@@ -30,26 +30,27 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.StringConcatFactory;
 import java.lang.invoke.TypeDescriptor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.runtime.ObjectMethods;
 import java.lang.runtime.SwitchBootstraps;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Class storing a list of bootstrap methods that are allowed to be executed at build time. Those
@@ -59,89 +60,96 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @AutomaticallyRegisteredFeature
 public class BootstrapMethodConfiguration implements InternalFeature {
-
-    public record BootstrapMethodRecord(int bci, int cpi, ResolvedJavaMethod method) {
-    }
-
-    /*
-     * Map used to cache the BootstrapMethodInfo and reuse it for duplicated bytecode, avoiding
-     * execution of the bootstrap method for the same bci and method pair. This can happen during
-     * bytecode parsing as some blocks are duplicated, or for methods that are parsed multiple times
-     * (see MultiMethod).
-     */
-    private final ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> bootstrapMethodInfoCache = new ConcurrentHashMap<>();
-    private final Set<Executable> indyBuildTimeAllowList;
-    private final Set<Executable> condyBuildTimeAllowList;
-    private final Method metafactory;
-    private final Method altMetafactory;
+    private final Set<ResolvedJavaMethod> buildTimeIndy = new HashSet<>();
+    private final Set<ResolvedJavaMethod> buildTimeCondy = new HashSet<>();
 
     public static BootstrapMethodConfiguration singleton() {
         return ImageSingletons.lookup(BootstrapMethodConfiguration.class);
     }
 
-    public BootstrapMethodConfiguration() {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
         /*
          * Bootstrap method used for Lambdas. Executing this method at run time implies defining
          * hidden class at run time, which is unsupported.
          */
-        metafactory = ReflectionUtil.lookupMethod(LambdaMetafactory.class, "metafactory", MethodHandles.Lookup.class, String.class, MethodType.class, MethodType.class, MethodHandle.class,
-                        MethodType.class);
+        ResolvedJavaType lambdaMetaFactory = metaAccess.lookupJavaType(LambdaMetafactory.class);
+        ResolvedJavaMethod metafactory = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, lambdaMetaFactory, "metafactory", MethodHandles.Lookup.class, String.class, MethodType.class,
+                        MethodType.class, MethodHandle.class, MethodType.class);
         /* Alternate version of LambdaMetafactory.metafactory. */
-        altMetafactory = ReflectionUtil.lookupMethod(LambdaMetafactory.class, "altMetafactory", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
+        ResolvedJavaMethod altMetafactory = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, lambdaMetaFactory, "altMetafactory", MethodHandles.Lookup.class, String.class, MethodType.class,
+                        Object[].class);
+        buildTimeIndy.add(metafactory);
+        buildTimeIndy.add(altMetafactory);
 
         /*
          * Bootstrap method used to optimize String concatenation. Executing it at run time
          * currently causes a StackOverFlow error as it infinitely calls itself.
          */
-        Method makeConcat = ReflectionUtil.lookupMethod(StringConcatFactory.class, "makeConcat", MethodHandles.Lookup.class, String.class, MethodType.class);
+        ResolvedJavaType stringConcatFactory = metaAccess.lookupJavaType(StringConcatFactory.class);
+        ResolvedJavaMethod makeConcat = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, stringConcatFactory, "makeConcat", MethodHandles.Lookup.class, String.class, MethodType.class);
         /* Alternate version of StringConcatFactory.makeConcat with constant arguments. */
-        Method makeConcatWithConstants = ReflectionUtil.lookupMethod(StringConcatFactory.class, "makeConcatWithConstants", MethodHandles.Lookup.class, String.class, MethodType.class, String.class,
-                        Object[].class);
+        ResolvedJavaMethod makeConcatWithConstants = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, stringConcatFactory, "makeConcatWithConstants", MethodHandles.Lookup.class, String.class,
+                        MethodType.class, String.class, Object[].class);
+        buildTimeIndy.add(makeConcat);
+        buildTimeIndy.add(makeConcatWithConstants);
 
         /* Causes deadlock in Permission feature. */
-        Method bootstrap = ReflectionUtil.lookupMethod(ObjectMethods.class, "bootstrap", MethodHandles.Lookup.class, String.class, TypeDescriptor.class, Class.class, String.class,
-                        MethodHandle[].class);
+        ResolvedJavaType objectMethods = metaAccess.lookupJavaType(ObjectMethods.class);
+        ResolvedJavaMethod bootstrap = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, objectMethods, "bootstrap", MethodHandles.Lookup.class, String.class, TypeDescriptor.class, Class.class,
+                        String.class, MethodHandle[].class);
+        buildTimeIndy.add(bootstrap);
 
         /*
          * Bootstrap methods used for switch statements. Executing these methods at run time implies
          * defining hidden classes at run time, which is unsupported.
          */
-        Method typeSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "typeSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
-        Method enumSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "enumSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
+        ResolvedJavaType switchBootstraps = metaAccess.lookupJavaType(SwitchBootstraps.class);
+        ResolvedJavaMethod typeSwitch = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, switchBootstraps, "typeSwitch", MethodHandles.Lookup.class, String.class, MethodType.class,
+                        Object[].class);
+        ResolvedJavaMethod enumSwitch = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, switchBootstraps, "enumSwitch", MethodHandles.Lookup.class, String.class, MethodType.class,
+                        Object[].class);
+        buildTimeIndy.add(typeSwitch);
+        buildTimeIndy.add(enumSwitch);
+    }
 
-        /* Bootstrap method used for retrieving the value of static final processors. */
-        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
+    public void addBuildTimeIndy(ResolvedJavaMethod method) {
+        buildTimeIndy.add(method);
+    }
 
-        /* Set of bootstrap methods for constant dynamic allowed at build time is empty for now */
-        condyBuildTimeAllowList = Set.of();
+    public void addBuildTimeCondy(ResolvedJavaMethod method) {
+        buildTimeCondy.add(method);
     }
 
     /**
      * Check if the provided method is allowed to be executed at build time.
      */
-    public boolean isIndyAllowedAtBuildTime(Executable method) {
-        return method != null && indyBuildTimeAllowList.contains(method);
-    }
-
-    public boolean isMetafactory(Executable method) {
-        return method != null && (method.equals(metafactory) || method.equals(altMetafactory));
+    public boolean isIndyAllowedAtBuildTime(ResolvedJavaMethod method) {
+        ResolvedJavaMethod m = getWrapped(method);
+        return m != null && buildTimeIndy.contains(m);
     }
 
     /**
      * Check if the provided method is allowed to be executed at build time.
      */
-    public boolean isCondyAllowedAtBuildTime(Executable method) {
-        return method != null && (condyBuildTimeAllowList.contains(method) || isProxyCondy(method));
+    public boolean isCondyAllowedAtBuildTime(ResolvedJavaMethod method) {
+        ResolvedJavaMethod m = getWrapped(method);
+        return m != null && (buildTimeCondy.contains(m) || isProxyCondy(m));
+    }
+
+    private static ResolvedJavaMethod getWrapped(ResolvedJavaMethod method) {
+        if (method instanceof AnalysisMethod analysisMethod) {
+            return analysisMethod.getWrapped();
+        } else {
+            return method;
+        }
     }
 
     /**
      * Every {@link Proxy} class has its own bootstrap method that is used for a constant dynamic.
      */
-    private static boolean isProxyCondy(Executable method) {
-        return Proxy.isProxyClass(method.getDeclaringClass()) && method.getName().equals("$getMethod");
-    }
-
-    public ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> getBootstrapMethodInfoCache() {
-        return bootstrapMethodInfoCache;
+    private static boolean isProxyCondy(ResolvedJavaMethod method) {
+        return ProxyRenamingSubstitutionProcessor.isProxyType(method.getDeclaringClass()) && method.getName().equals("$getMethod");
     }
 }
