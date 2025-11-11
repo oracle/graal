@@ -53,6 +53,8 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
 public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, CremaTypeAccess {
+    public static final InterpreterResolvedJavaType[] EMPTY_ARRAY = new InterpreterResolvedJavaType[0];
+
     private final Symbol<Type> type;
     protected final Class<?> clazz;
     private final JavaConstant clazzConstant;

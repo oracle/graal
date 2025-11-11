@@ -2321,6 +2321,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
         } else {
             assert !resolvedCall.getResolvedMethod().isInvokeIntrinsic() : "An inlined method may never be an invokeGeneric.";
+            assert resolvedCall.getCallKind() != CallKind.ITABLE_LOOKUP : "A bytecode-inlined method may not be from an interface dispatch.";
             resolvedInvoke = new ResolvedInvoke(resolvedCall, null);
         }
 

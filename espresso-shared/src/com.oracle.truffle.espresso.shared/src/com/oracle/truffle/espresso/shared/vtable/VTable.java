@@ -24,19 +24,20 @@
  */
 package com.oracle.truffle.espresso.shared.vtable;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.lookup.MethodLookup;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
@@ -412,32 +413,19 @@ public final class VTable {
             private PartialMethod<C, M, F> resolveConcrete() {
                 M candidate = null;
                 for (Location loc : vLocations) {
-                    candidate = mostSpecific(loc.value, candidate, true);
+                    if (candidate == null) {
+                        candidate = loc.value;
+                    } else {
+                        // Here, the classes are known to be from the same hierarchy, so a single
+                        // type check is needed.
+                        candidate = loc.value.getDeclaringClass().isAssignableFrom(candidate.getDeclaringClass()) ? candidate : loc.value;
+                    }
                 }
                 return candidate;
             }
 
             private PartialMethod<C, M, F> resolveMaximallySpecific() {
-                EconomicSet<M> maximallySpecific = EconomicSet.create(Equivalence.IDENTITY);
-                locationLoop: //
-                for (Location loc : iLocations) {
-                    Iterator<M> iter = maximallySpecific.iterator();
-                    while (iter.hasNext()) {
-                        M next = iter.next();
-                        M mostSpecific = mostSpecific(loc.value, next, false);
-                        if (mostSpecific == next) {
-                            // An existing declaring class was already more specific.
-                            continue locationLoop;
-                        } else if (mostSpecific == loc.value) {
-                            // The current declaring class is more specific: replace.
-                            iter.remove();
-                        } else {
-                            assert mostSpecific == null;
-                            // The declaring classes are unrelated
-                        }
-                    }
-                    maximallySpecific.add(loc.value);
-                }
+                Set<M> maximallySpecific = MethodLookup.resolveMaximallySpecific(new IMethodsList());
                 M nonAbstractMaximallySpecific = null;
                 for (M m : maximallySpecific) {
                     if (!m.isAbstract()) {
@@ -463,24 +451,6 @@ public final class VTable {
                 return maximallySpecific.iterator().next();
             }
 
-            private M mostSpecific(M m1, M m2, boolean totalOrder) {
-                assert m1 != null;
-                if (m2 == null) {
-                    return m1;
-                }
-                if (m2.getDeclaringClass().isAssignableFrom(m1.getDeclaringClass())) {
-                    return m1;
-                }
-                if (totalOrder) {
-                    assert m1.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass());
-                    return m2;
-                }
-                if (m1.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass())) {
-                    return m2;
-                }
-                return null;
-            }
-
             private class Location implements Comparable<Location> {
                 private final M value;
                 private final int index;
@@ -493,6 +463,18 @@ public final class VTable {
                 @Override
                 public int compareTo(Location o) {
                     return Integer.compare(this.index, o.index);
+                }
+            }
+
+            private final class IMethodsList extends AbstractList<M> {
+                @Override
+                public M get(int index) {
+                    return iLocations.get(index).value;
+                }
+
+                @Override
+                public int size() {
+                    return iLocations.size();
                 }
             }
         }
