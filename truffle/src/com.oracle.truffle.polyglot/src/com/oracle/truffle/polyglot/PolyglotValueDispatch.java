@@ -5639,7 +5639,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             @TruffleBoundary
             static RuntimeException asHostObjectIsolatedHeap(PolyglotLanguageContext context, Object receiver) {
                 String polyglotMessage = String.format("Unsupported operation Value.asHostObject() for %s. The referenced host object resides in an isolated heap.", getValueInfo(context, receiver));
-                return PolyglotEngineException.classCast(polyglotMessage);
+                return PolyglotEngineException.unsupported(polyglotMessage);
             }
         }
     }
