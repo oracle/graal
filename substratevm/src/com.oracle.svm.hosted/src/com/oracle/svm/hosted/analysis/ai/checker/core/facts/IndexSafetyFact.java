@@ -40,7 +40,7 @@ public final class IndexSafetyFact implements Fact {
 
     @Override
     public String describe() {
-        return access + " guarded by= " +" indexRange=" + indexRange + " length=" + arrayLength + " safe=" + inBounds;
+        return access + " indexRange=" + indexRange + " length=" + arrayLength + " safe=" + inBounds;
     }
 
     @Override

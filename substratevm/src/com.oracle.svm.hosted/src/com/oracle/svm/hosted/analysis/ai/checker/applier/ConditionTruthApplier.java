@@ -59,7 +59,6 @@ public final class ConditionTruthApplier implements FactApplier {
             }
         }
         if (folded > 0) {
-            GraphRewrite.sweepUnreachableFixed(graph);
             logger.log("[ConditionTruthFolding] Folded If nodes: " + folded, LoggerVerbosity.CHECKER);
         }
     }

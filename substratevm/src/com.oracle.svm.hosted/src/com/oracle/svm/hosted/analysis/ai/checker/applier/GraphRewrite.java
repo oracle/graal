@@ -6,7 +6,6 @@ import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 
 /**
  * Simple graph rewriter helpers driven by facts from checkers.
@@ -26,12 +25,5 @@ public final class GraphRewrite {
         AbstractInterpretationLogger.getInstance().log("[GraphRewrite] Folding IfNode to false branch: " + ifNode, LoggerVerbosity.CHECKER);
         graph.removeSplit(ifNode, ifNode.falseSuccessor());
         GraphUtil.killCFG(trueSuccessor);
-    }
-
-    /**
-     * Sweep unreachable nodes using Graal's DCE instead of custom floods to ensure consistency.
-     */
-    public static void sweepUnreachableFixed(StructuredGraph graph) {
-        new DeadCodeEliminationPhase().run(graph);
     }
 }
