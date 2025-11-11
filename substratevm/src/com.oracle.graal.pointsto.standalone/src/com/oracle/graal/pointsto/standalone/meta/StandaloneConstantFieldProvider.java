@@ -26,23 +26,56 @@
 
 package com.oracle.graal.pointsto.standalone.meta;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
+
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 
 public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
 
-    public StandaloneConstantFieldProvider(MetaAccessProvider metaAccess) {
+    private final ConstantFieldProvider originalConstantFieldProvider;
+    /**
+     * In the default standalone mode configuration, this field is set to false and all classes are
+     * runtime initialized. We take all fields as not final, so that it doesn't read field value
+     * from current environment. Test com.oracle.graal.pointsto.test.ConstantFieldTest verifies this
+     * method.
+     **/
+    private final boolean foldFinalFields;
+
+    public StandaloneConstantFieldProvider(MetaAccessProvider metaAccess, ConstantFieldProvider originalConstantFieldProvider, boolean foldFinalFields) {
         super(metaAccess);
+        this.originalConstantFieldProvider = originalConstantFieldProvider;
+        this.foldFinalFields = foldFinalFields;
     }
 
-    /**
-     * In standalone mode, all classes are runtime initialized. We take all fields as not final, so
-     * that it doesn't read field value from current environment. Test
-     * com.oracle.graal.pointsto.test.ConstantFieldTest verifies this method.
-     **/
+    @Override
+    public <T> T readConstantField(ResolvedJavaField f, ConstantFieldTool<T> tool) {
+        AnalysisField field = (AnalysisField) f;
+
+        /*
+         * Ideally, we would mark the type as reachable only when the field is final or stable,
+         * i.e., there is an actual chance of constant folding it. But for the purpose of the
+         * analysis tests, it does not matter if we mark a few types too many as reachable.
+         */
+        field.getDeclaringClass().registerAsReachable(field);
+
+        T foldedValue = originalConstantFieldProvider.readConstantField(field.wrapped, tool);
+        if (foldedValue != null) {
+            field.registerAsFolded(tool.getReason());
+        }
+        return foldedValue;
+    }
+
+    @Override
+    public boolean isTrustedFinal(CanonicalizerTool tool, ResolvedJavaField field) {
+        return foldFinalFields && originalConstantFieldProvider.isTrustedFinal(tool, field);
+    }
+
     @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return false;
+        return foldFinalFields && super.isFinalField(field, tool);
     }
 }
