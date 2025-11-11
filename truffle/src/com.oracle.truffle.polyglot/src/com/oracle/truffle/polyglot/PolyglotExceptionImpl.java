@@ -590,12 +590,8 @@ final class PolyglotExceptionImpl {
     }
 
     private static boolean isHostException(Throwable cause) {
-        try {
-            InteropLibrary interop = InteropLibrary.getUncached(cause);
-            return interop.hasHostObject(cause) && interop.isException(cause);
-        } catch (CancelExecution cancelled) {
-            return false;
-        }
+        InteropLibrary interop = InteropLibrary.getUncached(cause);
+        return interop.hasHostObject(cause) && interop.isException(cause);
     }
 
     private static Throwable unboxHostException(Throwable cause) {
