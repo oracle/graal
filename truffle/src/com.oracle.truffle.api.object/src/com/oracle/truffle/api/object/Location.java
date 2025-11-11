@@ -202,13 +202,14 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      * @return the read value
      */
     final Object getInternal(DynamicObject store, Shape expectedShape, boolean guard) {
+        long idx = Integer.toUnsignedLong(index);
         if (this instanceof ObjectLocation objectLocation) {
             Object base;
             long offset;
             Object value;
             if (field == null) {
                 base = getObjectArray(store, guard);
-                offset = getObjectArrayOffset();
+                offset = computeObjectArrayOffset(idx);
                 value = UnsafeAccess.unsafeGetObject(base, offset, guard, this);
             } else {
                 field.receiverCheck(store);
@@ -220,7 +221,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         } else {
             if (field == null) {
                 Object array = getPrimitiveArray(store, guard);
-                long offset = getPrimitiveArrayOffset();
+                long offset = computePrimitiveArrayOffset(idx);
                 if (isIntLocation()) {
                     return UnsafeAccess.unsafeGetInt(array, offset, guard, this);
                 } else if (isLongLocation()) {
@@ -444,6 +445,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      */
     final void setInternal(DynamicObject receiver, Object value, boolean guard, Shape oldShape, Shape newShape) {
         assert canStoreValue(value) : value;
+        long idx = Integer.toUnsignedLong(index);
         boolean init = newShape != oldShape;
         if (init) {
             DynamicObjectSupport.grow(receiver, oldShape, newShape);
@@ -462,7 +464,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
             long offset;
             if (field == null) {
                 base = getObjectArray(receiver, guard);
-                offset = getObjectArrayOffset();
+                offset = computeObjectArrayOffset(idx);
                 UnsafeAccess.unsafePutObject(base, offset, value, this);
             } else {
                 field.receiverCheck(receiver);
@@ -476,7 +478,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 int intValue = (int) value;
                 if (field == null) {
                     Object array = getPrimitiveArray(receiver, guard);
-                    long offset = getPrimitiveArrayOffset();
+                    long offset = computePrimitiveArrayOffset(idx);
                     UnsafeAccess.unsafePutInt(array, offset, intValue, this);
                     return;
                 } else {
@@ -492,7 +494,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 }
                 if (field == null) {
                     Object array = getPrimitiveArray(receiver, guard);
-                    long offset = getPrimitiveArrayOffset();
+                    long offset = computePrimitiveArrayOffset(idx);
                     UnsafeAccess.unsafePutLong(array, offset, longValue, this);
                     return;
                 }
@@ -507,7 +509,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
                 }
                 if (field == null) {
                     Object array = getPrimitiveArray(receiver, guard);
-                    long offset = getPrimitiveArrayOffset();
+                    long offset = computePrimitiveArrayOffset(idx);
                     UnsafeAccess.unsafePutDouble(array, offset, doubleValue, this);
                     return;
                 } else {
@@ -747,12 +749,20 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         return field.offset();
     }
 
+    static long computeObjectArrayOffset(long index) {
+        return index * Unsafe.ARRAY_OBJECT_INDEX_SCALE + Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+    }
+
+    static long computePrimitiveArrayOffset(long index) {
+        return index * Unsafe.ARRAY_INT_INDEX_SCALE + Unsafe.ARRAY_INT_BASE_OFFSET;
+    }
+
     final long getObjectArrayOffset() {
-        return Integer.toUnsignedLong(index) * Unsafe.ARRAY_OBJECT_INDEX_SCALE + Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+        return computeObjectArrayOffset(Integer.toUnsignedLong(index));
     }
 
     final long getPrimitiveArrayOffset() {
-        return Integer.toUnsignedLong(index) * Unsafe.ARRAY_INT_INDEX_SCALE + Unsafe.ARRAY_INT_BASE_OFFSET;
+        return computePrimitiveArrayOffset(Integer.toUnsignedLong(index));
     }
 
     static Object getObjectArray(DynamicObject store, boolean condition) {
