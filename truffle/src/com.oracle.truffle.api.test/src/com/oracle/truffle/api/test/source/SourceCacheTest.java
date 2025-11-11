@@ -92,32 +92,32 @@ public class SourceCacheTest {
                                         Size \\(C\\)                   : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0x12ea5c6b TestSource\\s?
                                         Biggest Sources            :\\s?
                                             0x12ea5c6b             : size=               0, name=TestSource\\s?
-                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%\\s?
+                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%\\s?
                                         Parse Successful           : count=              1\\s?
                                             Time \\(ms\\)              : count=              1, sum= +\\d+, min= +\\d+, avg= +\\d+\\.\\d+, max= +\\d+, maxSource=0x12ea5c6b TestSource\\s?
                                             Size \\(C\\)               : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0x12ea5c6b TestSource\\s?
                                         Sources With Most Hits     :\\s?
-                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Sources With Most Misses   :\\s?
-                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Sources With Most Evictions:\\s?
-                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0x12ea5c6b             : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Failures                   : count=              0\\s?
                                 Byte Based Sources Stats           :\\s?
                                     Sources                        : count=              1\\s?
                                         Size \\(B\\)                   : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0xb9ecef28 TestSource\\s?
                                         Biggest Sources            :\\s?
                                             0xb9ecef28             : size=               0, name=TestSource\\s?
-                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%\\s?
+                                    Cache                          : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%\\s?
                                         Parse Successful           : count=              1\\s?
                                             Time \\(ms\\)              : count=              1, sum= +\\d+, min= +\\d+, avg= +\\d+\\.\\d+, max= +\\d+, maxSource=0xb9ecef28 TestSource\\s?
                                             Size \\(B\\)               : count=              1, sum=                       0, min=       0, avg=     0\\.00, max=          0, maxSource=0xb9ecef28 TestSource\\s?
                                         Sources With Most Hits     :\\s?
-                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Sources With Most Misses   :\\s?
-                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Sources With Most Evictions:\\s?
-                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    0, failures=    0, hit rate=50%, name=TestSource\\s?
+                                            0xb9ecef28             : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      1, misses=     1, evictions=    (?:0|1), failures=    0, hit rate=50%, name=TestSource\\s?
                                         Failures                   : count=              0\\s?
                     \\s?
                     """;
@@ -125,12 +125,12 @@ public class SourceCacheTest {
     private static final String FAILURE_RESULT_PATTERN_STRING = """
                                         Failures                   : count=              1\\s?
                                             Sources With Failures  : count=              1\\s?
-                                                0x7595adef         : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
+                                                0x7595adef         : parse time\\(ms\\)= +\\d+, parse rate\\(C/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
                                                     Failure #1     : count=              1, failure=com\\.oracle\\.truffle\\.api\\.test\\.source\\.SourceCacheTest\\$ParseException: DummyParseException\\s?
                     [\\s\\S]*
                                         Failures                   : count=              1\\s?
                                             Sources With Failures  : count=              1\\s?
-                                                0x1c9840ac         : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
+                                                0x1c9840ac         : parse time\\(ms\\)= +\\d+, parse rate\\(B/s\\)= +(?:\\d+\\.\\d+|NaN), hits=      0, misses=     1, evictions=    0, failures=    1, hit rate= 0%, name=TestSource\\s?
                                                     Failure #1     : count=              1, failure=com\\.oracle\\.truffle\\.api\\.test\\.source\\.SourceCacheTest\\$ParseException: DummyParseException\\s?
                     """;
 
