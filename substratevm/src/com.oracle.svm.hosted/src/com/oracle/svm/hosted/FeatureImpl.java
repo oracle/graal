@@ -537,6 +537,7 @@ public class FeatureImpl {
                     case Class<?> clazz -> getMetaAccess().lookupJavaType(clazz);
                     case Field field -> getMetaAccess().lookupJavaField(field);
                     case Executable executable -> getMetaAccess().lookupJavaMethod(executable);
+                    case AnalysisElement ae -> ae;
                     default -> throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s",
                                     trigger.getClass().getTypeName());
                 };
