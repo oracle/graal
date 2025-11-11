@@ -29,7 +29,6 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -179,16 +178,6 @@ public final class HeapChunk {
 
         @RawField
         void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
-
-        /**
-         * The number of pinnings of objects in this chunk. This is at least the number of pinned
-         * objects, but higher when an object is pinned more than once.
-         */
-        @RawField
-        int getObjectPinCount();
-
-        @RawFieldAddress
-        Pointer addressOfObjectPinCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

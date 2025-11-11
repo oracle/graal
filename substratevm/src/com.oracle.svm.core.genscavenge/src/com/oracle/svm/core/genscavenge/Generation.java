@@ -28,9 +28,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** A Generation is a collection of one or more Spaces. */
 abstract class Generation {
@@ -82,15 +82,16 @@ abstract class Generation {
     protected abstract Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace);
 
     /**
-     * Promote a HeapChunk from its original space to the appropriate space in this generation if
-     * there is sufficient capacity.
+     * Promote a pinned object in an aligned heap chunk from its original space to the appropriate
+     * Space in this generation if there is sufficient capacity.
      *
-     * This turns all the Objects in the chunk from white to grey: the objects are in the target
-     * Space, but have not yet had their interior pointers visited.
+     * Typically, this promotes the entire chunk, which turns all the Objects in the chunk from
+     * white to grey: the objects are in the target Space, but have not yet had their interior
+     * pointers visited.
      *
      * @return true on success, false if the there was insufficient capacity.
      */
-    protected abstract boolean promotePinnedObject(Object obj, HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace);
+    protected abstract boolean promotePinnedAlignedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace);
 
     void checkSanityBeforeCollection() {
     }

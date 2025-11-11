@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.After;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.Before;
 import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.Reference;
 
@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Isolates;
@@ -48,7 +49,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -107,16 +107,16 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -693,7 +693,7 @@ public final class GCImpl implements GC {
              * Make sure all aligned chunks with pinned objects are in To spaces so that pinned
              * objects stay alive and cannot move.
              */
-            promoteChunksWithPinnedObjects();
+            promotePinnedAlignedObjects();
         } finally {
             JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
         }
@@ -734,19 +734,30 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void promoteChunksWithPinnedObjects() {
+    private void promotePinnedAlignedObjects() {
         Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.start();
         try {
-            // Remove closed pinned objects from the global list. This code needs to use write
-            // barriers as the PinnedObjectImpls are a linked list, and we don't know in which
-            // generation each individual PinnedObjectImpl lives. So, the card table will be
-            // modified.
+            /*
+             * Remove closed pinned objects from the global list. This code needs to use write
+             * barriers as the PinnedObjectImpls are a linked list, and we don't know in which
+             * generation each individual PinnedObjectImpl lives. So, the card table will be
+             * modified.
+             */
             PinnedObjectImpl cur = AbstractPinnedObjectSupport.singleton().removeClosedObjectsAndGetFirstOpenObject();
 
-            // Promote all chunks that contain pinned objects. The card table of the promoted chunks
-            // will be cleaned.
+            /*
+             * In copying collections, promote all aligned chunks that contain pinned objects, which
+             * also cleans their card table. In full compacting collections, mark pinned objects and
+             * later sweep their chunks.
+             *
+             * Unaligned objects are not handled here to simplify the code. They are never moved,
+             * but because PinnedObject.create() guarantees that pinned objects are not collected,
+             * they were put on the list. Regular scanning will see them as reachable from there.
+             */
             while (cur != null) {
-                promotePinnedObject(cur.getObject());
+                if (ObjectHeaderImpl.isAlignedObject(cur.getObject())) {
+                    promotePinnedAlignedObject(cur.getObject());
+                }
                 cur = cur.getNext();
             }
         } finally {
@@ -1026,25 +1037,24 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void promotePinnedObject(Object pinned) {
+    private void promotePinnedAlignedObject(Object pinned) {
         assert pinned != null;
         assert AbstractPinnedObjectSupport.needsPinning(pinned);
-        assert HeapChunk.getEnclosingHeapChunk(pinned).getPinnedObjectCount() > 0;
 
         HeapImpl heap = HeapImpl.getHeapImpl();
-        boolean isAligned = ObjectHeaderImpl.isAlignedObject(pinned);
-        Header<?> originalChunk = getChunk(pinned, isAligned);
-        Space originalSpace = HeapChunk.getSpace(originalChunk);
+        AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(pinned);
+        assert chunk.getObjectPinCount() > 0;
+        Space originalSpace = HeapChunk.getSpace(chunk);
         if (originalSpace.isFromSpace() || (originalSpace.isCompactingOldSpace() && completeCollection)) {
             boolean promoted = false;
             if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
-                promoted = heap.getYoungGeneration().promotePinnedObject(pinned, originalChunk, isAligned, originalSpace);
+                promoted = heap.getYoungGeneration().promotePinnedAlignedObject(pinned, chunk, originalSpace);
                 if (!promoted) {
                     accounting.onSurvivorOverflowed();
                 }
             }
             if (!promoted) {
-                heap.getOldGeneration().promotePinnedObject(pinned, originalChunk, isAligned, originalSpace);
+                heap.getOldGeneration().promotePinnedAlignedObject(pinned, chunk, originalSpace);
             }
         }
     }
