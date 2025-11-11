@@ -65,7 +65,7 @@ final class HostMethodScope {
 
     private static final ScopedObject[] EMTPY_SCOPE_ARRAY = new ScopedObject[0];
     private static final Unsafe UNSAFE = getUnsafe();
-    private static final Message MESSAGE_GET_HOST_OBJECT = Message.resolve(InteropLibrary.class, "getHostObject");
+    private static final Message MESSAGE_GET_HOST_OBJECT = Message.resolveExact(InteropLibrary.class, "getHostObject", Object.class);
 
     private ScopedObject[] scope;
     private int nextDynamicIndex;
