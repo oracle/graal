@@ -27,7 +27,6 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,6 +35,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.TimeUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support for POSIX global timer (see {@link PosixSubstrateSigprofHandler}).

@@ -39,13 +39,26 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.thread.ContinuationsFeature.LayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 public class ContinuationsFeature implements InternalFeature {
-    private Boolean supported;
+    private boolean supported;
 
     public static boolean isSupported() {
         return ImageSingletons.lookup(ContinuationsFeature.class).supported;
@@ -58,6 +71,8 @@ public class ContinuationsFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        boolean previousLayerSupported = supported;
+
         /* If continuations are not supported, "virtual" threads are bound to platform threads. */
         if (ContinuationSupport.Options.VMContinuations.getValue()) {
             boolean hostSupport = jdk.internal.vm.ContinuationSupport.isSupported();
@@ -76,12 +91,16 @@ public class ContinuationsFeature implements InternalFeature {
         } else {
             supported = false;
         }
+
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            VMError.guarantee(supported == previousLayerSupported, "The previous layer supported value was %b, but the one from the current layer is %b", previousLayerSupported, supported);
+        }
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (isSupported()) {
-            if (!ImageSingletons.contains(ContinuationSupport.class)) {
+            if (!ImageSingletons.contains(ContinuationSupport.class) && ImageLayerBuildingSupport.firstImageBuild()) {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
 
@@ -97,10 +116,29 @@ public class ContinuationsFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (isSupported()) {
+        if (isSupported() && ImageLayerBuildingSupport.firstImageBuild()) {
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             long offset = access.objectFieldOffset(ipField);
             ContinuationSupport.singleton().setIPOffset(offset);
+        }
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<ContinuationsFeature>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ContinuationsFeature singleton) {
+                    writer.writeInt("supported", ContinuationsFeature.isSupported() ? 1 : 0);
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, ContinuationsFeature singleton) {
+                    singleton.supported = loader.readInt("supported") == 1;
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
         }
     }
 }

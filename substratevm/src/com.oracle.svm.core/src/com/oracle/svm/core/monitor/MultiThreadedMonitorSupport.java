@@ -52,6 +52,10 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -93,6 +97,7 @@ import jdk.internal.misc.Unsafe;
  * object monitor needs a condition object, it is atomically swapped into its
  * {@link JavaMonitorConditionObject} field.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();

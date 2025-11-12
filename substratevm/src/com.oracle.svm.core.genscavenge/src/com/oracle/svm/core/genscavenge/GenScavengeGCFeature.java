@@ -144,8 +144,10 @@ class GenScavengeGCFeature implements InternalFeature {
             ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
         }
 
-        // If building libgraal, set system property showing gc algorithm
-        SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            // If building libgraal, set system property showing gc algorithm
+            SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
+        }
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
