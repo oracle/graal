@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.65.0",
   "name" : "sulong",
   "version" : "25.1.0",
   "release" : False,
@@ -26,7 +26,7 @@ suite = {
       },
     ],
   },
-
+  "capture_suite_commit_info": False,
   "libraries" : {
     "LLVM_TEST_SUITE" : {
       "packedResource" : True,
