@@ -64,7 +64,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     @TruffleBoundary
-    private static boolean isSulongLanguage(Object languageId) {
+    private static boolean isSulongLanguage(String languageId) {
         return "llvm".equals(languageId);
     }
 
