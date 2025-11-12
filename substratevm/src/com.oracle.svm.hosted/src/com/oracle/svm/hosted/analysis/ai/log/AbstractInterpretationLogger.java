@@ -38,6 +38,7 @@ public final class AbstractInterpretationLogger {
     private final String logFilePath;
 
     // Verbosity thresholds and output toggles
+    // Lower ordinal = higher priority; message is logged if verbosity.compareTo(threshold) <= 0
     private LoggerVerbosity fileThreshold;
     private LoggerVerbosity consoleThreshold;
     private boolean colorEnabled = true;
@@ -128,13 +129,14 @@ public final class AbstractInterpretationLogger {
             case SUMMARY -> "[SUMMARY] ";
             case INFO -> "[INFO] ";
             case DEBUG -> "[DEBUG] ";
+            case WARN -> "[WARN ]";
         };
     }
 
     private static String colorFor(LoggerVerbosity v) {
         return switch (v) {
             case CHECKER -> ANSI.GREEN;
-            case CHECKER_WARN -> ANSI.YELLOW;
+            case CHECKER_WARN, WARN -> ANSI.YELLOW;
             case CHECKER_ERR -> ANSI.RED;
             case FACT -> ANSI.PURPLE;
             case SUMMARY, DEBUG -> ANSI.BLUE;
@@ -255,7 +257,8 @@ public final class AbstractInterpretationLogger {
     /**
      * Export a graph to JSON format for sharing and analysis.
      * This is useful for getting help with abstract interpretation analysis.
-     * @param cfg The structured graph to export
+     *
+     * @param cfg        The structured graph to export
      * @param method     The analysis method
      * @param outputPath Path to write the JSON file
      */
@@ -276,6 +279,37 @@ public final class AbstractInterpretationLogger {
         log("Aggregated facts produced by checkers:", LoggerVerbosity.FACT);
         for (Fact fact : facts) {
             logFact(fact);
+        }
+    }
+
+    /**
+     * Dump the resulting graph to IGV using a fresh DebugContext to avoid giant single groups
+     * overflowing the BinaryGraphPrinter buffer.
+     */
+    public static void dumpGraph(AnalysisMethod method, StructuredGraph graph, String phaseName) {
+        if (method == null || graph == null) {
+            System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
+            return;
+        }
+        AnalysisServices services;
+        try {
+            services = AnalysisServices.getInstance();
+        } catch (IllegalStateException ise) {
+            System.err.println("dumpGraph: AnalysisServices not initialized; skipping dump for method=" + method + ", phase=" + phaseName);
+            return;
+        }
+        var bb = services.getInflation();
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
+        try (DebugContext.Scope s = debug.scope("AbstractInterpretationAnalysis", graph)) {
+            debug.dump(DebugContext.BASIC_LEVEL, graph, phaseName);
+        } catch (Throwable ex) {
+            try {
+                throw debug.handle(ex);
+            } catch (Throwable inner) {
+                System.err.println("dumpGraph: failed to dump graph for method=" + method + ", phase=" + phaseName + ": " + inner.getMessage());
+                inner.printStackTrace(System.err);
+            }
         }
     }
 

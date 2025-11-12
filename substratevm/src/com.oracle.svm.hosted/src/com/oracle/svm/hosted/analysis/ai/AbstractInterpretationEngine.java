@@ -50,12 +50,18 @@ public class AbstractInterpretationEngine {
             }
         }
 
+        AnalyzerMode currentMode = analyzerMode;
         if (analyzerMode.isMainOnly() && (analysisRoot == null)) {
-            AnalysisError.shouldNotReachHere("Main method not provided in 'main-only' mode");
+            logger.log("Main method not provided in 'main-only' abstract interpretation mode, defaulting to all invoked methods.", LoggerVerbosity.WARN);
+            if (analyzerMode.isInterProcedural()) {
+                currentMode = AnalyzerMode.INTER_ANALYZE_FROM_ALL_ENTRY_POINTS;
+            } else {
+                currentMode = AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS;
+            }
         }
 
         for (var analyzer : analyzerManager.getAnalyzers()) {
-            executeAnalyzer(analyzer, analyzerMode);
+            executeAnalyzer(analyzer, currentMode);
         }
 
         logger.log("Finished Abstract Interpretation, the output can be found at: " + logger.getLogFilePath(), LoggerVerbosity.INFO);
@@ -68,7 +74,6 @@ public class AbstractInterpretationEngine {
         }
         executeIntraProceduralAnalysis(analyzer, analyzerMode);
     }
-
 
     private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzerMode.isMainOnly()) {

@@ -74,6 +74,9 @@ public final class AnalysisServices {
     }
 
     private AnalysisMethod findInvokeWithName(AnalysisMethod root, String name) {
+        if (root == null) {
+            throw AnalysisError.interruptAnalysis("Root method is null when searching for invoke with name: " + name);
+        }
         for (var invokeInfo : root.getInvokes()) {
             if (invokeInfo.getTargetMethod().getName().equals(name)) {
                 return invokeInfo.getTargetMethod();

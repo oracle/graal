@@ -11,8 +11,6 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 
-import java.io.IOException;
-
 /**
  * Represents an abstract analyzer framework for performing analyses driven by a specific domain.
  * The analyzer uses transfer functions, interpreters, and iterator policies to compute analysis results.
@@ -41,7 +39,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
         this.methodFilterManager = builder.methodFilterManager;
     }
 
-    public abstract void runAnalysis(AnalysisMethod method) throws IOException;
+    public abstract void runAnalysis(AnalysisMethod method);
 
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
         protected final Domain initialDomain;

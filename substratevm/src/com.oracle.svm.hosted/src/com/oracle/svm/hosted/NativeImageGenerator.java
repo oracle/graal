@@ -772,9 +772,6 @@ public class NativeImageGenerator {
     }
 
     private void runAbstractInterpretation(DebugContext debug) {
-        // FIXME: we can't fking do benchmarking of programs that have a single entry point, fix this and
-        // FIXME: start absint with no main method, but then run analysis on ALL entry point
-        AnalysisError.guarantee(mainEntryPoint.getLeft() != null, "Main entry point not available");
         AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
         AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
         driver.run();

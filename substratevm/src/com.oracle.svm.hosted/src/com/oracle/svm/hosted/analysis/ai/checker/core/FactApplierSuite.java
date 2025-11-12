@@ -62,21 +62,25 @@ public final class FactApplierSuite {
             try (DebugContext.Scope _ = debug.scope("FactApplier:" + applier.getDescription(), graph)) {
                 logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
                 applier.apply(method, graph, aggregator);
-                if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
-                    debug.dump(DebugContext.INFO_LEVEL, graph, "After applier %d: %s".formatted(++idx, applier.getDescription()));
+
+                try {
+                    AbstractInterpretationLogger.dumpGraph(method, graph, "after-fact-applier-" + (++idx) + "-" + applier.getDescription());
+                } catch (Throwable dumpEx) {
+                    logger.log("[FactApplier] IGV dump failed after " + applier.getDescription() + ": " + dumpEx.getMessage(), LoggerVerbosity.CHECKER_WARN);
                 }
 
                 if (!graph.verify()) {
                     logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(),
                             LoggerVerbosity.CHECKER_WARN);
                 }
-                logger.exportGraphToJson(graph, method, "after-fact-applier-%d-%s".formatted(idx, applier.getDescription()));
             } catch (Throwable t) {
                 logger.log("[FactApplier] Failed in " + applier.getDescription() + ": " + t.getMessage(), LoggerVerbosity.CHECKER_WARN);
             }
         }
-        if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            debug.dump(DebugContext.BASIC_LEVEL, graph, "After all fact appliers");
+        try {
+            AbstractInterpretationLogger.dumpGraph(method, graph, "after-all-fact-appliers");
+        } catch (Throwable dumpEx) {
+            logger.log("[FactApplier] Final IGV dump failed: " + dumpEx.getMessage(), LoggerVerbosity.CHECKER_WARN);
         }
     }
 }
