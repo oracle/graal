@@ -220,15 +220,7 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, Optional<ConstantOperandModel> constantOperand) {
-
-        public InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding) {
-            this(kind, name, encoding, Optional.empty());
-        }
-
-        public boolean explicit() {
-            return encoding.explicit();
-        }
+    public record InstructionImmediate(ImmediateKind kind, String name, InstructionImmediateEncoding encoding, boolean dynamic, Optional<ConstantOperandModel> constantOperand) {
 
         public int offset() {
             return encoding.offset();
@@ -262,7 +254,7 @@ public final class InstructionModel implements PrettyPrintable {
 
             // If both match, order by each pairwise immediate's byte width.
             for (int i = 0; i < immediates.size(); i++) {
-                diff = immediates.get(i).compareTo(other.immediates.get(i));
+                diff = immediates.get(i).width().byteSize - other.immediates.get(i).width().byteSize;
                 if (diff != 0) {
                     return diff;
                 }
@@ -270,28 +262,11 @@ public final class InstructionModel implements PrettyPrintable {
 
             throw new AssertionError("compareTo cannot determine that non-equal instruction encodings are not equal.");
         }
-
-        public List<InstructionImmediateEncoding> getExplicitImmediateEncodings() {
-            return immediates.stream().filter((i) -> i.explicit()).toList();
-        }
-
     }
 
-    public record InstructionImmediateEncoding(int offset, ImmediateWidth width, boolean explicit) implements Comparable<InstructionImmediateEncoding> {
+    public record InstructionImmediateEncoding(int offset, ImmediateWidth width) {
 
-        public static final InstructionImmediateEncoding NONE = new InstructionImmediateEncoding(0, null, false);
-
-        @Override
-        public int compareTo(InstructionImmediateEncoding other) {
-            if (this.equals(other)) {
-                return 0;
-            }
-            int diff = this.width.byteSize - other.width.byteSize;
-            if (diff != 0) {
-                return diff;
-            }
-            return Boolean.compare(this.explicit, other.explicit);
-        }
+        public static final InstructionImmediateEncoding NONE = new InstructionImmediateEncoding(0, null);
 
     }
 
@@ -371,10 +346,6 @@ public final class InstructionModel implements PrettyPrintable {
             addImmediate(imm);
         }
         base.quickenedInstructions.add(this);
-    }
-
-    public List<InstructionImmediate> getExplicitImmediates() {
-        return immediates.stream().filter((i) -> i.explicit()).toList();
     }
 
     public boolean isShortCircuitConverter() {
@@ -558,16 +529,16 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName) {
-        return addImmediate(immediateKind, immediateName, true);
+        return addImmediate(immediateKind, immediateName, false);
     }
 
-    public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean explicit) {
-        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width, explicit)));
+    public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName, boolean dynamic) {
+        addImmediate(new InstructionImmediate(immediateKind, immediateName, new InstructionImmediateEncoding(byteLength, immediateKind.width), dynamic, Optional.empty()));
         return this;
     }
 
     public InstructionModel addConstantOperandImmediate(ConstantOperandModel constantOperand, String immediateName) {
-        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width, true), Optional.of(constantOperand)));
+        addImmediate(new InstructionImmediate(constantOperand.kind(), immediateName, new InstructionImmediateEncoding(byteLength, constantOperand.kind().width), false, Optional.of(constantOperand)));
         return this;
     }
 

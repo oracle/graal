@@ -456,7 +456,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             if (instr.canInlineState()) {
                 NodeState state = NodeState.create(instr.nodeData, ImmediateKind.STATE_PROFILE.width.byteSize * 8);
                 for (BitSet s : state.activeState.getSets()) {
-                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), false);
+                    instr.addImmediate(ImmediateKind.STATE_PROFILE, s.getName(), true);
                 }
             }
         }

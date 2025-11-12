@@ -6113,13 +6113,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().end();
             }
 
-            List<InstructionImmediate> immediates = instruction.getExplicitImmediates();
+            List<InstructionImmediate> immediates = instruction.getImmediates();
             String[] args = new String[immediates.size()];
 
             int childBciIndex = 0;
             int constantIndex = 0;
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
+                if (immediate.dynamic()) {
+                    args[i] = ElementUtils.defaultValue(immediate.encoding().width().toType(context));
+                    continue;
+                }
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
                         if (customChildBci != null) {
@@ -6332,10 +6336,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
             InstructionModel booleanConverter = shortCircuitInstruction.shortCircuitModel.booleanConverterInstruction();
 
-            List<InstructionImmediate> immediates = booleanConverter.getExplicitImmediates();
+            List<InstructionImmediate> immediates = booleanConverter.getImmediates();
             String[] args = new String[immediates.size()];
             for (int i = 0; i < args.length; i++) {
                 InstructionImmediate immediate = immediates.get(i);
+                if (immediate.dynamic()) {
+                    args[i] = ElementUtils.defaultValue(immediate.encoding().width().toType(context));
+                    continue;
+                }
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
                         if (shortCircuitInstruction.shortCircuitModel.producesBoolean()) {
@@ -7047,9 +7055,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.tree(createInstructionConstant(instr));
             b.string(stackEffect);
             int argumentsLength = arguments != null ? arguments.length : 0;
-            if (argumentsLength != instr.getExplicitImmediates().size()) {
+            if (argumentsLength != instr.getImmediates().size()) {
                 throw new AssertionError(
-                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getExplicitImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
+                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
                                                 String.join(", ", arguments));
             }
 
@@ -8348,9 +8356,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 ex.addParameter(new CodeVariableElement(type(short.class), "instruction"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "stackEffect"));
 
-                int explicitImmediateIndex = 0;
-                for (InstructionImmediateEncoding immediate : encoding.getExplicitImmediateEncodings()) {
-                    ex.addParameter(new CodeVariableElement(immediate.width().toType(context), "data" + explicitImmediateIndex++));
+                List<CodeVariableElement> dataParams = new ArrayList<>();
+                for (int i = 0; i < encoding.immediates().size(); i++) {
+                    InstructionImmediateEncoding immediate = encoding.immediates().get(i);
+                    CodeVariableElement param = new CodeVariableElement(immediate.width().toType(context), "data" + i);
+                    dataParams.add(param);
+                    ex.addParameter(param);
                 }
 
                 CodeTreeBuilder b = ex.createBuilder();
@@ -8385,16 +8396,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.statement(writeInstruction("this.bc", "this.bci + 0", "instruction"));
 
-                explicitImmediateIndex = 0;
-                for (InstructionImmediateEncoding immediateEncoding : encoding.immediates()) {
-                    String data;
-                    if (immediateEncoding.explicit()) {
-                        data = "data" + explicitImmediateIndex++;
-                    } else {
-                        data = ElementUtils.defaultValue(immediateEncoding.width().toType(context));
-                    }
-
-                    b.statement(writeImmediate("this.bc", "this.bci", data, immediateEncoding));
+                for (int i = 0; i < encoding.immediates().size(); i++) {
+                    InstructionImmediateEncoding immediateEncoding = encoding.immediates().get(i);
+                    CodeVariableElement dataParam = dataParams.get(i);
+                    b.statement(writeImmediate("this.bc", "this.bci", dataParam.getName(), immediateEncoding));
                 }
 
                 b.statement("this.bci = newBci");
@@ -10778,7 +10783,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (instruction.nodeData != null && instruction.canUseNodeSingleton()) {
                 List<InstructionImmediate> immediates = new ArrayList<>(instruction.immediates);
-                immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE));
+                immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE, true, Optional.empty()));
                 return immediates;
             } else {
                 return instruction.immediates;
