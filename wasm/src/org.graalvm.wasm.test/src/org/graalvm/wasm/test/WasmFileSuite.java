@@ -76,7 +76,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.MemoryRegistry;
 import org.graalvm.wasm.RuntimeState;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -216,7 +215,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
 
             final WasmContext wasmContext = WasmContext.get(null);
-            final List<WasmInstance> instanceList = moduleInstances.stream().map(i -> toWasmInstance(i)).toList();
 
             final Value testFunction;
             final String entryPoint = testCase.options().getProperty("entry-point");
@@ -261,6 +259,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 } finally {
                     // Context may have already been closed, e.g. by __wasi_proc_exit.
                     if (!wasmContext.environment().getContext().isClosed()) {
+                        Collection<WasmInstance> instanceList = wasmContext.contextStore().moduleInstances().values();
                         // Save context state, and check that it's consistent with the previous one.
                         if (iterationNeedsStateCheck(i)) {
                             final ContextState contextState = saveContext(wasmContext, instanceList);
@@ -275,11 +274,11 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                         final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
                         if (reinitMemory) {
                             for (WasmInstance instance : instanceList) {
-                                for (int j = 0; j < instance.store().memories().count(); ++j) {
-                                    WasmMemoryLibrary.getUncached().reset(instance.store().memories().memory(j));
+                                for (int j = 0; j < instance.module().memoryCount(); ++j) {
+                                    WasmMemoryLibrary.getUncached().reset(instance.memory(j));
                                 }
-                                for (int j = 0; j < instance.store().tables().tableCount(); ++j) {
-                                    instance.store().tables().table(j).reset();
+                                for (int j = 0; j < instance.module().tableCount(); ++j) {
+                                    instance.table(j).reset();
                                 }
                             }
                         }
@@ -637,12 +636,15 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static InstanceState saveInstanceState(WasmInstance instance) {
-        final MemoryRegistry memories = instance.store().memories().duplicate();
+        final WasmMemory[] memories = new WasmMemory[instance.module().memoryCount()];
+        for (int i = 0; i < memories.length; i++) {
+            memories[i] = WasmMemoryLibrary.getUncached().duplicate(instance.memory(i));
+        }
         final GlobalRegistry globals = instance.globals().duplicate();
         return new InstanceState(memories, globals);
     }
 
-    private static ContextState saveContext(WasmContext context, List<WasmInstance> instances) {
+    private static ContextState saveContext(WasmContext context, Collection<WasmInstance> instances) {
         return new ContextState(
                         instances.stream().map(instance -> saveInstanceState(instance)).toList(),
                         context.fdManager().size());
@@ -650,12 +652,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static void assertInstanceEqual(InstanceState expectedState, InstanceState actualState) {
         // Compare memories
-        final MemoryRegistry expectedMemories = expectedState.memories();
-        final MemoryRegistry actualMemories = actualState.memories();
-        Assert.assertEquals("Mismatch in memory counts.", expectedMemories.count(), actualMemories.count());
-        for (int i = 0; i < expectedMemories.count(); i++) {
-            final WasmMemory expectedMemory = expectedMemories.memory(i);
-            final WasmMemory actualMemory = actualMemories.memory(i);
+        final WasmMemory[] expectedMemories = expectedState.memories();
+        final WasmMemory[] actualMemories = actualState.memories();
+        Assert.assertEquals("Mismatch in memory counts.", expectedMemories.length, actualMemories.length);
+        for (int i = 0; i < expectedMemories.length; i++) {
+            final WasmMemory expectedMemory = expectedMemories[i];
+            final WasmMemory actualMemory = actualMemories[i];
             if (expectedMemory == null) {
                 Assert.assertNull("Memory should be null", actualMemory);
             } else {
@@ -690,7 +692,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         Assert.assertEquals("Mismatch in file descriptor counts.", expectedState.openedFdCount, actualState.openedFdCount);
     }
 
-    private record InstanceState(MemoryRegistry memories, GlobalRegistry globals) {
+    private record InstanceState(WasmMemory[] memories, GlobalRegistry globals) {
     }
 
     private record ContextState(List<InstanceState> instanceState, int openedFdCount) {

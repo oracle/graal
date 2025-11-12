@@ -481,11 +481,8 @@ public class Linker {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
-            final WasmMemory importedMemory;
-            final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
-            if (externalMemory != null) {
-                final int contextMemoryIndex = store.memories().register(externalMemory);
-                importedMemory = store.memories().memory(contextMemoryIndex);
+            WasmMemory importedMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
+            if (importedMemory != null) {
                 assert memoryIndex == importDescriptor.targetIndex();
             } else {
                 // WASIp1 memory import should have been resolved via ImportValueSupplier above.
@@ -815,8 +812,7 @@ public class Linker {
     }
 
     public static void initializeTable(WasmInstance instance, int tableIndex, Object initValue) {
-        int tableAddress = instance.tableAddress(tableIndex);
-        WasmTable table = instance.store().tables().table(tableAddress);
+        WasmTable table = instance.table(tableIndex);
         table.fill(0, table.size(), initValue);
     }
 
@@ -840,11 +836,9 @@ public class Linker {
     void resolveTableImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, int elemType,
                     ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
-            WasmTable externalTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
-            final int tableAddress;
-            if (externalTable != null) {
+            WasmTable importedTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
+            if (importedTable != null) {
                 assert tableIndex == importDescriptor.targetIndex();
-                tableAddress = store.tables().register(externalTable);
             } else {
                 final WasmInstance importedInstance = store.lookupModuleInstance(importDescriptor.moduleName());
                 final String importedModuleName = importDescriptor.moduleName();
@@ -863,10 +857,9 @@ public class Linker {
                         throw WasmException.create(Failure.UNKNOWN_IMPORT,
                                         "Table '" + importedTableName + "', imported into module '" + instance.name() + "', was not exported in the module '" + importedModuleName + "'.");
                     }
-                    tableAddress = importedInstance.tableAddress(exportedTableIndex);
+                    importedTable = importedInstance.table(exportedTableIndex);
                 }
             }
-            final WasmTable importedTable = store.tables().table(tableAddress);
             // Rules for limits matching:
             // https://webassembly.github.io/spec/core/exec/modules.html#limits
             // If no max size is declared, then declaredMaxSize value will be
@@ -876,7 +869,7 @@ public class Linker {
             // when matching element types of imported tables, we need to check for type equivalence
             // instead of subtyping, as tables have read/write access
             assertTrue(instance.symbolTable().closedTypeOf(elemType).equals(importedTable.closedElemType()), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            instance.setTableAddress(tableIndex, tableAddress);
+            instance.setTable(tableIndex, importedTable);
         };
         final ImportTableSym importTableSym = new ImportTableSym(instance.name(), importDescriptor);
         Sym[] dependencies = new Sym[]{new ExportTableSym(importDescriptor.moduleName(), importDescriptor.memberName())};
@@ -1001,8 +994,7 @@ public class Linker {
             return;
         }
         assertTrue(instance.symbolTable().checkTableIndex(tableIndex), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
-        final int tableAddress = instance.tableAddress(tableIndex);
-        final WasmTable table = store.tables().table(tableAddress);
+        final WasmTable table = instance.table(tableIndex);
         Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNKNOWN_TABLE);
         final int baseAddress;
         if (offsetBytecode != null) {

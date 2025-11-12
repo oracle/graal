@@ -237,10 +237,8 @@ public class MultiInstantiationSuite {
                 final Object eInstanceTag = lib.execute(exnTag, eInstance);
                 Assert.assertSame("Exception tag does not match", e, eInstanceTag);
 
-                final Object exnRead = wasm.readMember("exn_read");
-                final Object eInstanceFields = lib.execute(exnRead, eInstance);
-                Assert.assertTrue("Exception fields is not an array", lib.hasArrayElements(eInstanceFields));
-                Assert.assertEquals("Exception fields array size", 0, lib.getArraySize(eInstanceFields));
+                Assert.assertTrue("Exception does not have fields", lib.hasArrayElements(eInstance));
+                Assert.assertEquals("Exception fields count", 0, lib.getArraySize(eInstance));
 
                 final Object test = WebAssembly.instanceExport(i, "test");
                 final int result = lib.asInt(lib.execute(test));

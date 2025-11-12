@@ -585,7 +585,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final Object functionCandidate;
                         final int elementIndex;
                         if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
-                            final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
+                            final WasmTable table = instance.table(tableIndex);
                             final Object[] elements = table.elements();
                             elementIndex = popInt(frame, --stackPointer);
                             if (elementIndex < 0 || elementIndex >= elements.length) {
@@ -4529,7 +4529,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     @TruffleBoundary
     private void table_init(WasmInstance instance, int length, int source, int destination, int tableIndex, int elementIndex) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
+        final WasmTable table = instance.table(tableIndex);
         final Object[] elementInstance = instance.elemInstance(elementIndex);
         final int elementInstanceLength;
         if (elementInstance == null) {
@@ -4547,8 +4547,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         table.initialize(elementInstance, source, destination, length);
     }
 
-    private void table_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(index));
+    private void table_get(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
+        final WasmTable table = instance.table(tableIndex);
         final int i = popInt(frame, stackPointer - 1);
         if (i < 0 || i >= table.size()) {
             enterErrorBranch();
@@ -4558,8 +4558,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         pushReference(frame, stackPointer - 1, value);
     }
 
-    private void table_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(index));
+    private void table_set(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
+        final WasmTable table = instance.table(tableIndex);
         final Object value = popReference(frame, stackPointer - 1);
         final int i = popInt(frame, stackPointer - 2);
         if (i < 0 || i >= table.size()) {
@@ -4569,21 +4569,21 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         table.set(i, value);
     }
 
-    private static void table_size(WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(index));
+    private static void table_size(WasmInstance instance, VirtualFrame frame, int stackPointer, int tableIndex) {
+        final WasmTable table = instance.table(tableIndex);
         pushInt(frame, stackPointer, table.size());
     }
 
     @TruffleBoundary
-    private static int table_grow(WasmInstance instance, int length, Object value, int index) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(index));
+    private static int table_grow(WasmInstance instance, int length, Object value, int tableIndex) {
+        final WasmTable table = instance.table(tableIndex);
         return table.grow(length, value);
     }
 
     @TruffleBoundary
     private void table_copy(WasmInstance instance, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
-        final WasmTable sourceTable = instance.store().tables().table(instance.tableAddress(sourceTableIndex));
-        final WasmTable destinationTable = instance.store().tables().table(instance.tableAddress(destinationTableIndex));
+        final WasmTable sourceTable = instance.table(sourceTableIndex);
+        final WasmTable destinationTable = instance.table(destinationTableIndex);
         if (checkOutOfBounds(source, length, sourceTable.size()) || checkOutOfBounds(destination, length, destinationTable.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
@@ -4595,8 +4595,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @TruffleBoundary
-    private void table_fill(WasmInstance instance, int length, Object value, int offset, int index) {
-        final WasmTable table = instance.store().tables().table(instance.tableAddress(index));
+    private void table_fill(WasmInstance instance, int length, Object value, int offset, int tableIndex) {
+        final WasmTable table = instance.table(tableIndex);
         if (checkOutOfBounds(offset, length, table.size())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
