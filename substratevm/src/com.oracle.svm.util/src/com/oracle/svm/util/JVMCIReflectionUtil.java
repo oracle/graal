@@ -251,4 +251,27 @@ public final class JVMCIReflectionUtil {
         }
         throw new GraalError("Method does not have a resolved return type: %s", m.format("%H.%n(%p)"));
     }
+
+    /**
+     * Gets the type name for a {@link ResolvedJavaType}. This is the same as calling
+     * {@link Class#getTypeName()} on the underlying class.
+     * <p>
+     * Implementation derived from {@link Class#getTypeName()}.
+     */
+    public static String getTypeName(ResolvedJavaType type) {
+        if (type.isArray()) {
+            try {
+                ResolvedJavaType cl = type;
+                int dimensions = 0;
+                do {
+                    dimensions++;
+                    cl = cl.getComponentType();
+                } while (cl.isArray());
+                return cl.getName().concat("[]".repeat(dimensions));
+            } catch (Throwable e) {
+                /* FALLTHRU */
+            }
+        }
+        return type.toClassName();
+    }
 }
