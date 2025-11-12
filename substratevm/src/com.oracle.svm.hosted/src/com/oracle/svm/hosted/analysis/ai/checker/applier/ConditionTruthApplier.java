@@ -16,6 +16,7 @@ import java.util.Set;
 /**
  * Applies ConditionTruthFact by folding always-true/false branches.
  */
+@Deprecated
 public final class ConditionTruthApplier implements FactApplier {
 
     @Override

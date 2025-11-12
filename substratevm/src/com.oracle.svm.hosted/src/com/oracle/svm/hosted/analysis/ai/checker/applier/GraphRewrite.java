@@ -16,14 +16,12 @@ public final class GraphRewrite {
         AbstractBeginNode falseSuccessor = ifNode.falseSuccessor();
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("[GraphRewrite] Folding IfNode to true branch: " + ifNode, LoggerVerbosity.CHECKER);
-        graph.removeSplit(ifNode, ifNode.trueSuccessor());
-        GraphUtil.killCFG(falseSuccessor);
+        graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
     }
 
     public static void foldIfFalse(StructuredGraph graph, IfNode ifNode) {
         AbstractBeginNode trueSuccessor = ifNode.trueSuccessor();
         AbstractInterpretationLogger.getInstance().log("[GraphRewrite] Folding IfNode to false branch: " + ifNode, LoggerVerbosity.CHECKER);
-        graph.removeSplit(ifNode, ifNode.falseSuccessor());
-        GraphUtil.killCFG(trueSuccessor);
+        graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
     }
 }
