@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess, ResolvedMember {
+public class InterpreterResolvedJavaField extends InterpreterAnnotated implements ResolvedJavaField, CremaFieldAccess, ResolvedMember {
     public static final InterpreterResolvedJavaField[] EMPTY_ARRAY = new InterpreterResolvedJavaField[0];
 
     // Special offset values

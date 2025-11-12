@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Objects;
+import java.util.function.Function;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -38,6 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * A minimal implementation of {@link ResolvedJavaMethod} for use by libgraal.
@@ -222,6 +224,16 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
         throw new UnsupportedOperationException();
     }
 

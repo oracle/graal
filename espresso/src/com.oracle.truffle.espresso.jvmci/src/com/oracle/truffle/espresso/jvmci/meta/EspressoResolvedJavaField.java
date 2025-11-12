@@ -44,9 +44,10 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public final class EspressoResolvedJavaField implements ResolvedJavaField {
+public final class EspressoResolvedJavaField extends AbstractAnnotated implements ResolvedJavaField {
     private static final int JVM_FIELDS_MODIFIERS = PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | VOLATILE | TRANSIENT | ENUM | SYNTHETIC;
 
     private final EspressoResolvedInstanceType holder;
@@ -155,7 +156,7 @@ public final class EspressoResolvedJavaField implements ResolvedJavaField {
     private native Field getMirror0();
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
         byte[] bytes = getRawAnnotationBytes(DECLARED_ANNOTATIONS);
         EspressoResolvedInstanceType container = getDeclaringClass();
         return AnnotationsInfo.make(bytes, container.getConstantPool(), container);

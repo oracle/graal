@@ -38,6 +38,8 @@ import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.C
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getAnnotationsMethod;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsInvokable;
 import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getDeclaredAnnotationsMethod;
+import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoInvokable;
+import static jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase.CompilationProxyAnnotatedBase.getTypeAnnotationInfoMethod;
 
 import java.lang.annotation.Annotation;
 import java.util.List;
@@ -55,6 +57,8 @@ import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType implements CompilationProxy permits HotSpotResolvedObjectTypeProxy {
     private final InvocationHandler handler;
@@ -501,6 +505,20 @@ public sealed class HotSpotResolvedJavaTypeProxy extends HotSpotResolvedJavaType
     @Override
     public final Annotation[] getDeclaredAnnotations() {
         return (Annotation[]) handle(getDeclaredAnnotationsMethod, getDeclaredAnnotationsInvokable);
+    }
+
+    @Override
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return (AnnotationsInfo) handle(getRawDeclaredAnnotationInfoMethod, getRawDeclaredAnnotationInfoInvokable);
+    }
+
+    public static final SymbolicMethod getRawDeclaredAnnotationInfoMethod = new SymbolicMethod(AbstractAnnotated.class, "getRawDeclaredAnnotationInfo");
+    @SuppressWarnings("unchecked") //
+    public static final InvokableMethod getRawDeclaredAnnotationInfoInvokable = (receiver, args) -> ((AbstractAnnotated) receiver).getRawDeclaredAnnotationInfo();
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return (AnnotationsInfo) handle(getTypeAnnotationInfoMethod, getTypeAnnotationInfoInvokable);
     }
 
     @Override

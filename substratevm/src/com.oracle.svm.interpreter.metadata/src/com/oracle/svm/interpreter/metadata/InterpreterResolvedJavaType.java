@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
-public abstract class InterpreterResolvedJavaType implements ResolvedJavaType, CremaTypeAccess {
+public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated implements ResolvedJavaType, CremaTypeAccess {
     public static final InterpreterResolvedJavaType[] EMPTY_ARRAY = new InterpreterResolvedJavaType[0];
 
     private final Symbol<Type> type;

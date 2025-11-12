@@ -31,8 +31,9 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 
-public abstract class EspressoResolvedJavaType implements ResolvedJavaType {
+public abstract class EspressoResolvedJavaType extends AbstractAnnotated implements ResolvedJavaType {
     static final Annotation[] NO_ANNOTATIONS = {};
     protected static final EspressoResolvedJavaField[] NO_FIELDS = new EspressoResolvedJavaField[0];
     protected static final ResolvedJavaType[] NO_TYPES = new ResolvedJavaType[0];

@@ -31,6 +31,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -422,7 +423,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
         throw annotationsUnimplemented();
     }
 

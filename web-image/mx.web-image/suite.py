@@ -105,7 +105,13 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.util",
                 ],
-                "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
             },
             "javaCompliance": "21+",
             "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
