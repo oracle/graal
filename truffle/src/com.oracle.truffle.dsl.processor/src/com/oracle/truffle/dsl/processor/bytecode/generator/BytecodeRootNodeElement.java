@@ -16695,10 +16695,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startElseBlock();
                 b.startTryBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.startThrow().startCall("sneakyThrow");
                 if (model.interceptInternalException != null) {
-                    b.startAssign("throwable").startCall("$root", model.interceptInternalException).string("throwable").string("frame").string("this").string("bci").end(2);
+                    b.startCall("$root", model.interceptInternalException).string("throwable").string("frame").string("this").string("bci").end();
+                } else {
+                    b.string("throwable");
                 }
-                b.startThrow().startCall("sneakyThrow").string("throwable").end(2);
+                b.end(2);
                 b.end().startCatchBlock(types.AbstractTruffleException, "ate");
                 if (model.interceptTruffleException == null) {
                     b.startReturn().string("ate").end();
