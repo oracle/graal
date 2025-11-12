@@ -35,6 +35,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
@@ -79,6 +81,7 @@ public final class InvalidMethodPointerHandler {
     @StubCallingConvention
     @NeverInline("We need a separate frame that stores all registers")
     @Uninterruptible(reason = "Precaution.")
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     private static void invalidVTableEntryHandler() {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();

@@ -26,14 +26,21 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
 
+import java.lang.reflect.Proxy;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
 
 @AutomaticallyRegisteredFeature
@@ -43,8 +50,10 @@ public class InitialLayerFeature implements InternalFeature {
         return ImageLayerBuildingSupport.buildingInitialLayer();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         /*
          * Make sure that critical VM components are included in the base layer by registering
          * runtime APIs as entry points. Although the types below are part of java.base, so they
@@ -57,6 +66,12 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime"), PINNED_TO_INITIAL_LAYER);
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "gc"), PINNED_TO_INITIAL_LAYER);
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
+
+        AnalysisMetaAccess metaAccess = access.getMetaAccess();
+        metaAccess.lookupJavaType(Uninterruptible.class).registerAsReachable("Core type");
+        metaAccess.lookupJavaType(Proxy.getProxyClass(ClassLoaders.appClassLoader(), Uninterruptible.class)).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
     }
 
 }

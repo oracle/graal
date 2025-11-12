@@ -56,6 +56,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -166,7 +167,7 @@ public class JavaMainWrapper {
      * For layered images this method is delayed until the application layer. This is necessary so
      * that the method handle can be inlined before analysis.
      */
-    @LayeredCompilationBehavior(LayeredCompilationBehavior.Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static void invokeMain(String[] args) throws Throwable {
         String[] mainArgs = args;
         if (ImageSingletons.contains(PreMainSupport.class)) {
@@ -276,9 +277,11 @@ public class JavaMainWrapper {
         }
     }
 
+    /** The entry point of the image needs to be in the application layer. */
     @Uninterruptible(reason = "Thread state not set up yet.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static int run(int argc, CCharPointerPointer argv) {
         if (SubstrateOptions.RunMainInNewThread.getValue()) {
             return doRunInNewThread(argc, argv);
@@ -289,7 +292,7 @@ public class JavaMainWrapper {
 
     /** SVM start-up logic should be pinned to the initial layer. */
     @Uninterruptible(reason = "Thread state not setup yet.")
-    @LayeredCompilationBehavior(LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER)
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static int doRun(int argc, CCharPointerPointer argv) {
         try {
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
