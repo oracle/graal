@@ -162,15 +162,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostValue(Object value) {
-        Object obj = HostLanguage.unwrapIfScoped(language, value);
-        return (obj instanceof HostObject) ||
-                        (obj instanceof HostFunction) ||
-                        (obj instanceof HostException) ||
-                        (obj instanceof HostProxy);
-    }
-
-    @Override
     public Object unboxProxyObject(Object hostValue) {
         return HostProxy.toProxyHostObject(language, hostValue);
     }
@@ -184,11 +175,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public Object asHostDynamicClass(Object context, Class<?> value) {
         return null;
-    }
-
-    @Override
-    public boolean isHostFunction(Object value) {
-        return HostFunction.isInstance(language, value);
     }
 
     @Override
@@ -238,7 +224,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     public Object migrateValue(Object targetContext, Object value, Object valueContext) {
         assert targetContext != valueContext;
         if (value instanceof TruffleObject) {
-            assert value instanceof TruffleObject;
             if (HostObject.isInstance(language, value)) {
                 return HostObject.withContext(language, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (value instanceof HostProxy) {
@@ -248,7 +233,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
                  * The only way this can happen is with Value.asValue(TruffleObject). If it happens
                  * otherwise, its wrong.
                  */
-                assert value instanceof TruffleObject;
                 return value;
             } else {
                 // cannot migrate

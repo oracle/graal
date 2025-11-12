@@ -110,18 +110,19 @@ final class HostAccessor extends Accessor {
 
         @Override
         public boolean isDisconnectedHostObject(Object obj) {
-            return HostObject.isInstance(null, obj);
+            return obj instanceof HostObject || obj instanceof HostException || obj instanceof HostFunction;
         }
 
         @Override
         public Object unboxDisconnectedHostObject(Object hostValue) {
-            Object v = HostLanguage.unwrapIfScoped(null, hostValue);
-            if (v instanceof HostObject) {
-                return ((HostObject) v).obj;
-            } else if (v instanceof HostException) {
-                return ((HostException) v).delegate.obj;
+            if (hostValue instanceof HostObject) {
+                return ((HostObject) hostValue).obj;
+            } else if (hostValue instanceof HostException) {
+                return ((HostException) hostValue).delegate.obj;
+            } else if (hostValue instanceof HostFunction) {
+                throw new UnsupportedOperationException();
             }
-            return v;
+            return hostValue;
         }
 
         @Override

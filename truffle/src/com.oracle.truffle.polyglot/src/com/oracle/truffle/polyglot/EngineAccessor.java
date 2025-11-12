@@ -628,7 +628,7 @@ final class EngineAccessor extends Accessor {
             }
             if (isPrimitive(guestObject)) {
                 return false;
-            } else if (context.engine.host.isHostValue(guestObject) || guestObject instanceof PolyglotBindings) {
+            } else if (InteropLibrary.getFactory().getUncached(guestObject).hasHostObject(guestObject) || context.engine.host.isHostProxy(guestObject) || guestObject instanceof PolyglotBindings) {
                 return true;
             }
             PolyglotLanguage language = findObjectLanguage(context.engine, guestObject);
@@ -1552,13 +1552,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostFunction(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostFunction is supported and returns false
-            // because languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostFunction(obj);
+        public boolean isHostFunction(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.hasHostObject(obj) && interop.isExecutable(obj) && !interop.hasMembers(obj);
         }
 
         @Override

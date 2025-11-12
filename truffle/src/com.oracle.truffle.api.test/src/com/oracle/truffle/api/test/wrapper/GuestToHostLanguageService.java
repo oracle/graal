@@ -104,11 +104,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostValue(Object value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Object unboxProxyObject(Object hostValue) {
         throw new UnsupportedOperationException();
     }
@@ -121,11 +116,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     @Override
     public RuntimeException toHostException(Object hostContext, Throwable exception) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isHostFunction(Object obj) {
-        return false;
     }
 
     @Override

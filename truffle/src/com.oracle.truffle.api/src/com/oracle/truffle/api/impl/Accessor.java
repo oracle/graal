@@ -571,7 +571,7 @@ public abstract class Accessor {
 
         public abstract boolean isHostObject(Object value);
 
-        public abstract boolean isHostFunction(Object languageContext, Object value);
+        public abstract boolean isHostFunction(Object value);
 
         public abstract boolean isHostSymbol(Object languageContext, Object guestObject);
 
