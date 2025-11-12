@@ -2764,6 +2764,16 @@ public final class Meta extends ContextAccessImpl
     }
 
     @TruffleBoundary
+    public EspressoException throwInternalErrorBoundary(String message) {
+        throw throwExceptionWithMessage(java_lang_InternalError, message);
+    }
+
+    @TruffleBoundary
+    public EspressoException createInternalError(String message) {
+        return EspressoException.wrap(initExceptionWithMessage(java_lang_InternalError, message), this);
+    }
+
+    @TruffleBoundary
     public EspressoException throwIllegalArgumentExceptionBoundary(String message) {
         throw throwExceptionWithMessage(java_lang_IllegalArgumentException, message);
     }

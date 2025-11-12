@@ -22,9 +22,15 @@
  */
 package com.oracle.truffle.espresso.vm.structs;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
+
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.jni.JNIHandles;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Commodity class that stores native structs sizes, along with member offsets. See documentation
@@ -37,11 +43,22 @@ public abstract class StructStorage<T extends StructWrapper> {
         this.structSize = structSize;
     }
 
-    public abstract T wrap(JNIHandles handles, TruffleObject structPtr);
+    public abstract T wrap(JNIHandles handles, NativeMemory nativeMemory, TruffleObject structPtr);
 
     public T allocate(NativeAccess nativeAccess, JNIHandles handles) {
-        TruffleObject pointer = nativeAccess.allocateMemory(structSize);
-        return wrap(handles, pointer);
+        try {
+            TruffleObject pointer = RawPointer.create(nativeAccess.nativeMemory().allocateMemory(structSize));
+            return wrap(handles, nativeAccess.nativeMemory(), pointer);
+        } catch (MemoryAllocationException e) {
+            /*
+             * This should be very rare as the maximum allocation size would need to be exceeded by
+             * the "structsize", or we would run out of memory. Thus, the expensive
+             * EspressoContext.get operation is reasonable.
+             */
+            EspressoContext context = EspressoContext.get(null);
+            Meta meta = context.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), context);
+        }
     }
 
     public long structSize() {

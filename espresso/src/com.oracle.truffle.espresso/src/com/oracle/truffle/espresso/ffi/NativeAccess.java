@@ -212,58 +212,6 @@ public interface NativeAccess {
     }
 
     /**
-     * Similar to malloc. The result of allocating a 0-sized buffer is an implementation detail.
-     *
-     * <h3>Lifetime
-     *
-     * @return <code>null</code> if the memory cannot be allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    default @Buffer TruffleObject allocateMemory(long size) {
-        long address = nativeMemory().allocateMemory(size);
-        if (address == 0) {
-            return null;
-        }
-        return RawPointer.create(address);
-    }
-
-    /**
-     * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
-     * 
-     * @return <code>null</code> if the memory cannot be re-allocated. Otherwise, a
-     *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
-     * @throws IllegalArgumentException if the size is negative
-     */
-    default @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        long address = 0;
-        try {
-            address = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        long rawPointer = nativeMemory().reallocateMemory(address, newSize);
-        if (rawPointer == 0) {
-            return null;
-        }
-        return RawPointer.create(rawPointer);
-    }
-
-    /**
-     * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
-     */
-    default void freeMemory(@Pointer TruffleObject buffer) {
-        long address = 0;
-        try {
-            address = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        nativeMemory().freeMemory(address);
-    }
-
-    /**
      * Sinking, make a Java method accessible to the native world. Returns an
      * {@link InteropLibrary#isPointer(Object) pointer} {@link TruffleObject object}, callable from
      * native code.
