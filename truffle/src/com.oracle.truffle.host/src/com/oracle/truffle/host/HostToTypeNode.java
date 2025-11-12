@@ -322,7 +322,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (value instanceof TruffleObject) {
-            if (priority < HOST_PROXY && HostObject.isInstance(language, value)) {
+            if (priority < HOST_PROXY && interop.hasHostObject(value)) {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&

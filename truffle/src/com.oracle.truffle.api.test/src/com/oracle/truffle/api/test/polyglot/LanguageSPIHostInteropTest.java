@@ -367,19 +367,23 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testIsHostFunction() throws InteropException {
         TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
         Object exit = INTEROP.readMember(system, "exit");
         assertTrue(exit instanceof TruffleObject);
-        assertFalse(INTEROP.hasHostObject(exit));
+        assertTrue(INTEROP.hasHostObject(exit));
+        assertTrue(INTEROP.hasHostObject(exit) && INTEROP.isExecutable(exit) && !INTEROP.hasMembers(exit));
         assertTrue(languageEnv.isHostFunction(exit));
 
         Object out = INTEROP.readMember(system, "out");
         assertTrue(exit instanceof TruffleObject);
         assertTrue(INTEROP.hasHostObject(out));
+        assertFalse(INTEROP.hasHostObject(out) && INTEROP.isExecutable(out) && !INTEROP.hasMembers(out));
         assertFalse(languageEnv.isHostFunction(out));
 
         assertFalse(languageEnv.isHostFunction(system));
+        assertFalse(INTEROP.hasHostObject(system) && INTEROP.isExecutable(system) && !INTEROP.hasMembers(system));
         assertFalse(languageEnv.isHostFunction(false));
     }
 

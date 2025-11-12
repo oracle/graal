@@ -2329,11 +2329,14 @@ public abstract class TruffleLanguage<C> {
          * Truffle interop.
          *
          * @since 19.0
+         * @deprecated Use
+         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isExecutable(obj) && !InteropLibrary.hasMembers(obj)}
          */
+        @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostFunction(polyglotLanguageContext, value);
+                return LanguageAccessor.engineAccess().isHostFunction(value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2363,17 +2366,17 @@ public abstract class TruffleLanguage<C> {
         /**
          * Tests whether an exception is a host exception thrown by a Java Interop method
          * invocation.
-         *
+         * <p>
          * Host exceptions may be thrown by interoperability messages. The host exception may be
          * unwrapped using {@link #asHostException(Throwable)}.
          *
          * @param exception the {@link Throwable} to test
          * @return {@code true} if the {@code exception} is a host exception, {@code false}
          *         otherwise
-         * @deprecated Use
-         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isException(obj)}.
          * @see #asHostException(Throwable)
          * @since 19.0
+         * @deprecated Use
+         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isException(obj)}.
          */
         @Deprecated
         @SuppressWarnings("static-method")
@@ -2387,18 +2390,18 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Unwraps a host exception thrown by a Java method invocation.
-         *
+         * <p>
          * Host exceptions may be thrown by interoperability messages. The host exception may be
          * unwrapped using {@link #asHostException(Throwable)}.
          *
-         * @deprecated Use
-         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
-         *             getHostObject}.
          * @param exception the host exception to unwrap
          * @return the original Java exception
          * @throws IllegalArgumentException if the {@code exception} is not a host exception
          * @see #isHostException(Throwable)
          * @since 19.0
+         * @deprecated Use
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
+         *             getHostObject}.
          */
         @Deprecated
         @SuppressWarnings("static-method")
@@ -2583,10 +2586,9 @@ public abstract class TruffleLanguage<C> {
          * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
          * written in a language with a given MIME type.
          *
+         * @return a boolean that indicates if the MIME type is supported
          * @see Source#getMimeType()
          * @see #parsePublic(Source, String...)
-         *
-         * @return a boolean that indicates if the MIME type is supported
          * @since 0.11
          */
         @TruffleBoundary
@@ -2744,7 +2746,7 @@ public abstract class TruffleLanguage<C> {
          * language} may also be associated with additional services. One can request
          * implementations of such services by calling this method with the type identifying the
          * requested service and its API.
-         *
+         * <p>
          * Services that can be obtained via this method include
          * {@link com.oracle.truffle.api.instrumentation.Instrumenter} and others.
          *
@@ -3063,13 +3065,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.3.0
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(java.lang.String)
+         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(String path) {
@@ -3090,13 +3092,13 @@ public abstract class TruffleLanguage<C> {
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
+         * @since 19.3.0
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(URI uri) {
@@ -3151,11 +3153,12 @@ public abstract class TruffleLanguage<C> {
          *             {@link URI}
          * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
          *             {@link Path}
-         * @since 21.1.0
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(String)
          * @see #getInternalTruffleFile(String)
+         * @since 21.1.0
          *
+         * 
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(String path, Predicate<TruffleFile> filter) {
@@ -3176,11 +3179,12 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
          *             {@code uri}, does not exist and cannot be created automatically
-         * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
          * @see #getInternalTruffleFile(URI)
+         * @since 21.1.0
          *
+         * 
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(URI uri, Predicate<TruffleFile> filter) {
@@ -3595,7 +3599,6 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
-         *
          * @see #createHostAdapterWithClassOverrides(Object[], Object)
          * @since 22.1
          */
@@ -3637,7 +3640,6 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException if creating adapter classes is not supported on
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
-         *
          * @see #createHostAdapter(Object[])
          * @since 22.1
          */
@@ -3716,6 +3718,7 @@ public abstract class TruffleLanguage<C> {
          * @return a {@link TruffleLogger}
          * @since 21.1
          *
+         * 
          */
         @TruffleBoundary
         public TruffleLogger getLogger(String loggerName) {
@@ -4066,7 +4069,7 @@ public abstract class TruffleLanguage<C> {
      * current {@link Node}, if available, as parameter.
      * <p>
      * Example intended usage:
-     *
+     * <p>
      * See {@link ContextReference} for a full usage example.
      *
      * @since 0.25 revised in 21.3
@@ -4353,8 +4356,8 @@ public abstract class TruffleLanguage<C> {
     /**
      * Mode of exit operation.
      *
-     * @since 22.0
      * @see #exitContext(Object, ExitMode, int)
+     * @since 22.0
      */
     public enum ExitMode {
         /**
@@ -4362,6 +4365,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 22.0
          *
+         * 
          */
         NATURAL,
         /**
