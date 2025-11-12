@@ -30,7 +30,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateField;
-import com.oracle.truffle.compiler.ConstantFieldInfo;
+
+import jdk.graal.compiler.truffle.ConstantFieldInfo;
 
 public class SubstrateTruffleField extends SubstrateField implements TruffleField {
 

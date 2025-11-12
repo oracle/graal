@@ -28,8 +28,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Map;
+import java.util.function.Function;
 
-import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
@@ -38,10 +38,10 @@ import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.truffle.HostMethodInfo;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.host.TruffleKnownHostTypes;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -101,14 +101,8 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
         @Override
         protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            TruffleKnownHostTypes hostTypes = types();
             Map<ResolvedJavaType, AnnotationValue> annotations = AnnotationValueSupport.getDeclaredAnnotationValues(method);
-            boolean isTruffleBoundary = annotations.containsKey(hostTypes.TruffleBoundary);
-            boolean isBytecodeInterpreterSwitch = annotations.containsKey(hostTypes.BytecodeInterpreterSwitch);
-            boolean isBytecodeInterpreterSwitchBoundary = annotations.containsKey(hostTypes.BytecodeInterpreterSwitchBoundary);
-            boolean isInliningCutoff = annotations.containsKey(hostTypes.InliningCutoff);
-            boolean isInliningRoot = annotations.containsKey(hostTypes.InliningRoot);
-            return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterSwitchBoundary, isInliningCutoff, isInliningRoot);
+            return computeHostMethodInfo(annotations, Function.identity());
         }
 
     }
