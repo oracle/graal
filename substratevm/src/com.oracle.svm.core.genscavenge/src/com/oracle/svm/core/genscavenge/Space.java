@@ -31,9 +31,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -41,7 +41,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import org.graalvm.word.impl.Word;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -174,8 +174,10 @@ public final class Space {
     void walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
         AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
+            // Get the next chunk first in case the chunk gets unlinked by the visitor.
+            AlignedHeapChunk.AlignedHeader next = HeapChunk.getNext(chunk);
             visitor.visitChunk(chunk);
-            chunk = HeapChunk.getNext(chunk);
+            chunk = next;
         }
     }
 

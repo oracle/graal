@@ -33,9 +33,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -44,12 +44,12 @@ import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.word.impl.Word;
 
 /**
  * This implementation is only used if remembered sets are disabled, so most operations are no-ops.
@@ -176,8 +176,8 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void dirtyCardIfNecessary(Object holderObject, Object object, Pointer objRef) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
         // Nothing to do.
     }
 

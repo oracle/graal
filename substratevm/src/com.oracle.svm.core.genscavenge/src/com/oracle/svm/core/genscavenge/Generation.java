@@ -82,16 +82,21 @@ abstract class Generation {
     protected abstract Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace);
 
     /**
-     * Promote a pinned object in an aligned heap chunk from its original space to the appropriate
-     * Space in this generation if there is sufficient capacity.
+     * Promote an aligned heap chunk that contains pinned objects from its original space to the
+     * appropriate Space in this generation if there is sufficient capacity.
      *
-     * Typically, this promotes the entire chunk, which turns all the Objects in the chunk from
-     * white to grey: the objects are in the target Space, but have not yet had their interior
-     * pointers visited.
+     * At this point, the chunk can contain dead objects and an incorrect remembered set, which is
+     * rectified by {@linkplain SweepAndPromotePinnedChunkVisitor subsequent sweeping}.
      *
      * @return true on success, false if the there was insufficient capacity.
      */
-    protected abstract boolean promotePinnedAlignedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace);
+    protected abstract boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace);
+
+    /**
+     * Visits all aligned chunks in From spaces, and for those that contain pinned objects,
+     * {@linkplain #promoteAlignedChunkWithPinnedObjectsBeforeSweeping promotes} and sweeps them.
+     */
+    protected abstract void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor);
 
     void checkSanityBeforeCollection() {
     }

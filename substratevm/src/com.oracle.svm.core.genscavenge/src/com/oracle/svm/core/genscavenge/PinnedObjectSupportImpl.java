@@ -59,8 +59,8 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
 
     @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     private static void modifyObjectPinCount(Object object, int delta) {
-        if (ObjectHeaderImpl.isUnalignedObject(object)) {
-            return; // never moved, but we put it on the PinnedObject list to keep it alive
+        if (!GCImpl.canMove(object)) {
+            return; // only put on the PinnedObject list to keep it alive
         }
 
         Pointer pinCount = AlignedHeapChunk.getEnclosingChunk(object).addressOfObjectPinCount();

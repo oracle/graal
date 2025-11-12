@@ -276,7 +276,7 @@ public class HeapVerifier {
             return false;
         }
 
-        if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.isMarkedHeader(header)) {
+        if (ObjectHeaderImpl.isMarkedHeader(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a marked header: ").zhex(header).newline();
             return false;
         }

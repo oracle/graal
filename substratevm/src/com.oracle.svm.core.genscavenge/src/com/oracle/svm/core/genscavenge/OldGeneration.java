@@ -29,11 +29,11 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 public abstract class OldGeneration extends Generation {
     OldGeneration(String name) {
@@ -48,8 +48,6 @@ public abstract class OldGeneration extends Generation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract boolean scanGreyObjects(boolean completeCollection);
-
-    abstract void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser);
 
     abstract void releaseSpaces(ChunkReleaser chunkReleaser);
 

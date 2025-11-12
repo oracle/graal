@@ -62,6 +62,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.guest.staging.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 
@@ -75,9 +76,8 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
  * <ul>
  * <li>{@linkplain #beginPromotion Absorb all chunks of the young generation.}
  *
- * <li>{@linkplain #promotePinnedAlignedObject Mark pinned objects as reachable}. These objects must
- * remain at their current address, so the chunks that contain them will be swept instead of
- * compacted.
+ * <li>{@linkplain #markPinnedObject Mark pinned objects as reachable}. These objects must remain at
+ * their current address, so the chunks that contain them will be swept instead of compacted.
  *
  * <li>Scan reachable objects, starting from roots, in {@link #promoteAlignedObject} and
  * {@link #scanGreyObjects}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
@@ -264,26 +264,37 @@ final class CompactingOldGeneration extends OldGeneration {
         return original;
     }
 
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promotePinnedAlignedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        if (!GCImpl.getGCImpl().isCompleteCollection()) {
-            assert originalSpace != space && originalSpace.isFromSpace();
-            ObjectPromoter.promoteAlignedHeapChunk(chunk, originalSpace, space);
-            return true;
-        }
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void markPinnedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        assert GCImpl.getGCImpl().isCompleteCollection() : "for incremental collections, must promote entire (swept) chunks";
         assert originalSpace == space;
         if (ObjectHeaderImpl.isMarked(obj)) {
             assert chunk.getSweep();
-            return true;
+            return;
         }
         chunk.setSweep(true);
         ObjectHeaderImpl.setMarked(obj);
         pushOntoMarkStack(obj);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+        assert !GCImpl.getGCImpl().isCompleteCollection() : "for full collections, must mark individual pinned objects";
+        assert originalSpace != space && originalSpace.isFromSpace();
+        ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, space);
         return true;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
+        // Any promotions of pinned objects must have already happened.
+        // We sweep chunks with pinned objects as part of sweepAndCompact() below.
+        // (We also don't have From spaces.)
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
         /*

@@ -66,6 +66,7 @@ public class ObjectPromoter {
     private static Object copyAlignedObject(Object originalObj, Space targetSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
+        assert !ObjectHeaderImpl.isMarked(originalObj) : "must never copy a marked object";
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
@@ -119,22 +120,15 @@ public class ObjectPromoter {
         return copy;
     }
 
-    /** Promote an AlignedHeapChunk by moving it to the target space. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
+    static void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
+        assert chunk.getObjectPinCount() != 0 : "should be used only with pinned objects";
 
         originalSpace.extractAlignedHeapChunk(chunk);
         targetSpace.appendAlignedHeapChunk(chunk);
 
-        if (targetSpace.isOldSpace()) {
-            if (originalSpace.isYoungSpace()) {
-                RememberedSet.get().enableRememberedSetForChunk(chunk);
-            } else {
-                assert originalSpace.isOldSpace();
-                RememberedSet.get().clearRememberedSet(chunk);
-            }
-        }
+        /* If necessary, the remembered set will be rebuilt while sweeping. */
     }
 
     /** Promote an UnalignedHeapChunk by moving it to the target Space. */

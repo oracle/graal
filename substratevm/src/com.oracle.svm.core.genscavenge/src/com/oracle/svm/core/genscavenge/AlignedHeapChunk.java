@@ -182,6 +182,10 @@ public final class AlignedHeapChunk {
     }
 
     public interface Visitor {
+        /**
+         * Visit an {@link AlignedHeapChunk}. The currently visited chunk may be
+         * {@linkplain HeapChunk#setNext unlinked from its list} by the visitor.
+         */
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         void visitChunk(AlignedHeader chunk);
     }

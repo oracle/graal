@@ -390,14 +390,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
+        if (!GraalDirectives.inIntrinsic()) { // too expensive and not necessary in write barriers
+            assert !isMarkedHeader(header) : "cannot use on marked header";
+        }
         return header.and(REMSET_OR_MARKED1_BIT).notEqual(0);
     }
 
+    /**
+     * Mark an object, either for {@link CompactingOldGeneration}, or also in copying collections to
+     * track pinned objects in aligned chunks.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setMarked(Object o) {
-        if (!SerialGCOptions.useCompactingOldGen()) { // not guarantee(): always folds, prevent call
-            throw VMError.shouldNotReachHere("Only for compacting GC.");
-        }
         UnsignedWord header = getObjectHeaderImpl().readHeaderFromObject(o);
         assert header.and(FORWARDED_OR_MARKED2_BIT).equal(0) : "forwarded or already marked";
         /*
@@ -414,6 +418,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         writeHeaderToObject(o, header.and(FORWARDED_OR_MARKED2_BIT.not()));
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void unsetMarkedAndClearRememberedSetBit(Object o) {
+        UnsignedWord header = getObjectHeaderImpl().readHeaderFromObject(o);
+        assert isMarkedHeader(header);
+        writeHeaderToObject(o, header.and(MARKED_BITS.not()));
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isMarked(Object o) {
         return isMarkedHeader(getObjectHeaderImpl().readHeaderFromObject(o));
@@ -421,9 +432,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isMarkedHeader(UnsignedWord header) {
-        if (!SerialGCOptions.useCompactingOldGen()) {
-            throw VMError.shouldNotReachHere("Only for compacting GC.");
-        }
         return header.and(MARKED_BITS).equal(MARKED_BITS);
     }
 

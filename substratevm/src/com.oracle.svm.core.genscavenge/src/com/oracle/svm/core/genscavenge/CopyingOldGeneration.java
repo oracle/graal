@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -94,11 +96,17 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promotePinnedAlignedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
-        ObjectPromoter.promoteAlignedHeapChunk(chunk, originalSpace, getToSpace());
+        ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, getToSpace());
         return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void promoteAndSweepAlignedChunksWithPinnedObjectsInFromSpaces(SweepAndPromotePinnedChunkVisitor visitor) {
+        fromSpace.walkAlignedHeapChunks(visitor);
     }
 
     @Override
@@ -188,14 +196,6 @@ final class CopyingOldGeneration extends OldGeneration {
         success &= HeapVerifier.verifySpace(fromSpace);
         success &= HeapVerifier.verifySpace(toSpace);
         return success;
-    }
-
-    @Override
-    void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
-        /*
-         * Compaction occurred implicitly by copying live objects one after another. Sweeping could
-         * be done on dead objects in pinned chunks, but is currently not implemented.
-         */
     }
 
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
