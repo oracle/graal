@@ -425,7 +425,7 @@ public final class GCImpl implements GC {
     }
 
     private static void resizeAllTlabs() {
-        if (SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue()) {
+        if (SubstrateGCOptions.ResizeTLAB.getValue()) {
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 TlabSupport.resize(thread);
             }

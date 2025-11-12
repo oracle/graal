@@ -108,7 +108,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
 
     @Override
     public boolean useTLAB() {
-        return SubstrateGCOptions.TlabOptions.UseTLAB.getValue();
+        return SubstrateGCOptions.UseTLAB.getValue();
     }
 
     @Override
