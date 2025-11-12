@@ -5,7 +5,6 @@ import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 
 /**
  * Simple graph rewriter helpers driven by facts from checkers.
