@@ -143,6 +143,19 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        "com.oracle.truffle.espresso.memory.panama": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso",
+                "truffle:TRUFFLE_API",
+            ],
+            "javaCompliance": "22+",
+            # GR-47124 spotbugs does not support jdk22
+            "spotbugs": "false",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso.hotswap": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -181,6 +194,7 @@ suite = {
             ],
             "uses": [
                 "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
+                "com.oracle.truffle.espresso.ffi.memory.NativeMemory.Provider",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "jacoco" : "include",
@@ -553,6 +567,7 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
+                "com.oracle.truffle.espresso.memory.panama",
             ],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
