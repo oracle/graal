@@ -31,10 +31,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -43,8 +43,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.thread.VMOperation;
-
-import org.graalvm.word.impl.ObjectAccess;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /** Promotes individual objects or whole heap chunks to a target {@link Space}. */
 public class ObjectPromoter {
@@ -57,7 +56,7 @@ public class ObjectPromoter {
 
         Object copy = copyAlignedObject(original, targetSpace);
         if (copy != null) {
-            ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
+            ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
         return copy;
     }

@@ -30,27 +30,28 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
-import org.graalvm.word.impl.ObjectAccess;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -67,6 +68,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord REMSET_OR_MARKED1_BIT = Word.unsigned(0b00010);
     private static final UnsignedWord FORWARDED_OR_MARKED2_BIT = Word.unsigned(0b00100);
     private static final UnsignedWord MARKED_BITS = REMSET_OR_MARKED1_BIT.or(FORWARDED_OR_MARKED2_BIT);
+    private static final UnsignedWord ESSENTIAL_BITS = UNALIGNED_BIT.or(MARKED_BITS);
 
     /**
      * Optional: per-object identity hash code state to avoid a fixed field, initially implicitly
@@ -460,26 +462,52 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public UnsignedWord getForwardedObjectOriginalSizeInlineInGC(Pointer p, UnsignedWord header) {
+        assert isForwardedHeader(header);
+        if (ReferenceAccess.singleton().haveCompressedReferences() && hasShift()) {
+            return header.and(ESSENTIAL_BITS.not());
+        }
+        assert !isIdentityHashFieldOptional() : "object size can have changed when copying";
+        Object forwarded = getForwardedObject(p, header);
+        return LayoutEncoding.getSizeFromObjectInlineInGC(forwarded);
+    }
+
     /** In an Object, install a forwarding pointer to a different Object. */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void installForwardingPointer(Object original, Object copy) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
-        UnsignedWord forwardHeader = getForwardHeader(copy);
-        ObjectAccess.writeLong(original, getHubOffset(), forwardHeader.rawValue());
+        UnsignedWord forwardWord = encodeForwardWord(original, copy);
+        ObjectAccess.writeLong(original, getHubOffset(), forwardWord.rawValue());
         assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
     }
 
+    /**
+     * Encodes the word to write to the start of an object to forward to its copy. This may include
+     * more than just the header as read or written by methods such as {@link #readHeaderFromObject}
+     * or {@link #writeHeaderToObject}.
+     */
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private UnsignedWord getForwardHeader(Object copy) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static UnsignedWord encodeForwardWord(Object original, Object copy) {
         UnsignedWord result;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             UnsignedWord compressedCopy = ReferenceAccess.singleton().getCompressedRepresentation(copy);
             if (hasShift()) {
-                // Compression with a shift uses all bits of a reference, so store the forwarding
-                // pointer in the location following the hub pointer.
-                result = compressedCopy.shiftLeft(32).or(Word.unsigned(0x00000000e0e0e0e0L));
+                /*
+                 * Compression with a shift uses all bits of a reference, so store the forwarding
+                 * pointer in the location following the hub pointer.
+                 *
+                 * Optional identity hash codes are supported in this mode, so we encode the
+                 * object's original size before it is copied and forwarded in the header. This size
+                 * is typically needed for sweeping and compaction.
+                 */
+                UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(original);
+                result = compressedCopy.shiftLeft(32);
+                assert result.and(originalSize).equal(0);
+                result = result.or(originalSize);
             } else {
                 result = compressedCopy;
             }
@@ -487,15 +515,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             result = Word.objectToUntrackedPointer(copy);
         }
 
-        assert getHeaderBitsFromHeader(result).equal(0);
+        assert result.and(ESSENTIAL_BITS).equal(0);
         return result.or(FORWARDED_OR_MARKED2_BIT);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private UnsignedWord getHeaderBitsFromHeader(UnsignedWord header) {
-        assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
-        assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
-        return header.and(reservedHubBitsMask);
     }
 
     @Fold

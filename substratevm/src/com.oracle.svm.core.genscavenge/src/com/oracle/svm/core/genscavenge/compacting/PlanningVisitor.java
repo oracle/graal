@@ -92,12 +92,12 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 /*
                  * If an object was copied from a chunk that won't be swept and forwarding was put
-                 * in place, it was because we needed to add an identity hash code field to the
-                 * object, and we need the object's original size here.
+                 * in place, it must have been because we needed to add an identity hash code field
+                 * to the object. We need the object's original size here.
                  */
-                assert !sweeping && ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
-                Object forwardedObj = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p, header);
-                objSize = LayoutEncoding.getSizeFromObjectWithoutOptionalIdHashFieldInGC(forwardedObj);
+                ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
+                assert !sweeping && ohi.hasOptionalIdentityHashField(ohi.readHeaderFromObject(ohi.getForwardedObject(p, header)));
+                objSize = ohi.getForwardedObjectOriginalSizeInlineInGC(p, header);
             } else {
                 objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
             }
