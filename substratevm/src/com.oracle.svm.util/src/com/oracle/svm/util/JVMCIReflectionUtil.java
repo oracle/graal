@@ -25,6 +25,7 @@
 package com.oracle.svm.util;
 
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -281,5 +282,16 @@ public final class JVMCIReflectionUtil {
 
     public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
         return JVMCIReflectionUtilFallback.getModule(declaringClass);
+    }
+
+    /**
+     * Returns the <em>origin</em> associated with this {@link ResolvedJavaType}.
+     *
+     * This is not yet properly implemented as it falls back to the original class (GR-71068).
+     *
+     * @return the location (URL), or {@code null} if no URL was supplied during construction.
+     */
+    public static URL getOrigin(ResolvedJavaType type) {
+        return JVMCIReflectionUtilFallback.getOrigin(type);
     }
 }

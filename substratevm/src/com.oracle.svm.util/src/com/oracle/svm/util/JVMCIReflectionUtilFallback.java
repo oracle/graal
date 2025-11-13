@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.util;
 
+import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
+
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -42,5 +46,14 @@ final class JVMCIReflectionUtilFallback {
 
     static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
         return new ResolvedJavaModuleImpl(getJavaClass(declaringClass).getModule());
+    }
+
+    static URL getOrigin(ResolvedJavaType type) {
+        ProtectionDomain pd = getJavaClass(type).getProtectionDomain();
+        CodeSource cs = pd.getCodeSource();
+        if (cs == null) {
+            return null;
+        }
+        return cs.getLocation();
     }
 }
