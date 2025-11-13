@@ -34,6 +34,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
@@ -242,7 +243,7 @@ public final class JNIObjectHandles {
             result = JNIImageHeapHandles.toGlobal(handle);
         } else {
             Object obj = getObject(handle);
-            if (obj != null) {
+            if (!obj.equals(nullHandle())) {
                 result = JNIGlobalHandles.create(obj);
             }
         }
@@ -261,7 +262,7 @@ public final class JNIObjectHandles {
             result = JNIImageHeapHandles.toWeakGlobal(handle);
         } else {
             Object obj = getObject(handle);
-            if (obj != null) {
+            if (!obj.equals(nullHandle())) {
                 result = JNIGlobalHandles.createWeak(obj);
             }
         }
@@ -345,7 +346,7 @@ final class JNIGlobalHandles {
      * @param handle The raw, unencoded handle to the Java object.
      * @return The resulting strong JNI object handle with embedded metadata.
      */
-    private static JNIObjectHandle encode(ObjectHandle handle) {
+    private static JNIObjectHandle encodeStrong(ObjectHandle handle) {
         SignedWord h = (Word) handle;
         if (JNIObjectHandles.haveAssertions()) {
             assert h.and(HANDLE_BITS_MASK).equal(h) : "unencoded handle must fit in range";
@@ -385,11 +386,13 @@ final class JNIGlobalHandles {
 
     static <T> T getObject(JNIObjectHandle handle) {
         SignedWord handleValue = (Word) handle;
-        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
+        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) &&
+                        handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
             return strongGlobalHandles.get(decode(handle));
         }
 
-        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
+        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) &&
+                        handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
             return weakGlobalHandles.get(decode((handle)));
         }
 
@@ -398,18 +401,20 @@ final class JNIGlobalHandles {
 
     static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
         SignedWord handleValue = (Word) handle;
-        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 0) {
+        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) &&
+                        handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
             return JNIObjectRefType.Global;
         }
 
-        if ((handleValue.toLong() & WEAK_HANDLE_FLAG.toLong()) == 1) {
+        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) &&
+                        handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
             return JNIObjectRefType.WeakGlobal;
         }
         return JNIObjectRefType.Invalid;
     }
 
     static JNIObjectHandle create(Object obj) {
-        return encode(strongGlobalHandles.create(obj));
+        return encodeStrong(strongGlobalHandles.create(obj));
     }
 
     static void destroy(JNIObjectHandle handle) {
