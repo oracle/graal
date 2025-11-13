@@ -58,8 +58,8 @@ suite = {
     },
 
     "C1VISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/c1visualizer/c1visualizer-1.10.zip"],
-      "digest" : "sha512:40c505dd03ca0bb102f1091b89b90672126922f290bd8370eef9a7afc5d9c1e7b5db08c448a0948ef46bf57d850e166813e2d68bf7b1c88a46256d839b6b0201",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/c1visualizer/c1visualizer-1.13-3413409cce0.zip"],
+      "digest" : "sha512:176dcef9447f1760f70ec4da50b2f742e786fc3db6af9db9d699c303ecfe0e470deb3bb32120123cb93a0073f4f31cecffde2a7860edcf514dce9894d6df25c4",
       "packedResource": True,
     },
 
