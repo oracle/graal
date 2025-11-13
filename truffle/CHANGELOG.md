@@ -38,6 +38,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 
+* GR-69861: Bytecode DSL: Added a `BytecodeFrame` abstraction for capturing frame state and accessing frame data. This abstraction should be preferred over `BytecodeNode` access methods because it captures the correct interpreter location data.
+* GR-69861: Bytecode DSL: Added a `captureFramesForTrace` parameter to `@GenerateBytecode` that enables capturing of frames in `TruffleStackTraceElement`s. Previously, frame data was unreliably available in stack traces; now, it is guaranteed to be available if requested. Languages must use the `BytecodeFrame` abstraction to access frame data from `TruffleStackTraceElement`s rather than access the frame directly.
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

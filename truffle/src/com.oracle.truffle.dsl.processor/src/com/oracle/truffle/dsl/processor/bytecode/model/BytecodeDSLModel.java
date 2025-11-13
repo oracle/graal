@@ -118,6 +118,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableYield;
     public boolean enableMaterializedLocalAccesses;
     public boolean storeBciInFrame;
+    public boolean captureFramesForTrace;
     public boolean bytecodeDebugListener;
     public boolean additionalAssertions;
     public boolean inlinePrimitiveConstants;

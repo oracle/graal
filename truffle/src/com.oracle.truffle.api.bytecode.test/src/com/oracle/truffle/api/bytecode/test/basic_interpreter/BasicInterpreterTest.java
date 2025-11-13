@@ -1406,7 +1406,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assumeTrue(run.storesBciInFrame());
 
         // This test relies on an assertion. Explicitly open a context with compilation disabled.
-        try (Context c = createContextWithCompilationDisabled()) {
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
             BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
                 b.beginRoot();
 
@@ -1478,16 +1478,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             }
         }
 
-    }
-
-    private static Context createContextWithCompilationDisabled() {
-        var builder = Context.newBuilder(BytecodeDSLTestLanguage.ID);
-        if (TruffleTestAssumptions.isOptimizingRuntime()) {
-            builder.option("engine.Compilation", "false");
-        }
-        Context result = builder.build();
-        result.enter();
-        return result;
     }
 
     /*

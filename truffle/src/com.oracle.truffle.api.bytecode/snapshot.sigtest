@@ -71,6 +71,26 @@ meth public static com.oracle.truffle.api.bytecode.BytecodeEncodingException cre
 supr java.lang.RuntimeException
 hfds serialVersionUID
 
+CLSS public final com.oracle.truffle.api.bytecode.BytecodeFrame
+meth public com.oracle.truffle.api.bytecode.BytecodeFrame copy()
+meth public com.oracle.truffle.api.bytecode.BytecodeLocation getLocation()
+meth public com.oracle.truffle.api.bytecode.BytecodeNode getBytecodeNode()
+meth public int getArgumentCount()
+meth public int getBytecodeIndex()
+meth public int getLocalCount()
+meth public java.lang.Object getArgument(int)
+meth public java.lang.Object getFrameDescriptorInfo()
+meth public java.lang.Object getLocalValue(int)
+meth public java.lang.Object[] getLocalNames()
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.TruffleStackTraceElement)
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.frame.FrameInstance,com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.TruffleStackTraceElement)
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.frame.FrameInstance)
+meth public void setArgument(int,java.lang.Object)
+meth public void setLocalValue(int,java.lang.Object)
+supr java.lang.Object
+hfds bytecode,bytecodeIndex,frame
+
 CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeLabel
 cons public init(java.lang.Object)
 supr java.lang.Object
@@ -106,6 +126,7 @@ cons protected init(java.lang.Object)
 meth protected abstract boolean isLocalClearedInternal(com.oracle.truffle.api.frame.Frame,int,int)
 meth protected abstract boolean validateBytecodeIndex(int)
 meth protected abstract com.oracle.truffle.api.bytecode.Instruction findInstruction(int)
+meth protected abstract com.oracle.truffle.api.frame.Frame resolveFrameImpl(com.oracle.truffle.api.frame.FrameInstance,com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
 meth protected abstract int findBytecodeIndex(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.nodes.Node)
 meth protected abstract int findBytecodeIndex(com.oracle.truffle.api.frame.FrameInstance)
 meth protected abstract int translateBytecodeIndex(com.oracle.truffle.api.bytecode.BytecodeNode,int)
@@ -116,6 +137,8 @@ meth protected abstract void clearLocalValueInternal(com.oracle.truffle.api.fram
 meth protected abstract void setLocalValueInternal(com.oracle.truffle.api.frame.Frame,int,int,java.lang.Object)
 meth protected boolean getLocalValueInternalBoolean(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected byte getLocalValueInternalByte(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth protected com.oracle.truffle.api.frame.Frame resolveFrameImpl(com.oracle.truffle.api.TruffleStackTraceElement)
+meth protected com.oracle.truffle.api.frame.Frame resolveNonVirtualFrameImpl(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected double getLocalValueInternalDouble(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected final com.oracle.truffle.api.bytecode.BytecodeLocation findLocation(int)
 meth protected final static java.lang.Object createDefaultStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
@@ -143,6 +166,8 @@ meth public abstract java.util.List<com.oracle.truffle.api.bytecode.LocalVariabl
 meth public abstract java.util.List<com.oracle.truffle.api.bytecode.SourceInformation> getSourceInformation()
 meth public abstract void setLocalValue(int,com.oracle.truffle.api.frame.Frame,int,java.lang.Object)
 meth public abstract void setUncachedThreshold(int)
+meth public final com.oracle.truffle.api.bytecode.BytecodeFrame createCopiedFrame(int,com.oracle.truffle.api.frame.Frame)
+meth public final com.oracle.truffle.api.bytecode.BytecodeFrame createMaterializedFrame(int,com.oracle.truffle.api.frame.MaterializedFrame)
 meth public final com.oracle.truffle.api.bytecode.BytecodeLocation getBytecodeLocation(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.nodes.Node)
 meth public final com.oracle.truffle.api.bytecode.BytecodeLocation getBytecodeLocation(com.oracle.truffle.api.frame.FrameInstance)
 meth public final com.oracle.truffle.api.bytecode.BytecodeLocation getBytecodeLocation(int)
@@ -332,6 +357,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.Gener
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean additionalAssertions()
 meth public abstract !hasdefault boolean allowUnsafe()
+meth public abstract !hasdefault boolean captureFramesForTrace()
 meth public abstract !hasdefault boolean enableBlockScoping()
 meth public abstract !hasdefault boolean enableBytecodeDebugListener()
 meth public abstract !hasdefault boolean enableInstructionTracing()
@@ -758,7 +784,7 @@ meth public void printHistogram(java.io.PrintStream)
 meth public void reset()
 supr java.lang.Object
 hfds cache,counters,descriptor,filterClause,groupClauses,rootCounters
-hcls Counters,LRUCache
+hcls Counters,LastTraceCache
 
 CLSS public final static com.oracle.truffle.api.bytecode.debug.HistogramInstructionTracer$Builder
  outer com.oracle.truffle.api.bytecode.debug.HistogramInstructionTracer
@@ -793,7 +819,7 @@ meth public void onInstructionEnter(com.oracle.truffle.api.bytecode.InstructionT
 meth public void reset()
 supr java.lang.Object
 hfds cache,executedInstructions,filter,out
-hcls LRUCache
+hcls LastTraceCache
 
 CLSS public final static com.oracle.truffle.api.bytecode.debug.PrintInstructionTracer$Builder
  outer com.oracle.truffle.api.bytecode.debug.PrintInstructionTracer

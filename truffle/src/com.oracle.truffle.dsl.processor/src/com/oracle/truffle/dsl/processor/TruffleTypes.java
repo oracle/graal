@@ -153,6 +153,7 @@ public class TruffleTypes {
     public static final String Option_Group_Name = "com.oracle.truffle.api.Option.Group";
     public static final String Option_Name = "com.oracle.truffle.api.Option";
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
+    public static final String RootCallTarget_Name = "com.oracle.truffle.api.RootCallTarget";
     public static final String RootNode_Name = "com.oracle.truffle.api.nodes.RootNode";
     public static final String IndirectCallNode_Name = "com.oracle.truffle.api.nodes.IndirectCallNode";
     public static final String InlinedProfile_Name = "com.oracle.truffle.api.profiles.InlinedProfile";
@@ -215,6 +216,7 @@ public class TruffleTypes {
     public final DeclaredType NodeInterface = c.getDeclaredType(NodeInterface_Name);
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
+    public final DeclaredType RootCallTarget = c.getDeclaredType(RootCallTarget_Name);
     public final DeclaredType RootNode = c.getDeclaredType(RootNode_Name);
     public final DeclaredType IndirectCallNode = c.getDeclaredType(IndirectCallNode_Name);
     public final DeclaredType InlinedProfile = c.getDeclaredTypeOptional(InlinedProfile_Name);

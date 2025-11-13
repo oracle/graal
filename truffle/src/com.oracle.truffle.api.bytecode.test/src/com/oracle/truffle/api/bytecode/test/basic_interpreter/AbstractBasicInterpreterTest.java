@@ -694,6 +694,18 @@ public abstract class AbstractBasicInterpreterTest {
         return BasicInterpreterBuilder.variants();
     }
 
+    public static boolean hasRootScoping(Class<? extends BasicInterpreter> interpreterClass) {
+        return interpreterClass == BasicInterpreterWithRootScoping.class ||
+                        interpreterClass == BasicInterpreterProductionRootScoping.class;
+    }
+
+    public static Object getDefaultLocalValue(Class<? extends BasicInterpreter> interpreterClass) {
+        if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithRootScoping.class) {
+            return BasicInterpreter.LOCAL_DEFAULT_VALUE;
+        }
+        return null;
+    }
+
     /// Code gen helpers
 
     protected static void emitReturn(BasicInterpreterBuilder b, long value) {

@@ -48,6 +48,7 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -57,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Generates a bytecode interpreter using the Bytecode DSL. The Bytecode DSL automatically produces
@@ -419,6 +421,22 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     boolean storeBytecodeIndexInFrame() default false;
+
+    /**
+     * Whether {@link TruffleStackTraceElement stack trace elements} of the annotated root node
+     * should capture frames. This flag should be used instead of
+     * {@link RootNode#isCaptureFramesForTrace(boolean)}, which the Bytecode DSL prevents you from
+     * overriding.
+     * <p>
+     * When this flag is non-null, you can use {@link BytecodeFrame#get(TruffleStackTraceElement)}
+     * to access frame data from a stack trace element. The frame only supports read-only access.
+     * <p>
+     * Bytecode DSL interpreters <strong>must not</strong> access frames directly using
+     * {@link TruffleStackTraceElement#getFrame}.
+     *
+     * @since 25.1
+     */
+    boolean captureFramesForTrace() default false;
 
     /**
      * Path to a file containing optimization decisions. This file is generated using tracing on a
