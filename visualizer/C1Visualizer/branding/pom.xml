@@ -35,11 +35,11 @@
     <parent>
         <groupId>at.ssw.visualizer</groupId>
         <artifactId>C1Visualizer-parent</artifactId>
-        <version>1.13</version>
+        <version>1.14-SNAPSHOT</version>
     </parent>
     <groupId>at.ssw.visualizer</groupId>
     <artifactId>branding</artifactId>
-    <version>1.13</version>
+    <version>1.14-SNAPSHOT</version>
     <packaging>nbm</packaging>
     <name>branding</name>
     <properties>
