@@ -390,14 +390,13 @@ abstract class DynamicObjectLibraryImpl {
                 moves.add(move);
             }
         }
+        Location removedPropertyLoc = removedProperty.getLocation();
+        if (!removedPropertyLoc.isValue()) {
+            // Use a no-op move to clear the location of the removed property. Must be first.
+            moves.add(new Move(removedPropertyLoc, null, removedPropertyLoc.getOrdinal(), Integer.MIN_VALUE));
+        }
         if (canMoveInPlace) {
-            if (moves.isEmpty()) {
-                Location removedPropertyLoc = removedProperty.getLocation();
-                if (!removedPropertyLoc.isPrimitive()) {
-                    // Use a no-op move to clear the location of the removed property.
-                    moves.add(new Move(removedPropertyLoc, removedPropertyLoc, 0, 0));
-                }
-            } else if (!isSorted(moves)) {
+            if (!isSorted(moves)) {
                 moves.sort(Move::compareTo);
             }
         }
@@ -415,6 +414,10 @@ abstract class DynamicObjectLibraryImpl {
         return true;
     }
 
+    /**
+     * Moves the value from one location to another, and clears the from location. If both locations
+     * are the same, only clears the location.
+     */
     private static final class Move implements Comparable<Move> {
         private final Location fromLoc;
         private final Location toLoc;
@@ -424,18 +427,22 @@ abstract class DynamicObjectLibraryImpl {
         private static final Move[] EMPTY_ARRAY = new Move[0];
 
         Move(Location fromLoc, Location toLoc, int fromOrd, int toOrd) {
-            assert (fromLoc == toLoc) == (fromOrd == toOrd);
-            this.fromLoc = fromLoc;
+            assert fromLoc != toLoc;
+            this.fromLoc = Objects.requireNonNull(fromLoc);
             this.toLoc = toLoc;
             this.fromOrd = fromOrd;
             this.toOrd = toOrd;
         }
 
         void perform(DynamicObject obj) {
-            if (fromLoc == toLoc) {
-                return;
+            if (toLoc != null) {
+                performSet(obj, performGet(obj));
             }
-            performSet(obj, performGet(obj));
+            /*
+             * It does not matter for correctness whether we clear after the get or set. Clearing
+             * after the set might be slightly preferable w.r.t. store ordering.
+             */
+            clear(obj);
         }
 
         Object performGet(DynamicObject obj) {
@@ -443,11 +450,28 @@ abstract class DynamicObjectLibraryImpl {
         }
 
         void performSet(DynamicObject obj, Object value) {
+            if (toLoc == null) {
+                return; // clear only
+            }
             toLoc.setSafe(obj, value, false, true);
         }
 
-        void clear(DynamicObject obj) {
-            // clear location to avoid memory leak
+        Object performGetAndClear(DynamicObject obj) {
+            Object value = performGet(obj);
+            clear(obj);
+            return value;
+        }
+
+        /*
+         * Clears the location to avoid potential memory leaks AND kills the from location identity.
+         *
+         * Note: It is important that we always set the "from" location in compiled code to kill the
+         * location identity at this point, so as to prevent reads from that location identity (of
+         * the old shape) to move below any write to the same memory location but with a different
+         * location identity (of the new shape), since that would be seen as independent and
+         * therefore not kill the "from" location that is being overwritten or cleared. (GR-59981)
+         */
+        private void clear(DynamicObject obj) {
             fromLoc.clear(obj);
         }
 
@@ -498,25 +522,19 @@ abstract class DynamicObjectLibraryImpl {
                     moves[i].perform(object);
                 }
 
-                if (moves.length > 0) {
-                    moves[0].clear(object);
-                }
-
                 DynamicObjectSupport.trimToSize(object, shapeBefore, shapeAfter);
-                object.setShape(shapeAfter);
             } else {
                 // we cannot perform the moves in place, so stash away the values
                 Object[] tempValues = new Object[moves.length];
                 for (int i = moves.length - 1; i >= 0; i--) {
-                    tempValues[i] = moves[i].performGet(object);
-                    moves[i].clear(object);
+                    tempValues[i] = moves[i].performGetAndClear(object);
                 }
                 DynamicObjectSupport.resize(object, shapeBefore, shapeAfter);
                 for (int i = moves.length - 1; i >= 0; i--) {
                     moves[i].performSet(object, tempValues[i]);
                 }
-                object.setShape(shapeAfter);
             }
+            object.setShape(shapeAfter);
         }
 
         @TruffleBoundary
