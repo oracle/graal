@@ -238,6 +238,10 @@ public final class JVMCIReflectionUtil {
         return (dot != -1) ? cn.substring(0, dot).intern() : "";
     }
 
+    public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        return JVMCIReflectionUtilFallback.getPackage(type);
+    }
+
     /**
      * Gets the return type for a {@link ResolvedJavaMethod}. This is the same as calling
      * {@link Method#getReturnType()} on the underlying method.
@@ -273,5 +277,9 @@ public final class JVMCIReflectionUtil {
             }
         }
         return type.toClassName();
+    }
+
+    public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
+        return JVMCIReflectionUtilFallback.getModule(declaringClass);
     }
 }
