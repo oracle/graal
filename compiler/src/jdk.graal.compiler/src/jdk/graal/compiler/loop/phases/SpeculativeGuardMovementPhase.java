@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -649,7 +649,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             if (boundStamp instanceof IntegerStamp && ivStamp instanceof IntegerStamp) {
                 IntegerStamp integerBoundStamp = (IntegerStamp) boundStamp;
                 IntegerStamp integerIvStamp = (IntegerStamp) ivStamp;
-                if (fitsIn32Bit(integerBoundStamp) && fitsIn32Bit(integerIvStamp)) {
+                NumUtil.Signedness signedness = compare.condition().isUnsigned() ? NumUtil.Signedness.UNSIGNED : NumUtil.Signedness.SIGNED;
+                if (fitsIn32Bit(integerBoundStamp, signedness) && fitsIn32Bit(integerIvStamp, signedness)) {
                     fitsInInt = true;
                 }
             }
@@ -757,8 +758,19 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return false;
         }
 
-        private static boolean fitsIn32Bit(IntegerStamp stamp) {
-            return NumUtil.isUInt(stamp.mayBeSet());
+        /**
+         * Returns {@code true} if the given stamp fits into a 32-bit range. If the stamp is larger
+         * than 32 bits, the bounds must be signed or unsigned according to {@code signedness}.
+         */
+        private static boolean fitsIn32Bit(IntegerStamp stamp, NumUtil.Signedness signedness) {
+            if (stamp.getBits() <= 32) {
+                return true;
+            }
+            if (signedness == NumUtil.Signedness.SIGNED) {
+                return NumUtil.isSignedNbit(32, stamp.lowerBound()) && NumUtil.isSignedNbit(32, stamp.upperBound());
+            } else {
+                return NumUtil.isUnsignedNbit(32, stamp.lowerBound()) && NumUtil.isUnsignedNbit(32, stamp.upperBound());
+            }
         }
 
         private CFGLoop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
