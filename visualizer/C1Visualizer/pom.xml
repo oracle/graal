@@ -34,14 +34,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>at.ssw.visualizer</groupId>
     <artifactId>C1Visualizer-parent</artifactId>
-    <version>1.13-SNAPSHOT</version>
+    <version>1.13</version>
     <packaging>pom</packaging>
     <name>C1Visualizer-parent</name>
     <scm>
         <developerConnection>
             scm:git:git@github.com:oracle/graal.git
         </developerConnection>
-      <tag>HEAD</tag>
+      <tag>c1visualizer-1.13</tag>
     </scm>
     <build>
         <pluginManagement>

@@ -3,11 +3,11 @@
   <parent>
     <artifactId>C1Visualizer-parent</artifactId>
     <groupId>at.ssw.visualizer</groupId>
-    <version>1.13-SNAPSHOT</version>
+    <version>1.13</version>
   </parent>
   <groupId>at.ssw.visualizer</groupId>
   <artifactId>IntermediateCodeEditor</artifactId>
-  <version>1.13-SNAPSHOT</version>
+  <version>1.13</version>
   <packaging>nbm</packaging>
   <name>IntermediateCodeEditor</name>
   <properties>

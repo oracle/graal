@@ -35,7 +35,7 @@
     <parent>
         <groupId>at.ssw.visualizer</groupId>
         <artifactId>C1Visualizer-parent</artifactId>
-        <version>1.13-SNAPSHOT</version>
+        <version>1.13</version>
     </parent>
     <artifactId>C1Visualizer-app</artifactId>
     <packaging>nbm-application</packaging>
