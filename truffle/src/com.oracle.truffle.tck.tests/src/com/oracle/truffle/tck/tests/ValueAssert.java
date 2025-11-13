@@ -58,6 +58,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
@@ -287,6 +288,10 @@ public class ValueAssert {
                         }
                     }
 
+                    break;
+                case STATIC_RECEIVER:
+                    assertFalse(value.hasStaticReceiver());
+                    assertFails(value::getStaticReceiver, UnsupportedOperationException.class);
                     break;
                 case EXECUTABLE:
                     assertFalse(value.toString(), value.canExecute());
@@ -661,6 +666,10 @@ public class ValueAssert {
                         assertNotNull(value.as(STRING_OBJECT_MAP).toString());
                         assertEquals(value.toString(), value.as(Map.class).toString());
                     }
+                    break;
+                case STATIC_RECEIVER:
+                    assertTrue(msg, value.hasStaticReceiver());
+                    assertNotNull(value.getStaticReceiver());
                     break;
                 case NATIVE:
                     assertTrue(msg, value.isNativePointer());
@@ -1160,6 +1169,9 @@ public class ValueAssert {
         if (value.hasMembers()) {
             valueTypes.add(MEMBERS);
         }
+        if (value.hasStaticReceiver()) {
+            valueTypes.add(STATIC_RECEIVER);
+        }
         if (value.hasArrayElements()) {
             valueTypes.add(ARRAY_ELEMENTS);
         }
@@ -1230,7 +1242,8 @@ public class ValueAssert {
         META,
         ITERABLE,
         ITERATOR,
-        HASH
+        HASH,
+        STATIC_RECEIVER
     }
 
 }

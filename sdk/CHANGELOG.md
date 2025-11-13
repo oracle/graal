@@ -12,6 +12,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-69590: Closing a garbage-collected engine or context now logs only the first failure by default. To log all failures, use `engine.CloseOnGCFailureAction.PrintAll`.
 * GR-35913: Updated the Javadoc of `Value#asHostObject()`, `Value#asNativePointer()`, and `Value#asProxyObject()` to clarify that these methods throw a `ClassCastException` rather than an `UnsupportedOperationException` when the value is not of the expected type.
 * GR-35913: `Value#asHostObject()` throws `UnsupportedOperationException` if object is allocated in a foreign heap.
+* GR-71402: Added `Value#hasStaticReceiver` and `Value#getStaticReceiver` returning the Value's static receiver.
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.

@@ -39,6 +39,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 * GR-71299 Improved the responsiveness of the Truffle compilation queue by refining the computation of the execution rate of compilation units in the queue.
   * Added `engine.TraversingQueueRateHalfLife` to allow fine-tuning of the compilation queue responsiveness.
+* GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
 
 * GR-36894: Added `DynamicObject` nodes for dealing with `DynamicObject` properties and shapes, as a more lightweight replacement for `DynamicObjectLibrary`, including:
     * `DynamicObject.GetNode`: gets the value of a property or a default value if absent
