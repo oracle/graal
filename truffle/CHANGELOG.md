@@ -37,7 +37,18 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
-
+* GR-36894: Added `DynamicObject` nodes for dealing with `DynamicObject` properties and shapes, as a more lightweight replacement for `DynamicObjectLibrary`, including:
+    * `DynamicObject.GetNode`: gets the value of a property or a default value if absent
+    * `DynamicObject.PutNode`: adds a new property or sets the value of an existing property
+    * `DynamicObject.ContainsKeyNode`: checks if the object contains a specific property
+    * `DynamicObject.RemoveKeyNode`: removes a property
+    * `DynamicObject.GetKeyArrayNode`: gets an array of keys of all the object's properties
+    * `DynamicObject.CopyPropertiesNode`: copies all properties from one object to another
+    * `DynamicObject.GetShapeFlagsNode` and `SetShapeFlagsNode`: gets and sets flags in the object's shape, respectively
+    * `DynamicObject.GetDynamicTypeNode` and `SetDynamicTypeNode`: gets and sets the dynamic type id in the object's shape, respectively
+    * See [`DynamicObject` javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) for a complete list and more information. There's an equivalent for every `DynamicObjectLibrary` message.
+    * Note: Unlike `DynamicObjectLibrary`, cached property keys are always compared by identity (`==`) rather than equality (`equals`). If you rely on key equality, cache the key using an `equals` guard and pass the cached canonical key to the node.
+* GR-36894: Deprecated `DynamicObjectLibrary`. Use `DynamicObject` nodes instead. See the [migration guide](https://github.com/oracle/graal/blob/master/truffle/docs/DynamicObjectLibraryMigration.md) for an overview of the required changes.
 * GR-69861: Bytecode DSL: Added a `BytecodeFrame` abstraction for capturing frame state and accessing frame data. This abstraction should be preferred over `BytecodeNode` access methods because it captures the correct interpreter location data.
 * GR-69861: Bytecode DSL: Added a `captureFramesForTrace` parameter to `@GenerateBytecode` that enables capturing of frames in `TruffleStackTraceElement`s. Previously, frame data was unreliably available in stack traces; now, it is guaranteed to be available if requested. Languages must use the `BytecodeFrame` abstraction to access frame data from `TruffleStackTraceElement`s rather than access the frame directly.
 
