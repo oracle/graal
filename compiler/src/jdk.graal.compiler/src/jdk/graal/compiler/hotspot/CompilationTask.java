@@ -408,13 +408,14 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                         performRecompilationCheck(options, method);
                         CompilationReplayBytecodes.add(debug, result.getBytecodeSize());
                     } catch (Throwable e) {
+                        replaySupport.recordCompilationTaskException(e);
                         throw debug.handle(e);
                     }
                     try (DebugCloseable b = CodeInstallationTime.start(debug)) {
                         installMethod(selectedCompiler.getGraalRuntime().getHostBackend(), debug, graph, result);
                     }
                     printer.finish(result, installedCode);
-                    replaySupport.recordCompilationArtifacts(graph, result);
+                    replaySupport.recordCompilationTaskArtifacts(graph, result);
                     return buildCompilationRequestResult(method);
                 }
             }

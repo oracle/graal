@@ -40,6 +40,7 @@ import org.junit.Test;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.Platform;
 import jdk.graal.compiler.hotspot.replaycomp.CompilationProxyMapper;
+import jdk.graal.compiler.hotspot.replaycomp.CompilationTaskProduct;
 import jdk.graal.compiler.hotspot.replaycomp.CompilerInterfaceDeclarations;
 import jdk.graal.compiler.hotspot.replaycomp.OperationRecorder;
 import jdk.graal.compiler.hotspot.replaycomp.RecordedForeignCallLinkages;
@@ -48,6 +49,7 @@ import jdk.graal.compiler.hotspot.replaycomp.SpecialResultMarker;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
 import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -141,8 +143,9 @@ public class RecordedOperationPersistenceTest extends GraalCompilerTest {
                         "test configuration",
                         false,
                         Platform.ofCurrentHost(),
+                        new EconomicHashMap<>(),
                         new RecordedForeignCallLinkages(EconomicMap.create()),
-                        "test graph",
+                        new CompilationTaskProduct.CompilationTaskException("test exception", "test stack trace"),
                         operations);
     }
 

@@ -51,6 +51,14 @@ mx benchmark renaissance:scrabble -- -Djdk.graal.CompilationFailureAction=Diagno
 
 It is possible to **not** record retried compilations with the option `-Djdk.graal.DiagnoseOptions=RecordForReplay=`.
 
+When a recorded compilation ends with an exception, the type and stack trace of the exception is saved in the replay
+file. During replay, the launcher verifies that the replayed compilation throws an exception of the same type. Use the
+`--verbose=true` option to print the stack trace of the recorded exception.
+
+```shell
+mx replaycomp --verbose=true ./replay-files
+```
+
 ## Replay with JVM Arguments
 
 JVM arguments, including compiler options, can be passed directly to the `replaycomp` command.
@@ -83,6 +91,15 @@ mx replaycomp --jdk-home $GRAALVM_HOME ./replay-files
 ```
 
 ## Replay Options
+
+`--verbose=true` prints additional information for every compilation, including:
+* the system properties of the recorded compilation (the options include the VM command from the recorded run),
+* the final canonical graph of the recorded/replayed compilation,
+* the stack trace of the exception thrown during the recorded/replayed compilation.
+
+```shell
+mx replaycomp --verbose=true ./replay-files
+```
 
 `--compare-graphs=true` compares the final canonical graph of the replayed compilation to the recorded one, which is
 included in the JSON replay file. If there is a mismatch, the command exits with a non-zero status.
