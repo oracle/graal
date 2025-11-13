@@ -227,8 +227,6 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         boolean expectOtherTypes = instruction.getQuickeningRoot().needsChildBciForBoxingElimination(model, operandIndex);
         if (boxingEliminated) {
-            final TypeMirror expectedType = instructionType;
-
             if (!expectOtherTypes) {
                 // Sanity check for the internal consistency of boxing elimination and
                 // needsChildBciForBoxingElimination.
@@ -249,7 +247,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.startStaticCall(cast.getMethod());
             }
 
-            BytecodeRootNodeElement.startExpectFrameUnsafe(b, frame, expectedType);
+            BytecodeRootNodeElement.startExpectFrameUnsafe(b, frame, instructionType);
             b.string(stackIndex);
             b.end();
 
@@ -289,7 +287,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                  * If boxing elimination is not used in the interpreter version then we can assume
                  * the frame tag is object.
                  */
-                // frame.requireObject(index)
+                // frame.getObject(index)
                 b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(frame, stackIndex));
                 return false; // no unexpected exception thrown
             }
