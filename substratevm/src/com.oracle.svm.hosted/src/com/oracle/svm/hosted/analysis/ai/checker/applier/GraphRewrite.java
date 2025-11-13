@@ -14,7 +14,6 @@ public final class GraphRewrite {
     public static void foldIfTrue(StructuredGraph graph, IfNode ifNode) {
         AbstractBeginNode falseSuccessor = ifNode.falseSuccessor();
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.log("[GraphRewrite] Folding IfNode to true branch: " + ifNode, LoggerVerbosity.CHECKER);
         graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
     }
 

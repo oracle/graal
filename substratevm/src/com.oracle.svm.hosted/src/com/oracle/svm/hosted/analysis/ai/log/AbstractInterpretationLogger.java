@@ -37,8 +37,6 @@ public final class AbstractInterpretationLogger {
     private PrintWriter fileWriter;
     private final String logFilePath;
 
-    // Verbosity thresholds and output toggles
-    // Lower ordinal = higher priority; message is logged if verbosity.compareTo(threshold) <= 0
     private LoggerVerbosity fileThreshold;
     private LoggerVerbosity consoleThreshold;
     private boolean colorEnabled = true;
@@ -60,8 +58,7 @@ public final class AbstractInterpretationLogger {
         instance = this;
     }
 
-    public static AbstractInterpretationLogger getInstance(String customFileName,
-                                                           LoggerVerbosity loggerVerbosity) {
+    public static AbstractInterpretationLogger getInstance(String customFileName, LoggerVerbosity loggerVerbosity) {
         if (instance == null) {
             instance = new AbstractInterpretationLogger(customFileName, loggerVerbosity);
         }
@@ -78,7 +75,7 @@ public final class AbstractInterpretationLogger {
 
     public static AbstractInterpretationLogger getInstance() {
         if (instance == null) {
-            instance = new AbstractInterpretationLogger("absint_noop", LoggerVerbosity.INFO);
+            instance = new AbstractInterpretationLogger("GraalAF", LoggerVerbosity.INFO);
             instance.setConsoleEnabled(false).setFileEnabled(false);
         }
         return instance;
@@ -324,17 +321,17 @@ public final class AbstractInterpretationLogger {
         private final DebugContext.Scope scope;
         private boolean dumpedBefore;
 
-        private IGVDumpSession(DebugContext debug, StructuredGraph graph, String scopeName) throws Throwable {
+        public IGVDumpSession(DebugContext debug, StructuredGraph graph, String scopeName) throws Throwable {
             this.debug = debug;
             this.graph = graph;
-            this.scopeName = scopeName == null ? "AI_Session" : scopeName;
+            this.scopeName = scopeName == null ? "GraalAF" : scopeName;
             this.scope = this.debug.scope(this.scopeName, this.graph);
             this.dumpedBefore = false;
         }
 
-        public void dumpBeforeSuite(String title, int count) {
+        public void dumpBeforeSuite(String title) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before %s (%d)", title, count);
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before %s", title);
                 dumpedBefore = true;
             }
         }

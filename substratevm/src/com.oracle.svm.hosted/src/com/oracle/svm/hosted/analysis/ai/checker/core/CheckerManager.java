@@ -64,7 +64,6 @@ public final class CheckerManager {
 
     private void applyAbstractInterpretationResults(AnalysisMethod method, StructuredGraph graph) {
         EncodedGraph encoded = GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE);
-        AnalysisParsedGraph newParsed = new AnalysisParsedGraph(encoded, method.isIntrinsicMethod());
-        method.setAnalyzedGraph(newParsed.getEncodedGraph());
+        method.setAnalyzedGraph(encoded);
     }
 }

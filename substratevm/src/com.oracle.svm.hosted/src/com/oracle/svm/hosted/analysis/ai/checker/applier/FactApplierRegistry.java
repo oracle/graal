@@ -22,7 +22,7 @@ public final class FactApplierRegistry {
     private static final Map<FactKind, List<FactApplier>> REGISTRY = new EnumMap<>(FactKind.class);
 
     static {
-        register(FactKind.CONSTANT, new ConstantPropagationApplier());
+        register(FactKind.CONSTANT, new ConstantStampApplier());
         register(FactKind.CONDITION_TRUTH, new ConditionTruthApplier());
         register(FactKind.BOUNDS_SAFETY, new BoundsCheckEliminatorApplier());
     }

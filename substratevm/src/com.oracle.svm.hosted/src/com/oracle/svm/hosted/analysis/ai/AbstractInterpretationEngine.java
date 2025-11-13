@@ -35,6 +35,22 @@ public class AbstractInterpretationEngine {
 
     public void executeAbstractInterpretation(AnalyzerMode analyzerMode) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        if (analyzerMode.isMainOnly() && (analysisRoot == null)) {
+            logger.log("Main method not provided in 'main-only' abstract interpretation mode, defaulting to all invoked methods.", LoggerVerbosity.WARN);
+            if (analyzerMode.isInterProcedural()) {
+                analyzerMode = AnalyzerMode.INTER_ANALYZE_FROM_ALL_ENTRY_POINTS;
+            } else {
+                analyzerMode = AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS;
+            }
+        }
+
+        for (var analyzer : analyzerManager.getAnalyzers()) {
+            executeAnalyzer(analyzer, analyzerMode);
+        }
+    }
+
+    private void executeAnalyzer(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
+        var logger = AbstractInterpretationLogger.getInstance();
         switch (analyzerMode) {
             case INTRA_ANALYZE_MAIN_ONLY -> {
                 logger.log("Running intra-procedural analysis on main method only.", LoggerVerbosity.INFO);
@@ -50,24 +66,6 @@ public class AbstractInterpretationEngine {
             }
         }
 
-        AnalyzerMode currentMode = analyzerMode;
-        if (analyzerMode.isMainOnly() && (analysisRoot == null)) {
-            logger.log("Main method not provided in 'main-only' abstract interpretation mode, defaulting to all invoked methods.", LoggerVerbosity.WARN);
-            if (analyzerMode.isInterProcedural()) {
-                currentMode = AnalyzerMode.INTER_ANALYZE_FROM_ALL_ENTRY_POINTS;
-            } else {
-                currentMode = AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS;
-            }
-        }
-
-        for (var analyzer : analyzerManager.getAnalyzers()) {
-            executeAnalyzer(analyzer, currentMode);
-        }
-
-        logger.log("Finished Abstract Interpretation, the output can be found at: " + logger.getLogFilePath(), LoggerVerbosity.INFO);
-    }
-
-    private void executeAnalyzer(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
         if (analyzer instanceof InterProceduralAnalyzer) {
             executeInterProceduralAnalysis(analyzer, analyzerMode);
             return;

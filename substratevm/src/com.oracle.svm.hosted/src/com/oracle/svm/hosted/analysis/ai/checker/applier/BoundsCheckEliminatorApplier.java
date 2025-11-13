@@ -14,6 +14,7 @@ import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 
 import java.util.ArrayDeque;
@@ -44,17 +45,15 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             logger.log("[BoundsCheckEliminator] No index safety facts.", LoggerVerbosity.CHECKER);
             return;
         }
-        for (Fact f : idxFacts) {
+        for (Fact f : idxFacts.reversed()) {
             IndexSafetyFact isf = (IndexSafetyFact) f;
             if (!isf.isInBounds()) continue;
             Node access = isf.getArrayAccess();
             if (!(access instanceof LoadIndexedNode || access instanceof StoreIndexedNode)) continue;
             Node guardIf = findGuardingIf(access);
             if (!(guardIf instanceof IfNode ifn)) continue;
-            var cond = ifn.condition();
-            if (cond instanceof IntegerBelowNode || cond instanceof IntegerLessThanNode) {
-                GraphRewrite.foldIfTrue(graph, ifn);
-            }
+            logger.log("[GraphRewrite] Folding IfNode to true branch: " + ifn, LoggerVerbosity.CHECKER);
+            graph.removeSplitPropagate(ifn, ifn.trueSuccessor());
         }
     }
 

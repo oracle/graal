@@ -4,6 +4,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -63,6 +65,8 @@ public final class AnalysisServices {
     }
 
     public AnalysisMethod getMainMethod(AnalysisMethod mainEntryPoint) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Main entry point: " + mainEntryPoint.getName(), LoggerVerbosity.DEBUG);
         try {
             AnalysisMethod doRunMethod = findInvokeWithName(mainEntryPoint, "doRun");
             AnalysisMethod runCore0Method = findInvokeWithName(doRunMethod, "runCore0");

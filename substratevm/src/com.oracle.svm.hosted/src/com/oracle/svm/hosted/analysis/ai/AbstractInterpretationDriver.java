@@ -44,7 +44,7 @@ public class AbstractInterpretationDriver {
             /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
-                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS);
+                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_MAIN_ONLY);
             }
         }
     }
@@ -59,7 +59,7 @@ public class AbstractInterpretationDriver {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
                 .setConsoleEnabled(false)             /* only write to file */
                 .setFileEnabled(true)                /* ensure file logging is on */
-                .setFileThreshold(LoggerVerbosity.FACT)   /* keep detailed logs in file */
+                .setFileThreshold(LoggerVerbosity.DEBUG)
                 .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
         debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
 

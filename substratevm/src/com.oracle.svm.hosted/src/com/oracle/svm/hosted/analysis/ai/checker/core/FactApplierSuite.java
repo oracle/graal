@@ -56,31 +56,21 @@ public final class FactApplierSuite {
             logger.log("[FactApplierSuite] Null graph; skipping appliers", LoggerVerbosity.CHECKER_WARN);
             return;
         }
-        DebugContext debug = graph.getDebug();
-        int idx = 0;
-        for (FactApplier applier : appliers) {
-            try (DebugContext.Scope _ = debug.scope("FactApplier:" + applier.getDescription(), graph)) {
+
+        try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
+            session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
+            for (FactApplier applier : appliers) {
                 logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
                 applier.apply(method, graph, aggregator);
-
-                try {
-                    AbstractInterpretationLogger.dumpGraph(method, graph, "after-fact-applier-" + (++idx) + "-" + applier.getDescription());
-                } catch (Throwable dumpEx) {
-                    logger.log("[FactApplier] IGV dump failed after " + applier.getDescription() + ": " + dumpEx.getMessage(), LoggerVerbosity.CHECKER_WARN);
-                }
-
                 if (!graph.verify()) {
-                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(),
-                            LoggerVerbosity.CHECKER_WARN);
+                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(),LoggerVerbosity.CHECKER_WARN);
                 }
-            } catch (Throwable t) {
-                logger.log("[FactApplier] Failed in " + applier.getDescription() + ": " + t.getMessage(), LoggerVerbosity.CHECKER_WARN);
+                logger.exportGraphToJson(graph, method, "After" +  applier.getDescription());
+                session.dumpApplierSubphase(applier.getDescription());
             }
-        }
-        try {
-            AbstractInterpretationLogger.dumpGraph(method, graph, "after-all-fact-appliers");
-        } catch (Throwable dumpEx) {
-            logger.log("[FactApplier] Final IGV dump failed: " + dumpEx.getMessage(), LoggerVerbosity.CHECKER_WARN);
+        } catch (Throwable e) {
+            logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
+            throw new RuntimeException(e);
         }
     }
 }
