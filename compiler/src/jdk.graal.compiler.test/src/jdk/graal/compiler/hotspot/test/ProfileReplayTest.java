@@ -25,17 +25,21 @@
 package jdk.graal.compiler.hotspot.test;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -113,6 +117,29 @@ public class ProfileReplayTest extends GraalCompilerTest {
             OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString());
             runInitialCompilation(method, overrides, jvmciRuntime, compiler);
             runSanityCompilation(temp.toString(), method, overrides, jvmciRuntime, compiler);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testFailingProfileReplay() throws IOException {
+        final ResolvedJavaMethod method = getResolvedJavaMethod("foo");
+        try (TemporaryDirectory temp = new TemporaryDirectory("ProfileReplayTest")) {
+            OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString(), ProfileReplaySupport.Options.SaveProfiles, true);
+            try (DebugContext debug = getDebugContext(overrides)) {
+
+                // make sure the ProfileReplay fails when trying to save the profiles
+                temp.path.toFile().setWritable(false);
+                ProfileReplaySupport profileReplay = ProfileReplaySupport.profileReplayPrologue(debug, 0, method, new StableProfileProvider(), null);
+
+                try (DebugContext.Scope scope = debug.scope("TestScope"); DebugCloseable closable = debug.disableIntercept()) {
+                    /*
+                     * we haven't compiled anything, we just want ProfileReplay to save the profiles
+                     * (and fail)
+                     */
+                    Assert.assertThrows(AccessDeniedException.class, () -> profileReplay.profileReplayEpilogue(debug, null, null, new StableProfileProvider(), getCompilationId(method), 0, method));
+                }
+            }
         }
     }
 
