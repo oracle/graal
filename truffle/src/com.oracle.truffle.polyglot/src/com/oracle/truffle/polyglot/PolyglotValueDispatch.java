@@ -120,6 +120,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaSimpleNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetStaticReceiverNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasBufferElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntriesNodeGen;
@@ -128,6 +129,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMembersNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasStaticReceiverNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNoArgsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.InvokeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsBufferWritableNodeGen;
@@ -586,6 +588,24 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     @TruffleBoundary
     static RuntimeException removeMemberUnsupported(PolyglotLanguageContext context, Object receiver) {
         throw unsupported(context, receiver, "removeMember(String, Object)", null);
+    }
+
+    @Override
+    public Object getStaticReceiver(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return getStaticReceiverUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static Object getStaticReceiverUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw unsupported(context, receiver, "getStaticReceiver(Object)", "hasStaticReceiver");
     }
 
     @Override
@@ -2298,9 +2318,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget getHashValuesIterator;
         final CallTarget isHostObject;
         final CallTarget asHostObject;
-
         final CallTarget asClassLiteral;
         final CallTarget asTypeLiteral;
+        final CallTarget hasStaticReceiver;
+        final CallTarget getStaticReceiver;
+
         final Class<?> receiverType;
 
         InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
@@ -2382,6 +2404,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             this.getHashValuesIterator = createTarget(GetHashValuesIteratorNodeGen.create(this));
             this.isHostObject = createTarget(IsHostObjectNodeGen.create(this));
             this.asHostObject = createTarget(AsHostObjectNodeGen.create(this));
+            this.hasStaticReceiver = createTarget(HasStaticReceiverNodeGen.create(this));
+            this.getStaticReceiver = createTarget(GetStaticReceiverNodeGen.create(this));
         }
 
         @SuppressWarnings("unchecked")
@@ -2544,6 +2568,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                 return Collections.emptySet();
             }
             return new MemberSet(this.getEngine().getAPIAccess(), languageContext, receiver, keys);
+        }
+
+        @Override
+        public boolean hasStaticReceiver(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasStaticReceiver, languageContext, receiver);
+        }
+
+        @Override
+        public Object getStaticReceiver(Object languageContext, Object receiver) {
+            return RUNTIME.callProfiled(this.getStaticReceiver, languageContext, receiver);
         }
 
         @Override
@@ -5640,6 +5674,60 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             static RuntimeException asHostObjectIsolatedHeap(PolyglotLanguageContext context, Object receiver) {
                 String polyglotMessage = String.format("Unsupported operation Value.asHostObject() for %s. The referenced host object resides in an isolated heap.", getValueInfo(context, receiver));
                 return PolyglotEngineException.unsupported(polyglotMessage);
+            }
+        }
+
+        abstract static class HasStaticReceiverNode extends InteropNode {
+
+            protected HasStaticReceiverNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasStaticReceiver";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.hasStaticReceiver(receiver);
+            }
+        }
+
+        abstract static class GetStaticReceiverNode extends InteropNode {
+
+            protected GetStaticReceiverNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getStaticReceiver";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind Node node,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported) {
+                try {
+                    return toHost.execute(node, context, objects.getStaticReceiver(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    return getStaticReceiverUnsupported(context, receiver);
+                }
             }
         }
     }

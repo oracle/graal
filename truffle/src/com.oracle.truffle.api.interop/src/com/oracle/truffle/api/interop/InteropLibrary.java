@@ -141,6 +141,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
+ * <li>{@link #hasStaticReceiver(Object receiver) static receiver}
  * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasBufferElements(Object) buffer elements}
@@ -960,6 +961,56 @@ public abstract class InteropLibrary extends Library {
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
+    }
+
+    /**
+     * Returns {@code true} if the given receiver provides a {@linkplain #getStaticReceiver(Object)
+     * static receiver}. A static receiver represents the static or class-level members associated
+     * with the receiver's type, such as static fields or methods.
+     * <p>
+     * This message may only return {@code true} if {@link #hasMembers(Object)} returns
+     * {@code true}. Invoking this message must not cause any observable side effects.
+     * <p>
+     * By default, this method returns {@code false}.
+     *
+     * @see #getStaticReceiver(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"getStaticReceiver"})
+    public boolean hasStaticReceiver(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the static receiver associated with the given receiver. A static receiver is an
+     * object that exposes static members, members whose values or behaviors are independent of any
+     * particular instance of the receiver.
+     * <p>
+     * The static receiver typically serves as an artificial or meta-level object that provides
+     * access to instance-independent members declared by the receiver's type or meta object. The
+     * returned object can be used as the receiver for interop messages such as
+     * {@link #readMember(Object, String) readMember}, {@link #writeMember(Object, String, Object)
+     * writeMember}, and {@link #invokeMember(Object, String, Object...) invokeMember} when
+     * accessing static members.
+     * <p>
+     * <b>Examples:</b>
+     * <ul>
+     * <li>In Java, the static receiver would expose static fields and methods of a class.</li>
+     * <li>In Python, the static receiver would expose class-level variables and methods.</li>
+     * </ul>
+     * <p>
+     * When the receiver {@linkplain #hasMembers(Object) has members}, the corresponding static
+     * receiver is also expected to have (static) members and/or declared members representing the
+     * receiver's static context.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not
+     *             {@linkplain #hasStaticReceiver(Object) have a static receiver}
+     * @see #hasStaticReceiver(Object)
+     * @since 25.1
+     */
+    @Abstract(ifExported = {"hasStaticReceiver"})
+    public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     // Hashes
@@ -3903,6 +3954,39 @@ public abstract class InteropLibrary extends Library {
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert validProtocolReturn(receiver, result);
             return result;
+        }
+
+        @Override
+        public boolean hasStaticReceiver(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasStaticReceiver(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getStaticReceiver(receiver);
+            }
+            assert preCondition(receiver);
+            boolean hadStaticReceiver = delegate.hasStaticReceiver(receiver);
+            try {
+                Object result = delegate.getStaticReceiver(receiver);
+                assert hadStaticReceiver || isMultiThreaded(receiver) : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                assert verifyStaticReceiver(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert isMultiThreaded(receiver) || !hadStaticReceiver : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean verifyStaticReceiver(Object instanceReceiver, Object staticReceiver) throws UnsupportedMessageException {
+            assert UNCACHED.hasMembers(instanceReceiver) && UNCACHED.hasMembers(staticReceiver) : violationPost(instanceReceiver, staticReceiver);
+            return true;
         }
 
         @Override

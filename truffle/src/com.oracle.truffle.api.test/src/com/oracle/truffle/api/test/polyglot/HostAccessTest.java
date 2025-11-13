@@ -378,7 +378,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         } catch (UnsupportedOperationException e) {
         }
         assertEquals(2 /* arr.length and arr.clone(). */, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     @Test
@@ -397,7 +397,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         int[] array = new int[]{1, 2, 3};
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
-        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     @Test
@@ -423,7 +423,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertEquals(42, value.readBufferByte(0));
         value.writeBufferByte(1, (byte) 24);
         assertEquals(24, value.readBufferByte(1));
-        ValueAssert.assertValue(value, false, Trait.BUFFER_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.BUFFER_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     @Test
@@ -432,7 +432,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         ByteBuffer buffer = ByteBuffer.allocate(2);
         Value value = context.asValue(buffer);
         assertSame(buffer, value.asHostObject());
-        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     /*
@@ -482,7 +482,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
         assertEquals(0, value.getMemberKeys().size());
 
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
         assertArrayAccessDisabled(context);
     }
 
@@ -508,7 +508,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertFalse(iterator.hasIteratorNextElement());
         assertSame(iterable, value.asHostObject());
         assertEquals(0, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
         assertListAccessDisabled(context, true);
         assertArrayAccessDisabled(context);
     }
@@ -533,7 +533,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertFalse(value.hasIteratorNextElement());
         assertSame(iterator, value.asHostObject());
         assertEquals(0, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.ITERATOR, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ITERATOR, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
         assertIterableAccessDisabled(context);
         assertListAccessDisabled(context, false);
         assertArrayAccessDisabled(context);
@@ -565,7 +565,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertEquals(1, entry.getArrayElement(0).asInt());
         assertEquals(Integer.toBinaryString(1), entry.getArrayElement(1).asString());
         assertEquals(0, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
         assertArrayAccessDisabled(context);
     }
 
@@ -591,7 +591,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
         List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
-        List<Trait> expectedTypes = new ArrayList<>(Arrays.asList(Trait.MEMBERS, Trait.HOST_OBJECT));
+        List<Trait> expectedTypes = new ArrayList<>(Arrays.asList(Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER));
         if (iterableAccess) {
             expectedTypes.add(Trait.ITERABLE);
         }
@@ -602,21 +602,21 @@ public class HostAccessTest extends AbstractHostAccessTest {
         Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
         Value value = context.asValue(iterable);
         assertSame(iterable, value.asHostObject());
-        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     private static void assertIteratorAccessDisabled(Context context) {
         Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
         Value value = context.asValue(iterator);
         assertSame(iterator, value.asHostObject());
-        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     private static void assertMapAccessDisabled(Context context) {
         Map<Integer, String> map = Collections.singletonMap(1, "string");
         Value value = context.asValue(map);
         assertSame(map, value.asHostObject());
-        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.STATIC_RECEIVER);
     }
 
     public static final class TargetClass1 {

@@ -3416,6 +3416,22 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    boolean hasStaticReceiver() {
+        return obj != null && !isStaticClass();
+    }
+
+    @ExportMessage
+    Object getStaticReceiver() throws UnsupportedMessageException {
+        if (hasStaticReceiver()) {
+            Class<?> clz = getLookupClass();
+            return new HostObject(clz, context, clz);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     boolean isStaticClass() {
         return extraInfo instanceof Class<?>;
     }

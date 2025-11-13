@@ -1032,6 +1032,30 @@ public abstract class DebugValue {
     }
 
     /**
+     * Returns a value that provides static members whose value is independent on a specific
+     * instance. Returns {@code null} when no static receiver is available.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 25.1
+     */
+    public final DebugValue getStaticReceiver() {
+        if (!isReadable()) {
+            return null;
+        }
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasStaticReceiver(view)) {
+                return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getStaticReceiver(view));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return null;
+    }
+
+    /**
      * Provides properties representing an internal structure of this value. The returned collection
      * is not thread-safe. If the value is not {@link #isReadable() readable} then <code>null</code>
      * is returned.

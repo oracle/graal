@@ -1008,6 +1008,53 @@ public final class Value extends AbstractValue {
         }
     }
 
+    /**
+     * Returns {@code true} if this value provides a {@linkplain #getStaticReceiver() static
+     * receiver}. A static receiver represents the static or class-level members associated with
+     * this value's type, such as static fields or methods.
+     * <p>
+     * This method may only return {@code true} if {@link #hasMembers()} also returns {@code true}.
+     *
+     * @throws IllegalStateException if the context is already {@linkplain Context#close() closed}
+     * @throws PolyglotException if a guest language error occurs during execution
+     * @see #getStaticReceiver()
+     * @since 25.1
+     */
+    public boolean hasStaticReceiver() {
+        return dispatch.hasStaticReceiver(this.context, receiver);
+    }
+
+    /**
+     * Returns the static receiver associated with this value. A static receiver is an object that
+     * exposes static members, members whose values or behaviors are independent of any particular
+     * instance of this value.
+     * <p>
+     * The returned static receiver can be used to access static members using
+     * {@link #getMember(String)}, {@link #getMemberKeys()}, or
+     * {@link #invokeMember(String, Object...)}.
+     * <p>
+     * When this value {@linkplain #hasMembers() has members}, its static receiver is also expected
+     * to provide (static) members and/or declared members representing the value's static context.
+     * <p>
+     * <b>Examples:</b>
+     * <ul>
+     * <li>For a Java class instance, the static receiver exposes the class's static fields and
+     * methods.</li>
+     * <li>For a Python object, the static receiver exposes class-level attributes and methods.</li>
+     * </ul>
+     *
+     * @throws UnsupportedOperationException if and only if this value does not
+     *             {@linkplain #hasStaticReceiver() have a static receiver}
+     * @throws IllegalStateException if the context is already {@linkplain Context#close() closed}
+     * @throws PolyglotException if a guest language error occurs during execution
+     * @see #hasStaticReceiver()
+     * @see #getMemberKeys()
+     * @since 25.1
+     */
+    public Value getStaticReceiver() {
+        return (Value) dispatch.getStaticReceiver(this.context, receiver);
+    }
+
     // executable
 
     /**
