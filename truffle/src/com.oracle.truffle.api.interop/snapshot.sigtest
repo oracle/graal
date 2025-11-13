@@ -20,6 +20,12 @@ meth public static com.oracle.truffle.api.interop.ExceptionType valueOf(java.lan
 meth public static com.oracle.truffle.api.interop.ExceptionType[] values()
 supr java.lang.Enum<com.oracle.truffle.api.interop.ExceptionType>
 
+CLSS public final com.oracle.truffle.api.interop.HeapIsolationException
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.api.interop.HeapIsolationException create()
+meth public static com.oracle.truffle.api.interop.HeapIsolationException create(java.lang.Throwable)
+supr com.oracle.truffle.api.interop.InteropException
+
 CLSS public abstract com.oracle.truffle.api.interop.InteropException
 meth public final java.lang.Throwable fillInStackTrace()
 meth public final java.lang.Throwable getCause()
@@ -53,6 +59,7 @@ meth public boolean hasExceptionMessage(java.lang.Object)
 meth public boolean hasExceptionStackTrace(java.lang.Object)
 meth public boolean hasExecutableName(java.lang.Object)
 meth public boolean hasHashEntries(java.lang.Object)
+meth public boolean hasHostObject(java.lang.Object)
 meth public boolean hasIterator(java.lang.Object)
 meth public boolean hasIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean hasLanguage(java.lang.Object)
@@ -65,6 +72,7 @@ meth public boolean hasMetaObject(java.lang.Object)
 meth public boolean hasMetaParents(java.lang.Object)
 meth public boolean hasScopeParent(java.lang.Object)
 meth public boolean hasSourceLocation(java.lang.Object)
+meth public boolean hasStaticReceiver(java.lang.Object)
 meth public boolean isArrayElementInsertable(java.lang.Object,long)
 meth public boolean isArrayElementModifiable(java.lang.Object,long)
 meth public boolean isArrayElementReadable(java.lang.Object,long)
@@ -131,6 +139,7 @@ meth public java.lang.Object getExecutableName(java.lang.Object) throws com.orac
 meth public java.lang.Object getHashEntriesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getHashKeysIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getHashValuesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getHostObject(java.lang.Object) throws com.oracle.truffle.api.interop.HeapIsolationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.StopIterationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -139,6 +148,7 @@ meth public java.lang.Object getMetaParents(java.lang.Object) throws com.oracle.
 meth public java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getScopeParent(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.lang.Object getStaticReceiver(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readHashValue(java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownKeyException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readHashValueOrDefault(java.lang.Object,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException

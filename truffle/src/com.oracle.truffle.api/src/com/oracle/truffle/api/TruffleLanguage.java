@@ -2243,7 +2243,7 @@ public abstract class TruffleLanguage<C> {
          * @see #asHostObject(Object)
          * @since 19.0
          */
-        @Deprecated
+        @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
             try {
@@ -2263,7 +2263,7 @@ public abstract class TruffleLanguage<C> {
          *             getHostObject}.
          * @since 19.0
          */
-        @Deprecated
+        @Deprecated(since = "25.1")
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2378,7 +2378,7 @@ public abstract class TruffleLanguage<C> {
          * @deprecated Use
          *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isException(obj)}.
          */
-        @Deprecated
+        @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
             try {
@@ -2403,7 +2403,7 @@ public abstract class TruffleLanguage<C> {
          *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
          *             getHostObject}.
          */
-        @Deprecated
+        @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             try {
