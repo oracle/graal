@@ -57,6 +57,7 @@ import java.util.Set;
 final class ConsListPropertyMap extends PropertyMap {
     private final ConsListPropertyMap car;
     private final Property cdr;
+    private final Property first;
     private final int size;
 
     private static final ConsListPropertyMap EMPTY = new ConsListPropertyMap();
@@ -64,12 +65,14 @@ final class ConsListPropertyMap extends PropertyMap {
     private ConsListPropertyMap() {
         this.car = null;
         this.cdr = null;
+        this.first = null;
         this.size = 0;
     }
 
     private ConsListPropertyMap(ConsListPropertyMap parent, Property added) {
         this.car = Objects.requireNonNull(parent);
         this.cdr = Objects.requireNonNull(added);
+        this.first = parent.first == null ? added : parent.first;
         this.size = parent.size + 1;
     }
 
@@ -420,17 +423,6 @@ final class ConsListPropertyMap extends PropertyMap {
         return this;
     }
 
-    public ConsListPropertyMap getOwningMap(Property value) {
-        ConsListPropertyMap current = this;
-        while (!current.isEmpty()) {
-            if (current.getLastProperty().equals(value)) {
-                return current;
-            }
-            current = current.getParentMap();
-        }
-        return null;
-    }
-
     public ConsListPropertyMap getParentMap() {
         return car;
     }
@@ -438,6 +430,11 @@ final class ConsListPropertyMap extends PropertyMap {
     @Override
     public Property getLastProperty() {
         return cdr;
+    }
+
+    @Override
+    public Property getFirstProperty() {
+        return first;
     }
 
     @Override

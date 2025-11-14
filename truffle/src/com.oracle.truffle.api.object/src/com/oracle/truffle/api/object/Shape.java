@@ -948,12 +948,23 @@ public final class Shape {
     }
 
     /**
-     * Get the last property.
+     * Gets the last property.
      *
+     * @return the last property in the shape or {@code null} if empty
      * @since 0.8 or earlier
      */
     public Property getLastProperty() {
         return propertyMap.getLastProperty();
+    }
+
+    /**
+     * Gets the first property.
+     *
+     * @return the first property in the shape or {@code null} if empty
+     * @since 25.1
+     */
+    public Property getFirstProperty() {
+        return propertyMap.getFirstProperty();
     }
 
     /**
