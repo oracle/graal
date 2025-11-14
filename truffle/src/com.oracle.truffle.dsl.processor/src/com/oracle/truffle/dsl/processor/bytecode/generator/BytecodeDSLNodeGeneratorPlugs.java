@@ -234,7 +234,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             }
 
             final ImplicitCastData cast;
-            if (model.isBoxingEliminated(instructionType) && !ElementUtils.typeEquals(instructionType, targetType)) {
+            if (model.isBoxingEliminated(instructionType) && !ElementUtils.typeEquals(instructionType, targetType) && !ElementUtils.isObject(targetType)) {
                 cast = instruction.nodeData.getTypeSystem().lookupCast(instructionType, targetType);
                 if (cast == null) {
                     throw new AssertionError("Instruction type must match the declared type unless for implicit casts: " + instruction + ": " + instructionType + " -> " + targetType);
