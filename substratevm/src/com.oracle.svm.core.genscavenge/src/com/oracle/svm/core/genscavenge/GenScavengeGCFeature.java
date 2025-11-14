@@ -106,7 +106,11 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
-        ImageSingletons.add(TlabOptionCache.class, new TlabOptionCache());
+
+        TlabOptionCache tlabOptionCache = new TlabOptionCache();
+        ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
+        tlabOptionCache.validateHostedOptionValues();
+
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }
