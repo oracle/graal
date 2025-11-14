@@ -25,11 +25,9 @@
 package com.oracle.graal.pointsto;
 
 import static com.oracle.graal.pointsto.meta.AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.io.PrintWriter;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -47,7 +45,6 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.AlwaysEnabledPredicateFlow;
 import com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -77,6 +74,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -266,26 +264,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public void registerAsJNIAccessed(AnalysisField f, boolean writable) {
-        PointsToAnalysisField field = (PointsToAnalysisField) f;
-        // Same as addRootField() and addRootStaticField():
-        // create type flows for any subtype of the field's declared type
-        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(this, true);
-        if (isSupportedJavaKind(field.getStorageKind())) {
-            if (field.isStatic()) {
-                if (field.getStorageKind().isObject()) {
-                    declaredTypeFlow.addUse(this, field.getStaticFieldFlow());
-                } else {
-                    field.saturatePrimitiveField();
-                }
-            } else {
-                FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, writable);
-                if (field.getStorageKind().isObject()) {
-                    declaredTypeFlow.addUse(this, instanceFieldFlow);
-                } else {
-                    field.saturatePrimitiveField();
-                }
-            }
+    public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
+        if (writable && isSupportedJavaKind(field.getStorageKind())) {
+            field.injectDeclaredType();
         }
     }
 
@@ -519,7 +500,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            processRootField(type, field);
+            processRootField(field);
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -531,77 +512,23 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    @SuppressWarnings("try")
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
-        AnalysisType type = addRootClass(clazz, false, false);
-        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
-            var field = (PointsToAnalysisField) javaField;
-            if (field.getName().equals(fieldName)) {
-                return addRootField(type, field);
-            }
-        }
-        throw shouldNotReachHere("field not found: " + fieldName);
+        AnalysisType type = metaAccess.lookupJavaType(clazz);
+        addRootClass(type, false, false);
+        return addRootField((AnalysisField) JVMCIReflectionUtil.getDeclaredField(type, fieldName));
     }
 
     @Override
-    public AnalysisType addRootField(AnalysisField f) {
-        var field = (PointsToAnalysisField) f;
-        if (field.isStatic()) {
-            return addRootStaticField(field);
-        } else {
-            return addRootField(field.getDeclaringClass(), field);
-        }
-    }
-
-    private AnalysisType addRootField(AnalysisType type, PointsToAnalysisField field) {
-        field.registerAsAccessed("root field");
-        processRootField(type, field);
+    public AnalysisType addRootField(AnalysisField field) {
+        field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
+        processRootField(field);
         return field.getType();
     }
 
-    private void processRootField(AnalysisType type, PointsToAnalysisField field) {
-        JavaKind storageKind = field.getStorageKind();
-        if (isSupportedJavaKind(storageKind)) {
-            var fieldFlow = type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true);
-            if (storageKind.isObject()) {
-                /*
-                 * For system classes any instantiated (sub)type of the declared field type can be
-                 * written to the field flow.
-                 */
-                TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
-                fieldDeclaredTypeFlow.addUse(this, fieldFlow);
-            } else {
-                fieldFlow.addState(this, TypeState.anyPrimitiveState());
-            }
+    private void processRootField(AnalysisField field) {
+        if (isSupportedJavaKind(field.getStorageKind())) {
+            field.injectDeclaredType();
         }
-    }
-
-    @SuppressWarnings({"try", "unused"})
-    public AnalysisType addRootStaticField(Class<?> clazz, String fieldName) {
-        addRootClass(clazz, false, false);
-        Field reflectField;
-        try {
-            reflectField = clazz.getField(fieldName);
-            var field = (PointsToAnalysisField) metaAccess.lookupJavaField(reflectField);
-            return addRootStaticField(field);
-
-        } catch (NoSuchFieldException e) {
-            throw shouldNotReachHere("field not found: " + fieldName);
-        }
-    }
-
-    private AnalysisType addRootStaticField(PointsToAnalysisField field) {
-        field.registerAsAccessed("static root field");
-        JavaKind storageKind = field.getStorageKind();
-        if (isSupportedJavaKind(storageKind)) {
-            if (storageKind.isObject()) {
-                TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
-                fieldFlow.addUse(this, field.getStaticFieldFlow());
-            } else {
-                field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
-            }
-        }
-        return field.getType();
     }
 
     @Override

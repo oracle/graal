@@ -40,8 +40,12 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
     }
 
     /**
-     * Inject custom types for an analysis field. These fields usually have lazily computed values
-     * which are not available during analysis.
+     * Inject custom types in the analysis field type state. This utility is used for:
+     * <ul>
+     * <li>root fields - whose state is forced to be that of the declared type</li>
+     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
+     * <li>lazily computed fields - for which writes are not visible during analysis</li>
+     * <ul/>
      */
     @Override
     public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
@@ -73,11 +77,11 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
                     fieldComponentType.getTypeFlow(analysis, false).addUse(analysis, elementsFlow);
 
                     /*
-                     * In the current implementation it is not necessary to do it it recursively for
+                     * In the current implementation it is not necessary to do it recursively for
                      * multidimensional arrays since we don't model individual array elements, so
                      * from the point of view of the static analysis the field's array elements
-                     * value is non null (in the case of a n-dimensional array that value is another
-                     * array, n-1 dimensional).
+                     * value is non-null (in the case of an n-dimensional array that value is
+                     * another array, n-1 dimensional).
                      */
                 }
             }
