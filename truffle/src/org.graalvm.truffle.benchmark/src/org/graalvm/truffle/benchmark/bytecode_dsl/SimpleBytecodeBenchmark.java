@@ -68,6 +68,7 @@ import com.oracle.truffle.api.CallTarget;
 public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
     @Param({"NestedLoopBenchmark", "CalculatorBenchmark"}) private String benchmarkSpecClass;
+    @Param({"interpreter", "default"}) private String mode;
     private BenchmarkSpec benchmarkSpec;
     private Context context;
     // The call target under test (populated during setup with the correct call target)
@@ -82,10 +83,17 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
     @Setup(Level.Trial)
     public void setup(BenchmarkParams params) {
-        context = Context.newBuilder("bm").allowExperimentalOptions(true).build();
+        Context.Builder b = Context.newBuilder("bm").allowExperimentalOptions(true);
+        switch (mode) {
+            case "interpreter" -> b.option("engine.Compilation", "false");
+            case "default" -> b.option("engine.Compilation", "true");
+            default -> throw new IllegalArgumentException("unknown mode " + mode);
+        }
+        context = b.build();
 
         benchmarkSpec = getBenchmarkSpec();
         String benchMethod = getBenchmarkMethod(params);
+        context.enter();
         callTarget = switch (benchMethod) {
             case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
             case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
@@ -114,6 +122,7 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
             case "ast" -> benchmarkSpec.parseAST(null);
             default -> throw new AssertionError("Unexpected benchmark method " + benchMethod);
         };
+        context.leave();
     }
 
     @Setup(Level.Iteration)
