@@ -25,6 +25,13 @@
 
 package com.oracle.svm.webimage.jtt.api;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+import java.util.function.Function;
+
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSBoolean;
 import org.graalvm.webimage.api.JSNumber;
@@ -33,13 +40,6 @@ import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 import org.graalvm.webimage.api.JSValue;
 import org.graalvm.webimage.api.ThrownFromJavaScript;
-
-import java.util.function.Function;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 
 public class JSObjectTest {
 
@@ -104,14 +104,14 @@ public class JSObjectTest {
         descriptors.set("age", versionDescriptor);
 
         JSObject result = JSObject.defineProperties(target, descriptors);
-        String name1 = JSValue.checkedCoerce(result.get("name"), String.class);
-        int age = JSValue.checkedCoerce(result.get("age"), Integer.class);
+        String name1 = result.get("name", String.class);
+        int age = result.get("age", Integer.class);
         result.set("name", JSString.of("Bob"));
 
         assertEquals("Alice", name1);
         assertEquals(26, age);
         assertThrows(ThrownFromJavaScript.class, () -> result.set("age", JSNumber.of(21)));
-        assertEquals("Bob", JSValue.checkedCoerce(result.get("name"), String.class));
+        assertEquals("Bob", result.get("name", String.class));
     }
 
     public static void testDefinePropertyVariants() {
@@ -125,8 +125,8 @@ public class JSObjectTest {
 
         assertThrows(ThrownFromJavaScript.class, () -> obj1.set("name", "NotAlice"));
         assertThrows(ThrownFromJavaScript.class, () -> obj2.set("name", "StillNotAlice"));
-        assertEquals("Alice", JSValue.checkedCoerce(obj1.get("name"), String.class));
-        assertEquals("Alice", JSValue.checkedCoerce(obj2.get("name"), String.class));
+        assertEquals("Alice", obj1.get("name", String.class));
+        assertEquals("Alice", obj2.get("name", String.class));
     }
 
     public static void testEntries() {
@@ -146,7 +146,7 @@ public class JSObjectTest {
         JSObject.freeze(obj);
 
         assertThrows(ThrownFromJavaScript.class, () -> obj.set("name", "Changed"));
-        assertEquals("Alice", JSValue.checkedCoerce(obj.get("name"), String.class));
+        assertEquals("Alice", obj.get("name", String.class));
     }
 
     public static void testFromEntries() {
@@ -168,10 +168,10 @@ public class JSObjectTest {
 
         JSObject descriptor = JSObject.getOwnPropertyDescriptor(obj, "name");
 
-        assertEquals("Alice", JSValue.checkedCoerce(descriptor.get("value"), String.class));
-        assertTrue(JSValue.checkedCoerce(descriptor.get("writable"), Boolean.class));
-        assertTrue(JSValue.checkedCoerce(descriptor.get("enumerable"), Boolean.class));
-        assertTrue(JSValue.checkedCoerce(descriptor.get("configurable"), Boolean.class));
+        assertEquals("Alice", descriptor.get("value", String.class));
+        assertTrue(descriptor.get("writable", Boolean.class));
+        assertTrue(descriptor.get("enumerable", Boolean.class));
+        assertTrue(descriptor.get("configurable", Boolean.class));
     }
 
     public static void testGetOwnPropertyNames() {
@@ -194,11 +194,11 @@ public class JSObjectTest {
         JSValue groupByType = fromJavaFunction((JSObject item) -> item.get("type"));
         JSObject grouped = JSObject.groupBy(items, groupByType);
 
-        assertEquals("asparagus", JSValue.checkedCoerce(JSValue.checkedCoerce(grouped.get("vegetable"), JSObject.class).get(0), JSObject.class).get("name"));
-        assertEquals("bananas", JSValue.checkedCoerce(JSValue.checkedCoerce(grouped.get("fruit"), JSObject.class).get(0), JSObject.class).get("name"));
-        assertEquals("cherries", JSValue.checkedCoerce(JSValue.checkedCoerce(grouped.get("fruit"), JSObject.class).get(1), JSObject.class).get("name"));
-        assertEquals("goat", JSValue.checkedCoerce(JSValue.checkedCoerce(grouped.get("meat"), JSObject.class).get(0), JSObject.class).get("name"));
-        assertEquals("fish", JSValue.checkedCoerce(JSValue.checkedCoerce(grouped.get("meat"), JSObject.class).get(1), JSObject.class).get("name"));
+        assertEquals("asparagus", grouped.get("vegetable", JSObject.class).get(0, JSObject.class).get("name"));
+        assertEquals("bananas", grouped.get("fruit", JSObject.class).get(0, JSObject.class).get("name"));
+        assertEquals("cherries", grouped.get("fruit", JSObject.class).get(1, JSObject.class).get("name"));
+        assertEquals("goat", grouped.get("meat", JSObject.class).get(0, JSObject.class).get("name"));
+        assertEquals("fish", grouped.get("meat", JSObject.class).get(1, JSObject.class).get("name"));
     }
 
     public static void testHasOwn() {
@@ -279,7 +279,7 @@ public class JSObjectTest {
         assertFalse(result1);
         assertTrue(result2);
         assertThrows(ThrownFromJavaScript.class, () -> obj.set("newProp", "test"));
-        assertEquals("Bob", JSValue.checkedCoerce(obj.get("name"), String.class));
+        assertEquals("Bob", obj.get("name", String.class));
         assertFalse(JSObject.hasOwn(obj, "newProp"));
     }
 
@@ -358,8 +358,8 @@ public class JSObjectTest {
         JSObject obj = JSObject.create();
         obj.set("id", 42);
 
-        JSObject result = JSValue.checkedCoerce(obj.valueOf(), JSObject.class);
-        int value = JSValue.checkedCoerce(result.get("id"), Integer.class);
+        JSObject result = obj.valueOf().as(JSObject.class);
+        int value = result.get("id", Integer.class);
 
         assertEquals(42, value);
     }

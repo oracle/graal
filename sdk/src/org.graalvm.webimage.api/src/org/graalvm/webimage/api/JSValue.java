@@ -80,8 +80,16 @@ public abstract class JSValue {
      *
      * @see #isUndefined()
      */
+    public static boolean isUndefined(Object value) {
+        return value instanceof JSValue jsValue && jsValue.isUndefined();
+    }
+
+    /**
+     * Specialization of {@link #isUndefined(Object)} that avoids the type check for
+     * {@link JSValue}.
+     */
     public static boolean isUndefined(JSValue value) {
-        return value != null && value.isUndefined();
+        return value.isUndefined();
     }
 
     /**

@@ -393,6 +393,17 @@ public class JSObject extends JSValue {
     public native Object get(Object key);
 
     /**
+     * Same as {@link #get(Object)} but the returned values is coerced to the given type.
+     *
+     * @throws ClassCastException If the returned value is not of the given type and can't be
+     *             coerced to it.
+     * @see JSValue#checkedCoerce(Object, Class)
+     */
+    public <R> R get(Object key, Class<R> type) {
+        return JSValue.checkedCoerce(get(key), type);
+    }
+
+    /**
      * Sets the value of the key passed as the argument in the JavaScript object.
      *
      * @param key the object under which the value should be placed in the JavaScript object
