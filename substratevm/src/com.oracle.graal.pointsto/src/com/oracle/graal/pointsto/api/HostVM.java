@@ -457,7 +457,7 @@ public abstract class HostVM {
         return false;
     }
 
-    public Set<Module> getForbiddenModules() {
+    public Set<Module> getSharedLayerForbiddenModules() {
         return Set.of();
     }
 
