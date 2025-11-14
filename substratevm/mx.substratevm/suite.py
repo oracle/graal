@@ -1640,6 +1640,9 @@ suite = {
                 "com.oracle.graal.pointsto",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc", # Unsafe
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation",
