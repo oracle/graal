@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -116,13 +115,13 @@ public final class SLType implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return SLLanguage.class;
+    String getLanguageId() {
+        return SLLanguage.ID;
     }
 
     /*

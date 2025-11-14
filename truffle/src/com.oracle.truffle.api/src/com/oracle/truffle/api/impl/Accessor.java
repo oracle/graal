@@ -407,7 +407,7 @@ public abstract class Accessor {
 
         public abstract Map<String, LanguageInfo> getInternalLanguages(Object polyglotObject);
 
-        public abstract LanguageInfo getHostLanguage(Object polyglotLanguageContext);
+        public abstract LanguageInfo getHostLanguage(Object vmObject);
 
         public abstract Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject);
 
@@ -625,7 +625,11 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
+        public abstract Object getDefaultLanguageView(Object polyglotLanguageContext, Object value);
+
+        public abstract String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass);
+
+        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 

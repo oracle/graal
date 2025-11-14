@@ -1120,12 +1120,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     public Object getLanguageView(Object receiver) {
         EngineAccessor.INTEROP.checkInteropType(receiver);
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
-        if (lib.hasLanguage(receiver)) {
+        if (lib.hasLanguageId(receiver)) {
             try {
                 if (!this.isCreated()) {
                     throw PolyglotEngineException.illegalState("Language not yet created. Initialize the language first to request a language view.");
                 }
-                if (lib.getLanguage(receiver) == this.lazy.languageInstance.spi.getClass()) {
+                if (this.lazy.languageInstance.language.getId().equals(lib.getLanguageId(receiver))) {
                     return receiver;
                 }
             } catch (UnsupportedMessageException e) {
@@ -1137,11 +1137,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private boolean validLanguageView(Object result) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
-        Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
         try {
-            assert lib.hasLanguage(result) &&
-                            lib.getLanguage(result) == languageClass : String.format("The returned language view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
-                                            "Fix the implementation of %s.getLanguageView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
+            Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
+            String languageId = language.getId();
+            assert lib.hasLanguageId(result) && languageId.equals(lib.getLanguageId(result)) : String.format(
+                            "The returned language view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
+                                            "Fix the implementation of %s.getLanguageView to resolve this.",
+                            languageId, languageId, languageClass.getTypeName());
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
@@ -1150,11 +1152,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private boolean validScopedView(Object result, Node location) {
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(result);
-        Class<?> languageClass = EngineAccessor.LANGUAGE.getLanguage(env).getClass();
+        String languageId = language.getId();
         try {
-            assert lib.hasLanguage(result) &&
-                            lib.getLanguage(result) == languageClass : String.format("The returned scoped view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
-                                            "Fix the implementation of %s.getView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), location.getClass().getTypeName());
+            assert lib.hasLanguageId(result) && languageId.equals(lib.getLanguageId(result)) : String.format(
+                            "The returned scoped view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
+                                            "Fix the implementation of %s.getView to resolve this.",
+                            languageId, languageId, location.getClass().getTypeName());
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }

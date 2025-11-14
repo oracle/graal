@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.interop.ArityException;
@@ -190,14 +189,14 @@ public final class EspressoBindings implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return EspressoLanguage.class;
+    String getLanguageId() {
+        return EspressoLanguage.ID;
     }
 
     @ExportMessage

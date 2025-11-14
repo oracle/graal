@@ -52,10 +52,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -146,6 +149,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeTreeBuilder statics = staticsMethod.createBuilder();
 
         List<MessageObjects> methods = new ArrayList<>();
+        Map<LibraryMessage, MessageObjects> libraryMessageToMessageObject = new HashMap<>();
         int messageIndex = 0;
         for (LibraryMessage message : model.getAllMethods()) {
             if (message.hasErrors()) {
@@ -154,6 +158,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             int useIndex = message.getName().equals(ACCEPTS) ? -1 : messageIndex++;
             MessageObjects objects = new MessageObjects(message, useIndex);
             methods.add(objects);
+            libraryMessageToMessageObject.put(message, objects);
         }
 
         CodeExecutableElement getDefault = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "getDefaultClass"));
@@ -248,6 +253,16 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         statics.startStaticCall(types.LibraryFactory, "register");
         statics.staticReference(libraryClassLiteral).string(instance.getName()).end();
         statics.end().end();
+        Map<MessageObjects, MessageObjects> newMessageToReplacedMessages = new TreeMap<>(Comparator.comparing((o) -> o.messageIndex));
+        Map<MessageObjects, MessageObjects> replacedMessageToNewMessages = new TreeMap<>(Comparator.comparing((o) -> o.messageIndex));
+        for (MessageObjects message : methods) {
+            LibraryMessage replacement = message.model.getReplacementOf();
+            if (replacement != null) {
+                MessageObjects replacementObjects = libraryMessageToMessageObject.get(replacement);
+                newMessageToReplacedMessages.put(message, replacementObjects);
+                replacedMessageToNewMessages.put(replacementObjects, message);
+            }
+        }
 
         if (model.getAssertions() != null) {
             CodeExecutableElement createAssertions = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "createAssertions"));
@@ -410,7 +425,19 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.startIf().startStaticCall(types.LibraryFactory, "isDelegated");
                 builder.string("delegateLibrary");
                 builder.string(Integer.toString(message.messageIndex));
-                builder.end().end().startBlock();
+                builder.end();
+                MessageObjects relatedMessage = newMessageToReplacedMessages.get(message);
+                if (relatedMessage == null) {
+                    relatedMessage = replacedMessageToNewMessages.get(message);
+                }
+                if (relatedMessage != null && !relatedMessage.model.getName().equals(message.model.getName())) {
+                    builder.string(" && ");
+                    builder.startStaticCall(types.LibraryFactory, "isDelegated");
+                    builder.string("delegateLibrary");
+                    builder.string(Integer.toString(relatedMessage.messageIndex));
+                    builder.end();
+                }
+                builder.end().startBlock();
 
                 // Object delegate = readDelegate(delegateLibrary, receiver_);
                 builder.startStatement();

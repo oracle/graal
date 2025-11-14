@@ -64,6 +64,8 @@ import com.oracle.truffle.host.HostMethodScope.ScopedObject;
  */
 final class HostLanguage extends TruffleLanguage<HostContext> {
 
+    static final String ID = "host";
+
     @CompilationFinal HostClassCache hostClassCache; // effectively final
     final AbstractHostAccess access;
     final AbstractPolyglotImpl polyglot;
@@ -155,7 +157,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         if (value instanceof TruffleObject) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
             try {
-                assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
+                assert !lib.hasLanguageId(value) || !HostLanguage.ID.equals(lib.getLanguageId(value));
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }

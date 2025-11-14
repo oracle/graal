@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -465,11 +466,23 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     public abstract static class ReplacementsLibrary2 extends Library {
 
         @Deprecated
+        @Abstract(ifExported = "getLanguage")
+        public boolean hasLanguage(Object receiver) {
+            return false;
+        }
+
+        @Deprecated
+        @Abstract(ifExported = "hasLanguage")
         public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) {
             throw new UnsupportedOperationException();
         }
 
-        @Abstract(replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageImpl")
+        @Abstract(replacementOf = "hasLanguage(Object)", ifExported = "getLanguageId")
+        public boolean hasLanguageId(Object receiver) {
+            return hasLanguage(receiver);
+        }
+
+        @Abstract(replacementOf = "getLanguage(Object)", replacementMethod = "getLanguageImpl", ifExported = "hasLanguageId")
         public String getLanguageId(Object receiver) {
             return TestLanguage.ID;
         }
@@ -477,6 +490,10 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         @SuppressWarnings("static-method")
         protected final Class<? extends TruffleLanguage<?>> getLanguageImpl(Object receiver) {
             return TestLanguage.class;
+        }
+
+        public String asString(Object receiver) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
         }
     }
 
@@ -494,6 +511,11 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     public static class ReplacementLegacy2 {
 
         @ExportMessage
+        public boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
         public Class<? extends TruffleLanguage<?>> getLanguage() {
             return TestLanguage.class;
         }
@@ -502,6 +524,11 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     @ExportLibrary(ReplacementsLibrary2.class)
     @SuppressWarnings("static-method")
     public static class ReplacementNew2 {
+
+        @ExportMessage
+        public boolean hasLanguageId() {
+            return true;
+        }
 
         @ExportMessage
         public String getLanguageId() {
@@ -524,6 +551,78 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         public String getLanguageId() {
             return TestLanguage.ID;
         }
+    }
+
+    @ExportLibrary(ReplacementsLibrary2.class)
+    public static final class ReplacementBase2 {
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        String asString() {
+            return ReplacementBase2.class.getSimpleName();
+        }
+    }
+
+    @ExportLibrary(value = ReplacementsLibrary2.class, delegateTo = "delegate")
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static final class ReplacementWrapperLegacy2 {
+
+        final Object delegate;
+
+        ReplacementWrapperLegacy2(Object delegate) {
+            this.delegate = delegate;
+        }
+
+        @ExportMessage
+        public boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return TestLanguage.class;
+        }
+    }
+
+    @ExportLibrary(value = ReplacementsLibrary2.class, delegateTo = "delegate")
+    @SuppressWarnings("static-method")
+    public static final class ReplacementWrapperNew2 {
+
+        final Object delegate;
+
+        ReplacementWrapperNew2(Object delegate) {
+            this.delegate = delegate;
+        }
+
+        @ExportMessage
+        public boolean hasLanguageId() {
+            return true;
+        }
+
+        @ExportMessage
+        public String getLanguageId() {
+            return TestLanguage.ID;
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacementWithDelegateTo() throws Exception {
+        ReplacementWrapperNew2 newImplementation = new ReplacementWrapperNew2(new ReplacementBase2());
+        ReplacementsLibrary2 lib = LibraryFactory.resolve(ReplacementsLibrary2.class).getUncached();
+        assertEquals(ReplacementBase2.class.getSimpleName(), lib.asString(newImplementation));
+        assertTrue(lib.hasLanguageId(newImplementation));
+        assertEquals(TestLanguage.ID, lib.getLanguageId(newImplementation));
+        assertTrue(lib.hasLanguage(newImplementation));
+        assertEquals(TestLanguage.class, lib.getLanguage(newImplementation));
+
+        ReplacementWrapperLegacy2 legacyImplementation = new ReplacementWrapperLegacy2(new ReplacementBase2());
+        lib = LibraryFactory.resolve(ReplacementsLibrary2.class).getUncached();
+        assertEquals(ReplacementBase2.class.getSimpleName(), lib.asString(legacyImplementation));
+        assertTrue(lib.hasLanguageId(legacyImplementation));
+        assertEquals(TestLanguage.ID, lib.getLanguageId(legacyImplementation));
+        assertTrue(lib.hasLanguage(legacyImplementation));
+        assertEquals(TestLanguage.class, lib.getLanguage(legacyImplementation));
     }
 
     @GenerateLibrary

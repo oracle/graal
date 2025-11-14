@@ -57,6 +57,7 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
@@ -1871,9 +1872,11 @@ public abstract class DebugValue {
             return null;
         }
         InteropLibrary lib = InteropLibrary.getFactory().getUncached(obj);
-        if (lib.hasLanguage(obj)) {
+        if (lib.hasLanguageId(obj)) {
             try {
-                return getSession().getDebugger().getEnv().getLanguageInfo(lib.getLanguage(obj));
+                String languageId = lib.getLanguageId(obj);
+                TruffleInstrument.Env env = getSession().getDebugger().getEnv();
+                return "host".equals(languageId) ? env.getHostLanguage() : env.getLanguages().get(languageId);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);

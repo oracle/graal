@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -61,14 +60,14 @@ final class SubstitutionScope implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return EspressoLanguage.class;
+    String getLanguageId() {
+        return EspressoLanguage.ID;
     }
 
     @ExportMessage

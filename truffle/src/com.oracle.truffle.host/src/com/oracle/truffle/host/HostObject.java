@@ -68,7 +68,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -2790,14 +2789,14 @@ final class HostObject implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return HostLanguage.class;
+    String getLanguageId() {
+        return HostLanguage.ID;
     }
 
     @ExportMessage

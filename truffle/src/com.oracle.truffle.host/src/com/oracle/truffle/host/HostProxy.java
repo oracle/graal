@@ -52,7 +52,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -486,14 +485,14 @@ final class HostProxy implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return HostLanguage.class;
+    String getLanguageId() {
+        return HostLanguage.ID;
     }
 
     @SuppressWarnings("static-method")

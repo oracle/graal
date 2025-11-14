@@ -505,14 +505,14 @@ final class HostContext {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return HostLanguage.class;
+        String getLanguageId() {
+            return HostLanguage.ID;
         }
 
         @SuppressWarnings("static-method")
