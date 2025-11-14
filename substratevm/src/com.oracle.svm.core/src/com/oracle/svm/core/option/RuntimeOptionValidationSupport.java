@@ -35,11 +35,16 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.ImageHeapList;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 /**
  * Allows to register commands for validating runtime options at run time.
  */
 @AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class RuntimeOptionValidationSupport {
     @SuppressWarnings("unchecked")//
     private final List<RuntimeOptionValidation<?>> validations = (List<RuntimeOptionValidation<?>>) ImageHeapList.createGeneric(RuntimeOptionValidation.class);

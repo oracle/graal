@@ -443,11 +443,11 @@ public final class NativeImageClassLoaderSupport {
     private List<String> remainingArguments;
 
     public void setupHostedOptionParser(List<String> arguments) {
-        hostedOptionParser = new HostedOptionParser(getClassLoader(), arguments);
+        var optionParser = new HostedOptionParser(getClassLoader(), arguments);
         // Explicitly set the default value of Optimize as it can modify the default values of other
         // options
-        SubstrateOptions.Optimize.update(hostedOptionParser.getHostedValues(), SubstrateOptions.Optimize.getDefaultValue());
-        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse()));
+        SubstrateOptions.Optimize.update(optionParser.getHostedValues(), SubstrateOptions.Optimize.getDefaultValue());
+        remainingArguments = Collections.unmodifiableList((optionParser.parse()));
 
         /*
          * The image layer support needs to be configured early to correctly set the
@@ -455,11 +455,24 @@ public final class NativeImageClassLoaderSupport {
          * hostedOptionParser.getHostedValues(), so we want to affect the options map before it is
          * copied.
          */
-        EconomicMap<OptionKey<?>, Object> hostedValues = hostedOptionParser.getHostedValues();
+        EconomicMap<OptionKey<?>, Object> hostedValues = optionParser.getHostedValues();
         HostedImageLayerBuildingSupport.processLayerOptions(hostedValues, this);
         PreserveOptionsSupport.parsePreserveOption(hostedValues, this);
         DynamicAccessDetectionFeature.parseDynamicAccessOptions(hostedValues, this);
         parsedHostedOptions = new OptionValues(hostedValues);
+
+        if (HostedImageLayerBuildingSupport.isLayerCreateOptionEnabled(parsedHostedOptions)) {
+            if (!optionParser.getRuntimeValues().isEmpty()) {
+                if (LayeredImageOptions.LayeredImageDiagnosticOptions.WarnOnSharedLayerSetRuntimeOptions.getValue(parsedHostedOptions)) {
+                    warn("Runtime option set in shared layer. This will be ignored.");
+                    optionParser.clearRuntimeValues();
+                } else {
+                    throw VMError.shouldNotReachHere("It is currently disallowed to set a runtime option in a shared layer. Please set %s if you want to downgrade this error into a warning.",
+                                    SubstrateOptionsParser.commandArgument(LayeredImageOptions.LayeredImageDiagnosticOptions.WarnOnSharedLayerSetRuntimeOptions, "+"));
+                }
+            }
+        }
+        this.hostedOptionParser = optionParser;
     }
 
     public HostedOptionParser getHostedOptionParser() {

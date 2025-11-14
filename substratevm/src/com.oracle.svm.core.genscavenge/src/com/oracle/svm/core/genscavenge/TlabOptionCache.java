@@ -40,6 +40,10 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -50,6 +54,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * startup can finish. Once the VM reaches a point where it can execute Java code, it validates the
  * options and reports errors (see {@link #registerOptionValidations}).
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class TlabOptionCache {
     private static final long DEFAULT_INITIAL_TLAB_SIZE = 8 * 1024;
 
@@ -66,7 +71,7 @@ public class TlabOptionCache {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void validateHostedOptionValues() {
+    public static void validateHostedOptionValues() {
         validateMinTlabSize(SubstrateGCOptions.ConcealedOptions.MinTLABSize);
         validateTlabSize(SubstrateGCOptions.ConcealedOptions.TLABSize);
     }
@@ -80,11 +85,12 @@ public class TlabOptionCache {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getMinTlabSize() {
+    public static long getMinTlabSize() {
         if (SubstrateUtil.HOSTED) {
             return Math.max(getAbsoluteMinTlabSize(), SubstrateGCOptions.ConcealedOptions.MinTLABSize.getHostedValue());
         }
 
+        var minTlabSize = singleton().minTlabSize;
         assert minTlabSize >= getAbsoluteMinTlabSize() && ConfigurationValues.getObjectLayout().isAligned(minTlabSize) && minTlabSize <= TlabSupport.maxSize().rawValue();
         return minTlabSize;
     }
@@ -148,8 +154,8 @@ public class TlabOptionCache {
 
     private static void validateTlabSize(RuntimeOptionKey<Long> optionKey) {
         long optionValue = optionKey.getValue();
-        if (optionKey.hasBeenSet() && optionValue < TlabOptionCache.singleton().getMinTlabSize()) {
-            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be smaller than 'MinTLABSize' (" + TlabOptionCache.singleton().getMinTlabSize() + ").");
+        if (optionKey.hasBeenSet() && optionValue < getMinTlabSize()) {
+            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be smaller than 'MinTLABSize' (" + getMinTlabSize() + ").");
         }
 
         long maxSize = TlabSupport.maxSize().rawValue();

@@ -110,5 +110,8 @@ public class LayeredImageOptions {
 
         @Option(help = "Provide verbose output of difference in builder options between layers.")//
         public static final HostedOptionKey<Boolean> LayerOptionVerificationVerbose = new HostedOptionKey<>(false);
+
+        @Option(help = "Emit a warning instead of an error when a runtime option is set within a shared layer.")//
+        public static final HostedOptionKey<Boolean> WarnOnSharedLayerSetRuntimeOptions = new HostedOptionKey<>(false);
     }
 }

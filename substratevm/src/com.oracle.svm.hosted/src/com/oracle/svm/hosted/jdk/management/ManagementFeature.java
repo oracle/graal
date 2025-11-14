@@ -51,7 +51,6 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -74,10 +73,8 @@ import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
 
 /** See {@link ManagementSupport} for documentation. */
 @AutomaticallyRegisteredFeature
@@ -195,24 +192,18 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 /*
                  * When building an initial layer, we must ensure that all beans potentially
-                 * referred to by later layers are installed in the heap. Further, we must collect
-                 * their constant ids so that we can access them in later layers.
+                 * referred to by later layers are seen during heap scanning. In addition, we must
+                 * collect their constant ids so that we can access them in later layers.
                  */
                 var managementSupport = ManagementSupport.getSingleton();
-                var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-                var universe = config.getUniverse();
-                var snippetReflection = universe.getSnippetReflection();
-                AnalysisMetaAccess metaAccess = config.getMetaAccess();
-                var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(ManagementSupport.class, "getPlatformMXBeans", Class.class));
+                var universe = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getUniverse();
                 for (int i = 0; i < manageObjectReplacementConstantIds.length; i++) {
                     int objectId = manageObjectReplacementConstantIds[i];
                     if (objectId != EMPTY_ID) {
                         assert objectId == TO_PROCESS : objectId;
                         var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
                         PlatformManagedObject target = managementSupport.getPlatformMXBeanRaw(clazz);
-                        var ihc = (ImageHeapConstant) snippetReflection.forObject(target);
-                        universe.registerEmbeddedRoot(ihc, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
-                        manageObjectReplacementConstantIds[i] = ImageHeapConstant.getConstantID(ihc);
+                        manageObjectReplacementConstantIds[i] = LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, target);
                     }
                 }
             }

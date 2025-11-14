@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -203,12 +202,6 @@ public class LoadImageSingletonFeature implements InternalFeature {
         layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.INITIAL_LAYER_ONLY);
         layeredImageSingletonSupport.forbidNewTraitInstallations(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER);
 
-        Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
-            var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
-            var javaConstant = universe.getSnippetReflection().forObject(objArray);
-            universe.registerEmbeddedRoot(javaConstant, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
-        };
-
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             /*
              * We must register all multi layered image singletons within shared layers as embedded.
@@ -218,7 +211,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
              */
             Object[] multiLayeredSingletons = layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.InstallationKind.MULTI_LAYER).toArray();
             if (multiLayeredSingletons.length != 0) {
-                multiLayerEmbeddedRootsRegistration.accept(multiLayeredSingletons);
+                LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, multiLayeredSingletons);
             }
 
             /*
@@ -292,7 +285,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
             }
 
             if (!multiLayerEmbeddedRoots.isEmpty()) {
-                multiLayerEmbeddedRootsRegistration.accept(multiLayerEmbeddedRoots.toArray());
+                LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, multiLayerEmbeddedRoots.toArray());
             }
         } else {
             // GR-58631

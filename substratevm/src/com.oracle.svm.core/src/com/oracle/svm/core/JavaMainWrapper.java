@@ -326,6 +326,7 @@ public class JavaMainWrapper {
     private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
         MAIN_ISOLATE_PARAMETERS.get().setArgc(argc);
         MAIN_ISOLATE_PARAMETERS.get().setArgv(argv);
+        // GR-71873 change to use runtime stack size value
         long stackSize = SubstrateOptions.StackSize.getHostedValue();
         OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), Word.nullPointer(), (int) stackSize);
         if (osThreadHandle.isNull()) {
