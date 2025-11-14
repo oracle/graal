@@ -32,11 +32,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs", onlyWith = ForeignAPIPredicates.FunctionCallsSupported.class)
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs", onlyWith = ForeignAPIPredicates.Enabled.class)
 final class Target_jdk_internal_foreign_abi_UpcallStubs {
     @Substitute
     @SuppressWarnings("restricted")
     static MemorySegment makeUpcall(long entry, Arena arena) {
+        if (!ForeignFunctionsRuntime.areFunctionCallsSupported()) {
+            throw ForeignFunctionsRuntime.functionCallsUnsupported();
+        }
         MemorySessionImpl.toMemorySession(arena).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
             @Override
             public void cleanup() {
