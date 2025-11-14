@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
+import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,10 +33,10 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.core.Instrumentation;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.util.PhasePlan;
 import jdk.graal.compiler.debug.GraalError;
@@ -50,7 +50,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -93,7 +93,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     /**
      * The priority of this factory. This must be unique across all factory instances and is used
-     * when selecting a factory when {@link Options#CompilerConfiguration} is omitted
+     * when selecting a factory.
      */
     private final int autoSelectionPriority;
 
@@ -104,7 +104,8 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      *            {@link Options#CompilerConfiguration} option
      * @param info a higher level description of the configuration used for
      *            {@link ShowConfigurationLevel#info}
-     * @param autoSelectionPriority
+     * @param autoSelectionPriority a priority which must be unique across all factory instances and
+     *            is used to select a factory
      */
     protected CompilerConfigurationFactory(String name, String info, int autoSelectionPriority) {
         this.name = name;
@@ -174,23 +175,23 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     /**
-     * Asserts uniqueness of {@link #name} and {@link #autoSelectionPriority} for {@code factory} in
-     * {@code factories}.
+     * Checks uniqueness of {@link #autoSelectionPriority} for {@code factory} in {@code factories}.
      */
     private static boolean checkUnique(CompilerConfigurationFactory factory, List<CompilerConfigurationFactory> factories) {
         for (CompilerConfigurationFactory other : factories) {
-            if (other != factory && factory.autoSelectionPriority == other.autoSelectionPriority) {
-                assert !other.name.equals(factory.name) : factory.getClass().getName() + " cannot have the same selector as " + other.getClass().getName() + ": " + factory.name;
-                assert other.autoSelectionPriority != factory.autoSelectionPriority : factory.getClass().getName() + " cannot have the same auto-selection priority as " +
-                                other.getClass().getName() +
-                                ": " + factory.autoSelectionPriority;
+            if (other != factory) {
+                GraalError.guarantee(other.autoSelectionPriority != factory.autoSelectionPriority, "%s cannot have the same auto-selection priority as %s: %s",
+                                factory.getClass().getName(),
+                                other.getClass().getName(),
+                                factory.autoSelectionPriority);
             }
         }
         return true;
     }
 
     /**
-     * @return sorted list of {@link CompilerConfigurationFactory}s
+     * @return list of {@link CompilerConfigurationFactory}s sorted by {@linkplain #compareTo
+     *         decreasing auto-priority order}
      */
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "false positive on dead store to `candidates`")
     private static List<CompilerConfigurationFactory> getAllCandidates() {
@@ -229,6 +230,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             } else if (value != null) {
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
                     if (candidate.name.equals(value)) {
+                        // Selects highest priority candidate with specified name
                         factory = candidate;
                         break;
                     }
@@ -242,7 +244,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 if (candidates.isEmpty()) {
                     throw new GraalError("No %s providers found", CompilerConfigurationFactory.class.getName());
                 }
-                factory = candidates.get(0);
+                factory = candidates.getFirst();
             }
         }
         assert factory != null;
