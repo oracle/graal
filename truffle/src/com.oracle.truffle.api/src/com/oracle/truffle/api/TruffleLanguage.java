@@ -2330,7 +2330,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 19.0
          * @deprecated Use
-         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isExecutable(obj) && !InteropLibrary.hasMembers(obj)}
+         *             {@code interopLibrary.isHostObject(obj) && interopLibrary.isExecutable(obj) && !interopLibrary.hasMembers(obj)}
          */
         @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
@@ -2376,7 +2376,7 @@ public abstract class TruffleLanguage<C> {
          * @see #asHostException(Throwable)
          * @since 19.0
          * @deprecated Use
-         *             {@code InteropLibrary.isHostObject(obj) && InteropLibrary.isException(obj)}.
+         *             {@code interopLibrary.isHostObject(obj) && interopLibrary.isException(obj)}.
          */
         @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
@@ -2419,11 +2419,14 @@ public abstract class TruffleLanguage<C> {
          *
          * @see #lookupHostSymbol(String)
          * @since 19.0
+         * @deprecated Use
+         *             {@code interopLibrary.isHostObject(obj) && !interopLibrary.isNull(obj) && !interopLibrary.hasStaticReceiver(obj)}.
          */
+        @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
             try {
-                return LanguageAccessor.engineAccess().isHostSymbol(polyglotLanguageContext, guestObject);
+                return LanguageAccessor.engineAccess().isHostSymbol(guestObject);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3157,8 +3160,6 @@ public abstract class TruffleLanguage<C> {
          * @see #getPublicTruffleFile(String)
          * @see #getInternalTruffleFile(String)
          * @since 21.1.0
-         *
-         * 
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(String path, Predicate<TruffleFile> filter) {
@@ -3183,8 +3184,6 @@ public abstract class TruffleLanguage<C> {
          * @see #getPublicTruffleFile(URI)
          * @see #getInternalTruffleFile(URI)
          * @since 21.1.0
-         *
-         * 
          */
         @TruffleBoundary
         public TruffleFile getTruffleFileInternal(URI uri, Predicate<TruffleFile> filter) {
@@ -3717,8 +3716,6 @@ public abstract class TruffleLanguage<C> {
          *            empty a root logger for language or instrument is returned
          * @return a {@link TruffleLogger}
          * @since 21.1
-         *
-         * 
          */
         @TruffleBoundary
         public TruffleLogger getLogger(String loggerName) {
@@ -4364,8 +4361,6 @@ public abstract class TruffleLanguage<C> {
          * Natural exit that occurs during normal context close.
          *
          * @since 22.0
-         *
-         * 
          */
         NATURAL,
         /**

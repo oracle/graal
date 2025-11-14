@@ -62,6 +62,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements. 
 * GR-71870 Truffle DSL no longer supports mixed exclusive and shared inlined caches. Sharing will now be disabled if mixing was used. To resolve the new warnings it is typically necessary to use either `@Exclusive` or `@Shared` for all caches.
 * GR-71887: Bytecode DSL: Added a `ClearLocal` operation for fast clearing of local values.
+* GR-71402: Added `InteropLibrary#hasHostObject` and `InteropLibrary#getHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
+* GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
+
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

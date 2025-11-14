@@ -183,15 +183,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostSymbol(Object obj) {
-        Object o = HostLanguage.unwrapIfScoped(language, obj);
-        if (o instanceof HostObject) {
-            return ((HostObject) o).isStaticClass();
-        }
-        return false;
-    }
-
-    @Override
     public Object createHostAdapter(Object context, Object[] hostTypes, Object classOverrides) {
         CompilerAsserts.neverPartOfCompilation();
         HostContext hostContext = (HostContext) context;
