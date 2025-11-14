@@ -151,9 +151,9 @@ package org.graalvm.webimage.api;
  * and that convert native JavaScript values to their Java counterparts. The conversion rules are
  * the same as in a {@link JS}-annotated method. Furthermore, note that JavaScript code can violate
  * the Java type-safety by storing into some property a value that is not compatible with the
- * corresponding Java field. For this reason, the bridge methods also generate check-casts on every
- * access: if the JavaScript property that corresponds to the Java field does not contain a
- * compatible value, a {@link ClassCastException} is thrown.
+ * corresponding Java field. For this reason, reading a Java field in a subclass of {@link JSObject}
+ * may result in a {@link ClassCastException} being throwns if the JavaScript property that
+ * corresponds to the Java field does not contain a compatible value.
  * <p>
  * There are several restrictions imposed on {@link JSObject} subclasses:
  * <ul>
@@ -223,7 +223,7 @@ package org.graalvm.webimage.api;
  * When an object of the {@link JSObject} subclass is passed from Java to JavaScript code using the
  * {@link JS} annotation, the object is converted from its Java representation to its JavaScript
  * representation. Changes in the JavaScript representation are reflected in the Java representation
- * and vice-versa.
+ * and vice versa.
  *
  * <b>Example:</b> the following code resets the {@code Point} object in JavaScript by calling the
  * {@code reset} method, and then prints {@code 0, 0}:
@@ -254,6 +254,36 @@ package org.graalvm.webimage.api;
  * Note that creating an object in JavaScript and passing it to Java several times does not
  * guarantee that the same mirror instance is returned each time -- each time a JavaScript object
  * becomes a Java mirror, a different instance of the mirror may be returned.
+ * <p>
+ * When doing type coercion (see {@link JSValue#as(Class)} JavaScript objects can be converted to
+ * any subtype of {@link JSObject}. This works because {@link JSObject} is just a wrapper around the
+ * JS object that maps field accesses to JavaScript property accesses, the underlying JS object can
+ * be wrapped by any {@link JSObject} subtype.
+ *
+ * Note that if the underlying JS property does not exist, reading the Java field may cause a
+ * {@link ClassCastException} because it is treated as containing a value of {@code undefined},
+ * which is not compatible with any other Java type (though if the field type is compatible with
+ * {@link JSUndefined}, this works and an instance of {@link JSUndefined} is returned when reading
+ * the field).
+ *
+ * <b>Example:</b> the following code creates an anonymous JavaScript object in JavaScript and then
+ * coerces it to the Java {@code Point} type:
+ *
+ * <pre>
+ * &#64;JS.Coerce
+ * &#64;JS("return {x: 12, y: 13};")
+ * public static Point create1();
+ *
+ * &#64;JS.Coerce
+ * &#64;JS("return {a: 12, b: 13};")
+ * public static Point create2();
+ *
+ * Point p1 = create1();
+ * Point p2 = create2();
+ * System.out.println(p1.x + ", " + p1.y);
+ * // These field reads throw a ClassCastException
+ * System.out.println(p2.x + ", " + p2.y);
+ * </pre>
  *
  *
  * <h3>Importing existing JavaScript classes</h3>
@@ -268,7 +298,7 @@ package org.graalvm.webimage.api;
  * <p>
  * The name of the declared class Java must match the name of the JavaScript class that is being
  * imported. The package name of the Java class is not taken into account -- the same JavaScript
- * class can be imported multiple times from within separate packages.
+ * class can be imported multiple times.
  * <p>
  * The exposed JavaScript fields must be declared as {@code protected} or {@code public}. The
  * constructor parameters must match those of the JavaScript class, and its body must be empty.
@@ -542,16 +572,30 @@ public class JSObject extends JSValue {
         throw classCastException("double[]");
     }
 
-    @JS("return conversion.tryExtractFacadeClass(this, cls);")
-    private native <T> T extractFacadeClass(Class<?> cls);
+    @JS("return conversion.coerceToFacadeClass(this, cls);")
+    private native <T extends JSObject> T coerceToFacadeClass(Class<T> cls);
 
+    /**
+     * Implements the logic for coercing from {@link JSObject} to one of its subtypes.
+     * <p>
+     * Any {@link JSObject} instance can be unconditionally coerced to any of its subtypes because
+     * they are only a light wrapper around the underlying JavaScript object and coercion simply
+     * rewraps the JS object with the new wrapper type.
+     *
+     * @see JSValue#as(Class)
+     */
     @SuppressWarnings("unchecked")
     @Override
     public <T> T as(Class<T> cls) {
-        Object facade = extractFacadeClass(cls);
-        if (facade != null) {
-            return (T) facade;
+        if (cls.isAssignableFrom(this.getClass())) {
+            return (T) this;
         }
+
+        if (JSObject.class.isAssignableFrom(cls)) {
+            assert cls != JSObject.class : "Target of coercion " + cls + " should have been handled above";
+            return (T) coerceToFacadeClass((Class<? extends JSObject>) cls);
+        }
+
         return super.as(cls);
     }
 
