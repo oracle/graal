@@ -568,9 +568,7 @@ public class NativeImageGenerator {
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
-
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
-            runAbstractInterpretation(debug);
             if (returnAfterAnalysis) {
                 return;
             }
@@ -595,6 +593,8 @@ public class NativeImageGenerator {
 
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                         bb.getUnsupportedFeatures()).build(debug);
+
+                runAbstractInterpretation(debug);
 
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
