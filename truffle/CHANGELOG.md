@@ -60,6 +60,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71468: Significantly improve optimized performance of host proxy interfaces (`org.graalvm.polyglot.proxy.Proxy`).
 * GR-71088 Added `CompilerDirectives.EarlyInline` annotation that performs a conservative early inlining pass for methods before partial evaluation. This is intended to expose small branch/bytecode handlers and similar helpers to optimizations such as @ExplodeLoop, in particular for MERGE_EXPLODE bytecode interpreter loops.
 * GR-71088 Added `CompilerDirectives.EarlyEscapeAnalysis` annotation that runs partial escape analysis early before partial evaluation enabling partial-evaluation-constant scalar replacements. 
+* GR-71402: Added `InteropLibrary#hasHostObject` and `InteropLibrary#getHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
+* GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
 
 
 ## Version 25.0

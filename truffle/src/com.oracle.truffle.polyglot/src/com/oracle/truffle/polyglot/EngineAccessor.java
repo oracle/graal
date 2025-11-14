@@ -1564,13 +1564,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostSymbol(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostSymbol is supported and returns false because
-            // languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostSymbol(obj);
+        public boolean isHostSymbol(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.hasHostObject(obj) && !interop.isNull(obj) && !interop.hasStaticReceiver(obj);
         }
 
         @Override

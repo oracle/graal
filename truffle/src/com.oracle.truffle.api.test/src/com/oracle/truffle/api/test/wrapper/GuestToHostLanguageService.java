@@ -119,11 +119,6 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public boolean isHostSymbol(Object obj) {
-        return false;
-    }
-
-    @Override
     public Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides) {
         return null;
     }

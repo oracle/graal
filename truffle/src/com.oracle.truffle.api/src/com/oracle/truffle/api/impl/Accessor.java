@@ -573,7 +573,7 @@ public abstract class Accessor {
 
         public abstract boolean isHostFunction(Object value);
 
-        public abstract boolean isHostSymbol(Object languageContext, Object guestObject);
+        public abstract boolean isHostSymbol(Object guestObject);
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
 

@@ -1040,8 +1040,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
 
-        public abstract boolean isHostSymbol(Object obj);
-
         public abstract Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides);
 
         public abstract boolean isHostProxy(Object value);

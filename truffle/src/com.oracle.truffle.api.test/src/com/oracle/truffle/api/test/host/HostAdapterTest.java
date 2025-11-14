@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.host;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -136,9 +137,11 @@ public class HostAdapterTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static Object verifyHostAdapterClass(TruffleLanguage.Env env, Object hostAdapterClass) {
         assertTrue(INTEROP.hasHostObject(hostAdapterClass));
         assertTrue(env.isHostSymbol(hostAdapterClass));
+        assertFalse(INTEROP.isNull(hostAdapterClass) || INTEROP.hasStaticReceiver(hostAdapterClass));
         assertTrue(INTEROP.isMetaObject(hostAdapterClass));
         assertTrue(INTEROP.isInstantiable(hostAdapterClass));
         return hostAdapterClass;

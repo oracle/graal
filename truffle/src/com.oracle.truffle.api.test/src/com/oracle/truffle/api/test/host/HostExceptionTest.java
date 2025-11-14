@@ -530,7 +530,7 @@ public class HostExceptionTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
         customExceptionVerifier = (t) -> {
-            assertFalse(env.isHostSymbol(t));
+            assertFalse(INTEROP.hasHostObject(t) && !INTEROP.isNull(t) && !INTEROP.hasStaticReceiver(t));
         };
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
