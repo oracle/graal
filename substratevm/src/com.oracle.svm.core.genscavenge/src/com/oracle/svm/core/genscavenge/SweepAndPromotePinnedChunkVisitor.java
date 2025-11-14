@@ -128,5 +128,9 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
         assert sweepStart.belowOrEqual(HeapChunk.getEndPointer(chunk));
         HeapChunk.setTopPointer(chunk, sweepStart);
         chunk.setSweep(false);
+
+        if (HeapParameters.getZapConsumedHeapChunks()) {
+            HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+        }
     }
 }

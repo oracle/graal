@@ -30,11 +30,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.Uninterruptible;
 
 /**
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
@@ -93,7 +93,7 @@ final class HeapChunkProvider {
         assert HeapChunk.getEndOffset(result).equal(chunkSize);
 
         if (HeapParameters.getZapProducedHeapChunks()) {
-            zap(result, HeapParameters.getProducedHeapChunkZapWord());
+            zapUnusedObjectMemory(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;
     }
@@ -149,7 +149,7 @@ final class HeapChunkProvider {
         assert VMOperation.isGCInProgress();
         AlignedHeapChunk.reset(alignedChunk);
         if (HeapParameters.getZapConsumedHeapChunks()) {
-            zap(alignedChunk, HeapParameters.getConsumedHeapChunkZapWord());
+            zapUnusedObjectMemory(alignedChunk, HeapParameters.getConsumedHeapChunkZapWord());
         }
     }
 
@@ -240,7 +240,7 @@ final class HeapChunkProvider {
 
         /* Avoid zapping if unaligned chunks are pre-zeroed. */
         if (!ChunkBasedCommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
-            zap(result, HeapParameters.getProducedHeapChunkZapWord());
+            zapUnusedObjectMemory(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;
     }
@@ -260,7 +260,7 @@ final class HeapChunkProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void zap(Header<?> chunk, WordBase value) {
+    static void zapUnusedObjectMemory(Header<?> chunk, WordBase value) {
         Pointer start = HeapChunk.getTopPointer(chunk);
         Pointer limit = HeapChunk.getEndPointer(chunk);
         for (Pointer p = start; p.belowThan(limit); p = p.add(FrameAccess.wordSize())) {

@@ -478,6 +478,10 @@ final class CompactingOldGeneration extends OldGeneration {
             while (chunk.isNonNull()) {
                 if (!AlignedHeapChunk.isEmpty(chunk)) {
                     RememberedSet.get().clearRememberedSet(chunk);
+
+                    if (HeapParameters.getZapConsumedHeapChunks()) {
+                        HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+                    }
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
                 chunk = HeapChunk.getNext(chunk);

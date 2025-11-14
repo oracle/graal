@@ -24,21 +24,23 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
@@ -70,26 +72,6 @@ public final class HeapParameters {
         }
 
         validateMaxMetaSpaceSize(alignedChunkSize);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Word getProducedHeapChunkZapWord() {
-        return (Word) producedHeapChunkZapWord;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getProducedHeapChunkZapInt() {
-        return (int) producedHeapChunkZapInt.rawValue();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Word getConsumedHeapChunkZapWord() {
-        return (Word) consumedHeapChunkZapWord;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getConsumedHeapChunkZapInt() {
-        return (int) consumedHeapChunkZapInt.rawValue();
     }
 
     @Fold
@@ -161,16 +143,6 @@ public final class HeapParameters {
         return Word.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
-    @Fold
-    public static boolean getZapProducedHeapChunks() {
-        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
-    }
-
-    @Fold
-    public static boolean getZapConsumedHeapChunks() {
-        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapConsumedHeapChunks.getValue();
-    }
-
     private static void validateMaxMetaSpaceSize(long alignedChunkSize) {
         long maxMetaspaceSize = SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
         if (maxMetaspaceSize == 0) {
@@ -196,5 +168,39 @@ public final class HeapParameters {
             throw UserError.abort("The value of '%s' is too large.",
                             SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
         }
+    }
+
+    /*
+     * Zapping
+     */
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean getZapProducedHeapChunks() {
+        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean getZapConsumedHeapChunks() {
+        return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapConsumedHeapChunks.getValue();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static Word getProducedHeapChunkZapWord() {
+        return (Word) producedHeapChunkZapWord;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static int getProducedHeapChunkZapInt() {
+        return (int) producedHeapChunkZapInt.rawValue();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static Word getConsumedHeapChunkZapWord() {
+        return (Word) consumedHeapChunkZapWord;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static int getConsumedHeapChunkZapInt() {
+        return (int) consumedHeapChunkZapInt.rawValue();
     }
 }
