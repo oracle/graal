@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.dynamicaccess;
+package com.oracle.svm.interpreter.metadata;
 
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import java.util.function.Function;
 
-import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-/**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
- */
-public class JVMCIAccessCondition {
+public class InterpreterAnnotated implements Annotated {
 
-    /**
-     * @see AccessCondition#typeReached(Class)
-     */
-    public static AccessCondition typeReached(ResolvedJavaType type) {
-        return AccessCondition.typeReached(OriginalClassProvider.getJavaClass(type));
+    @Override
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        throw VMError.intentionallyUnimplemented();
     }
 }

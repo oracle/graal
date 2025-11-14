@@ -203,7 +203,7 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Exe
 
         ExecutableContext(Class<? extends AbstractExecutableTestLanguage> clazz, Env env) {
             this.env = env;
-            this.scope = new InteropMapObject(clazz) {
+            this.scope = new InteropMapObject(TestUtils.getDefaultLanguageId(clazz)) {
                 @Override
                 @TruffleBoundary
                 Object toDisplayString(boolean allowSideEffects) {

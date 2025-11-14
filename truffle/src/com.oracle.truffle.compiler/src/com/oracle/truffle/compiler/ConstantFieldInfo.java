@@ -45,7 +45,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Value returned by {@link TruffleCompilerRuntime#getConstantFieldInfo(ResolvedJavaField)}
  * describing how a field read can be constant folded based on Truffle annotations.
+ *
+ * @deprecated Unused since 25.1, retained only for compatibility with older versions.
  */
+@Deprecated(since = "25.1")
 public final class ConstantFieldInfo {
 
     private final int rawValue;

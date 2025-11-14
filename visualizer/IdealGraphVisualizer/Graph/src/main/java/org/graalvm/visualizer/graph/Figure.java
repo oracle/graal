@@ -22,22 +22,31 @@
  */
 package org.graalvm.visualizer.graph;
 
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
-import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
-
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.*;
-import java.util.List;
-
-import org.graalvm.visualizer.data.Source;
-import org.graalvm.visualizer.layout.Cluster;
-import org.graalvm.visualizer.layout.Vertex;
-
 import jdk.graal.compiler.graphio.parsing.model.InputBlock;
 import jdk.graal.compiler.graphio.parsing.model.InputGraph;
 import jdk.graal.compiler.graphio.parsing.model.InputNode;
 import jdk.graal.compiler.graphio.parsing.model.Properties;
+import org.graalvm.visualizer.data.Source;
+import org.graalvm.visualizer.layout.Cluster;
+import org.graalvm.visualizer.layout.Vertex;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyNames.PROPNAME_NAME;
+import static jdk.graal.compiler.graphio.parsing.model.KnownPropertyValues.NAME_ROOT;
 
 public class Figure extends Properties.Entity implements Source.Provider, Vertex, DiagramItem {
     public static final int INSET = 8;
@@ -46,14 +55,14 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     public static final int SLOT_START = 4;
     public static final int SLOT_OFFSET = 8;
 
-    protected List<InputSlot> inputSlots;
+    protected ArrayList<InputSlot> inputSlots;
     private OutputSlot singleOutput;
-    private List<OutputSlot> outputSlots;
+    private ArrayList<OutputSlot> outputSlots;
     private final Source source;
     private final Diagram diagram;
     private Point position;
-    private final List<Figure> predecessors;
-    private final List<Figure> successors;
+    private final ArrayList<Figure> predecessors;
+    private final ArrayList<Figure> successors;
     private List<InputGraph> subgraphs;
     private Color color;
     private final int id;
@@ -63,6 +72,39 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     private int widthCache = -1;
     private final int hash;
     private boolean boundary;
+
+    /**
+     * Marked for bulk deletion.
+     */
+    private boolean deleted;
+
+    void setDeleted() {
+        this.deleted = true;
+    }
+
+    boolean isDeleted() {
+        return deleted;
+    }
+
+    /**
+     * Drop all edges when deleting a Figure.
+     */
+    void clear() {
+        assert isDeleted() : this;
+        if (inputSlots != null) {
+            inputSlots.clear();
+        }
+        if (outputSlots != null) {
+            outputSlots.clear();
+        }
+        if (predecessors != null) {
+            predecessors.clear();
+        }
+        if (successors != null) {
+            successors.clear();
+        }
+    }
+
 
     /**
      * Visible flag
@@ -105,6 +147,17 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     public static int getSlotsWidth(Collection<? extends Slot> slots) {
         int result = Figure.SLOT_OFFSET;
         for (Slot s : slots) {
+            result += s.getWidth() + Figure.SLOT_OFFSET;
+        }
+        return result;
+    }
+
+    public int getSlotsWidthBefore(InputSlot inputSlot) {
+        int result = Figure.SLOT_OFFSET;
+        for (Slot s : inputSlots) {
+            if (s == inputSlot) {
+                return result;
+            }
             result += s.getWidth() + Figure.SLOT_OFFSET;
         }
         return result;
@@ -211,6 +264,14 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     protected void addSuccessor(Figure f) {
         this.successors.add(f);
+    }
+
+    /**
+     * Clean up all edges which reference an {@link Figure#isDeleted()} figure.
+     */
+    public void cleanDeletedFigures() {
+        predecessors.removeIf(Figure::isDeleted);
+        successors.removeIf(Figure::isDeleted);
     }
 
     protected void removePredecessor(Figure f) {
@@ -355,6 +416,10 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         return Collections.unmodifiableList(inputSlots);
     }
 
+    int getInputSlotsWidth() {
+        return Figure.getSlotsWidth(inputSlots);
+    }
+
     public Set<Slot> getSlots() {
         Set<Slot> result = new HashSet<>();
         result.addAll(getInputSlots());
@@ -372,13 +437,24 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         }
     }
 
-    void removeInputSlot(InputSlot s) {
-        s.removeAllConnections();
+
+    public int getOutputSlotsWidth() {
+        if (outputSlots != null) {
+            return Figure.getSlotsWidth(outputSlots);
+        } else if (singleOutput != null) {
+            return Figure.getSlotsWidth(Collections.singletonList(singleOutput));
+        } else {
+            return 0;
+        }
+    }
+
+    void removeInputSlot(InputSlot s, HashSet<Object> cleaned) {
+        s.removeAllConnections(cleaned);
         inputSlots.remove(s);
     }
 
-    void removeOutputSlot(OutputSlot s) {
-        s.removeAllConnections();
+    void removeOutputSlot(OutputSlot s, HashSet<Object> cleaned) {
+        s.removeAllConnections(cleaned);
         doRemoveOutputSlot(s);
     }
 
@@ -459,11 +535,16 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
         }
     }
 
+    Boolean isRoot;
+
     @Override
     public boolean isRoot() {
-        List<InputNode> sourceNodes = source.getSourceNodes();
-        //Get property value just once
-        return sourceNodes.size() > 0 && NAME_ROOT.equals(sourceNodes.get(0).getProperties().get(PROPNAME_NAME, String.class));
+        if (isRoot == null) {
+            List<InputNode> sourceNodes = source.getSourceNodes();
+            // Get property value just once
+            isRoot = !sourceNodes.isEmpty() && NAME_ROOT.equals(sourceNodes.get(0).getProperties().get(PROPNAME_NAME, String.class));
+        }
+        return isRoot;
     }
 
     @Override
@@ -478,6 +559,7 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
 
     void sourcesChanged(Source s) {
         diagram.invalidateSlotMap();
+        isRoot = null;
     }
 
     @Override
@@ -545,4 +627,5 @@ public class Figure extends Properties.Entity implements Source.Provider, Vertex
     public void replaceFrom(Figure source) {
         replaceFromTo(source, this);
     }
+
 }

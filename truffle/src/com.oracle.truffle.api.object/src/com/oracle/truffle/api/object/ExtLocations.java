@@ -51,8 +51,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-
 import com.oracle.truffle.api.impl.AbstractAssumption;
+
 import sun.misc.Unsafe;
 
 /**
@@ -195,6 +195,10 @@ abstract class ExtLocations {
                     throw incompatibleLocationException();
                 }
             }
+        }
+
+        @Override
+        void clear(DynamicObject store) {
         }
 
         @Override
@@ -637,8 +641,8 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void clear(DynamicObject store) {
-            UnsafeAccess.unsafePutObject(getArray(store, false), getOffset(), null, this);
+        void clear(DynamicObject store) {
+            setObjectInternal(store, null, false);
         }
 
         @Override
@@ -696,8 +700,8 @@ abstract class ExtLocations {
         }
 
         @Override
-        protected void clear(DynamicObject store) {
-            UnsafeAccess.unsafePutObject(store, getOffset(), null, this);
+        void clear(DynamicObject store) {
+            setObjectInternal(store, null);
         }
 
         @Override
@@ -826,6 +830,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            setIntInternal(store, 0);
+        }
+
+        @Override
         public boolean canStore(Object value) {
             return value instanceof Integer;
         }
@@ -883,6 +892,11 @@ abstract class ExtLocations {
             }
             field.receiverCheck(store);
             UnsafeAccess.unsafePutLong(store, getOffset(), Double.doubleToRawLongBits(value), this);
+        }
+
+        @Override
+        void clear(DynamicObject store) {
+            setDoubleInternal(store, 0);
         }
 
         @Override
@@ -1010,6 +1024,11 @@ abstract class ExtLocations {
         }
 
         @Override
+        void clear(DynamicObject store) {
+            setIntInternal(store, 0, false);
+        }
+
+        @Override
         public boolean canStore(Object value) {
             return value instanceof Integer;
         }
@@ -1074,6 +1093,11 @@ abstract class ExtLocations {
 
         private void setDoubleInternal(DynamicObject store, double value, boolean guard) {
             UnsafeAccess.unsafePutDouble(getArray(store, guard), getOffset(), value, this);
+        }
+
+        @Override
+        void clear(DynamicObject store) {
+            setDoubleInternal(store, 0, false);
         }
 
         @Override
@@ -1162,6 +1186,11 @@ abstract class ExtLocations {
             }
             field.receiverCheck(store);
             UnsafeAccess.unsafePutLong(store, getOffset(), value, this);
+        }
+
+        @Override
+        void clear(DynamicObject store) {
+            setLongInternal(store, 0L);
         }
 
         @Override
@@ -1258,6 +1287,11 @@ abstract class ExtLocations {
 
         private void setLongInternal(DynamicObject store, long value, boolean guard) {
             UnsafeAccess.unsafePutLong(getArray(store, guard), getOffset(), value, this);
+        }
+
+        @Override
+        void clear(DynamicObject store) {
+            setLongInternal(store, 0L, false);
         }
 
         @Override

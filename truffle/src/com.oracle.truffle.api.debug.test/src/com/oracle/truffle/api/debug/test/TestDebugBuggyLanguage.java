@@ -127,14 +127,10 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
     @Override
     protected Object getLanguageView(LanguageContext context, Object value) {
         return new ProxyInteropObject.InteropWrapper(value) {
-            @Override
-            protected boolean hasLanguage() {
-                return true;
-            }
 
             @Override
-            protected Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
-                return ProxyLanguage.get(null).getClass();
+            protected boolean hasLanguageId() {
+                return true;
             }
 
             @Override

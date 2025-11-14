@@ -28,9 +28,10 @@ import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceTyp
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public final class EspressoResolvedJavaRecordComponent implements ResolvedJavaRecordComponent {
+public final class EspressoResolvedJavaRecordComponent extends AbstractAnnotated implements ResolvedJavaRecordComponent {
     private final EspressoResolvedInstanceType declaringRecord;
     private final int index;
     private final String name;
@@ -59,7 +60,7 @@ public final class EspressoResolvedJavaRecordComponent implements ResolvedJavaRe
     }
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
         byte[] bytes = getRawAnnotationBytes(declaringRecord, index, DECLARED_ANNOTATIONS);
         EspressoResolvedInstanceType container = getDeclaringRecord();
         return AnnotationsInfo.make(bytes, container.getConstantPool(), container);

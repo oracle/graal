@@ -3,7 +3,7 @@
     <name>IdealGraphVisualizer-parent</name>
     <groupId>org.graalvm.visualizer</groupId>
     <artifactId>IdealGraphVisualizer-parent</artifactId>
-    <version>1.23-SNAPSHOT</version>
+    <version>1.24-SNAPSHOT</version>
     <packaging>pom</packaging>
     <scm>
         <developerConnection>
@@ -31,6 +31,9 @@
                     <configuration>
                         <source>11</source>
                         <release>17</release>
+                        <compilerArgs>
+                            <arg>-g</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -47,6 +50,7 @@
                             <java.awt.headless>true</java.awt.headless>
                         </systemPropertyVariables>
                         <argLine>
+                            --enable-native-access=ALL-UNNAMED
                             --add-opens=java.base/java.net=ALL-UNNAMED
                             --add-exports=java.desktop/sun.awt=ALL-UNNAMED
                             -Dpolyglot.engine.WarnInterpreterOnly=false

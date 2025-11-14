@@ -54,7 +54,6 @@ import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -74,13 +73,13 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
     static class ProxyLanguageObject implements TruffleObject {
 
         @ExportMessage
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @SuppressWarnings("static-method")
@@ -95,13 +94,13 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
     static class OtherLanguageObject implements TruffleObject {
 
         @ExportMessage
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return OtherTestLanguage.class;
+        String getLanguageId() {
+            return OtherTestLanguage.ID;
         }
 
         @SuppressWarnings("static-method")
@@ -125,7 +124,7 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
         // test primitive
         Object view = instrumentEnv.getLanguageView(l, "42");
         InteropLibrary viewLib = createLibrary(InteropLibrary.class, view);
-        assertTrue(viewLib.hasLanguage(view));
+        assertTrue(viewLib.hasLanguageId(view));
         assertFalse(viewLib.hasMetaObject(view));
         assertFalse(viewLib.hasSourceLocation(view));
         assertEquals("42", viewLib.toDisplayString(view));
@@ -135,8 +134,8 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
         view = instrumentEnv.getLanguageView(l, o);
         assertSame(view, o);
         viewLib = createLibrary(InteropLibrary.class, view);
-        assertTrue(viewLib.hasLanguage(view));
-        assertSame(ProxyLanguage.class, viewLib.getLanguage(view));
+        assertTrue(viewLib.hasLanguageId(view));
+        assertEquals(ProxyLanguage.ID, viewLib.getLanguageId(view));
         assertFalse(viewLib.hasMetaObject(view));
         assertFalse(viewLib.hasSourceLocation(view));
         assertEquals("42", viewLib.toDisplayString(view));
@@ -146,8 +145,8 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
         view = instrumentEnv.getLanguageView(l, o);
         assertNotSame(view, o);
         viewLib = createLibrary(InteropLibrary.class, view);
-        assertTrue(viewLib.hasLanguage(view));
-        assertSame(ProxyLanguage.class, viewLib.getLanguage(view));
+        assertTrue(viewLib.hasLanguageId(view));
+        assertEquals(ProxyLanguage.ID, viewLib.getLanguageId(view));
         assertFalse(viewLib.hasMetaObject(view));
         assertFalse(viewLib.hasSourceLocation(view));
         assertEquals("other", viewLib.toDisplayString(view));

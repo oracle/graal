@@ -22,7 +22,7 @@
 #
 
 suite = {
-    "mxversion": "7.59.0",
+    "mxversion": "7.65.0",
     "name": "espresso",
     "version" : "25.1.0",
     "release" : False,
@@ -80,6 +80,8 @@ suite = {
             },
         ],
     },
+
+    "capture_suite_commit_info": False,
 
     # ------------- projects
 

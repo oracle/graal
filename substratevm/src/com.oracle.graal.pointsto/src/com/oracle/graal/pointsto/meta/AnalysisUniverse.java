@@ -47,8 +47,8 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.ImageLayerWriter;
-import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -419,12 +419,11 @@ public class AnalysisUniverse implements Universe {
         if (rawMethod == null) {
             return null;
         }
-        if (!(rawMethod instanceof ResolvedJavaMethod)) {
+        if (!(rawMethod instanceof ResolvedJavaMethod method)) {
             return rawMethod;
         }
         assert !(rawMethod instanceof AnalysisMethod) : rawMethod;
 
-        ResolvedJavaMethod method = (ResolvedJavaMethod) rawMethod;
         method = substitutions.lookup(method);
         AnalysisMethod result = methods.get(method);
         if (result == null) {

@@ -162,10 +162,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_attempt_scavenge
+    public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) { // should_attempt_scavenge
         guaranteeSizeParametersInitialized();
 
         boolean collectYoungSeparately = shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen());
+        if (forcedCompleteCollection && !collectYoungSeparately) {
+            return true;
+        }
         if (!followingIncrementalCollection && collectYoungSeparately) {
             /*
              * With a copying collector, default to always doing an incremental collection first

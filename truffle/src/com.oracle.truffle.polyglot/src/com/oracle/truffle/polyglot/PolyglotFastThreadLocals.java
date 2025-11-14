@@ -301,6 +301,21 @@ final class PolyglotFastThreadLocals {
         return IMPL.fastGet(index, contextClass, true, false);
     }
 
+    public static PolyglotEngineImpl getEngine(Node node) {
+        assert validSharing(node);
+        if (CompilerDirectives.inCompiledCode()) {
+            PolyglotEngineImpl instance = resolveEngine(node);
+            if (instance != null) {
+                return instance;
+            }
+        }
+        PolyglotContextImpl c = IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true, false);
+        if (c == null) {
+            return null;
+        }
+        return c.engine;
+    }
+
     private static boolean validSharing(Node node) {
         PolyglotContextImpl currentContext = getContext(null);
         if (currentContext == null) {

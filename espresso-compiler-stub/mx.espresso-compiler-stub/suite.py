@@ -76,11 +76,15 @@ suite = {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
                     "jdk.vm.ci.runtime",
                 ],
             },
             "javaCompliance": "21+",
             "checkstyle": "com.oracle.truffle.espresso",
+            # Reference to jdk.vm.ci.meta.annotation
+            # causes spotbugs analysis to fail due to missing classes
+            "spotbugs": "false"
         },
     },
 

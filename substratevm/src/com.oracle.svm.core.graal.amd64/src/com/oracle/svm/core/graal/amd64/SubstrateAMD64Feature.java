@@ -68,23 +68,13 @@ class SubstrateAMD64Feature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
 
-        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRegisterConfigFactory() {
-            @Override
-            public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
-                return new SubstrateAMD64RegisterConfig(config, metaAccess, target, preserveFramePointer);
-            }
-        });
+        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateAMD64RegisterConfigFactory());
 
         ImageSingletons.add(ReservedRegisters.class, new AMD64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
 
-            ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-                @Override
-                public SubstrateBackend newBackend(Providers newProviders) {
-                    return new SubstrateAMD64Backend(newProviders);
-                }
-            });
+            ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateAMD64BackendFactory());
 
             ImageSingletons.add(SubstrateLoweringProviderFactory.class, new SubstrateAMD64LoweringProviderFactory());
 
@@ -98,6 +88,22 @@ class SubstrateAMD64Feature implements InternalFeature {
         if (!SubstrateOptions.useLLVMBackend()) {
             AMD64CalleeSavedRegisters.createAndRegister();
         }
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class SubstrateAMD64RegisterConfigFactory implements SubstrateRegisterConfigFactory {
+    @Override
+    public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
+        return new SubstrateAMD64RegisterConfig(config, metaAccess, target, preserveFramePointer);
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class SubstrateAMD64BackendFactory extends SubstrateBackendFactory {
+    @Override
+    public SubstrateBackend newBackend(Providers newProviders) {
+        return new SubstrateAMD64Backend(newProviders);
     }
 }
 

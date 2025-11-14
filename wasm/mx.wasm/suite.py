@@ -40,7 +40,7 @@
 #
 
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.65.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "25.1.0",
@@ -68,6 +68,7 @@ suite = {
       },
     ],
   },
+  "capture_suite_commit_info": False,
   "libraries": {
     "JOL": {
       "digest" : "sha512:8adfb561c82f9b198d1d8b7bea605fc8f4418d3e199d0d6262014dc75cee5b1a2ff59ec838b6322f5ee981e7094dbc3c9fa61ee5e8bfe7793aa927e2a900c6ec",

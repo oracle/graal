@@ -24,12 +24,20 @@
  */
 package com.oracle.truffle.espresso.shared.meta;
 
+import java.util.List;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.shared.lookup.LookupMode;
+import com.oracle.truffle.espresso.shared.lookup.LookupSuccessInvocationFailure;
+import com.oracle.truffle.espresso.shared.lookup.MethodLookup;
 import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
+import com.oracle.truffle.espresso.shared.vtable.PartialType;
+import com.oracle.truffle.espresso.shared.vtable.Tables;
+import com.oracle.truffle.espresso.shared.vtable.VTable;
 
 /**
  * Represents a {@link Class}, and provides access to various lookups and runtime metadata.
@@ -63,6 +71,11 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      * Returns the superclass of this class, or {@code null} if this class is {@link Object}.
      */
     C getSuperClass();
+
+    /**
+     * Returns the direct super interfaces of this class.
+     */
+    List<C> getSuperInterfacesList();
 
     /**
      * Returns the host class of this VM-anonymous class, or {@code null} if this class is not a
@@ -100,73 +113,24 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     F lookupField(Symbol<Name> name, Symbol<Type> type);
 
     /**
-     * Performs method lookup on this class for the given method name and method signature,
-     * according to JVMS-5.4.3.3.
-     * <p>
-     * <ul>
-     * <li>This lookup does not need to throw {@link ErrorType#IncompatibleClassChangeError} if this
-     * class is an interface. It is handled in {@link LinkResolver#resolveMethodSymbol}</li>
-     * <li>{@link MethodAccess Method} resolution attempts to locate the referenced method in
-     * {@link TypeAccess C} and its superclasses:
-     * <ul>
-     * <li>If {@link TypeAccess C} declares exactly one {@link MethodAccess method} with the name
-     * specified, and the declaration is a signature polymorphic method, then method lookup
-     * succeeds. All the class names mentioned in the descriptor are resolved. The resolved method
-     * is the signature polymorphic method declaration. It is not necessary for {@link TypeAccess C}
-     * to declare a method with the signature specified by the method reference.</li>
-     * <li>Otherwise, if {@link TypeAccess C} declares a method with the name and signature
-     * specified by the method reference, method lookup succeeds.</li>
-     * <li>Otherwise, if {@link TypeAccess C} has a {@link #getSuperClass() superclass}, step 2 of
-     * method resolution is recursively invoked on the direct superclass of {@link TypeAccess
-     * C}.</li>
-     * </ul>
-     * </li>
-     * <li>Otherwise, method resolution attempts to locate the referenced method in the
-     * superinterfaces of the specified class {@link TypeAccess C}:
-     * <ul>
-     * <li>If the maximally-specific superinterface methods of {@link TypeAccess C} for the name and
-     * signature specified by the method reference include exactly one method that is not
-     * {@link ModifiersProvider#isAbstract() abstract} , then this method is chosen and method
-     * lookup succeeds.</li>
-     * <li>Otherwise, if any superinterface of {@link TypeAccess C} declares a method with the name
-     * and signature specified that is neither {@link ModifiersProvider#isPrivate() private} nor
-     * {@link ModifiersProvider#isStatic() static}, one of these is arbitrarily chosen and method
-     * lookup succeeds.</li>
-     * <li>Otherwise, method lookup fails and returns {@code null}.</li></li>
-     * </ul>
-     * </ul>
+     * Returns a list reflecting all the methods and constructors declared by this type.
      */
-    M lookupMethod(Symbol<Name> name, Symbol<Signature> signature);
+    List<M> getDeclaredMethodsList();
 
     /**
-     * Same as {@link #lookupMethod(Symbol, Symbol)}, but ignores
-     * {@link ModifiersProvider#isStatic() static} methods.
-     */
-    M lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature);
-
-    /**
-     * Performs interface method lookup on this class for the given method name and method
-     * signature, according to JVMS-5.4.3.3.
+     * Returns a list containing all the interface methods that can be called on this type, that are
+     * not declared by this type or its super types.
      * <p>
-     * <ul>
-     * <li>This lookup does not need to throw {@link ErrorType#IncompatibleClassChangeError} if this
-     * class is not an interface. It is handled in {@link LinkResolver#resolveMethodSymbol}.</li>
-     * <li>Otherwise, if {@link TypeAccess C} declares a method with the given name and signature,
-     * this method is returned.</li>
-     * <li>Otherwise, if the class {@link Object} declares a method with the given name and
-     * signature, which is {@link ModifiersProvider#isPublic() public} and
-     * non-{@link ModifiersProvider#isStatic() static}, this method is returned.</li>
-     * <li>Otherwise, if the maximally-specific superinterface methods of {@link TypeAccess C} for
-     * the given name and signature include exactly one method that is not
-     * {@link ModifiersProvider#isAbstract() abstract}, then this method is returned.</li>
-     * <li>Otherwise, if any superinterface of {@link TypeAccess C} declares a method with the name
-     * and signature specified that is neither {@link ModifiersProvider#isPrivate() private} nor
-     * {@link ModifiersProvider#isStatic() static}, one of these is arbitrarily chosen
-     * returned.</li>
-     * <li>Otherwise, method lookup fails and returns {@code null}.</li>
-     * </ul>
+     * Such methods are sometimes called {@code miranda methods}.
+     * <p>
+     * This method may return {@code null} if obtaining these methods is not trivial.
+     *
+     * @see Tables#getImplicitInterfaceMethods()
+     * @implNote If this type's VTable was created using
+     *           {@link VTable#create(PartialType, boolean, boolean, boolean)}, this method can
+     *           simply return the result of {@link Tables#getImplicitInterfaceMethods()}
      */
-    M lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature);
+    List<M> getImplicitInterfaceMethodsList();
 
     /**
      * Returns the {@link MethodAccess method} appearing in this type's virtual table at index
@@ -176,12 +140,6 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      * should return {@code null}.
      */
     M lookupVTableEntry(int vtableIndex);
-
-    /**
-     * Attempts to find a signature polymorphic method declared in this class as described in
-     * JVMS-5.4.3.3 & 2.9.3. If no such method is found, returns null.
-     */
-    M lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> name);
 
     /**
      * @return {@code true} if {@code other} is a subtype of {@code this}, {@code false} otherwise.
@@ -217,4 +175,100 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      *             constant pool at index {@code cpi}.
      */
     C resolveClassConstantInPool(int cpi);
+
+    /**
+     * If this type declares a method with the given method {@code name} and {@code signature},
+     * returns that method. Returns {@code null} otherwise.
+     */
+    @SuppressWarnings("unchecked")
+    default M lookupDeclaredMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return MethodLookup.lookupDeclaredMethod((C) this, name, signature, LookupMode.ALL);
+    }
+
+    /**
+     * Performs method lookup on this class for the given method name and method signature,
+     * according to JVMS-5.4.3.3.
+     * <p>
+     * <ul>
+     * <li>This lookup does not need to throw {@link ErrorType#IncompatibleClassChangeError} if this
+     * class is an interface. It is handled in {@link LinkResolver#resolveMethodSymbol}</li>
+     * <li>{@link MethodAccess Method} resolution attempts to locate the referenced method in
+     * {@link TypeAccess C} and its superclasses:
+     * <ul>
+     * <li>If {@link TypeAccess C} declares exactly one {@link MethodAccess method} with the name
+     * specified, and the declaration is a signature polymorphic method, then method lookup
+     * succeeds. All the class names mentioned in the descriptor are resolved. The resolved method
+     * is the signature polymorphic method declaration. It is not necessary for {@link TypeAccess C}
+     * to declare a method with the signature specified by the method reference.</li>
+     * <li>Otherwise, if {@link TypeAccess C} declares a method with the name and signature
+     * specified by the method reference, method lookup succeeds.</li>
+     * <li>Otherwise, if {@link TypeAccess C} has a {@link #getSuperClass() superclass}, step 2 of
+     * method resolution is recursively invoked on the direct superclass of {@link TypeAccess
+     * C}.</li>
+     * </ul>
+     * </li>
+     * <li>Otherwise, method resolution attempts to locate the referenced method in the
+     * superinterfaces of the specified class {@link TypeAccess C}:
+     * <ul>
+     * <li>If the maximally-specific superinterface methods of {@link TypeAccess C} for the name and
+     * signature specified by the method reference include exactly one method that is not
+     * {@link ModifiersProvider#isAbstract() abstract}, then this method is chosen and method lookup
+     * succeeds.</li>
+     * <li>Otherwise, if any superinterface of {@link TypeAccess C} declares a method with the name
+     * and signature specified that is neither {@link ModifiersProvider#isPrivate() private} nor
+     * {@link ModifiersProvider#isStatic() static}, one of these is arbitrarily chosen and method
+     * lookup succeeds.</li>
+     * <li>Otherwise, method lookup fails and returns {@code null}.</li></li>
+     * </ul>
+     * </ul>
+     */
+    @SuppressWarnings("unchecked")
+    default M lookupMethod(Symbol<Name> name, Symbol<Signature> signature) throws LookupSuccessInvocationFailure {
+        return MethodLookup.lookupMethod((C) this, name, signature, LookupMode.ALL);
+    }
+
+    /**
+     * Same as {@link #lookupMethod(Symbol, Symbol)}, but ignores
+     * {@link ModifiersProvider#isStatic() static} methods.
+     */
+    @SuppressWarnings("unchecked")
+    default M lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) throws LookupSuccessInvocationFailure {
+        return MethodLookup.lookupMethod((C) this, name, signature, LookupMode.INSTANCE_ONLY);
+    }
+
+    /**
+     * Performs interface method lookup on this class for the given method name and method
+     * signature, according to JVMS-5.4.3.4.
+     * <p>
+     * <ul>
+     * <li>This lookup does not need to throw {@link ErrorType#IncompatibleClassChangeError} if this
+     * class is not an interface. It is handled in {@link LinkResolver#resolveMethodSymbol}.</li>
+     * <li>Otherwise, if {@link TypeAccess C} declares a method with the given name and signature,
+     * this method is returned.</li>
+     * <li>Otherwise, if the class {@link Object} declares a method with the given name and
+     * signature, which is {@link ModifiersProvider#isPublic() public} and
+     * non-{@link ModifiersProvider#isStatic() static}, this method is returned.</li>
+     * <li>Otherwise, if the maximally-specific superinterface methods of {@link TypeAccess C} for
+     * the given name and signature include exactly one method that is not
+     * {@link ModifiersProvider#isAbstract() abstract}, then this method is returned.</li>
+     * <li>Otherwise, if any superinterface of {@link TypeAccess C} declares a method with the name
+     * and signature specified that is neither {@link ModifiersProvider#isPrivate() private} nor
+     * {@link ModifiersProvider#isStatic() static}, one of these is arbitrarily chosen
+     * returned.</li>
+     * <li>Otherwise, method lookup fails and returns {@code null}.</li>
+     * </ul>
+     */
+    @SuppressWarnings("unchecked")
+    default M lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) throws LookupSuccessInvocationFailure {
+        return MethodLookup.lookupInterfaceMethod((C) this, name, signature);
+    }
+
+    /**
+     * Attempts to find a signature polymorphic method declared in this class as described in
+     * JVMS-5.4.3.3 & 2.9.3. If no such method is found, returns null.
+     */
+    @SuppressWarnings("unchecked")
+    default M lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> name) {
+        return MethodLookup.lookupDeclaredSignaturePolymorphicMethod((C) this, name, LookupMode.ALL);
+    }
 }

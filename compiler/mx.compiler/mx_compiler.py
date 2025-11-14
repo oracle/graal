@@ -252,6 +252,7 @@ def _ctw_jvmci_export_args(arg_prefix='--'):
         'add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
         'add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',

@@ -25,8 +25,8 @@
 package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
-import static com.oracle.svm.espresso.classfile.ParserKlass.isSignaturePolymorphicHolderType;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -36,14 +36,12 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
-import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
@@ -352,8 +350,24 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @Override
-    public final InterpreterResolvedJavaType getSuperClass() {
+    public final InterpreterResolvedObjectType getSuperClass() {
         return this.superclass;
+    }
+
+    @Override
+    public final List<InterpreterResolvedJavaType> getSuperInterfacesList() {
+        return Arrays.asList(getInterfaces());
+    }
+
+    @Override
+    public List<InterpreterResolvedJavaMethod> getDeclaredMethodsList() {
+        return Arrays.asList(declaredMethods);
+    }
+
+    @Override
+    public List<InterpreterResolvedJavaMethod> getImplicitInterfaceMethodsList() {
+        // GR-70607: get mirandas.
+        return null;
     }
 
     @Override
@@ -386,79 +400,4 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return null;
     }
 
-    @Override
-    public final InterpreterResolvedJavaMethod lookupMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        InterpreterResolvedObjectType current = this;
-        InterpreterResolvedJavaMethod method = current.lookupDeclaredMethod(name, signature);
-        if (method != null) {
-            return method;
-        }
-
-        current = current.getSuperclass();
-        while (current != null) {
-            method = current.lookupDeclaredMethod(name, signature);
-            if (method != null) {
-                return method;
-            }
-            current = current.getSuperclass();
-        }
-        return null;
-    }
-
-    private InterpreterResolvedJavaMethod lookupDeclaredMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        if (isSignaturePolymorphicHolderType(getSymbolicType())) {
-            InterpreterResolvedJavaMethod method = lookupSignaturePolymorphicMethod(name, signature);
-            if (method != null) {
-                return method;
-            }
-        }
-        for (InterpreterResolvedJavaMethod method : this.declaredMethods) {
-            if (name.equals(method.getSymbolicName()) && signature.equals(method.getSymbolicSignature())) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    private InterpreterResolvedJavaMethod lookupSignaturePolymorphicMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        InterpreterResolvedJavaMethod m = lookupDeclaredSignaturePolymorphicMethod(methodName);
-        if (m != null) {
-            return (InterpreterResolvedJavaMethod) CremaSupport.singleton().findMethodHandleIntrinsic(m, signature);
-        }
-        return null;
-    }
-
-    @Override
-    public final InterpreterResolvedJavaMethod lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        InterpreterResolvedObjectType current = this;
-        while (current != null) {
-            for (InterpreterResolvedJavaMethod method : current.declaredMethods) {
-                if (!method.isStatic() && name.equals(method.getSymbolicName()) && signature.equals(method.getSymbolicSignature())) {
-                    return method;
-                }
-            }
-            current = current.getSuperclass();
-        }
-        return null;
-    }
-
-    @Override
-    public final InterpreterResolvedJavaMethod lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        assert isInterface();
-        InterpreterResolvedJavaMethod result = lookupDeclaredMethod(name, signature);
-        if (result != null) {
-            return result;
-        }
-        throw VMError.unimplemented("lookupInterfaceMethod");
-    }
-
-    @Override
-    public InterpreterResolvedJavaMethod lookupDeclaredSignaturePolymorphicMethod(Symbol<Name> methodName) {
-        for (InterpreterResolvedJavaMethod m : getDeclaredMethods()) {
-            if (m.getSymbolicName() == methodName && m.isDeclaredSignaturePolymorphic()) {
-                return m;
-            }
-        }
-        return null;
-    }
 }

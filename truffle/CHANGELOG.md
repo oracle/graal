@@ -37,6 +37,13 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-70086: Added `replacementOf` and `replacementMethod` attributes to `GenerateLibrary.Abstract` annotation. They enable automatic generation of legacy delegators during message library evolution, while allowing custom conversions when needed.
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
+* GR-71299 Improved the responsiveness of the Truffle compilation queue by refining the computation of the execution rate of compilation units in the queue.
+  * Added `engine.TraversingQueueRateHalfLife` to allow fine-tuning of the compilation queue responsiveness.
+
+* GR-69861: Bytecode DSL: Added a `BytecodeFrame` abstraction for capturing frame state and accessing frame data. This abstraction should be preferred over `BytecodeNode` access methods because it captures the correct interpreter location data.
+* GR-69861: Bytecode DSL: Added a `captureFramesForTrace` parameter to `@GenerateBytecode` that enables capturing of frames in `TruffleStackTraceElement`s. Previously, frame data was unreliably available in stack traces; now, it is guaranteed to be available if requested. Languages must use the `BytecodeFrame` abstraction to access frame data from `TruffleStackTraceElement`s rather than access the frame directly.
+* GR-69614: The methods `InteropLibrary#hasLanguage` and `InteropLibrary#getLanguage` have been replaced with `InteropLibrary#hasLanguageId` and `InteropLibrary#getLanguageId`. Language implementers are encouraged to update their code to the new API.
+* GR-69614: Added `TruffleInstrument.Env.getHostLanguage()` returning the host language info. This allows instruments to lookup the top scope of the host language using `Env.getScope(LanguageInfo)`.
 
 
 ## Version 25.0

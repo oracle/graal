@@ -500,7 +500,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createInvalidate());
 
         this.add(createGetRootNodes());
-        this.addOptional(createCountTowardsStackTraceLimit());
         this.add(createGetSourceSection());
         CodeExecutableElement translateStackTraceElement = this.addOptional(createTranslateStackTraceElement());
         if (translateStackTraceElement != null) {
@@ -541,7 +540,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(byte.class)), "oldBytecodes"));
         }
 
-        // this should be at the end after all methods have been added.
+        /*
+         * These calls should occur after all methods have been added. They use the generated root
+         * node's method set to determine what method delegate/stub methods to generate.
+         */
+        if (model.hasYieldOperation()) {
+            continuationRootNodeImpl.addRootNodeDelegateMethods();
+        }
         if (model.enableSerialization) {
             addMethodStubsToSerializationRootNode();
         }
@@ -848,10 +853,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private Element createIsCaptureFramesForTrace() {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "isCaptureFramesForTrace", new String[]{"compiled"}, new TypeMirror[]{type(boolean.class)});
         CodeTreeBuilder b = ex.createBuilder();
-        if (model.storeBciInFrame) {
+        if (model.captureFramesForTrace) {
+            b.lineComment("GenerateBytecode#captureFramesForTrace is true.");
             b.statement("return true");
-        } else {
+        } else if (model.storeBciInFrame) {
+            b.lineComment("GenerateBytecode#storeBytecodeIndexInFrame is true, so the frame is needed for location computations.");
+            b.statement("return true");
+        } else if (model.enableUncachedInterpreter) {
+            b.lineComment("The uncached interpreter (which is never compiled) needs the frame for location computations.");
+            b.lineComment("This may capture the frame in more situations than strictly necessary, but doing so in the interpreter is inexpensive.");
             b.statement("return !compiled");
+        } else {
+            b.lineComment("GenerateBytecode#captureFramesForTrace is not true, and the interpreter does not need the frame for location lookups.");
+            b.statement("return false");
         }
         return ex;
     }
@@ -860,6 +874,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "findBytecodeIndex", new String[]{"node", "frame"});
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
+        b.startAssert().string("!(node instanceof ").type(types.BytecodeRootNode).string("): ").doubleQuote("A BytecodeRootNode should not be used as a call location.").end();
         if (model.storeBciInFrame) {
             b.startIf().string("node == null").end().startBlock();
             b.statement("return -1");
@@ -877,7 +892,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(types.Node, "prev", "node");
             b.declaration(types.Node, "current", "node");
             b.startWhile().string("current != null").end().startBlock();
-            b.startIf().string("current ").instanceOf(abstractBytecodeNode.asType()).string(" b").end().startBlock();
+            b.startIf().string("current").instanceOf(abstractBytecodeNode.asType()).string(" b").end().startBlock();
             b.statement("bytecode = b");
             b.statement("break");
             b.end();
@@ -899,7 +914,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.startDeclaration(types.BytecodeNode, "bc").startStaticCall(types.BytecodeNode, "get").string("callNode").end().end();
         b.startIf().string("bc == null || !(bc instanceof AbstractBytecodeNode bytecodeNode)").end().startBlock();
-        b.startReturn().string("super.findInstrumentableCallNode(callNode, frame, bytecodeIndex)").end();
+        ExecutableElement superImpl = ElementUtils.findMethodInClassHierarchy(ElementUtils.findMethod(types.RootNode, "findInstrumentableCallNode"), model.templateType);
+        if (superImpl.getModifiers().contains(ABSTRACT)) {
+            // edge case: root node could redeclare findInstrumentableCallNode as abstract.
+            b.startReturn().string("null").end();
+        } else {
+            b.startReturn().string("super.findInstrumentableCallNode(callNode, frame, bytecodeIndex)").end();
+        }
         b.end();
         b.statement("return bytecodeNode.findInstrumentableCallNode(bytecodeIndex)");
         return ex;
@@ -1128,28 +1149,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.string("stackTraceElement");
         b.end();
         b.end();
-        return ex;
-    }
-
-    private CodeExecutableElement createCountTowardsStackTraceLimit() {
-        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "countsTowardsStackTraceLimit"), model.templateType);
-        if (executable != null) {
-            return null;
-        }
-        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "countsTowardsStackTraceLimit");
-        if (ex.getModifiers().contains(Modifier.FINAL)) {
-            // already overridden by the root node.
-            return null;
-        }
-
-        ex.getModifiers().remove(Modifier.ABSTRACT);
-        ex.getModifiers().add(Modifier.FINAL);
-        CodeTreeBuilder b = ex.createBuilder();
-        /*
-         * We do override with false by default to avoid materialization of sources during stack
-         * walking.
-         */
-        b.returnTrue();
         return ex;
     }
 
@@ -1722,8 +1721,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         // Disable compilation for the uncached interpreter.
         b.string("bytecode.getTier() != ").staticReference(types.BytecodeTier, "UNCACHED");
 
-        ExecutableElement parentImpl = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "prepareForCompilation", 3), model.templateType);
-        if (parentImpl != null) {
+        ExecutableElement parentImpl = ElementUtils.findMethodInClassHierarchy(ElementUtils.findMethod(types.RootNode, "prepareForCompilation", 3), model.templateType);
+        if (parentImpl != null && !parentImpl.getModifiers().contains(ABSTRACT)) {
             // Delegate to the parent impl.
             b.string(" && ").startCall("super.prepareForCompilation").variables(ex.getParameters()).end();
         }
@@ -12175,6 +12174,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createFindBytecodeNode());
             this.addOptional(createDispatch());
             this.add(createGetLanguage());
+            this.add(createGetLanguageId());
 
             // TagTree
             this.add(createGetTreeChildren());
@@ -12264,8 +12264,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.getModifiers().add(Modifier.FINAL);
             ex.setReturnType(generic(type(Class.class), model.languageClass));
             ex.getAnnotationMirrors().clear();
+            GeneratorUtils.mergeSuppressWarnings(ex, "deprecation");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().typeLiteral(model.languageClass).end();
+            b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLanguageId() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTreeNode, "getLanguageId");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.getAnnotationMirrors().clear();
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().doubleQuote(model.languageId).end();
             b.end();
             return ex;
         }
@@ -12553,6 +12565,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createGetLocalName());
             this.add(createGetLocalInfo());
             this.add(createGetLocals());
+
+            this.add(createResolveFrameImplFrameInstance());
+            if (model.captureFramesForTrace) {
+                this.add(createResolveFrameImplTruffleStackTraceElement());
+                this.add(createResolveNonVirtualFrameImpl());
+            }
 
             if (model.enableTagInstrumentation) {
                 this.add(createGetTagNodes());
@@ -12962,6 +12980,63 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocals");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().startNew("LocalVariableList").string("this").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveFrameImplFrameInstance() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveFrameImpl", new String[]{"frameInstance", "access"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.startIf().string("frameInstance.getCallTarget() instanceof ").type(types.RootCallTarget).string(" root && root.getRootNode() instanceof ").type(
+                                continuationRootNodeImpl.asType()).string(" continuation").end().startBlock();
+                b.lineComment("Continuations use materialized frames, which support all access modes.");
+                b.startReturn().startCall("continuation.findFrame").startCall("frameInstance.getFrame");
+                b.staticReference(types.FrameInstance_FrameAccess, "READ_ONLY");
+                b.end(3);
+                b.end(); // if
+            }
+            b.startReturn().string("frameInstance.getFrame(access)").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveFrameImplTruffleStackTraceElement() {
+            if (!model.captureFramesForTrace) {
+                throw new AssertionError("should not generate resolveFrameImpl(TruffleStackTraceElement) if frames are not captured.");
+            }
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveFrameImpl", new String[]{"element"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.declaration(types.Frame, "frame", "element.getFrame()");
+                b.startIf().string("frame != null && element.getTarget().getRootNode() instanceof ").type(continuationRootNodeImpl.asType()).string(
+                                " continuation").end().startBlock();
+                b.statement("frame = continuation.findFrame(frame)");
+                b.end();
+                b.startReturn().string("frame").end();
+            } else {
+                b.startReturn().string("element.getFrame()").end();
+            }
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveNonVirtualFrameImpl() {
+            if (!model.captureFramesForTrace) {
+                throw new AssertionError("should not generate resolveNonVirtualFrameImpl(TruffleStackTraceElement) if frames are not captured.");
+            }
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "resolveNonVirtualFrameImpl", new String[]{"element"});
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.hasYieldOperation()) {
+                b.declaration(types.Frame, "frame", "element.getFrame()");
+                b.startIf().string("frame != null && element.getTarget().getRootNode() instanceof ").type(continuationRootNodeImpl.asType()).string(
+                                " continuation").end().startBlock();
+                b.lineComment("Continuation frames are always materialized.");
+                b.startReturn().string("continuation.findFrame(frame)").end();
+                b.end();
+            }
+            b.lineComment("Frames obtained in stack walks are always read-only.");
+            b.startReturn().string("null").end();
             return ex;
         }
 
@@ -18975,10 +19050,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // RootNode overrides.
             this.add(createIsCloningAllowed());
             this.add(createIsCloneUninitializedSupported());
+            this.add(createFindBytecodeIndex());
             this.addOptional(createPrepareForCompilation());
-            // Should appear last. Uses current method set to determine which methods need to be
-            // implemented.
-            this.addAll(createRootNodeProxyMethods());
         }
 
         private CodeExecutableElement createExecute() {
@@ -19127,6 +19200,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
+        private CodeExecutableElement createFindBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "findBytecodeIndex", new String[]{"node", "frame"});
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startCall("root", "findBytecodeIndex");
+            b.string("node");
+            // unwrap the frame from the continuation frame
+            b.startGroup().string("frame == null ? null : ");
+            b.startCall("findFrame").string("frame").end();
+            b.end();
+            b.end(2);
+            return ex;
+        }
+
         private CodeExecutableElement createPrepareForCompilation() {
             if (!model.enableUncachedInterpreter) {
                 return null;
@@ -19143,14 +19229,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private List<CodeExecutableElement> createRootNodeProxyMethods() {
-            List<CodeExecutableElement> result = new ArrayList<>();
-
-            List<ExecutableElement> existing = ElementFilter.methodsIn(continuationRootNodeImpl.getEnclosedElements());
+        private void addRootNodeDelegateMethods() {
+            List<ExecutableElement> existing = ElementFilter.methodsIn(this.getEnclosedElements());
 
             List<ExecutableElement> excludes = List.of(
+                            // Not supported (see isCloningAllowed, isCloneUninitializedSupported).
                             ElementUtils.findMethod(types.RootNode, "copy"),
-                            ElementUtils.findMethod(types.RootNode, "cloneUninitialized"));
+                            ElementUtils.findMethod(types.RootNode, "cloneUninitialized"),
+                            // User code can only obtain a continuation root by executing a yield.
+                            // Parsing is done at this point, so the root is already prepared.
+                            ElementUtils.findMethod(types.RootNode, "prepareForCall"),
+                            // The instrumenter should already know about/have instrumented the root
+                            // node by the time we try to instrument a continuation root.
+                            ElementUtils.findMethod(types.RootNode, "isInstrumentable"),
+                            ElementUtils.findMethod(types.RootNode, "prepareForInstrumentation"));
 
             outer: for (ExecutableElement rootNodeMethod : ElementUtils.getOverridableMethods((TypeElement) types.RootNode.asElement())) {
                 // Exclude methods we have already implemented.
@@ -19165,33 +19257,31 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         continue outer;
                     }
                 }
-                // Only proxy methods overridden by the template class or its parents.
-                ExecutableElement templateMethod = ElementUtils.findOverride(rootNodeMethod, model.templateType);
+                // Only delegate to methods overridden by the generated class or its parents.
+                ExecutableElement templateMethod = ElementUtils.findOverride(rootNodeMethod, BytecodeRootNodeElement.this);
                 if (templateMethod == null) {
                     continue outer;
                 }
 
-                CodeExecutableElement proxyMethod = GeneratorUtils.override(templateMethod);
-                CodeTreeBuilder b = proxyMethod.createBuilder();
+                CodeExecutableElement delegateMethod = GeneratorUtils.override(templateMethod);
+                CodeTreeBuilder b = delegateMethod.createBuilder();
 
-                boolean isVoid = ElementUtils.isVoid(proxyMethod.getReturnType());
+                boolean isVoid = ElementUtils.isVoid(delegateMethod.getReturnType());
                 if (isVoid) {
                     b.startStatement();
                 } else {
                     b.startReturn();
                 }
 
-                b.startCall("root", rootNodeMethod.getSimpleName().toString());
-                for (VariableElement param : rootNodeMethod.getParameters()) {
+                b.startCall("root", templateMethod.getSimpleName().toString());
+                for (VariableElement param : templateMethod.getParameters()) {
                     b.variable(param);
                 }
                 b.end(); // call
                 b.end(); // statement / return
 
-                result.add(proxyMethod);
+                this.add(delegateMethod);
             }
-
-            return result;
         }
     }
 

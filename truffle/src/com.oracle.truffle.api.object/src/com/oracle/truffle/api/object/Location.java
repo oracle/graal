@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-
-import java.util.Objects;
 
 /**
  * Property location.
@@ -416,8 +416,7 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
         return null;
     }
 
-    void clear(@SuppressWarnings("unused") DynamicObject store) {
-    }
+    abstract void clear(DynamicObject store);
 
     abstract int getOrdinal();
 

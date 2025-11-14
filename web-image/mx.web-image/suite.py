@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "7.58.1",
+    "mxversion": "7.65.0",
     "name": "web-image",
     "versionConflictResolution": "latest",
     "version": "1.0",
@@ -13,6 +13,7 @@ suite = {
             },
         ]
     },
+    "capture_suite_commit_info": False,
     "libraries": {
         # ------------- Libraries -------------
         "GOOGLE_CLOSURE": {
@@ -104,7 +105,13 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.util",
                 ],
-                "jdk.internal.vm.ci": ["jdk.vm.ci.code.site", "jdk.vm.ci.code", "jdk.vm.ci.common", "jdk.vm.ci.meta"],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                ],
             },
             "javaCompliance": "21+",
             "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support

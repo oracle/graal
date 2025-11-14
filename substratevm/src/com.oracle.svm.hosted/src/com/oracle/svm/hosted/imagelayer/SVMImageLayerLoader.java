@@ -109,6 +109,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod.WrappedMember;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.Reader;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
@@ -1856,6 +1857,36 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private void scanCompanionField(DynamicHub hub) {
         var instance = (ImageHeapInstance) getValueForObject(hub);
         instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
+    }
+
+    public boolean isReachableInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsReachable);
+    }
+
+    public boolean isInstantiatedInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsInstantiated);
+    }
+
+    private boolean getPropertyInPreviousLayer(AnalysisType type, Function<PersistedAnalysisType.Reader, Boolean> propertyGetter) {
+        Integer typeId;
+        if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
+            typeId = baseLayerType.getBaseLayerId();
+        } else {
+            /*
+             * Types that cannot be loaded manually can be duplicated and can get a new type id even
+             * if they were in a shared layer. In this case, using the type identifier can still
+             * retrieve the id from the shared layer.
+             */
+            String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+            typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+        }
+        if (typeId != null) {
+            var typeInfo = findType(typeId);
+            if (typeInfo != null) {
+                return propertyGetter.apply(typeInfo);
+            }
+        }
+        return false;
     }
 
     public record LayeredSimulationResult(boolean successful, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {

@@ -179,6 +179,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         private static final boolean INLINING_ROOT_SUPPORTED = findInliningRootSupported();
         private static final MethodHandle GET_ANNOTATION = findGetAnnotation();
 
+        @SuppressWarnings("deprecation")
         private static boolean findInliningRootSupported() {
             try {
                 HostMethodInfo.class.getDeclaredConstructor(boolean.class, boolean.class, boolean.class, boolean.class, boolean.class);
@@ -401,6 +402,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         if (getAnnotation(Child.class, field) != null) {
             return ConstantFieldInfo.CHILD;
@@ -600,6 +602,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
         if (Lazy.INLINING_ROOT_SUPPORTED) {
             return new HostMethodInfo(isTruffleBoundary(method),
@@ -637,6 +640,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, method);
         TruffleCallBoundary truffleCallBoundary = getAnnotation(TruffleCallBoundary.class, method);

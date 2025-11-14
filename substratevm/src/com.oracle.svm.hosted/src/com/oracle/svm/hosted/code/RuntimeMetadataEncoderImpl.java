@@ -97,6 +97,7 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -154,6 +155,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {

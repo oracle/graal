@@ -33,9 +33,6 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
-
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.core.common.util.FieldKey;
@@ -49,6 +46,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.truffle.ConstantFieldInfo;
+import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleElementCache;

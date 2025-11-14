@@ -774,6 +774,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         validateSandbox();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
+
+        long currentTimestamp = System.nanoTime();
+        for (CallTarget loadedCallTarget : getCallTargets()) {
+            RUNTIME.setInitializedTimestamp(loadedCallTarget, currentTimestamp);
+        }
+
         return true;
     }
 
@@ -1249,6 +1255,21 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (fail) {
                 Set<String> languageNames = classToLanguage.keySet();
                 throw PolyglotEngineException.illegalArgument("Cannot find language " + languageClass + " among " + languageNames);
+            }
+        }
+        return foundLanguage;
+    }
+
+    @TruffleBoundary
+    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(String languageId, boolean fail) {
+        PolyglotLanguage foundLanguage = idToLanguage.get(languageId);
+        if (foundLanguage == null) {
+            if (HOST_LANGUAGE_ID.equals(languageId)) {
+                return hostLanguage;
+            }
+            if (fail) {
+                Set<String> languageNames = idToLanguage.keySet();
+                throw PolyglotEngineException.illegalArgument("Cannot find language " + languageId + " among " + languageNames);
             }
         }
         return foundLanguage;

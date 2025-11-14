@@ -134,7 +134,7 @@ public final class ImageClassLoader {
 
     private boolean isInPlatform(AnnotatedElement element) {
         try {
-            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(element, Platforms.class, false);
+            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(element, Platforms.class);
             return NativeImageGenerator.includedIn(platform, platformAnnotation);
         } catch (Throwable t) {
             handleClassLoadingError(t);
@@ -167,7 +167,7 @@ public final class ImageClassLoader {
         do {
             Platforms platformsAnnotation;
             try {
-                platformsAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(cur, Platforms.class, false);
+                platformsAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(cur, Platforms.class);
             } catch (Throwable t) {
                 handleClassLoadingError(t);
                 return;

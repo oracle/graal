@@ -2249,12 +2249,30 @@ public class ElementUtils {
         return workaround;
     }
 
+    /**
+     * Searches the superclass hierarchy of {@code type} for an override of {@code method}, which
+     * belongs to the base class. Returns {@code null} if the resolved override is the original
+     * method.
+     */
     public static ExecutableElement findOverride(ExecutableElement method, TypeElement type) {
+        ExecutableElement override = findMethodInClassHierarchy(method, type);
+        if (override != null && !elementEquals(method, override)) {
+            return override;
+        }
+        return null;
+    }
+
+    /**
+     * Searches the superclass hierarchy of {@code type} for the most concrete implementation of
+     * {@code method}.
+     */
+    public static ExecutableElement findMethodInClassHierarchy(ExecutableElement method, TypeElement type) {
         TypeElement searchType = type;
-        while (searchType != null && !elementEquals(method.getEnclosingElement(), searchType)) {
-            ExecutableElement override = findInstanceMethod(searchType, method.getSimpleName().toString(), method.getParameters().stream().map(VariableElement::asType).toArray(TypeMirror[]::new));
-            if (override != null) {
-                return override;
+        while (searchType != null) {
+            ExecutableElement instanceMethod = findInstanceMethod(searchType, method.getSimpleName().toString(),
+                            method.getParameters().stream().map(VariableElement::asType).toArray(TypeMirror[]::new));
+            if (instanceMethod != null) {
+                return instanceMethod;
             }
             searchType = castTypeElement(searchType.getSuperclass());
         }

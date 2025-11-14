@@ -548,7 +548,8 @@ public final class Interpreter {
                 case LinkToStatic, LinkToSpecial, LinkToVirtual, LinkToInterface -> {
                     InterpreterResolvedJavaMethod resolutionSeed = getLinkToTarget(frame);
                     InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
-                    Object[] basicArgs = unbasic(frame, signature, false);
+                    boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
+                    Object[] basicArgs = unbasic(frame, signature, hasReceiver);
                     // This should integrate with the debugger GR-70801
                     boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceLinkTo(resolutionSeed, intrinsic, indent);
@@ -573,7 +574,10 @@ public final class Interpreter {
     }
 
     private static Object[] unbasic(InterpreterFrame frame, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
-        Object[] arguments = frame.getArguments();
+        return unbasic(frame.getArguments(), targetSig, inclReceiver);
+    }
+
+    static Object[] unbasic(Object[] arguments, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
         int parameterCount = targetSig.getParameterCount(inclReceiver);
         Object[] res = new Object[parameterCount];
         int start = 0;
@@ -588,7 +592,7 @@ public final class Interpreter {
     }
 
     // Transforms ints to sub-words
-    public static Object unbasic(Object arg, JavaKind kind) {
+    private static Object unbasic(Object arg, JavaKind kind) {
         return switch (kind) {
             case Boolean -> (int) arg != 0;
             case Byte -> (byte) (int) arg;
@@ -598,7 +602,7 @@ public final class Interpreter {
         };
     }
 
-    private static Object rebasic(Object value, JavaKind returnType) {
+    static Object rebasic(Object value, JavaKind returnType) {
         // @formatter:off
         return switch (returnType) {
             case Boolean -> stackIntToBoolean((int) value);
@@ -1401,7 +1405,8 @@ public final class Interpreter {
                         throw SemanticJavaException.raise(e);
                     }
                     BytecodeStream.patchIndyExtraCPI(code, curBCI, extraCPI);
-                    assert BytecodeStream.readCPI2Volatile(code, curBCI) == extraCPI;
+                    assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
+                    assert BytecodeStream.readCPI2(code, curBCI) == indyCPI;
                 }
                 CallSiteLink link = invokeDynamicConstant.getCallSiteLink(extraCPI);
                 while (!link.matchesCallSite(method, curBCI)) {
@@ -1411,7 +1416,7 @@ public final class Interpreter {
                      * still safe to use in `getCallSiteLink`. `matchesCallSite` ensures we have the
                      * full extraCPI.
                      */
-                    extraCPI = BytecodeStream.readCPI2Volatile(code, curBCI);
+                    extraCPI = BytecodeStream.readIndyExtraCPIVolatile(code, curBCI);
                     link = invokeDynamicConstant.getCallSiteLink(extraCPI);
                 }
                 if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {

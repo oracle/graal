@@ -1779,13 +1779,13 @@ public class LoggingTest {
         }
 
         @ExportMessage
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return LoggingLanguageFirst.class;
+        String getLanguageId() {
+            return LoggingLanguageFirst.ID;
         }
 
     }

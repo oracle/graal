@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -60,14 +59,14 @@ public abstract class AbstractRegexObject implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    public final boolean hasLanguage() {
+    public final boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    public final Class<? extends TruffleLanguage<?>> getLanguage() {
-        return RegexLanguage.class;
+    public String getLanguageId() {
+        return RegexLanguage.ID;
     }
 
     @SuppressWarnings("static-method")

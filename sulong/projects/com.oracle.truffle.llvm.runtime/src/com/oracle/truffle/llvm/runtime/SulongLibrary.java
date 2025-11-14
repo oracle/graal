@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -250,14 +249,14 @@ public final class SulongLibrary implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
     @SuppressWarnings({"static-method"})
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LLVMLanguage.class;
+    String getLanguageId() {
+        return LLVMLanguage.ID;
     }
 
     @ExportMessage
