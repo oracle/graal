@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 public class SuppressWarningTest {
 
     @SuppressWarnings({"unused", "truffle-inlining"})
-    public abstract static class DeprecationTestNode extends Node {
+    public abstract static class DeprecatedTestNode extends Node {
 
         abstract int execute(int v);
 
@@ -62,6 +62,41 @@ public class SuppressWarningTest {
 
         /*
          * Suppress deprecated warning with all.
+         */
+        @SuppressWarnings("all")
+        @Specialization(guards = {"deprecatedGuard(v)", "v == 1"})
+        int s1(int v) {
+            return v;
+        }
+
+        @Specialization
+        int s2(int v) {
+            return v;
+        }
+
+        @Deprecated
+        static boolean deprecatedGuard(int v) {
+            return true;
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "truffle-inlining"})
+    public abstract static class DeprecationTestNode extends Node {
+
+        abstract int execute(int v);
+
+        /*
+         * Suppress deprecation warning with "deprecation".
+         */
+        @SuppressWarnings("deprecation")
+        @Specialization(guards = {"deprecatedGuard(v)", "v == 0"})
+        int s0(int v) {
+            return v;
+        }
+
+        /*
+         * Suppress deprecation warning with "all".
          */
         @SuppressWarnings("all")
         @Specialization(guards = {"deprecatedGuard(v)", "v == 1"})

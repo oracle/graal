@@ -54,4 +54,10 @@ final class DebugCounters {
     static final DebugCounter propertyAssumptionsBlocked = DebugCounter.create("Property assumptions blocked");
     static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
     static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
+
+    static final DebugCounter assumedFinalLocationAssumptionCount = DebugCounter.create("Final location assumptions allocated");
+    static final DebugCounter assumedFinalLocationAssumptionInvalidationCount = DebugCounter.create("Final location assumptions invalidated");
+    static final DebugCounter assumedTypeLocationAssumptionCount = DebugCounter.create("Typed location assumptions allocated");
+    static final DebugCounter assumedTypeLocationAssumptionInvalidationCount = DebugCounter.create("Typed location assumptions invalidated");
+    static final DebugCounter assumedTypeLocationAssumptionRenewCount = DebugCounter.create("Typed location assumptions renewed");
 }

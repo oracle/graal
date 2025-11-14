@@ -45,15 +45,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
 @GenerateInline(false)
 abstract class CachedGetNode extends Node {
     public abstract Object execute(DynamicObject obj, Object key);
 
+    @SuppressWarnings("deprecation")
     @Specialization(limit = "3")
     static Object read(DynamicObject obj, Object key,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
+                    @CachedLibrary("obj") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
         return lib.getOrDefault(obj, key, null);
     }
 }

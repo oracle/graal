@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,7 +93,7 @@ public final class PropertyGetter {
     public Object get(DynamicObject receiver) {
         boolean guard = accepts(receiver);
         if (guard) {
-            return location.get(receiver, guard);
+            return location.getInternal(receiver, expectedShape, guard);
         } else {
             throw illegalArgumentException();
         }
@@ -115,7 +115,7 @@ public final class PropertyGetter {
     public int getInt(DynamicObject receiver) throws UnexpectedResultException {
         boolean guard = accepts(receiver);
         if (guard) {
-            return location.getInt(receiver, guard);
+            return location.getIntInternal(receiver, expectedShape, guard);
         } else {
             throw illegalArgumentException();
         }
@@ -137,7 +137,7 @@ public final class PropertyGetter {
     public long getLong(DynamicObject receiver) throws UnexpectedResultException {
         boolean guard = accepts(receiver);
         if (guard) {
-            return location.getLong(receiver, guard);
+            return location.getLongInternal(receiver, expectedShape, guard);
         } else {
             throw illegalArgumentException();
         }
@@ -159,7 +159,7 @@ public final class PropertyGetter {
     public double getDouble(DynamicObject receiver) throws UnexpectedResultException {
         boolean guard = accepts(receiver);
         if (guard) {
-            return location.getDouble(receiver, guard);
+            return location.getDoubleInternal(receiver, expectedShape, guard);
         } else {
             throw illegalArgumentException();
         }

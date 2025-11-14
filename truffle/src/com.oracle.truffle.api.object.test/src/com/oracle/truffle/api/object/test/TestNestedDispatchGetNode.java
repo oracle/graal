@@ -40,45 +40,48 @@
  */
 package com.oracle.truffle.api.object.test;
 
-import static org.junit.Assert.assertSame;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObject.GetNode;
 
-import java.util.Arrays;
-import java.util.List;
+@SuppressWarnings("truffle")
+public abstract class TestNestedDispatchGetNode extends Node {
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+    final Object key = "testKey";
 
-import com.oracle.truffle.api.object.Shape;
+    public abstract Object execute(DynamicObject obj);
 
-@RunWith(Parameterized.class)
-public class DynamicTypeTest extends ParametrizedDynamicObjectTest {
-
-    @Parameters(name = "{0}")
-    public static List<TestRun> data() {
-        return Arrays.asList(TestRun.values());
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.execute(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
 
-    @Test
-    public void testDynamicTypeCanBeAnyObject() {
-        Object dynamicType = new Object();
-        Shape emptyShape = Shape.newBuilder().dynamicType(dynamicType).build();
-        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        var lib = createLibrary(obj);
-        assertSame(dynamicType, lib.getDynamicType(obj));
-        dynamicType = new Object();
-        lib.setDynamicType(obj, dynamicType);
-        assertSame(dynamicType, lib.getDynamicType(obj));
-    }
-
-    @Test
-    public void testDynamicTypeCannotBeNull() {
-        assertFails(() -> Shape.newBuilder().dynamicType(null).build(), NullPointerException.class);
-        Shape emptyShape = Shape.newBuilder().dynamicType(new Object()).build();
-        TestDynamicObjectMinimal obj = new TestDynamicObjectMinimal(emptyShape);
-        var lib = createLibrary(obj);
-        assertFails(() -> lib.setDynamicType(obj, null), NullPointerException.class);
+    @Specialization(limit = "3")
+    Object cached(DynamicObject obj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", allowUncached = true) boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.execute(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
+        }
+        return value;
     }
 
 }

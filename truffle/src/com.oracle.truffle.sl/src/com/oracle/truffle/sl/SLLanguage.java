@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -188,8 +187,8 @@ import com.oracle.truffle.sl.runtime.SLStrings;
  * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
  * {@link SLFunction polymorphic inline caches}.
  * <li>Object access: {@link SLReadPropertyNode} and {@link SLWritePropertyNode} use a cached
- * {@link DynamicObjectLibrary} as the polymorphic inline cache for property reads and writes,
- * respectively.
+ * {@link DynamicObject.GetNode} and {@link DynamicObject.PutNode} as the polymorphic inline cache
+ * for property reads and writes, respectively.
  * </ul>
  *
  * <p>
