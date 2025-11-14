@@ -56,7 +56,6 @@ public final class CheckerManager {
         applierSuite.runAppliers(method, graph, aggregator);
         if (persistRewrites) {
             applyAbstractInterpretationResults(method, graph);
-            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
         } else {
             logger.log("[CheckerManager] Skipping persistence of rewrites (persistRewrites=false)", LoggerVerbosity.CHECKER_WARN);
         }

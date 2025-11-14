@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantPropagationChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.IndexSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
@@ -40,13 +40,9 @@ public class AbstractInterpretationDriver {
     /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */
     @SuppressWarnings("try")
     public void run() {
-        try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
-            /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
-            try (var scope = debug.scope("AbstractInterpretation")) {
-                prepareAnalyses();
-                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_MAIN_ONLY);
-            }
-        }
+        // TODO: inspect progressReporter bugs
+        prepareAnalyses();
+        engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS);
     }
 
     /**
@@ -73,7 +69,7 @@ public class AbstractInterpretationDriver {
         /* 3. Build analyzer */
         var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
-                .registerChecker(new ConstantPropagationChecker())
+                .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IndexSafetyChecker())
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();

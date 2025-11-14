@@ -47,8 +47,6 @@ public final class FactApplierSuite {
 
     /**
      * Executes the appliers in registration order directly on the provided graph's debug context.
-     * Avoids creating a separate IGV session that could cause graph copies; we want in-place
-     * mutations to persist for later phases.
      */
     public void runAppliers(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         var logger = AbstractInterpretationLogger.getInstance();
@@ -63,9 +61,9 @@ public final class FactApplierSuite {
                 logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
                 applier.apply(method, graph, aggregator);
                 if (!graph.verify()) {
-                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(),LoggerVerbosity.CHECKER_WARN);
+                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
                 }
-                logger.exportGraphToJson(graph, method, "After" +  applier.getDescription());
+                logger.exportGraphToJson(graph, method, "After" + applier.getDescription());
                 session.dumpApplierSubphase(applier.getDescription());
             }
         } catch (Throwable e) {

@@ -4,7 +4,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
@@ -17,16 +16,15 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-public class ConstantPropagationChecker implements Checker<AbstractMemory> {
+public class ConstantValueChecker implements Checker<AbstractMemory> {
     private static final String NODE_PREFIX = "n";
 
     private static String nodeId(Node n) {
         return NODE_PREFIX + Integer.toHexString(System.identityHashCode(n));
     }
 
-    public ConstantPropagationChecker() {
+    public ConstantValueChecker() {
     }
 
     @Override

@@ -12,10 +12,6 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
-import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
-import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
-import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;

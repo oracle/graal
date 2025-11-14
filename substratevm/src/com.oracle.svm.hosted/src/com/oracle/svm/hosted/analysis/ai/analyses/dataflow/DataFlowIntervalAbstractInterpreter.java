@@ -247,7 +247,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             post = afterVal.copyOf();
             post.writeTo(bases, idxTransform, val);
 
-            // If index is a small, bounded range, specialize per-index writes to improve precision
             IntInterval idxIv = getNodeResultInterval(sin.index(), afterVal);
             boolean finiteBounds = idxIv != null && !idxIv.isTop() && !idxIv.isBot() && !idxIv.isLowerInfinite() && !idxIv.isUpperInfinite();
             if (finiteBounds) {

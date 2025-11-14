@@ -65,8 +65,7 @@ public class GraphExporter {
                 first = false;
 
                 writer.println("    {");
-                writer.println("      \"id\": " + nodeIds.get(node) + ",");
-                writer.println("      \"nodeStr\": \"" + node.toString().replace("\"", "\\\"") + "\",");
+                writer.println("      \"node\": \"" + node.toString().replace("\"", "\\\"") + "\",");
                 writer.println("      \"type\": \"" + node.getNodeClass().shortName() + "\",");
                 writer.println("      \"class\": \"" + node.getClass().getSimpleName() + "\",");
 
