@@ -57,8 +57,6 @@ import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
-import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
@@ -654,7 +652,6 @@ public abstract class AbiUtils {
         return adaptations;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public abstract void checkLibrarySupport();
 
     /**
@@ -689,6 +686,9 @@ public abstract class AbiUtils {
 }
 
 class ABIs {
+
+    public static final String REQUIRES_LIB_C_SUPPORT = "Capturing call state requires libc support";
+
     static final class Unsupported extends AbiUtils {
         private final String name;
 
@@ -880,8 +880,7 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            String name = "Linux AArch64";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
     }
 
@@ -896,8 +895,7 @@ class ABIs {
 
         @Override
         public void checkLibrarySupport() {
-            String name = "Darwin AArch64";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
     }
 
@@ -1050,10 +1048,8 @@ class ABIs {
         }
 
         @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
-            String name = "SystemV (Linux AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
         }
 
         @Override
@@ -1121,11 +1117,9 @@ class ABIs {
         }
 
         @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
-            String name = "Win64 (Windows AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
-            VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on %s", name);
+            VMError.guarantee(ForeignFunctionsRuntime.isLibcSupported(), REQUIRES_LIB_C_SUPPORT);
+            VMError.guarantee(ForeignFunctionsRuntime.isWindowsApiSupported(), "Capturing call state requires Windows API support");
         }
 
         @Override

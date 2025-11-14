@@ -48,20 +48,6 @@ public final class ForeignAPIPredicates {
         }
     }
 
-    public static final class FunctionCallsSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.isForeignAPIEnabled() && ForeignFunctionsRuntime.areFunctionCallsSupported();
-        }
-    }
-
-    public static final class FunctionCallsUnsupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.isForeignAPIEnabled() && !ForeignFunctionsRuntime.areFunctionCallsSupported();
-        }
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static final class SharedArenasEnabled implements BooleanSupplier {
         public static boolean getValue() {
