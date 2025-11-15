@@ -38,8 +38,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
 
-public abstract class CustomTypeFieldHandler {
-    protected final BigBang bb;
+public final class CustomTypeFieldHandler {
+    private final BigBang bb;
     private final AnalysisMetaAccess metaAccess;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     private Set<AnalysisField> processedFields = ConcurrentHashMap.newKeySet();
@@ -60,7 +60,7 @@ public abstract class CustomTypeFieldHandler {
         assert field.isAccessed();
         if (fieldValueInterceptionSupport.hasFieldValueTransformer(field)) {
             if (field.getStorageKind().isObject() && !fieldValueInterceptionSupport.isValueAvailable(field, null, !field.isStatic())) {
-                injectFieldTypes(field, List.of(field.getType()), true);
+                bb.injectFieldTypes(field, List.of(field.getType()), true);
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
@@ -71,14 +71,12 @@ public abstract class CustomTypeFieldHandler {
                     assert !type.isPrimitive() : type + " for " + field;
                     type.registerAsInstantiated("Is declared as the type of an unknown object field.");
                 }
-                injectFieldTypes(field, types, fieldValueComputer.canBeNull());
+                bb.injectFieldTypes(field, types, fieldValueComputer.canBeNull());
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
         }
     }
-
-    public abstract void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull);
 
     private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
         List<AnalysisType> customTypes = new ArrayList<>();

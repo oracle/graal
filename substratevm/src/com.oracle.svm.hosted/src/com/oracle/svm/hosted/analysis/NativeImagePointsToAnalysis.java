@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
@@ -87,7 +86,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
-        customTypeFieldHandler = new PointsToCustomTypeFieldHandler(this, metaAccess);
+        customTypeFieldHandler = new CustomTypeFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -126,11 +125,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public void onFieldAccessed(AnalysisField field) {
         postTask(() -> customTypeFieldHandler.handleField(field));
-    }
-
-    @Override
-    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
-        customTypeFieldHandler.injectFieldTypes(aField, customTypes, canBeNull);
     }
 
     @Override

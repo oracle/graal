@@ -655,6 +655,53 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         });
     }
 
+    /**
+     * Inject custom types in the analysis field type state. This utility is used for:
+     * <ul>
+     * <li>root fields - whose state is forced to be that of the declared type</li>
+     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
+     * <li>lazily computed fields - for which writes are not visible during analysis</li>
+     * <ul/>
+     */
+    @Override
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        assert aField.getStorageKind().isObject();
+        var ptaField = (PointsToAnalysisField) aField;
+
+        /* Link the field with all declared types. */
+        for (AnalysisType type : customTypes) {
+            if (type.isPrimitive() || type.isWordType()) {
+                continue;
+            }
+            type.getTypeFlow(this, canBeNull).addUse(this, ptaField.getInitialFlow());
+
+            if (type.isArray()) {
+                AnalysisType fieldComponentType = type.getComponentType();
+                ptaField.getInitialFlow().addUse(this, ptaField.getSinkFlow());
+                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
+                    /*
+                     * Write the component type abstract object into the field array elements type
+                     * flow, i.e., the array elements type flow of the abstract object of the field
+                     * declared type.
+                     *
+                     * This is required so that the index loads from this array return all the
+                     * possible objects that can be stored in the array.
+                     */
+                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(this, true);
+                    fieldComponentType.getTypeFlow(this, false).addUse(this, elementsFlow);
+
+                    /*
+                     * In the current implementation it is not necessary to do it recursively for
+                     * multidimensional arrays since we don't model individual array elements, so
+                     * from the point of view of the static analysis the field's array elements
+                     * value is non-null (in the case of an n-dimensional array that value is
+                     * another array, n-1 dimensional).
+                     */
+                }
+            }
+        }
+    }
+
     public static class ConstantObjectsProfiler {
 
         static final ConcurrentHashMap<AnalysisType, MyInteger> constantTypes = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
