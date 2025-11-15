@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.handles;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -55,7 +57,6 @@ import jdk.graal.compiler.word.Word;
 public final class ObjectHandlesImpl implements ObjectHandles {
 
     private static final int MAX_FIRST_BUCKET_CAPACITY = 1024;
-    private static final int wordSize = ConfigurationValues.getTarget().wordSize;
     static { // must be a power of 2 for the arithmetic below to work
         assert Integer.lowestOneBit(MAX_FIRST_BUCKET_CAPACITY) == MAX_FIRST_BUCKET_CAPACITY;
     }
@@ -67,6 +68,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
     private final WordPointer[] buckets;
     private final int[] bucketCapacities;
     private volatile long unusedHandleSearchIndex = 0;
+    private int deferredFirstBucketCapacity = -1;
 
     public ObjectHandlesImpl() {
         this(Word.signed(1), Word.signed(Long.MAX_VALUE), Word.signed(0));
@@ -90,9 +92,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
             firstBucketCapacity = lastBucketCapacity;
         }
 
-        Pointer bucketBasePtr = NullableNativeMemory.malloc(Word.unsigned(firstBucketCapacity * wordSize), NmtCategory.JNI);
-        buckets[0] = (WordPointer) bucketBasePtr;
-        bucketCapacities[0] = firstBucketCapacity;
+        deferredFirstBucketCapacity = firstBucketCapacity;
     }
 
     public boolean isInRange(ObjectHandle handle) {
@@ -126,13 +126,38 @@ public final class ObjectHandlesImpl implements ObjectHandles {
     }
 
     private static long getObjectArrayByteOffset(int index) {
-        return (long) index * wordSize;
+        return (long) index * ConfigurationValues.getTarget().wordSize;
+    }
+
+    @Uninterruptible(reason = "Called from critical sections")
+    private static WordPointer allocateBucket(int capacity) {
+        if (ImageInfo.inImageCode()) {
+            return null;
+        }
+        long bytes = (long) capacity * ConfigurationValues.getTarget().wordSize;
+        Pointer ptr = NullableNativeMemory.malloc(Word.unsigned(bytes), NmtCategory.JNI);
+        return (WordPointer) ptr;
     }
 
     private WordPointer getBucket(int bucketIndex) {
         // buckets[i] is changed only once from null to its final value: try without volatile first
         WordPointer bucket = buckets[bucketIndex];
+        if (bucket != null) {
+            return bucket;
+        }
 
+        if (bucketIndex == 0 && deferredFirstBucketCapacity != -1) {
+            // This is the first time we are accessing the capacity at runtime.
+            bucketCapacities[0] = deferredFirstBucketCapacity;
+            deferredFirstBucketCapacity = -1; // Mark as initialized
+        }
+
+        if (ImageInfo.inImageCode()) {
+            return null;
+        }
+
+        bucket = allocateBucket(bucketCapacities[bucketIndex]);
+        buckets[bucketIndex] = bucket;
         return bucket;
     }
 
@@ -162,9 +187,12 @@ public final class ObjectHandlesImpl implements ObjectHandles {
 
             for (;;) {
                 while (indexInBucket < bucketCapacity) {
-                    long offset = getObjectArrayByteOffset(bucketIndex);
+                    long offset = getObjectArrayByteOffset(indexInBucket);
+                    if (bucket == null) {
+                        throw new IllegalStateException("Bucket not allocated");
+                    }
                     Object currentObj = bucket.readObject(Word.unsigned(offset));
-                    if (currentObj.equals(nullHandle)) {
+                    if (currentObj == null) {
                         if (bucket.logicCompareAndSwapObject(Word.unsigned(offset), null, obj, LocationIdentity.ANY_LOCATION)) {
                             int newSearchIndexInBucket = (indexInBucket + 1 < bucketCapacity) ? (indexInBucket + 1) : indexInBucket;
                             unusedHandleSearchIndex = toIndex(bucketIndex, newSearchIndexInBucket);
@@ -191,19 +219,30 @@ public final class ObjectHandlesImpl implements ObjectHandles {
                             // last bucket may be smaller
                             newBucketCapacity = getIndexInBucket(maxIndex) + 1;
                         }
-                        Pointer newBucketBasePtr = NullableNativeMemory.malloc(Word.unsigned(newBucketCapacity * wordSize), NmtCategory.JNI);
-                        newBucketBasePtr.writeObject(Word.unsigned(0), obj);
 
-                        buckets[indexInBucket] = (WordPointer) newBucketBasePtr;
-                        bucketCapacities[indexInBucket] = newBucketCapacity;
+                        // Allocate new bucket memory manually
+                        WordPointer newBucket = allocateBucket(newBucketCapacity);
+                        if (newBucket == null) {
+                            // Allocation failed at build time or due to error (shouldn't happen at runtime now)
+                            continue outer;
+                        }
+                        Pointer newBucketPtr = (Pointer) newBucket;
+                        // Initialize the first slot with the object
+                        newBucketPtr.writeObject(Word.unsigned(0), obj);
 
-//                        long newBucketOffset = getObjectArrayByteOffset(newBucketIndex);
-//                        if (bucketsBasePtr.logicCompareAndSwapObject(Word.unsigned(newBucketOffset), null, newBucket, LocationIdentity.ANY_LOCATION)) {
+                        // CAS-insert bucket pointer into `buckets[newBucketIndex]`
+                        if (buckets[newBucketIndex] == null) {
+                            buckets[newBucketIndex] = newBucket;
+                            bucketCapacities[newBucketIndex] = newBucketCapacity;
+
                             unusedHandleSearchIndex = toIndex(newBucketIndex, 1);
                             return toHandle(newBucketIndex, 0);
-//                        }
-                        // start over: another thread has raced us to create another bucket and won
-//                        continue outer;
+                        } else {
+                            if (!ImageInfo.inImageCode()) {
+                                NullableNativeMemory.free(newBucketPtr);
+                            }
+                            continue outer;
+                        }
                     }
                 }
 
@@ -235,8 +274,11 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         }
         long index = toIndex(handle);
         WordPointer bucket = getBucket(getBucketIndex(index));
-        if (bucket.isNull()) {
-            throw new IllegalArgumentException("Invalid handle");
+        if (bucket == null) {
+            if (ImageInfo.inImageCode()) {
+                return nullHandle; // or skip writing
+            }
+            throw new IllegalStateException("Bucket not allocated");
         }
         int indexInBucket = getIndexInBucket(index);
         return ((Pointer)bucket).readObject(Word.unsigned(getObjectArrayByteOffset(indexInBucket)));
@@ -252,8 +294,8 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         }
         long index = toIndex(handle);
         WordPointer bucket = getBucket(getBucketIndex(index));
-        if (bucket.isNull()) {
-            throw new IllegalArgumentException("Invalid handle");
+        if (bucket == null) {
+            throw new IllegalStateException("Bucket not allocated");
         }
         int indexInBucket = getIndexInBucket(index);
         ((Pointer)bucket).writeObject(Word.unsigned(getObjectArrayByteOffset(indexInBucket)), null);
@@ -266,11 +308,11 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         long offset = 0;
         Object currentObj;
         WordPointer bucket = getBucket(bucketIndex);
-        while (!bucket.isNull()) {
+        while (bucket != null) {
             for (int i = 0; i < bucketCapacities[bucketIndex]; i++) {
                 offset = getObjectArrayByteOffset(i);
                 currentObj = ((Pointer)bucket).readObject(Word.unsigned(offset));
-                if (!currentObj.equals(nullHandle)) {
+                if (currentObj != null) {
                     count++;
                 }
             }
@@ -284,7 +326,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         long capacity = 0;
         int bucketIndex = 0;
         WordPointer bucket = getBucket(bucketIndex);
-        while (!bucket.isNull()) {
+        while (bucket != null) {
             capacity += bucketCapacities[bucketIndex];
             bucketIndex++;
             bucket = getBucket(bucketIndex);
