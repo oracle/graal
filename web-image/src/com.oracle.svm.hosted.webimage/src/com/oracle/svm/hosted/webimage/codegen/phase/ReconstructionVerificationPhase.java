@@ -25,11 +25,10 @@
 
 package com.oracle.svm.hosted.webimage.codegen.phase;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.ScheduleWithReconstructionResult;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierData;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.webimage.annotation.StackifierVerification;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -42,7 +41,7 @@ public class ReconstructionVerificationPhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders providers) {
         ReconstructionData reconstructionData = ((ScheduleWithReconstructionResult) graph.getLastSchedule()).reconstructionData();
-        if (AnnotationAccess.getAnnotation(graph.method(), StackifierVerification.class) != null) {
+        if (AnnotationUtil.getAnnotation(graph.method(), StackifierVerification.class) != null) {
             verifyStackifier(graph, graph.method(), (StackifierData) reconstructionData, providers);
         }
     }
@@ -56,7 +55,7 @@ public class ReconstructionVerificationPhase extends BasePhase<CoreProviders> {
      * @param providers providers
      */
     private static void verifyStackifier(StructuredGraph g, ResolvedJavaMethod method, StackifierData stackData, CoreProviders providers) {
-        StackifierVerification annot = AnnotationAccess.getAnnotation(method, StackifierVerification.class);
+        StackifierVerification annot = AnnotationUtil.getAnnotation(method, StackifierVerification.class);
         if (stackData.getNrOfLabeledBlocks() != annot.expLabeledBlocks() ||
                         stackData.getNrThenScopes() != annot.expThenScopes() ||
                         stackData.getNrElseScopes() != annot.expElseScopes() ||

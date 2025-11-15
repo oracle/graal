@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.function.Function;
@@ -133,7 +132,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
 
         /*
          * AnalysisMethods of snippets are stored in a hash map of SubstrateReplacements. The
-         * GraalObjectReplacer replaces them with SubstrateMethods. Therefore we have to preserve
+         * GraalObjectReplacer replaces them with SubstrateMethods. Therefore, we have to preserve
          * the hashCode of the original AnalysisMethod. Note that this is only required because it
          * is a replaced object. For not replaced objects the hash code is preserved automatically
          * in a synthetic hash-code field (see NativeImageHeap.ObjectInfo.identityHashCode).
@@ -384,7 +383,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @Override
     public boolean canBeStaticallyBound() {
         /*
-         * If the method has only a single implementation we have to return true. This let's a
+         * If the method has only a single implementation we have to return true. This lets a
          * virtual call be canonicalized to a special call. This is not just an optimization but a
          * requirement, because such methods don't get a vtable index assigned in the
          * UniverseBuilder.
@@ -430,26 +429,6 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     @Override
     public AnnotationsInfo getTypeAnnotationInfo() {
         throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

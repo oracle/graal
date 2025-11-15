@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jvmti;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -99,7 +98,7 @@ public class JvmtiFeature implements InternalFeature {
         /* Manually add the CEntryPoints, so that this is only done when JVMTI is enabled. */
         AnalysisType type = metaAccess.lookupJavaType(JvmtiFunctions.class);
         for (AnalysisMethod method : type.getDeclaredMethods(false)) {
-            VMError.guarantee(AnnotationAccess.getAnnotation(method, CEntryPoint.class) != null, "Method %s does not have a @CEntryPoint annotation.", method.format("%H.%n(%p)"));
+            VMError.guarantee(AnnotationUtil.getAnnotation(method, CEntryPoint.class) != null, "Method %s does not have a @CEntryPoint annotation.", method.format("%H.%n(%p)"));
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
         }
     }

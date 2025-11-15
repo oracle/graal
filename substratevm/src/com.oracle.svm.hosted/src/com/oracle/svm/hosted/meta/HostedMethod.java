@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.meta;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
@@ -562,11 +561,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public ConstantPool getConstantPool() {
         return constantPool;
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        return wrapped.getParameterAnnotations();
     }
 
     @Override

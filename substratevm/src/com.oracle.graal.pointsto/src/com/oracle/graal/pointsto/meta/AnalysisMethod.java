@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -68,6 +67,7 @@ import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -285,9 +285,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
         compilationBehavior = LayeredCompilationBehavior.Behavior.DEFAULT;
         if (universe.hostVM.buildingImageLayer()) {
-            var annotationExtractor = universe.getAnnotationExtractor();
-            if (annotationExtractor.hasAnnotation(wrapped, LayeredCompilationBehavior.class)) {
-                LayeredCompilationBehavior behavior = annotationExtractor.extractAnnotation(wrapped, LayeredCompilationBehavior.class);
+            LayeredCompilationBehavior behavior = AnnotationUtil.getAnnotation(wrapped, LayeredCompilationBehavior.class);
+            if (behavior != null) {
                 compilationBehavior = behavior.value();
                 if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInBaseLayer) {
                     var errorMessage = String.format("User methods with layered compilation behavior %s must be registered via %s in the initial layer",
@@ -461,7 +460,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         Object curr = getParsingReason();
 
         while (curr != null) {
-            if (!(curr instanceof BytecodePosition)) {
+            if (!(curr instanceof BytecodePosition position)) {
                 AnalysisError.guarantee(curr instanceof String, "Parsing reason should be a BytecodePosition or String: %s", curr);
                 trace.add(ReportUtils.rootMethodSentinel((String) curr));
                 break;
@@ -470,7 +469,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 trace.add(ReportUtils.truncatedStackTraceSentinel(this));
                 break;
             }
-            BytecodePosition position = (BytecodePosition) curr;
             AnalysisMethod caller = (AnalysisMethod) position.getMethod();
             trace.add(caller.asStackTraceElement(position.getBCI()));
             curr = caller.getParsingReason();
@@ -919,11 +917,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     public ConstantPool getConstantPool() {
         return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        return wrapped.getParameterAnnotations();
     }
 
     @Override

@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.util.RuntimeAnnotated;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -56,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public class SubstrateType implements SharedType {
+public class SubstrateType implements SharedType, RuntimeAnnotated {
     private final JavaKind kind;
     private final DynamicHub hub;
 
@@ -106,7 +107,7 @@ public class SubstrateType implements SharedType {
     /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level). For example {@link WordBase word types} have a
-     * {@link #getJavaKind} of {@link JavaKind#Object}, but a primitive {@link #getStorageKind}.
+     * {@link #getJavaKind} of {@link JavaKind#Object}, but a primitive storage kind.
      */
     @Override
     public final JavaKind getStorageKind() {
@@ -397,18 +398,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw annotationsUnimplemented();
-    }
-
-    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        // Once GR-70556 is resolved: throw annotationsUnimplemented();
         return DynamicHub.toClass(getHub()).getAnnotation(annotationClass);
     }
 

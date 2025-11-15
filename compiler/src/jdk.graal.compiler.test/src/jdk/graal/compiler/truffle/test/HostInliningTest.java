@@ -30,7 +30,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +62,8 @@ import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.debug.DebugContext;
@@ -105,7 +106,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
-        return Arrays.asList(TestRun.DEFAULT);
+        return List.of(TestRun.DEFAULT);
     }
 
     @Test
@@ -169,19 +170,20 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         return o;
     }
 
+    @SuppressWarnings("unchecked")
     void runTest(String methodName) {
         // initialize the Truffle runtime to ensure that all intrinsics are applied
         Truffle.getRuntime();
 
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
-        ExplorationDepth depth = method.getAnnotation(ExplorationDepth.class);
+        AnnotationValue depth = AnnotationValueSupport.getAnnotationValue(method, ExplorationDepth.class);
         int explorationDepth = -1;
         if (depth != null) {
-            explorationDepth = depth.value();
+            explorationDepth = depth.getInt("value");
         }
 
-        NodeCostLimit nodeCostLimit = method.getAnnotation(NodeCostLimit.class);
-        OptionValues options = createHostInliningOptions(nodeCostLimit != null ? nodeCostLimit.value() : NODE_COST_LIMIT, explorationDepth);
+        AnnotationValue nodeCostLimit = AnnotationValueSupport.getAnnotationValue(method, NodeCostLimit.class);
+        OptionValues options = createHostInliningOptions(nodeCostLimit != null ? nodeCostLimit.getInt("value") : NODE_COST_LIMIT, explorationDepth);
         StructuredGraph graph = parseForCompile(method, options);
         try {
             // call it so all method are initialized
@@ -204,16 +206,17 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             }
             new HostInliningPhase(canonicalizer).apply(graph, context);
 
-            ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
-            ExpectSameGraph sameGraph = method.getAnnotation(ExpectSameGraph.class);
+            AnnotationValue notInlined = AnnotationValueSupport.getAnnotationValue(method, ExpectNotInlined.class);
+            AnnotationValue sameGraph = AnnotationValueSupport.getAnnotationValue(method, ExpectSameGraph.class);
 
             if (sameGraph != null) {
-                ResolvedJavaMethod compareMethod = getResolvedJavaMethod(sameGraph.value());
+                ResolvedJavaMethod compareMethod = getResolvedJavaMethod(sameGraph.getString("value"));
                 StructuredGraph compareGraph = parseForCompile(compareMethod, options);
                 assertEquals(compareGraph, graph);
             }
 
-            assertInvokesFound(graph, notInlined != null ? notInlined.name() : null, notInlined != null ? notInlined.count() : null);
+            assertInvokesFound(graph, notInlined != null ? (List<String>) notInlined.get("name", List.class) : null,
+                            notInlined != null ? (List<Integer>) notInlined.get("count", List.class) : null);
 
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
@@ -250,7 +253,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
         });
     }
 
-    public static void assertInvokesFound(StructuredGraph graph, String[] notInlined, int[] counts) {
+    public static void assertInvokesFound(StructuredGraph graph, List<String> notInlined, List<Integer> counts) {
         Map<String, Integer> found = new EconomicHashMap<>();
         List<Invoke> invokes = new ArrayList<>();
         invokes.addAll(graph.getNodes().filter(InvokeNode.class).snapshot());
@@ -261,10 +264,10 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             if (notInlined == null) {
                 Assert.fail("Unexpected node type found in the graph: " + invoke);
             } else {
-                for (int i = 0; i < notInlined.length; i++) {
-                    String expectedMethodName = notInlined[i];
+                for (int i = 0; i < notInlined.size(); i++) {
+                    String expectedMethodName = notInlined.get(i);
                     if (expectedMethodName.equals(invokedMethod.getName())) {
-                        int expectedCount = counts[i];
+                        int expectedCount = counts.get(i);
                         int currentCount = found.getOrDefault(invokedMethod.getName(), 0);
                         if (expectedCount >= 0) {
                             currentCount++;
@@ -277,13 +280,13 @@ public class HostInliningTest extends TruffleCompilerImplTest {
                         continue invoke;
                     }
                 }
-                Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + Arrays.toString(notInlined));
+                Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + notInlined);
             }
         }
         if (notInlined != null) {
-            for (int i = 0; i < notInlined.length; i++) {
-                String expectedMethodName = notInlined[i];
-                int expectedCount = counts[i];
+            for (int i = 0; i < notInlined.size(); i++) {
+                String expectedMethodName = notInlined.get(i);
+                int expectedCount = counts.get(i);
                 int currentCount = found.getOrDefault(expectedMethodName, 0);
                 if (expectedCount >= 0 && currentCount < expectedCount) {
                     Assert.fail("Expected " + expectedCount + " calls to " + expectedMethodName + " but got " + currentCount + ".");

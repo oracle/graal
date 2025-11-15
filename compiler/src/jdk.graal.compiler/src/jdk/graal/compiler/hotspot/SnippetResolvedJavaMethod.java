@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.function.Function;
@@ -163,11 +162,6 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         throw new UnsupportedOperationException();
     }
@@ -213,27 +207,22 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public AnnotationsInfo getTypeAnnotationInfo() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
         throw new UnsupportedOperationException();
     }
 

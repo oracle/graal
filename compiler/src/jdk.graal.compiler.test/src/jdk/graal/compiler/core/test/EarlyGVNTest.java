@@ -39,6 +39,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.graph.Node;
@@ -80,9 +82,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
 
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
-        MustFold fold = graph.method().getAnnotation(MustFold.class);
+        AnnotationValue fold = AnnotationValueSupport.getAnnotationValue(graph.method(), MustFold.class);
         if (fold != null) {
-            if (fold.noLoopLeft()) {
+            if (fold.getBoolean("noLoopLeft")) {
                 assertFalse(graph.hasLoops());
             } else {
                 assertTrue(graph.hasLoops());

@@ -185,6 +185,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class SVMHost extends HostVM {
@@ -957,21 +958,6 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean platformSupported(AnnotatedElement element) {
-        if (element instanceof ResolvedJavaType javaType) {
-            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-            ResolvedJavaType enclosingType;
-            try {
-                enclosingType = javaType.getEnclosingType();
-            } catch (LinkageError e) {
-                enclosingType = null;
-            }
-            if (enclosingType != null && !platformSupported(enclosingType)) {
-                return false;
-            }
-        }
         if (element instanceof Class<?> clazz) {
             Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
@@ -989,6 +975,36 @@ public class SVMHost extends HostVM {
         }
 
         Platforms platformsAnnotation = AnnotationAccess.getAnnotation(element, Platforms.class);
+        if (platform == null || platformsAnnotation == null) {
+            return true;
+        }
+        for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
+            if (platformGroup.isInstance(platform)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean platformSupported(Annotated element) {
+        if (element instanceof ResolvedJavaType javaType) {
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
+            if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
+                return false;
+            }
+        }
+
+        Platforms platformsAnnotation = AnnotationUtil.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;
         }

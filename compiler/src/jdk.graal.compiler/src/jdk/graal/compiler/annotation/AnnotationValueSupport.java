@@ -115,20 +115,30 @@ public class AnnotationValueSupport {
     }
 
     /**
-     * Returns a list of lists of {@link AnnotationValue}s that represents the
-     * {@code RuntimeVisibleParameterAnnotations} for {@code method}. Note that this differs from
-     * {@link Method#getParameterAnnotations()} in that it excludes entries for synthetic and
-     * mandated parameters.
+     * Result type returned by {@link AnnotationValueSupport#getParameterAnnotationValues}.
      *
-     * @return null if there are no parameter annotations for {@code method} otherwise an immutable
-     *         list of immutable lists of parameter annotations
+     * @param values the parsed annotations. This is an immutable list of lists of
+     *            {@link AnnotationValue}s that represents the
+     *            {@code RuntimeVisibleParameterAnnotations} for a method. Note that this differs
+     *            from {@link Method#getParameterAnnotations()} in that it excludes entries for
+     *            synthetic and mandated parameters.
+     * @param container used to resolve type names in {@code values}
      */
-    public static List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+    public record ParsedParameterAnnotationValues(List<List<AnnotationValue>> values, ResolvedJavaType container) {
+    }
+
+    /**
+     * Returns the result of parsing the parameter annotations for {@code method}.
+     *
+     * @return null if {@code method} has no parameter annotations
+     */
+    public static ParsedParameterAnnotationValues getParameterAnnotationValues(ResolvedJavaMethod method) {
         AnnotationsInfo info = method.getParameterAnnotationInfo();
         if (info == null) {
-            return List.of();
+            return null;
         }
-        return AnnotationValueParser.parseParameterAnnotations(info.bytes(), info.constPool(), info.container());
+        ResolvedJavaType container = info.container();
+        return new ParsedParameterAnnotationValues(AnnotationValueParser.parseParameterAnnotations(info.bytes(), info.constPool(), container), container);
     }
 
     /**
@@ -162,6 +172,30 @@ public class AnnotationValueSupport {
         }
         boolean inherited = annotationType.getAnnotation(Inherited.class) != null;
         return getAnnotationValue0(annotated, annotationType, inherited);
+    }
+
+    /**
+     * Looks for an entry in {@code values} whose {@linkplain AnnotationValue#getAnnotationType()
+     * type} matches {@code annotationType}.
+     *
+     * @param container used to resolve type names in {@code values}
+     */
+    @LibGraalSupport.HostedOnly
+    public static AnnotationValue findAnnotationValue(List<AnnotationValue> values, Class<? extends Annotation> annotationType, ResolvedJavaType container) {
+        if (inRuntimeCode()) {
+            throw new GraalError("Cannot look up %s annotation at Native Image runtime", annotationType.getName());
+        }
+        String internalName = "L" + annotationType.getName().replace(".", "/") + ";";
+        for (var e : values) {
+            ResolvedJavaType type = e.getAnnotationType();
+            if (type.getName().equals(internalName)) {
+                // The name matches so now double-check the resolved type matches
+                if (UnresolvedJavaType.create(internalName).resolve(container).equals(type)) {
+                    return e;
+                }
+            }
+        }
+        return null;
     }
 
     @LibGraalSupport.HostedOnly

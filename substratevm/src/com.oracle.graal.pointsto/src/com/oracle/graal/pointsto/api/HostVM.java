@@ -66,6 +66,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * This abstract class defines the functionality that the hosting VM must support.
@@ -97,7 +98,7 @@ public abstract class HostVM {
 
     /**
      * Check if the provided object is a relocated pointer.
-     * 
+     *
      * @param constant the constant to check
      */
     public boolean isRelocatedPointer(JavaConstant constant) {
@@ -106,7 +107,7 @@ public abstract class HostVM {
 
     /**
      * Hook for handling foreign calls.
-     * 
+     *
      * @param foreignCallDescriptor the foreign call descriptor
      * @param foreignCallsProvider the foreign calls provider
      * @return the {@link AnalysisMethod} modeling the foreign call, if supported
@@ -141,7 +142,7 @@ public abstract class HostVM {
 
     /**
      * Register newly created type.
-     * 
+     *
      * @param newValue the type to register
      */
     public void registerType(AnalysisType newValue) {
@@ -158,7 +159,7 @@ public abstract class HostVM {
 
     /**
      * Run additional checks on a type before the corresponding {@link AnalysisType} is created.
-     * 
+     *
      * @param type the hosted type
      * @param universe the analysis universe
      */
@@ -167,7 +168,7 @@ public abstract class HostVM {
 
     /**
      * Run initialization tasks for a newly created {@link AnalysisType}.
-     * 
+     *
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
@@ -197,7 +198,7 @@ public abstract class HostVM {
     /**
      * Hook to change the {@link GraphBuilderConfiguration} used for parsing a method during
      * analysis.
-     * 
+     *
      * @param config The default configuration used by the static analysis.
      * @param method The method that is going to be parsed with the returned configuration.
      * @return The updated configuration for the method.
@@ -307,10 +308,19 @@ public abstract class HostVM {
 
     /**
      * Check if the element is supported on current platform.
-     * 
+     *
      * @param element the {@link AnnotatedElement} to check
      */
     public boolean platformSupported(AnnotatedElement element) {
+        return true;
+    }
+
+    /**
+     * Check if the element is supported on current platform.
+     *
+     * @param element the {@link Annotated} to check
+     */
+    public boolean platformSupported(Annotated element) {
         return true;
     }
 

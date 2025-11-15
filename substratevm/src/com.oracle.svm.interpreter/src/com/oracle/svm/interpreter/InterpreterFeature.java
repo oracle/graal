@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,6 +61,7 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -91,13 +91,13 @@ public class InterpreterFeature implements InternalFeature {
     private AnalysisMethod leaveStub;
 
     static boolean executableByInterpreter(AnalysisMethod m) {
-        if (AnnotationAccess.getAnnotation(m, CFunction.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, CFunction.class) != null) {
             return false;
         }
-        if (AnnotationAccess.getAnnotation(m, CEntryPoint.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, CEntryPoint.class) != null) {
             return false;
         }
-        Uninterruptible uninterruptible = AnnotationAccess.getAnnotation(m, Uninterruptible.class);
+        Uninterruptible uninterruptible = AnnotationUtil.getAnnotation(m, Uninterruptible.class);
         if (uninterruptible != null) {
             if (uninterruptible.mayBeInlined() && !uninterruptible.callerMustBe()) {
                 /*
@@ -113,7 +113,7 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     public static boolean callableByInterpreter(ResolvedJavaMethod m, MetaAccessProvider metaAccess) {
-        if (AnnotationAccess.getAnnotation(m, Fold.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, Fold.class) != null) {
             /*
              * GR-55052: For now @Fold methods are considered not callable. The problem is that such
              * methods are reachability cut-offs, so we would need to roll our own reachability
