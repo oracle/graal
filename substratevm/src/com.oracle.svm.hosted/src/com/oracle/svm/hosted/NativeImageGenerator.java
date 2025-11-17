@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.graal.pointsto.api.PointstoOptions.UseExperimentalReachabilityAnalysis;
-import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
+import static com.oracle.svm.core.imagelayer.LayeredImageOptions.LayerCreate;
 import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsDir;
 import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -999,8 +1000,8 @@ public class NativeImageGenerator {
                     imageLayerSnapshotUtil = HostedConfiguration.instance().createSVMImageLayerSnapshotUtil(loader);
                 }
 
-                Boolean useSharedLayerGraphs = SubstrateOptions.UseSharedLayerGraphs.getValue();
-                Boolean useSharedLayerStrengthenedGraphs = SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue();
+                Boolean useSharedLayerGraphs = LayeredImageOptions.UseSharedLayerGraphs.getValue();
+                Boolean useSharedLayerStrengthenedGraphs = LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue();
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     SVMImageLayerWriter imageLayerWriter = HostedConfiguration.instance().createSVMImageLayerWriter(imageLayerSnapshotUtil, useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
                     HostedImageLayerBuildingSupport.singleton().setWriter(imageLayerWriter);

@@ -44,8 +44,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
@@ -58,9 +56,9 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
@@ -76,11 +74,12 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -104,14 +103,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class LayeredDispatchTableFeature implements InternalFeature {
-    public static final class Options {
-        @Option(help = "Log discrepancies between layered open world type information. This is an experimental option which will be removed.")//
-        public static final HostedOptionKey<Boolean> LogLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
-
-        @Option(help = "Throw an error when there are discrepancies between layered open world type information. This is an experimental option which will be removed.")//
-        public static final HostedOptionKey<Boolean> ErrorOnLayeredDispatchTableDiscrepancies = new HostedOptionKey<>(false);
-    }
-
     private final boolean buildingSharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
     private final boolean buildingInitialLayer = buildingSharedLayer && ImageLayerBuildingSupport.buildingInitialLayer();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
@@ -399,7 +390,8 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private static void compareTypeInfo(HostedDispatchTable curInfo, PriorDispatchTable priorInfo) {
-        if (!(Options.LogLayeredDispatchTableDiscrepancies.getValue() || Options.ErrorOnLayeredDispatchTableDiscrepancies.getValue())) {
+        if (!(LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredDispatchTableDiscrepancies.getValue() ||
+                        LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnLayeredDispatchTableDiscrepancies.getValue())) {
             // it is not necessary to compare type info
             return;
         }
@@ -428,10 +420,10 @@ public class LayeredDispatchTableFeature implements InternalFeature {
 
         if (!errorMessage.isEmpty()) {
             String message = String.format("Issue while comparing dispatch table info: %s and %s%n%s", curInfo, priorInfo, errorMessage);
-            if (Options.ErrorOnLayeredDispatchTableDiscrepancies.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnLayeredDispatchTableDiscrepancies.getValue()) {
                 throw VMError.shouldNotReachHere(message);
             }
-            if (Options.LogLayeredDispatchTableDiscrepancies.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLayeredDispatchTableDiscrepancies.getValue()) {
                 System.out.println(message);
             }
         }

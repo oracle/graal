@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -63,6 +62,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.JavaVersionUtil;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -76,6 +76,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -425,9 +426,9 @@ public class NativeImageGeneratorRunner {
                 if (isStaticExecutable && isSharedLibrary) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
                 } else if (isStaticExecutable && layerCreateOptionEnabled) {
-                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.LayerCreate);
+                    reportConflictingOptions(SubstrateOptions.StaticExecutable, LayeredImageOptions.LayerCreate);
                 } else if (isSharedLibrary && layerCreateOptionEnabled) {
-                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.LayerCreate);
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, LayeredImageOptions.LayerCreate);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
                 } else if (layerCreateOptionEnabled) {

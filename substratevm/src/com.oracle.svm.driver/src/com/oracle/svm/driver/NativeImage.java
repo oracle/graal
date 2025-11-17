@@ -90,6 +90,7 @@ import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
@@ -283,7 +284,7 @@ public class NativeImage {
     final String oHUseLibC = oH(SubstrateOptions.UseLibC);
     final String oHEnableStaticExecutable = oHEnabled(SubstrateOptions.StaticExecutable);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();
-    final String oHEnableImageLayerFlagPrefix = oH + SubstrateOptions.LayerCreate.getName();
+    final String oHEnableImageLayerFlagPrefix = oH + LayeredImageOptions.LayerCreate.getName();
     final String oHColor = oH(SubstrateOptions.Color);
     final String oHEnableBuildOutputProgress = oHEnabledByDriver(SubstrateOptions.BuildOutputProgress);
     final String oHEnableBuildOutputLinks = oHEnabledByDriver(SubstrateOptions.BuildOutputLinks);
@@ -297,7 +298,7 @@ public class NativeImage {
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
-    final String oHLayerCreate = oH(SubstrateOptions.LayerCreate);
+    final String oHLayerCreate = oH(LayeredImageOptions.LayerCreate);
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();

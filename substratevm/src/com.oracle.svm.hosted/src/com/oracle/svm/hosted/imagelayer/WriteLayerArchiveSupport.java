@@ -49,8 +49,8 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
     private final List<String> builderArguments;
     private final List<PathDigestEntry> buildPathDigests;
 
-    public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport) {
-        super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport);
+    public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport, boolean enableLogging) {
+        super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport, enableLogging);
         if (!layerName.startsWith(SHARED_LIB_NAME_PREFIX)) {
             throw UserError.abort("Shared layer library image name given with '" +
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, layerName) +

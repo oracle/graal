@@ -91,6 +91,7 @@ import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
@@ -148,7 +149,7 @@ public final class NativeImageClassLoaderSupport {
 
     private Path layerFile;
 
-    private final IncludeSelectors layerSelectors = new IncludeSelectors(SubstrateOptions.LayerCreate);
+    private final IncludeSelectors layerSelectors = new IncludeSelectors(LayeredImageOptions.LayerCreate);
     private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
     private final IncludeSelectors dynamicAccessSelectors = new IncludeSelectors(SubstrateOptions.TrackDynamicAccess);
     private boolean includeConfigSealed;
@@ -728,7 +729,7 @@ public final class NativeImageClassLoaderSupport {
 
     public void allClassesLoaded() {
         if (loadClassHandler != null) {
-            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.includePackages, SubstrateOptions.LayerCreate);
+            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.includePackages, LayeredImageOptions.LayerCreate);
             loadClassHandler.validatePackageInclusionRequests(loadClassHandler.preservePackages, SubstrateOptions.Preserve);
             loadClassHandler = null;
         }
