@@ -19,9 +19,8 @@ public interface InvokeCallBack<Domain extends AbstractDomain<Domain>> {
      * Handles the invocation of a method during abstract interpretation.
      *
      * @param invoke        the representation of the invocation to be handled
-     * @param node          the graph node corresponding to the invocation
      * @param abstractState the abstract state of the caller at the point of the {@param invoke}
      * @return the outcome of the analysis of the call (status, + summary if status is ok)
      */
-    AnalysisOutcome<Domain> handleInvoke(Invoke invoke, Node node, AbstractState<Domain> abstractState);
+    AnalysisOutcome<Domain> handleInvoke(Invoke invoke, AbstractState<Domain> abstractState);
 }

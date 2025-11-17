@@ -42,7 +42,7 @@ public class LeaksIdSetAbstractInterpreter implements AbstractInterpreter<SetDom
                         computedPost.remove(id);
                     }
                 } else {
-                    AnalysisOutcome<SetDomain<ResourceId>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
+                    AnalysisOutcome<SetDomain<ResourceId>> outcome = invokeCallBack.handleInvoke(invoke, abstractState);
                     if (outcome.isError()) {
                         computedPost.setToTop();
                         return;

@@ -35,7 +35,7 @@ public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<P
                 } else if (InvokeUtil.closesResource(invoke)) {
                     computedPost.first().decrement();
                 } else {
-                    AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
+                    AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleInvoke(invoke, abstractState);
                     if (outcome.isError()) {
                         throw AnalysisError.interruptAnalysis(outcome.toString());
                     }

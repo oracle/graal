@@ -33,7 +33,7 @@ public class LeaksCountingDomainAbstractInterpreter implements AbstractInterpret
                 computedPost.decrement();
             } else {
                 /* We can use our callback to analyze other methods */
-                AnalysisOutcome<CountDomain> result = invokeCallBack.handleInvoke(invoke, node, abstractState);
+                AnalysisOutcome<CountDomain> result = invokeCallBack.handleInvoke(invoke, abstractState);
                 if (result.isError()) {
                     throw AnalysisError.interruptAnalysis(result.toString());
                 }

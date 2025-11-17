@@ -18,6 +18,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -347,7 +348,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             post.bindTempByName(nodeId(nan), root);
         } else if (node instanceof Invoke inv) {
             if (invokeCallBack != null) {
-                var outcome = invokeCallBack.handleInvoke(inv, inv.asNode(), abstractState);
+                var outcome = invokeCallBack.handleInvoke(inv, abstractState);
                 if (outcome != null && outcome.isError()) {
                     post.setToTop();
                 } else {
@@ -384,6 +385,11 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             Node cond = ifNode.condition();
             post = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
         }
+//        else if (node instanceof Invoke invoke) {
+//            if (invoke instanceof InvokeNode invokeNode) {
+//                invokeNode.
+//            }
+//        }
         logger.log("Computed post-condition: " + post + " for node: " + node, LoggerVerbosity.INFO);
         abstractState.setPostCondition(node, post);
     }

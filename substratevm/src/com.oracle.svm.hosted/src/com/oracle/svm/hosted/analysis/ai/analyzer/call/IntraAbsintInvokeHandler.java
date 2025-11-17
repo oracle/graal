@@ -20,17 +20,17 @@ import jdk.graal.compiler.nodes.Invoke;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
-public final class IntraProceduralInvokeHandler<Domain extends AbstractDomain<Domain>>
-        extends BaseInvokeHandler<Domain> {
+public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain>>
+        extends AbsintInvokeHandler<Domain> {
 
-    public IntraProceduralInvokeHandler(Domain initialDomain,
-                                        AbstractInterpreter<Domain> abstractInterpreter,
-                                        AnalysisContext analysisContext) {
+    public IntraAbsintInvokeHandler(Domain initialDomain,
+                                    AbstractInterpreter<Domain> abstractInterpreter,
+                                    AnalysisContext analysisContext) {
         super(initialDomain, abstractInterpreter, analysisContext);
     }
 
     @Override
-    public AnalysisOutcome<Domain> handleInvoke(Invoke invoke, Node invokeNode, AbstractState<Domain> callerState) {
+    public AnalysisOutcome<Domain> handleInvoke(Invoke invoke, AbstractState<Domain> callerState) {
         /* Intra-procedural call handling is not supported, this means that we treat all calls to methods as black box and don't analyze them further */
         return AnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
     }

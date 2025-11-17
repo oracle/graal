@@ -15,11 +15,10 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
+import com.oracle.svm.hosted.analysis.ai.summary.*;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
@@ -33,25 +32,38 @@ import java.util.List;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
-public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Domain>> extends BaseInvokeHandler<Domain> {
+public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain>> extends AbsintInvokeHandler<Domain> {
 
     private final CallStack callStack;
     private final SummaryManager<Domain> summaryManager;
+    private final SummaryRepository<Domain> summaryRepository;
+    private final DomainCallBinder<Domain> callBinder;
 
-    public InterProceduralInvokeHandler(
+    public InterAbsintInvokeHandler(
             Domain initialDomain,
             AbstractInterpreter<Domain> abstractInterpreter,
             AnalysisContext analysisContext,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
+        this(initialDomain, abstractInterpreter, analysisContext, summaryFactory, maxRecursionDepth, null);
+    }
+
+    public InterAbsintInvokeHandler(
+            Domain initialDomain,
+            AbstractInterpreter<Domain> abstractInterpreter,
+            AnalysisContext analysisContext,
+            SummaryFactory<Domain> summaryFactory,
+            int maxRecursionDepth,
+            DomainCallBinder<Domain> binder) {
         super(initialDomain, abstractInterpreter, analysisContext);
         this.callStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
+        this.summaryRepository = new SummaryRepository<>();
+        this.callBinder = binder;
     }
 
     @Override
     public AnalysisOutcome<Domain> handleInvoke(Invoke invoke,
-                                                Node invokeNode,
                                                 AbstractState<Domain> callerState) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         ResolvedJavaMethod calleeMethod = invoke.getTargetMethod();
@@ -66,14 +78,36 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return outcome;
         }
 
-        // TODO: think how to handle this better
         List<Domain> actualArgs = convertActualArgs(invoke, callerState);
+        // FIXME: MAKE THIS WORK WITH InvokeWithException"
+        if (!(invoke instanceof InvokeNode invokeNode)) {
+            return AnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
+        }
+
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerState.getPreCondition(invokeNode), actualArgs);
+        // Optionally customize callee entry via binder
+        if (callBinder != null) {
+            Domain calleeEntry = callBinder.initialCalleeEntry(callerState.getPreCondition(invokeNode), invoke, actualArgs, targetAnalysisMethod);
+            if (calleeEntry != null) {
+                summary = summaryManager.createSummary(invoke, calleeEntry, actualArgs);
+            }
+        }
+
+        // Build a context key for the callee and register an entry in the repository
+        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 2);
+        ContextKey calleeKey = new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getDepth());
+        MethodSummary<Domain> methodSummary = summaryRepository.getOrCreate(targetAnalysisMethod);
+        methodSummary.getOrCreate(calleeKey, summary.getPreCondition());
 
         /* If the summaryCache contains the summary for the target analysisMethod, we return it */
         if (summaryManager.containsSummary(calleeMethod, summary)) {
             logger.log("Summary cache contains targetMethod: " + calleeMethod.getName(), LoggerVerbosity.SUMMARY);
             Summary<Domain> completeSummary = summaryManager.getSummary(calleeMethod, summary);
+            // Update context repository with the known post-condition (if available)
+            ContextSummary<Domain> ctxSummary = methodSummary.get(calleeKey);
+            if (ctxSummary != null && completeSummary.getPostCondition() != null) {
+                ctxSummary.updateWith(completeSummary.getPostCondition(), null);
+            }
             return AnalysisOutcome.ok(completeSummary);
         }
 
@@ -85,7 +119,6 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             return outcome;
         }
 
-        /* Or if we have a mutual recursion cycle */
         if (callStack.hasMethodCallCycle(targetAnalysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
@@ -95,7 +128,6 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
 
         /* Set-up and run the analysis on the invoked method */
         callStack.push(targetAnalysisMethod);
-        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
@@ -104,14 +136,23 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
             summary.finalizeSummary(invokeAbstractState);
             summaryManager.putSummary(calleeMethod, summary);
+
+            // Update the repository with exit state; return value is optional here
+            ContextSummary<Domain> ctxSummary = methodSummary.get(calleeKey);
+            if (ctxSummary != null) {
+                ctxSummary.updateWith(summary.getPostCondition(), null);
+                if (callBinder != null) {
+                    Domain retVal = callBinder.extractReturnValue(summary.getPostCondition(), invoke, targetAnalysisMethod);
+                    if (retVal != null) {
+                        ctxSummary.setReturnValue(retVal);
+                    }
+                }
+            }
         } finally {
             callStack.pop();
         }
 
         /* At this point, we are finished with the fixpoint iteration and updated the summary cache */
-        // TODO: we will have to think how to do this since we can't directly get analysis method from the invoke, also we probably don't want dumps of
-        // multiple methods into a single file
-//        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(invoke.get).graph, analysisMethod, abstractState);
         checkerManager.runCheckers(targetAnalysisMethod, callerState);
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
@@ -135,7 +176,7 @@ public final class InterProceduralInvokeHandler<Domain extends AbstractDomain<Do
             checkerManager.runCheckers(root, abstractState);
             logger.logSummariesStats(summaryManager);
         } finally {
-            // Ensure the call stack is cleared in case of an exception
+            // Ensure the call stack is cleared in case of an exception; nothing to do here
         }
     }
 

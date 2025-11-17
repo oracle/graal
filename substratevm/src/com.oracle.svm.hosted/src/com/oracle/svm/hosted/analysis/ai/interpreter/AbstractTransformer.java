@@ -18,7 +18,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis.
  */
 public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
-        AbstractInterpreter<Domain> abstractInterpreter, InvokeCallBack<Domain> analyzeDependencyCallback) {
+        AbstractInterpreter<Domain> abstractInterpreter, InvokeCallBack<Domain> invokeCallBack) {
 
     /**
      * Performs semantic transformation of the given {@link Node} with iterator context.
@@ -29,7 +29,7 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
      * @param context       context information from the fixpoint iterator
      */
     public void analyzeNode(Node node, AbstractState<Domain> abstractState, IteratorContext context) {
-        abstractInterpreter.execNode(node, abstractState, analyzeDependencyCallback, context);
+        abstractInterpreter.execNode(node, abstractState, invokeCallBack, context);
     }
 
     /**

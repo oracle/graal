@@ -255,7 +255,7 @@ public class PentagonAbstractInterpreter implements AbstractInterpreter<Pentagon
                aren't our concern.
              */
             case Invoke invoke -> {
-                AnalysisOutcome<PentagonDomain<AccessPath>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
+                AnalysisOutcome<PentagonDomain<AccessPath>> outcome = invokeCallBack.handleInvoke(invoke, abstractState);
                 if (outcome.isError()) {
                     computedPost.setToTop();
                 }

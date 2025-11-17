@@ -12,7 +12,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis.
  */
-public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> implements InvokeHandler<Domain> {
+public abstract class AbsintInvokeHandler<Domain extends AbstractDomain<Domain>> implements InvokeHandler<Domain> {
 
     protected final Domain initialDomain;
     protected final AbstractTransformer<Domain> abstractTransformer;
@@ -21,9 +21,9 @@ public abstract class BaseInvokeHandler<Domain extends AbstractDomain<Domain>> i
     protected final AnalysisContext analysisContext;
 
     @SuppressWarnings("this-escape")
-    public BaseInvokeHandler(Domain initialDomain,
-                             AbstractInterpreter<Domain> abstractInterpreter,
-                             AnalysisContext analysisContext) {
+    public AbsintInvokeHandler(Domain initialDomain,
+                               AbstractInterpreter<Domain> abstractInterpreter,
+                               AnalysisContext analysisContext) {
         this.initialDomain = initialDomain;
         this.abstractTransformer = new AbstractTransformer<>(abstractInterpreter, this::handleInvoke);
         this.analysisContext = analysisContext;
