@@ -47,17 +47,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.test.ObjectModelRegressionTest.TestDynamicObject;
 
-public class GR42603 {
+@RunWith(Parameterized.class)
+public class GR42603 extends ParametrizedDynamicObjectTest {
 
-    private static final DynamicObjectLibrary OBJLIB = DynamicObjectLibrary.getUncached();
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.UNCACHED_ONLY);
+    }
+
     private static final int FROZEN_FLAG = 1;
 
     @Test
@@ -67,7 +74,7 @@ public class GR42603 {
         }
     }
 
-    private static void testConcurrentReplaceProperty() throws Throwable {
+    private void testConcurrentReplaceProperty() throws Throwable {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
         List<Future<?>> futures = new ArrayList<>();
 
@@ -77,12 +84,12 @@ public class GR42603 {
             for (int i = 0; i < 2; i++) {
                 int iFixed = i;
                 futures.add(executorService.submit(() -> {
-                    try (Context context = Context.newBuilder().engine(engine).build()) {
+                    try (Context ctx = Context.newBuilder().engine(engine).build()) {
                         TestDynamicObject object = newEmptyObject(rootShape);
-                        OBJLIB.put(object, "propertyBefore", newEmptyObject(rootShape));
+                        uncachedLibrary().put(object, "propertyBefore", newEmptyObject(rootShape));
                         boolean assignObject = iFixed == 0;
-                        Object hostNullValue = context.asValue(null);
-                        OBJLIB.put(object, "offendingProperty", assignObject ? object : hostNullValue);
+                        Object hostNullValue = ctx.asValue(null);
+                        uncachedLibrary().put(object, "offendingProperty", assignObject ? object : hostNullValue);
                         freezeObject(object);
 
                         Shape shape = object.getShape();
@@ -111,9 +118,9 @@ public class GR42603 {
         return new TestDynamicObject(rootShape);
     }
 
-    private static void freezeObject(TestDynamicObject object) {
-        for (Object key : OBJLIB.getKeyArray(object)) {
-            OBJLIB.setPropertyFlags(object, key, FROZEN_FLAG);
+    private void freezeObject(TestDynamicObject object) {
+        for (Object key : uncachedLibrary().getKeyArray(object)) {
+            uncachedLibrary().setPropertyFlags(object, key, FROZEN_FLAG);
         }
     }
 }

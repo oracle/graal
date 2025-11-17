@@ -453,6 +453,11 @@ final class TriePropertyMap extends PropertyMap implements LinkedImmutableMap<Ob
     }
 
     @Override
+    public Property getFirstProperty() {
+        return head == null ? null : head.getValue();
+    }
+
+    @Override
     public String toString() {
         return values().toString();
     }

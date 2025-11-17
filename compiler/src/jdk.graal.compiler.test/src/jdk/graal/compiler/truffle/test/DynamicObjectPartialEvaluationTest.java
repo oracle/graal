@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
@@ -79,7 +78,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
     @Test
     public void testFieldLocation() {
         TestDynamicObject obj = newInstanceWithFields();
-        DynamicObjectLibrary.getUncached().put(obj, "key", 22);
+        DynamicObject.PutNode.getUncached().execute(obj, "key", 22);
 
         Object[] args = {obj, 22};
         OptimizedCallTarget callTarget = makeCallTarget(new TestDynamicObjectGetAndPutNode(), "testFieldStoreLoad");
@@ -107,7 +106,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
     @Test
     public void testArrayLocation() {
         TestDynamicObject obj = newInstanceWithoutFields();
-        DynamicObjectLibrary.getUncached().put(obj, "key", 22);
+        DynamicObject.PutNode.getUncached().execute(obj, "key", 22);
 
         Object[] args = {obj, 22};
         OptimizedCallTarget callTarget = makeCallTarget(new TestDynamicObjectGetAndPutNode(), "testArrayStoreLoad");
@@ -137,7 +136,8 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     static class TestDynamicObjectGetAndPutNode extends AbstractTestNode {
-        @Child DynamicObjectLibrary dynamicObjectLibrary = DynamicObjectLibrary.getFactory().createDispatched(3);
+        @Child DynamicObject.GetNode getNode = DynamicObject.GetNode.create();
+        @Child DynamicObject.PutNode putNode = DynamicObject.PutNode.create();
 
         @Override
         public int execute(VirtualFrame frame) {
@@ -148,7 +148,7 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
             DynamicObject obj = (DynamicObject) arg0;
             if (frame.getArguments().length > 1) {
                 Object arg1 = frame.getArguments()[1];
-                dynamicObjectLibrary.put(obj, "key", (int) arg1);
+                putNode.execute(obj, "key", (int) arg1);
             }
             int val;
             while (true) {
@@ -156,14 +156,14 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
                 if (val >= 42) {
                     break;
                 }
-                dynamicObjectLibrary.put(obj, "key", val + 2);
+                putNode.execute(obj, "key", val + 2);
             }
             return val;
         }
 
         private int getInt(DynamicObject obj, Object key) {
             try {
-                return dynamicObjectLibrary.getIntOrDefault(obj, key, null);
+                return getNode.executeInt(obj, key, null);
             } catch (UnexpectedResultException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
