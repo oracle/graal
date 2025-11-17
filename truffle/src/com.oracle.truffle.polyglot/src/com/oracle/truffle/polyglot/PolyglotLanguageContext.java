@@ -62,8 +62,10 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1024,18 +1026,18 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     @TruffleBoundary
-    Object asValue(Object guestValue) {
+    Value asValue(Object guestValue) {
         APIAccess api = context.getAPIAccess();
         assert lazy != null;
         assert guestValue != null;
         assert !(api.isValue(guestValue));
-        assert !(api.isProxy(guestValue));
+        assert !(guestValue instanceof Proxy);
         PolyglotValueDispatch cache = getLanguageInstance().lookupValueCache(context, guestValue);
         return api.newValue(cache, this, guestValue, context.getContextAPI());
     }
 
-    public Object toGuestValue(Node node, Object receiver) {
-        return context.toGuestValue(node, receiver, false);
+    public static Object toGuestValue(Node node, Object receiver) {
+        return PolyglotContextImpl.toGuestValue(node, receiver, false);
     }
 
     @GenerateInline(true)
@@ -1203,22 +1205,22 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @GenerateInline
     abstract static class ToGuestValueNode extends Node {
 
-        abstract Object execute(Node node, PolyglotLanguageContext context, Object receiver);
+        abstract Object execute(Node node, Object receiver);
 
         @Specialization(guards = "receiver == null")
-        static Object doNull(Node node, PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(node, receiver);
+        static Object doNull(Node node, @SuppressWarnings("unused") Object receiver) {
+            return PolyglotLanguageContext.toGuestValue(node, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
-        static Object doCached(Node node, PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(node, cachedReceiver.cast(receiver));
+        static Object doCached(Node node, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return PolyglotLanguageContext.toGuestValue(node, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static Object doUncached(Node node, PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(node, receiver);
+        static Object doUncached(Node node, Object receiver) {
+            return PolyglotLanguageContext.toGuestValue(node, receiver);
         }
     }
 
@@ -1226,11 +1228,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @GenerateCached(false)
     abstract static class ToGuestValuesNode extends Node {
 
-        abstract Object[] execute(Node node, PolyglotLanguageContext context, Object[] args);
+        abstract Object[] execute(Node node, Object[] args);
 
         @Specialization(guards = "args.length == 0")
         @SuppressWarnings("unused")
-        static Object[] doZero(PolyglotLanguageContext context, Object[] args) {
+        static Object[] doZero(Object[] args) {
             return args;
         }
 
@@ -1239,14 +1241,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
          */
         @ExplodeLoop
         @Specialization(replaces = {"doZero"}, guards = "args.length == toGuestValues.length", limit = "1")
-        static Object[] doCached(Node node, PolyglotLanguageContext context, Object[] args,
+        static Object[] doCached(Node node, Object[] args,
                         @Cached("createArray(args.length)") ToGuestValueNode[] toGuestValues,
                         @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
             boolean needsCopy = needsCopyProfile.wasEntered(node);
             Object[] newArgs = needsCopy ? new Object[toGuestValues.length] : args;
             for (int i = 0; i < toGuestValues.length; i++) {
                 Object arg = args[i];
-                Object newArg = toGuestValues[i].execute(toGuestValues[i], context, arg);
+                Object newArg = toGuestValues[i].execute(toGuestValues[i], arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -1264,7 +1266,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
          * Specialization for constant number of arguments. Uses a profile for each argument.
          */
         @Specialization(replaces = {"doZero", "doCached"})
-        static Object[] doGeneric(Node node, PolyglotLanguageContext context, Object[] args,
+        static Object[] doGeneric(Node node, Object[] args,
                         @Cached ToGuestValueNode toGuest,
                         @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
 
@@ -1272,7 +1274,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = toGuest.execute(node, context, arg);
+                Object newArg = toGuest.execute(node, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {

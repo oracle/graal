@@ -188,7 +188,7 @@ abstract class HostMethodDesc {
 
         public abstract Object invoke(Object receiver, Object[] arguments) throws Throwable;
 
-        public abstract Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext context, Node node);
+        public abstract Object invokeGuestToHost(HostContext context, GuestToHostCodeCache cache, Object receiver, Object[] arguments, Node node);
 
         @Override
         public boolean isMethod() {
@@ -255,9 +255,9 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
+            public Object invokeGuestToHost(HostContext hostContext, GuestToHostCodeCache cache, Object receiver, Object[] arguments, Node node) {
                 CallTarget target = cache.reflectionHostInvoke;
-                return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, this, arguments);
+                return GuestToHostRootNode.guestToHostCall(node, target, receiver, this, arguments);
             }
 
             /**
@@ -392,7 +392,7 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
+            public Object invokeGuestToHost(HostContext hostContext, GuestToHostCodeCache cache, Object receiver, Object[] arguments, Node node) {
                 MethodHandle handle = methodHandle;
                 if (handle == null) {
                     if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
@@ -405,7 +405,7 @@ abstract class HostMethodDesc {
                 }
                 CallTarget target = cache.methodHandleHostInvoke;
                 CompilerAsserts.partialEvaluationConstant(target);
-                return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, handle, arguments);
+                return GuestToHostRootNode.guestToHostCall(node, target, receiver, handle, arguments);
             }
 
         }
@@ -534,7 +534,7 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
+            public Object invokeGuestToHost(HostContext hostContext, GuestToHostCodeCache cache, Object receiver, Object[] arguments, Node node) {
                 assert receiver != null && receiver.getClass().isArray() && arguments.length == 0;
                 Object result;
                 if (TruffleOptions.AOT) {

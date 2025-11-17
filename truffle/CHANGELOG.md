@@ -56,7 +56,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-69861: Bytecode DSL: Added a `captureFramesForTrace` parameter to `@GenerateBytecode` that enables capturing of frames in `TruffleStackTraceElement`s. Previously, frame data was unreliably available in stack traces; now, it is guaranteed to be available if requested. Languages must use the `BytecodeFrame` abstraction to access frame data from `TruffleStackTraceElement`s rather than access the frame directly.
 * GR-69614: The methods `InteropLibrary#hasLanguage` and `InteropLibrary#getLanguage` have been replaced with `InteropLibrary#hasLanguageId` and `InteropLibrary#getLanguageId`. Language implementers are encouraged to update their code to the new API.
 * GR-69614: Added `TruffleInstrument.Env.getHostLanguage()` returning the host language info. This allows instruments to lookup the top scope of the host language using `Env.getScope(LanguageInfo)`.
-
+* GR-71468: Significantly improve optimized performance of host proxy interfaces (`org.graalvm.polyglot.proxy.Proxy`).
 
 ## Version 25.0
 * GR-31495 Added ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. Languages may describe available source options by implementing `TruffleLanguage.getSourceOptionDescriptors()` and `TruffleInstrument.getSourceOptionDescriptors()` respectively.

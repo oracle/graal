@@ -82,6 +82,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageEndpoint;
@@ -839,9 +840,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object toGuestValue(Node node, Object obj, Object languageContext) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.toGuestValue(node, obj, false);
+        public Object toGuestValue(Node node, Object obj) {
+            return PolyglotContextImpl.toGuestValue(node, obj, false);
         }
 
         @Override
@@ -2371,6 +2371,23 @@ final class EngineAccessor extends Accessor {
                 return null;
             }
             return ((PolyglotLanguageInstance) languageInstance).sharing;
+        }
+
+        @Override
+        public Context getContextAPI(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getContextAPI();
+        }
+
+        @Override
+        public AbstractValueDispatch lookupValueCache(Object polyglotContextImpl, Object value) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContextImpl);
+            return context.layer.hostLanguage.lookupValueCache(context, value);
+        }
+
+        @Override
+        public Object getHostLanguageContext(Object polyglotContextImpl) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContextImpl);
+            return context.getHostContext();
         }
 
     }

@@ -114,7 +114,6 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
@@ -943,21 +942,6 @@ public final class Engine implements AutoCloseable {
 
         private static final APIAccessImpl INSTANCE = new APIAccessImpl();
 
-        private static final ProxyArray EMPTY = new ProxyArray() {
-
-            public void set(long index, Value value) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-
-            public long getSize() {
-                return 0;
-            }
-
-            public Object get(long index) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-        };
-
         APIAccessImpl() {
         }
 
@@ -1388,146 +1372,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public boolean isProxyArray(Object proxy) {
-            return proxy instanceof ProxyArray;
-        }
-
-        @Override
-        public boolean isProxyDate(Object proxy) {
-            return proxy instanceof ProxyDate;
-        }
-
-        @Override
-        public boolean isProxyDuration(Object proxy) {
-            return proxy instanceof ProxyDuration;
-        }
-
-        @Override
-        public boolean isProxyExecutable(Object proxy) {
-            return proxy instanceof ProxyExecutable;
-        }
-
-        @Override
-        public boolean isProxyHashMap(Object proxy) {
-            return proxy instanceof ProxyHashMap;
-        }
-
-        @Override
-        public boolean isProxyInstant(Object proxy) {
-            return proxy instanceof ProxyInstant;
-        }
-
-        @Override
-        public boolean isProxyInstantiable(Object proxy) {
-            return proxy instanceof ProxyInstantiable;
-        }
-
-        @Override
-        public boolean isProxyIterable(Object proxy) {
-            return proxy instanceof ProxyIterable;
-        }
-
-        @Override
-        public boolean isProxyIterator(Object proxy) {
-            return proxy instanceof ProxyIterator;
-        }
-
-        @Override
-        public boolean isProxyNativeObject(Object proxy) {
-            return proxy instanceof ProxyNativeObject;
-        }
-
-        @Override
-        public boolean isProxyObject(Object proxy) {
-            return proxy instanceof ProxyObject;
-        }
-
-        @Override
-        public boolean isProxyTime(Object proxy) {
-            return proxy instanceof ProxyTime;
-        }
-
-        @Override
-        public boolean isProxyTimeZone(Object proxy) {
-            return proxy instanceof ProxyTimeZone;
-        }
-
-        @Override
-        public boolean isProxy(Object proxy) {
-            return proxy instanceof Proxy;
-        }
-
-        @Override
-        public Class<?> getProxyArrayClass() {
-            return ProxyArray.class;
-        }
-
-        @Override
-        public Class<?> getProxyDateClass() {
-            return ProxyDate.class;
-        }
-
-        @Override
-        public Class<?> getProxyDurationClass() {
-            return ProxyDuration.class;
-        }
-
-        @Override
-        public Class<?> getProxyExecutableClass() {
-            return ProxyExecutable.class;
-        }
-
-        @Override
-        public Class<?> getProxyHashMapClass() {
-            return ProxyHashMap.class;
-        }
-
-        @Override
-        public Class<?> getProxyInstantClass() {
-            return ProxyInstant.class;
-        }
-
-        @Override
-        public Class<?> getProxyInstantiableClass() {
-            return ProxyInstantiable.class;
-        }
-
-        @Override
-        public Class<?> getProxyIterableClass() {
-            return ProxyIterable.class;
-        }
-
-        @Override
-        public Class<?> getProxyIteratorClass() {
-            return ProxyIterator.class;
-        }
-
-        @Override
-        public Class<?> getProxyNativeObjectClass() {
-            return ProxyNativeObject.class;
-        }
-
-        @Override
-        public Class<?> getProxyObjectClass() {
-            return ProxyObject.class;
-        }
-
-        @Override
-        public Class<?> getProxyTimeClass() {
-            return ProxyTime.class;
-        }
-
-        @Override
-        public Class<?> getProxyTimeZoneClass() {
-            return ProxyTimeZone.class;
-        }
-
-        @Override
-        public Class<?> getProxyClass() {
-            return Proxy.class;
-        }
-
-        @Override
         public Object callProxyExecutableExecute(Object proxy, Object[] objects) {
             return ((ProxyExecutable) proxy).execute((Value[]) objects);
         }
@@ -1562,11 +1406,26 @@ public final class Engine implements AutoCloseable {
             return ((ProxyArray) proxy).getSize();
         }
 
+        private static final ProxyArray EMPTY_PROXY_ARRAY = new ProxyArray() {
+
+            public void set(long index, Value value) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+
+            public long getSize() {
+                return 0;
+            }
+
+            public Object get(long index) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+        };
+
         @Override
         public Object callProxyObjectMemberKeys(Object proxy) {
             Object result = ((ProxyObject) proxy).getMemberKeys();
             if (result == null) {
-                result = EMPTY;
+                result = EMPTY_PROXY_ARRAY;
             }
             return result;
         }
