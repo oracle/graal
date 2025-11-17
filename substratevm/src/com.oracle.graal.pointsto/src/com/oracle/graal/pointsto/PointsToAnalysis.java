@@ -265,7 +265,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        if (writable && isSupportedJavaKind(field.getStorageKind())) {
+        if (isSupportedJavaKind(field.getStorageKind())) {
             field.injectDeclaredType();
         }
     }
