@@ -12,7 +12,7 @@ import java.util.function.Predicate;
  * This abstract domain maps elements (variables, memory locations, etc.) to a common
  * abstract domain.
  * One example could be mapping variables to intervals, signs, etc.
- * In order to minimize the size of the used map,
+ *  to minimize the size of the used map,
  * if a Key is not present, we return TOP value of the {@link AbstractDomain}
  */
 public abstract class MapDomain<

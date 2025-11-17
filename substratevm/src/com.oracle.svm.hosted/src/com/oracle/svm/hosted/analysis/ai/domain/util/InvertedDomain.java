@@ -7,24 +7,14 @@ import java.util.Objects;
 /**
  * Reverse Adaptor of an {@link AbstractDomain}
  * Reverses the top and bottom elements of an abstract domain
- * and also reverses meet and join operations
+ * and also reverses meet and join operation
  * NOTE: Our framework doesn't use narrowing ( yet ) so we don't have a counterpart for widening.
  * We can overcome this obstacle by implementing widening as a meet operation. But this is not ideal,
  * since programs that do not terminate will not be able to use this domain
  * + the fixpoint computation may be much slower on programs that use loops.
  */
-public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
-        extends AbstractDomain<InvertedDomain<Domain>> {
-
-    private final Domain domain;
-
-    public InvertedDomain(Domain domain) {
-        this.domain = domain;
-    }
-
-    public Domain getDomain() {
-        return domain;
-    }
+public record InvertedDomain<Domain extends AbstractDomain<Domain>>(Domain domain)
+        implements AbstractDomain<InvertedDomain<Domain>> {
 
     @Override
     public boolean isBot() {
@@ -49,11 +39,6 @@ public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hashCode(domain);
-    }
-
-    @Override
     public void setToBot() {
         domain.setToTop();
     }
@@ -65,17 +50,17 @@ public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
 
     @Override
     public void joinWith(InvertedDomain<Domain> other) {
-        domain.meetWith(other.getDomain());
+        domain.meetWith(other.domain());
     }
 
     @Override
     public void widenWith(InvertedDomain<Domain> other) {
-        domain.meetWith(other.getDomain());
+        domain.meetWith(other.domain());
     }
 
     @Override
     public void meetWith(InvertedDomain<Domain> other) {
-        domain.joinWith(other.getDomain());
+        domain.joinWith(other.domain());
     }
 
     @Override

@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 public class LatticeDomain<
         Value extends AbstractValue<Value>,
         Domain extends LatticeDomain<Value, Domain>>
-        extends AbstractDomain<Domain> {
+        implements AbstractDomain<Domain> {
 
     private AbstractValueKind kind;
     private Value value;

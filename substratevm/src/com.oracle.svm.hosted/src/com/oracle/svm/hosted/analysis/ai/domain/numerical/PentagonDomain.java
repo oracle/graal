@@ -14,7 +14,7 @@ import java.util.Set;
  *
  * @param <Variable> the type used for identifying different variables in the pentagon domain (String, Access Path, ...)
  */
-public class PentagonDomain<Variable> extends AbstractDomain<PentagonDomain<Variable>> {
+public class PentagonDomain<Variable> implements AbstractDomain<PentagonDomain<Variable>> {
 
     /* We could use something like MapDomain here, but this is just for demonstration and easier work */
     private final Map<Variable, IntInterval> intervals;

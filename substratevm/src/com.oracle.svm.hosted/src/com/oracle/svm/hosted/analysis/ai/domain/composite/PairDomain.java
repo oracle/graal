@@ -2,8 +2,6 @@ package com.oracle.svm.hosted.analysis.ai.domain.composite;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
-import java.util.Objects;
-
 /**
  * Represents a pair of two abstract domains.
  * Implemented using the cartesian product of the two abstract domains.
@@ -11,26 +9,10 @@ import java.util.Objects;
  * @param <First>  the type of the first abstract domain
  * @param <Second> the type of the second abstract domain
  */
-public final class PairDomain<
+public record PairDomain<
         First extends AbstractDomain<First>,
-        Second extends AbstractDomain<Second>>
-        extends AbstractDomain<PairDomain<First, Second>> {
-
-    private final First first;
-    private final Second second;
-
-    public PairDomain(First first, Second second) {
-        this.first = first;
-        this.second = second;
-    }
-
-    public First getFirst() {
-        return first;
-    }
-
-    public Second getSecond() {
-        return second;
-    }
+        Second extends AbstractDomain<Second>>(First first, Second second)
+        implements AbstractDomain<PairDomain<First, Second>> {
 
     @Override
     public boolean isBot() {
@@ -45,18 +27,6 @@ public final class PairDomain<
     @Override
     public boolean leq(PairDomain<First, Second> other) {
         return first.leq(other.first) && second.leq(other.second);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        PairDomain<?, ?> that = (PairDomain<?, ?>) o;
-        return Objects.equals(first, that.first) && Objects.equals(second, that.second);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(first, second);
     }
 
     @Override

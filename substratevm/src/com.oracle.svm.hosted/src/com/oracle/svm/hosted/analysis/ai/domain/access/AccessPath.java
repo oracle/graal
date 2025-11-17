@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a name of a memory ( stack/heap ) location via the path that is used to access it
+ * Represents a name of a memory (stack/heap) location via the path that is used to access it
  * e.g a.b[0].c, where 'a' is the base variable and b[0].c is the access path
  */
 public final class AccessPath {

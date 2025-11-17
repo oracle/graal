@@ -7,11 +7,11 @@ import java.util.Objects;
 
 /**
  * A generic wrapper class for handling domains with finitely many states.
- * For example SignDomain, ParityDomain, etc.
+ * For example, SignDomain, ParityDomain, etc.
  *
  * @param <State> the type of the finite state
  */
-public abstract class FiniteDomain<State> extends AbstractDomain<FiniteDomain<State>> {
+public abstract class FiniteDomain<State> implements AbstractDomain<FiniteDomain<State>> {
     private State state;
     private AbstractValueKind kind;
 

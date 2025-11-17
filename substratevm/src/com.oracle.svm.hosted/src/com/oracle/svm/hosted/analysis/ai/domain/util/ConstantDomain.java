@@ -6,17 +6,17 @@ import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import java.util.Objects;
 
 /**
- * Abstract domain for flat lattice, also known as a 3 level lattice.
+ * Abstract domain for flat lattice, also known as a three-level lattice.
  * For domains that can be represented as a constant value and have infinite ascending and descending chains.
- * ⊤
- * / | \
- * ... -1  0  1 ...
- * \ | /
- * ⊥
+ *     ⊤
+ *   / | \
+ * -1  0  1
+ *  \ | /
+ *    ⊥
  *
  * @param <Value> the type of the constant value (e.g., Integer, Long, Float, Double)
  */
-public final class ConstantDomain<Value extends Number> extends AbstractDomain<ConstantDomain<Value>> {
+public final class ConstantDomain<Value extends Number> implements AbstractDomain<ConstantDomain<Value>> {
 
     private AbstractValueKind kind;
     private Value value;

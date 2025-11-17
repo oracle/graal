@@ -14,7 +14,7 @@ import java.util.function.Consumer;
  *
  * @param <Domain> type of the derived ReducedProductDomain
  */
-public class ReducedProductDomain<Domain extends ReducedProductDomain<Domain>> extends AbstractDomain<Domain> {
+public class ReducedProductDomain<Domain extends ReducedProductDomain<Domain>> implements AbstractDomain<Domain> {
 
     private final List<AbstractDomain<?>> domains;
     private final List<Reducer> reducers;

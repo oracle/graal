@@ -9,7 +9,7 @@ import java.util.Objects;
  * This domain can be used when we want to have a boolean value
  * that is true only when it is true in all paths.
  */
-public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
+public final class BooleanAndDomain implements AbstractDomain<BooleanAndDomain> {
 
     private boolean value;
 

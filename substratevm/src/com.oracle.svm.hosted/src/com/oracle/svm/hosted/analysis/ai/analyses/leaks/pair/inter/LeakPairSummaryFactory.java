@@ -15,7 +15,7 @@ public class LeakPairSummaryFactory implements SummaryFactory<PairDomain<CountDo
     public Summary<PairDomain<CountDomain, BooleanOrDomain>> createSummary(Invoke invoke,
                                                                            PairDomain<CountDomain, BooleanOrDomain> callerPreCondition,
                                                                            List<PairDomain<CountDomain, BooleanOrDomain>> domainArguments) {
-        CountDomain summaryPreCount = new CountDomain(0, callerPreCondition.getFirst().getMaxValue());
+        CountDomain summaryPreCount = new CountDomain(0, callerPreCondition.first().getMaxValue());
         return new LeakPairSummary(new PairDomain<>(summaryPreCount, BooleanOrDomain.FALSE), invoke);
     }
 }

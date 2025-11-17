@@ -1,6 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.domain.util;
 
-import com.oracle.svm.hosted.analysis.ai.domain.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.domain.value.SetValue;
 
 import java.util.Set;
@@ -14,14 +13,6 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
 
     public SetDomain() {
         super(SetValue::new);
-    }
-
-    public SetDomain(AbstractValueKind kind) {
-        super(kind, SetValue::new);
-    }
-
-    public SetDomain(SetValue<Element> setValue) {
-        super(() -> setValue);
     }
 
     public SetDomain(SetDomain<Element> other) {

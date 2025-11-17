@@ -8,7 +8,7 @@ import java.util.Objects;
  * Represents a basic counting domain with a bounded maximum value.
  * The value can be incremented and decremented.
  */
-public final class CountDomain extends AbstractDomain<CountDomain> {
+public final class CountDomain implements AbstractDomain<CountDomain> {
 
     private int value;
     private final int maxValue;

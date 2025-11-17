@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * AbsMemory represents the product domain (env, store) used by access-path analyses.
-* - env: mapping from AbsVar -> AccessPath (which root a variable refers to)
+ * - env: mapping from AbsVar -> AccessPath (which root a variable refers to)
  * - store: mapping from AccessPath -> IntInterval (heap/field values)
  * <p>
  * Lattice semantics:
@@ -20,7 +20,7 @@ import java.util.Set;
  * - widen: same shape as join but uses widenWith on intervals
  * - meet: intersection of env/store keys; env keeps mapping only when equal; store meets intervals
  */
-public class AbstractMemory extends AbstractDomain<AbstractMemory> {
+public class AbstractMemory implements AbstractDomain<AbstractMemory> {
 
     private boolean isBot;
     private boolean isTop;

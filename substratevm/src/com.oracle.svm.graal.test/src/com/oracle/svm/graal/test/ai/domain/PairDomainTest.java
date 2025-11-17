@@ -23,8 +23,8 @@ public class PairDomainTest {
         IntInterval interval = new IntInterval(5, 10);
         BooleanAndDomain booleanDomain = new BooleanAndDomain(true);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain = new PairDomain<>(interval, booleanDomain);
-        Assert.assertEquals(interval, pairDomain.getFirst());
-        Assert.assertEquals(booleanDomain, pairDomain.getSecond());
+        Assert.assertEquals(interval, pairDomain.first());
+        Assert.assertEquals(booleanDomain, pairDomain.second());
     }
 
     @Test
@@ -54,9 +54,9 @@ public class PairDomainTest {
         PairDomain<IntInterval, BooleanAndDomain> pairDomain1 = new PairDomain<>(interval1, booleanDomain1);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain2 = new PairDomain<>(interval2, booleanDomain2);
         pairDomain1.joinWith(pairDomain2);
-        Assert.assertEquals(1, pairDomain1.getFirst().getLowerBound());
-        Assert.assertEquals(7, pairDomain1.getFirst().getUpperBound());
-        Assert.assertFalse(pairDomain1.getSecond().getValue());
+        Assert.assertEquals(1, pairDomain1.first().getLowerBound());
+        Assert.assertEquals(7, pairDomain1.first().getUpperBound());
+        Assert.assertFalse(pairDomain1.second().getValue());
     }
 
     @Test
@@ -68,9 +68,9 @@ public class PairDomainTest {
         PairDomain<IntInterval, BooleanAndDomain> pairDomain1 = new PairDomain<>(interval1, booleanDomain1);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain2 = new PairDomain<>(interval2, booleanDomain2);
         pairDomain1.meetWith(pairDomain2);
-        Assert.assertEquals(3, pairDomain1.getFirst().getLowerBound());
-        Assert.assertEquals(5, pairDomain1.getFirst().getUpperBound());
-        Assert.assertTrue(pairDomain1.getSecond().getValue());
+        Assert.assertEquals(3, pairDomain1.first().getLowerBound());
+        Assert.assertEquals(5, pairDomain1.first().getUpperBound());
+        Assert.assertTrue(pairDomain1.second().getValue());
     }
 
     @Test
@@ -79,8 +79,8 @@ public class PairDomainTest {
         BooleanAndDomain booleanDomain = new BooleanAndDomain(true);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain = new PairDomain<>(interval, booleanDomain);
         PairDomain<IntInterval, BooleanAndDomain> copy = pairDomain.copyOf();
-        Assert.assertEquals(pairDomain.getFirst(), copy.getFirst());
-        Assert.assertEquals(pairDomain.getSecond(), copy.getSecond());
+        Assert.assertEquals(pairDomain.first(), copy.first());
+        Assert.assertEquals(pairDomain.second(), copy.second());
     }
 
     @Test

@@ -14,7 +14,7 @@ import java.util.Objects;
  * Widening is implemented in a simple standard way: when a bound grows
  * beyond the previous, we set it to infinite (Long.MIN_VALUE / Long.MAX_VALUE).
  */
-public final class IntInterval extends AbstractDomain<IntInterval> {
+public final class IntInterval implements AbstractDomain<IntInterval> {
 
     public static final long NEG_INF = Long.MIN_VALUE;
     public static final long POS_INF = Long.MAX_VALUE;

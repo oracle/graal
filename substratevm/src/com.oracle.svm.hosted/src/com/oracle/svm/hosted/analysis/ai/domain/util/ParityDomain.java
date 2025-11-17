@@ -5,12 +5,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.value.Parity;
 
 /**
  * Abstract domain representing the parity of a value.
- * The lattice is as follows:
- * ⊤
- * /   \
- * EVEN     ODD
- * \  /
- * ⊥
  */
 public final class ParityDomain extends FiniteDomain<Parity> {
 

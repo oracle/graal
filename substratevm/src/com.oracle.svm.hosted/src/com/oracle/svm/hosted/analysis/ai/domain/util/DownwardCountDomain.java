@@ -6,9 +6,9 @@ import java.util.Objects;
 
 /**
  * Represents a bounded counting domain with a non-negative count and a bounded maximum value.
- * The difference between CountDomain is that join is implemented as minimum and the top value is zero.
+ * The difference between CountDomain is that join is implemented as a minimum and the top value is zero.
  */
-public final class DownwardCountDomain extends AbstractDomain<DownwardCountDomain> {
+public final class DownwardCountDomain implements AbstractDomain<DownwardCountDomain> {
 
     private int value;
     private final int maxCount;

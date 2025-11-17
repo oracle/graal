@@ -26,14 +26,14 @@ public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<P
     public void execNode(Node node, AbstractState<PairDomain<CountDomain, BooleanOrDomain>> abstractState, InvokeCallBack<PairDomain<CountDomain, BooleanOrDomain>> invokeCallBack, IteratorContext iteratorContext) {
         PairDomain<CountDomain, BooleanOrDomain> preCondition = abstractState.getPreCondition(node);
         PairDomain<CountDomain, BooleanOrDomain> computedPost = preCondition.copyOf();
-        int preCount = preCondition.getFirst().getValue();
+        int preCount = preCondition.first().getValue();
 
         switch (node) {
             case Invoke invoke -> {
                 if (InvokeUtil.opensResource(invoke)) {
-                    computedPost.getFirst().increment();
+                    computedPost.first().increment();
                 } else if (InvokeUtil.closesResource(invoke)) {
-                    computedPost.getFirst().decrement();
+                    computedPost.first().decrement();
                 } else {
                     AnalysisOutcome<PairDomain<CountDomain, BooleanOrDomain>> outcome = invokeCallBack.handleInvoke(invoke, node, abstractState);
                     if (outcome.isError()) {
@@ -47,9 +47,9 @@ public class LeaksPairDomainAbstractInterpreter implements AbstractInterpreter<P
 
             case ReturnNode returnNode -> {
                 if (preCount == 0) {
-                    computedPost.getSecond().meetWith(BooleanOrDomain.FALSE);
+                    computedPost.second().meetWith(BooleanOrDomain.FALSE);
                 } else {
-                    computedPost.getSecond().joinWith(BooleanOrDomain.TRUE);
+                    computedPost.second().joinWith(BooleanOrDomain.TRUE);
                 }
             }
 

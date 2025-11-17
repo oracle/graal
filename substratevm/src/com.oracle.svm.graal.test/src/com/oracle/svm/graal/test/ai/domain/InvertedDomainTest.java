@@ -19,7 +19,7 @@ public class InvertedDomainTest {
     public void testValueConstructor() {
         IntInterval interval = new IntInterval(5, 10);
         InvertedDomain<IntInterval> invertedDomain = new InvertedDomain<>(interval);
-        Assert.assertEquals(interval, invertedDomain.getDomain());
+        Assert.assertEquals(interval, invertedDomain.domain());
     }
 
     @Test
@@ -45,8 +45,8 @@ public class InvertedDomainTest {
         InvertedDomain<IntInterval> invertedDomain1 = new InvertedDomain<>(interval1);
         InvertedDomain<IntInterval> invertedDomain2 = new InvertedDomain<>(interval2);
         invertedDomain1.joinWith(invertedDomain2);
-        Assert.assertEquals(3, invertedDomain1.getDomain().getLowerBound());
-        Assert.assertEquals(5, invertedDomain1.getDomain().getUpperBound());
+        Assert.assertEquals(3, invertedDomain1.domain().getLowerBound());
+        Assert.assertEquals(5, invertedDomain1.domain().getUpperBound());
     }
 
     @Test
@@ -56,8 +56,8 @@ public class InvertedDomainTest {
         InvertedDomain<IntInterval> invertedDomain1 = new InvertedDomain<>(interval1);
         InvertedDomain<IntInterval> invertedDomain2 = new InvertedDomain<>(interval2);
         invertedDomain1.meetWith(invertedDomain2);
-        Assert.assertEquals(1, invertedDomain1.getDomain().getLowerBound());
-        Assert.assertEquals(7, invertedDomain1.getDomain().getUpperBound());
+        Assert.assertEquals(1, invertedDomain1.domain().getLowerBound());
+        Assert.assertEquals(7, invertedDomain1.domain().getUpperBound());
     }
 
     @Test
@@ -65,8 +65,8 @@ public class InvertedDomainTest {
         IntInterval interval = new IntInterval(5, 10);
         InvertedDomain<IntInterval> invertedDomain = new InvertedDomain<>(interval);
         InvertedDomain<IntInterval> copy = invertedDomain.copyOf();
-        Assert.assertEquals(5, copy.getDomain().getLowerBound());
-        Assert.assertEquals(10, copy.getDomain().getUpperBound());
+        Assert.assertEquals(5, copy.domain().getLowerBound());
+        Assert.assertEquals(10, copy.domain().getUpperBound());
     }
 
     @Test

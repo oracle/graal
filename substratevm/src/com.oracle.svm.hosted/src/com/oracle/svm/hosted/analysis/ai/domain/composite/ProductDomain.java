@@ -10,7 +10,7 @@ import java.util.Objects;
     This abstract domain represents a cartesian product of other abstract domains.
     Future improvement could be implementing reduced product domain.
  */
-public final class ProductDomain extends AbstractDomain<ProductDomain> {
+public final class ProductDomain implements AbstractDomain<ProductDomain> {
 
     private final List<AbstractDomain<?>> domains;
 
