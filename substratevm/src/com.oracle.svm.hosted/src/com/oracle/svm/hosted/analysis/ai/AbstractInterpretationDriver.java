@@ -14,8 +14,11 @@ import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
+
+import java.util.Optional;
 
 /**
  * The entry point of the abstract interpretation framework.
@@ -31,7 +34,7 @@ public class AbstractInterpretationDriver {
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
 
-    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod mainEntryPoint, Inflation bb) {
+    public AbstractInterpretationDriver(DebugContext debug, Optional<AnalysisMethod> mainEntryPoint, Inflation bb) {
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
         this.engine = new AbstractInterpretationEngine(analyzerManager, mainEntryPoint, bb);
@@ -40,9 +43,15 @@ public class AbstractInterpretationDriver {
     /* To see the output of the abstract interpretation, run with -H:Log=AbstractInterpretation */
     @SuppressWarnings("try")
     public void run() {
-        // TODO: inspect progressReporter bugs
-        prepareAnalyses();
-        engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS);
+        try (ProgressReporter.ReporterClosable c = ProgressReporter.singleton().printAbstractInterpretation()) {
+            /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
+            try (var scope = debug.scope("AbstractInterpretation")) {
+                prepareAnalyses();
+                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS);
+            } catch (AbsintException e) {
+                debug.log("Abstract interpretation encountered a runtime error: ", e);
+            }
+        }
     }
 
     /**
@@ -52,12 +61,12 @@ public class AbstractInterpretationDriver {
      * 2. Create and configure the {@link AbstractInterpretationLogger}.
      */
     private void prepareAnalyses() {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
-                .setConsoleEnabled(false)             /* only write to file */
-                .setFileEnabled(true)                /* ensure file logging is on */
-                .setFileThreshold(LoggerVerbosity.DEBUG)
-                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
-        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
+//        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
+//                .setConsoleEnabled(false)             /* only write to file */
+//                .setFileEnabled(true)                /* ensure file logging is on */
+//                .setFileThreshold(LoggerVerbosity.DEBUG)
+//                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
+//        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();

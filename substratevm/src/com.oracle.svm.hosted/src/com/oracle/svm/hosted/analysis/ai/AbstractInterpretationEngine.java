@@ -13,6 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This class is responsible for running the abstract interpretation analyses,
@@ -23,19 +24,28 @@ public class AbstractInterpretationEngine {
     private final AnalyzerManager analyzerManager;
     private final List<AnalysisMethod> rootMethods;
     private final List<AnalysisMethod> invokedMethods;
-    private final AnalysisMethod analysisRoot;
+    private final Optional<AnalysisMethod> analysisRoot;
 
-    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, AnalysisMethod mainEntryPoint, Inflation bb) {
+    public AbstractInterpretationEngine(AnalyzerManager analyzerManager, Optional<AnalysisMethod> mainEntryPoint, Inflation bb) {
         var analysisServices = AnalysisServices.getInstance(bb);
         this.analyzerManager = analyzerManager;
         this.rootMethods = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
-        this.analysisRoot = analysisServices.getMainMethod(mainEntryPoint);
+        if (mainEntryPoint.isEmpty()) {
+            this.analysisRoot = Optional.empty();
+        } else {
+            AnalysisMethod tmpRoot = analysisServices.getMainMethod(mainEntryPoint.get());
+            if (tmpRoot == null) {
+                this.analysisRoot = Optional.empty();
+            } else {
+                this.analysisRoot = Optional.of(tmpRoot);
+            }
+        }
         this.invokedMethods = analysisServices.getInvokedMethods();
     }
 
     public void executeAbstractInterpretation(AnalyzerMode analyzerMode) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        if (analyzerMode.isMainOnly() && (analysisRoot == null)) {
+        if (analyzerMode.isMainOnly() && analysisRoot.isEmpty()) {
             logger.log("Main method not provided in 'main-only' abstract interpretation mode, defaulting to all invoked methods.", LoggerVerbosity.WARN);
             if (analyzerMode.isInterProcedural()) {
                 analyzerMode = AnalyzerMode.INTER_ANALYZE_FROM_ALL_ENTRY_POINTS;
@@ -74,8 +84,8 @@ public class AbstractInterpretationEngine {
     }
 
     private void executeIntraProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
-        if (analyzerMode.isMainOnly()) {
-            analyzer.runAnalysis(analysisRoot);
+        if (analyzerMode.isMainOnly() && analysisRoot.isPresent()) {
+            analyzer.runAnalysis(analysisRoot.get());
             return;
         }
 
@@ -83,8 +93,8 @@ public class AbstractInterpretationEngine {
     }
 
     private void executeInterProceduralAnalysis(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {
-        if (analyzerMode.isMainOnly()) {
-            analyzer.runAnalysis(analysisRoot);
+        if (analyzerMode.isMainOnly() && analysisRoot.isPresent()) {
+            analyzer.runAnalysis(analysisRoot.get());
             return;
         }
 
