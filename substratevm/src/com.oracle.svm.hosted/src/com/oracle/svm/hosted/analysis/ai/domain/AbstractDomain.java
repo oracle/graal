@@ -2,6 +2,14 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 /**
  * Interface for abstract domain in GraalAF.
+ * Abstract domain serves as the abstraction of program state.
+ * <p>
+ * New abstract domains can be implemented by extending the existing domains,
+ * or by creating new ones. A new domain can be created as:
+ *
+ * public MyDomain implements AbstractDomain<MyDomain>
+ *     ...
+ * </p>
  *
  * @param <Derived> type of the derived {@link AbstractDomain}
  */
