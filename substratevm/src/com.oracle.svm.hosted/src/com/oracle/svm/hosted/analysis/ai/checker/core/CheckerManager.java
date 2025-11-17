@@ -54,6 +54,7 @@ public final class CheckerManager {
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         FactApplierSuite applierSuite = FactApplierSuite.fromRegistry(aggregator, true);
         applierSuite.runAppliers(method, graph, aggregator);
+
         if (persistRewrites) {
             applyAbstractInterpretationResults(method, graph);
         } else {

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 
@@ -33,6 +34,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
  * Produces IndexSafetyFact for array loads/stores proven to be within bounds.
  */
 public final class IndexSafetyChecker implements Checker<AbstractMemory> {
+
+    private static final int MAX_TRACE_DEPTH = 64;
 
     @Override
     public String getDescription() {
@@ -137,14 +140,26 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
     }
 
     private static NewArrayNode resolveNewArray(Node n) {
+        return resolveNewArray(n, new HashSet<>(), 0);
+    }
+
+    private static NewArrayNode resolveNewArray(Node n, Set<Node> visited, int depth) {
         if (n == null) return null;
+        if (depth > MAX_TRACE_DEPTH) {
+            AbstractInterpretationLogger.getInstance().log("resolveNewArray: max depth exceeded at " + n, LoggerVerbosity.DEBUG);
+            return null;
+        }
+        if (!visited.add(n)) {
+            // cycle detected
+            return null;
+        }
         if (n instanceof NewArrayNode na) return na;
-        if (n instanceof ValueProxy vp) return resolveNewArray(vp.getOriginalNode());
+        if (n instanceof ValueProxy vp) return resolveNewArray(vp.getOriginalNode(), visited, depth + 1);
         if (n instanceof PhiNode phi) {
             NewArrayNode candidate = null;
             for (int i = 0; i < phi.valueCount(); i++) {
                 Node in = phi.valueAt(i);
-                NewArrayNode r = resolveNewArray(in);
+                NewArrayNode r = resolveNewArray(in, visited, depth + 1);
                 if (r == null) return null;
                 if (candidate == null) {
                     candidate = r;

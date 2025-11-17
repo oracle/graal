@@ -94,28 +94,43 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
         while (iterate) {
             int visitCount = iteratorContext.getNodeVisitCount(headBegin);
             logger.log("Loop iteration (visit count: " + visitCount + ") for cycle: " + cycle, LoggerVerbosity.DEBUG);
-            Domain oldPreCondition = abstractState.getPreCondition(headBegin).copyOf();
+
+            // Ensure a pre-condition exists
+            Domain currentPre = abstractState.getPreCondition(headBegin);
+            if (currentPre == null) {
+                abstractState.setPreCondition(headBegin, initialDomain.copyOf());
+                currentPre = abstractState.getPreCondition(headBegin);
+            }
+            Domain oldPreCondition = currentPre.copyOf();
+
             iteratorContext.setCurrentBlock(cycle.head());
             abstractTransformer.analyzeBlock(cycle.head(), abstractState, iteratorContext);
 
-            /* Analyze all other nested WtoComponents */
+            // Analyze nested components inside the cycle body (excluding head already handled)
             for (WtoComponent component : cycle.components()) {
                 analyzeComponent(component);
             }
 
             Domain postCondition = abstractState.getPostCondition(headBegin);
-            logger.log("Visit " + visitCount + ": old pre = " + oldPreCondition + ", post = " + postCondition,
-                    LoggerVerbosity.DEBUG);
+            if (postCondition == null) {
+                // Defensive: if transformer failed to set a post condition, treat as TOP and converge
+                logger.log("Post-condition missing for loop head " + headBegin + ", forcing convergence", LoggerVerbosity.INFO);
+                abstractState.setPostCondition(headBegin, oldPreCondition.copyOf());
+                break;
+            }
 
-            /* Check convergence by comparing pre with post */
-            if (oldPreCondition.equals(postCondition)) {
-                logger.log("Loop converged (pre equals post) after " + (visitCount + 1) + " visits",
-                        LoggerVerbosity.DEBUG);
+            logger.log("Visit " + visitCount + ": old pre = " + oldPreCondition + ", post = " + postCondition, LoggerVerbosity.DEBUG);
+
+            // Convergence criteria:
+            // 1. Exact equality (standard)
+            // 2. postCondition <= oldPreCondition (domain order) after widening: stable over-approximation
+            boolean equal = oldPreCondition.equals(postCondition);
+            boolean dominated = postCondition.leq(oldPreCondition);
+            if (equal || dominated) {
+                logger.log("Loop converged (" + (equal ? "equal" : "post ⊑ oldPre") + ") after " + (visitCount + 1) + " visits", LoggerVerbosity.DEBUG);
                 iterate = false;
             } else {
-                logger.log("Pre != Post, applying extrapolation (join/widen based on visit count)",
-                        LoggerVerbosity.DEBUG);
-                /* Extrapolate to compute new pre-condition for next iteration */
+                logger.log("No convergence yet (post !<= oldPre). Extrapolating.", LoggerVerbosity.DEBUG);
                 extrapolate(headBegin);
                 if (iteratorContext.isLoopHeader(headBegin)) {
                     iteratorContext.incrementLoopIteration(headBegin);

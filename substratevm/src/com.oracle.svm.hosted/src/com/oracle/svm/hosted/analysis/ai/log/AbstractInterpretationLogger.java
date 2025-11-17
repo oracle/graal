@@ -298,7 +298,7 @@ public final class AbstractInterpretationLogger {
         var bb = services.getInflation();
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
-        try (DebugContext.Scope s = debug.scope("AbstractInterpretationAnalysis", graph)) {
+        try (DebugContext.Scope _ = debug.scope("AbstractInterpretationAnalysis", graph)) {
             debug.dump(DebugContext.BASIC_LEVEL, graph, phaseName);
         } catch (Throwable ex) {
             try {
@@ -366,7 +366,6 @@ public final class AbstractInterpretationLogger {
      */
     @Deprecated // dumping to IGV is directly implemented in {@link FactApplierSuite}
     public static IGVDumpSession openIGVDumpSession(AnalysisMethod method, StructuredGraph graph, String scopeName) throws Throwable {
-        // TODO: the changes don't propagate to later phases, maybe check debug
         if (graph == null) {
             return null;
         }

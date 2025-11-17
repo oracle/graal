@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext;
@@ -12,10 +11,10 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 /**
  * Common functionality for fixpoint iterators.
@@ -81,23 +80,34 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         var newPre = abstractState.getPreCondition(node).copyOf();
         IteratorPolicy policy = analysisContext.getIteratorPolicy();
 
+        // If postCondition already <= preCondition, treat as stabilized and skip extrapolation.
+        if (abstractState.getPostCondition(node).leq(abstractState.getPreCondition(node))) {
+            logger.log("Extrapolation skipped (post ⊑ pre) for node: " + node, LoggerVerbosity.DEBUG);
+            iteratorContext.incrementNodeVisitCount(node);
+            return;
+        }
+
         if (visitedAmount < policy.maxJoinIterations()) {
             logger.log("Extrapolating (join) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
             newPre.joinWith(abstractState.getPostCondition(node));
-        } else {
+        } else if (visitedAmount < policy.maxWidenIterations()) {
             logger.log("Extrapolating (widen) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
             newPre.widenWith(abstractState.getPostCondition(node));
+        } else {
+            if (!newPre.isTop()) {
+                AbsintException.exceededWideningThreshold(node, analysisMethod);
+            }
+            iteratorContext.setConverged(true);
         }
 
         logger.log("After extrapolation: newPre = " + newPre, LoggerVerbosity.DEBUG);
         abstractState.setPreCondition(node, newPre);
         iteratorContext.incrementNodeVisitCount(node);
 
-        if (iteratorContext.getNodeVisitCount(node) > policy.maxWidenIterations() + policy.maxJoinIterations()) {
-            logger.log("Extrapolation limit exceeded for node: " + node, LoggerVerbosity.INFO);
-            if (policy.wideningOverflowPolicy() == WideningOverflowPolicy.ERROR) {
-                throw AnalysisError.shouldNotReachHere("Exceeded maximum amount of extrapolating iterations. Consider increasing the limit, or refactor your widening/join operator");
-            } else if (policy.wideningOverflowPolicy() == WideningOverflowPolicy.SET_TO_TOP) {
+        int limit = policy.maxWidenIterations() + policy.maxJoinIterations();
+        if (iteratorContext.getNodeVisitCount(node) > limit) {
+            logger.log("Extrapolation hard limit exceeded for node: " + node + ", leaving state as is", LoggerVerbosity.INFO);
+            if (policy.wideningOverflowPolicy() == WideningOverflowPolicy.SET_TO_TOP) {
                 state.getPreCondition().setToTop();
             }
         }
