@@ -55,14 +55,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 
 public abstract class DOTestAsserts {
 
@@ -73,14 +72,19 @@ public abstract class DOTestAsserts {
     @SuppressWarnings("unchecked")
     public static <T> T invokeMethod(String methodName, Object receiver, Object... args) {
         try {
-            Method method = Stream.concat(Arrays.stream(receiver.getClass().getMethods()), Arrays.stream(receiver.getClass().getDeclaredMethods())).filter(
-                            m -> m.getName().equals(methodName)).findFirst().orElseThrow(
+            Method method = allMethods(receiver.getClass()).filter(
+                            m -> m.getName().equals(methodName) && m.getParameterCount() == args.length).findFirst().orElseThrow(
                                             () -> new NoSuchElementException("Method " + methodName + " not found in " + receiver.getClass()));
             method.setAccessible(true);
             return (T) method.invoke(receiver, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new AssertionError(e);
         }
+    }
+
+    private static Stream<Method> allMethods(Class<?> instanceClass) {
+        var superclasses = Stream.<Class<?>> iterate(instanceClass, c -> c.getSuperclass() != null, Class::getSuperclass);
+        return superclasses.flatMap(superclass -> Arrays.stream(superclass.getDeclaredMethods()));
     }
 
     public static void assertLocationFields(Location location, int prims, int objects) {
@@ -159,21 +163,21 @@ public abstract class DOTestAsserts {
         return sb.toString();
     }
 
+    @SuppressWarnings("deprecation")
     public static Map<Object, Object> archive(DynamicObject object) {
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
         Map<Object, Object> archive = new HashMap<>();
-        for (Property property : lib.getPropertyArray(object)) {
-            archive.put(property.getKey(), lib.getOrDefault(object, property.getKey(), null));
+        for (Property property : object.getShape().getPropertyList()) {
+            archive.put(property.getKey(), property.get(object, false));
         }
         return archive;
     }
 
+    @SuppressWarnings("deprecation")
     public static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
-        for (Property property : lib.getPropertyArray(object)) {
+        for (Property property : object.getShape().getPropertyList()) {
             Object key = property.getKey();
             Object before = archive.get(key);
-            Object after = lib.getOrDefault(object, key, null);
+            Object after = property.get(object, false);
             assertEquals("before != after for key: " + key, after, before);
         }
         return true;

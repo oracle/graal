@@ -53,6 +53,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -136,6 +138,7 @@ public final class ManagementSupport implements ThreadListener {
         return ImageSingletons.lookup(ManagementSupport.class);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     public <T extends PlatformManagedObject> T getPlatformMXBean(Class<T> clazz) {
         Object result = getPlatformMXBeans0(clazz);
         if (result == null) {
@@ -152,6 +155,7 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     @SuppressWarnings("unchecked")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     public <T extends PlatformManagedObject> List<T> getPlatformMXBeans(Class<T> clazz) {
         Object result = getPlatformMXBeans0(clazz);
         if (result == null) {

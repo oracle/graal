@@ -54,7 +54,6 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -139,13 +138,13 @@ public final class DebugScopeDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return WasmLanguage.class;
+    String getLanguageId() {
+        return WasmLanguage.ID;
     }
 
     @ExportMessage

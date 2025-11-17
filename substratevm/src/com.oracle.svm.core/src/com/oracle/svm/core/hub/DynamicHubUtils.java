@@ -28,17 +28,18 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
 
 /**
- * Contains utility for computing type check info for DynamicHubs, such as constants and functions
- * needed for {@link SubstrateOptions#useInterfaceHashing()}.
- *
+ * Contains utilities for interacting with DynamicHubs, such as converting vtable indexes to
+ * dispatch table offsets and calculating metadata needed for typecheck computations.
  */
-public final class DynamicHubTypeCheckUtil {
+public final class DynamicHubUtils {
 
     // Constants for interface hashing
 
@@ -135,7 +136,7 @@ public final class DynamicHubTypeCheckUtil {
             }
 
             // calculate hash parameter for hashable interfaces
-            hashParam = DynamicHubTypeCheckUtil.hashParam(hashedInterfaces);
+            hashParam = DynamicHubUtils.hashParam(hashedInterfaces);
             hashTable = new int[(hashParam & HASHING_PARAM_MASK) + 1];
         }
 
@@ -152,7 +153,7 @@ public final class DynamicHubTypeCheckUtil {
             if (useInterfaceHashing && interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
                 int offset = implementsMethods ? Math.toIntExact(vTableBaseOffset + iTableStartingOffsets[interfaceIdx] * vTableEntrySize) : Short.MIN_VALUE;
                 GraalError.guarantee(NumUtil.isShort(offset), "ItableDynamicHubOffset cannot be encoded as a short. Try -H:-UseInterfaceHashing.");
-                hashTable[DynamicHubTypeCheckUtil.hash(interfaceID, hashParam)] = ((offset << HASHING_ITABLE_SHIFT) | interfaceID);
+                hashTable[DynamicHubUtils.hash(interfaceID, hashParam)] = ((offset << HASHING_ITABLE_SHIFT) | interfaceID);
             } else {
                 int offset = implementsMethods ? Math.toIntExact(vTableBaseOffset + iTableStartingOffsets[interfaceIdx] * vTableEntrySize) : 0xBADD0D1D;
                 openTypeWorldTypeCheckSlots[iterableInterfaceIdx * 2 + numClassTypes] = interfaceID;
@@ -254,5 +255,18 @@ public final class DynamicHubTypeCheckUtil {
             tmp.add(hash);
         }
         return true;
+    }
+
+    /**
+     * Calculates the offset of a virtual call when the receiver is of type {@code thisHub} and the
+     * target method's declaring class is of type {@code callTargetHub}.
+     */
+    public static int determineDispatchTableOffset(DynamicHub thisHub, DynamicHub callTargetHub, int vTableIndex) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !callTargetHub.isInterface()) {
+            return KnownOffsets.singleton().getVTableOffset(vTableIndex, true);
+        } else {
+            int indexOffset = KnownOffsets.singleton().getVTableOffset(vTableIndex, false);
+            return NumUtil.safeToInt(indexOffset + OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, callTargetHub.getInterfaceID()));
+        }
     }
 }

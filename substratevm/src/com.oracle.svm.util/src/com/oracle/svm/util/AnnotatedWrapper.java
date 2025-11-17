@@ -25,16 +25,18 @@
 package com.oracle.svm.util;
 
 import java.util.List;
+import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * An annotated element may have its annotations provided by multiple, layered objects that
  * implement this interface. A layer can optionally {@linkplain #getInjectedAnnotations() inject
  * annotations}.
  */
-public interface AnnotatedWrapper {
+public interface AnnotatedWrapper extends Annotated {
     /**
      * Gets the annotated element wrapped by this wrapper.
      */
@@ -45,5 +47,23 @@ public interface AnnotatedWrapper {
      */
     default List<AnnotationValue> getInjectedAnnotations() {
         return List.of();
+    }
+
+    /**
+     * Gets the class file info for the annotations from the wrapped element.
+     */
+    @Override
+    default <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
+        Annotated wrapped = getWrappedAnnotated();
+        return wrapped == null ? null : wrapped.getDeclaredAnnotationInfo(parser);
+    }
+
+    /**
+     * Gets the class file info for the type annotations from the wrapped element.
+     */
+    @Override
+    default AnnotationsInfo getTypeAnnotationInfo() {
+        Annotated wrapped = getWrappedAnnotated();
+        return wrapped == null ? null : wrapped.getTypeAnnotationInfo();
     }
 }

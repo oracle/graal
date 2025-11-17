@@ -26,6 +26,10 @@ package com.oracle.svm.util;
 
 import java.lang.annotation.Annotation;
 import java.util.List;
+import java.util.function.Function;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * A container for an array of annotations.
@@ -42,5 +46,13 @@ public class AnnotationsContainer {
      */
     public List<Annotation> getContainedAnnotations() {
         return annotations;
+    }
+
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
+        throw GraalError.unimplemented(this + ":" + parser);
+    }
+
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        throw GraalError.unimplemented(toString());
     }
 }

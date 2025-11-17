@@ -440,39 +440,42 @@ public abstract class NodeLibrary extends Library {
             }
             assert validReceiver(node);
             assert InteropLibrary.isValidValue(value) : violationInvariant(value);
-            Class<?> languageClass = validateLocationAndFrame((Node) node, frame, value);
+            String languageId = validateLocationAndFrame((Node) node, frame, value);
             Object view = delegate.getView(node, frame, value);
             assert InteropLibrary.isValidValue(view) : violationInvariant(view);
-            InteropLibrary lib = InteropLibrary.getUncached(view);
-            try {
-                assert lib.hasLanguage(view) &&
-                                lib.getLanguage(view) == languageClass : String.format("The returned scoped view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
-                                                "Fix the implementation of %s.getView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), node.getClass().getTypeName());
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
+            assert languageId.equals(getLanguageId(view)) : String.format("The returned scoped view of language '%s' must return '%s' for InteropLibrary.getLanguageId." +
+                            "Fix the implementation of %s.getView to resolve this.", languageId, languageId, node.getClass().getTypeName());
+
             return view;
         }
 
-        private static Class<?> validateLocationAndFrame(Node location, Frame frame, Object value) {
-            InteropLibrary interop = InteropLibrary.getUncached(value);
-            assert interop.hasLanguage(value) : String.format("The value '%s' is not associated with any language.", value);
-            Class<? extends TruffleLanguage<?>> valueLanguage;
-            try {
-                valueLanguage = interop.getLanguage(value);
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
+        private static String validateLocationAndFrame(Node location, Frame frame, Object value) {
+            String valueLanguage = getLanguageId(value);
+            assert valueLanguage != null : String.format("The value '%s' is not associated with any language.", value);
             RootNode rootNode = location.getRootNode();
             assert rootNode != null : String.format("The location '%s' does not have a RootNode.", location);
             LanguageInfo nodeLanguageInfo = rootNode.getLanguageInfo();
             assert nodeLanguageInfo != null : String.format("The location '%s' does not have a language associated.", location);
-            Class<?> nodeLanguage = InteropAccessor.ACCESSOR.languageSupport().getSPI(InteropAccessor.ACCESSOR.engineSupport().getEnvForInstrument(nodeLanguageInfo)).getClass();
-            assert nodeLanguage == valueLanguage : String.format("The value language '%s' must match the language of the location %s.", valueLanguage, nodeLanguage);
+            String nodeLanguage = nodeLanguageInfo.getId();
+            assert nodeLanguage.equals(valueLanguage) : String.format("The value language '%s' must match the language of the location %s.", valueLanguage, nodeLanguage);
             assert frame != null : "Frame argument must not be null.";
             assert rootNode.getFrameDescriptor().equals(frame.getFrameDescriptor()) : String.format("The frame provided does not originate from the location. " +
                             "Expected frame descriptor '%s' but was '%s'.", rootNode.getFrameDescriptor(), frame.getFrameDescriptor());
             return nodeLanguage;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static String getLanguageId(Object object) {
+            InteropLibrary interop = InteropLibrary.getUncached(object);
+            if (interop.hasLanguageId(object)) {
+                try {
+                    return interop.getLanguageId(object);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            } else {
+                return null;
+            }
         }
 
         private boolean validReceiver(Object nodeObject) {

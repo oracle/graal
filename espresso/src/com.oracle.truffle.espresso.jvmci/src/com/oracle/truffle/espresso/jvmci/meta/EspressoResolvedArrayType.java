@@ -39,6 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public final class EspressoResolvedArrayType extends EspressoResolvedObjectType {
     private final EspressoResolvedJavaType elementalType;
@@ -337,6 +338,16 @@ public final class EspressoResolvedArrayType extends EspressoResolvedObjectType 
     @Override
     public Annotation[] getDeclaredAnnotations() {
         return NO_ANNOTATIONS;
+    }
+
+    @Override
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return null;
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        return null;
     }
 
     @Override

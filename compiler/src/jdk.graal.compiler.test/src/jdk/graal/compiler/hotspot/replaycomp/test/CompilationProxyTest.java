@@ -91,7 +91,7 @@ public class CompilationProxyTest {
                         assertTrue("protected method should throw UnsupportedOperationException", e.getTargetException() instanceof UnsupportedOperationException);
                         continue;
                     }
-                    Assert.fail("expected the protected method to throw");
+                    Assert.fail("expected the protected method to throw: " + method);
                 }
 
                 Object returnValue = createValue(method.getReturnType());

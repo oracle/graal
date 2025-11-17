@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -79,8 +82,25 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * <p>
      * Note that this may return false for instantiations of such signature polymorphic method
      * returned by {@link #createSignaturePolymorphicIntrinsic(Symbol)}.
+     *
+     * @implNote If this method was derived from the result of {@link ClassfileParser}, then this
+     *           can simply be implemented by checking that the
+     *           {@link Constants#ACC_SIGNATURE_POLYMORPHIC signature polymorphic} flag is set in
+     *           the {@link ParserMethod#getFlags() parser flags}.
      */
     boolean isDeclaredSignaturePolymorphic();
+
+    /**
+     * Tries to locate an instantiation of this {@linkplain #isDeclaredSignaturePolymorphic()
+     * signature polymorphic declared method} for the given {@code signature}, or creates one if not
+     * found.
+     *
+     * @implNote This method can be implemented by using the helper method
+     *           {@link MethodHandleIntrinsics#findIntrinsic(MethodAccess, Symbol, RuntimeAccess)}.
+     *           Doing so requires a valid implementation for
+     *           {@link #createSignaturePolymorphicIntrinsic(Symbol)}
+     */
+    M findSignaturePolymorphicIntrinsic(Symbol<Signature> signature);
 
     /**
      * Instantiates a {@linkplain #isDeclaredSignaturePolymorphic() signature polymorphic} method

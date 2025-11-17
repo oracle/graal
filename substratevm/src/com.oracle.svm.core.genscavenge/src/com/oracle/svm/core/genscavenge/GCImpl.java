@@ -319,7 +319,7 @@ public final class GCImpl implements GC {
 
         ChunkBasedCommittedMemoryProvider.get().beforeGarbageCollection();
 
-        boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
+        boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false, forceFullGC);
         boolean outOfMemory = false;
 
         if (incremental) {
@@ -330,7 +330,7 @@ public final class GCImpl implements GC {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
             }
         }
-        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
+        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental, forceFullGC)) {
             long beginNanoTime = initialBeginNanoTime;
             if (incremental) {
                 beginNanoTime = System.nanoTime();
@@ -425,7 +425,7 @@ public final class GCImpl implements GC {
     }
 
     private static void resizeAllTlabs() {
-        if (SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue()) {
+        if (SubstrateGCOptions.ResizeTLAB.getValue()) {
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 TlabSupport.resize(thread);
             }
@@ -962,8 +962,8 @@ public final class GCImpl implements GC {
     @AlwaysInline("GC Performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void walkImageHeapRoots(ImageHeapInfo imageHeapInfo, ObjectVisitor visitor) {
-        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableRegularObject, imageHeapInfo.lastWritableRegularObject, visitor, true);
-        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, visitor, false);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstAlignedWritableObject, imageHeapInfo.lastAlignedWritableObject, visitor, true);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstUnalignedWritableObject, imageHeapInfo.lastUnalignedWritableObject, visitor, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

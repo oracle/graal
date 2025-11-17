@@ -24,80 +24,65 @@
  */
 package com.oracle.svm.hosted.dynamicaccess;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 
 import com.oracle.svm.hosted.ReflectiveAccessImpl;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Mirror of {@link ReflectiveAccess} using JVMCI types.
- */
-public final class JVMCIReflectiveAccess {
+public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
     private final ReflectiveAccessImpl rdaInstance;
     private static JVMCIReflectiveAccess instance;
 
-    private JVMCIReflectiveAccess() {
+    private JVMCIReflectiveAccessImpl() {
         rdaInstance = ReflectiveAccessImpl.singleton();
     }
 
     public static JVMCIReflectiveAccess singleton() {
         if (instance == null) {
-            instance = new JVMCIReflectiveAccess();
+            instance = new JVMCIReflectiveAccessImpl();
         }
         return instance;
     }
 
-    /**
-     * @see ReflectiveAccess#register(AccessCondition, Class...)
-     */
+    @Override
     public void register(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
             rdaInstance.register(condition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
-    /**
-     * @see ReflectiveAccess#register(AccessCondition, Executable...)
-     */
+    @Override
     public void register(AccessCondition condition, ResolvedJavaMethod... methods) {
         for (ResolvedJavaMethod method : methods) {
             rdaInstance.register(condition, OriginalMethodProvider.getJavaMethod(method));
         }
     }
 
-    /**
-     * @see ReflectiveAccess#register(AccessCondition, Field...)
-     */
+    @Override
     public void register(AccessCondition condition, ResolvedJavaField... fields) {
         for (ResolvedJavaField field : fields) {
             rdaInstance.register(condition, OriginalFieldProvider.getJavaField(field));
         }
     }
 
-    /**
-     * @see ReflectiveAccess#registerForSerialization(AccessCondition, Class...)
-     */
+    @Override
     public void registerForSerialization(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
             rdaInstance.registerForSerialization(condition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
-    /**
-     * @see ReflectiveAccess#registerProxy(AccessCondition, Class...)
-     */
+    @Override
     public Class<?> registerProxy(AccessCondition condition, ResolvedJavaType... interfaces) {
         List<Class<?>> reflectionInterfaces = new ArrayList<>();
         for (ResolvedJavaType intf : interfaces) {
@@ -106,9 +91,7 @@ public final class JVMCIReflectiveAccess {
         return rdaInstance.registerProxy(condition, reflectionInterfaces.toArray(Class[]::new));
     }
 
-    /**
-     * @see ReflectiveAccess#registerForUnsafeAllocation(AccessCondition, Class...)
-     */
+    @Override
     public void registerForUnsafeAllocation(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
             rdaInstance.registerForUnsafeAllocation(condition, OriginalClassProvider.getJavaClass(type));

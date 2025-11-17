@@ -41,7 +41,6 @@
 package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -78,13 +77,13 @@ abstract class AbstractNativePointer implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LibFFILanguage.class;
+    String getLanguageId() {
+        return LibFFILanguage.ID;
     }
 
     @ExportMessage

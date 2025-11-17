@@ -168,21 +168,22 @@ public interface TruffleCompilerRuntime {
      * Returns Truffle related method information during host compilation. Do not call this method
      * directly use PartialEvaluator#getMethodInfo instead.
      *
-     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
-     * compiler implementation side.
+     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
      */
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method);
 
     /**
      * Returns Truffle related method information during host compilation. Do not call this method
      * directly use TruffleHostEnvironment#getHostMethodInfo instead.
      *
-     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
-     * compiler implementation side.
-     *
      * @see #getPartialEvaluationMethodInfo(ResolvedJavaMethod) for guest compilation related
      *      information.
+     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
      */
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method);
 
     /**
@@ -190,12 +191,12 @@ public interface TruffleCompilerRuntime {
      * annotations. Do not call this method directly use PartialEvaluator#getConstantFieldInfo
      * instead.
      *
-     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
-     * compiler implementation side.
-     *
      * @return {@code null} if there are no constant folding related Truffle annotations on
      *         {@code field}
+     * @deprecated Unused since 25.1, retained only for compatibility with older versions.
      */
+    @Deprecated(since = "25.1")
+    @SuppressWarnings("deprecation")
     ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
 
     /**

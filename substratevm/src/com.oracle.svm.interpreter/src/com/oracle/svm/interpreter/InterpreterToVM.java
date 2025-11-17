@@ -46,6 +46,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.MethodRef;
@@ -677,23 +678,11 @@ public final class InterpreterToVM {
         }
     }
 
-    static CFunctionPointer peekAtSVMVTable(Class<?> seedClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
-        DynamicHub seedHub = DynamicHub.fromClass(seedClass);
+    static CFunctionPointer peekAtSVMVTable(Class<?> callTargetClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
+        DynamicHub callTargetHub = DynamicHub.fromClass(callTargetClass);
         DynamicHub thisHub = DynamicHub.fromClass(thisClass);
-
-        int vtableOffset = KnownOffsets.singleton().getVTableOffset(vTableIndex, false);
-
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            vtableOffset += KnownOffsets.singleton().getVTableBaseOffset();
-        } else {
-            VMError.guarantee(seedHub.isInterface() == isInvokeInterface);
-
-            if (!seedHub.isInterface()) {
-                vtableOffset += KnownOffsets.singleton().getVTableBaseOffset();
-            } else {
-                vtableOffset += (int) OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(thisHub, seedHub.getInterfaceID());
-            }
-        }
+        VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface);
+        int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
         MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
     }
@@ -722,20 +711,16 @@ public final class InterpreterToVM {
         VMError.guarantee(vTable != null);
 
         DynamicHub seedHub = DynamicHub.fromClass(seedClass);
+        VMError.guarantee(isInvokeInterface == seedHub.isInterface());
 
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            VMError.guarantee(vTableIndex > 0 && vTableIndex < vTable.length);
-            return vTable[vTableIndex];
+        int idx;
+        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !seedHub.isInterface()) {
+            idx = vTableIndex;
         } else {
-            VMError.guarantee(seedHub.isInterface() == isInvokeInterface);
-
-            if (!seedHub.isInterface()) {
-                return vTable[vTableIndex];
-            } else {
-                int iTableStartingIndex = determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getInterfaceID());
-                return vTable[iTableStartingIndex + vTableIndex];
-            }
+            idx = vTableIndex + determineITableStartingIndex(DynamicHub.fromClass(thisClass), seedHub.getInterfaceID());
         }
+        VMError.guarantee(idx >= 0 && idx < vTable.length);
+        return vTable[idx];
     }
 
     private static int determineITableStartingIndex(DynamicHub thisHub, int interfaceID) {

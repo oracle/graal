@@ -45,29 +45,26 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.word.Word;
 
 public final class ImageHeapWalker {
-    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_REGULAR_WALKER = new ReadOnlyRegularMemoryWalkerAccess();
-    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_RELOCATABLE_WALKER = new ReadOnlyRelocatableMemoryWalkerAccess();
-    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_REGULAR_WALKER = new WritableRegularMemoryWalkerAccess();
-    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_HUGE_WALKER = new WritableHugeMemoryWalkerAccess();
-    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_HUGE_WALKER = new ReadOnlyHugeMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> ALIGNED_READ_ONLY_WALKER = new AlignedReadOnlyMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> ALIGNED_WRITABLE_WALKER = new AlignedWritableMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> UNALIGNED_WRITABLE_WALKER = new UnalignedWritableMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> UNALIGNED_READ_ONLY_WALKER = new UnalignedReadOnlyMemoryWalkerAccess();
 
     private ImageHeapWalker() {
     }
 
     public static void walkRegions(ImageHeapInfo heapInfo, MemoryWalker.ImageHeapRegionVisitor visitor) {
-        visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_REGULAR_WALKER);
-        visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_RELOCATABLE_WALKER);
-        visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_REGULAR_WALKER);
-        visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_HUGE_WALKER);
-        visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_HUGE_WALKER);
+        visitor.visitNativeImageHeapRegion(heapInfo, ALIGNED_READ_ONLY_WALKER);
+        visitor.visitNativeImageHeapRegion(heapInfo, ALIGNED_WRITABLE_WALKER);
+        visitor.visitNativeImageHeapRegion(heapInfo, UNALIGNED_WRITABLE_WALKER);
+        visitor.visitNativeImageHeapRegion(heapInfo, UNALIGNED_READ_ONLY_WALKER);
     }
 
     public static void walkImageHeapObjects(ImageHeapInfo heapInfo, ObjectVisitor visitor) {
-        walkPartition(heapInfo.firstReadOnlyRegularObject, heapInfo.lastReadOnlyRegularObject, visitor, true);
-        walkPartition(heapInfo.firstReadOnlyRelocatableObject, heapInfo.lastReadOnlyRelocatableObject, visitor, true);
-        walkPartition(heapInfo.firstWritableRegularObject, heapInfo.lastWritableRegularObject, visitor, true);
-        walkPartition(heapInfo.firstWritableHugeObject, heapInfo.lastWritableHugeObject, visitor, false);
-        walkPartition(heapInfo.firstReadOnlyHugeObject, heapInfo.lastReadOnlyHugeObject, visitor, false);
+        walkPartition(heapInfo.firstAlignedReadOnlyObject, heapInfo.lastAlignedReadOnlyObject, visitor, true);
+        walkPartition(heapInfo.firstAlignedWritableObject, heapInfo.lastAlignedWritableObject, visitor, true);
+        walkPartition(heapInfo.firstUnalignedWritableObject, heapInfo.lastUnalignedWritableObject, visitor, false);
+        walkPartition(heapInfo.firstUnalignedReadOnlyObject, heapInfo.lastUnalignedReadOnlyObject, visitor, false);
     }
 
     public static void walkImageHeapChunks(ImageHeapInfo heapInfo, HeapChunkVisitor visitor) {
@@ -79,9 +76,9 @@ public final class ImageHeapWalker {
         }
 
         /* Walk all unaligned chunks (can only be at the end of the image heap). */
-        Object firstUnalignedObject = heapInfo.firstWritableHugeObject;
+        Object firstUnalignedObject = heapInfo.firstUnalignedWritableObject;
         if (firstUnalignedObject == null) {
-            firstUnalignedObject = heapInfo.firstReadOnlyHugeObject;
+            firstUnalignedObject = heapInfo.firstUnalignedReadOnlyObject;
         }
         if (firstUnalignedObject != null) {
             HeapChunk.Header<?> unalignedChunks = getImageHeapChunkForObject(firstUnalignedObject, false);
@@ -161,15 +158,13 @@ public final class ImageHeapWalker {
 }
 
 abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> {
-    private final String regionName;
     private final boolean isWritable;
-    private final boolean consistsOfHugeObjects;
+    private final boolean unalignedChunks;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    MemoryWalkerAccessBase(String regionName, boolean isWritable, boolean consistsOfHugeObjects) {
-        this.regionName = regionName;
+    MemoryWalkerAccessBase(boolean isWritable, boolean unalignedChunks) {
         this.isWritable = isWritable;
-        this.consistsOfHugeObjects = consistsOfHugeObjects;
+        this.unalignedChunks = unalignedChunks;
     }
 
     @Override
@@ -183,108 +178,86 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     }
 
     @Override
-    public String getRegionName(ImageHeapInfo region) {
-        return regionName;
-    }
-
-    @Override
     public boolean isWritable(ImageHeapInfo region) {
         return isWritable;
     }
 
     @Override
-    public boolean consistsOfHugeObjects(ImageHeapInfo region) {
-        return consistsOfHugeObjects;
+    public boolean usesUnalignedChunks(ImageHeapInfo region) {
+        return unalignedChunks;
     }
 
     @Override
     public final void visitObjects(ImageHeapInfo region, ObjectVisitor visitor) {
-        boolean alignedChunks = !consistsOfHugeObjects;
+        boolean alignedChunks = !unalignedChunks;
         ImageHeapWalker.walkPartition(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
     }
 }
 
-final class ReadOnlyRegularMemoryWalkerAccess extends MemoryWalkerAccessBase {
+final class AlignedReadOnlyMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    ReadOnlyRegularMemoryWalkerAccess() {
-        super("read-only", false, false);
+    AlignedReadOnlyMemoryWalkerAccess() {
+        super(false, false);
     }
 
     @Override
     public Object getFirstObject(ImageHeapInfo info) {
-        return info.firstReadOnlyRegularObject;
+        return info.firstAlignedReadOnlyObject;
     }
 
     @Override
     public Object getLastObject(ImageHeapInfo info) {
-        return info.lastReadOnlyRegularObject;
+        return info.lastAlignedReadOnlyObject;
     }
 }
 
-final class ReadOnlyRelocatableMemoryWalkerAccess extends MemoryWalkerAccessBase {
+final class AlignedWritableMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    ReadOnlyRelocatableMemoryWalkerAccess() {
-        super("read-only relocatables", false, false);
+    AlignedWritableMemoryWalkerAccess() {
+        super(true, false);
     }
 
     @Override
     public Object getFirstObject(ImageHeapInfo info) {
-        return info.firstReadOnlyRelocatableObject;
+        return info.firstAlignedWritableObject;
     }
 
     @Override
     public Object getLastObject(ImageHeapInfo info) {
-        return info.lastReadOnlyRelocatableObject;
+        return info.lastAlignedWritableObject;
     }
 }
 
-final class WritableRegularMemoryWalkerAccess extends MemoryWalkerAccessBase {
+final class UnalignedWritableMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    WritableRegularMemoryWalkerAccess() {
-        super("writable", true, false);
+    UnalignedWritableMemoryWalkerAccess() {
+        super(true, true);
     }
 
     @Override
     public Object getFirstObject(ImageHeapInfo info) {
-        return info.firstWritableRegularObject;
+        return info.firstUnalignedWritableObject;
     }
 
     @Override
     public Object getLastObject(ImageHeapInfo info) {
-        return info.lastWritableRegularObject;
+        return info.lastUnalignedWritableObject;
     }
 }
 
-final class WritableHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
+final class UnalignedReadOnlyMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
-    WritableHugeMemoryWalkerAccess() {
-        super("writable huge", true, true);
+    UnalignedReadOnlyMemoryWalkerAccess() {
+        super(false, true);
     }
 
     @Override
     public Object getFirstObject(ImageHeapInfo info) {
-        return info.firstWritableHugeObject;
+        return info.firstUnalignedReadOnlyObject;
     }
 
     @Override
     public Object getLastObject(ImageHeapInfo info) {
-        return info.lastWritableHugeObject;
-    }
-}
-
-final class ReadOnlyHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ReadOnlyHugeMemoryWalkerAccess() {
-        super("read-only huge", false, true);
-    }
-
-    @Override
-    public Object getFirstObject(ImageHeapInfo info) {
-        return info.firstReadOnlyHugeObject;
-    }
-
-    @Override
-    public Object getLastObject(ImageHeapInfo info) {
-        return info.lastReadOnlyHugeObject;
+        return info.lastUnalignedReadOnlyObject;
     }
 }

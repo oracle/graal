@@ -47,8 +47,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import jdk.graal.compiler.graphio.parsing.BinaryReader.EnumValue;
 import jdk.graal.compiler.graphio.parsing.BinaryReader.Method;
@@ -662,6 +660,14 @@ public class ModelBuilder implements Builder {
                     PROPNAME_ID,
                     PROPNAME_IDX, PROPNAME_BLOCK)));
 
+    private static boolean isSystemProperty(String key) {
+        return switch (key) {
+            case PROPNAME_HAS_PREDECESSOR, PROPNAME_NAME, PROPNAME_CLASS, PROPNAME_ID, PROPNAME_IDX, PROPNAME_BLOCK ->
+                true;
+            default -> false;
+        };
+    }
+
     @Override
     public void setGroupName(String name, String shortName) {
         assert folder instanceof Group;
@@ -684,7 +690,7 @@ public class ModelBuilder implements Builder {
     @Override
     public void setNodeName(NodeClass nodeClass) {
         assert currentNode != null;
-        getProperties().setProperty(PROPNAME_NAME, createName(nodeClass, nodeEdges, nodeClass.nameTemplate));
+        getProperties().setProperty(PROPNAME_NAME, createName(nodeClass, nodeEdges));
         getProperties().setProperty(PROPNAME_CLASS, nodeClass.className);
         switch (nodeClass.className) {
             case "BeginNode":
@@ -696,35 +702,38 @@ public class ModelBuilder implements Builder {
         }
     }
 
-    static final Pattern TEMPLATE_PATTERN = Pattern.compile("\\{([pi])#([a-zA-Z0-9$_]+)(/([lms]))?}");
-
-    private String createName(NodeClass nodeClass, List<EdgeInfo> edges, String template) {
-        if (template.isEmpty()) {
+    private String createName(NodeClass nodeClass, List<EdgeInfo> edges) {
+        if (nodeClass.nameTemplate.isEmpty()) {
             return nodeClass.toShortString();
         }
-        Matcher m = TEMPLATE_PATTERN.matcher(template);
-        StringBuilder sb = new StringBuilder();
+
+        StringBuilder sb = new StringBuilder(nodeClass.nameTemplate.length());
         Properties p = getProperties();
-        while (m.find()) {
-            String name = m.group(2);
-            String type = m.group(1);
-            String result;
+        List<TemplateParser.TemplatePart> templateParts = nodeClass.getTemplateParts();
+        for (TemplateParser.TemplatePart template : templateParts) {
+            if (!template.isReplacement) {
+                sb.append(template.value);
+                continue;
+            }
+            String name = template.name;
+            String type = template.type;
             switch (type) {
                 case "i":
-                    StringBuilder inputString = new StringBuilder();
+                    boolean first = true;
                     for (EdgeInfo edge : edges) {
                         if (edge.label.startsWith(name) && (name.length() == edge.label.length() || edge.label.charAt(name.length()) == '[')) {
-                            if (inputString.length() > 0) {
-                                inputString.append(", ");
+                            if (!first) {
+                                sb.append(", ");
                             }
-                            inputString.append(edge.from);
+                            first = false;
+                            sb.append(edge.from);
                         }
                     }
-                    result = inputString.toString();
                     break;
                 case "p":
                     Object prop = p.get(name);
-                    String length = m.group(4);
+                    String length = template.length;
+                    String result;
                     if (prop == null) {
                         result = "?";
                     } else if (length != null && prop instanceof LengthToString lengthProp) {
@@ -735,36 +744,21 @@ public class ModelBuilder implements Builder {
                             case "m":
                                 result = lengthProp.toString(Length.M);
                                 break;
-                            default:
                             case "l":
+                            default:
                                 result = lengthProp.toString(Length.L);
                                 break;
                         }
                     } else {
                         result = prop.toString();
                     }
+                    sb.append(result);
                     break;
                 default:
-                    result = "#?#";
+                    sb.append("#?#");
                     break;
             }
-
-            // Escape '\' and '$' to not interfere with the regular expression.
-            StringBuilder newResult = new StringBuilder();
-            for (int i = 0; i < result.length(); ++i) {
-                char c = result.charAt(i);
-                if (c == '\\') {
-                    newResult.append("\\\\");
-                } else if (c == '$') {
-                    newResult.append("\\$");
-                } else {
-                    newResult.append(c);
-                }
-            }
-            result = newResult.toString();
-            m.appendReplacement(sb, result);
         }
-        m.appendTail(sb);
         return sb.toString();
     }
 
@@ -775,7 +769,7 @@ public class ModelBuilder implements Builder {
         assert currentNode != null;
         String k = key;
         if (!(value instanceof InputGraph)) {
-            if (SYSTEM_PROPERTIES.contains(key)) {
+            if (isSystemProperty(key)) {
                 k = NOT_DATA + k;
             }
             setProperty(k, value);

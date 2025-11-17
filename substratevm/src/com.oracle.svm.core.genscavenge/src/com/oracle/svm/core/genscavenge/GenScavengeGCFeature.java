@@ -106,7 +106,11 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
-        ImageSingletons.add(TlabOptionCache.class, new TlabOptionCache());
+
+        TlabOptionCache tlabOptionCache = new TlabOptionCache();
+        ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
+        tlabOptionCache.validateHostedOptionValues();
+
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }
@@ -144,8 +148,10 @@ class GenScavengeGCFeature implements InternalFeature {
             ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
         }
 
-        // If building libgraal, set system property showing gc algorithm
-        SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            // If building libgraal, set system property showing gc algorithm
+            SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
+        }
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);

@@ -363,7 +363,7 @@ public class TlabSupport {
         UnsignedWord size = hardEnd.subtract(top);
 
         if (top.belowThan(hardEnd)) {
-            FillerObjectUtil.writeFillerObjectAt(top, size);
+            FillerObjectUtil.writeFillerObjectAt(top, size, false);
         }
     }
 
@@ -379,17 +379,7 @@ public class TlabSupport {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L270-L289")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord initialDesiredSize() {
-        UnsignedWord initSize;
-
-        if (TlabOptionCache.singleton().getTlabSize() > 0) {
-            long tlabSize = TlabOptionCache.singleton().getTlabSize();
-            initSize = Word.unsigned(ConfigurationValues.getObjectLayout().alignUp(tlabSize));
-        } else {
-            long initialTLABSize = TlabOptionCache.singleton().getInitialTLABSize();
-            initSize = Word.unsigned(ConfigurationValues.getObjectLayout().alignUp(initialTLABSize));
-        }
-        long minTlabSize = TlabOptionCache.singleton().getMinTlabSize();
-        return UnsignedUtils.clamp(initSize, Word.unsigned(minTlabSize), maxSize());
+        return Word.unsigned(TlabOptionCache.singleton().getTlabSize());
     }
 
     /**
@@ -397,7 +387,7 @@ public class TlabSupport {
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+11/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L154-L172")
     public static void resize(IsolateThread thread) {
-        assert SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue();
+        assert SubstrateGCOptions.ResizeTLAB.getValue();
         assert VMOperation.isGCInProgress();
 
         UnsignedWord allocatedAvg = Word.unsigned((long) AdaptiveWeightedAverageStruct.getAverage(allocatedBytesAvg.getAddress(thread)));

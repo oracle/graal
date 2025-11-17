@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.nodes.local;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -257,14 +256,14 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return SLLanguage.class;
+        String getLanguageId() {
+            return SLLanguage.ID;
         }
 
         /**
@@ -529,14 +528,14 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean hasLanguage() {
+        boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return SLLanguage.class;
+        String getLanguageId() {
+            return SLLanguage.ID;
         }
 
         /**

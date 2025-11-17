@@ -56,10 +56,11 @@ import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class AnalysisElement implements AnnotatedElement {
+public abstract class AnalysisElement extends AbstractAnnotated implements AnnotatedElement {
 
     protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisElement.class, Object.class, "trackAcrossLayers");
@@ -77,12 +78,9 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     protected abstract AnalysisUniverse getUniverse();
 
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
-        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
-    }
-
-    public AnnotationsInfo getTypeAnnotationInfo() {
-        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
+    @Override
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo(null);
     }
 
     @Override

@@ -75,7 +75,12 @@ while [ $# -gt 0 ] ; do
     case "$1" in
         --userdir) shift; if [ $# -gt 0 ] ; then userdir="$1"; fi
             ;;
-        *) args="$args \"$1\""
+        *)
+            if [[ "$1" == *\$* ]]; then
+                echo "Error: Argument '$1' contains a \$ character which cannot be safely handled the launcher script" >&2
+                exit 1
+            fi
+            args="$args \"$1\""
             ;;
     esac
     shift

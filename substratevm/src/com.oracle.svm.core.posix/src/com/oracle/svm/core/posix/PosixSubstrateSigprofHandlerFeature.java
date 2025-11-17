@@ -37,6 +37,7 @@ import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
@@ -57,6 +58,11 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticallyRegisteredFeature
 public class PosixSubstrateSigprofHandlerFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !ImageLayerBuildingSupport.buildingImageLayer();
+    }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {

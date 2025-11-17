@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.58.0",
+  "mxversion": "7.65.0",
 
   "name" : "regex",
 
@@ -67,7 +67,7 @@ suite = {
       },
     ]
   },
-  "ignore_suite_commit_info": True,
+  "capture_suite_commit_info": False,
   "licenses" : {
     "upl" : {
       "name" : "Universal Permissive License, Version 1.0",

@@ -42,6 +42,7 @@ import static com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHa
 import static com.oracle.svm.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 import static com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic.InvokeGeneric;
+import static com.oracle.svm.interpreter.Interpreter.unbasic;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 
 import java.lang.invoke.MethodType;
@@ -67,8 +68,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.TypeCheckData;
+import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.core.hub.DynamicHubUtils.TypeCheckData;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
@@ -122,6 +123,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -304,7 +306,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         /* Compute type check data, which might be based on interface hashing. */
-        DynamicHubTypeCheckUtil.TypeCheckData typeCheckData = computeTypeCheckData(typeID, isInterface, numClassTypes, numInterfacesTypes, superHub, dispatchTable, transitiveSuperInterfaces);
+        DynamicHubUtils.TypeCheckData typeCheckData = computeTypeCheckData(typeID, isInterface, numClassTypes, numInterfacesTypes, superHub, dispatchTable, transitiveSuperInterfaces);
 
         int[] openTypeWorldTypeCheckSlots = typeCheckData.openTypeWorldTypeCheckSlots();
         int[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
@@ -462,7 +464,7 @@ public class CremaSupportImpl implements CremaSupport {
         long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
         long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
 
-        return DynamicHubTypeCheckUtil.computeOpenTypeWorldTypeCheckData(!typeIsInterface, typeHierarchy, interfaceIDs, iTableStartingIndices, vTableBaseOffset, vTableEntrySize);
+        return DynamicHubUtils.computeOpenTypeWorldTypeCheckData(!typeIsInterface, typeHierarchy, interfaceIDs, iTableStartingIndices, vTableBaseOffset, vTableEntrySize);
     }
 
     private static void fillVTable(DynamicHub hub, InterpreterResolvedJavaMethod[] vtable) {
@@ -1312,12 +1314,15 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object linkToVirtual(Object[] args) {
         // This is AOT-compiled code calling MethodHandle.linkToVirtual
+        // See also PolymorphicSignatureWrapperMethod.buildGraph
         Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
         InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
-        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        InterpreterUnresolvedSignature signature = target.getSignature();
+        Object[] basicArgs = unbasic(args, signature, true);
         logIntrinsic("[from compiled] linkToVirtual ", target, basicArgs);
         try {
-            return InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, false, true);
+            Object result = InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, false, true);
+            return Interpreter.rebasic(result, signature.getReturnKind());
         } catch (SemanticJavaException e) {
             throw uncheckedThrow(e.getCause());
         }
@@ -1326,12 +1331,15 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object linkToStatic(Object[] args) {
         // This is AOT-compiled code calling MethodHandle.linkToStatic
+        // See also PolymorphicSignatureWrapperMethod.buildGraph
         Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
         InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
-        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        InterpreterUnresolvedSignature signature = target.getSignature();
+        Object[] basicArgs = unbasic(args, signature, false);
         logIntrinsic("[from compiled] linkToStatic ", target, basicArgs);
         try {
-            return InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+            Object result = InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+            return Interpreter.rebasic(result, signature.getReturnKind());
         } catch (SemanticJavaException e) {
             throw uncheckedThrow(e.getCause());
         }
@@ -1340,12 +1348,15 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object linkToSpecial(Object[] args) {
         // This is AOT-compiled code calling MethodHandle.linkToSpecial
+        // See also PolymorphicSignatureWrapperMethod.buildGraph
         Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
         InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
-        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        InterpreterUnresolvedSignature signature = target.getSignature();
+        Object[] basicArgs = unbasic(args, signature, true);
         logIntrinsic("[from compiled] linkToSpecial ", target, basicArgs);
         try {
-            return InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+            Object result = InterpreterToVM.dispatchInvocation(target, basicArgs, false, false, false, false, true);
+            return Interpreter.rebasic(result, signature.getReturnKind());
         } catch (SemanticJavaException e) {
             throw uncheckedThrow(e.getCause());
         }
@@ -1354,12 +1365,15 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     public Object linkToInterface(Object[] args) {
         // This is AOT-compiled code calling MethodHandle.linkToInterface
+        // See also PolymorphicSignatureWrapperMethod.buildGraph
         Target_java_lang_invoke_MemberName mnTarget = (Target_java_lang_invoke_MemberName) args[args.length - 1];
         InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(mnTarget);
-        Object[] basicArgs = Arrays.copyOf(args, args.length - 1);
+        InterpreterUnresolvedSignature signature = target.getSignature();
+        Object[] basicArgs = unbasic(args, signature, true);
         logIntrinsic("[from compiled] linkToInterface ", target, basicArgs);
         try {
-            return InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, true, true);
+            Object result = InterpreterToVM.dispatchInvocation(target, basicArgs, true, false, false, true, true);
+            return Interpreter.rebasic(result, signature.getReturnKind());
         } catch (SemanticJavaException e) {
             throw uncheckedThrow(e.getCause());
         }

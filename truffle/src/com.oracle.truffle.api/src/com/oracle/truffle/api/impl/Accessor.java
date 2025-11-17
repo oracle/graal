@@ -407,7 +407,7 @@ public abstract class Accessor {
 
         public abstract Map<String, LanguageInfo> getInternalLanguages(Object polyglotObject);
 
-        public abstract LanguageInfo getHostLanguage(Object polyglotLanguageContext);
+        public abstract LanguageInfo getHostLanguage(Object vmObject);
 
         public abstract Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject);
 
@@ -625,7 +625,11 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(Object vmObject, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
+        public abstract Object getDefaultLanguageView(Object polyglotLanguageContext, Object value);
+
+        public abstract String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass);
+
+        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
@@ -1160,16 +1164,6 @@ public abstract class Accessor {
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
     }
 
-    public abstract static class SomSupport extends Support {
-
-        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.staticobject.SomAccessor";
-
-        protected SomSupport() {
-            super(IMPL_CLASS_NAME);
-        }
-
-    }
-
     public abstract static class RuntimeSupport {
 
         static final Object PERMISSION = new Object();
@@ -1330,6 +1324,8 @@ public abstract class Accessor {
         public abstract boolean isLegacyCompilerOption(String key);
 
         public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
+
+        public abstract void setInitializedTimestamp(CallTarget target, long timestamp);
     }
 
     public abstract static class LanguageProviderSupport extends Support {

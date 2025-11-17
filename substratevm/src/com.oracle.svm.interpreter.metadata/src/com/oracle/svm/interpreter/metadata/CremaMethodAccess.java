@@ -39,6 +39,7 @@ import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.espresso.shared.meta.MethodAccess;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -101,7 +102,12 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
             sb.append('V');
         }
         Symbol<Signature> signature = SymbolsSupport.getSignatures().lookupValidSignature(sb.toString());
-        return holder.lookupMethod(name, signature);
+        try {
+            return holder.lookupMethod(name, signature);
+        } catch (LookupSuccessInvocationFailure e) {
+            // GR-70938
+            return e.getResult();
+        }
     }
 
     static JavaType toJavaType(Symbol<Type> typeSymbol) {

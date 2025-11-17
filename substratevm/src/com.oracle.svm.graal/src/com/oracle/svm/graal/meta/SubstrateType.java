@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -386,7 +387,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Override
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
         throw annotationsUnimplemented();
     }
 

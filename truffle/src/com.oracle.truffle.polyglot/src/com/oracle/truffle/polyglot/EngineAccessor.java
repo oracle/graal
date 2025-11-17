@@ -265,8 +265,48 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value) {
-            return new DefaultLanguageView<>(truffleLanguage, value);
+        public Object getDefaultLanguageView(Object polyglotLanguageContext, Object value) {
+            return new DefaultLanguageView<>(((PolyglotLanguageContext) polyglotLanguageContext).language.getId(), value);
+        }
+
+        @Override
+        public String getLanguageId(Node anchor, Class<? extends TruffleLanguage<?>> languageClass) {
+            PolyglotEngineImpl e = PolyglotFastThreadLocals.getEngine(anchor);
+            if (e == null) {
+                return null;
+            }
+            PolyglotLanguage l = e.getLanguage(languageClass, false);
+            if (l == null) {
+                // not in this isolate
+                return null;
+            }
+            return l.info.getId();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(Node anchor, String languageId) {
+            PolyglotEngineImpl e = PolyglotFastThreadLocals.getEngine(anchor);
+            if (e == null) {
+                return null;
+            }
+            PolyglotLanguage l = e.getLanguage(languageId, false);
+            if (l == null) {
+                // not in this isolate
+                return null;
+            }
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithEngine(e);
+            if (context == null) {
+                return null;
+            }
+
+            PolyglotLanguageContext lc = context.contexts[l.engineIndex];
+            if (!lc.isCreated()) {
+                // language is available on the host, but not initialized
+                // we must not return the language class to avoid loading it
+                return null;
+            }
+            return (Class<? extends TruffleLanguage<?>>) lc.getLanguageInstance().spi.getClass();
         }
 
         @TruffleBoundary
@@ -481,8 +521,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public LanguageInfo getHostLanguage(Object polyglotLanguageContext) {
-            return ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.hostLanguage.info;
+        public LanguageInfo getHostLanguage(Object vmObject) {
+            return ((VMObject) vmObject).getEngine().hostLanguage.info;
         }
 
         @Override
@@ -530,9 +570,9 @@ final class EngineAccessor extends Accessor {
 
         static PolyglotLanguage findObjectLanguage(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
-            if (lib.hasLanguage(value)) {
+            if (lib.hasLanguageId(value)) {
                 try {
-                    return engine.getLanguage(lib.getLanguage(value), false);
+                    return engine.getLanguage(lib.getLanguageId(value), false);
                 } catch (UnsupportedMessageException e) {
                     throw shouldNotReachHere(e);
                 }
@@ -543,9 +583,9 @@ final class EngineAccessor extends Accessor {
 
         static PolyglotLanguage getLanguageView(PolyglotEngineImpl engine, Object value) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
-            if (lib.hasLanguage(value)) {
+            if (lib.hasLanguageId(value)) {
                 try {
-                    return engine.getLanguage(lib.getLanguage(value), false);
+                    return engine.getLanguage(lib.getLanguageId(value), false);
                 } catch (UnsupportedMessageException e) {
                     throw shouldNotReachHere(e);
                 }

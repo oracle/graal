@@ -44,8 +44,9 @@ import json
 import os
 import re
 import shutil
-from argparse import ArgumentParser
-from typing import Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple, Union, Any
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple, Union, Any, Generator
 
 import mx
 import mx_benchmark
@@ -63,9 +64,12 @@ from mx_benchmark import (
     get_parser,
     DataPointsPostProcessor,
     ForkInfo,
-    BenchmarkExecutionContext,
-    Vm,
-    BenchmarkSuite,
+    BenchmarkExecutionConfiguration,
+    BenchmarkDispatcher,
+    BenchmarkDispatcherState,
+    bm_exec_context,
+    BoxContextValue,
+    ConstantContextValueManager,
 )
 from mx_jardistribution import JARDistribution
 
@@ -256,6 +260,687 @@ def _check_dist(dist_name: str, require_built: bool = True) -> Optional[str]:
         mx.abort(f"Unsupported distribution kind {type(dist)}")
 
 
+class StabilizingPolybenchBenchmarkDispatcher(mx_benchmark.DefaultBenchmarkDispatcher):
+    """
+    Custom dispatching class for non-native-image PolybenchBenchmarkSuite stable runs that facilitates scheduling based
+    on a `--stable-run-config` configuration file:
+    * Schedules the appropriate number of forks for each specified benchmark according to their configuration.
+
+    The `--stable-run-config` configuration file should be a JSON object, where each key is a benchmark name.
+    Each entry must include a "run-forks" dictionary with a "count" property that specifies the number of forks
+    to schedule for that benchmark.
+    Additional properties may be present, but they are not relevant to this dispatcher class.
+
+    Example:
+
+    If the `--stable-run-config` configuration file specifies the following configuration (fields irrelevant
+    for scheduling have been omitted):
+    ```
+    {
+      "interpreter/sieve.py": {
+        "run-forks": { "count": 1 }
+      },
+      "interpreter/fibonacci.py": {
+        "run-forks": { "count": 3 }
+      },
+      "interpreter/richards.py": {
+        "run-forks": { "count": 2 }
+      }
+    }
+    ```
+
+    This dispatcher will produce the following schedule (can be obtained by appending the `--dry-stable-run` option
+    to your `mx benchmark` command):
+    ```
+    * Bench batch #1
+      [#1] Fork #0: interpreter/richards.py
+      [#2] Fork #0: interpreter/fibonacci.py
+      [#3] Fork #0: interpreter/sieve.py
+    * Bench batch #2
+      [#4] Fork #1: interpreter/richards.py
+      [#5] Fork #1: interpreter/fibonacci.py
+    * Bench batch #3
+      [#6] Fork #2: interpreter/fibonacci.py
+    ```
+
+    * There are 3 batches, as that is how many the benchmark that requires the most run-forks (fibonacci.py) requires.
+    * The first batch includes all three benchmarks.
+    * Starting from the second batch, 'sieve.py' is excluded as it only requires 1 run-fork.
+    * In the third batch, 'richards.py' is excluded as it only requires 2 run-forks.
+    * For example, the log line "[#5] Fork #1: interpreter/fibonacci.py" indicates that:
+      * This is the 5th dispatch from the dispatcher - the 5th invocation of the `BenchmarkSuite.run` method.
+      * This dispatch will only execute the 'interpreter/fibonacci.py' benchmark.
+      * This is the 2nd fork (`metric.fork-number = 1`, but indexing starts from 0) of the 'interpreter/fibonacci.py'
+        benchmark.
+    """
+
+    def __init__(self, state: BenchmarkDispatcherState, stable_run_config: str):
+        super().__init__(state)
+        self._stable_run_config_path: Path = Path(stable_run_config).absolute()
+        if not self._stable_run_config_path.exists():
+            msg = f"Cannot initialize {self.__class__.__name__} instance with non-existing configuration file '{self._stable_run_config_path}'!"
+            raise ValueError(msg)
+        with open(self._stable_run_config_path) as f:
+            self._stable_run_config: dict = json.load(f)
+
+    def validated_env_dispatch(self) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """
+        Verifies the configuration, runs a sub-generator dry-run, and then finally yields from sub-generator.
+
+        1. Starts by parsing the benchmark list and verifying that each benchmark has an entry
+           in the stable run configuration file.
+        2. Executes a dry-run of the sub-generator to:
+           * compute the number of dispatches.
+           * log the dispatching schedule to stdout.
+        3. Yields from the sub-generator, which dispatches according to the schedule.
+        """
+        if not isinstance(self.state.suite, PolybenchBenchmarkSuite):
+            msg = f"Expected a PolybenchBenchmarkSuite instance, instead got an instance of {self.state.suite.__class__.__name__}!"
+            raise ValueError(msg)
+        self._verify_no_conflicting_args_are_set()
+        benchmarks = self._parse_benchmark_list()
+        if len(benchmarks) == 0:
+            raise ValueError(f"No benchmarks selected!")
+        self._verify_stable_run_config(benchmarks)
+        # Dry-run of the sub-generator to get the number of dispatches (yields) and present the schedule to stdout
+        mx.log(f"{self.__class__.__name__} will dispatch the following schedule:")
+        dispatch_count = len(list(self.dispatch_with_fork_context(benchmarks, 0, True)))
+        if self.state.suite.polybench_bench_suite_args(self.state.bm_suite_args).dry_stable_run:
+            return
+        # Delegate to sub-generator
+        mx.log(f"{self.__class__.__name__} is starting dispatch...")
+        yield from self.dispatch_with_fork_context(benchmarks, dispatch_count, False)
+
+    def dispatch_with_fork_context(
+        self, benchmarks: List[str], total_dispatch_count: int, dry_run: bool
+    ) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """Resets the fork number overrides and then yields according to the schedule."""
+        fork_number_dict = self._init_fork_number_dict(benchmarks)
+        with ConstantContextValueManager(PolybenchBenchmarkSuite.FORK_OVERRIDE_MAP, fork_number_dict):
+            yield from self.dispatch_and_log(benchmarks, total_dispatch_count, fork_number_dict, dry_run)
+
+    def dispatch_and_log(
+        self, benchmarks: List[str], total_dispatch_count: int, fork_number_dict: Dict[str, int], dry_run: bool
+    ) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """
+        Yields according to the schedule:
+        * First, it iterates over the benchmark batches, determined by the highest requested run-fork count.
+        * Second, it iterates over each benchmark which requires to be run in the current benchmark batch.
+        """
+        dispatch_counter = 0
+        number_of_batches = max([self._stable_run_config[bench]["run-forks"]["count"] for bench in benchmarks])
+        for batch_index in range(number_of_batches):
+            if dry_run:
+                mx.log(f" * Bench batch #{batch_index + 1}")
+            benchmarks_for_batch = self._get_benchmarks_for_batch(benchmarks, batch_index)
+            for benchmark in benchmarks_for_batch:
+                if dry_run:
+                    mx.log(f"   [#{dispatch_counter + 1}] Fork #{fork_number_dict[benchmark]}: {benchmark}")
+                else:
+                    mx.log(f"Execution of dispatch {dispatch_counter + 1}/{total_dispatch_count} running {benchmark}")
+                mx_benchmark_args = self.state.mx_benchmark_args
+                bm_suite_args = self.state.bm_suite_args
+                last_dispatch = dispatch_counter + 1 == total_dispatch_count
+                with ConstantContextValueManager("last_dispatch", last_dispatch):
+                    fork_info = ForkInfo(
+                        fork_number_dict[benchmark], self._stable_run_config[benchmark]["run-forks"]["count"]
+                    )
+                    yield BenchmarkExecutionConfiguration([benchmark], mx_benchmark_args, bm_suite_args, fork_info)
+                dispatch_counter += 1
+                fork_number_dict[benchmark] += 1
+
+    def _get_benchmarks_for_batch(self, benchmarks: List[str], batch_index: int):
+        return [bench for bench in benchmarks if self._stable_run_config[bench]["run-forks"]["count"] > batch_index]
+
+    def _verify_no_conflicting_args_are_set(self):
+        mx_benchmark_args_dict = vars(self.state.mx_benchmark_args)
+        if mx_benchmark_args_dict.get("fork_count_file") is not None:
+            msg = f"Setting the 'mx benchmark' option 'fork_count_file' is not supported when using {self.__class__.__name__} as a dispatcher!"
+            raise ValueError(msg)
+        if mx_benchmark_args_dict.get("default_fork_count", 1) != 1:
+            msg = f"Setting the 'mx benchmark' option 'default_fork_count' is not supported when using {self.__class__.__name__} as a dispatcher!"
+            raise ValueError(msg)
+
+    def _parse_benchmark_list(self) -> List[str]:
+        if any([sublist is None for sublist in self.state.bench_names_list]):
+            raise ValueError(f"The {self.__class__.__name__} dispatcher cannot dispatch without specified benchmarks!")
+        benchmarks = [bench for sublist in self.state.bench_names_list for bench in sublist]
+        seen = set()
+        unique_list = [bench for bench in benchmarks if not (bench in seen or seen.add(bench))]
+        return [bench for bench in unique_list if not self.skip_platform_unsupported_benchmark(bench)]
+
+    def _verify_stable_run_config(self, benchmarks: List[str]):
+        levels = self._get_required_config_levels()
+        fields = ["count"]
+        for bench in benchmarks:
+            if bench not in self._stable_run_config:
+                msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing an entry for the '{bench}' benchmark!"
+                raise ValueError(msg)
+            bench_config = self._stable_run_config[bench]
+            for level in levels:
+                if level not in bench_config:
+                    msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing the '{level}' key in the '{bench}' object!"
+                    raise ValueError(msg)
+                level_config = bench_config[level]
+                for field in fields:
+                    if field not in level_config:
+                        msg = f"PolyBench stable run configuration file at '{self._stable_run_config_path}' is missing the '{field}' key in the '{bench}.{level}' object!"
+                        raise ValueError(msg)
+
+    def _get_required_config_levels(self) -> List[str]:
+        return ["run-forks"]
+
+    def _init_fork_number_dict(self, benchmarks) -> Dict[str, int]:
+        return {benchmark: 0 for benchmark in benchmarks}
+
+
+class StabilizingPolybenchNativeImageBenchmarkDispatcher(StabilizingPolybenchBenchmarkDispatcher):
+    """
+    Custom dispatching class for native-image PolybenchBenchmarkSuite stable runs that facilitates scheduling based
+    on a `--stable-run-config` configuration file:
+    * Schedules the appropriate number of forks for each specified benchmark according to their configuration.
+    * Reduces the number of language-launcher image builds, by reusing the same launcher across multiple benchmarks.
+    * Only runs agent and instrumentation stages once, if the VM configuration requires these stages.
+
+    The `--stable-run-config` configuration file should be a JSON object, where each key is a benchmark name.
+    Each entry must include both "builds" and a "run-forks" dictionary, each with a "count" property that
+    specifies the number of builds or forks (respectively) to schedule for that benchmark.
+    Additional properties may be present, but they are not relevant to this dispatcher class.
+
+    Example:
+
+    If the `--stable-run-config` configuration file specifies the following configuration (fields irrelevant
+    for scheduling have been omitted):
+    ```
+    {
+      "interpreter/sieve.py": {
+        "builds": { "count": 1 },
+        "run-forks": { "count": 1 }
+      },
+      "interpreter/fibonacci.py": {
+        "builds": { "count": 2 },
+        "run-forks": { "count": 3 }
+      },
+      "interpreter/richards.py": {
+        "builds": { "count": 3 },
+        "run-forks": { "count": 2 }
+      }
+    }
+    ```
+
+    This dispatcher will produce the following schedule (can be obtained by appending the `--dry-stable-run` option
+    to your `mx benchmark` command):
+    ```
+    * Build #1
+      * Preparation batch (batch #1)
+        [#1] Fork #0: 'agent' stage on interpreter/sieve.py
+        [#2] Fork #0: 'agent' stage on interpreter/richards.py
+        [#3] Fork #0: 'agent' stage on interpreter/fibonacci.py
+      * Preparation batch (batch #2)
+        [#4] Fork [interpreter/sieve.py#0][interpreter/richards.py#0][interpreter/fibonacci.py#0]: 'instrument-image' stage
+      * Preparation batch (batch #3)
+        [#5] Fork #0: 'instrument-run' stage on interpreter/sieve.py
+        [#6] Fork #0: 'instrument-run' stage on interpreter/richards.py
+        [#7] Fork #0: 'instrument-run' stage on interpreter/fibonacci.py
+      * Preparation batch (batch #4)
+        [#8] Fork [interpreter/sieve.py#0][interpreter/richards.py#0][interpreter/fibonacci.py#0]: 'image' stage
+      * Bench batch #1 (batch #5)
+        [#9] Fork #0: 'run' stage on interpreter/sieve.py
+        [#10] Fork #0: 'run' stage on interpreter/richards.py
+        [#11] Fork #0: 'run' stage on interpreter/fibonacci.py
+      * Bench batch #2 (batch #6)
+        [#12] Fork #1: 'run' stage on interpreter/richards.py
+        [#13] Fork #1: 'run' stage on interpreter/fibonacci.py
+      * Bench batch #3 (batch #7)
+        [#14] Fork #2: 'run' stage on interpreter/fibonacci.py
+    * Build #2
+      * Preparation batch (batch #1)
+        [#15] Fork [interpreter/richards.py#2][interpreter/fibonacci.py#3]: 'image' stage
+      * Bench batch #1 (batch #2)
+        [#16] Fork #2: 'run' stage on interpreter/richards.py
+        [#17] Fork #3: 'run' stage on interpreter/fibonacci.py
+      * Bench batch #2 (batch #3)
+        [#18] Fork #3: 'run' stage on interpreter/richards.py
+        [#19] Fork #4: 'run' stage on interpreter/fibonacci.py
+      * Bench batch #3 (batch #4)
+        [#20] Fork #5: 'run' stage on interpreter/fibonacci.py
+    * Build #3
+      * Preparation batch (batch #1)
+        [#21] Fork [interpreter/richards.py#4]: 'image' stage
+      * Bench batch #1 (batch #2)
+        [#22] Fork #4: 'run' stage on interpreter/richards.py
+      * Bench batch #2 (batch #3)
+        [#23] Fork #5: 'run' stage on interpreter/richards.py
+    ```
+
+    * Three builds will be scheduled as the benchmark with the most builds requested (richards.py) requires three.
+      * Only the first build will include AGENT, INSTRUMENT-IMAGE, and INSTRUMENT-RUN stages in the preparation batch.
+      * Every subsequent build will only include an IMAGE stage in the preparation batch.
+    * The first build will include 3 batches, as all of them require at least one build.
+      * The first bench batch will include all 3 benchmarks, as all of them require at least one run-fork.
+      * The second bench batch will include richards.py and fibonacci.py, excluding sieve.py as the configuration for
+        this benchmark requires only one run-fork.
+      * The third bench batch will include only fibonacci.py, excluding both sieve.py and richards.py as their
+        configurations require 1 and 2 run-forks, respectively.
+    * Starting from the second build sieve.py will be excluded, as its configuration requires only one build.
+    * In the third build fibonacci.py will also be excluded, as its configuration requires two builds.
+      * This build will only contain two bench batches, as richards.py is the only remaining benchmark and its
+        configuration requires two run-forks.
+    * For example, the log line "[#15] Fork [interpreter/richards.py#2][interpreter/fibonacci.py#3]: 'image' stage"
+      indicates that:
+      * This is the 15th dispatch from the dispatcher - the 15th invocation of the `BenchmarkSuite.run` method.
+      * The data collected from this dispatch will be duplicated for the benchmarks 'interpreter/richards.py' and
+        'interpreter/fibonacci.py'. Each of these will be labeled as belonging to different forks. The 'richards.py'
+        datapoints will be labeled as belonging to fork number 2 (`metric.fork-number = 2`), while the 'fibonacci.py'
+        datapoints will be labeled as belonging to fork number 3 (`metric.fork-number = 3`).
+        * This data duplication and relabeling is done with the intention of making the data easier to inspect in the
+          average use-case - inspecting a certain benchmark. Thanks to benchmark specific fork numbers, the data will
+          appear to be present for a continuous selection of forks, regardless of the observed benchmark.
+        * The same data can be duplicated and shared across benchmarks due to the fact that a language launcher image
+          is built - an image that is benchmark agnostic. For this reason image stages can be shared, while run stages
+          belong to a single benchmark.
+      * This dispatch will only execute the 'image' stage.
+    * The instrumentation profiles collected in the instrument-run stages are all passed to the image stage with the
+      `-Dnative-image.benchmark.pgo=` option.
+    """
+
+    LANGUAGE_LAUNCHER: str = "<<language_launcher>>"
+
+    def __init__(self, state: BenchmarkDispatcherState, stable_run_config: str):
+        super().__init__(state, stable_run_config)
+        self._dispatch_counter: int = 0
+
+    def dispatch_and_log(
+        self, benchmarks: List[str], total_dispatch_count: int, fork_number_dict: Dict[str, int], dry_run: bool
+    ) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """
+        Yields according to the schedule:
+        * First, it iterates over the builds, determined by the highest requested build count. In each iteration, an
+          image will be built at the start, and then a number of benchmarking batches will be executed using the image.
+        * Second, it iterates over the preparation and benchmark batches. The number of benchmark batches is determined
+          by the highest requested run-fork count from the benchmarks running on the current build.
+          This loop is implemented in the `dispatch_build` method.
+        * Third, it iterates over each benchmark which requires to be run in the current benchmark batch.
+          This loop is implemented in the `dispatch_batch` method.
+        """
+        build_count = max([self._stable_run_config[bench]["builds"]["count"] for bench in benchmarks])
+        self._dispatch_counter = 0
+        with ConstantContextValueManager(PolybenchBenchmarkSuite.PGO_PROFILES, []):
+            for build_index in range(build_count):
+                yield from self.dispatch_build(benchmarks, total_dispatch_count, fork_number_dict, dry_run, build_index)
+
+    def dispatch_build(
+        self,
+        benchmarks: List[str],
+        total_dispatch_count: int,
+        fork_number_dict: Dict[str, int],
+        dry_run: bool,
+        build_index: int,
+    ) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """See the `dispatch_and_log` doc comment."""
+        if dry_run:
+            mx.log(f" * Build #{build_index + 1}")
+        build_stages = ["agent", "instrument-image", "instrument-run", "image"] if build_index == 0 else ["image"]
+        current_build_benchmarks = [
+            bench for bench in benchmarks if self._stable_run_config[bench]["builds"]["count"] > build_index
+        ]
+        number_of_preparation_batches = len(build_stages)
+        bench_batches = [self._stable_run_config[bench]["run-forks"]["count"] for bench in current_build_benchmarks]
+        number_of_batches = number_of_preparation_batches + max(bench_batches)
+        with ConstantContextValueManager(PolybenchBenchmarkSuite.BUILD_BENCHMARKS, current_build_benchmarks):
+            for batch_index in range(number_of_batches):
+                yield from self.dispatch_batch(
+                    current_build_benchmarks,
+                    total_dispatch_count,
+                    fork_number_dict,
+                    dry_run,
+                    batch_index,
+                    build_stages,
+                    number_of_preparation_batches,
+                )
+
+    def dispatch_batch(
+        self,
+        benchmarks: List[str],
+        total_dispatch_count: int,
+        fork_number_dict: Dict[str, int],
+        dry_run: bool,
+        batch_index: int,
+        build_stages: List[str],
+        number_of_preparation_batches: int,
+    ) -> Generator[BenchmarkExecutionConfiguration, Any, None]:
+        """See the `dispatch_and_log` doc comment."""
+        stage = Stage.from_string(build_stages[batch_index] if batch_index < number_of_preparation_batches else "run")
+        new_vm_args = [f"-Dnative-image.benchmark.stages={stage}"]
+        if stage.is_final() and len(bm_exec_context().get_opt(PolybenchBenchmarkSuite.PGO_PROFILES, [])) > 0:
+            pgo_profiles = ",".join(map(str, bm_exec_context().get(PolybenchBenchmarkSuite.PGO_PROFILES)))
+            new_vm_args.append(f"-Dnative-image.benchmark.pgo={pgo_profiles}")
+        extended_bm_suite_args = self._extend_vm_args(self.state.suite, self.state.bm_suite_args, new_vm_args)
+        run_batch_index = batch_index - number_of_preparation_batches
+        benchmarks_for_batch = self._get_benchmarks_for_native_batch(benchmarks, stage, run_batch_index)
+        if dry_run:
+            if run_batch_index < 0:
+                mx.log(f"   * Preparation batch (batch #{batch_index + 1})")
+            elif run_batch_index >= 0:
+                mx.log(f"   * Bench batch #{run_batch_index + 1} (batch #{batch_index + 1})")
+        with ConstantContextValueManager(PolybenchBenchmarkSuite.FORK_FOR_IMAGE, run_batch_index):
+            for benchmark in benchmarks_for_batch:
+                if dry_run:
+                    if stage.is_image():
+                        fork_numbers = [f"[{bench}#{fork_number_dict[bench]}]" for bench in benchmarks]
+                        mx.log(f"     [#{self._dispatch_counter + 1}] Fork {''.join(fork_numbers)}: '{stage}' stage")
+                    else:
+                        msg = f"     [#{self._dispatch_counter + 1}] Fork #{fork_number_dict[benchmark]}: '{stage}' stage on {benchmark}"
+                        mx.log(msg)
+                else:
+                    msg = f"Execution of dispatch {self._dispatch_counter + 1}/{total_dispatch_count} running {stage} stage on {benchmark}"
+                    mx.log(msg)
+                mx_bench_args = self.state.mx_benchmark_args
+                last_dispatch = self._dispatch_counter + 1 == total_dispatch_count
+                with ConstantContextValueManager("last_dispatch", last_dispatch):
+                    total_fork_count = (
+                        self._stable_run_config[benchmark]["builds"]["count"]
+                        * self._stable_run_config[benchmark]["run-forks"]["count"]
+                    )
+                    fork_info = ForkInfo(fork_number_dict[benchmark], total_fork_count)
+                    yield BenchmarkExecutionConfiguration([benchmark], mx_bench_args, extended_bm_suite_args, fork_info)
+                self._dispatch_counter += 1
+                if run_batch_index >= 0:
+                    fork_number_dict[benchmark] += 1
+                if stage.is_image() and stage.is_final():
+                    fork_number_dict[self.LANGUAGE_LAUNCHER] += 1
+
+    def _get_benchmarks_for_native_batch(self, benchmarks: List[str], stage: Stage, run_batch_index: int) -> List[str]:
+        if stage.is_image():
+            return [benchmarks[0]]
+        return self._get_benchmarks_for_batch(benchmarks, run_batch_index)
+
+    def _verify_no_conflicting_args_are_set(self):
+        super()._verify_no_conflicting_args_are_set()
+        vm_args = self.state.suite.vmArgs(self.state.bm_suite_args)
+        if len(parse_prefixed_args("-Dnative-image.benchmark.stages=", vm_args)) > 0:
+            msg = f"Setting the VM option '-Dnative-image.benchmark.stages' is not supported when using {self.__class__.__name__} as a dispatcher!"
+            raise ValueError(msg)
+
+    def _get_required_config_levels(self) -> List[str]:
+        return ["builds"] + super()._get_required_config_levels()
+
+    def _extend_vm_args(
+        self, suite: "PolybenchBenchmarkSuite", bm_suite_args: List[str], new_vm_args: List[str]
+    ) -> List[str]:
+        vm_args, run_args = suite.vmAndRunArgs(bm_suite_args)
+        return vm_args + new_vm_args + ["--"] + run_args
+
+    def _init_fork_number_dict(self, benchmarks) -> Dict[str, int]:
+        return super()._init_fork_number_dict(benchmarks + [self.LANGUAGE_LAUNCHER])
+
+
+class ImageStageDatapointDuplicatingPostProcessor(DataPointsPostProcessor):
+    """
+    Ensures the datapoints from the image stage are duplicated so that there is a datapoint for:
+     * each benchmark: To facilitate easier access to image stage metrics to users inspecting a specific benchmark.
+     * the executable name (e.g. "python"): To indicate that the image does not have anything to do with the
+                                            currently running benchmarks - as the image produced is a language
+                                            launcher that will take the benchmark file as input.
+    Doing both of these might seem counterintuitive, but it is done with two different users in mind.
+
+    Does not have any effect if not in native mode and thus no image stage datapoints are present.
+    """
+
+    def __init__(self, suite: "PolybenchBenchmarkSuite"):
+        super().__init__()
+        self._suite = suite
+
+    def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        copies = []
+        executable_name = bm_exec_context().get(PolybenchBenchmarkSuite.CURRENT_IMAGE).executable_name()
+        all_benchmarks = bm_exec_context().get("benchmarks")
+        benchmarks = bm_exec_context().get_opt(PolybenchBenchmarkSuite.BUILD_BENCHMARKS, all_benchmarks)
+        override_map = bm_exec_context().get_opt(PolybenchBenchmarkSuite.FORK_OVERRIDE_MAP)
+        for dp in datapoints:
+            stage = dp.get("native-image.stage")
+            if stage is not None and "image" in stage:
+                self.set_benchmark_specific_dimensions(
+                    dp,
+                    executable_name,
+                    override_map,
+                    StabilizingPolybenchNativeImageBenchmarkDispatcher.LANGUAGE_LAUNCHER,
+                )
+                dp["extra.duplicated"] = "false"
+                for benchmark in benchmarks:
+                    copy = dp.copy()
+                    self.set_benchmark_specific_dimensions(copy, benchmark, override_map)
+                    copy["extra.duplicated"] = "true"
+                    copies.append(copy)
+        return datapoints + copies
+
+    def set_benchmark_specific_dimensions(
+        self, dp: DataPoint, benchmark: str, override_map: Dict[str, int], override_key: Optional[str] = None
+    ):
+        dp["benchmark"] = benchmark
+        if override_map is None or dp.get("metric.fork-number") is None:
+            return
+        if override_key is None:
+            override_key = benchmark
+        if override_key not in override_map:
+            raise ValueError(f"No fork override provided for '{override_key}'!")
+        dp["metric.fork-number"] = override_map[override_key]
+
+
+class FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor(
+    mx_benchmark.DataPointsAverageProducerWithOutlierRemoval
+):
+    """
+    Customizable post-processor that is intended to execute only once: after the run stage (last stage) of
+    the last dispatch, but considers all the datapoints (from previous stages and dispatches)
+    when removing outliers and computing the average.
+
+    DEVELOPER NOTES:
+    * Should be scheduled to execute only once!
+    * Groups formed by the `key_fn` should contain only datapoints with the same "benchmark" dimension!
+    """
+
+    def __init__(
+        self,
+        suite: "PolybenchBenchmarkSuite",
+        selector_fn: Optional[Callable[[DataPoint], bool]],
+        key_fn: Optional[Callable[[DataPoint], Any]],
+        field: str,
+        update_fn: Optional[Callable[[DataPoint], DataPoint]],
+        aggregation_level: str,
+        final_consumer: bool,
+    ):
+        # The lower and upper percentiles will be set on a per-group basis in `calculate_aggregate_value` - as they
+        # can have different values for different benchmarks.
+        super().__init__(selector_fn, key_fn, field, update_fn, 0, 1)
+        self._suite = suite
+        self._aggregation_level = aggregation_level
+        self._final_consumer = final_consumer
+
+    def select_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        # Select datapoints from all forks and stages. The latest datapoints (the ones in the `datapoints` argument)
+        # have not yet been added to PolybenchBenchmarkSuite.DATAPOINTS by the `ContextStorePostProcessor`, so
+        # we add them here.
+        return super().select_datapoints(bm_exec_context().get(PolybenchBenchmarkSuite.DATAPOINTS) + datapoints)
+
+    def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        if self._final_consumer:
+            if bm_exec_context().get(PolybenchBenchmarkSuite.CONSUMED):
+                msg = "Failed to guarantee a single execution! The aggregate datapoints were already produced!"
+                raise ValueError(msg)
+            bm_exec_context().update(PolybenchBenchmarkSuite.CONSUMED, True)
+        return super().process_datapoints(datapoints)
+
+    def calculate_aggregate_value(self, datapoints: DataPoints) -> Any:
+        config = bm_exec_context().get(PolybenchBenchmarkSuite.STABLE_CONFIG)
+        benchmark = self.get_and_verify_unique_benchmark_dimension(datapoints)
+        self._lower_percentile = self._suite.resolve_config_field_or_default(
+            config, [benchmark, self._aggregation_level, "lower-percentile"], 0
+        )
+        self._upper_percentile = self._suite.resolve_config_field_or_default(
+            config, [benchmark, self._aggregation_level, "upper-percentile"], 1
+        )
+        return super().calculate_aggregate_value(datapoints)
+
+    def get_and_verify_unique_benchmark_dimension(self, datapoints: DataPoints) -> str:
+        benchmark = datapoints[0]["benchmark"]
+        for dp in datapoints:
+            if dp["benchmark"] != benchmark:
+                raise ValueError("The datapoints group is expected to share the 'benchmark' dimension but does not!")
+        return benchmark
+
+    def verify_and_process_id_score_function(self, datapoint: DataPoint):
+        score_function = datapoint.get("metric.score-function", "id")
+        if score_function != "id":
+            raise ValueError(
+                f"{self.__class__.__name__} can only post-process datapoints with a 'metric.score-function' of value 'id'! Encountered score function: '{score_function}'."
+            )
+        datapoint["metric.score-value"] = datapoint["metric.value"]
+
+
+class NonNativeImageBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor):
+    """
+    Post-processor that calculates the outlier-excluded average of the "avg-time" metric across dispatches
+    and produces a final "time" metric for a benchmark.
+    Should only be used when running a benchmark in server (non-native) mode.
+    """
+
+    def __init__(self, suite: "PolybenchBenchmarkSuite"):
+        selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "fork"
+        key_fn = lambda dp: dp["benchmark"]
+        field = "metric.value"
+
+        def update_fn(dp):
+            dp["metric.name"] = "time"
+            if "metric.object" in dp:
+                del dp["metric.object"]
+            if "metric.fork-number" in dp:
+                del dp["metric.fork-number"]
+            self.verify_and_process_id_score_function(dp)
+            return dp
+
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, "run-forks", True)
+
+
+class NativeModeBuildSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor):
+    """
+    Post-processor that calculates the outlier-excluded average of the "avg-time" metric across run-only-forks
+    and produces the "avg-time" metric for an image build.
+    Should only be used when running a benchmark in native mode.
+    """
+
+    def __init__(self, suite: "PolybenchBenchmarkSuite"):
+        selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "fork"
+        key_fn = lambda dp: (dp["benchmark"], dp["native-image.stage"], dp["native-image.rebuild-number"])
+        field = "metric.value"
+
+        def update_fn(dp):
+            dp["metric.object"] = "build"
+            if "metric.fork-number" in dp:
+                del dp["metric.fork-number"]
+            if "native-image.image-fork-number" in dp:
+                del dp["native-image.image-fork-number"]
+            self.verify_and_process_id_score_function(dp)
+            return dp
+
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, "run-forks", False)
+
+
+class NativeModeBenchmarkSummaryPostProcessor(FinalDispatchFinalStageAverageWithOutlierRemovalPostProcessor):
+    """
+    Post-processor that calculates the outlier-excluded average of the "avg-time" metric across image builds
+    and produces a final "time" metric for a benchmark (separate "run" and "instrument-run" datapoints).
+    Should only be used when running a benchmark in native mode.
+    """
+
+    def __init__(self, suite: "PolybenchBenchmarkSuite"):
+        selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "build"
+        key_fn = lambda dp: (dp["benchmark"], dp["native-image.stage"])
+        field = "metric.value"
+
+        def update_fn(dp):
+            dp["metric.name"] = "time"
+            if "metric.object" in dp:
+                del dp["metric.object"]
+            if "native-image.rebuild-number" in dp:
+                del dp["native-image.rebuild-number"]
+            self.verify_and_process_id_score_function(dp)
+            return dp
+
+        super().__init__(suite, selector_fn, key_fn, field, update_fn, "builds", True)
+
+
+class GraalSpecificFieldsRemoverPostProcessor(DataPointsPostProcessor):
+    """
+    Removes all platform Graal specific fields from all the datapoints.
+    Used for cleaning up the bench results of a benchmark that runs on
+    a different platform (e.g. CPython).
+    The removed fields include:
+        * The "guest-vm" and "guest-vm-config" fields.
+        * All the "platform.*" fields.
+    """
+
+    def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        return [{k: v for k, v in dp.items() if self._should_be_kept(k)} for dp in datapoints]
+
+    def _should_be_kept(self, key) -> bool:
+        return key not in ["guest-vm", "guest-vm-config"] and not key.startswith("platform.")
+
+
+class ContextStorePostProcessor(DataPointsPostProcessor):
+    """
+    Post-processor that stores datapoints in the execution context for other post-processors that require access to
+    datapoints from all dispatches. Performs no datapoints modifications.
+    """
+
+    def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        existing_datapoints = bm_exec_context().get(PolybenchBenchmarkSuite.DATAPOINTS)
+        bm_exec_context().update(PolybenchBenchmarkSuite.DATAPOINTS, existing_datapoints + datapoints)
+        return datapoints
+
+
+class ContextResetPostProcessor(DataPointsPostProcessor):
+    """
+    Resets fork-batch specific execution context fields for the next fork batch. Performs no datapoints modifications.
+    """
+
+    def __init__(self, suite: "PolybenchBenchmarkSuite"):
+        super().__init__()
+        self._suite = suite
+
+    def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
+        if (
+            not bm_exec_context().get(PolybenchBenchmarkSuite.CONSUMED)
+            and not self._suite.polybench_bench_suite_args(bm_exec_context().get("bm_suite_args")).dry_stable_run
+        ):
+            msg = f"Failed to produce the aggregate benchmark datapoints! This should have happened in the final fork!"
+            raise ValueError(msg)
+        bm_exec_context().update(PolybenchBenchmarkSuite.CONSUMED, False)
+        bm_exec_context().update(PolybenchBenchmarkSuite.DATAPOINTS, [])
+        bm_exec_context().update(PolybenchBenchmarkSuite.REBUILD_NUMBER, -1)
+        return datapoints
+
+
+class CurrentImageManager(ConstantContextValueManager):
+    """Represents the currently used PolyBench image cache entry."""
+
+    def __init__(
+        self, suite: "PolybenchBenchmarkSuite", resolved_benchmark: ResolvedPolybenchBenchmark, bm_suite_args: List[str]
+    ):
+        languages = resolved_benchmark.suite.languages
+        impactful_vm_args = suite.vm_args_impacting_image_build(bm_suite_args)
+        entry = PolybenchImageCacheEntry.create(languages, impactful_vm_args)
+        super().__init__(PolybenchBenchmarkSuite.CURRENT_IMAGE, entry)
+
+    def __enter__(self):
+        try:
+            super().__enter__()
+        except ValueError:
+            existing_entry = bm_exec_context().get(self._name).executable_name()
+            msg = f"Tried to set current image to {self._value.executable_name()}, but there is already a current image ({existing_entry})."
+            raise ValueError(msg)
+
+
 class PolybenchImageCacheEntry(NamedTuple):
     """
     Represents the parameters of a cached image build. When possible, PolybenchBenchmarkSuite will
@@ -282,53 +967,6 @@ class PolybenchImageCacheEntry(NamedTuple):
         return hashlib.sha256(build_args_string.encode("utf-8")).hexdigest()[:8]
 
 
-# Extract this into benchmark-side configuration files (GR-70587)
-_polybench_bench_suite_config = {
-    "interpreter/fibonacci.py": {
-        "outlier-fork-removal": {
-            "builds": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-            "run-forks": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-        },
-    },
-    "interpreter/deltablue.py": {
-        "outlier-fork-removal": {
-            "builds": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-            "run-forks": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-        },
-    },
-    "interpreter/richards.py": {
-        "outlier-fork-removal": {
-            "builds": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-            "run-forks": {
-                "count": 5,
-                "lower-percentile": 0,
-                "upper-percentile": 0.4,
-            },
-        },
-    },
-}
-
-
 class PolybenchBenchmarkSuite(
     mx_benchmark.JavaBenchmarkSuite, mx_benchmark.TemporaryWorkdirMixin, mx_sdk_benchmark.NativeImageBenchmarkMixin
 ):
@@ -347,14 +985,21 @@ class PolybenchBenchmarkSuite(
     }
     REUSE_DISK_IMAGES = "POLYBENCH_REUSE_DISK_IMAGES"
     POLYBENCH_BENCH_SUITE_PARSER_NAME = "polybench_bench_suite_parser_name"
+    # Use "PolybenchBenchmarkSuite.*" execution context keys to avoid potential key collisions
+    CURRENT_IMAGE = "PolybenchBenchmarkSuite.current_image"
+    IMAGE_CACHE = "PolybenchBenchmarkSuite.image_cache"
+    FORK_OVERRIDE_MAP = "PolybenchBenchmarkSuite.fork_number_override_map"
+    REBUILD_NUMBER = "PolybenchBenchmarkSuite.rebuild_number"
+    DATAPOINTS = "PolybenchBenchmarkSuite.datapoints"
+    CONSUMED = "PolybenchBenchmarkSuite.consumed_datapoints"
+    STABLE_CONFIG = "PolybenchBenchmarkSuite.stable_run_config"
+    FORK_FOR_IMAGE = "PolybenchBenchmarkSuite.image_fork_number"
+    BUILD_BENCHMARKS = "PolybenchBenchmarkSuite.current_build_benchmarks"
+    PGO_PROFILES = "PolybenchBenchmarkSuite.collected_pgo_profiles"
 
-    def __init__(self):
-        super(PolybenchBenchmarkSuite, self).__init__()
-        self._image_cache: Set[PolybenchImageCacheEntry] = set()
-        self._current_image: Optional[PolybenchImageCacheEntry] = None
-        # Consider extracting these into an execution context object - the suite should be stateless (GR-70605)
-        self._forks_until_rebuild_counter: int = -1
-        self._image_rebuild_index: int = -1
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        bm_exec_context().add_context_value(PolybenchBenchmarkSuite.IMAGE_CACHE, BoxContextValue(set()))
 
     def group(self):
         return "Graal"
@@ -366,7 +1011,7 @@ class PolybenchBenchmarkSuite(
         return "polybench"
 
     def version(self):
-        return "0.2.0"
+        return "0.3.0"
 
     def _resolve_benchmarks(self) -> Dict[str, ResolvedPolybenchBenchmark]:
         if not hasattr(self, "_benchmarks"):
@@ -385,13 +1030,9 @@ class PolybenchBenchmarkSuite(
         if len(parse_prefixed_args("-Dnative-image.benchmark.stages=", self.vmArgs(bm_suite_args))) > 0:
             return super().filter_stages_with_cli_requested_stages(bm_suite_args, stages)
         # Filter stages for optimized fork runs: we might want just a single instrument-image stage and multiple run stages per one image stage
-        preserve_only_run_stages = (
-            self._decrement_and_check_rebuild_counter()
-            and self.execution_context.native_mode
-            and self._image_is_cached(bm_suite_args)
-        )
+        preserve_only_run_stages = self._image_is_cached(bm_suite_args)
         remove_instrumentation_stages = (
-            self._image_rebuild_index > 0
+            bm_exec_context().get(PolybenchBenchmarkSuite.REBUILD_NUMBER) > 0
             and not self.polybench_bench_suite_args(bm_suite_args).regenerate_instrumentation_profile
         )
         if preserve_only_run_stages:
@@ -412,101 +1053,69 @@ class PolybenchBenchmarkSuite(
         # Sampling does not support images that use runtime compilation.
         return False
 
-    def resolve_config_field_or_default(self, keys: List[str], default: Any) -> Any:
+    @staticmethod
+    def resolve_config_field_or_default(config: dict, keys: List[str], default: Any) -> Any:
         """Resolves a nested Polybench config dictionary value, or returns the default value if a key cannot be resolved."""
-        curr = _polybench_bench_suite_config
+        if config is None:
+            return default
+        curr = config
         for key in keys:
             if not isinstance(curr, dict) or key not in curr:
                 return default
             curr = curr[key]
         return curr
 
-    def default_fork_count(self, benchmarks: List[str], bm_suite_args: List[str]) -> int:
-        """
-        Defaults to 1 via super `default_fork_count` implementation.
-        If the `--stable-run` Polybench bench suite flag is enabled and the appropriate configuration is available for
-        the current benchmark, then returns a fork count accommodating multiple image builds and multiple run-only-forks
-        (in order to provide more stable metrics).
-        """
-        if (
-            not self.polybench_bench_suite_args(bm_suite_args).stable_run
-            or len(benchmarks) != 1
-            or self.resolve_config_field_or_default([benchmarks[0], "outlier-fork-removal"], None) is None
-        ):
-            return super().default_fork_count(benchmarks, bm_suite_args)
-        build_count = self.resolve_config_field_or_default(
-            [benchmarks[0], "outlier-fork-removal", "builds", "count"], 1
-        )
-        run_only_fork_count = self.resolve_config_field_or_default(
-            [benchmarks[0], "outlier-fork-removal", "run-forks", "count"], 1
-        )
-        # No execution context has been established at this point
-        if self.is_native_mode(bm_suite_args):
-            return build_count * run_only_fork_count
-        else:
-            return run_only_fork_count
-
-    def _reset_rebuild_counter(self):
-        """
-        Resets the language launcher image rebuild counter. The reset value depends on the `--stable-run` CLI option
-        and the `_polybench_bench_suite_config` configuration dict.
-        """
-        if self.polybench_bench_suite_args(self.execution_context.bmSuiteArgs).stable_run:
-            self._forks_until_rebuild_counter = self.resolve_config_field_or_default(
-                [self.execution_context.benchmark, "outlier-fork-removal", "run-forks", "count"], float("inf")
-            )
-        else:
-            # Never rebuild the language launcher image, re-use the image built in the first fork in subsequent forks
-            self._forks_until_rebuild_counter = float("inf")
-
-    def _decrement_and_check_rebuild_counter(self) -> bool:
-        """
-        Resets the rebuild counter if it has reached zero or wasn't yet initialized, and then decrements it.
-        Returns `False` if  the counter was reset.
-        Used to determine whether an image stage is due in the current fork or if it is supposed to be a run-only-fork.
-        """
-        can_reuse = True
-        if self._forks_until_rebuild_counter <= 0:
-            self._reset_rebuild_counter()
-            self._image_rebuild_index += 1
-            can_reuse = False
-        self._forks_until_rebuild_counter -= 1
-        return can_reuse
-
-    class PolybenchExecutionContext(mx_benchmark.SingleBenchmarkExecutionContext):
-        """Runtime context of the `PolybenchBenchmarkSuite` bench suite."""
-
-        def __init__(
-            self,
-            suite: BenchmarkSuite,
-            vm: Optional[Vm],
-            benchmarks: List[str],
-            bmSuiteArgs: List[str],
-            fork_info: Optional[ForkInfo] = None,
-        ):
-            super().__init__(suite, vm, benchmarks, bmSuiteArgs, fork_info)
-            # It is important for the summary post-processors to be persisted across stages and forks
-            if isinstance(suite.execution_context, PolybenchBenchmarkSuite.PolybenchExecutionContext):
-                self._native_mode: bool = suite.execution_context.native_mode
-                self._post_processors: List[DataPointsPostProcessor] = suite.execution_context.post_processors
+    def get_dispatcher(self, state: BenchmarkDispatcherState) -> BenchmarkDispatcher:
+        """Returns one of the custom dispatchers if the '--stable-run-config' option is set, defaults to super otherwise."""
+        stable_run_config = self.polybench_bench_suite_args(state.bm_suite_args).stable_run_config
+        if stable_run_config is not None:
+            if self.is_native_mode(state.bm_suite_args):
+                dispatcher_class = StabilizingPolybenchNativeImageBenchmarkDispatcher
             else:
-                self._native_mode: bool = suite.is_native_mode(bmSuiteArgs)
-                self._post_processors: List[DataPointsPostProcessor] = suite._get_post_processors(
-                    self.benchmark, self._native_mode, self.bmSuiteArgs
-                )
+                dispatcher_class = StabilizingPolybenchBenchmarkDispatcher
+            msg = f"Using a {dispatcher_class.__name__} instance for benchmark dispatching due to the '--stable-run-config' option being set."
+            mx.log(msg)
+            return dispatcher_class(state, stable_run_config)
+        return super().get_dispatcher(state)
 
-        @property
-        def native_mode(self):
-            return self._native_mode
+    def before(self, bmSuiteArgs):
+        super().before(bmSuiteArgs)
+        bm_exec_context().add_context_value(PolybenchBenchmarkSuite.DATAPOINTS, BoxContextValue([]))
+        bm_exec_context().add_context_value(PolybenchBenchmarkSuite.CONSUMED, BoxContextValue(False))
+        bm_exec_context().add_context_value(PolybenchBenchmarkSuite.REBUILD_NUMBER, BoxContextValue(-1))
 
-        @property
-        def post_processors(self):
-            return self._post_processors
+    def after(self, bmSuiteArgs):
+        bm_exec_context().remove(PolybenchBenchmarkSuite.DATAPOINTS)
+        bm_exec_context().remove(PolybenchBenchmarkSuite.CONSUMED)
+        bm_exec_context().remove(PolybenchBenchmarkSuite.REBUILD_NUMBER)
+        super().after(bmSuiteArgs)
 
-    def new_execution_context(
-        self, vm: Optional[Vm], benchmarks: List[str], bmSuiteArgs: List[str], fork_info: Optional[ForkInfo] = None
-    ) -> BenchmarkExecutionContext:
-        return PolybenchBenchmarkSuite.PolybenchExecutionContext(self, vm, benchmarks, bmSuiteArgs, fork_info)
+    def run_stage(self, vm, stage: Stage, command, out, err, cwd, nonZeroIsFatal):
+        # Increment rebuild number before running the 'image' stage
+        if stage.is_image() and stage.is_final():
+            bm_exec_context().update(
+                PolybenchBenchmarkSuite.REBUILD_NUMBER,
+                bm_exec_context().get(PolybenchBenchmarkSuite.REBUILD_NUMBER) + 1,
+            )
+        exit_code = super().run_stage(vm, stage, command, out, err, cwd, nonZeroIsFatal)
+        # Copy the profile after running the 'instrument-run' stage
+        self._ensure_instrumentation_profile_name_is_benchmark_specific(vm, stage)
+        return exit_code
+
+    def _ensure_instrumentation_profile_name_is_benchmark_specific(
+        self, vm: mx_sdk_benchmark.NativeImageVM, stage: Stage
+    ):
+        not_instrument_stage = stage.stage_name != StageName.INSTRUMENT_RUN
+        no_collection = not bm_exec_context().has(PolybenchBenchmarkSuite.PGO_PROFILES)
+        if not_instrument_stage or no_collection:
+            return
+        # Copy the profile to ensure it isn't overwritten by next benchmark
+        new_pgo_profile = vm.config.profile_path
+        benchmark_sanitized = bm_exec_context().get("benchmark").replace("/", "-").replace(".", "-")
+        bench_unique_profile_path = new_pgo_profile.parent / f"{benchmark_sanitized}.iprof"
+        shutil.copy(new_pgo_profile, bench_unique_profile_path)
+        # Store the profile for use in upcoming IMAGE stages
+        bm_exec_context().get(PolybenchBenchmarkSuite.PGO_PROFILES).append(bench_unique_profile_path)
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         # name used by NativeImageBenchmarkMixin
@@ -520,14 +1129,21 @@ class PolybenchBenchmarkSuite(
         mx.logv(f"Languages included on the classpath: {resolved_benchmark.suite.languages}")
 
         env_vars = PolybenchBenchmarkSuite._prepare_distributions(working_directory, resolved_benchmark)
-        with _extend_env(env_vars), self._set_image_context(resolved_benchmark, bmSuiteArgs):
+        with _extend_env(env_vars), CurrentImageManager(
+            self, resolved_benchmark, bmSuiteArgs
+        ), ConstantContextValueManager("benchmark", resolved_benchmark.name), ConstantContextValueManager(
+            "native_mode", self.is_native_mode(bmSuiteArgs)
+        ), ConstantContextValueManager(
+            PolybenchBenchmarkSuite.STABLE_CONFIG, self._resolve_stable_run_config()
+        ):
             datapoints = self.intercept_run(super(), benchmarks, bmSuiteArgs)
-            if self.execution_context.native_mode:
-                self._image_cache.add(self._current_image)
+            if bm_exec_context().get("native_mode"):
+                image_cache = bm_exec_context().get(PolybenchBenchmarkSuite.IMAGE_CACHE)
+                image_cache.add(bm_exec_context().get(PolybenchBenchmarkSuite.CURRENT_IMAGE))
             return datapoints
 
     def use_stage_aware_benchmark_mixin_intercept_run(self):
-        if self.jvm(self.execution_context.bmSuiteArgs) == "cpython":
+        if self.jvm(bm_exec_context().get("bm_suite_args")) == "cpython":
             return True
         return False
 
@@ -535,6 +1151,13 @@ class PolybenchBenchmarkSuite(
         if benchmarks is None or len(benchmarks) != 1:
             mx.abort(f"Must specify one benchmark at a time (given: {benchmarks})")
         return self._resolve_benchmarks()[benchmarks[0]]
+
+    def _resolve_stable_run_config(self):
+        config_path = self.polybench_bench_suite_args(bm_exec_context().get("bm_suite_args")).stable_run_config
+        if config_path is None:
+            return {}
+        with open(config_path) as f:
+            return json.load(f)
 
     @staticmethod
     def _prepare_distributions(
@@ -564,30 +1187,28 @@ class PolybenchBenchmarkSuite(
 
         return env_vars
 
-    @contextlib.contextmanager
-    def _set_image_context(self, resolved_benchmark: ResolvedPolybenchBenchmark, bm_suite_args: List[str]):
-        """
-        Defines a context for the "current" image. This field determines the executable name, which
-        is used by NI benchmarking infra to resolve the name/location of the built image.
-        """
-        entry = PolybenchImageCacheEntry.create(resolved_benchmark.suite.languages, self.vmArgs(bm_suite_args))
-        assert (
-            not self._current_image
-        ), f"Tried to set current image to {entry.executable_name()}, but there is already a current image ({self._current_image.executable_name()})."
-        self._current_image = entry
-        yield
-        self._current_image = None
+    def vm_args_impacting_image_build(self, bm_suite_args: List[str]) -> List[str]:
+        """Returns the VM args excluding any args that do not impact the image."""
+        vm_args = self.vmArgs(bm_suite_args)
+        impactful_vm_args = []
+        for vm_arg in vm_args:
+            if vm_arg.startswith("-Dnative-image.benchmark.stages="):
+                continue
+            impactful_vm_args.append(vm_arg)
+        return impactful_vm_args
 
     def _base_image_name(self) -> Optional[str]:
         """Overrides the image name used to build/run the image."""
-        if self.jvm(self.execution_context.bmSuiteArgs) == "cpython":
-            benchmark_sanitized = self.execution_context.benchmark.replace("/", "-").replace(".", "-")
+        if self.jvm(bm_exec_context().get("bm_suite_args")) == "cpython":
+            benchmark_sanitized = bm_exec_context().get("benchmark").replace("/", "-").replace(".", "-")
             return f"{benchmark_sanitized}-staged-benchmark"
-        assert self._current_image, "Image should have been set already"
-        return self._current_image.full_executable_name()
+        assert bm_exec_context().has(PolybenchBenchmarkSuite.CURRENT_IMAGE), "Image should have been set already"
+        return bm_exec_context().get(PolybenchBenchmarkSuite.CURRENT_IMAGE).full_executable_name()
 
     def _image_is_cached(self, bm_suite_args: List[str]) -> bool:
-        if self._current_image in self._image_cache:
+        current_image = bm_exec_context().get(PolybenchBenchmarkSuite.CURRENT_IMAGE)
+        image_cache = bm_exec_context().get(PolybenchBenchmarkSuite.IMAGE_CACHE)
+        if current_image in image_cache:
             return True
 
         if mx.get_env(PolybenchBenchmarkSuite.REUSE_DISK_IMAGES) in ["true", "True"]:
@@ -603,10 +1224,6 @@ class PolybenchBenchmarkSuite(
                 return True
 
         return False
-
-    def _extend_vm_args(self, bm_suite_args: List[str], new_vm_args: List[str]) -> List[str]:
-        vm_args, run_args = self.vmAndRunArgs(bm_suite_args)
-        return vm_args + new_vm_args + ["--"] + run_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
@@ -624,7 +1241,7 @@ class PolybenchBenchmarkSuite(
     def parserNames(self) -> List[str]:
         return super().parserNames() + [PolybenchBenchmarkSuite.POLYBENCH_BENCH_SUITE_PARSER_NAME]
 
-    def polybench_bench_suite_args(self, bm_suite_args: List[str]):
+    def polybench_bench_suite_args(self, bm_suite_args: List[str]) -> Namespace:
         """Parses the "vm and suite" args for any known Polybench args and returns a namespace with Polybench arg values."""
         vm_and_suite_args = self.vmAndRunArgs(bm_suite_args)[0]
         namespace, _ = get_parser(PolybenchBenchmarkSuite.POLYBENCH_BENCH_SUITE_PARSER_NAME).parse_known_args(
@@ -643,12 +1260,13 @@ class PolybenchBenchmarkSuite(
                 "guest-vm-config": guest_vm_config,
             }
         )
-        if self.execution_context.native_mode:
-            dims.update(
-                {
-                    "native-image.rebuild-number": self._image_rebuild_index,
-                }
-            )
+        if bm_exec_context().get("native_mode"):
+            # max(0, _) to handle instrumentation stages and running on previously built images
+            rebuild_num = max(0, bm_exec_context().get(PolybenchBenchmarkSuite.REBUILD_NUMBER))
+            dims["native-image.rebuild-number"] = rebuild_num
+            if bm_exec_context().has(PolybenchBenchmarkSuite.FORK_FOR_IMAGE):
+                fork_for_image = max(0, bm_exec_context().get(PolybenchBenchmarkSuite.FORK_FOR_IMAGE))
+                dims["native-image.image-fork-number"] = fork_for_image
         return ret_code, out, dims
 
     def _infer_host_vm_config(self, bm_suite_args, dims):
@@ -656,7 +1274,7 @@ class PolybenchBenchmarkSuite(
         if edition not in ["ce", "ee"] or not dims.get("platform.prebuilt-vm", False):
             raise ValueError(f"Polybench should only run with a prebuilt GraalVM. Dimensions found: {dims}")
 
-        if self.execution_context.native_mode:
+        if bm_exec_context().get("native_mode"):
             # patch ce/ee suffix
             existing_config = dims["host-vm-config"]
             existing_edition = existing_config.split("-")[-1]
@@ -675,7 +1293,7 @@ class PolybenchBenchmarkSuite(
 
     def _infer_guest_vm_info(self, benchmarks, bm_suite_args) -> Tuple[str, str]:
         resolved_benchmark = self._resolve_current_benchmark(benchmarks)
-        # Eventually this must check for exact match for each language and map it to the corresponding guest-vm
+        # Eventually this must check for exact match for each language and map it to the corresponding guest-vm.
         # Here, we just infer it based on the presence of some language in a list. This must be made more robust
         # and more generic to handle the case when multiple languages are used.
         if "js" in resolved_benchmark.suite.languages:
@@ -701,7 +1319,7 @@ class PolybenchBenchmarkSuite(
         if metric_name is None:
             return []
         rules = []
-        benchmark_name = benchmarks[0]
+        benchmark_name = bm_exec_context().get("benchmark")
         if metric_name == "time":
             # For metric "time", two metrics are reported:
             # - "warmup" (per-iteration data for "warmup" and "run" iterations)
@@ -816,195 +1434,38 @@ class PolybenchBenchmarkSuite(
         ]
         return rules
 
-    class NativeModeBenchmarkRenamingPostProcessor(DataPointsPostProcessor):
-        """
-        Rewrites the "benchmark" field of all image stage datapoints to the image name (e.g. "python").
-        This is done to indicate that the image does not have anything to do with the currently running benchmark - the
-        image produced is a language launcher that will take the benchmark file as input.
-        Should only be used when running a benchmark in native mode.
-        """
-
-        def __init__(self, suite: "PolybenchBenchmarkSuite"):
-            super().__init__()
-            self._suite = suite
-
-        def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
-            for dp in datapoints:
-                stage = dp.get("native-image.stage")
-                if stage is not None and "image" in stage:
-                    # associate any image build datapoints with the name of the image (rather than the benchmark)
-                    dp["benchmark"] = self._suite._current_image.executable_name()
-            return datapoints
-
-    class AfterAllForksAverageWithOutlierRemovalPostProcessor(mx_benchmark.DataPointsAverageProducerWithOutlierRemoval):
-        """
-        Customizable post-processor that only executes after the run stage (last stage) of the last fork, but includes
-        all datapoints (from previous stages and forks) when removing outliers and computing the average.
-        """
-
-        def __init__(
-            self,
-            suite: "PolybenchBenchmarkSuite",
-            selector_fn: Optional[Callable[[DataPoint], bool]],
-            key_fn: Optional[Callable[[DataPoint], Any]],
-            field: str,
-            update_fn: Optional[Callable[[DataPoint], DataPoint]],
-            lower_percentile: float,
-            upper_percentile: float,
-        ):
-            super().__init__(selector_fn, key_fn, field, update_fn, lower_percentile, upper_percentile)
-            self._suite = suite
-            self._fork_stage_datapoints = {}
-
-        def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
-            fork_info = self._suite.execution_context.fork_info
-            # When running non-native benchmarks there is no concept of stages, there is only a single bench suite run.
-            # So we store a pretend "run" stage to indicate that all datapoints (for this fork) have already been produced.
-            current_stage = Stage.from_string("run")
-            try:
-                current_stage = self._suite.stages_info.current_stage
-            except AttributeError:
-                pass
-            # Preserve this fork-stage's datapoints for eventual post-processing.
-            self._fork_stage_datapoints[(fork_info.current_fork_index, current_stage)] = datapoints
-            if (
-                fork_info.current_fork_index + 1 < fork_info.total_fork_count
-                or current_stage.stage_name != StageName.RUN
-            ):
-                # Delay post-processing until the 'run' stage of the last fork.
-                return datapoints
-            # All datapoints from this benchmark have been produced and are available for post-processing.
-            return super().process_datapoints(datapoints)
-
-        def select_datapoints(self, datapoints: DataPoints) -> DataPoints:
-            # Select datapoints from all forks and stages. The latest datapoints (the ones in the `datapoints` argument)
-            # have already been added to `_fork_stage_datapoints` in `process_datapoints`.
-            all_datapoints = []
-            for fork_stage_datapoints in self._fork_stage_datapoints.values():
-                all_datapoints += fork_stage_datapoints
-            return super().select_datapoints(all_datapoints)
-
-        def verify_and_process_id_score_function(self, datapoint: DataPoint):
-            score_function = datapoint.get("metric.score-function", "id")
-            if score_function != "id":
-                raise ValueError(
-                    f"{self.__class__.__name__} can only post-process datapoints with a 'metric.score-function' of value 'id'! Encountered score function: '{score_function}'."
-                )
-            datapoint["metric.score-value"] = datapoint["metric.value"]
-
-    class NativeModeBuildSummaryPostProcessor(AfterAllForksAverageWithOutlierRemovalPostProcessor):
-        """
-        Post-processor that calculates the outlier excluded average of the "avg-time" metric across run-only-forks
-        and produces the "avg-time" metric for an image build.
-        Should only be used when running a benchmark in native mode.
-        """
-
-        def __init__(self, suite: "PolybenchBenchmarkSuite", benchmark: str):
-            selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "fork"
-            key_fn = lambda dp: (dp["benchmark"], dp["native-image.stage"], dp["native-image.rebuild-number"])
-            field = "metric.value"
-
-            def update_fn(dp):
-                dp["metric.object"] = "build"
-                del dp["metric.fork-number"]
-                self.verify_and_process_id_score_function(dp)
-                return dp
-
-            lower_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "run-forks", "lower-percentile"], 0
-            )
-            upper_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "run-forks", "upper-percentile"], 1
-            )
-            super().__init__(suite, selector_fn, key_fn, field, update_fn, lower_percentile, upper_percentile)
-
-    class NativeModeBenchmarkSummaryPostProcessor(AfterAllForksAverageWithOutlierRemovalPostProcessor):
-        """
-        Post-processor that calculates the outlier excluded average of the "avg-time" metric across image builds
-        and produces a final "time" metric for a benchmark (separate "run" and "instrument-run" datapoints).
-        Should only be used when running a benchmark in native mode.
-        """
-
-        def __init__(self, suite: "PolybenchBenchmarkSuite", benchmark: str):
-            selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "build"
-            key_fn = lambda dp: (dp["benchmark"], dp["native-image.stage"])
-            field = "metric.value"
-
-            def update_fn(dp):
-                dp["metric.name"] = "time"
-                del dp["metric.object"]
-                del dp["native-image.rebuild-number"]
-                self.verify_and_process_id_score_function(dp)
-                return dp
-
-            lower_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "builds", "lower-percentile"], 0
-            )
-            upper_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "builds", "upper-percentile"], 1
-            )
-            super().__init__(suite, selector_fn, key_fn, field, update_fn, lower_percentile, upper_percentile)
-
-    class ServerModeBenchmarkSummaryPostProcessor(AfterAllForksAverageWithOutlierRemovalPostProcessor):
-        """
-        Post-processor that calculates the outlier excluded average of the "avg-time" metric across forks
-        and produces a final "time" metric for a benchmark.
-        Should only be used when running a benchmark in server (non-native) mode.
-        """
-
-        def __init__(self, suite: "PolybenchBenchmarkSuite", benchmark: str):
-            selector_fn = lambda dp: dp["metric.name"] == "avg-time" and dp["metric.object"] == "fork"
-            key_fn = lambda dp: dp["benchmark"]
-            field = "metric.value"
-
-            def update_fn(dp):
-                dp["metric.name"] = "time"
-                del dp["metric.object"]
-                del dp["metric.fork-number"]
-                self.verify_and_process_id_score_function(dp)
-                return dp
-
-            lower_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "run-forks", "lower-percentile"], 0
-            )
-            upper_percentile = suite.resolve_config_field_or_default(
-                [benchmark, "outlier-fork-removal", "run-forks", "upper-percentile"], 1
-            )
-            super().__init__(suite, selector_fn, key_fn, field, update_fn, lower_percentile, upper_percentile)
-
-    class GraalSpecificFieldsRemoverPostProcessor(DataPointsPostProcessor):
-        """
-        Removes all platform Graal specific fields from all the datapoints.
-        Used for cleaning up the bench results of a benchmark that runs on
-        a different platform (e.g. CPython).
-        The removed fields include:
-            * The "guest-vm" and "guest-vm-config" fields.
-            * All the "platform.*" fields.
-        """
-
-        def process_datapoints(self, datapoints: DataPoints) -> DataPoints:
-            return [{k: v for k, v in dp.items() if self._should_be_kept(k)} for dp in datapoints]
-
-        def _should_be_kept(self, key) -> bool:
-            return key not in ["guest-vm", "guest-vm-config"] and not key.startswith("platform.")
-
     def post_processors(self) -> List[DataPointsPostProcessor]:
-        return self.execution_context.post_processors
-
-    def _get_post_processors(self, benchmark: str, native_mode: bool, bm_suite_args: List[str]):
         post_processors = []
-        if self.jvm(bm_suite_args) == "cpython":
-            post_processors += [PolybenchBenchmarkSuite.GraalSpecificFieldsRemoverPostProcessor()]
-        if native_mode:
-            post_processors += [
-                PolybenchBenchmarkSuite.NativeModeBenchmarkRenamingPostProcessor(self),
-                PolybenchBenchmarkSuite.NativeModeBuildSummaryPostProcessor(self, benchmark),
-                PolybenchBenchmarkSuite.NativeModeBenchmarkSummaryPostProcessor(self, benchmark),
-            ]
+
+        # Modify the datapoints already produced in this run
+        if self.jvm(bm_exec_context().get("bm_suite_args")) == "cpython":
+            post_processors.append(GraalSpecificFieldsRemoverPostProcessor())
+        if bm_exec_context().get("native_mode"):
+            post_processors.append(ImageStageDatapointDuplicatingPostProcessor(self))
+
+        # When running non-native benchmarks there is no concept of stages, there is only a single bench suite run.
+        # So we store a pretend "run" stage to indicate that all datapoints (for this fork) have already been produced.
+        current_stage = Stage.from_string("run")
+        try:
+            current_stage = self.stages_info.current_stage
+        except AttributeError:
+            pass
+        last_stage = current_stage.stage_name == StageName.RUN
+        # In the final stage of the final dispatch: calculate and add aggregate datapoints
+        if bm_exec_context().get("last_dispatch") and last_stage:
+            if bm_exec_context().get("native_mode"):
+                post_processors += [
+                    NativeModeBuildSummaryPostProcessor(self),
+                    NativeModeBenchmarkSummaryPostProcessor(self),
+                ]
+            else:
+                post_processors.append(NonNativeImageBenchmarkSummaryPostProcessor(self))
+            post_processors.append(ContextResetPostProcessor(self))
         else:
-            post_processors += [
-                PolybenchBenchmarkSuite.ServerModeBenchmarkSummaryPostProcessor(self, benchmark),
-            ]
+            # Store this run's datapoints in the PolybenchBenchmarkSuite.DATAPOINTS execution context key
+            # so they are available for final-dispatch aggregation.
+            post_processors.append(ContextStorePostProcessor())
+
         return post_processors
 
     @staticmethod
@@ -1027,15 +1488,19 @@ _polybench_bench_suite_parser = ParserEntry(
     ArgumentParser(add_help=False), "Options for the Polybench benchmark suite:"
 )
 _polybench_bench_suite_parser.parser.add_argument(
-    "--stable-run",
-    action="store_true",
+    "--stable-run-config",
     help=(
-        "Run a longer, more stable version of the benchmark, if configuration is available. "
+        "Run a longer, more stable version of the benchmark with the specified configuration. "
         "The stability of the benchmark is improved by building the language launcher multiple times and running "
         "multiple benchmark forks on each language launcher image. Outliers are removed and metrics are produced "
         "as an aggregate of the remaining runs. The number of repeated builds and forks, as well as the outlier "
-        "exclusion percentiles are defined per-benchmark."
+        "exclusion percentiles are defined per-benchmark in the configuration file."
     ),
+)
+_polybench_bench_suite_parser.parser.add_argument(
+    "--dry-stable-run",
+    action="store_true",
+    help=("Print the dispatching schedule and exit. Only has an effect when '--stable-run-config' is set."),
 )
 _polybench_bench_suite_parser.parser.add_argument(
     "--regenerate-instrumentation-profile",

@@ -321,7 +321,7 @@ class WatBuildTask(GraalWasmBuildTask):
 
         wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
         out = mx.OutputCapture()
-        bulk_memory_option = None
+        wat2wasm_options = ["--enable-exceptions"]
         if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False, out=out) != 0:
             if not wabt_dir:
                 mx.warn("No WABT_DIR specified.")
@@ -332,7 +332,7 @@ class WatBuildTask(GraalWasmBuildTask):
 
             major, minor, build = wat2wasm_version
             if int(major) == 1 and int(minor) == 0 and int(build) <= 24:
-                bulk_memory_option = "--enable-bulk-memory"
+                wat2wasm_options += ["--enable-bulk-memory"]
         except:
             mx.warn(f"Could not parse wat2wasm version. Output: '{out.data}'")
 
@@ -350,9 +350,7 @@ class WatBuildTask(GraalWasmBuildTask):
             must_rebuild = timestamped_source.isNewerThan(timestamped_output) or not timestamped_output.exists()
 
             if must_rebuild:
-                build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path]
-                if bulk_memory_option is not None:
-                    build_cmd_line += [bulk_memory_option]
+                build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path] + wat2wasm_options
                 if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                     mx.abort("Could not build the wasm binary of '" + filename + "' with wat2wasm.")
                 shutil.copyfile(source_path, output_wat_path)

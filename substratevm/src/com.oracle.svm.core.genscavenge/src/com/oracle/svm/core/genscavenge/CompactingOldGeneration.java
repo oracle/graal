@@ -336,6 +336,17 @@ final class CompactingOldGeneration extends OldGeneration {
             oldFixupAlignedChunksTimer.stop();
         }
 
+        /*
+         * Check each unaligned object and fix its references if the object is marked. Add the chunk
+         * to the releaser's list in case the object is not marked and therefore won't survive.
+         */
+        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.start();
+        try {
+            fixupUnalignedChunkReferences(chunkReleaser);
+        } finally {
+            oldFixupUnalignedChunksTimer.stop();
+        }
+
         Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.start();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
@@ -372,17 +383,6 @@ final class CompactingOldGeneration extends OldGeneration {
             fixupStackReferences();
         } finally {
             oldFixupStackTimer.stop();
-        }
-
-        /*
-         * Check each unaligned object and fix its references if the object is marked. Add the chunk
-         * to the releaser's list in case the object is not marked and therefore won't survive.
-         */
-        Timer oldFixupUnalignedChunksTimer = timers.oldFixupUnalignedChunks.start();
-        try {
-            fixupUnalignedChunkReferences(chunkReleaser);
-        } finally {
-            oldFixupUnalignedChunksTimer.stop();
         }
 
         Timer oldFixupRuntimeCodeCacheTimer = timers.oldFixupRuntimeCodeCache.start();

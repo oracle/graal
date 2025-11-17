@@ -138,8 +138,10 @@ public interface CollectionPolicy {
      * @param followingIncrementalCollection whether an incremental collection has just finished in
      *            the same safepoint. Implementations would typically decide whether to follow up
      *            with a full collection based on whether enough memory was reclaimed.
+     * @param forcedCompleteCollection whether a complete collection will eventually be forced. The
+     *            policy can still return {@code false} to do an incremental collection first.
      */
-    boolean shouldCollectCompletely(boolean followingIncrementalCollection);
+    boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection);
 
     /**
      * The current limit for the size of the entire heap, which is less than or equal to

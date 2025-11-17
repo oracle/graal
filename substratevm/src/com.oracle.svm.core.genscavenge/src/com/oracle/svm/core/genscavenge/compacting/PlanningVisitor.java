@@ -99,8 +99,6 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             }
 
             if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                ObjectHeaderImpl.unsetMarkedAndKeepRememberedSetBit(p.toObjectNonNull());
-
                 /*
                  * Adding the optional identity hash field would increase an object's size, so we
                  * should have copied all objects that need one during marking instead.
@@ -151,18 +149,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
         }
 
-        if (sweeping) {
-            /*
-             * Continue allocating for compaction after the swept memory. Note that this forfeits
-             * unused memory in the chunks before, but the order of objects must stay the same
-             * across all chunks. If chunks end up completely empty however, they will be released
-             * after compaction.
-             *
-             * GR-54021: it should be possible to avoid this limitation by sweeping chunks without
-             * ObjectMoveInfo and brick tables and potentially even do the sweeping right here.
-             */
-            this.allocChunk = chunk;
-            this.allocPointer = HeapChunk.getTopPointer(chunk);
+        if (sweeping && chunk.equal(allocChunk)) {
+            /* Continue allocating for compaction after the swept memory. */
+            allocPointer = HeapChunk.getTopPointer(chunk);
         }
 
         /* Set remaining brick table entries at chunk end. */
@@ -176,14 +165,17 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     }
 
     private Pointer allocate(UnsignedWord size) {
+        assert size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
         Pointer p = allocPointer;
-        allocPointer = allocPointer.add(size);
-        if (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+        allocPointer = p.add(size);
+        while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
             allocChunk = HeapChunk.getNext(allocChunk);
             assert allocChunk.isNonNull();
-            assert !allocChunk.getShouldSweepInsteadOfCompact();
-
-            p = AlignedHeapChunk.getObjectsStart(allocChunk);
+            if (allocChunk.getShouldSweepInsteadOfCompact()) {
+                p = HeapChunk.getTopPointer(allocChunk); // use any free memory at the end
+            } else {
+                p = AlignedHeapChunk.getObjectsStart(allocChunk);
+            }
             allocPointer = p.add(size);
         }
         return p;

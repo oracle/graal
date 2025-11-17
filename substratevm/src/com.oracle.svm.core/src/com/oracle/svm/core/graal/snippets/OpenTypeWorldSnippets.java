@@ -26,8 +26,8 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
-import static com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.HASHING_INTERFACE_MASK;
-import static com.oracle.svm.core.hub.DynamicHubTypeCheckUtil.HASHING_SHIFT_OFFSET;
+import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
+import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
@@ -235,8 +235,8 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet does a hash table lookup and returns true if the provided
      * interfaceID matches the interfaceID in the hash table, false otherwise. See
-     * {@link DynamicHubTypeCheckUtil#hashParam(int[])} for details on the hashing function and
-     * hashing parameter.
+     * {@link DynamicHubUtils#hashParam(int[])} for details on the hashing function and hashing
+     * parameter.
      */
     @DuplicatedInNativeCode
     protected static SubstrateIntrinsics.Any hashedInterfaceTypeCheck(

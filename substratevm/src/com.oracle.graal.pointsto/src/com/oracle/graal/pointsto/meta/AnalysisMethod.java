@@ -287,7 +287,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (universe.hostVM.buildingImageLayer()) {
             var annotationExtractor = universe.getAnnotationExtractor();
             if (annotationExtractor.hasAnnotation(wrapped, LayeredCompilationBehavior.class)) {
-                LayeredCompilationBehavior behavior = annotationExtractor.extractAnnotation(wrapped, LayeredCompilationBehavior.class, true);
+                LayeredCompilationBehavior behavior = annotationExtractor.extractAnnotation(wrapped, LayeredCompilationBehavior.class);
                 compilationBehavior = behavior.value();
                 if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInBaseLayer) {
                     var errorMessage = String.format("User methods with layered compilation behavior %s must be registered via %s in the initial layer",

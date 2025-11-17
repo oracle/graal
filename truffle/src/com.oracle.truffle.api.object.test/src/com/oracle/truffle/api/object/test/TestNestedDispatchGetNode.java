@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package com.oracle.truffle.api.object.test;
 
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObject.GetNode;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+@SuppressWarnings("truffle")
+public abstract class TestNestedDispatchGetNode extends Node {
 
-public class MemoryRegistry {
-    private static final int INITIAL_MEMORIES_SIZE = 4;
+    final Object key = "testKey";
 
-    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
-    private int numMemories;
+    public abstract Object execute(DynamicObject obj);
 
-    public MemoryRegistry() {
-        this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
-        this.numMemories = 0;
-    }
-
-    private void ensureCapacity() {
-        if (numMemories == memories.length) {
-            final WasmMemory[] updatedMemories = new WasmMemory[memories.length * 2];
-            System.arraycopy(memories, 0, updatedMemories, 0, memories.length);
-            memories = updatedMemories;
+    @Specialization(guards = {"obj == cachedObj"}, limit = "1")
+    Object cached(DynamicObject obj,
+                    @Cached("obj") @SuppressWarnings("unused") DynamicObject cachedObj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "cachedObj.getShape().getProperty(key) != null") boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.execute(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
         }
+        return value;
     }
 
-    public int count() {
-        return numMemories;
-    }
-
-    public int register(WasmMemory memory) {
-        ensureCapacity();
-        final int index = numMemories;
-        memories[index] = memory;
-        numMemories++;
-        return index;
-    }
-
-    public WasmMemory memory(int index) {
-        assert index < numMemories;
-        return memories[index];
-    }
-
-    public MemoryRegistry duplicate() {
-        final MemoryRegistry other = new MemoryRegistry();
-        for (int i = 0; i < numMemories; i++) {
-            final WasmMemory memory = WasmMemoryLibrary.getUncached().duplicate(memory(i));
-            other.register(memory);
+    @Specialization(limit = "3")
+    Object cached(DynamicObject obj,
+                    @Cached GetNode getNode,
+                    @Cached(value = "obj.getShape().getProperty(key) != null", allowUncached = true) boolean hasProperty,
+                    @Cached TestNestedDispatchNode nested) {
+        Object value = getNode.execute(obj, key, null);
+        if (hasProperty) {
+            assert value != null;
+            if (value instanceof DynamicObject) {
+                return nested.execute((DynamicObject) value);
+            }
         }
-        return other;
+        return value;
     }
+
 }
