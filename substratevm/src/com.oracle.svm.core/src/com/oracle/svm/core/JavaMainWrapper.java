@@ -66,6 +66,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -151,7 +152,7 @@ public class JavaMainWrapper {
         public List<String> getInputArguments() {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             if (args.getArgv().isNonNull() && args.getArgc() > 0) {
-                String[] unmodifiedArgs = SubstrateUtil.convertCToJavaArgs(args.getArgc(), args.getArgv());
+                String[] unmodifiedArgs = ArgsSupport.convertCToJavaArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
 
                 if (mainArgs != null) {
@@ -480,6 +481,36 @@ public class JavaMainWrapper {
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
+        }
+    }
+
+    /** Support for platform-specific conversion of the command line to Java main arguments. */
+    @AutomaticallyRegisteredImageSingleton(ArgsSupport.class)
+    public static class ArgsSupport {
+        private static ArgsSupport singleton() {
+            return ImageSingletons.lookup(ArgsSupport.class);
+        }
+
+        /**
+         * Convert C-style to Java-style command line arguments. The first C-style argument, which
+         * is always the executable file name, is ignored.
+         *
+         * @param argc the number of arguments in the {@code argv} array.
+         * @param argv a C {@code char**}.
+         *
+         * @return the command line argument strings in a Java string array.
+         */
+        public static String[] convertCToJavaArgs(int argc, CCharPointerPointer argv) {
+            String[] args = new String[argc - 1];
+            for (int i = 1; i < argc; ++i) {
+                args[i - 1] = singleton().toJavaArg(argv.read(i));
+            }
+            return args;
+        }
+
+        /** Converts a single argv element to a Java string. */
+        protected String toJavaArg(CCharPointer rawArg) {
+            return CTypeConversion.toJavaString(rawArg);
         }
     }
 }
