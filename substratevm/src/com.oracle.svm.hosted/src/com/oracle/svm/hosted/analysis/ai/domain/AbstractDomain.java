@@ -1,8 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
 /**
- * Basic API for Abstract Domains.
- * All derived abstract domains need to extend this class
+ * Interface for abstract domain in GraalAF.
  *
  * @param <Derived> type of the derived {@link AbstractDomain}
  */
