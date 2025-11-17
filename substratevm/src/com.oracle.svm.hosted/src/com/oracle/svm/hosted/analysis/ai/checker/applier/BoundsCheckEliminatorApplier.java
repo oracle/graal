@@ -10,6 +10,8 @@ import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 
@@ -48,8 +50,10 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             if (!(access instanceof LoadIndexedNode || access instanceof StoreIndexedNode)) continue;
             Node guardIf = findGuardingIf(access);
             if (!(guardIf instanceof IfNode ifn)) continue;
-            logger.log("[GraphRewrite] Folding IfNode to true branch: " + ifn, LoggerVerbosity.CHECKER);
-            graph.removeSplitPropagate(ifn, ifn.trueSuccessor());
+            if (ifn.condition() instanceof IntegerLessThanNode || ifn.condition() instanceof IntegerBelowNode) {
+                logger.log("[GraphRewrite] Folding IfNode to true branch: " + ifn, LoggerVerbosity.CHECKER);
+                graph.removeSplitPropagate(ifn, ifn.trueSuccessor());
+            }
         }
     }
 
