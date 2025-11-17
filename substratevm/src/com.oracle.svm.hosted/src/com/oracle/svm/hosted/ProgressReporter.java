@@ -157,8 +157,8 @@ public class ProgressReporter {
     private enum BuildStage {
         INITIALIZING("Initializing"),
         ANALYSIS("Performing points-to analysis", true, false),
-        ABSTRACT_INTERPRETATION("Performing abstract interpretation", true, false),
         UNIVERSE("Building universe"),
+        ABSTRACT_INTERPRETATION("Performing abstract interpretation", true, false),
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),

@@ -566,7 +566,7 @@ public class NativeImageGenerator {
         OptionValues options = HostedOptionValues.singleton();
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-                        DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
+             DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(options, entryPoints, javaMainSupport, imageName, harnessSubstitutions, debug);
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -594,7 +594,6 @@ public class NativeImageGenerator {
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                         bb.getUnsupportedFeatures()).build(debug);
 
-                runAbstractInterpretation(debug);
 
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
@@ -627,18 +626,19 @@ public class NativeImageGenerator {
                 bb.getUnsupportedFeatures().report(bb);
 
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
-
-                /*
-                 * After this point, all TypeFlow (and therefore also TypeState) objects are
-                 * unreachable and can be garbage collected. This is important to keep the overall
-                 * memory footprint low. However, this also means we no longer have complete call
-                 * chain information. Only the summarized information stored in the
-                 * StaticAnalysisResult objects is available after this point.
-                 */
-                bb.cleanupAfterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
                 throw FallbackFeature.reportAsFallback(ufe);
             }
+
+            runAbstractInterpretation(debug);
+            /*
+             * After this point, all TypeFlow (and therefore also TypeState) objects are
+             * unreachable and can be garbage collected. This is important to keep the overall
+             * memory footprint low. However, this also means we no longer have complete call
+             * chain information. Only the summarized information stored in the
+             * StaticAnalysisResult objects is available after this point.
+             */
+            bb.cleanupAfterAnalysis();
 
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();
             heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, hConstantReflection, ImageSingletons.lookup(ImageHeapLayouter.class));
@@ -772,7 +772,12 @@ public class NativeImageGenerator {
     }
 
     private void runAbstractInterpretation(DebugContext debug) {
-        AnalysisMethod root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
+        Optional<AnalysisMethod> root;
+        if (mainEntryPoint == null || mainEntryPoint.getLeft() == null) {
+            root = Optional.empty();
+        } else {
+            root = Optional.of(bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft()));
+        }
         AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
         driver.run();
     }
@@ -1879,9 +1884,9 @@ public class NativeImageGenerator {
 
     private static String namingConventionsErrorMessageSuffix(String elementType) {
         return """
-
-                        If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
-                        If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
+                
+                If this is a regular JDK value, and not a %s element that was accidentally included, you can add it to the NativeImageGenerator.CHECK_NAMING_EXCEPTIONS
+                If this is a %s element that was accidentally included, find a way to exclude it from the image.""".formatted(elementType, elementType);
     }
 
     private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
