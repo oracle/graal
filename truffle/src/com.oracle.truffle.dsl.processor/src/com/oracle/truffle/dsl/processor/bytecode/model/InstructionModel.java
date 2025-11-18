@@ -750,18 +750,22 @@ public final class InstructionModel implements PrettyPrintable {
         return true;
     }
 
-    public boolean needsBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+    /**
+     * Whether the instruction or any of its quickenings needs a child bci immediate in order to
+     * perform boxing elimination of the given operand.
+     */
+    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, int valueIndex) {
         if (!model.usesBoxingElimination()) {
             return false;
         }
         if (signature.isVariadicParameter(valueIndex)) {
             return false;
         }
-        if (model.isBoxingEliminated(signature.getSpecializedType(valueIndex))) {
+        if (model.isBoxingEliminated(signature.getDynamicOperandType(valueIndex))) {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsBoxingElimination(model, valueIndex)) {
+            if (quickenedInstruction.needsChildBciForBoxingElimination(model, valueIndex)) {
                 return true;
             }
         }

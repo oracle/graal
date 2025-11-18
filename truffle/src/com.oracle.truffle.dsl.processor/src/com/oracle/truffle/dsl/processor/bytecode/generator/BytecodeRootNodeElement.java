@@ -6565,7 +6565,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         int immediateIndex = 0;
                         boolean elseIf = false;
                         for (int valueIndex = 0; valueIndex < op.instruction.signature.dynamicOperandCount; valueIndex++) {
-                            if (op.instruction.needsBoxingElimination(model, valueIndex)) {
+                            if (op.instruction.needsChildBciForBoxingElimination(model, valueIndex)) {
                                 elseIf = b.startIf(elseIf);
                                 b.string("childIndex == " + valueIndex).end().startBlock();
 
@@ -17398,7 +17398,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeTreeBuilder b = method.createBuilder();
-            TypeMirror inputType = instr.specializedType == null ? instr.signature.getSpecializedType(0) : instr.specializedType;
+            TypeMirror inputType = instr.specializedType == null ? instr.signature.getDynamicOperandType(0) : instr.specializedType;
             TypeMirror returnType = instr.signature.returnType;
 
             boolean isSpecialized = instr.specializedType != null;
@@ -17540,7 +17540,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeTreeBuilder b = method.createBuilder();
-            TypeMirror inputType = instr.signature.getSpecializedType(0);
+            TypeMirror inputType = instr.signature.getDynamicOperandType(0);
 
             boolean isGeneric = ElementUtils.isObject(inputType);
 
@@ -17665,7 +17665,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             CodeTreeBuilder b = method.createBuilder();
-            TypeMirror inputType = instr.signature.getSpecializedType(0);
+            TypeMirror inputType = instr.signature.getDynamicOperandType(0);
 
             b.startTryBlock();
             b.startDeclaration(type(boolean.class), "result");
@@ -17729,7 +17729,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             InstructionModel boxedInstruction = null;
             InstructionModel unboxedInstruction = null;
             for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
-                if (ElementUtils.isObject(quickening.signature.getSpecializedType(0))) {
+                if (ElementUtils.isObject(quickening.signature.getDynamicOperandType(0))) {
                     boxedInstruction = quickening;
                 } else {
                     unboxedInstruction = quickening;
@@ -18016,7 +18016,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
             }
 
-            final TypeMirror inputType = instr.signature.getSpecializedType(1);
+            final TypeMirror inputType = instr.signature.getDynamicOperandType(1);
             final TypeMirror returnType = instr.signature.returnType;
 
             CodeTreeBuilder b = method.createBuilder();
@@ -18214,7 +18214,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
 
-            final TypeMirror inputType = instr.signature.getSpecializedType(0);
+            final TypeMirror inputType = instr.signature.getDynamicOperandType(0);
             final TypeMirror slotType = instr.specializedType != null ? instr.specializedType : type(Object.class);
 
             CodeTreeBuilder b = method.createBuilder();
@@ -18966,7 +18966,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 }
 
                 for (int i = 0; i < instr.signature.dynamicOperandCount; i++) {
-                    TypeMirror targetType = instr.signature.getGenericType(i);
+                    TypeMirror targetType = instr.signature.getDynamicOperandType(i);
                     b.startGroup();
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
