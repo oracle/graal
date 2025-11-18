@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.function.Function;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
@@ -35,6 +37,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * Fallback implementation of {@link ResolvedJavaPackage} based on {@link Package}.
  */
 final class ResolvedJavaPackageImpl implements ResolvedJavaPackage {
+    private static final Field MODULE_FIELD = ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.NamedPackage"), "module");
 
     private final Package originalPackage;
 
@@ -90,5 +93,19 @@ final class ResolvedJavaPackageImpl implements ResolvedJavaPackage {
     public AnnotationsInfo getTypeAnnotationInfo() {
         Annotated packageInfo = getAnnotatedPackageInfo();
         return packageInfo == null ? null : packageInfo.getTypeAnnotationInfo();
+    }
+
+    @Override
+    public String getName() {
+        return originalPackage.getName();
+    }
+
+    @Override
+    public ResolvedJavaModule module() {
+        try {
+            return new ResolvedJavaModuleImpl(((Module) MODULE_FIELD.get(originalPackage)));
+        } catch (IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
     }
 }

@@ -229,6 +229,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal.loader",
                     "jdk.internal.module",
                     "sun.reflect.annotation"
                 ],

@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaType;
@@ -347,5 +348,13 @@ public final class JVMCIReflectionUtil {
             depth += 1;
         }
         return depth;
+    }
+
+    /**
+     * Returns a stream of the packages defined to the boot loader. See
+     * {@code jdk.internal.loader.BootLoader#packages()}.
+     */
+    public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        return JVMCIReflectionUtilFallback.bootLoaderPackages();
     }
 }

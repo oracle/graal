@@ -32,8 +32,17 @@ import jdk.vm.ci.meta.annotation.Annotated;
  */
 public interface ResolvedJavaPackage extends Annotated {
     /**
-     * Return the version of this implementation. See
-     * {@link java.lang.Package#getImplementationVersion()}.
+     * Return the version of this implementation. See {@link Package#getImplementationVersion()}.
      */
     String getImplementationVersion();
+
+    /**
+     * Return the name of this package. See {@link Package#getName()}.
+     */
+    String getName();
+
+    /**
+     * Returns the module of this named package. See {@code NamedPackage#module()}.
+     */
+    ResolvedJavaModule module();
 }
