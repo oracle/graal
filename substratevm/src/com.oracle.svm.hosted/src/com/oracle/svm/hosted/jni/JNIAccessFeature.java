@@ -513,7 +513,7 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), preserved, access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addOrUpdateField(field.getName(), preserved, _ -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers(), preserved));
-        field.registerAsRead("it is registered for as JNI accessed");
+        field.registerAsRead("it is registered as JNI accessed");
         if (writable) {
             field.registerAsWritten("it is registered as JNI writable");
             AnalysisType fieldType = field.getType();

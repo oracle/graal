@@ -29,6 +29,7 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -152,6 +153,15 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public AnalysisType addRootField(AnalysisField analysisField) {
         analysisField.registerAsAccessed("root field");
         return analysisField.getType();
+    }
+
+    @Override
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        assert aField.getStorageKind().isObject();
+        aField.registerAsAccessed("@UnknownObjectField annotated field.");
+        for (AnalysisType declaredType : customTypes) {
+            declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));
+        }
     }
 
     @Override
