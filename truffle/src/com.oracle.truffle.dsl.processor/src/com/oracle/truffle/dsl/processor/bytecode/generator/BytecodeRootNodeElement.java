@@ -3237,7 +3237,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.startIf().string("operation.childCount == 0").end().startBlock();
                             b.statement("state.reachable = " + operationStack.read(op, operationFields.tryReachable));
                             if (op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
-                                b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
+                                b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
                                 b.statement("state.reachable = " + operationStack.read(op, operationFields.catchReachable));
                             }
                             b.end().startElseBlock();
