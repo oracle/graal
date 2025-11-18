@@ -3312,7 +3312,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @ExportMessage
+    @ExportMessage(limit = "LIMIT")
     @TruffleBoundary
     boolean isMetaInstance(Object other,
                     @Bind Node node,
