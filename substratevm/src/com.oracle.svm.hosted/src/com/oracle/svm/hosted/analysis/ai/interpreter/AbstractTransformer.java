@@ -75,7 +75,10 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
     }
 
     /**
-     * Performs semantic transformation of the given {@link HIRBlock} with context.
+     * Performs semantic transformation of given {@link HIRBlock} with given iterator context.
+     * @param block the block to analyze
+     * @param abstractState the current abstract state before analyzing this block
+     * @param context the current iterator context before analyzing this block
      */
     public void analyzeBlock(HIRBlock block, AbstractState<Domain> abstractState, IteratorContext context) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();

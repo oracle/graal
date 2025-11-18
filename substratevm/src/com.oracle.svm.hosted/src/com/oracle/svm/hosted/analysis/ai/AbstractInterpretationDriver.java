@@ -47,7 +47,7 @@ public class AbstractInterpretationDriver {
             /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
-                engine.executeAbstractInterpretation(AnalyzerMode.INTRA_ANALYZE_ALL_INVOKED_METHODS);
+                engine.executeAbstractInterpretation(AnalyzerMode.INTER_ANALYZE_FROM_MAIN_ONLY);
             } catch (AbsintException e) {
                 debug.log("Abstract interpretation encountered a runtime error: ", e);
             }
@@ -61,12 +61,12 @@ public class AbstractInterpretationDriver {
      * 2. Create and configure the {@link AbstractInterpretationLogger}.
      */
     private void prepareAnalyses() {
-//        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
-//                .setConsoleEnabled(false)             /* only write to file */
-//                .setFileEnabled(true)                /* ensure file logging is on */
-//                .setFileThreshold(LoggerVerbosity.DEBUG)
-//                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
-//        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
+                .setConsoleEnabled(false)             /* only write to file */
+                .setFileEnabled(true)                /* ensure file logging is on */
+                .setFileThreshold(LoggerVerbosity.DEBUG)
+                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
+        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();

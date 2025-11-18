@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.context;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -26,6 +27,7 @@ public class BasicIteratorContext implements IteratorContext {
     private final GraphTraversalHelper graphTraversalHelper;
     private final Map<Node, Integer> loopIterationCounts;
     private final Map<Node, Integer> nodeVisitCounts;
+    AnalysisMethod currentAnalysisMethod;
     private AbstractState<?> abstractState;
     private HIRBlock previousBlock;
     private HIRBlock currentBlock;
@@ -34,10 +36,11 @@ public class BasicIteratorContext implements IteratorContext {
     private int globalIterationCount;
     private String callContextSignature;
 
-    public BasicIteratorContext(GraphTraversalHelper graphTraversalHelper) {
+    public BasicIteratorContext(GraphTraversalHelper graphTraversalHelper, AnalysisMethod currentAnalysisMethod) {
         this.graphTraversalHelper = graphTraversalHelper;
         this.loopIterationCounts = new HashMap<>();
         this.nodeVisitCounts = new HashMap<>();
+        this.currentAnalysisMethod = currentAnalysisMethod;
         this.globalIterationCount = 0;
         this.currentPhase = IteratorPhase.ASCENDING;
         this.hasConverged = false;
@@ -282,6 +285,11 @@ public class BasicIteratorContext implements IteratorContext {
     @Override
     public void setCallContextSignature(String signature) {
         this.callContextSignature = signature;
+    }
+
+    @Override
+    public AnalysisMethod getCurrentAnalysisMethod() {
+        return currentAnalysisMethod;
     }
 
     /**

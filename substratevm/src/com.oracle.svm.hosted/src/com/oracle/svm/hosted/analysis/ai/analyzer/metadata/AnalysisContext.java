@@ -16,25 +16,22 @@ public final class AnalysisContext {
     private final CheckerManager checkerManager;
     private final AnalysisMethodFilterManager methodFilterManager;
     private final SummaryFactory<?> summaryFactory; /* may be null for intra */
-    private final Integer maxRecursionDepth; /* may be null for intra */
     private final MethodGraphCache methodGraphCache = new MethodGraphCache();
 
     public AnalysisContext(IteratorPolicy iteratorPolicy,
                            CheckerManager checkerManager,
                            AnalysisMethodFilterManager methodFilterManager) {
-        this(iteratorPolicy, checkerManager, methodFilterManager, null, null);
+        this(iteratorPolicy, checkerManager, methodFilterManager, null);
     }
 
     public AnalysisContext(IteratorPolicy iteratorPolicy,
                            CheckerManager checkerManager,
                            AnalysisMethodFilterManager methodFilterManager,
-                           SummaryFactory<?> summaryFactory,
-                           Integer maxRecursionDepth) {
+                           SummaryFactory<?> summaryFactory) {
         this.iteratorPolicy = iteratorPolicy;
         this.checkerManager = checkerManager;
         this.methodFilterManager = methodFilterManager;
         this.summaryFactory = summaryFactory;
-        this.maxRecursionDepth = maxRecursionDepth;
     }
 
     public IteratorPolicy getIteratorPolicy() {
@@ -51,10 +48,6 @@ public final class AnalysisContext {
 
     public SummaryFactory<?> getSummaryFactory() {
         return summaryFactory;
-    }
-
-    public Integer getMaxRecursionDepth() {
-        return maxRecursionDepth;
     }
 
     public MethodGraphCache getMethodGraphCache() {

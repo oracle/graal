@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeInput;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
@@ -10,6 +11,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -53,7 +55,10 @@ import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -348,9 +353,31 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             post.bindTempByName(nodeId(nan), root);
         } else if (node instanceof Invoke inv) {
             if (invokeCallBack != null) {
-                var outcome = invokeCallBack.handleInvoke(inv, abstractState);
+                List<Node> args = new ArrayList<>(inv.callTarget().arguments());
+                AbstractMemory afterArgs = post.copyOf();
+                List<AbstractMemory> argDomains = new ArrayList<>(args.size());
+                for (Node arg : args) {
+                    afterArgs = evalNode(arg, afterArgs, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+                    abstractState.setPostCondition(arg, afterArgs.copyOf());
+                    // For interval + memory domain, we treat the whole memory state as the domain slice
+                    argDomains.add(afterArgs.copyOf());
+                }
+                // Attempt to fetch caller AnalysisMethod from iteratorContext if provided
+                var callerMethod = (iteratorContext != null) ? iteratorContext.getCurrentAnalysisMethod().orElse(null) : null;
+                InvokeInput<AbstractMemory> input = InvokeInput.of(callerMethod, abstractState, inv, args, argDomains);
+                var outcome = invokeCallBack.handleInvoke(input);
                 if (outcome != null && outcome.isError()) {
                     post.setToTop();
+                } else if (outcome != null && outcome.summary() != null) {
+                    // Extract return value from callee summary post-condition (convention: local "ret")
+                    Summary<AbstractMemory> sum = outcome.summary();
+                    AbstractMemory calleePost = sum.getPostCondition();
+                    IntInterval retVal = calleePost.readStore(AccessPath.forLocal("ret"));
+                    if (retVal == null) {
+                        retVal = new IntInterval();
+                        retVal.setToTop();
+                    }
+                    bindNodeResult(inv.asNode(), retVal, post);
                 } else {
                     IntInterval top = new IntInterval();
                     top.setToTop();
@@ -420,9 +447,9 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private AbstractMemory evaluateNodeSemantics(Node node, AbstractMemory mem, AbstractMemory originalIn,
-                                                  AbstractState<AbstractMemory> abstractState,
-                                                  InvokeCallBack<AbstractMemory> invokeCallBack,
-                                                  Set<Node> evalStack, IteratorContext iteratorContext) {
+                                                 AbstractState<AbstractMemory> abstractState,
+                                                 InvokeCallBack<AbstractMemory> invokeCallBack,
+                                                 Set<Node> evalStack, IteratorContext iteratorContext) {
         var logger = AbstractInterpretationLogger.getInstance();
         switch (node) {
             case ConstantNode constantNode -> {

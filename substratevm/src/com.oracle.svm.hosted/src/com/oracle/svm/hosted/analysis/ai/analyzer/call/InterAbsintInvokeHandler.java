@@ -16,28 +16,18 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.*;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeNode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The InterProceduralInvokeHandler class is responsible for handling analysisMethod invocations in the context
- * of inter-procedural static analysis. This handler manages recursive analysisMethod calls, retrieves or computes analysisMethod
- * summaries, and updates the abstract state of the analysis accordingly. It effectively integrates the functionality
- * of processing calls while adhering to constraints such as recursion depth and existing summaries.
- *
- * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
+ * Inter-procedural invoke handler using per-call context and summary caching.
  */
 public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain>> extends AbsintInvokeHandler<Domain> {
 
-    private final CallStack callStack;
+    private final CallStack methodStack;
     private final SummaryManager<Domain> summaryManager;
     private final SummaryRepository<Domain> summaryRepository;
-    private final DomainCallBinder<Domain> callBinder;
 
     public InterAbsintInvokeHandler(
             Domain initialDomain,
@@ -45,65 +35,48 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             AnalysisContext analysisContext,
             SummaryFactory<Domain> summaryFactory,
             int maxRecursionDepth) {
-        this(initialDomain, abstractInterpreter, analysisContext, summaryFactory, maxRecursionDepth, null);
-    }
-
-    public InterAbsintInvokeHandler(
-            Domain initialDomain,
-            AbstractInterpreter<Domain> abstractInterpreter,
-            AnalysisContext analysisContext,
-            SummaryFactory<Domain> summaryFactory,
-            int maxRecursionDepth,
-            DomainCallBinder<Domain> binder) {
         super(initialDomain, abstractInterpreter, analysisContext);
-        this.callStack = new CallStack(maxRecursionDepth);
+        this.methodStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
         this.summaryRepository = new SummaryRepository<>();
-        this.callBinder = binder;
     }
 
     @Override
-    public AnalysisOutcome<Domain> handleInvoke(Invoke invoke,
-                                                AbstractState<Domain> callerState) {
+    public AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        ResolvedJavaMethod calleeMethod = invoke.getTargetMethod();
-        AnalysisMethod targetAnalysisMethod;
+        Invoke invoke = invokeInput.invoke();
 
+        // Prefer callerMethod from input; fall back to current stack top.
+        AnalysisMethod current = invokeInput.callerMethod() != null ? invokeInput.callerMethod() : methodStack.getCurrentAnalysisMethod();
+        if (current == null) {
+            return AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
+        }
+
+        AnalysisMethod targetAnalysisMethod;
         try {
-            targetAnalysisMethod = getInvokeTargetAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
+            targetAnalysisMethod = getInvokeTargetAnalysisMethod(current, invoke);
         } catch (Exception e) {
-            /* For some reason we are not able to get the AnalysisMethod of the Invoke */
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
 
-        List<Domain> actualArgs = convertActualArgs(invoke, callerState);
-        // FIXME: MAKE THIS WORK WITH InvokeWithException"
-        if (!(invoke instanceof InvokeNode invokeNode)) {
-            return AnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
-        }
+        AbstractState<Domain> callerState = invokeInput.callerState();
+        // Use already evaluated argument domains from InvokeInput (Phase 1 integration)
+        List<Domain> actualArgDomains = invokeInput.actualArgDomains();
 
-        Summary<Domain> summary = summaryManager.createSummary(invoke, callerState.getPreCondition(invokeNode), actualArgs);
-        // Optionally customize callee entry via binder
-        if (callBinder != null) {
-            Domain calleeEntry = callBinder.initialCalleeEntry(callerState.getPreCondition(invokeNode), invoke, actualArgs, targetAnalysisMethod);
-            if (calleeEntry != null) {
-                summary = summaryManager.createSummary(invoke, calleeEntry, actualArgs);
-            }
-        }
+        // Pre-condition for summary may be caller pre at invoke node
+        Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
+        Summary<Domain> summary = summaryManager.createSummary(invoke, callerPreAtInvoke, actualArgDomains);
 
-        // Build a context key for the callee and register an entry in the repository
-        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 2);
-        ContextKey calleeKey = new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getDepth());
+        String ctxSig = CallContextHolder.buildKCFASignature(methodStack.getCallStack(), 2);
+        ContextKey calleeKey = new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), methodStack.getDepth());
         MethodSummary<Domain> methodSummary = summaryRepository.getOrCreate(targetAnalysisMethod);
         methodSummary.getOrCreate(calleeKey, summary.getPreCondition());
 
-        /* If the summaryCache contains the summary for the target analysisMethod, we return it */
-        if (summaryManager.containsSummary(calleeMethod, summary)) {
-            logger.log("Summary cache contains targetMethod: " + calleeMethod.getName(), LoggerVerbosity.SUMMARY);
-            Summary<Domain> completeSummary = summaryManager.getSummary(calleeMethod, summary);
-            // Update context repository with the known post-condition (if available)
+        if (summaryManager.containsSummary(targetAnalysisMethod, summary)) {
+            logger.log("Summary cache contains targetMethod: " + targetAnalysisMethod, LoggerVerbosity.SUMMARY);
+            Summary<Domain> completeSummary = summaryManager.getSummary(targetAnalysisMethod, summary);
             ContextSummary<Domain> ctxSummary = methodSummary.get(calleeKey);
             if (ctxSummary != null && completeSummary.getPostCondition() != null) {
                 ctxSummary.updateWith(completeSummary.getPostCondition(), null);
@@ -111,50 +84,31 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return AnalysisOutcome.ok(completeSummary);
         }
 
-        /* At this point we know that we don't have a complete summary for this analysisMethod, therefore we must compute it.
-         * However, we need to check if we have reached our recursion limit */
-        if (callStack.countConsecutiveCalls(targetAnalysisMethod) >= callStack.getMaxRecursionDepth()) {
+        if (methodStack.countConsecutiveCalls(targetAnalysisMethod) >= methodStack.getMaxRecursionDepth()) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
-
-        if (callStack.hasMethodCallCycle(targetAnalysisMethod)) {
+        if (methodStack.hasMethodCallCycle(targetAnalysisMethod)) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
-            logger.log(callStack.formatCycleWithMethod(targetAnalysisMethod), LoggerVerbosity.INFO);
+            logger.log(methodStack.formatCycleWithMethod(targetAnalysisMethod), LoggerVerbosity.INFO);
             return outcome;
         }
 
-        /* Set-up and run the analysis on the invoked method */
-        callStack.push(targetAnalysisMethod);
+        methodStack.push(targetAnalysisMethod);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
             fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
-            logger.log("The current call stack: " + callStack, LoggerVerbosity.INFO);
+            logger.log("The current call stack: " + methodStack, LoggerVerbosity.INFO);
             AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
             summary.finalizeSummary(invokeAbstractState);
-            summaryManager.putSummary(calleeMethod, summary);
-
-            // Update the repository with exit state; return value is optional here
-            ContextSummary<Domain> ctxSummary = methodSummary.get(calleeKey);
-            if (ctxSummary != null) {
-                ctxSummary.updateWith(summary.getPostCondition(), null);
-                if (callBinder != null) {
-                    Domain retVal = callBinder.extractReturnValue(summary.getPostCondition(), invoke, targetAnalysisMethod);
-                    if (retVal != null) {
-                        ctxSummary.setReturnValue(retVal);
-                    }
-                }
-            }
+            summaryManager.putSummary(targetAnalysisMethod, summary);
         } finally {
-            callStack.pop();
+            methodStack.pop();
         }
-
-        /* At this point, we are finished with the fixpoint iteration and updated the summary cache */
-        checkerManager.runCheckers(targetAnalysisMethod, callerState);
-        return new AnalysisOutcome<>(AnalysisResult.OK, summary);
+        return AnalysisOutcome.ok(summary);
     }
 
     @Override
@@ -163,31 +117,21 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return;
         }
 
-        String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 1);
+        String ctxSig = CallContextHolder.buildKCFASignature(methodStack.getCallStack(), 2);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
 
-            callStack.push(root);
+            methodStack.push(root);
             AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
-            callStack.pop();
+            methodStack.pop();
             var logger = AbstractInterpretationLogger.getInstance();
             logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root), root, abstractState);
             checkerManager.runCheckers(root, abstractState);
             logger.logSummariesStats(summaryManager);
         } finally {
-            // Ensure the call stack is cleared in case of an exception; nothing to do here
+            // stack cleanup handled in pop
         }
-    }
-
-    // TODO: fix this
-    private List<Domain> convertActualArgs(Invoke invoke, AbstractState<Domain> callerState) {
-        List<Domain> result = new ArrayList<>();
-        for (Node argument : invoke.callTarget().arguments()) {
-//            abstractTransformer.analyzeNode(argument, callerState, );
-            result.add(callerState.getPostCondition(argument));
-        }
-        return result;
     }
 
     private AnalysisMethod getInvokeTargetAnalysisMethod(AnalysisMethod root, Invoke invoke) {

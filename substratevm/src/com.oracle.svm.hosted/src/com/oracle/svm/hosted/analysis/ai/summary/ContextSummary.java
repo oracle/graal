@@ -106,10 +106,10 @@ public final class ContextSummary<Domain extends AbstractDomain<Domain>> {
     @Override
     public String toString() {
         return "ContextSummary{" +
-                        "contextKey=" + contextKey +
-                        ", entryState=" + entryState +
-                        ", exitState=" + exitState +
-                        ", returnValue=" + returnValue +
-                        '}';
+                "contextKey=" + contextKey +
+                ", entryState=" + entryState +
+                ", exitState=" + exitState +
+                ", returnValue=" + returnValue +
+                '}';
     }
 }

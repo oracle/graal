@@ -30,8 +30,7 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     }
 
     @Override
-    public AnalysisOutcome<Domain> handleInvoke(Invoke invoke, AbstractState<Domain> callerState) {
-        /* Intra-procedural call handling is not supported, this means that we treat all calls to methods as black box and don't analyze them further */
+    public AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
         return AnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
     }
 

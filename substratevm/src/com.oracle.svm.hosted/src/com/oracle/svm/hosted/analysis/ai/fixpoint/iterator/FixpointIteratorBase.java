@@ -35,7 +35,6 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
                                    Domain initialDomain,
                                    AbstractTransformer<Domain> abstractTransformer,
                                    AnalysisContext analysisContext) {
-
         this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;
         this.initialDomain = initialDomain;
@@ -49,11 +48,10 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
             this.graph = services.getGraph(method);
             cache.addToMethodGraphMap(method, graph);
         }
-
 //        logger.exportGraphToJson(graph, analysisMethod, analysisMethod.getName() + "_before_absint");
         this.abstractState = new AbstractState<>(initialDomain, graph);
         this.graphTraversalHelper = new GraphTraversalHelper(graph, analysisContext.getIteratorPolicy().direction());
-        this.iteratorContext = new BasicIteratorContext(graphTraversalHelper);
+        this.iteratorContext = new BasicIteratorContext(graphTraversalHelper, analysisMethod);
     }
 
     @Override
@@ -80,7 +78,6 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         var newPre = abstractState.getPreCondition(node).copyOf();
         IteratorPolicy policy = analysisContext.getIteratorPolicy();
 
-        // If postCondition already <= preCondition, treat as stabilized and skip extrapolation.
         if (abstractState.getPostCondition(node).leq(abstractState.getPreCondition(node))) {
             logger.log("Extrapolation skipped (post ⊑ pre) for node: " + node, LoggerVerbosity.DEBUG);
             iteratorContext.incrementNodeVisitCount(node);

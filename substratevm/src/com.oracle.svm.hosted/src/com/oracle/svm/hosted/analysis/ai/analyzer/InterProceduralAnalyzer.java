@@ -27,7 +27,7 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
 
     @Override
     public void runAnalysis(AnalysisMethod method) {
-        AnalysisContext analysisContext = new AnalysisContext(iteratorPolicy, checkerManager, methodFilterManager, summaryFactory, maxRecursionDepth);
+        AnalysisContext analysisContext = new AnalysisContext(iteratorPolicy, checkerManager, methodFilterManager, summaryFactory);
         InterAbsintInvokeHandler<Domain> callHandler = new InterAbsintInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext, summaryFactory, maxRecursionDepth);
         callHandler.handleRootInvoke(method);
     }

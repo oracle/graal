@@ -183,7 +183,6 @@ public final class AbstractInterpretationLogger {
     public <Domain extends AbstractDomain<Domain>> void logSummariesStats(SummaryManager<Domain> summaryManager) {
         log("Summary cache contents: ", LoggerVerbosity.SUMMARY);
         for (Summary<Domain> summary : summaryManager.summaryCache().getAllSummaries()) {
-            log("Summary for method: " + summary.getInvoke(), LoggerVerbosity.SUMMARY);
             log("Summary pre-condition: " + summary.getPreCondition(), LoggerVerbosity.SUMMARY);
             log("Summary post-condition: " + summary.getPostCondition(), LoggerVerbosity.SUMMARY);
         }

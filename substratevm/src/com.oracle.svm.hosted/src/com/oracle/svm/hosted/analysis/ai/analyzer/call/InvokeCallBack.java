@@ -2,9 +2,6 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.call;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.Invoke;
 
 /**
  * Callback interface for handling method invocations during abstract interpretation.
@@ -14,13 +11,11 @@ import jdk.graal.compiler.nodes.Invoke;
  */
 @FunctionalInterface
 public interface InvokeCallBack<Domain extends AbstractDomain<Domain>> {
-
     /**
      * Handles the invocation of a method during abstract interpretation.
      *
-     * @param invoke        the representation of the invocation to be handled
-     * @param abstractState the abstract state of the caller at the point of the {@param invoke}
-     * @return the outcome of the analysis of the call (status, + summary if status is ok)
+     * @param invokeInput the relevant information needed to perform abstract interpretation of a given invocation
+     * @return the analysis outcome
      */
-    AnalysisOutcome<Domain> handleInvoke(Invoke invoke, AbstractState<Domain> abstractState);
+    AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput);
 }

@@ -16,13 +16,11 @@ public interface InvokeHandler<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Handles the invocation of a method during abstract interpretation.
-     * This method should update the post-condition of the {@param invokeNode}.
      *
-     * @param invoke      the representation of the invocation to be handled
-     * @param callerState the abstract state of the caller at the point of the {@param invoke}
-     * @return outcome of the analysis of the called method
+     * @param invokeInput the relevant information needed to perform abstract interpretation of a given invocation
+     * @return the analysis outcome
      */
-    AnalysisOutcome<Domain> handleInvoke(Invoke invoke, AbstractState<Domain> callerState);
+    AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput);
 
     /**
      * The starting point of the analysis
