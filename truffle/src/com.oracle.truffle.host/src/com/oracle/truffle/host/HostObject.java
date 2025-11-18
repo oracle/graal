@@ -3312,11 +3312,11 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @ExportMessage
+    @ExportMessage(limit = "LIMIT")
     @TruffleBoundary
     boolean isMetaInstance(Object other,
                     @Bind Node node,
-                    @Exclusive @CachedLibrary(limit = "LIMIT") InteropLibrary hostObjects,
+                    @Exclusive @CachedLibrary("other") InteropLibrary hostObjects,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isClass()) {
             Class<?> c = asClass();

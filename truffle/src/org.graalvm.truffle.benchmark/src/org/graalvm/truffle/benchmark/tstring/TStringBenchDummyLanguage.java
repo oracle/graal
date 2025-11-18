@@ -241,8 +241,8 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         public abstract int execute(Object input);
 
-        @Specialization
-        int bench(Object hostObject, @CachedLibrary(limit = "3") InteropLibrary interop) {
+        @Specialization(limit = "3")
+        int bench(Object hostObject, @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             int ret = 0;
             for (int i = 0; i < input.length; i++) {
@@ -328,10 +328,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_8, false);
         }
@@ -341,10 +341,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_16, false);
         }
@@ -354,10 +354,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_16, true);
         }
@@ -367,10 +367,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_32, true);
         }
@@ -380,10 +380,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_16BE, false);
         }
@@ -393,11 +393,11 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return switchEncodingNode.execute(fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_16BE, false), TruffleString.Encoding.UTF_16);
         }
@@ -407,10 +407,10 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_32BE, false);
         }
@@ -420,11 +420,11 @@ public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummy
 
         abstract TruffleString execute(Object hostObject, int length);
 
-        @Specialization
+        @Specialization(limit = "3")
         TruffleString bench(Object hostObject, int length,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+                        @CachedLibrary("hostObject") InteropLibrary interop) {
             byte[] input = (byte[]) getHostObject(hostObject, interop);
             return switchEncodingNode.execute(fromByteArrayNode.execute(input, 0, length, TruffleString.Encoding.UTF_32BE, false), TruffleString.Encoding.UTF_32);
         }
