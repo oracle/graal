@@ -1298,7 +1298,16 @@ class NativeImageVM(StageAwareGraalVm):
         """
         dims = super().dimensions(cwd, args, code, out)
 
-        if not self.stages_info.fallback_mode and not self.stages_info.current_stage.is_agent():
+        if not self.stages_info.fallback_mode:
+            dims.update({
+                "native-image.stage": str(self.stages_info.current_stage.stage_name),
+                "native-image.instrumented": str(self.stages_info.current_stage.is_instrument()).lower(),
+                "native-image.pgo": self._get_pgo_dimension(),
+            })
+            if self.stages_info.current_stage.is_agent():
+                # The remaining dimensions are image-specific and don't apply to the agent stage.
+                return dims
+
             assert self.stages_info.failed or self.stages_info.current_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
 
             def gc_mapper(value: str) -> str:
@@ -1320,21 +1329,8 @@ class NativeImageVM(StageAwareGraalVm):
                 """
                 return f"O{value}"
 
-            if self.pgo_instrumentation:
-                if self.pgo_sampler_only:
-                    pgo_value = "sampler-only"
-                else:
-                    pgo_value = "pgo"
-            elif self.adopted_jdk_pgo:
-                pgo_value = "adopted"
-            else:
-                pgo_value = "off"
-
             replacement = {
                 "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
-                "native-image.stage": str(self.stages_info.current_stage.stage_name),
-                "native-image.instrumented": str(self.stages_info.current_stage.is_instrument()).lower(),
-                "native-image.pgo": pgo_value,
                 "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
             }
             if self.stages_info.current_stage.is_layered():
@@ -1354,6 +1350,17 @@ class NativeImageVM(StageAwareGraalVm):
             dims.update(datapoints[0])
 
         return dims
+
+    def _get_pgo_dimension(self) -> str:
+        if self.pgo_instrumentation:
+            if self.pgo_sampler_only:
+                return "sampler-only"
+            else:
+                return "pgo"
+        elif self.adopted_jdk_pgo:
+            return "adopted"
+        else:
+            return "off"
 
     def image_build_rules(self, benchmarks):
         return self.image_build_general_rules(benchmarks) + self.image_build_analysis_rules(benchmarks) \
