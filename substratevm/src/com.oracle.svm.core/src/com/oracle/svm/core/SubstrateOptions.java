@@ -871,8 +871,11 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, has no effect.", deprecated = true)//
     static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
-    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
+    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
+
+    @Option(help = "Initialize the VM and run startup hooks.")//
+    public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
 
     @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
     public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<>(true);

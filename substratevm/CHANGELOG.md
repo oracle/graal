@@ -13,6 +13,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-68984) Ship the `reachability-metadata-schema.json` together with GraalVM at `<graalvm-home>/lib/svm/schemas/reachability-metadata-schema.json`.
 * (GR-68984) Improve the schema to capture detailed constraints about each element in the `reachability-metadata-schema.json`.
 * (GR-70046) Remove all support for running image builder on classpath.
+* (GR-71146) Make `ParseRuntimeOptions` a non-experimental flag and extract a separate (experimental) `InitializeVM` flag. If your project previously used `ParseRuntimeOptions` and you call `VMRuntime.initialize()` manually, you might have to disable the new flag.
 
 ## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().
