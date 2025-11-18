@@ -129,10 +129,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.polymorphic = value;
     }
 
-    public void setKilledLocationIdentity(LocationIdentity identity) {
-        this.killedLocationIdentity = identity;
-    }
-
     @Override
     public void setInlineControl(InlineControl control) {
         this.inlineControl = control;
@@ -155,6 +151,10 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return killedLocationIdentity;
+    }
+
+    public void setKilledLocationIdentity(LocationIdentity identity) {
+        this.killedLocationIdentity = identity;
     }
 
     @Override

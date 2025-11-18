@@ -167,6 +167,10 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         return sideEffect;
     }
 
+    public void setSideEffect(boolean withSideEffects) {
+        this.sideEffect = withSideEffects;
+    }
+
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return killedLocationIdentity;
@@ -273,9 +277,5 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public void setInOOMETry(boolean isInOOMETry) {
         this.isInOOMETry = isInOOMETry;
-    }
-
-    public void setSideEffect(boolean withSideEffects) {
-        this.sideEffect = withSideEffects;
     }
 }

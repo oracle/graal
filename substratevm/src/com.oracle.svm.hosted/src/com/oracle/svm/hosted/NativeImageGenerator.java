@@ -201,7 +201,7 @@ import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
 import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
-import com.oracle.svm.hosted.analysis.tesa.TransitiveEffectSummaryAnalysisEngine;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
@@ -255,6 +255,7 @@ import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
 import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -596,13 +597,13 @@ public class NativeImageGenerator {
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                                 bb.getUnsupportedFeatures()).build(debug);
 
-                if (TransitiveEffectSummaryAnalysisEngine.enabled()) {
+                if (TesaEngine.enabled()) {
                     /*
                      * Fixed-point loops are started after universe building, because the initial
                      * state for each method is computed after strengthen graphs, which is executed
                      * in UniverseBuilder.
                      */
-                    TransitiveEffectSummaryAnalysisEngine.get().runFixedPointLoops(bb);
+                    TesaEngine.get().runFixedPointLoops(bb);
                 }
 
                 BuildPhaseProvider.markHostedUniverseBuilt();
@@ -836,7 +837,7 @@ public class NativeImageGenerator {
                         HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
                     }
                 }
-                if (TransitiveEffectSummaryAnalysisEngine.enabled()) {
+                if (TesaEngine.enabled()) {
                     /*
                      * Seal the TESA engine, prevent more analyses from being registered.
                      * Technically, we could currently allow registrations even during the
@@ -844,7 +845,7 @@ public class NativeImageGenerator {
                      * stricter about registrations in case we would like to perform some TESA steps
                      * already during or immediately after PTA in the future.
                      */
-                    TransitiveEffectSummaryAnalysisEngine.get().seal();
+                    TesaEngine.get().seal();
                 }
             }
 
@@ -902,8 +903,8 @@ public class NativeImageGenerator {
                 bb.getUnsupportedFeatures().report(bb);
                 bb.checkUserLimitations();
 
-                if (TransitiveEffectSummaryAnalysisEngine.enabled()) {
-                    TransitiveEffectSummaryAnalysisEngine.get().saveCallGraph(bb);
+                if (TesaEngine.enabled()) {
+                    TesaEngine.get().saveCallGraph(bb);
                 }
 
                 bb.afterAnalysis();
@@ -1081,16 +1082,16 @@ public class NativeImageGenerator {
 
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
-                if (TransitiveEffectSummaryAnalysisEngine.Options.TransitiveEffectSummaryAnalysis.getValue()) {
+                if (TesaEngine.Options.TransitiveEffectSummaryAnalysis.getValue()) {
                     /*
                      * Tesa only works in ClosedTypeWorld. PLTGOT seems to create memory kills
                      * unseen by TESA.
                      */
-                    if (SubstrateOptions.ClosedTypeWorld.getValue() && !PLTGOTOptions.EnablePLTGOT.getValue()) {
-                        TransitiveEffectSummaryAnalysisEngine engine = new TransitiveEffectSummaryAnalysisEngine();
-                        ImageSingletons.add(TransitiveEffectSummaryAnalysisEngine.class, engine);
+                    if (SubstrateOptions.useClosedTypeWorld() && !PLTGOTOptions.EnablePLTGOT.getValue()) {
+                        TesaEngine engine = new TesaEngine();
+                        ImageSingletons.add(TesaEngine.class, engine);
                         /* Register the engine in ImageBuildStatistics for reporting. */
-                        ImageSingletons.add(ImageBuildStatistics.TransitiveEffectSummaryAnalysisPrinter.class, engine);
+                        ImageSingletons.add(ImageBuildStatistics.TesaPrinter.class, engine);
                     }
                 }
                 if (imageLayerLoader != null) {

@@ -45,8 +45,8 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * A helper containing the call-graph-related information used by
- * {@link TransitiveEffectSummaryAnalysisEngine} and its analyses.
+ * A helper containing the call-graph-related information used by {@link TesaEngine} and its
+ * analyses.
  */
 public final class TesaReverseCallGraph {
 
@@ -68,12 +68,13 @@ public final class TesaReverseCallGraph {
 
     /**
      * A mapping from {@link InvokePosition} to the corresponding set of callees as computed by the
-     * {@link AbstractAnalysisEngine}. As we cannot always guarantee a unique mapping, it is a
-     * best-effort delivery with collision handling. The values can be either a {@link Collection}
-     * of {@link AnalysisMethod} or the {@link #COLLISION} marker object when the mapping is not
-     * unique. In that case, we cannot retrieve the more precise location-specific set of callees,
-     * but we can always fall back to set of all implementations of the given target method, loosing
-     * precision without compromising soundness.
+     * {@link AbstractAnalysisEngine}. As we cannot always guarantee a unique mapping, e.g., due to
+     * the artificial source positions discussed below, it is a best-effort delivery with collision
+     * handling. The values can be either a {@link Collection} of {@link AnalysisMethod} or the
+     * {@link #COLLISION} marker object when the mapping is not unique. In that case, we cannot
+     * retrieve the more precise location-specific set of callees, but we can always fall back to
+     * set of all implementations of the given target method, loosing precision without compromising
+     * soundness.
      * <p>
      * Using a custom {@link InvokePosition} as opposed to {@link BytecodePosition} leads to
      * slightly fewer collisions, because the target method sometimes helps to disambiguate more
@@ -132,7 +133,8 @@ public final class TesaReverseCallGraph {
             Collection<AnalysisMethod> callees = invoke.getAllCallees();
             var previousValue = invokeToCallees.get(key);
             if (previousValue == null) {
-                invokeToCallees.put(key, callees);
+                Object previous = invokeToCallees.putIfAbsent(key, callees);
+                assert previous == null : "A race condition occurred when inserting " + key;
             } else if (previousValue != COLLISION) {
                 invokeToCallees.put(key, COLLISION);
             }
@@ -156,7 +158,7 @@ public final class TesaReverseCallGraph {
      * implementations of the given {@code targetMethod}.
      */
     @SuppressWarnings("unchecked")
-    public Collection<AnalysisMethod> getTargetMethods(Invoke invoke, HostedMethod targetMethod) {
+    public Collection<AnalysisMethod> getCallees(Invoke invoke, HostedMethod targetMethod) {
         var node = invoke.asFixedNode();
         var key = new InvokePosition(((HostedMethod) node.graph().method()).wrapped, invoke.bci(), targetMethod.wrapped);
         Object callees = invokeToCallees.get(key);

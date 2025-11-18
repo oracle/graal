@@ -39,6 +39,10 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.tesa.effect.TesaEffect;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -72,7 +76,8 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * @implNote For a concrete example on how to create and register a custom TESA instance, search for
  *           {@code ExampleUnsafeAnalysisTesaTest}.
  */
-public class TransitiveEffectSummaryAnalysisEngine implements ImageBuildStatistics.TransitiveEffectSummaryAnalysisPrinter {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public class TesaEngine implements ImageBuildStatistics.TesaPrinter {
 
     public static class Options {
         @Option(help = "Enable Transitive Effect Summary Analysis (TESA).")//
@@ -113,7 +118,7 @@ public class TransitiveEffectSummaryAnalysisEngine implements ImageBuildStatisti
      */
     private final AtomicInteger totalInvokesCounter = new AtomicInteger();
 
-    public TransitiveEffectSummaryAnalysisEngine() {
+    public TesaEngine() {
         registerDefaultAnalyses();
     }
 
@@ -137,14 +142,14 @@ public class TransitiveEffectSummaryAnalysisEngine implements ImageBuildStatisti
     }
 
     public static boolean enabled() {
-        return ImageSingletons.contains(TransitiveEffectSummaryAnalysisEngine.class);
+        return ImageSingletons.contains(TesaEngine.class);
     }
 
     /**
      * Gets the singleton instance of the engine.
      */
-    public static TransitiveEffectSummaryAnalysisEngine get() {
-        return ImageSingletons.lookup(TransitiveEffectSummaryAnalysisEngine.class);
+    public static TesaEngine get() {
+        return ImageSingletons.lookup(TesaEngine.class);
     }
 
     /**

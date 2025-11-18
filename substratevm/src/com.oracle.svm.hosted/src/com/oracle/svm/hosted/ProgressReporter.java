@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
+import static com.oracle.svm.hosted.analysis.tesa.TesaEngine.Options.TesaPrintToConsole;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -101,7 +102,7 @@ import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.JsonMetric;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ResourceUsageKey;
 import com.oracle.svm.hosted.analysis.tesa.AbstractTesa;
-import com.oracle.svm.hosted.analysis.tesa.TransitiveEffectSummaryAnalysisEngine;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature;
@@ -645,7 +646,7 @@ public class ProgressReporter {
             l().a(", %s in total file size", ByteFormattingUtil.bytesToHuman(imageDiskFileSize));
         }
         l().println();
-        if (TransitiveEffectSummaryAnalysisEngine.enabled() && TransitiveEffectSummaryAnalysisEngine.Options.TesaPrintToConsole.getValue()) {
+        if (TesaEngine.enabled() && TesaPrintToConsole.getValue()) {
             printTesaStatistics();
         }
         printBreakdowns();
@@ -763,7 +764,7 @@ public class ProgressReporter {
     }
 
     private void printTesaStatistics() {
-        TransitiveEffectSummaryAnalysisEngine engine = TransitiveEffectSummaryAnalysisEngine.get();
+        TesaEngine engine = TesaEngine.get();
 
         /* Separate the text from the previous section. */
         l().printLineSeparator();

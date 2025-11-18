@@ -29,11 +29,13 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.tesa.effect.LocationEffect;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
@@ -95,15 +97,32 @@ public class KilledLocationTesa extends AbstractTesa<LocationEffect> {
     }
 
     @Override
+    protected void onOptimizableMethodDiscovered(HostedMethod method, LocationEffect state, StructuredGraph graph) {
+        assert checkNoSafepointNodes(method, state, graph);
+    }
+
+    /**
+     * Methods containing {@link SafepointNode} can kill multiple locations, which we do not track
+     * precisely at the moment. To guarantee correctness, we verify that only methods without
+     * safepoints have more precise killed location than {@code any}.
+     */
+    private static boolean checkNoSafepointNodes(HostedMethod method, LocationEffect state, StructuredGraph graph) {
+        for (Node node : graph.getNodes()) {
+            AnalysisError.guarantee(!(node instanceof SafepointNode), "Method %s has a safepoint node in its graph, but its killed location is not any: %s", method.getQualifiedName(), state);
+        }
+        return true;
+    }
+
+    @Override
     protected void optimizeInvoke(StructuredGraph graph, Invoke invoke, LocationEffect targetState) {
         switch (targetState) {
-            case LocationEffect.Empty _ -> insertNewLocationIdentity(invoke, MemoryKill.NO_LOCATION);
-            case LocationEffect.Single single -> insertNewLocationIdentity(invoke, single.location);
+            case LocationEffect.Empty _ -> setKilledLocationIdentity(invoke, MemoryKill.NO_LOCATION);
+            case LocationEffect.Single single -> setKilledLocationIdentity(invoke, single.location);
             default -> AnalysisError.shouldNotReachHere(targetState + " is not actionable.");
         }
     }
 
-    private static void insertNewLocationIdentity(Invoke invoke, LocationIdentity locationIdentity) {
+    private static void setKilledLocationIdentity(Invoke invoke, LocationIdentity locationIdentity) {
         switch (invoke) {
             case InvokeNode invokeNode -> invokeNode.setKilledLocationIdentity(locationIdentity);
             case InvokeWithExceptionNode invokeWithExceptionNode -> invokeWithExceptionNode.setKilledLocationIdentity(locationIdentity);

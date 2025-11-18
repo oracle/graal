@@ -47,12 +47,13 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 
 /**
  * The base class for any Transitive Effect Summary Analysis.
  *
  * @param <T> the effect tracked by the given analysis.
- * @see TransitiveEffectSummaryAnalysisEngine
+ * @see TesaEngine
  */
 public abstract class AbstractTesa<T extends TesaEffect<T>> {
     /**
@@ -77,6 +78,13 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
 
     /**
      * Computes the initial state for the given {@code method}.
+     * <p>
+     * While the algorithm to compute the initial state can be arbitrary, it is advisable that it
+     * contains at most a single pass over the {@code graph} and does not rely on implementation
+     * details of the Graal IR. Ideally, only high-level APIs and marker interfaces should be used
+     * to make sure that the code in {@code computeInitialState} does not became incorrect when new
+     * Graal IR nodes are introduced. See how the {@link KilledLocationTesa#computeInitialState}
+     * uses {@link MemoryKill#isMemoryKill(Node)} as an example.
      */
     protected abstract T computeInitialState(AnalysisMethod method, StructuredGraph graph);
 
@@ -84,7 +92,8 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
      * Computes and saves the initial state of this method to be used later by the analysis.
      */
     void initializeStateForMethod(AnalysisMethod method, StructuredGraph graph) {
-        AnalysisError.guarantee(methodToState.put(method, computeInitialState(method, graph)) == null, "A state for method %s has already been initialized.", method);
+        T previous = methodToState.put(method, computeInitialState(method, graph));
+        AnalysisError.guarantee(previous == null, "A state for method %s has already been initialized.", method);
     }
 
     /**
@@ -127,7 +136,7 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
      * perform a linear sweep over the graph. However, since the overhead of the fixed-point
      * algorithm is reasonably low, we stick with it for now, as it is simpler.
      */
-    void runFixedPointLoop(TransitiveEffectSummaryAnalysisEngine engine, BigBang bb) {
+    void runFixedPointLoop(TesaEngine engine, BigBang bb) {
         try (var _ = fixedPointLoopTimer.start()) {
             var scheduledMethods = TesaReverseCallGraph.getAllMethods(bb).collect(Collectors.toCollection(HashSet::new));
             var worklist = new ArrayDeque<>(scheduledMethods);
@@ -139,7 +148,7 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
             long limit = ((long) scheduledMethods.size()) * scheduledMethods.size();
             while (!worklist.isEmpty()) {
                 if (iterations >= limit) {
-                    if (TransitiveEffectSummaryAnalysisEngine.Options.TesaThrowOnNonTermination.getValue()) {
+                    if (TesaEngine.Options.TesaThrowOnNonTermination.getValue()) {
                         throw AnalysisError.shouldNotReachHere(ClassUtil.getUnqualifiedName(getClass()) + ": fixed-point loop did not terminate after " + iterations + " iterations.");
                     } else {
                         /*
@@ -200,14 +209,14 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
      * For indirect invokes, use the {@link TesaEffect#combineEffects} over the states of all target
      * methods.
      */
-    public T getState(TransitiveEffectSummaryAnalysisEngine engine, Invoke invoke) {
+    public T getState(TesaEngine engine, Invoke invoke) {
         var targetMethod = ((HostedMethod) invoke.callTarget().targetMethod());
         if (invoke.getInvokeKind().isDirect()) {
             return getState(targetMethod.wrapped);
         } else {
             T cummulativeState = noEffect();
-            for (AnalysisMethod targetMethods : engine.getCallGraph().getTargetMethods(invoke, targetMethod)) {
-                var targetState = getState(targetMethods);
+            for (AnalysisMethod callee : engine.getCallGraph().getCallees(invoke, targetMethod)) {
+                var targetState = getState(callee);
                 cummulativeState = cummulativeState.combineEffects(targetState);
                 if (cummulativeState.isAnyEffect()) {
                     break;
@@ -220,9 +229,10 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
     /**
      * Apply the results of this analysis on the given compilation {@code graph}.
      */
-    public void applyResults(TransitiveEffectSummaryAnalysisEngine engine, HostedMethod method, StructuredGraph graph) {
+    public void applyResults(TesaEngine engine, HostedMethod method, StructuredGraph graph) {
         var state = getState(method.wrapped);
         if (hasOptimizationPotential(state)) {
+            onOptimizableMethodDiscovered(method, state, graph);
             optimizableMethodsCounter.incrementAndGet();
         }
         for (Node node : graph.getNodes()) {
@@ -234,6 +244,15 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
                 }
             }
         }
+    }
+
+    /**
+     * Hook for subclasses to perform any postprocessing or correctness checks for methods found as
+     * optimizable.
+     */
+    @SuppressWarnings("unused")
+    protected void onOptimizableMethodDiscovered(HostedMethod method, T state, StructuredGraph graph) {
+
     }
 
     /**

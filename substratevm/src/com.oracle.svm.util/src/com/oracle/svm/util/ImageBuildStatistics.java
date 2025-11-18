@@ -139,8 +139,8 @@ public class ImageBuildStatistics {
         }
 
         private void printTesaStats(PrintWriter out) {
-            if (ImageSingletons.contains(TransitiveEffectSummaryAnalysisPrinter.class)) {
-                ImageSingletons.lookup(TransitiveEffectSummaryAnalysisPrinter.class).printTesaResults(out);
+            if (ImageSingletons.contains(TesaPrinter.class)) {
+                ImageSingletons.lookup(TesaPrinter.class).printTesaResults(out);
             }
         }
 
@@ -151,7 +151,7 @@ public class ImageBuildStatistics {
         void printTimerStats(PrintWriter out);
     }
 
-    public interface TransitiveEffectSummaryAnalysisPrinter {
+    public interface TesaPrinter {
         void printTesaResults(PrintWriter out);
     }
 }

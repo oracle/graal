@@ -31,6 +31,14 @@ import org.graalvm.word.LocationIdentity;
 /**
  * Effect over {@link LocationIdentity} instances. Differentiates between empty location (noEffect),
  * single location, and any location (anyEffect).
+ *
+ * @formatter:off
+ *               any-location
+ *               /     |    \
+ *         location-0 ... location-n
+ *              \      |     /
+ *              empty-location
+ * @formatter:on
  */
 public sealed class LocationEffect
                 implements TesaEffect<LocationEffect> permits LocationEffect.Any, LocationEffect.Empty, LocationEffect.Single {

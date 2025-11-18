@@ -26,11 +26,10 @@ package com.oracle.svm.hosted.analysis.tesa.effect;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.svm.hosted.analysis.tesa.AbstractTesa;
-import com.oracle.svm.hosted.analysis.tesa.TransitiveEffectSummaryAnalysisEngine;
+import com.oracle.svm.hosted.analysis.tesa.TesaEngine;
 
 /**
- * The base effect used by the analyses implemented in
- * {@link TransitiveEffectSummaryAnalysisEngine}.
+ * The base effect used by the analyses implemented in {@link TesaEngine}.
  * <p>
  * The effects form a lattice ordered so that lower values mean higher optimization potential, the
  * best one being {@code noEffect} at the bottom, while the {@code anyEffect} value represents that
@@ -45,7 +44,7 @@ import com.oracle.svm.hosted.analysis.tesa.TransitiveEffectSummaryAnalysisEngine
  * further restricting the amount of {@link #combineEffects} calls before reaching {@code top}.
  * 
  * @see AbstractTesa
- * @see TransitiveEffectSummaryAnalysisEngine
+ * @see TesaEngine
  * 
  */
 public interface TesaEffect<T extends TesaEffect<T>> {
