@@ -1,13 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.List;
 
 /**
- * Manages summaries for functions.
+ * Manages summaries for methods.
  *
  * @param summaryFactory
  * @param summaryCache
@@ -26,39 +26,19 @@ public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFacto
         return summaryFactory.createSummary(invoke, callerPreCondition, domainArguments);
     }
 
-    /**
-     * Gets a summary from the summary cache.
-     *
-     * @param calleeMethod        the method we are searching summary for
-     * @param summaryPrecondition the precondition of the callee
-     * @return the summary for targetName with given summaryPrecondition
-     */
-    public Summary<Domain> getSummary(ResolvedJavaMethod calleeMethod, Summary<Domain> summaryPrecondition) {
+    public Summary<Domain> getSummary(AnalysisMethod calleeMethod, Summary<Domain> summaryPrecondition) {
         return summaryCache.getSummary(calleeMethod, summaryPrecondition);
     }
 
-    /**
-     * Checks if the summary cache contains a summary for the given target name and precondition.
-     *
-     * @param calleeMethod        the method we are searching summary for
-     * @param summaryPrecondition the precondition of the callee of the {@param calleeMethod}
-     * @return true if the cache contains the summary, false otherwise
-     */
-    public boolean containsSummary(ResolvedJavaMethod calleeMethod, Summary<Domain> summaryPrecondition) {
+    public boolean containsSummary(AnalysisMethod calleeMethod, Summary<Domain> summaryPrecondition) {
         return summaryCache.contains(calleeMethod, summaryPrecondition);
     }
 
-    /**
-     * Puts a summary into the summary cache.
-     *
-     * @param calleeMethod the method we are putting the summary for
-     * @param summary      the summary to put
-     */
-    public void putSummary(ResolvedJavaMethod calleeMethod, Summary<Domain> summary) {
+    public void putSummary(AnalysisMethod calleeMethod, Summary<Domain> summary) {
         summaryCache.put(calleeMethod, summary);
     }
 
-    public int getSummaryAmount(ResolvedJavaMethod method) {
+    public int getSummaryAmount(AnalysisMethod method) {
         return summaryCache.getMethodSummariesAmount(method);
     }
 

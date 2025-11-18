@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.context;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -7,6 +8,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Provides context information from the fixpoint iterator to the abstract interpreter.
@@ -179,4 +181,6 @@ public interface IteratorContext {
         }
         return true;
     }
+
+    AnalysisMethod getCurrentAnalysisMethod();
 }
