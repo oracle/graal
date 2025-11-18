@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -233,7 +234,7 @@ public class HeapBreakdownProvider {
         int partitions = 0;
 
         public static HeapBreakdownEntry of(HostedClass hostedClass) {
-            return new HeapBreakdownEntryForClass(hostedClass.getJavaClass());
+            return new HeapBreakdownEntryForClass(hostedClass);
         }
 
         public static HeapBreakdownEntry of(String name) {
@@ -317,21 +318,21 @@ public class HeapBreakdownProvider {
 
     static class HeapBreakdownEntryForClass extends HeapBreakdownEntry {
 
-        private final Class<?> clazz;
+        private final HostedType type;
 
-        HeapBreakdownEntryForClass(Class<?> clazz) {
-            this.clazz = clazz;
+        HeapBreakdownEntryForClass(HostedClass type) {
+            this.type = type;
         }
 
         @Override
         public HeapBreakdownLabel getLabel(int maxLength) {
             if (maxLength >= 0) {
-                String moduleNamePrefix = ProgressReporterUtils.moduleNamePrefix(clazz.getModule());
+                String moduleNamePrefix = ProgressReporterUtils.moduleNamePrefix(JVMCIReflectionUtil.getModule(type));
                 int maxLengthClassName = maxLength - moduleNamePrefix.length();
-                String truncatedClassName = ProgressReporterUtils.truncateFQN(clazz.getTypeName(), maxLengthClassName);
+                String truncatedClassName = ProgressReporterUtils.truncateFQN(JVMCIReflectionUtil.getTypeName(type), maxLengthClassName);
                 return new SimpleHeapObjectKindName(moduleNamePrefix + truncatedClassName);
             } else {
-                return new SimpleHeapObjectKindName(clazz.getTypeName());
+                return new SimpleHeapObjectKindName(JVMCIReflectionUtil.getTypeName(type));
             }
         }
     }
