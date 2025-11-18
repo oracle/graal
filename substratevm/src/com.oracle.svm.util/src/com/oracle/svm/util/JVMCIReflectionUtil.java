@@ -25,6 +25,7 @@
 package com.oracle.svm.util;
 
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -238,6 +239,10 @@ public final class JVMCIReflectionUtil {
         return (dot != -1) ? cn.substring(0, dot).intern() : "";
     }
 
+    public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
+        return JVMCIReflectionUtilFallback.getPackage(type);
+    }
+
     /**
      * Gets the return type for a {@link ResolvedJavaMethod}. This is the same as calling
      * {@link Method#getReturnType()} on the underlying method.
@@ -273,5 +278,20 @@ public final class JVMCIReflectionUtil {
             }
         }
         return type.toClassName();
+    }
+
+    public static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {
+        return JVMCIReflectionUtilFallback.getModule(declaringClass);
+    }
+
+    /**
+     * Returns the <em>origin</em> associated with this {@link ResolvedJavaType}.
+     *
+     * This is not yet properly implemented as it falls back to the original class (GR-71068).
+     *
+     * @return the location (URL), or {@code null} if no URL was supplied during construction.
+     */
+    public static URL getOrigin(ResolvedJavaType type) {
+        return JVMCIReflectionUtilFallback.getOrigin(type);
     }
 }

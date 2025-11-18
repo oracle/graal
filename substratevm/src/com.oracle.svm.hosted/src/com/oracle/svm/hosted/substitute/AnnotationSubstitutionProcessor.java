@@ -89,6 +89,7 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -270,7 +271,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     public boolean isDeleted(Class<?> clazz) {
-        return deleteAnnotations.containsKey(metaAccess.lookupJavaType(clazz));
+        return isDeleted(metaAccess.lookupJavaType(clazz));
+    }
+
+    public boolean isDeleted(ResolvedJavaType type) {
+        return deleteAnnotations.containsKey(OriginalClassProvider.getOriginalType(type));
     }
 
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {

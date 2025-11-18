@@ -64,6 +64,8 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -297,9 +299,9 @@ public final class ManagementSupport implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
     private static Class<? extends PlatformManagedObject> getFlightRecorderMXBeanClass() {
-        var jfrModule = ModuleLayer.boot().findModule("jdk.management.jfr");
+        var jfrModule = ResolvedJavaModuleLayer.boot().findModule("jdk.management.jfr");
         if (jfrModule.isPresent()) {
-            ManagementSupport.class.getModule().addReads(jfrModule.get());
+            HostModuleUtil.addReads(ManagementSupport.class, jfrModule.get());
             try {
                 return (Class<? extends PlatformManagedObject>) Class.forName("jdk.management.jfr.FlightRecorderMXBean", false, Object.class.getClassLoader());
             } catch (ClassNotFoundException ex) {
