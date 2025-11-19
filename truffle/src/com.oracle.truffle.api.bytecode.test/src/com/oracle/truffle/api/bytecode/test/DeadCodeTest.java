@@ -273,6 +273,69 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testReachableTryCatchOtherwise() {
+        // @formatter:off
+        // try {
+        //   if (argument[0])
+        //      throw
+        // } catch ex {
+        //   if (argument[1])
+        //      branch end;
+        //   return 1
+        //   end:
+        //      return 2
+        // } otherwise {
+        //   return 3
+        // }
+        // <dead>
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginTryCatchOtherwise(() -> {
+                b.beginReturn();
+                b.emitLoadConstant(3);
+                b.endReturn();
+            });
+
+            // @formatter:off
+            // try:
+            b.beginIfThen();
+                b.emitLoadArgument(0);
+                b.emitThrow();
+            b.endIfThen();
+
+            // catch:
+            b.beginBlock();
+                b.beginBlock();
+                    BytecodeLabel endLabel = b.createLabel();
+                    b.beginIfThen();
+                        b.emitLoadArgument(1);
+                        b.emitBranch(endLabel);
+                    b.endIfThen();
+
+                    b.beginReturn();
+                        b.emitLoadConstant(1);
+                    b.endReturn();
+
+                    b.emitLabel(endLabel);
+                b.endBlock();
+                b.beginReturn();
+                    b.emitLoadConstant(2);
+                b.endReturn();
+            b.endBlock();
+            // @formatter:on
+
+            b.endTryCatchOtherwise();
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals(3, node.getCallTarget().call(false, false));
+        assertEquals(2, node.getCallTarget().call(true, true));
+        assertEquals(1, node.getCallTarget().call(true, false));
+    }
+
+    @Test
     public void testUnreachableTryCatchOtherwise2() {
         // @formatter:off
         // return 42;
