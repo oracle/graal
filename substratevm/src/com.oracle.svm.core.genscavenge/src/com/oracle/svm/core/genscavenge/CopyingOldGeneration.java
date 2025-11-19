@@ -107,8 +107,8 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void beginPromotion(boolean incrementalGc) {
-        if (incrementalGc) {
+    void beginPromotion(boolean completeCollection) {
+        if (!completeCollection) {
             emptyFromSpaceIntoToSpace();
         }
         toGreyObjectsWalker.setScanStart(getToSpace());
@@ -116,7 +116,7 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean scanGreyObjects(boolean incrementalGc) {
+    boolean scanGreyObjects(boolean completeCollection) {
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }
