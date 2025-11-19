@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.hosted.analysis.tesa.effect.TesaEffect;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.graph.Node;
@@ -229,7 +230,7 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
     /**
      * Apply the results of this analysis on the given compilation {@code graph}.
      */
-    public void applyResults(TesaEngine engine, HostedMethod method, StructuredGraph graph) {
+    public void applyResults(TesaEngine engine, HostedUniverse universe, HostedMethod method, StructuredGraph graph) {
         var state = getState(method.wrapped);
         if (hasOptimizationPotential(state)) {
             onOptimizableMethodDiscovered(method, state, graph);
@@ -240,7 +241,7 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
                 var targetState = getState(engine, invoke);
                 if (hasOptimizationPotential(targetState)) {
                     optimizableInvokesCounter.incrementAndGet();
-                    optimizeInvoke(graph, invoke, targetState);
+                    optimizeInvoke(universe, graph, invoke, targetState);
                 }
             }
         }
@@ -279,7 +280,7 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
      * have to implement it.
      */
     @SuppressWarnings("unused")
-    protected void optimizeInvoke(StructuredGraph graph, Invoke invoke, T targetState) {
+    protected void optimizeInvoke(HostedUniverse universe, StructuredGraph graph, Invoke invoke, T targetState) {
 
     }
 

@@ -1399,7 +1399,7 @@ public class CompileQueue {
             assert GraphOrder.assertSchedulableGraph(graph);
 
             if (TesaEngine.enabled()) {
-                TesaEngine.get().applyResults(method, graph);
+                TesaEngine.get().applyResults(universe, method, graph);
             }
 
             try (DebugContext.Scope _ = debug.scope("Compiling", graph, method, this);

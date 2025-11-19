@@ -46,6 +46,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.tesa.effect.TesaEffect;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -181,7 +182,7 @@ public class TesaEngine implements ImageBuildStatistics.TesaPrinter {
     /**
      * @see AbstractTesa#applyResults
      */
-    public void applyResults(HostedMethod method, StructuredGraph graph) {
+    public void applyResults(HostedUniverse universe, HostedMethod method, StructuredGraph graph) {
         totalMethodsCounter.incrementAndGet();
         for (Node node : graph.getNodes()) {
             if (node instanceof Invoke) {
@@ -189,7 +190,7 @@ public class TesaEngine implements ImageBuildStatistics.TesaPrinter {
             }
         }
         for (AbstractTesa<?> analysis : analyses.values()) {
-            analysis.applyResults(this, method, graph);
+            analysis.applyResults(this, universe, method, graph);
         }
     }
 

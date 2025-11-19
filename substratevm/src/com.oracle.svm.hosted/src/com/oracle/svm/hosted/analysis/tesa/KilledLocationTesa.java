@@ -26,12 +26,17 @@ package com.oracle.svm.hosted.analysis.tesa;
 
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.hosted.analysis.tesa.effect.LocationEffect;
+import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
@@ -114,12 +119,34 @@ public class KilledLocationTesa extends AbstractTesa<LocationEffect> {
     }
 
     @Override
-    protected void optimizeInvoke(StructuredGraph graph, Invoke invoke, LocationEffect targetState) {
+    protected void optimizeInvoke(HostedUniverse universe, StructuredGraph graph, Invoke invoke, LocationEffect targetState) {
         switch (targetState) {
             case LocationEffect.Empty _ -> setKilledLocationIdentity(invoke, MemoryKill.NO_LOCATION);
-            case LocationEffect.Single single -> setKilledLocationIdentity(invoke, single.location);
+            case LocationEffect.Single single -> setKilledLocationIdentity(invoke, transplantIdentity(universe, single.location));
             default -> AnalysisError.shouldNotReachHere(targetState + " is not actionable.");
         }
+    }
+
+    /**
+     * The effects computed by the analysis may still contain <i>analysis</i> references that have
+     * to be transplanted to <i>hosted</i>.
+     * 
+     * @see AnalysisToHostedGraphTransplanter
+     */
+    private static LocationIdentity transplantIdentity(HostedUniverse universe, LocationIdentity location) {
+        return switch (location) {
+            case SubstrateFieldLocationIdentity substrateFieldLocationIdentity -> {
+                var field = substrateFieldLocationIdentity.getField();
+                assert field instanceof AnalysisField : "The field computed by the TESA should be still an analysis field: " + field;
+                yield new SubstrateFieldLocationIdentity(universe.lookup(field), substrateFieldLocationIdentity.isImmutable());
+            }
+            case FieldLocationIdentity fieldLocationIdentity -> {
+                var field = fieldLocationIdentity.getField();
+                assert field instanceof AnalysisField : "The field computed by the TESA should be still an analysis field: " + field;
+                yield new FieldLocationIdentity(universe.lookup(field), fieldLocationIdentity.isImmutable());
+            }
+            default -> location;
+        };
     }
 
     private static void setKilledLocationIdentity(Invoke invoke, LocationIdentity locationIdentity) {
