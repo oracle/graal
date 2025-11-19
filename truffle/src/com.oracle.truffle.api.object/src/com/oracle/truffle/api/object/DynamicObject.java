@@ -1964,6 +1964,7 @@ public abstract class DynamicObject implements TruffleObject {
         @Specialization(replaces = "doCached")
         static boolean doGeneric(DynamicObject receiver, Shape otherShape,
                         @Bind("receiver.getShape()") Shape shape) {
+            verifyResetShape(shape, otherShape);
             if (shape == otherShape) {
                 return false;
             }

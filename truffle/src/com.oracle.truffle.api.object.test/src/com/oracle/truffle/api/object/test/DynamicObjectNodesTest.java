@@ -46,7 +46,6 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -827,10 +826,18 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         Shape emptyShape = o1.getShape();
         uncachedPut(o1, "key1", v1, 0);
         uncachedPut(o1, "key2", v2, 0);
+        Shape nonEmptyShape = o1.getShape();
         resetShapeNode.execute(o1, emptyShape);
         assertSame(emptyShape, o1.getShape());
 
-        assumeTrue("new layout only", isNewLayout());
+        try {
+            resetShapeNode.execute(o1, nonEmptyShape);
+            fail("should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // expected
+            assertSame(emptyShape, o1.getShape());
+        }
+
         int flags = 0xf;
         DynamicObject o2 = createEmpty();
         Shape newEmptyShape = Shape.newBuilder().shapeFlags(flags).build();
@@ -971,9 +978,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertEquals(v1, uncachedGet(o1, k1));
 
         putNode.executeWithFlags(o1, k1, v2, flags);
-        if (isNewLayout()) {
-            assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
-        }
+        assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v2, uncachedGet(o1, k1));
     }
@@ -1085,10 +1090,6 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
     private static List<Object> getKeyList(DynamicObject obj) {
         return Arrays.asList(DynamicObject.GetKeyArrayNode.getUncached().execute(obj));
-    }
-
-    private static boolean isNewLayout() {
-        return true;
     }
 
     @GenerateInline(false)
