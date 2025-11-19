@@ -121,7 +121,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
             } else { // not marked, i.e. not alive and start of a gap of yet unknown size
                 if (objSeqSize.notEqual(0)) { // end of an object sequence
-                    Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
+                    Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize, chunk);
                     ObjectMoveInfo.setNewAddress(objSeq, newAddress);
                     ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
 
@@ -144,14 +144,13 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             UnsignedWord newTopOffset = chunk.getTopOffset(CHUNK_HEADER_TOP_IDENTITY).subtract(gapSize);
             chunk.setTopOffset(newTopOffset, CHUNK_HEADER_TOP_IDENTITY);
         } else if (objSeqSize.notEqual(0)) {
-            Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize);
+            Pointer newAddress = sweeping ? objSeq : allocate(objSeqSize, chunk);
             ObjectMoveInfo.setNewAddress(objSeq, newAddress);
             ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
         }
 
         if (sweeping && chunk.equal(allocChunk)) {
-            /* Continue allocating for compaction after the swept memory. */
-            allocPointer = HeapChunk.getTopPointer(chunk);
+            allocPointer = getSweptChunkAllocationPointer(chunk);
         }
 
         /* Set remaining brick table entries at chunk end. */
@@ -164,20 +163,31 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         return true;
     }
 
-    private Pointer allocate(UnsignedWord size) {
+    private Pointer allocate(UnsignedWord size, AlignedHeapChunk.AlignedHeader currentChunk) {
         assert size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
         Pointer p = allocPointer;
         allocPointer = p.add(size);
         while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+            assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
             allocChunk = HeapChunk.getNext(allocChunk);
             assert allocChunk.isNonNull();
             if (allocChunk.getShouldSweepInsteadOfCompact()) {
-                p = HeapChunk.getTopPointer(allocChunk); // use any free memory at the end
+                p = getSweptChunkAllocationPointer(allocChunk);
             } else {
                 p = AlignedHeapChunk.getObjectsStart(allocChunk);
             }
             allocPointer = p.add(size);
         }
         return p;
+    }
+
+    private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
+        assert chunk.getShouldSweepInsteadOfCompact();
+        /*
+         * Continue allocation for compaction in the next chunk. Moving in other objects is likely
+         * to increase future fragmentation and sweeping effort until the chunk can participate in
+         * compaction again.
+         */
+        return AlignedHeapChunk.getObjectsEnd(chunk);
     }
 }
