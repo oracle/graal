@@ -52,7 +52,7 @@ public final class JSUndefined extends JSValue {
         return INSTANCE;
     }
 
-    JSUndefined() {
+    private JSUndefined() {
     }
 
     @Override
