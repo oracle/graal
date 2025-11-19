@@ -342,14 +342,16 @@ public class TlabSupport {
      * If the minimum object size is greater than {@link ObjectLayout#getAlignment()}, we can end up
      * with a shard at the end of the buffer that's smaller than the smallest object (see
      * {@link com.oracle.svm.core.heap.FillerObject}). We can't allow that because the buffer must
-     * look like it's full of objects when we retire it, so we make sure we have enough space for a
-     * {@link com.oracle.svm.core.heap.FillerArray}) object.
+     * look like it's full of objects when we retire it, so we make sure we always have enough space
+     * for a filler object.
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/collectedHeap.cpp#L253-L259")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord getFillerObjectSize() {
-        UnsignedWord minSize = FillerObjectUtil.objectMinSize();
-        return minSize.aboveThan(ConfigurationValues.getObjectLayout().getAlignment()) ? minSize : Word.zero();
+        int minSize = FillerObjectUtil.instanceMinSize();
+        int alignment = ConfigurationValues.getObjectLayout().getAlignment();
+        assert FillerObjectUtil.arrayMinSize() - minSize <= alignment : "all sizes above min instance size must be fillable";
+        return (minSize > alignment) ? Word.unsigned(minSize) : Word.zero();
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/threadLocalAllocBuffer.cpp#L119-L124")

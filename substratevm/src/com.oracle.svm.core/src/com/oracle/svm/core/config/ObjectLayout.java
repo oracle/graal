@@ -273,9 +273,17 @@ public final class ObjectLayout {
         return alignUp(size);
     }
 
+    public int getMinRuntimeHeapInstanceSize() {
+        return getMinInstanceSize(false);
+    }
+
     public int getMinImageHeapInstanceSize() {
+        return getMinInstanceSize(true);
+    }
+
+    private int getMinInstanceSize(boolean withOptionalIdHashField) {
         int unalignedSize = firstFieldOffset; // assumes no always-present "synthetic fields"
-        if (isIdentityHashFieldAtTypeSpecificOffset() || isIdentityHashFieldOptional()) {
+        if (isIdentityHashFieldAtTypeSpecificOffset() || (withOptionalIdHashField && isIdentityHashFieldOptional())) {
             int idHashOffset = NumUtil.roundUp(unalignedSize, Integer.BYTES);
             unalignedSize = idHashOffset + Integer.BYTES;
         }
