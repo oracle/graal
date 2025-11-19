@@ -38,16 +38,13 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
-import com.oracle.svm.util.HostModuleUtil;
-import com.oracle.svm.util.ResolvedJavaModule;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalFeature {
 
-    private static Optional<ResolvedJavaModule> requiredModule() {
-        return ResolvedJavaModuleLayer.boot().findModule("java.net.http");
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("java.net.http");
     }
 
     @Override
@@ -57,7 +54,7 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalF
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HostModuleUtil.addReads(JavaNetHttpFeature.class, requiredModule().get());
+        JavaNetHttpFeature.class.getModule().addReads(requiredModule().get());
     }
 
     @Override
@@ -83,8 +80,8 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalF
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class SimpleWebServerFeature implements InternalFeature {
 
-    private static Optional<ResolvedJavaModule> requiredModule() {
-        return ResolvedJavaModuleLayer.boot().findModule("jdk.httpserver");
+    private static Optional<Module> requiredModule() {
+        return ModuleLayer.boot().findModule("jdk.httpserver");
     }
 
     @Override
@@ -94,7 +91,7 @@ class SimpleWebServerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HostModuleUtil.addReads(SimpleWebServerFeature.class, requiredModule().get());
+        SimpleWebServerFeature.class.getModule().addReads(requiredModule().get());
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtRunTime("sun.net.httpserver.simpleserver", "Allocates InetAddress in class initializers");
