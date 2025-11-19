@@ -82,6 +82,7 @@ import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageEndpoint;
@@ -433,7 +434,7 @@ public abstract class Accessor {
 
         public abstract void assertReturnParityLeave(Node probe, Object polyglotEngine);
 
-        public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
+        public abstract Object toGuestValue(Node node, Object obj);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
 
@@ -841,6 +842,12 @@ public abstract class Accessor {
         public abstract void forEachLoadedRootNode(Object sharingLayer, Consumer<RootNode> rootNodeUpdater);
 
         public abstract Object getSharingLayer(Object languageInstance);
+
+        public abstract Context getContextAPI(Object polyglotContextImpl);
+
+        public abstract AbstractValueDispatch lookupValueCache(Object polyglotContextImpl, Object value);
+
+        public abstract Object getHostLanguageContext(Object internalContext);
 
     }
 

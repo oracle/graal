@@ -907,10 +907,9 @@ abstract class HostExecuteNode extends Node {
     }
 
     private static Object doInvoke(Node node, SingleMethod method, Object obj, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, ToGuestValueNode toGuest) {
-        assert cache == hostContext.getGuestToHostCache();
         assert arguments.length == method.getParameterCount();
-        Object ret = method.invokeGuestToHost(obj, arguments, cache, hostContext, node);
-        return toGuest.execute(node, hostContext, ret);
+        Object ret = method.invokeGuestToHost(hostContext, cache, obj, arguments, node);
+        return toGuest.execute(node, ret);
     }
 
     private static String arrayToStringWithTypes(Object[] args) {

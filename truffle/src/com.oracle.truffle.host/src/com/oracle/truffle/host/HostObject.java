@@ -801,7 +801,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
-            return toGuest.execute(node, receiver.context, val);
+            return toGuest.execute(node, val);
         }
 
         @TruffleBoundary
@@ -825,7 +825,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw receiver.context.hostToGuestException(t);
             }
-            return toGuest.execute(node, receiver.context, hostValue);
+            return toGuest.execute(node, hostValue);
         }
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
@@ -853,7 +853,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
-            return toGuest.execute(node, receiver.context, hostResult);
+            return toGuest.execute(node, hostResult);
         }
 
         @SuppressWarnings("unused")
@@ -2908,7 +2908,7 @@ final class HostObject implements TruffleObject {
                         @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest) {
-            return toGuest.execute(node, receiver.context, arrayIteratorImpl(receiver));
+            return toGuest.execute(node, arrayIteratorImpl(receiver));
         }
 
         @TruffleBoundary
@@ -2929,7 +2929,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw receiver.context.hostToGuestException(t);
             }
-            return toGuest.execute(node, receiver.context, hostValue);
+            return toGuest.execute(node, hostValue);
         }
 
         @SuppressWarnings("unused")
@@ -3010,7 +3010,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw receiver.context.hostToGuestException(t);
             }
-            return toGuest.execute(node, receiver.context, next);
+            return toGuest.execute(node, next);
         }
 
         @SuppressWarnings("unused")
@@ -3125,7 +3125,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw UnknownKeyException.create(key);
             }
-            return toGuest.execute(node, receiver.context, hostResult);
+            return toGuest.execute(node, hostResult);
         }
 
         @SuppressWarnings("unused")
@@ -3276,7 +3276,7 @@ final class HostObject implements TruffleObject {
                 error.enter(node);
                 throw receiver.context.hostToGuestException(t);
             }
-            return toGuest.execute(node, receiver.context, hostValue);
+            return toGuest.execute(node, hostValue);
         }
 
         @SuppressWarnings("unused")
@@ -3773,14 +3773,14 @@ final class HostObject implements TruffleObject {
                         @Cached("field") HostFieldDesc cachedField,
                         @Cached ToGuestValueNode toGuest) {
             Object val = cachedField.get(object.obj);
-            return toGuest.execute(node, object.context, val);
+            return toGuest.execute(node, val);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static Object doUncached(HostFieldDesc field, HostObject object) {
             Object val = field.get(object.obj);
-            return ToGuestValueNodeGen.getUncached().execute(null, object.context, val);
+            return ToGuestValueNodeGen.getUncached().execute(null, val);
         }
     }
 

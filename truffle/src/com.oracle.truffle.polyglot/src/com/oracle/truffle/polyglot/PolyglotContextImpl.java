@@ -554,6 +554,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.volatileStatementCounter.set(statementLimit);
         this.threadLocalActions = new PolyglotThreadLocalActions(this);
 
+        maybeInitializeHostLanguage(contexts);
+
         PolyglotEngineImpl.ensureInstrumentsCreated(config.getConfiguredInstruments());
 
         /*
@@ -594,6 +596,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
+        maybeInitializeHostLanguage(contexts);
     }
 
     void setContextAPIReference(Reference<Context> contextAPI) {
@@ -777,7 +780,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             PolyglotLanguage language = languageIterator.next();
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
-        maybeInitializeHostLanguage(newContexts);
         return newContexts;
     }
 
@@ -2260,22 +2262,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return layer != null ? layer.engine : null;
     }
 
-    Object toGuestValue(Node node, Object hostValue, boolean asValue) {
-        PolyglotEngineImpl localEngine = getConstantEngine(node);
-        PolyglotContextImpl localContext;
-        if (localEngine == null) {
-            localEngine = this.engine;
-            localContext = this;
-        } else {
-            // lookup context as a constant
-            localContext = localEngine.singleContextValue.getConstant();
-            if (localContext == null) {
-                // not a constant use this
-                localContext = this;
-            }
-        }
-        Object value = PolyglotHostAccess.toGuestValue(localContext, hostValue);
-        return localEngine.host.toGuestValue(localContext.getHostContextImpl(), value, asValue);
+    static Object toGuestValue(Node node, Object hostValue, boolean asValue) {
+        PolyglotEngineImpl e = PolyglotFastThreadLocals.getEngine(node);
+        Object value = PolyglotHostAccess.toGuestValue(node, e.getAPIAccess(), hostValue);
+        return e.host.toGuestValue(node, value, asValue);
     }
 
     /**

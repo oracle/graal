@@ -2284,9 +2284,10 @@ public abstract class TruffleLanguage<C> {
          * @param hostObject the host object to convert
          * @since 19.0
          */
+        @SuppressWarnings("static-method")
         public Object asGuestValue(Object hostObject) {
             try {
-                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject, polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

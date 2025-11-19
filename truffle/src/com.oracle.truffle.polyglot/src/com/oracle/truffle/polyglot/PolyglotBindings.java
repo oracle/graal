@@ -99,7 +99,7 @@ final class PolyglotBindings implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         if (languageContext != null) {
-            return context.toGuestValue(null, value, false);
+            return PolyglotContextImpl.toGuestValue(null, value, false);
         } else {
             return context.getAPIAccess().getValueReceiver(value);
         }

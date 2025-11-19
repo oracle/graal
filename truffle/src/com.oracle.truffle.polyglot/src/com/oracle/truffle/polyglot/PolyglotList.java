@@ -337,7 +337,7 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached(inline = true) ToGuestValueNode toGuest,
                             @Cached InlinedBranchProfile error) {
-                Object value = toGuest.execute(node, languageContext, args[ARGUMENT_OFFSET]);
+                Object value = toGuest.execute(node, args[ARGUMENT_OFFSET]);
                 long size = 0;
                 try {
                     size = interop.getArraySize(receiver);
@@ -387,7 +387,7 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                     error.enter(node);
                     throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 }
-                Object value = toGuest.execute(node, languageContext, args[ARGUMENT_OFFSET + 1]);
+                Object value = toGuest.execute(node, args[ARGUMENT_OFFSET + 1]);
                 try {
                     long size = interop.getArraySize(receiver);
                     if (interop.isArrayElementInsertable(receiver, size)) {
@@ -439,7 +439,7 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 assert key instanceof Integer;
                 int index = (int) key;
-                Object value = toGuest.execute(node, languageContext, args[ARGUMENT_OFFSET + 1]);
+                Object value = toGuest.execute(node, args[ARGUMENT_OFFSET + 1]);
                 try {
                     interop.writeArrayElement(receiver, index, value);
                 } catch (InvalidArrayIndexException e) {
