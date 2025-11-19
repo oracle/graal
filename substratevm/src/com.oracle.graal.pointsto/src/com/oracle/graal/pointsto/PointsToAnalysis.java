@@ -265,9 +265,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        if (isSupportedJavaKind(field.getStorageKind())) {
-            field.injectDeclaredType();
-        }
+        field.injectDeclaredType();
     }
 
     /**
@@ -500,7 +498,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            processRootField(field);
+            field.injectDeclaredType();
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -521,22 +519,17 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootField(AnalysisField field) {
         field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
-        processRootField(field);
+        field.injectDeclaredType();
         return field.getType();
-    }
-
-    private void processRootField(AnalysisField field) {
-        if (isSupportedJavaKind(field.getStorageKind())) {
-            field.injectDeclaredType();
-        }
     }
 
     @Override
     public void checkUserLimitations() {
     }
 
+    @Override
     public boolean isSupportedJavaKind(JavaKind javaKind) {
-        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isNumericInteger());
+        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isPrimitive() && !javaKind.isNumericFloat());
     }
 
     @Override

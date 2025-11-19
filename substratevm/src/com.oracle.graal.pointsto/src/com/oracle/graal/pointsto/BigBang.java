@@ -45,6 +45,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -95,6 +96,10 @@ public interface BigBang extends ReachabilityAnalysis {
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
     boolean trackPrimitiveValues();
+
+    default boolean isSupportedJavaKind(JavaKind javaKind) {
+        return javaKind == JavaKind.Object;
+    }
 
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
