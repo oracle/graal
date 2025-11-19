@@ -49,6 +49,7 @@ public final class ModuleNative {
      * {@code Modules::define_module}.
      */
     public static void defineModule(Module module, boolean isOpen, Object[] pns) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         if (Objects.isNull(module)) {
             throw new NullPointerException("Null module object");
         }
@@ -173,6 +174,7 @@ public final class ModuleNative {
     private static final Map<ClassLoader, Set<Module>> definedModules = new HashMap<>();
 
     private static Map<ClassLoader, Set<Module>> getDefinedModules() {
+        SubstrateUtil.guaranteeRuntimeOnly();
         if (definedModules.isEmpty()) {
             for (Module module : ModuleLayer.boot().modules()) {
                 Set<Module> modules = definedModules.get(module.getClassLoader());
@@ -215,7 +217,7 @@ public final class ModuleNative {
     }
 
     private static boolean isModuleDefinedToLoader(ClassLoader loader, String moduleName) {
-        return getDefinedModules().getOrDefault(loader, Set.of()).stream().anyMatch(m -> m.getName().equals(moduleName));
+        return getDefinedModules().getOrDefault(loader, Set.of()).stream().anyMatch(m -> getName(m).equals(moduleName));
     }
 
     private static void addDefinedModule(ClassLoader loader, Module module) {
@@ -230,6 +232,7 @@ public final class ModuleNative {
     }
 
     private static void checkIsPackageContainedInModule(String pn, Module module, String tag) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         if (!module.isNamed() || module.getDescriptor().isOpen()) {
             return;
         }
@@ -241,19 +244,29 @@ public final class ModuleNative {
     private static List<String> getPackagesDefinedToLoader(ClassLoader loader) {
         return getDefinedModules().getOrDefault(loader, Set.of())
                         .stream()
-                        .flatMap(m -> m.getPackages().stream())
+                        .flatMap(m -> getPackages(m).stream())
                         .toList();
     }
 
     private static Object getModuleContainingPackage(ClassLoader loader, String pn) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         return getDefinedModules().getOrDefault(loader, Set.of())
                         .stream()
-                        .filter(m -> m.getPackages().contains(pn))
+                        .filter(m -> getPackages(m).contains(pn))
                         .findFirst().orElse(null);
     }
 
     public static boolean bootLayerContainsModule(String name) {
-        return ModuleLayer.boot().modules().stream().anyMatch(m -> m.getName().equals(name));
+        return ModuleLayer.boot().modules().stream().anyMatch(m -> getName(m).equals(name));
     }
 
+    private static String getName(Module module) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return module.getName();
+    }
+
+    private static Set<String> getPackages(Module module) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return module.getPackages();
+    }
 }
