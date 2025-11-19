@@ -24,24 +24,21 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.configure.ResourcesRegistry;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
-import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
-public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalFeature {
+import jdk.internal.module.Modules;
+
+public class JavaNetHttpFeature implements Feature {
 
     private static Optional<Module> requiredModule() {
         return ModuleLayer.boot().findModule("java.net.http");
@@ -74,11 +71,53 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalF
         RuntimeReflection.registerForReflectiveInstantiation(clazz(a, "jdk.internal.net.http.RedirectFilter"));
         RuntimeReflection.registerForReflectiveInstantiation(clazz(a, "jdk.internal.net.http.CookieFilter"));
     }
+
+    protected static Class<?> clazz(FeatureAccess access, String className) {
+        Class<?> classByName = access.findClassByName(className);
+        if (classByName == null) {
+            throw new RuntimeException(String.format("should not reach here: class %s not found", className));
+        }
+        return classByName;
+    }
+
+    protected static Method method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
+        Class<?> declaringClass = clazz(access, className);
+        try {
+            Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
+            openModule(declaringClass);
+            result.setAccessible(true);
+            return result;
+        } catch (ReflectiveOperationException | LinkageError ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static void openModule(Class<?> declaringClass) {
+        Module namedAccessingModule = null;
+        Module accessingModule = ReflectionUtil.class.getModule();
+        if (accessingModule.isNamed()) {
+            namedAccessingModule = accessingModule;
+        }
+        giveAccess(namedAccessingModule, declaringClass.getModule(), declaringClass.getPackageName());
+    }
+
+    private static void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+        if (accessingModule != null) {
+            if (declaringModule.isOpen(packageName, accessingModule)) {
+                return;
+            }
+            Modules.addOpens(declaringModule, packageName, accessingModule);
+        } else {
+            if (declaringModule.isOpen(packageName)) {
+                return;
+            }
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
+    }
+
 }
 
-@AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
-class SimpleWebServerFeature implements InternalFeature {
+class SimpleWebServerFeature implements Feature {
 
     private static Optional<Module> requiredModule() {
         return ModuleLayer.boot().findModule("jdk.httpserver");
