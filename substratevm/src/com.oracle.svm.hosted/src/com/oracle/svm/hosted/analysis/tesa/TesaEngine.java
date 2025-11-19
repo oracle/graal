@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -84,8 +85,8 @@ public class TesaEngine implements ImageBuildStatistics.TesaPrinter {
         @Option(help = "Enable Transitive Effect Summary Analysis (TESA).")//
         public static final HostedOptionKey<Boolean> TransitiveEffectSummaryAnalysis = new HostedOptionKey<>(true);
 
-        @Option(help = "Print TESA results to the console.")//
-        public static final HostedOptionKey<Boolean> TesaPrintToConsole = new HostedOptionKey<>(true);
+        @Option(help = "Print TESA results to the console. Enabled automatically with assertions.")//
+        public static final HostedOptionKey<Boolean> TesaPrintToConsole = new HostedOptionKey<>(SubstrateUtil.assertionsEnabled());
 
         @Option(help = "Throw an exception if any TESA instance fails to reach a fixed point within the expected number of iterations.")//
         public static final HostedOptionKey<Boolean> TesaThrowOnNonTermination = new HostedOptionKey<>(true);
