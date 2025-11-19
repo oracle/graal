@@ -681,7 +681,13 @@ public final class InterpreterToVM {
     static CFunctionPointer peekAtSVMVTable(Class<?> callTargetClass, Class<?> thisClass, int vTableIndex, boolean isInvokeInterface) {
         DynamicHub callTargetHub = DynamicHub.fromClass(callTargetClass);
         DynamicHub thisHub = DynamicHub.fromClass(thisClass);
-        VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface);
+
+        /*
+         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
+         * interface.
+         */
+        VMError.guarantee(callTargetHub.isInterface() == isInvokeInterface || callTargetClass == Object.class);
+
         int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
         MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
@@ -711,7 +717,12 @@ public final class InterpreterToVM {
         VMError.guarantee(vTable != null);
 
         DynamicHub seedHub = DynamicHub.fromClass(seedClass);
-        VMError.guarantee(isInvokeInterface == seedHub.isInterface());
+
+        /*
+         * invokeinterface can be on a j.l.Object method, otherwise the seedClass must be an
+         * interface.
+         */
+        VMError.guarantee(seedHub.isInterface() == isInvokeInterface || seedClass == Object.class);
 
         int idx;
         if (SubstrateOptions.useClosedTypeWorldHubLayout() || !seedHub.isInterface()) {
