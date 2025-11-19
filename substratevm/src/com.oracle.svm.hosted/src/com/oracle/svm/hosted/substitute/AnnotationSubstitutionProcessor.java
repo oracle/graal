@@ -98,6 +98,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * The main substitution processor for Native Image. The annotations supported by this processor
@@ -965,12 +966,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    public static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
+    public static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, Object context) {
         if (targetElementAnnotation == null) {
             return true;
         }
 
-        return SVMHost.evaluateOnlyWith(targetElementAnnotation.onlyWith(), annotatedElement.toString(), originalClass);
+        return SVMHost.evaluateOnlyWith(targetElementAnnotation.onlyWith(), context.toString(), originalClass);
     }
 
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
@@ -1237,11 +1238,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return AnnotationAccess.getAnnotation(element, annotationClass);
     }
 
-    protected static String deleteErrorMessage(AnnotatedElement element, Delete deleteAnnotation, boolean hosted) {
+    protected static String deleteErrorMessage(Annotated element, Delete deleteAnnotation, boolean hosted) {
         return deleteErrorMessage(element, deleteAnnotation.value(), hosted);
     }
 
-    public static String deleteErrorMessage(AnnotatedElement element, String message, boolean hosted) {
+    public static String deleteErrorMessage(Annotated element, String message, boolean hosted) {
         StringBuilder result = new StringBuilder();
         result.append("Unsupported ");
         if (element instanceof ResolvedJavaField) {

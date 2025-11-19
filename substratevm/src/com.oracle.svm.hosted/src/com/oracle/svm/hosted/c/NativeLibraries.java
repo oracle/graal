@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import java.io.IOException;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,7 +47,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -96,6 +94,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 public final class NativeLibraries {
 
@@ -541,7 +540,7 @@ public final class NativeLibraries {
         return result;
     }
 
-    private static Object unwrap(AnnotatedElement e) {
+    private static Object unwrap(Annotated e) {
         Object element = e;
         assert element instanceof ResolvedJavaType || element instanceof ResolvedJavaMethod;
         while (element instanceof WrappedElement) {
@@ -551,13 +550,13 @@ public final class NativeLibraries {
         return element;
     }
 
-    public void registerElementInfo(AnnotatedElement e, ElementInfo elementInfo) {
+    public void registerElementInfo(Annotated e, ElementInfo elementInfo) {
         Object element = unwrap(e);
         assert !elementToInfo.containsKey(element);
         elementToInfo.put(element, elementInfo);
     }
 
-    public ElementInfo findElementInfo(AnnotatedElement element) {
+    public ElementInfo findElementInfo(Annotated element) {
         Object element1 = unwrap(element);
         ElementInfo result = elementToInfo.get(element1);
         if (result == null && element1 instanceof ResolvedJavaType && ((ResolvedJavaType) element1).getInterfaces().length == 1) {
@@ -586,7 +585,7 @@ public final class NativeLibraries {
     }
 
     public CLibrary getCLibrary(ResolvedJavaMethod method) {
-        CLibrary cLibrary = AnnotationAccess.getAnnotation(method, CLibrary.class);
+        CLibrary cLibrary = AnnotationUtil.getAnnotation(method, CLibrary.class);
         if (cLibrary == null) {
             return getCLibrary(method.getDeclaringClass());
         }
@@ -594,7 +593,7 @@ public final class NativeLibraries {
     }
 
     public CLibrary getCLibrary(ResolvedJavaType type) {
-        CLibrary cLibrary = AnnotationAccess.getAnnotation(type, CLibrary.class);
+        CLibrary cLibrary = AnnotationUtil.getAnnotation(type, CLibrary.class);
         if (cLibrary != null) {
             return cLibrary;
         } else if (type.getEnclosingType() != null) {

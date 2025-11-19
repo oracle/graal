@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Method;
 import java.util.Objects;
+import java.util.function.Function;
+
+import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * Fallback implementation of {@link ResolvedJavaPackage} based on {@link Package}.
@@ -53,7 +58,37 @@ final class ResolvedJavaPackageImpl implements ResolvedJavaPackage {
     }
 
     @Override
+    public String toString() {
+        return originalPackage.toString();
+    }
+
+    @Override
     public String getImplementationVersion() {
         return originalPackage.getImplementationVersion();
+    }
+
+    @Override
+    public <T> T getDeclaredAnnotationInfo(Function<AnnotationsInfo, T> parser) {
+        if (parser == null) {
+            return null;
+        }
+        Annotated packageInfo = getAnnotatedPackageInfo();
+        return packageInfo == null ? parser.apply(null) : packageInfo.getDeclaredAnnotationInfo(parser);
+    }
+
+    private static final Method getPackageInfoMethod = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
+
+    private Annotated getAnnotatedPackageInfo() {
+        Class<?> c = ReflectionUtil.invokeMethod(getPackageInfoMethod, originalPackage);
+        if (c.getName().endsWith(".package-info")) {
+            return GraalAccess.lookupType(c);
+        }
+        return null;
+    }
+
+    @Override
+    public AnnotationsInfo getTypeAnnotationInfo() {
+        Annotated packageInfo = getAnnotatedPackageInfo();
+        return packageInfo == null ? null : packageInfo.getTypeAnnotationInfo();
     }
 }

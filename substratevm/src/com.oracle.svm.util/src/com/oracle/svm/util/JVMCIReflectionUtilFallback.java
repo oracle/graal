@@ -41,7 +41,8 @@ final class JVMCIReflectionUtilFallback {
     }
 
     static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
-        return new ResolvedJavaPackageImpl(getJavaClass(type).getPackage());
+        Package pkg = getJavaClass(type).getPackage();
+        return pkg == null ? null : new ResolvedJavaPackageImpl(pkg);
     }
 
     static ResolvedJavaModule getModule(ResolvedJavaType declaringClass) {

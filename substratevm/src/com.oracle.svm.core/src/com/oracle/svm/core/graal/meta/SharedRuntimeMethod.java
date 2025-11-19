@@ -30,6 +30,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * The method interface used at runtime.
@@ -54,4 +57,14 @@ public interface SharedRuntimeMethod extends SharedMethod {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getImageCodeDeoptOffset();
+
+    @Override
+    default AnnotationsInfo getParameterAnnotationInfo() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    default AnnotationsInfo getAnnotationDefaultInfo() {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
 }

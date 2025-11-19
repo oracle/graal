@@ -43,7 +43,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -66,6 +65,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.vtable.PartialMethod;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.word.Word;
@@ -78,6 +78,7 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 /**
  * Encapsulates resolved methods used under close-world assumptions, compiled and interpretable, but
@@ -326,7 +327,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         if (isSubstitutedNative) {
             newModifiers |= ACC_SUBSTITUTED_NATIVE;
         }
-        if (AnnotationAccess.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
+        if (AnnotationUtil.isAnnotationPresent(originalMethod, CALLER_SENSITIVE_CLASS)) {
             newModifiers |= ACC_CALLER_SENSITIVE;
         }
         return newModifiers;
@@ -746,11 +747,6 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public final Annotation[][] getParameterAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
     public final Type[] getGenericParameterTypes() {
         throw VMError.intentionallyUnimplemented();
     }
@@ -786,17 +782,12 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public AnnotationsInfo getParameterAnnotationInfo() {
         throw VMError.intentionallyUnimplemented();
     }
 
     @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
+    public AnnotationsInfo getAnnotationDefaultInfo() {
         throw VMError.intentionallyUnimplemented();
     }
 

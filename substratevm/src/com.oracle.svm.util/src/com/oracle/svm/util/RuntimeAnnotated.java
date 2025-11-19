@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.meta;
+package com.oracle.svm.util;
 
-import jdk.vm.ci.meta.annotation.AbstractAnnotated;
+import java.lang.annotation.Annotation;
+
 import jdk.vm.ci.meta.annotation.Annotated;
-import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class HostedElement extends AbstractAnnotated {
-
-    protected abstract Annotated getWrapped();
-
-    @Override
-    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
-        return getWrapped().getDeclaredAnnotationInfo(null);
-    }
+/**
+ * An annotated element that can return {@link Annotation}s at Native Image runtime..
+ */
+public interface RuntimeAnnotated extends Annotated {
+    /**
+     * Returns this element's annotation for the specified type if such an annotation is
+     * <em>present</em>, else null.
+     *
+     * @param <T> the type of the annotation to query for and return if present
+     * @param annotationClass the Class object corresponding to the annotation type
+     * @return this element's annotation for the specified annotation type if present on this
+     *         element, else null
+     * @throws NullPointerException if the given annotation class is null
+     */
+    <T extends Annotation> T getAnnotation(Class<T> annotationClass);
 }

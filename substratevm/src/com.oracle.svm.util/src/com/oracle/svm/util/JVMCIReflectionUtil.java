@@ -239,6 +239,10 @@ public final class JVMCIReflectionUtil {
         return (dot != -1) ? cn.substring(0, dot).intern() : "";
     }
 
+    /**
+     * Gets the package enclosing {@code type} or null if {@code type} represents an array type, a
+     * primitive type or void.
+     */
     public static ResolvedJavaPackage getPackage(ResolvedJavaType type) {
         return JVMCIReflectionUtilFallback.getPackage(type);
     }

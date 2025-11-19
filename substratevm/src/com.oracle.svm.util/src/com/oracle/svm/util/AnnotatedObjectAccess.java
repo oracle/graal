@@ -47,9 +47,7 @@ import jdk.graal.compiler.annotation.MissingType;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashMap;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
@@ -84,9 +82,6 @@ public class AnnotatedObjectAccess {
         return null;
     }
 
-    /**
-     * Gets the annotation of type {@code annotationType} from {@code annotated}.
-     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static AnnotationValue toAnnotationValue(Annotation annotation) {
         ResolvedJavaType type = GraalAccess.lookupType(annotation.annotationType());
@@ -421,22 +416,21 @@ public class AnnotatedObjectAccess {
     };
 
     /**
-     * Gets the annotation values associated with the parameters of {@code element}.
+     * Gets the annotation values associated with the parameters of {@code method}.
      *
-     * @param element the annotated element to retrieve parameter annotation values from
+     * @param method the annotated method to retrieve parameter annotation values from
      * @return a list of lists, where each inner list contains the annotation values for a single
-     *         parameter of the annotated element, or an empty list if the element has no parameters
-     *         or no annotations
+     *         parameter of the annotated method, or null if the method has no annotated parameters
      */
-    public List<List<AnnotationValue>> getParameterAnnotationValues(Annotated element) {
-        Annotated root = unwrap(element, null);
-        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : List.of();
+    public List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+        Annotated root = unwrap(method, null);
+        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : null;
     }
 
     private static List<List<AnnotationValue>> getParameterAnnotationValuesFromRoot(ResolvedJavaMethod rootElement) {
         try {
-            List<List<AnnotationValue>> parameterAnnotationValues = AnnotationValueSupport.getParameterAnnotationValues(rootElement);
-            return parameterAnnotationValues == null ? List.of() : parameterAnnotationValues;
+            var parsed = AnnotationValueSupport.getParameterAnnotationValues(rootElement);
+            return parsed == null ? null : parsed.values();
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return List.of(List.of(new AnnotationValue(new AnnotationFormatError(e))));
         } catch (AnnotationFormatError e) {
@@ -457,15 +451,7 @@ public class AnnotatedObjectAccess {
 
     private static List<TypeAnnotationValue> getTypeAnnotationValuesFromRoot(Annotated rootElement) {
         try {
-            return switch (rootElement) {
-                case ResolvedJavaType type -> AnnotationValueSupport.getTypeAnnotationValues(type);
-                case ResolvedJavaMethod method -> AnnotationValueSupport.getTypeAnnotationValues(method);
-                case ResolvedJavaField field -> AnnotationValueSupport.getTypeAnnotationValues(field);
-                case ResolvedJavaRecordComponent recordComponent ->
-                    AnnotationValueSupport.getTypeAnnotationValues(recordComponent);
-                default ->
-                    throw new AnnotatedObjectAccessError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
-            };
+            return AnnotationValueSupport.getTypeAnnotationValues(rootElement);
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return List.of(new TypeAnnotationValue(new AnnotationFormatError(e)));
         } catch (AnnotationFormatError e) {

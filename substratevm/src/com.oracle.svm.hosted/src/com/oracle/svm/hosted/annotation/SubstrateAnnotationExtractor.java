@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.hosted.annotation;
 
+import static com.oracle.svm.util.GraalAccess.toAnnotated;
+
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.RecordComponent;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -42,13 +39,9 @@ import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotatedObjectAccess;
-import com.oracle.svm.util.AnnotatedObjectAccessError;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
-import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * This class wraps all annotation accesses during the Native Image build. It relies on
@@ -90,45 +83,6 @@ public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implemen
              * references types missing from the classpath.
              */
             return false;
-        }
-    }
-
-    private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
-
-    public static Annotated toAnnotated(AnnotatedElement element) {
-        switch (element) {
-            case null -> {
-                return null;
-            }
-            case Annotated annotated -> {
-                return annotated;
-            }
-            case Class<?> clazz -> {
-                return GraalAccess.lookupType(clazz);
-            }
-            case Executable executable -> {
-                return GraalAccess.lookupMethod(executable);
-            }
-            case Field field -> {
-                return GraalAccess.lookupField(field);
-            }
-            case RecordComponent rc -> {
-                return GraalAccess.lookupRecordComponent(rc);
-            }
-            case Package packageObject -> {
-                try {
-                    return GraalAccess.lookupType((Class<?>) packageGetPackageInfo.invoke(packageObject));
-                } catch (InvocationTargetException e) {
-                    Throwable targetException = e.getTargetException();
-                    if (targetException instanceof LinkageError) {
-                        throw (LinkageError) targetException;
-                    }
-                    throw new AnnotatedObjectAccessError(element, e);
-                } catch (IllegalAccessException e) {
-                    throw new AnnotatedObjectAccessError(element, e);
-                }
-            }
-            default -> throw new AnnotatedObjectAccessError(element, (Throwable) null);
         }
     }
 

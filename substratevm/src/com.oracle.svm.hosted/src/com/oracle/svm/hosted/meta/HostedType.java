@@ -586,7 +586,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+        return wrapped.getRecordComponents();
     }
 
     @Override

@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.util;
 
+import jdk.vm.ci.meta.annotation.Annotated;
+
 /**
  * JVMCI equivalent to {@link Package}. Do not compare with {@code ==}, use {@code #equals(Object)}
  * instead.
  */
-public interface ResolvedJavaPackage {
+public interface ResolvedJavaPackage extends Annotated {
     /**
      * Return the version of this implementation. See
      * {@link java.lang.Package#getImplementationVersion()}.

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.List;
 
@@ -336,21 +335,6 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
 
     @Override
     public final boolean isCloneableWithAllocation() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
         throw VMError.intentionallyUnimplemented();
     }
 
