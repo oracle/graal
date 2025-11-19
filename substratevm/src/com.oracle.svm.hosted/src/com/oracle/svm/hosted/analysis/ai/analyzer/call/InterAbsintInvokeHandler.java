@@ -9,6 +9,8 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -17,8 +19,12 @@ import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.*;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Inter-procedural invoke handler using per-call context and summary caching.
@@ -28,6 +34,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     private final CallStack methodStack;
     private final SummaryManager<Domain> summaryManager;
     private final SummaryRepository<Domain> summaryRepository;
+    private final Map<AnalysisMethod, Map<String, Summary<Domain>>> memo = new HashMap<>();
 
     public InterAbsintInvokeHandler(
             Domain initialDomain,
@@ -45,12 +52,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     public AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         Invoke invoke = invokeInput.invoke();
-
-        // Prefer callerMethod from input; fall back to current stack top.
         AnalysisMethod current = invokeInput.callerMethod() != null ? invokeInput.callerMethod() : methodStack.getCurrentAnalysisMethod();
-        if (current == null) {
-            return AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
-        }
 
         AnalysisMethod targetAnalysisMethod;
         try {
@@ -60,27 +62,25 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
+        logger.log("Handling invoke of method:  " + targetAnalysisMethod.getName(), LoggerVerbosity.DEBUG);
 
         AbstractState<Domain> callerState = invokeInput.callerState();
-        // Use already evaluated argument domains from InvokeInput (Phase 1 integration)
-        List<Domain> actualArgDomains = invokeInput.actualArgDomains();
-
-        // Pre-condition for summary may be caller pre at invoke node
+        var argDomains = invokeInput.actualArgDomains();
         Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
-        Summary<Domain> summary = summaryManager.createSummary(invoke, callerPreAtInvoke, actualArgDomains);
 
-        String ctxSig = CallContextHolder.buildKCFASignature(methodStack.getCallStack(), 2);
-        ContextKey calleeKey = new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), methodStack.getDepth());
-        MethodSummary<Domain> methodSummary = summaryRepository.getOrCreate(targetAnalysisMethod);
-        methodSummary.getOrCreate(calleeKey, summary.getPreCondition());
+
+        Summary<Domain> early = summaryManager.summaryFactory().tryCreateEarlySummary(invoke, callerPreAtInvoke, argDomains);
+        if (early != null && early.isComplete()) {
+            logger.log("Early summary applied for invoke: " + invoke, LoggerVerbosity.SUMMARY);
+            summaryManager.putSummary(targetAnalysisMethod, early);
+            return AnalysisOutcome.ok(early);
+        }
+
+        Summary<Domain> summary = summaryManager.createSummary(invoke, callerPreAtInvoke, argDomains);
 
         if (summaryManager.containsSummary(targetAnalysisMethod, summary)) {
             logger.log("Summary cache contains targetMethod: " + targetAnalysisMethod, LoggerVerbosity.SUMMARY);
             Summary<Domain> completeSummary = summaryManager.getSummary(targetAnalysisMethod, summary);
-            ContextSummary<Domain> ctxSummary = methodSummary.get(calleeKey);
-            if (ctxSummary != null && completeSummary.getPostCondition() != null) {
-                ctxSummary.updateWith(completeSummary.getPostCondition(), null);
-            }
             return AnalysisOutcome.ok(completeSummary);
         }
 
@@ -99,7 +99,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         methodStack.push(targetAnalysisMethod);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
-            fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
+            fixpointIterator.getIteratorContext().setCallContextSignature("depth" + methodStack.getDepth());
             fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
             logger.log("The current call stack: " + methodStack, LoggerVerbosity.INFO);
             AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
@@ -135,11 +135,20 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     }
 
     private AnalysisMethod getInvokeTargetAnalysisMethod(AnalysisMethod root, Invoke invoke) {
+        ResolvedJavaMethod invokeTarget = invoke.getTargetMethod();
         for (InvokeInfo invokeInfo : root.getInvokes()) {
-            if (invoke.getTargetMethod().equals(invokeInfo.getTargetMethod())) {
+            ResolvedJavaMethod candidate = invokeInfo.getTargetMethod().wrapped;
+            if (sameMethod(invokeTarget, candidate)) {
                 return invokeInfo.getTargetMethod();
             }
         }
-        throw AnalysisError.interruptAnalysis(invoke + " not found in: " + root);
+        return null;
+    }
+
+    private boolean sameMethod(ResolvedJavaMethod a, ResolvedJavaMethod b) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        return a.getName().equals(b.getName()) &&
+                a.getSignature().toMethodDescriptor().equals(b.getSignature().toMethodDescriptor()) &&
+                a.getDeclaringClass().toJavaName().equals(b.getDeclaringClass().toJavaName());
     }
 }

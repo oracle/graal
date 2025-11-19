@@ -15,7 +15,6 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
     private final SummaryFactory<Domain> summaryFactory;
-    // TODO: these constants should be configurable via the builder, currently they are hardcoded
     private final int maxRecursionDepth;
     private static final int DEFAULT_MAX_RECURSION_DEPTH = 32;
 
@@ -33,7 +32,6 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
-
         private final SummaryFactory<Domain> summaryFactory;
         private int maxRecursionDepth = DEFAULT_MAX_RECURSION_DEPTH;
 

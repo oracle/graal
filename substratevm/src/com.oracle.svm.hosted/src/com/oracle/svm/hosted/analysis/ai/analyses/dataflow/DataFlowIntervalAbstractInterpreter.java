@@ -91,35 +91,61 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (source instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
             if (cond instanceof IntegerLessThanNode itn) {
+                // compute feasibility from current intervals
+                IntInterval ix = getNodeResultInterval(itn.getX(), post);
+                IntInterval iy = getNodeResultInterval(itn.getY(), post);
+                boolean defTrue = !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower();
+                boolean defFalse = !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper();
+
                 if (target.equals(ifNode.trueSuccessor())) {
+                    if (defFalse) {
+                        // skip infeasible true edge
+                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y is definitely false): " + source + " -> " + target,
+                                LoggerVerbosity.DEBUG);
+                        return;
+                    }
                     AbstractMemory narrowed = narrowOnLessThan(post, itn, true);
                     abstractState.getPreCondition(target).joinWith(narrowed);
                     return;
                 } else if (target.equals(ifNode.falseSuccessor())) {
+                    if (defTrue) {
+                        // skip infeasible false edge
+                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y is definitely true): " + source + " -> " + target,
+                                LoggerVerbosity.DEBUG);
+                        return;
+                    }
                     AbstractMemory narrowed = narrowOnLessThan(post, itn, false);
                     abstractState.getPreCondition(target).joinWith(narrowed);
                     return;
                 }
-            } else if (cond instanceof IntegerEqualsNode eq) {
-                if (target.equals(ifNode.trueSuccessor())) {
-                    AbstractMemory narrowed = narrowOnEquals(post, eq, true);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                } else if (target.equals(ifNode.falseSuccessor())) {
-                    AbstractMemory narrowed = narrowOnEquals(post, eq, false);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                }
             } else if (cond instanceof IntegerBelowNode ib) {
+                IntInterval ix = getNodeResultInterval(ib.getX(), post);
+                IntInterval iy = getNodeResultInterval(ib.getY(), post);
+                boolean nonNeg = isNonNegative(ix) && isNonNegative(iy);
+                boolean defTrue = nonNeg && !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower();
+                boolean defFalse = nonNeg && !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper();
+
                 if (target.equals(ifNode.trueSuccessor())) {
+                    if (defFalse) {
+                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y (below) definitely false): " + source + " -> " + target,
+                                LoggerVerbosity.DEBUG);
+                        return;
+                    }
                     AbstractMemory narrowed = narrowOnBelow(post, ib, true);
                     abstractState.getPreCondition(target).joinWith(narrowed);
                     return;
                 } else if (target.equals(ifNode.falseSuccessor())) {
+                    if (defTrue) {
+                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y (below) definitely true): " + source + " -> " + target,
+                                LoggerVerbosity.DEBUG);
+                        return;
+                    }
                     AbstractMemory narrowed = narrowOnBelow(post, ib, false);
                     abstractState.getPreCondition(target).joinWith(narrowed);
                     return;
                 }
+            } else if (cond instanceof IntegerEqualsNode eq) {
+                // Optional: can add pruning for equals if desired
             } else if (cond instanceof IsNullNode isNull) {
                 AbstractMemory narrowed = post.copyOf();
                 IntInterval bool = target.equals(ifNode.trueSuccessor()) ? new IntInterval(1, 1) : new IntInterval(0, 0);
@@ -245,6 +271,13 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("Executing node: " + node + " with pre-condition: " + pre, LoggerVerbosity.INFO);
 
+        if (pre.isBot()) {
+            // Unreachable node: propagate bottom directly
+            abstractState.setPostCondition(node, pre.copyOf());
+            logger.log("Node unreachable (⊥), skipping semantics: " + node, LoggerVerbosity.DEBUG);
+            return;
+        }
+
         AbstractMemory post = pre.copyOf();
         if (node instanceof StoreFieldNode sfn) {
             AbstractMemory afterVal = evalNode(sfn.value(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
@@ -352,38 +385,60 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             AccessPath root = AccessPath.forAllocSite(aid);
             post.bindTempByName(nodeId(nan), root);
         } else if (node instanceof Invoke inv) {
+            var invokeLogger = AbstractInterpretationLogger.getInstance();
+            invokeLogger.log("[InvokeEval] Enter invoke node: " + inv + ", targetMethod=" + (inv.callTarget() != null ? inv.callTarget().targetMethod() : "<null>") +
+                    ", preMemory=" + post, LoggerVerbosity.DEBUG);
             if (invokeCallBack != null) {
                 List<Node> args = new ArrayList<>(inv.callTarget().arguments());
                 AbstractMemory afterArgs = post.copyOf();
                 List<AbstractMemory> argDomains = new ArrayList<>(args.size());
+                List<IntInterval> argIntervals = new ArrayList<>(args.size());
+
                 for (Node arg : args) {
                     afterArgs = evalNode(arg, afterArgs, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
                     abstractState.setPostCondition(arg, afterArgs.copyOf());
-                    // For interval + memory domain, we treat the whole memory state as the domain slice
                     argDomains.add(afterArgs.copyOf());
+                    IntInterval ai = getNodeResultInterval(arg, afterArgs);
+                    argIntervals.add(ai);
                 }
-                // Attempt to fetch caller AnalysisMethod from iteratorContext if provided
-                var callerMethod = (iteratorContext != null) ? iteratorContext.getCurrentAnalysisMethod().orElse(null) : null;
+
+                invokeLogger.log("[InvokeEval] Collected argument intervals: " + argIntervals, LoggerVerbosity.DEBUG);
+                var callerMethod = iteratorContext.getCurrentAnalysisMethod();
                 InvokeInput<AbstractMemory> input = InvokeInput.of(callerMethod, abstractState, inv, args, argDomains);
                 var outcome = invokeCallBack.handleInvoke(input);
-                if (outcome != null && outcome.isError()) {
+
+                if (outcome == null) {
+                    invokeLogger.log("[InvokeEval] Invoke outcome is null, binding TOP.", LoggerVerbosity.DEBUG);
+                    IntInterval top = new IntInterval();
+                    top.setToTop();
+                    bindNodeResult(inv.asNode(), top, post);
+                } else if (outcome.isError()) {
+                    invokeLogger.log("[InvokeEval] Invoke outcome indicates ERROR: " + outcome + ", setting whole memory TOP.", LoggerVerbosity.DEBUG);
                     post.setToTop();
-                } else if (outcome != null && outcome.summary() != null) {
-                    // Extract return value from callee summary post-condition (convention: local "ret")
+                    IntInterval top = new IntInterval();
+                    top.setToTop();
+                    bindNodeResult(inv.asNode(), top, post);
+                } else if (outcome.summary() != null) {
                     Summary<AbstractMemory> sum = outcome.summary();
                     AbstractMemory calleePost = sum.getPostCondition();
                     IntInterval retVal = calleePost.readStore(AccessPath.forLocal("ret"));
+
                     if (retVal == null) {
                         retVal = new IntInterval();
                         retVal.setToTop();
+                        invokeLogger.log("[InvokeEval] Summary found but return value missing; using TOP.", LoggerVerbosity.DEBUG);
+                    } else {
+                        invokeLogger.log("[InvokeEval] Summary return interval: " + retVal, LoggerVerbosity.DEBUG);
                     }
                     bindNodeResult(inv.asNode(), retVal, post);
                 } else {
+                    invokeLogger.log("[InvokeEval] Outcome without summary; binding TOP.", LoggerVerbosity.DEBUG);
                     IntInterval top = new IntInterval();
                     top.setToTop();
                     bindNodeResult(inv.asNode(), top, post);
                 }
             } else {
+                invokeLogger.log("[InvokeEval] No invokeCallBack registered; binding TOP.", LoggerVerbosity.DEBUG);
                 IntInterval top = new IntInterval();
                 top.setToTop();
                 bindNodeResult(inv.asNode(), top, post);
@@ -400,11 +455,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             Set<Node> evalStack = new HashSet<>();
             for (Node usage : merge.usages()) {
                 if (usage instanceof PhiNode phi) {
-                    var logger2 = AbstractInterpretationLogger.getInstance();
-                    logger2.log("Printing inputs of phiNode: " + phi, LoggerVerbosity.INFO);
-                    for (Node input : phi.inputs()) {
-                        logger2.log("  Phi input: " + input, LoggerVerbosity.INFO);
-                    }
                     post.joinWith(evalNode(phi, post, abstractState, invokeCallBack, evalStack, iteratorContext));
                 }
             }
@@ -412,11 +462,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             Node cond = ifNode.condition();
             post = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
         }
-//        else if (node instanceof Invoke invoke) {
-//            if (invoke instanceof InvokeNode invokeNode) {
-//                invokeNode.
-//            }
-//        }
+
         logger.log("Computed post-condition: " + post + " for node: " + node, LoggerVerbosity.INFO);
         abstractState.setPostCondition(node, post);
     }
@@ -517,9 +563,11 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         AccessPath root = AccessPath.forLocal(pname);
         mem.bindParamByName(pname, root);
         mem.bindTempByName(nodeId(pn), root);
-        IntInterval top = new IntInterval();
-        top.setToTop();
-        mem.writeStore(root, top);
+        if (!mem.hasStoreEntry(root)) {
+            IntInterval top = new IntInterval();
+            top.setToTop();
+            mem.writeStoreStrong(root, top);
+        }
         return mem;
     }
 
@@ -528,7 +576,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                                        InvokeCallBack<AbstractMemory> invokeCallBack,
                                        Set<Node> evalStack, IteratorContext iteratorContext) {
         var logger = AbstractInterpretationLogger.getInstance();
-
         AbstractMergeNode merge = phi.merge();
         HIRBlock phiBlock = (iteratorContext != null) ? iteratorContext.getBlockForNode(merge) : null;
         HIRBlock currentBlock = (iteratorContext != null) ? iteratorContext.getCurrentBlock() : null;
@@ -965,8 +1012,14 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             }
         }
 
-        AccessPath p = AccessPath.forLocal(nid);
-        IntInterval result = mem.readStore(p);
+        AccessPath mapped = mem.lookupTempByName(nid);
+        IntInterval result;
+        if (mapped != null) {
+            result = mem.readStore(mapped);
+        } else {
+            AccessPath p = AccessPath.forLocal(nid);
+            result = mem.readStore(p);
+        }
 
         logger.log("        getNodeResultInterval: node " + node + " (id=" + nid + ") = " + result, LoggerVerbosity.DEBUG);
         return result;
