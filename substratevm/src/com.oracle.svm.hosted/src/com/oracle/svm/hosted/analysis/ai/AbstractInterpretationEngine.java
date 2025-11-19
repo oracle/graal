@@ -57,6 +57,8 @@ public class AbstractInterpretationEngine {
         for (var analyzer : analyzerManager.getAnalyzers()) {
             executeAnalyzer(analyzer, analyzerMode);
         }
+
+        logger.close();
     }
 
     private void executeAnalyzer(Analyzer<?> analyzer, AnalyzerMode analyzerMode) {

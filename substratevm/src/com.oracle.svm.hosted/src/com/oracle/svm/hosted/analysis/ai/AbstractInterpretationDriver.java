@@ -4,7 +4,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
+import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
+import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.InterDataFlowIntervalAnalyzerWrapper;
+import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.intra.IntraDataFlowIntervalAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
+import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
@@ -14,6 +18,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
@@ -24,7 +29,7 @@ import java.util.Optional;
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
  * The most important component of the framework is the {@link AnalyzerManager}, which manages all registered analyzers
- * and coordinates their execution on the program being analyzed.
+ * and coordinates their execram being analyzed.
  * The actual analysis is performed by the {@link AbstractInterpretationEngine},
  * which uses the registered analyzers to analyze the program.
  */
@@ -75,15 +80,24 @@ public class AbstractInterpretationDriver {
         DataFlowIntervalAbstractInterpreter interpreter =
                 new DataFlowIntervalAbstractInterpreter();
 
-        /* 3. Build analyzer */
-        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
+        /* 3. Example of building an intraprocedural analyzer */
+//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
+//                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
+//                .registerChecker(new ConstantValueChecker())
+//                .registerChecker(new IndexSafetyChecker())
+//                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+//                .build();
+
+        /* 4. Example of building an interprocedural analyzer */
+        SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
+        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IndexSafetyChecker())
-                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+                .maxRecursionDepth(32)
                 .build();
 
-        /* 4. Register with manager */
-        analyzerManager.registerAnalyzer(intraDataFlowAnalyzer);
+        /* 5. Register with manager */
+        analyzerManager.registerAnalyzer(interDataFlowAnalyzer);
     }
 }

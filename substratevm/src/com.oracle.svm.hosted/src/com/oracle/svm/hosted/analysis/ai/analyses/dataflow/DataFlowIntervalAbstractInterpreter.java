@@ -271,13 +271,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("Executing node: " + node + " with pre-condition: " + pre, LoggerVerbosity.INFO);
 
-        if (pre.isBot()) {
-            // Unreachable node: propagate bottom directly
-            abstractState.setPostCondition(node, pre.copyOf());
-            logger.log("Node unreachable (⊥), skipping semantics: " + node, LoggerVerbosity.DEBUG);
-            return;
-        }
-
         AbstractMemory post = pre.copyOf();
         if (node instanceof StoreFieldNode sfn) {
             AbstractMemory afterVal = evalNode(sfn.value(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);

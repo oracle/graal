@@ -21,24 +21,22 @@ import java.util.Set;
  * - meet: intersection of env/store keys; env keeps mapping only when equal; store meets intervals
  */
 public class AbstractMemory implements AbstractDomain<AbstractMemory> {
-
+    /* FIXME: we need to take a look at isBot and isTop and find a better way) */
     private boolean isBot;
     private boolean isTop;
     private final Map<Var, AccessPath> env;
     private final Map<AccessPath, IntInterval> store;
-
-    // Additional may-alias environment for multi-root bindings
     private final Map<Var, AliasSet> envMulti = new HashMap<>();
 
     public AbstractMemory() {
-        this.isBot = false;
+        this.isBot = true;
         this.isTop = false;
         this.env = new HashMap<>();
         this.store = new HashMap<>();
     }
 
     public AbstractMemory(Map<Var, AccessPath> env, Map<AccessPath, IntInterval> store) {
-        this.isBot = false;
+        this.isBot = true;
         this.isTop = false;
         this.env = new HashMap<>(env);
         this.store = new HashMap<>(store);
@@ -478,5 +476,9 @@ public class AbstractMemory implements AbstractDomain<AbstractMemory> {
 
     public AliasSet lookupTempSetByName(String tempName) {
         return lookupVarSet(Var.temp(tempName));
+    }
+
+    public boolean hasStoreEntry(AccessPath p) {
+        return store.containsKey(p);
     }
 }

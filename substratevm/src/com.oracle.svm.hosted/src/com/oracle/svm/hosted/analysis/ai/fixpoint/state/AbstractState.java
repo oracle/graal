@@ -119,10 +119,23 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
      */
     public Domain getReturnDomain() {
         Domain returnDomain = initialDomain.copyOf();
+        // Start with bottom so that first join adopts reachable return; if initialDomain is not bottom explicitly set.
+        if (!returnDomain.isBot()) {
+            returnDomain.setToBot();
+        }
         for (Node node : stateMap.keySet()) {
-            if (node instanceof ReturnNode){
+            if (node instanceof ReturnNode) {
+                Domain pre = getPreCondition(node);
+                if (pre != null && pre.isBot()) {
+                    // unreachable return -> skip
+                    continue;
+                }
                 returnDomain.joinWith(getPostCondition(node));
             }
+        }
+        // If no reachable returns joined, fall back to initialDomain (sound over-approximation)
+        if (returnDomain.isBot()) {
+            returnDomain.joinWith(initialDomain);
         }
         return returnDomain;
     }

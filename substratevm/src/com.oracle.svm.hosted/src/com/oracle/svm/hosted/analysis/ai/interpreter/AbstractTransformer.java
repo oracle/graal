@@ -8,6 +8,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -64,10 +66,8 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         for (int i = 0; i < predCount; i++) {
             HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
             Node predecessor = graphTraversalHelper.getEndNode(predBlock);
-
             context.setEdgeTraversal(predBlock, currentBlock);
             logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
-
             if (predecessor != null) {
                 analyzeEdge(predecessor, node, abstractState, context);
             }
@@ -85,21 +85,40 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         logger.log("Analyzing block: " + block, LoggerVerbosity.DEBUG);
 
         Node previousNode = null;
+        Node first = block.getBeginNode();
+
+        if (context.shouldCollectPredecessors(first)) {
+            collectInvariantsFromCfgPredecessors(first, abstractState, context);
+        }
+
+        boolean skippingBlock = shouldSkipBlock(first, abstractState.getPreCondition(first));
+        logger.log("SkippingBLock: " + skippingBlock, LoggerVerbosity.DEBUG);
+
         for (Node node : block.getNodes()) {
-            if (previousNode == null) {
-                if (context.shouldCollectPredecessors(node)) {
-                    collectInvariantsFromCfgPredecessors(node, abstractState, context);
-                } else {
-                    logger.log("  Skipping invariant collection for node (iterator policy)", LoggerVerbosity.DEBUG);
-                }
-            } else {
-                /* Subsequent nodes in block: use previous node's post-condition as pre-condition */
+            if (previousNode != null) {
                 Domain prevPost = abstractState.getPostCondition(previousNode);
+                /* Inside a block the abstract state flows trivially */
                 abstractState.setPreCondition(node, prevPost);
+            }
+
+            Domain pre = abstractState.getPreCondition(node);
+            if (skippingBlock) {
+                abstractState.setPostCondition(node, pre);
+                logger.log("  Skipping unreachable node: " + node, LoggerVerbosity.DEBUG);
+                previousNode = node;
+                continue;
             }
 
             analyzeNode(node, abstractState, context);
             previousNode = node;
         }
+    }
+
+    private boolean shouldSkipBlock(Node first, Domain preCondition) {
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("[shouldSKipBlock]: " + first + "  -> " + preCondition, LoggerVerbosity.DEBUG);
+        logger.log("isBot: " + preCondition.isBot(), LoggerVerbosity.DEBUG);
+        logger.log("instanceof Startnode: " + (first instanceof StartNode), LoggerVerbosity.DEBUG);
+        return preCondition.isBot() && !(first instanceof StartNode);
     }
 }
