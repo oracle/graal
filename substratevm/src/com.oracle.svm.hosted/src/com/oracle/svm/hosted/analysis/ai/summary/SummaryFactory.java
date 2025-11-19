@@ -34,4 +34,19 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
     Summary<Domain> createSummary(Invoke invoke,
                                   Domain callerPreCondition,
                                   List<Domain> arguments);
+
+    /**
+     * Tries to create an early summary for domain-specific base cases.
+     * This is an optional hook that can be implemented by the factory.
+     *
+     * @param invoke             contains information about the invocation
+     * @param callerPreCondition the abstract context precondition at the call site
+     * @param arguments          converted to the used abstract domain using the provided {@link AbstractInterpreter}
+     * @return a {@link Summary} if an early summary could be created, {@code null} otherwise
+     */
+    default Summary<Domain> tryCreateEarlySummary(Invoke invoke,
+                                                  Domain callerPreCondition,
+                                                  List<Domain> arguments) {
+        return null;
+    }
 }

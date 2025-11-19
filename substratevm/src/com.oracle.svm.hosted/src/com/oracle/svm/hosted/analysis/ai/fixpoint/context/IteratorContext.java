@@ -168,7 +168,7 @@ public interface IteratorContext {
      * policy about seeding/extrapolation/widening (e.g. skip merging when a loop header
      * already has an extrapolated pre-condition).
      *
-     * @param node the node for which to decide predecessor collection
+     * @param node the node for which to decide a predecessor collection
      * @return true if predecessors should be collected and merged, false to skip
      */
     default boolean shouldCollectPredecessors(Node node) {

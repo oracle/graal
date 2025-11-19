@@ -52,9 +52,16 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     Domain applySummary(Domain domain);
 
     /**
-     * Hook to integrate summary effects into caller state at an invoke site (optional; default no-op).
+     * Checks if the summary is complete.
+     *
+     * @return true if the summary is complete
      */
-    default void applyToInvoke(AbstractState<Domain> callerState, Domain callerDomain) {
-        // Default no-op; concrete summaries can override to apply side-effects or bind results.
-    }
+    boolean isComplete();
+
+    /**
+     * Sets the post-condition of the summary.
+     *
+     * @param postCondition the post-condition to set
+     */
+    void setPostCondition(Domain postCondition);
 }
