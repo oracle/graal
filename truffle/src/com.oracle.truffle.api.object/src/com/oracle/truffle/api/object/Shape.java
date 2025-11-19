@@ -713,7 +713,7 @@ public final class Shape {
      */
     @TruffleBoundary
     protected Shape addProperty(Property property) {
-        return ObsolescenceStrategy.addProperty(this, property);
+        return ObsolescenceStrategy.addProperty(this, property, true);
     }
 
     /**
