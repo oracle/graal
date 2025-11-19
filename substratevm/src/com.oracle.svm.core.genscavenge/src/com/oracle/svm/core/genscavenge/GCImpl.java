@@ -360,7 +360,7 @@ public final class GCImpl implements GC {
         accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, beginNanoTime);
 
-        doCollectCore(!complete);
+        doCollectCore();
         if (complete) {
             lastWholeHeapExaminedNanos = System.nanoTime();
         }
@@ -523,7 +523,7 @@ public final class GCImpl implements GC {
     }
 
     /** Collect, either incrementally or completely, and process discovered references. */
-    private void doCollectCore(boolean incremental) {
+    private void doCollectCore() {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
         long startTicks;
         try {
@@ -532,15 +532,15 @@ public final class GCImpl implements GC {
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     /* Scan reachable objects and potentially already copy them once discovered. */
-                    scan(incremental);
+                    scan();
                 } finally {
-                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan" : "Scan", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), completeCollection ? "Scan" : "Incremental Scan", startTicks);
                 }
             } finally {
                 rootScanTimer.stop();
             }
 
-            if (!incremental) {
+            if (completeCollection) {
                 /* Sweep or compact objects in the old generation unless already done by copying. */
                 HeapImpl.getHeapImpl().getOldGeneration().sweepAndCompact(timers, chunkReleaser);
             }
@@ -590,7 +590,7 @@ public final class GCImpl implements GC {
                      * chunks for copying live old objects with fewer chunk allocations. In either
                      * case, excess chunks are released later.
                      */
-                    boolean keepAllAlignedChunks = !SerialGCOptions.useCompactingOldGen() && incremental;
+                    boolean keepAllAlignedChunks = !SerialGCOptions.useCompactingOldGen() && !completeCollection;
                     chunkReleaser.release(keepAllAlignedChunks);
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
@@ -635,11 +635,11 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "We don't want any safepoint checks in the core part of the GC.")
-    private void scan(boolean incremental) {
-        if (incremental) {
-            scanFromDirtyRoots();
-        } else {
+    private void scan() {
+        if (completeCollection) {
             scanFromRoots();
+        } else {
+            scanFromDirtyRoots();
         }
     }
 
@@ -654,7 +654,7 @@ public final class GCImpl implements GC {
                  * When using a compacting old generation, it absorbs all chunks from the young
                  * generation at this point.
                  */
-                beginPromotion(false);
+                beginPromotion();
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
             }
@@ -683,7 +683,7 @@ public final class GCImpl implements GC {
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 /* Visit all the Objects promoted since the snapshot. */
-                scanGreyObjects(false);
+                scanGreyObjects();
 
                 if (RuntimeCompilation.isEnabled()) {
                     /*
@@ -692,7 +692,7 @@ public final class GCImpl implements GC {
                     walkRuntimeCodeCache();
 
                     /* Visit all objects that became reachable because of the compiled code. */
-                    scanGreyObjects(false);
+                    scanGreyObjects();
                 }
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
@@ -710,7 +710,7 @@ public final class GCImpl implements GC {
 
             try {
                 /* Snapshot the heap so that objects that are promoted afterwards can be visited. */
-                beginPromotion(true);
+                beginPromotion();
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
             }
@@ -747,7 +747,7 @@ public final class GCImpl implements GC {
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 /* Visit all the Objects promoted since the snapshot, transitively. */
-                scanGreyObjects(true);
+                scanGreyObjects();
 
                 if (RuntimeCompilation.isEnabled()) {
                     /*
@@ -756,7 +756,7 @@ public final class GCImpl implements GC {
                     walkRuntimeCodeCache();
 
                     /* Visit all objects that became reachable because of the compiled code. */
-                    scanGreyObjects(true);
+                    scanGreyObjects();
                 }
             } finally {
                 JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
@@ -1000,22 +1000,22 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void beginPromotion(boolean isIncremental) {
+    private void beginPromotion() {
         HeapImpl heap = HeapImpl.getHeapImpl();
-        heap.getOldGeneration().beginPromotion(isIncremental);
-        if (isIncremental) {
+        heap.getOldGeneration().beginPromotion(completeCollection);
+        if (!completeCollection) {
             heap.getYoungGeneration().beginPromotion();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void scanGreyObjects(boolean isIncremental) {
+    private void scanGreyObjects() {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.start();
         try {
-            if (isIncremental) {
+            if (!completeCollection) {
                 incrementalScanGreyObjectsLoop();
             } else {
-                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects(false);
+                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects(true);
             }
         } finally {
             scanGreyObjectsTimer.stop();
@@ -1030,7 +1030,7 @@ public final class GCImpl implements GC {
         boolean hasGrey;
         do {
             hasGrey = youngGen.scanGreyObjects();
-            hasGrey |= oldGen.scanGreyObjects(true);
+            hasGrey |= oldGen.scanGreyObjects(false);
         } while (hasGrey);
     }
 

@@ -133,8 +133,8 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void beginPromotion(boolean incrementalGc) {
-        if (!incrementalGc) {
+    void beginPromotion(boolean completeCollection) {
+        if (completeCollection) {
             absorb(HeapImpl.getHeapImpl().getYoungGeneration());
         }
         toGreyObjectsWalker.setScanStart(space);
@@ -157,28 +157,29 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean scanGreyObjects(boolean incrementalGc) {
-        if (incrementalGc) {
+    boolean scanGreyObjects(boolean completeCollection) {
+        if (!completeCollection) {
             if (!toGreyObjectsWalker.haveGreyObjects()) {
                 return false;
             }
             toGreyObjectsWalker.walkGreyObjects();
-        } else {
-            if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
-                return false;
-            }
-            GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-            do {
-                while (!markStack.isEmpty()) {
-                    visitor.visitObject(markStack.popObject());
-                }
-
-                // Process array ranges one at a time to avoid bloating the marking stack
-                if (!arrayMarkStack.isEmpty()) {
-                    scanArrayRange(visitor);
-                }
-            } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
+            return true;
         }
+
+        if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
+            return false;
+        }
+        GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
+        do {
+            while (!markStack.isEmpty()) {
+                visitor.visitObject(markStack.popObject());
+            }
+
+            // Process array ranges one at a time to avoid bloating the marking stack
+            if (!arrayMarkStack.isEmpty()) {
+                scanArrayRange(visitor);
+            }
+        } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
         return true;
     }
 
