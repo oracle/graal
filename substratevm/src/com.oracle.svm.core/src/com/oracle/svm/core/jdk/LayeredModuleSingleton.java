@@ -96,7 +96,7 @@ public abstract class LayeredModuleSingleton {
 
     private void setPackages(ResolvedJavaModule module, Map<String, Map<String, Set<String>>> modulePackages, Map<String, Set<Module>> packages, String mode) {
         ResolvedJavaModule oldValue = nameToModule.put(module.toString(), module);
-        if (oldValue != null && oldValue != module) {
+        if (oldValue != null && !oldValue.equals(module)) {
             throw UserError.abort("Layered images require all modules to have a different name because their identity hash code is not consistent across layers. " +
                             "The modules %s and %s have the same name and were added to the %s packages", module, oldValue, mode);
         }
