@@ -43,7 +43,6 @@ import com.oracle.svm.core.option.RuntimeOptionValidationSupport.RuntimeOptionVa
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * Sanitize and cache TLAB option values. Unfortunately, proper error reporting is impossible during
@@ -72,12 +71,12 @@ public class TlabOptionCache {
         validateTlabSize(SubstrateGCOptions.ConcealedOptions.TLABSize);
     }
 
-    /* The minimum size that a TLAB must have. Anything smaller than that could crash the VM. */
+    /** The minimum size that a TLAB must have. Anything smaller than that could crash the VM. */
     @Fold
     static long getAbsoluteMinTlabSize() {
         int additionalHeaderBytes = SubstrateOptions.AdditionalHeaderBytes.getValue();
         long absoluteMinTlabSize = 2 * 1024L + additionalHeaderBytes;
-        return NumUtil.roundUp(absoluteMinTlabSize, ConfigurationValues.getObjectLayout().getAlignment());
+        return ConfigurationValues.getObjectLayout().alignUp(absoluteMinTlabSize);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
