@@ -113,7 +113,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Darwin/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'aarch64', 'daily', deploy=true) + vm_common.maven_deploy_base_functions.base_object('darwin', 'aarch64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-darwin-aarch64',
-      capabilities+: ['darwin_bigsur'],
+      capabilities+: ['darwin_ventura'],
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },

@@ -226,7 +226,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     "vm-base": mx_env + deploy_graalvm_base + default_os_arch_jdk_mixin + platform_spec(no_jobs) + platform_spec({
       "linux:amd64:jdk-latest": post_merge,
       "linux:aarch64:jdk-latest": daily + capabilities('!xgene3') + timelimit('1:30:00'),
-      "darwin:aarch64:jdk-latest": daily + capabilities('darwin_bigsur') + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+      "darwin:aarch64:jdk-latest": daily + capabilities('darwin_ventura') + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
       "windows:amd64:jdk-latest": daily + timelimit('1:30:00'),
     }),
   },
@@ -239,7 +239,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     if vm.deploy_espress_standalone then platform_spec({
       "linux:amd64:jdk-latest": daily,
       "linux:aarch64:jdk-latest": weekly,
-      "darwin:aarch64:jdk-latest": weekly + capabilities('darwin_bigsur'),
+      "darwin:aarch64:jdk-latest": weekly + capabilities('darwin_ventura'),
       "windows:amd64:jdk-latest": weekly,
     }) else {}),
     "vm-espresso-g1": mx_env + deploy_graalvm_espresso(25, with_g1=true) + espresso_java_home(25) + default_os_arch_jdk_mixin + platform_spec(no_jobs) + (
