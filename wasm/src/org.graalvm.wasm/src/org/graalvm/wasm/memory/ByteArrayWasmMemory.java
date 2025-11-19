@@ -137,6 +137,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     private WasmException trapOutOfBounds(Node node, long address, long length) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         return trapOutOfBounds(node, address, length, byteSize());
     }
 
