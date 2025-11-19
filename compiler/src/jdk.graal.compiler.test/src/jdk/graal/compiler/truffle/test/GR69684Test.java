@@ -82,7 +82,7 @@ public class GR69684Test extends PartialEvaluationTest {
     }
 
     @HostAccess.Export
-    public Object overloadedMethod(@SuppressWarnings("unused") Object a, final Object b) {
+    public Object overloadedMethod(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") final Object b) {
         // not supposed to be called
         throw new AssertionError();
     }
