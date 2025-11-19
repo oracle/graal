@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.thirdparty.jdk;
 
 import java.lang.reflect.Method;
 import java.util.Optional;
@@ -32,11 +32,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-
-import com.oracle.svm.configure.ResourcesRegistry;
-import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.internal.module.Modules;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 public class JavaNetHttpFeature implements Feature {
 
@@ -84,37 +80,12 @@ public class JavaNetHttpFeature implements Feature {
         Class<?> declaringClass = clazz(access, className);
         try {
             Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
-            openModule(declaringClass);
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException | LinkageError ex) {
             throw new RuntimeException(ex);
         }
     }
-
-    private static void openModule(Class<?> declaringClass) {
-        Module namedAccessingModule = null;
-        Module accessingModule = ReflectionUtil.class.getModule();
-        if (accessingModule.isNamed()) {
-            namedAccessingModule = accessingModule;
-        }
-        giveAccess(namedAccessingModule, declaringClass.getModule(), declaringClass.getPackageName());
-    }
-
-    private static void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
-        if (accessingModule != null) {
-            if (declaringModule.isOpen(packageName, accessingModule)) {
-                return;
-            }
-            Modules.addOpens(declaringModule, packageName, accessingModule);
-        } else {
-            if (declaringModule.isOpen(packageName)) {
-                return;
-            }
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
-    }
-
 }
 
 class SimpleWebServerFeature implements Feature {
@@ -138,8 +109,8 @@ class SimpleWebServerFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(_ -> {
-            ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "sun.net.httpserver.simpleserver.resources.simpleserver");
+        access.registerReachabilityHandler(a -> {
+            RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(), false, "sun.net.httpserver.simpleserver.resources.simpleserver");
         }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }
