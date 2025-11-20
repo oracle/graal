@@ -2120,7 +2120,10 @@ final class TStringInternalNodes {
 
         @Specialization
         static TruffleString doNonEmpty(Node node, String javaString, int charOffset, int length, final boolean copy,
-                        @Cached InlinedConditionProfile utf16CompactProfile) {
+                        @Cached InlinedConditionProfile utf16CompactProfile,
+                        @Cached InlinedConditionProfile length1Profile,
+                        @Cached InlinedConditionProfile fullLengthProfile,
+                        @Cached InlinedConditionProfile equalStrideProfile) {
             checkArrayRange(javaString.length(), charOffset, length);
             CompilerAsserts.partialEvaluationConstant(copy);
             if (length == 0) {
@@ -2132,20 +2135,21 @@ final class TStringInternalNodes {
             final int codeRange;
             final int codePointLength;
             int strideJS = TStringUnsafe.getJavaStringStride(javaString);
-            int offsetJS = charOffset << 1;
+            int offsetJS = charOffset << strideJS;
             byte[] arrayJS = TStringUnsafe.getJavaStringArray(javaString);
+            boolean fullLength = fullLengthProfile.profile(node, length == javaString.length());
             if (utf16CompactProfile.profile(node, strideJS == 0)) {
-                if (length == 1) {
+                if (length1Profile.profile(node, length == 1)) {
                     return TStringConstants.getSingleByte(Encoding.UTF_16, Byte.toUnsignedInt(arrayJS[charOffset]));
                 }
                 codeRange = TSCodeRange.markImprecise(TSCodeRange.get8Bit());
                 codePointLength = length;
             } else {
                 assert strideJS == 1;
-                if (length == 1 && TStringOps.readFromByteArrayS1(arrayJS, charOffset) <= 0xff) {
+                if (length1Profile.profile(node, length == 1 && TStringOps.readFromByteArrayS1(arrayJS, charOffset) <= 0xff)) {
                     return TStringConstants.getSingleByte(Encoding.UTF_16, TStringOps.readFromByteArrayS1(arrayJS, charOffset));
                 }
-                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && length == javaString.length()) {
+                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && fullLength) {
                     codePointLength = -1;
                     codeRange = TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
                 } else {
@@ -2154,12 +2158,11 @@ final class TStringInternalNodes {
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
             }
-            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (!copy || length == javaString.length())) {
-                stride = strideJS;
+            stride = Stride.fromCodeRangeUTF16AllowImprecise(codeRange);
+            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (fullLength || !copy && equalStrideProfile.profile(node, stride == strideJS))) {
                 offset = offsetJS;
                 array = arrayJS;
             } else {
-                stride = Stride.fromCodeRangeUTF16AllowImprecise(codeRange);
                 array = new byte[length << stride];
                 offset = 0;
                 if (strideJS == 1 && stride == 0) {
@@ -2169,7 +2172,8 @@ final class TStringInternalNodes {
                     TStringOps.arraycopyWithStride(node, arrayJS, offsetJS + byteArrayBaseOffset(), 0, 0, array, offset + byteArrayBaseOffset(), 0, 0, length << stride);
                 }
             }
-            return TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, TStringUnsafe.getJavaStringHashMasked(javaString), true);
+            int hash = fullLength ? TStringUnsafe.getJavaStringHashMasked(javaString) : 0;
+            return TruffleString.createFromByteArray(array, offset, length, stride, Encoding.UTF_16, codePointLength, codeRange, hash, true);
         }
     }
 
