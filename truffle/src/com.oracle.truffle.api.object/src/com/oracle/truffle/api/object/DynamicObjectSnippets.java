@@ -366,6 +366,21 @@ class DynamicObjectSnippets implements TruffleObject {
     // @end region = "com.oracle.truffle.api.object.DynamicObjectSnippets.SetShapeFlags"
 
     @GenerateCached(false)
+    // @start region = "com.oracle.truffle.api.object.DynamicObjectSnippets.AddShapeFlags"
+    abstract static class FreezeNode extends Node {
+        static final int FROZEN = 1;
+
+        abstract void execute(DynamicObject receiver);
+
+        @Specialization
+        static void freeze(DynamicObject receiver,
+                        @Cached DynamicObject.SetShapeFlagsNode setShapeFlagsNode) {
+            setShapeFlagsNode.executeAdd(receiver, FROZEN);
+        }
+    }
+    // @end region = "com.oracle.truffle.api.object.DynamicObjectSnippets.AddShapeFlags"
+
+    @GenerateCached(false)
     abstract static class GetUnboxedNode extends Node {
 
         abstract int executeInt(DynamicObject receiver, Object key) throws UnexpectedResultException;

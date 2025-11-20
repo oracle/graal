@@ -1320,9 +1320,12 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     /**
-     * Sets language-specific object shape flags.
+     * Sets or updates language-specific object shape flags.
      *
      * @see #execute(DynamicObject, int)
+     * @see #executeAdd(DynamicObject, int)
+     * @see #executeRemove(DynamicObject, int)
+     * @see #executeRemoveAndAdd(DynamicObject, int, int)
      * @since 25.1
      */
     @ImportStatic(DynamicObject.class)
@@ -1346,25 +1349,73 @@ public abstract class DynamicObject implements TruffleObject {
          *
          * <h3>Usage example:</h3>
          *
-         * <h4>Implementing frozen object check in writeMember:</h4>
+         * <h4>Implementing a freeze object operation:</h4>
          *
          * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
          * "com.oracle.truffle.api.object.DynamicObjectSnippets.SetShapeFlags"}
+         *
+         * Note that {@link #executeAdd(DynamicObject, int)} is more efficient and convenient for
+         * that particular pattern.
          *
          * @param newFlags the flags to set; must be in the range from 0 to 65535 (inclusive).
          * @return {@code true} if the object's shape changed, {@code false} if no change was made.
          * @throws IllegalArgumentException if the flags are not in the allowed range.
          * @see GetShapeFlagsNode
+         * @see #executeAdd(DynamicObject, int)
          * @see Shape.Builder#shapeFlags(int)
+         * @since 25.1
          */
-        public abstract boolean execute(DynamicObject receiver, int newFlags);
+        public final boolean execute(DynamicObject receiver, int newFlags) {
+            return execute(receiver, 0, newFlags);
+        }
+
+        /**
+         * Adds language-specific object shape flags, changing the object's shape if need be.
+         *
+         * <h3>Usage example:</h3>
+         *
+         * <h4>Implementing a freeze object operation:</h4>
+         *
+         * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+         * "com.oracle.truffle.api.object.DynamicObjectSnippets.AddShapeFlags"}
+         *
+         * @see #execute(DynamicObject, int)
+         * @since 25.1
+         */
+        public final boolean executeAdd(DynamicObject receiver, int addedFlags) {
+            return execute(receiver, ~0, addedFlags);
+        }
+
+        /**
+         * Removes language-specific object shape flags, changing the object's shape if need be.
+         *
+         * @see #execute(DynamicObject, int)
+         * @since 25.1
+         */
+        public final boolean executeRemove(DynamicObject receiver, int removedFlags) {
+            return execute(receiver, ~removedFlags, 0);
+        }
+
+        /**
+         * Removes, then adds language-specific object shape flags, changing the object's shape if
+         * need be.
+         *
+         * @see #execute(DynamicObject, int)
+         * @since 25.1
+         */
+        public final boolean executeRemoveAndAdd(DynamicObject receiver, int removedFlags, int addedFlags) {
+            return execute(receiver, ~removedFlags, addedFlags);
+        }
+
+        abstract boolean execute(DynamicObject receiver, int andFlags, int orFlags);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"shape == cachedShape", "flags == newShape.getFlags()"}, limit = "SHAPE_CACHE_LIMIT")
-        static boolean doCached(DynamicObject receiver, int flags,
+        @Specialization(guards = {"shape == cachedShape", "newFlags == newShape.getFlags()"}, limit = "SHAPE_CACHE_LIMIT")
+        static boolean doCached(DynamicObject receiver, int andFlags, int orFlags,
                         @Bind("receiver.getShape()") Shape shape,
                         @Cached("shape") Shape cachedShape,
-                        @Cached("shapeSetFlags(cachedShape, flags)") Shape newShape) {
+                        @Bind("computeFlags(cachedShape, andFlags, orFlags)") int newFlags,
+                        @Cached("shapeSetFlags(cachedShape, newFlags)") Shape newShape) {
             if (newShape != cachedShape) {
                 receiver.setShape(newShape);
                 return true;
@@ -1374,9 +1425,9 @@ public abstract class DynamicObject implements TruffleObject {
         }
 
         @Specialization(replaces = "doCached")
-        static boolean doGeneric(DynamicObject receiver, int flags,
+        static boolean doGeneric(DynamicObject receiver, int andFlags, int orFlags,
                         @Bind("receiver.getShape()") Shape shape) {
-            Shape newShape = shapeSetFlags(shape, flags);
+            Shape newShape = shapeSetFlags(shape, computeFlags(shape, andFlags, orFlags));
             if (newShape != shape) {
                 receiver.setShape(newShape);
                 return true;
@@ -1387,6 +1438,10 @@ public abstract class DynamicObject implements TruffleObject {
 
         static Shape shapeSetFlags(Shape shape, int newFlags) {
             return shape.setFlags(newFlags);
+        }
+
+        static int computeFlags(Shape shape, int and, int or) {
+            return (shape.getFlags() & and) | or;
         }
 
         /**

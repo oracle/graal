@@ -685,17 +685,17 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, flags));
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b10));
         assertFalse(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
-        addShapeFlags(getShapeFlagsNode, setShapeFlagsNode, o1, 0b1);
+        setShapeFlagsNode.executeAdd(o1, 0b1);
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
         assertEquals(flags | 0b1, getShapeFlagsNode.execute(o1));
+        setShapeFlagsNode.executeRemove(o1, 0b1);
+        assertEquals(flags, getShapeFlagsNode.execute(o1));
+        setShapeFlagsNode.executeRemoveAndAdd(o1, 0b1111, 0b0101);
+        assertEquals(0b100101, getShapeFlagsNode.execute(o1));
     }
 
     static boolean hasShapeFlags(DynamicObject.GetShapeFlagsNode getShapeFlagsNode, DynamicObject obj, int flags) {
         return (getShapeFlagsNode.execute(obj) & flags) == flags;
-    }
-
-    static boolean addShapeFlags(DynamicObject.GetShapeFlagsNode getShapeFlagsNode, DynamicObject.SetShapeFlagsNode setShapeFlagsNode, DynamicObject obj, int flags) {
-        return setShapeFlagsNode.execute(obj, (getShapeFlagsNode.execute(obj) | flags));
     }
 
     @Test
