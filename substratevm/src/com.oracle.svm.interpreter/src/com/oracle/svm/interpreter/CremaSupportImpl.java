@@ -352,13 +352,16 @@ public class CremaSupportImpl implements CremaSupport {
 
         dispatchTable.registerClass(thisType);
 
-        /* Set methods and vtable. */
-        thisType.setDeclaredMethods(dispatchTable.declaredMethods());
-
+        /*
+         * Set vtable and methods. Compute the vtable first, because it will assign vtable indices
+         * to methods.
+         */
         InterpreterResolvedJavaMethod[] completeVTable = dispatchTable.cremaVTable(transitiveSuperInterfaces).toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY);
         assert completeVTable.length == hubNumVTableEntries;
         thisType.setVtable(completeVTable);
         fillVTable(hub, completeVTable);
+
+        thisType.setDeclaredMethods(dispatchTable.declaredMethods());
 
         // Fields
         ParserField[] fields = dispatchTable.getParserKlass().getFields();
