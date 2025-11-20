@@ -85,11 +85,11 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
@@ -846,7 +846,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                             return;
                         }
                     }
-                } else {
+                } else if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
                     LogUtils.warning("Arguments reflectively loading %s. %s could not be found: %s", methodData.getClassName().toString(), methodData.getName().toString(),
                                     Arrays.toString(parameterTypes));
                 }
@@ -959,7 +959,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                     return true;
                 }
             }
-            LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
+                LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            }
             return false;
         }
         return false;
@@ -1828,7 +1830,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
         boolean result = IdentityHashCodeUtil.injectIdentityHashCode(object, identityHashCode);
         if (!result) {
-            if (SubstrateOptions.LoggingHashCodeInjection.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {
                 LogUtils.warning("Object of type %s already had an hash code: %s", object.getClass(), object);
             }
         }

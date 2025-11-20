@@ -67,9 +67,10 @@ public class LayerArchiveSupport {
 
     /** The temp directory where the layer files reside in expanded form. */
     protected final Path layerDir;
+    private final boolean enableLogging;
 
     @SuppressWarnings("this-escape")
-    public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport) {
+    public LayerArchiveSupport(String layerName, Path layerFile, Path layerDir, ArchiveSupport archiveSupport, boolean enableLogging) {
         this.archiveSupport = archiveSupport;
 
         this.layerFile = layerFile;
@@ -83,6 +84,7 @@ public class LayerArchiveSupport {
         }
 
         this.layerProperties = new LayerArchiveSupport.LayerProperties(layerName);
+        this.enableLogging = enableLogging;
     }
 
     protected void validateLayerFile() {
@@ -267,7 +269,9 @@ public class LayerArchiveSupport {
         return (val.getOS() + "-" + val.getArchitecture()).toLowerCase(Locale.ROOT);
     }
 
-    protected static void info(String format, Object... args) {
-        LogUtils.prefixInfo(LAYER_INFO_MESSAGE_PREFIX, format, args);
+    protected void info(String format, Object... args) {
+        if (enableLogging) {
+            LogUtils.prefixInfo(LAYER_INFO_MESSAGE_PREFIX, format, args);
+        }
     }
 }

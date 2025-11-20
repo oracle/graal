@@ -60,7 +60,6 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
-import com.oracle.svm.core.option.BundleMember.Role;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -129,30 +128,6 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
-    @Option(help = "Persist and reload all graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
-                    "but will not be inlined after analysis has completed via our other inlining infrastructure")//
-    public static final HostedOptionKey<Boolean> UseSharedLayerGraphs = new HostedOptionKey<>(true) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (!newValue) {
-                UseSharedLayerStrengthenedGraphs.update(values, false);
-            }
-        }
-    };
-
-    @Option(help = "Persist and reload strengthened graphs across layers. If false, inlining after analysis will be disabled")//
-    public static final HostedOptionKey<Boolean> UseSharedLayerStrengthenedGraphs = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                UserError.guarantee(UseSharedLayerStrengthenedGraphs.getValueOrDefault(values),
-                                "UseSharedLayerStrengthenedGraph is a subset of UseSharedLayerGraphs, so the former cannot be enabled alone.");
-            } else {
-                NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
-            }
-        }
-    };
-
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
@@ -169,31 +144,6 @@ public class SubstrateOptions {
                             "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
         }
     });
-
-    public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
-    public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
-    // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build a Native Image layer. See NativeImageLayers.md for more info.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
-    // @APIOption(name = LAYER_USE_OPTION) // use when non-experimental
-    @Option(help = "Experimental: Build an image based on a Native Image layer.")//
-    @BundleMember(role = Role.Input) //
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
-
-    @Option(help = "Experimental: Perform strict checking of options used for layered image build.")//
-    public static final HostedOptionKey<Boolean> LayerOptionVerification = new HostedOptionKey<>(true);
-
-    @Option(help = "Experimental: Provide verbose output of difference in builder options between layers.")//
-    public static final HostedOptionKey<Boolean> LayerOptionVerificationVerbose = new HostedOptionKey<>(false);
-
-    @Option(help = "Mark singleton as application layer only")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerOnlySingletons = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
-
-    @Option(help = "Register class as being initialized in the app layer.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ApplicationLayerInitializedClasses = new HostedOptionKey<>(
-                    AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -1610,12 +1560,6 @@ public class SubstrateOptions {
     public static int interfaceHashingMaxId() {
         return InterfaceHashingMaxId.getValue();
     }
-
-    @Option(help = "Throws an exception on potential type conflict during heap persisting if enabled", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> AbortOnNameConflict = new HostedOptionKey<>(false);
-
-    @Option(help = "Enables logging of failed hash code injection", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> LoggingHashCodeInjection = new HostedOptionKey<>(false);
 
     public static class TruffleStableOptions {
 
