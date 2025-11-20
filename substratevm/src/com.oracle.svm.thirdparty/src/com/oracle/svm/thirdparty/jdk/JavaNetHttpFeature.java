@@ -27,12 +27,10 @@ package com.oracle.svm.thirdparty.jdk;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 public class JavaNetHttpFeature implements Feature {
 
@@ -52,9 +50,10 @@ public class JavaNetHttpFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        rci.initializeAtRunTime("jdk.internal.net.http", "for reading properties at run time");
-        rci.initializeAtRunTime("jdk.internal.net.http.websocket.OpeningHandshake", "contains a SecureRandom reference");
+        // for reading properties at run time
+        RuntimeClassInitialization.initializeAtRunTime("jdk.internal.net.http");
+        // contains a SecureRandom reference
+        RuntimeClassInitialization.initializeAtRunTime("jdk.internal.net.http.websocket.OpeningHandshake");
     }
 
     @Override
@@ -101,16 +100,14 @@ class SimpleWebServerFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        SimpleWebServerFeature.class.getModule().addReads(requiredModule().get());
-
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        rci.initializeAtRunTime("sun.net.httpserver.simpleserver", "Allocates InetAddress in class initializers");
+        // Allocates InetAddress in class initializers
+        RuntimeClassInitialization.initializeAtRunTime("sun.net.httpserver.simpleserver");
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(a -> {
-            RuntimeResourceSupport.singleton().addResourceBundles(AccessCondition.unconditional(), false, "sun.net.httpserver.simpleserver.resources.simpleserver");
+            RuntimeResourceAccess.addResourceBundle(requiredModule().get(), "sun.net.httpserver.simpleserver.resources.simpleserver");
         }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }

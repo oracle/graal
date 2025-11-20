@@ -43,6 +43,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.ResolvedJavaModule;
 import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
@@ -62,7 +63,7 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-// HostModuleUtil.addReads(JavaNetHttpFeature.class, requiredModule().get());
+        HostModuleUtil.addReads(JNIRegistrationPrefs.class, requiredModule().get());
     }
 
     @Override
