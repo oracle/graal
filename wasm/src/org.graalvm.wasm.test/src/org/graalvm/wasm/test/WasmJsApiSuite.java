@@ -108,7 +108,7 @@ public class WasmJsApiSuite {
 
     private static WasmFunctionInstance createWasmFunctionInstance(WasmContext context, int[] paramTypes, int[] resultTypes, RootNode functionRootNode) {
         WasmModule module = WasmModule.createBuiltin("dummyModule");
-        module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue());
+        module.allocateFunctionType(paramTypes, resultTypes, context.getContextOptions().supportMultiValue(), context.language());
         WasmFunction func = module.declareFunction(0);
         func.setTarget(functionRootNode.getCallTarget());
         WasmInstance moduleInstance = context.contextStore().readInstance(module);

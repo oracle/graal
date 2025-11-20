@@ -45,14 +45,13 @@ import java.util.Locale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.types.ValueType;
 
 /**
  * Thrown for various error condition when using the Wasm-JS API.
  */
 public class WasmJsApiException extends AbstractTruffleException {
-
-    public static final String V128_VALUE_ACCESS = "Invalid value type. Accessing v128 values from JS is not allowed.";
-    public static final String EXNREF_VALUE_ACCESS = "Invalid value type. Accessing exnref values from JS is not allowed.";
 
     public enum Kind {
         TypeError,
@@ -95,6 +94,20 @@ public class WasmJsApiException extends AbstractTruffleException {
     @TruffleBoundary
     public static WasmJsApiException format(WasmJsApiException.Kind kind, String s, Object... args) {
         return new WasmJsApiException(kind, String.format(Locale.ROOT, s, args));
+    }
+
+    @TruffleBoundary
+    public static WasmJsApiException invalidValueType(int valueType) {
+        if (WasmType.isConcreteReferenceType(valueType)) {
+            return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Typed references are not allowed in JS.");
+        } else {
+            return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing %s values from JS is not allowed.", WasmType.toString(valueType));
+        }
+    }
+
+    @TruffleBoundary
+    public static WasmJsApiException invalidValueType(ValueType valueType) {
+        return WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Accessing %s values from JS is not allowed.", valueType.toString());
     }
 
     public static ExceptionProvider provider() {

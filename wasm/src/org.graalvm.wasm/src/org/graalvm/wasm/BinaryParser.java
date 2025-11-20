@@ -49,7 +49,13 @@ import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
+import static org.graalvm.wasm.WasmType.ANYREF_TYPE;
+import static org.graalvm.wasm.WasmType.ANY_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.ARRAYREF_TYPE;
+import static org.graalvm.wasm.WasmType.ARRAY_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.BOT;
+import static org.graalvm.wasm.WasmType.EQREF_TYPE;
+import static org.graalvm.wasm.WasmType.EQ_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.EXNREF_TYPE;
 import static org.graalvm.wasm.WasmType.EXN_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
@@ -58,10 +64,24 @@ import static org.graalvm.wasm.WasmType.F32_TYPE;
 import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.FUNC_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.I16_TYPE;
+import static org.graalvm.wasm.WasmType.I31REF_TYPE;
+import static org.graalvm.wasm.WasmType.I31_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
+import static org.graalvm.wasm.WasmType.I8_TYPE;
+import static org.graalvm.wasm.WasmType.NOEXN_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.NOEXTERN_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.NOFUNC_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.NONE_HEAPTYPE;
+import static org.graalvm.wasm.WasmType.NULLEXNREF_TYPE;
+import static org.graalvm.wasm.WasmType.NULLEXTERNREF_TYPE;
+import static org.graalvm.wasm.WasmType.NULLFUNCREF_TYPE;
+import static org.graalvm.wasm.WasmType.NULLREF_TYPE;
 import static org.graalvm.wasm.WasmType.REF_NULL_TYPE_HEADER;
 import static org.graalvm.wasm.WasmType.REF_TYPE_HEADER;
+import static org.graalvm.wasm.WasmType.STRUCTREF_TYPE;
+import static org.graalvm.wasm.WasmType.STRUCT_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_BLOCK_TYPE;
 import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
@@ -90,7 +110,7 @@ import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
 import org.graalvm.wasm.constants.ExportIdentifier;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
@@ -137,6 +157,7 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean simd;
     private final boolean exceptions;
     private final boolean typedFunctionReferences;
+    private final boolean gc;
 
     @TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
@@ -154,6 +175,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.simd = context.getContextOptions().supportSIMD();
         this.exceptions = context.getContextOptions().supportExceptions();
         this.typedFunctionReferences = context.getContextOptions().supportTypedFunctionReferences();
+        this.gc = context.getContextOptions().supportGC();
     }
 
     @TruffleBoundary
@@ -435,23 +457,24 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                 }
                 switch (read1()) {
+                    case 0x5e -> readArrayType(typeIndex);
+                    case 0x5f -> readStructType(typeIndex);
                     case 0x60 -> readFunctionType(typeIndex);
-                    // According to the official tests this should be an integer presentation too long
-                    // error
+                    // According to the official tests this should be an integer presentation too
+                    // long error
                     default -> fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Only function types are supported in the type section");
                 }
                 typeIndex++;
             }
-            module.finishRecursiveTypeGroup(recursiveTypeGroupStart);
+            module.finishRecursiveTypeGroup(recursiveTypeGroupStart, wasmContext.language());
             for (int subTypeIndex = typeIndex - subTypeCount; subTypeIndex < typeIndex; subTypeIndex++) {
                 if (module.hasSuperType(subTypeIndex)) {
                     int superTypeIndex = module.superType(subTypeIndex);
-                    if (!module.isFinalType(superTypeIndex)) {
-                        Assert.fail(Failure.SUB_TYPE, "Declared supertype %d of subtype %d is not final", superTypeIndex, subTypeIndex);
+                    if (module.isFinalType(superTypeIndex)) {
+                        Assert.fail(Failure.SUB_TYPE, "Declared supertype %d of subtype %d is final", superTypeIndex, subTypeIndex);
                     }
-                    // TODO: use expand on superType too?
-                    if (module.closedTypeAt(subTypeIndex).expand().isSubtypeOf(module.closedTypeAt(superTypeIndex))) {
-                        Assert.fail(Failure.SUB_TYPE, "Subtype %d does not match supertype %d", subTypeIndex, superTypeIndex);
+                    if (!module.closedTypeAt(subTypeIndex).expand().isSubtypeOf(module.closedTypeAt(superTypeIndex))) {
+                        Assert.fail(Failure.SUB_TYPE_DOES_NOT_MATCH_SUPER_TYPE, "Subtype %d does not match supertype %d", subTypeIndex, superTypeIndex);
                     }
                 }
             }
@@ -472,7 +495,7 @@ public class BinaryParser extends BinaryStreamParser {
             byte importType = readImportType();
             switch (importType) {
                 case ImportIdentifier.FUNCTION: {
-                    int typeIndex = readTypeIndex();
+                    int typeIndex = readFunctionTypeIndex();
                     module.symbolTable().importFunction(moduleName, memberName, typeIndex);
                     break;
                 }
@@ -506,7 +529,7 @@ public class BinaryParser extends BinaryStreamParser {
                         fail(Failure.MALFORMED_IMPORT_KIND, "Invalid import type identifier: 0x%02x", importType);
                     }
                     final byte attribute = readTagAttribute();
-                    final int typeIndex = readTypeIndex();
+                    final int typeIndex = readFunctionTypeIndex();
                     final int tagIndex = module.symbolTable().tagCount();
                     module.symbolTable().importTag(moduleName, memberName, tagIndex, attribute, typeIndex);
                     break;
@@ -523,7 +546,7 @@ public class BinaryParser extends BinaryStreamParser {
         module.limits().checkFunctionCount(functionCount);
         for (int functionIndex = 0; functionIndex != functionCount; functionIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            int functionTypeIndex = readTypeIndex();
+            int functionTypeIndex = readFunctionTypeIndex();
             module.symbolTable().declareFunction(functionTypeIndex);
         }
     }
@@ -652,8 +675,17 @@ public class BinaryParser extends BinaryStreamParser {
             case F32_TYPE -> WasmType.F32_TYPE_ARRAY;
             case F64_TYPE -> WasmType.F64_TYPE_ARRAY;
             case V128_TYPE -> WasmType.V128_TYPE_ARRAY;
+            case NULLEXNREF_TYPE -> WasmType.NULLEXNREF_TYPE_ARRAY;
+            case NULLFUNCREF_TYPE -> WasmType.NULLFUNCREF_TYPE_ARRAY;
+            case NULLEXTERNREF_TYPE -> WasmType.NULLEXTERNREF_TYPE_ARRAY;
+            case NULLREF_TYPE -> WasmType.NULLREF_TYPE_ARRAY;
             case FUNCREF_TYPE -> WasmType.FUNCREF_TYPE_ARRAY;
             case EXTERNREF_TYPE -> WasmType.EXTERNREF_TYPE_ARRAY;
+            case ANYREF_TYPE -> WasmType.ANYREF_TYPE_ARRAY;
+            case EQREF_TYPE -> WasmType.EQREF_TYPE_ARRAY;
+            case I31REF_TYPE -> WasmType.I31REF_TYPE_ARRAY;
+            case STRUCTREF_TYPE -> WasmType.STRUCTREF_TYPE_ARRAY;
+            case ARRAYREF_TYPE -> WasmType.ARRAYREF_TYPE_ARRAY;
             case EXNREF_TYPE -> WasmType.EXNREF_TYPE_ARRAY;
             default -> new int[]{type};
         };
@@ -850,7 +882,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
-                    final int expectedFunctionTypeIndex = readTypeIndex();
+                    final int expectedFunctionTypeIndex = readFunctionTypeIndex();
                     final int tableIndex = readTableIndex();
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
@@ -1011,7 +1043,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.GLOBAL_SET: {
                     final int index = readGlobalIndex();
                     // Assert that the global is mutable.
-                    assertByteEqual(module.symbolTable().globalMutability(index), GlobalModifier.MUTABLE,
+                    assertByteEqual(module.symbolTable().globalMutability(index), Mutability.MUTABLE,
                                     "Immutable globals cannot be set: " + index, Failure.IMMUTABLE_GLOBAL_WRITE);
                     state.popChecked(module.symbolTable().globalValueType(index));
                     state.addUnsignedInstruction(Bytecode.GLOBAL_SET_U8, index);
@@ -1171,7 +1203,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.CALL_REF: {
                     checkTypedFunctionReferencesSupport(opcode);
-                    final int expectedFunctionTypeIndex = readTypeIndex();
+                    final int expectedFunctionTypeIndex = readFunctionTypeIndex();
                     final int functionReferenceType = WasmType.withNullable(true, expectedFunctionTypeIndex);
                     state.popChecked(functionReferenceType);
                     // Pop parameters
@@ -1770,6 +1802,34 @@ public class BinaryParser extends BinaryStreamParser {
                 final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
                 state.push(functionReferenceType);
                 state.addInstruction(Bytecode.REF_FUNC, functionIndex);
+                break;
+            case Instructions.AGGREGATE:
+                checkGCSupport(opcode);
+                int aggregateOpcode = readUnsignedInt32();
+                state.addAggregateFlag();
+                switch (aggregateOpcode) {
+                    case Instructions.REF_TEST_NON_NULL:
+                    case Instructions.REF_TEST_NULL: {
+                        int expectedHeapType = readHeapType();
+                        int topHeapType = module.topHeapTypeOf(expectedHeapType);
+                        int topReferenceType = WasmType.withNullable(true, topHeapType);
+                        state.popChecked(topReferenceType);
+                        state.push(I32_TYPE);
+                        state.addInstruction(aggregateOpcode, expectedHeapType);
+                        break;
+                    }
+                    case Instructions.REF_CAST_NON_NULL:
+                    case Instructions.REF_CAST_NULL: {
+                        int expectedHeapType = readHeapType();
+                        int topHeapType = module.topHeapTypeOf(expectedHeapType);
+                        int expectedReferenceType = WasmType.withNullable(aggregateOpcode == Instructions.REF_CAST_NULL, expectedHeapType);
+                        int topReferenceType = WasmType.withNullable(true, topHeapType);
+                        state.popChecked(topReferenceType);
+                        state.push(expectedReferenceType);
+                        state.addInstruction(aggregateOpcode, expectedHeapType);
+                        break;
+                    }
+                }
                 break;
             case Instructions.ATOMIC:
                 checkThreadsSupport(opcode);
@@ -2531,6 +2591,10 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().supportTypedFunctionReferences(), "Typed function references are not enabled (opcode: 0x%02x)", opcode);
     }
 
+    private void checkGCSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().supportGC(), "Garbage collected types are not enabled (opcode: 0x%02x)", opcode);
+    }
+
     private void store(ParserState state, int type, int n, long[] result) {
         int alignHint = readAlignHint(n);
         final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
@@ -2785,7 +2849,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.GLOBAL_GET: {
                     final int index = readGlobalIndex();
-                    assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                    assertIntEqual(module.globalMutability(index), Mutability.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     state.push(module.symbolTable().globalValueType(index));
                     state.addUnsignedInstruction(Bytecode.GLOBAL_GET_U8, index);
                     calculable = false;
@@ -2928,7 +2992,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.GLOBAL_GET:
                     final int globalIndex = readGlobalIndex();
-                    assertIntEqual(module.globalMutability(globalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                    assertIntEqual(module.globalMutability(globalIndex), Mutability.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     final int valueType = module.globalValueType(globalIndex);
                     Assert.assertTrue(module.matchesType(elemType, valueType), Failure.TYPE_MISMATCH);
                     elements[index] = ((long) ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX << 32) | globalIndex;
@@ -3108,7 +3172,7 @@ public class BinaryParser extends BinaryStreamParser {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             // 0x00 means exception
             final byte attribute = readTagAttribute();
-            final int type = readTypeIndex();
+            final int type = readFunctionTypeIndex();
 
             module.symbolTable().allocateTag(tagIndex, attribute, type);
         }
@@ -3233,6 +3297,22 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
+    private void readArrayType(int arrayTypeIdx) {
+        int fieldType = readStorageType();
+        byte mutability = readMutability();
+        module.registerArrayType(arrayTypeIdx, fieldType, mutability);
+    }
+
+    private void readStructType(int structTypeIdx) {
+        int fieldCount = readLength();
+        module.registerStructType(structTypeIdx, fieldCount);
+        for (int fieldIdx = 0; fieldIdx < fieldCount; fieldIdx++) {
+            int fieldType = readStorageType();
+            byte fieldMutability = readMutability();
+            module.registerStructTypeField(structTypeIdx, fieldIdx, fieldType, fieldMutability);
+        }
+    }
+
     private void readFunctionType(int funcTypeIdx) {
         int paramCount = readLength();
         module.limits().checkParamCount(paramCount);
@@ -3273,6 +3353,10 @@ public class BinaryParser extends BinaryStreamParser {
                 Assert.assertTrue(exceptions, Failure.MALFORMED_VALUE_TYPE);
                 yield type;
             }
+            case NULLEXNREF_TYPE, NULLFUNCREF_TYPE, NULLEXTERNREF_TYPE, NULLREF_TYPE, ANYREF_TYPE, EQREF_TYPE, I31REF_TYPE, STRUCTREF_TYPE, ARRAYREF_TYPE -> {
+                Assert.assertTrue(gc, Failure.MALFORMED_VALUE_TYPE);
+                yield type;
+            }
             case REF_NULL_TYPE_HEADER -> {
                 Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
                 yield WasmType.withNullable(true, readHeapType());
@@ -3282,6 +3366,18 @@ public class BinaryParser extends BinaryStreamParser {
                 yield WasmType.withNullable(false, readHeapType());
             }
             default -> throw Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", type);
+        };
+    }
+
+    private int readStorageType() {
+        long typeAndLength = peekSignedInt32AndLength(data, offset);
+        int type = value(typeAndLength);
+        return switch (type) {
+            case I8_TYPE, I16_TYPE -> {
+                offset += length(typeAndLength);
+                yield type;
+            }
+            default -> readValueType();
         };
     }
 
@@ -3315,6 +3411,11 @@ public class BinaryParser extends BinaryStreamParser {
             }
             case EXNREF_TYPE -> {
                 Assert.assertTrue(exceptions, Failure.MALFORMED_VALUE_TYPE);
+                result[0] = type;
+                result[1] = BLOCK_TYPE_VALTYPE;
+            }
+            case NULLEXNREF_TYPE, NULLFUNCREF_TYPE, NULLEXTERNREF_TYPE, NULLREF_TYPE, ANYREF_TYPE, EQREF_TYPE, I31REF_TYPE, STRUCTREF_TYPE, ARRAYREF_TYPE -> {
+                Assert.assertTrue(gc, Failure.MALFORMED_VALUE_TYPE);
                 result[0] = type;
                 result[1] = BLOCK_TYPE_VALTYPE;
             }
@@ -3372,18 +3473,47 @@ public class BinaryParser extends BinaryStreamParser {
      * @throws WasmException If the given function type is greater or equal to the given maximum.
      */
     public void checkFunctionTypeExists(int typeIndex) {
+        checkTypeExists(typeIndex);
+        checkIsFunctionType(typeIndex);
+    }
+
+    /**
+     * Checks if the given type is a function type.
+     *
+     * @param typeIndex The type index.
+     * @throws WasmException If the given type is not a function type.
+     */
+    public void checkIsFunctionType(int typeIndex) {
+        if (!module.isFunctionType(typeIndex)) {
+            throw ValidationErrors.createExpectedFunctionType(typeIndex);
+        }
+    }
+
+    /**
+     * Checks if the given type is within range.
+     *
+     * @param typeIndex The defined type.
+     * @throws WasmException If the given type index is greater or equal to the given maximum.
+     */
+    public void checkTypeExists(int typeIndex) {
         if (compareUnsigned(typeIndex, module.typeCount()) >= 0) {
             if (module.typeCount() > 0) {
-                throw ValidationErrors.createMissingFunctionType(typeIndex, module.typeCount() - 1);
+                throw ValidationErrors.createMissingType(typeIndex, module.typeCount() - 1);
             } else {
-                throw ValidationErrors.createMissingFunctionType(typeIndex);
+                throw ValidationErrors.createMissingType(typeIndex);
             }
         }
     }
 
     private int readTypeIndex() {
         final int typeIndex = readUnsignedInt32();
-        checkFunctionTypeExists(typeIndex);
+        checkTypeExists(typeIndex);
+        return typeIndex;
+    }
+
+    private int readFunctionTypeIndex() {
+        final int typeIndex = readTypeIndex();
+        checkIsFunctionType(typeIndex);
         return typeIndex;
     }
 
@@ -3442,6 +3572,10 @@ public class BinaryParser extends BinaryStreamParser {
                 assertTrue(exceptions, Failure.MALFORMED_REFERENCE_TYPE);
                 yield refType;
             }
+            case NULLEXNREF_TYPE, NULLFUNCREF_TYPE, NULLEXTERNREF_TYPE, NULLREF_TYPE, ANYREF_TYPE, EQREF_TYPE, I31REF_TYPE, STRUCTREF_TYPE, ARRAYREF_TYPE -> {
+                assertTrue(gc, Failure.MALFORMED_REFERENCE_TYPE);
+                yield refType;
+            }
             case REF_NULL_TYPE_HEADER -> {
                 assertTrue(typedFunctionReferences, Failure.MALFORMED_REFERENCE_TYPE);
                 yield WasmType.withNullable(true, readHeapType());
@@ -3462,10 +3596,12 @@ public class BinaryParser extends BinaryStreamParser {
                 assertTrue(exceptions, Failure.MALFORMED_HEAP_TYPE);
                 yield heapType;
             }
+            case NOEXN_HEAPTYPE, NOFUNC_HEAPTYPE, NOEXTERN_HEAPTYPE, NONE_HEAPTYPE, ANY_HEAPTYPE, EQ_HEAPTYPE, I31_HEAPTYPE, STRUCT_HEAPTYPE, ARRAY_HEAPTYPE -> {
+                assertTrue(gc, Failure.MALFORMED_HEAP_TYPE);
+                yield heapType;
+            }
             default -> {
-                if (heapType < 0 || heapType >= module.typeCount()) {
-                    throw fail(Failure.UNKNOWN_TYPE, "Unknown heap type %d", heapType);
-                }
+                checkTypeExists(heapType);
                 assertTrue(typedFunctionReferences, Failure.MALFORMED_HEAP_TYPE);
                 yield heapType;
             }

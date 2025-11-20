@@ -218,6 +218,7 @@ public class ParserState {
             }
             // Push value back onto the stack and perform a checked pop to get the correct error
             // message
+            // TODO: This might need a different error message?
             valueStack.push(value);
         }
         return popChecked(WasmType.FUNCREF_TYPE);
@@ -523,6 +524,13 @@ public class ParserState {
      */
     public void addCall(int nodeIndex, int functionIndex) {
         bytecode.addCall(nodeIndex, functionIndex);
+    }
+
+    /**
+     * Adds the aggregate flag to the bytecode.
+     */
+    public void addAggregateFlag() {
+        bytecode.addOp(Bytecode.AGGREGATE);
     }
 
     /**

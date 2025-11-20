@@ -41,10 +41,10 @@
 
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.types.FunctionType;
 
 /**
  * Represents the type of functions and exceptions in the JS API.
@@ -84,9 +84,9 @@ public final class FuncType {
         }
     }
 
-    public static FuncType fromClosedFunctionType(SymbolTable.ClosedFunctionType functionType) {
-        final SymbolTable.ClosedValueType[] paramTypes = functionType.paramTypes();
-        final SymbolTable.ClosedValueType[] resultTypes = functionType.resultTypes();
+    public static FuncType fromClosedFunctionType(FunctionType functionType) {
+        final org.graalvm.wasm.types.ValueType[] paramTypes = functionType.paramTypes();
+        final org.graalvm.wasm.types.ValueType[] resultTypes = functionType.resultTypes();
 
         final ValueType[] params = new ValueType[paramTypes.length];
         final ValueType[] results = new ValueType[resultTypes.length];
@@ -116,9 +116,9 @@ public final class FuncType {
         return results.length;
     }
 
-    public SymbolTable.ClosedFunctionType toClosedFunctionType() {
-        var paramTypes = new SymbolTable.ClosedValueType[params.length];
-        var resultTypes = new SymbolTable.ClosedValueType[results.length];
+    public FunctionType toClosedFunctionType() {
+        var paramTypes = new org.graalvm.wasm.types.ValueType[params.length];
+        var resultTypes = new org.graalvm.wasm.types.ValueType[results.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
             paramTypes[i] = params[i].asClosedValueType();
@@ -126,7 +126,7 @@ public final class FuncType {
         for (int i = 0; i < resultTypes.length; i++) {
             resultTypes[i] = results[i].asClosedValueType();
         }
-        return new SymbolTable.ClosedFunctionType(paramTypes, resultTypes);
+        return new FunctionType(paramTypes, resultTypes);
     }
 
     public String toString(StringBuilder b) {

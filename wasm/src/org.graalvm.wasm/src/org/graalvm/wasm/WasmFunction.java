@@ -43,16 +43,14 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.types.DefinedType;
 
 public final class WasmFunction {
     private final SymbolTable symbolTable;
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
-    private final SymbolTable.ClosedDefinedType definedType;
-    @CompilationFinal private int typeEquivalenceClass;
+    private final DefinedType definedType;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
     /** Interop call adapter for argument and return value validation and conversion. */
@@ -91,13 +89,6 @@ public final class WasmFunction {
 
     public int resultTypeAt(int returnIndex) {
         return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
-    }
-
-    void setTypeEquivalenceClass(int typeEquivalenceClass) {
-        if (this.typeEquivalenceClass != SymbolTable.NO_EQUIVALENCE_CLASS) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Function at index " + index + " already has an equivalence class.");
-        }
-        this.typeEquivalenceClass = typeEquivalenceClass;
     }
 
     public int[] resultTypes() {
@@ -156,12 +147,8 @@ public final class WasmFunction {
         return typeIndex;
     }
 
-    public SymbolTable.ClosedDefinedType closedType() {
+    public DefinedType type() {
         return definedType;
-    }
-
-    public int typeEquivalenceClass() {
-        return typeEquivalenceClass;
     }
 
     public int index() {
@@ -192,7 +179,7 @@ public final class WasmFunction {
         CallTarget callAdapter = this.interopCallAdapter;
         if (callAdapter == null) {
             // Benign initialization race: The call target will be the same each time.
-            callAdapter = language.interopCallAdapterFor(closedType().asFunctionType());
+            callAdapter = language.interopCallAdapterFor(type().asFunctionType());
             this.interopCallAdapter = callAdapter;
         }
         return callAdapter;

@@ -91,6 +91,7 @@ public enum Failure {
     UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
     UNKNOWN_TYPE(Type.INVALID, "unknown type"),
     SUB_TYPE(Type.INVALID, "sub type"),
+    SUB_TYPE_DOES_NOT_MATCH_SUPER_TYPE(Type.INVALID, "sub type does not match super type"),
     START_FUNCTION_RESULT_VALUE(Type.INVALID, "start function"),
     START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
@@ -170,7 +171,8 @@ public enum Failure {
     NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data"),
 
     INVALID_LANE_INDEX(Type.INVALID, "invalid lane index"),
-    INVALID_CATCH_CLAUSE_LABEL(Type.INVALID, "invalid catch clause label");
+    INVALID_CATCH_CLAUSE_LABEL(Type.INVALID, "invalid catch clause label"),
+    CAST(Type.TRAP, "cast");
 
     public enum Type {
         TRAP("trap"),

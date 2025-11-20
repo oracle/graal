@@ -245,6 +245,13 @@ public final class Instructions {
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
 
+    public static final int AGGREGATE = 0xFB;
+
+    public static final int REF_TEST_NON_NULL = 0x14;
+    public static final int REF_TEST_NULL = 0x15;
+    public static final int REF_CAST_NON_NULL = 0x16;
+    public static final int REF_CAST_NULL = 0x17;
+
     public static final int MISC = 0xFC;
 
     public static final int I32_TRUNC_SAT_F32_S = 0x00;

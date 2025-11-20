@@ -793,6 +793,21 @@ public abstract class BytecodeParser {
                     }
                     break;
                 }
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.REF_TEST_NON_NULL:
+                        case Bytecode.REF_TEST_NULL:
+                        case Bytecode.REF_CAST_NON_NULL:
+                        case Bytecode.REF_CAST_NULL: {
+                            offset += 4;
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 case Bytecode.MISC:
                     int miscOpcode = rawPeekU8(bytecode, offset);
                     offset++;

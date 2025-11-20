@@ -40,13 +40,14 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.types.AbstractHeapType;
+import org.graalvm.wasm.types.NumberType;
+import org.graalvm.wasm.types.ReferenceType;
+import org.graalvm.wasm.types.VectorType;
 
 public enum ValueType {
     i32(WasmType.I32_TYPE),
@@ -77,11 +78,7 @@ public enum ValueType {
                 yield switch (WasmType.getAbstractHeapType(value)) {
                     case WasmType.FUNC_HEAPTYPE -> anyfunc;
                     case WasmType.EXTERN_HEAPTYPE -> externref;
-                    case WasmType.EXN_HEAPTYPE -> exnref;
-                    default -> {
-                        assert WasmType.isConcreteReferenceType(value);
-                        yield anyfunc;
-                    }
+                    default -> throw WasmJsApiException.invalidValueType(value);
                 };
             }
         };
@@ -103,36 +100,35 @@ public enum ValueType {
         return valueType == anyfunc || valueType == externref || valueType == exnref;
     }
 
-    public SymbolTable.ClosedValueType asClosedValueType() {
+    public org.graalvm.wasm.types.ValueType asClosedValueType() {
         return switch (this) {
-            case i32 -> SymbolTable.NumberType.I32;
-            case i64 -> SymbolTable.NumberType.I64;
-            case f32 -> SymbolTable.NumberType.F32;
-            case f64 -> SymbolTable.NumberType.F64;
-            case v128 -> SymbolTable.VectorType.V128;
-            case anyfunc -> SymbolTable.ClosedReferenceType.FUNCREF;
-            case externref -> SymbolTable.ClosedReferenceType.EXTERNREF;
-            case exnref -> SymbolTable.ClosedReferenceType.EXNREF;
+            case i32 -> NumberType.I32;
+            case i64 -> NumberType.I64;
+            case f32 -> NumberType.F32;
+            case f64 -> NumberType.F64;
+            case v128 -> VectorType.V128;
+            case anyfunc -> ReferenceType.FUNCREF;
+            case externref -> ReferenceType.EXTERNREF;
+            case exnref -> ReferenceType.EXNREF;
         };
     }
 
-    public static ValueType fromClosedValueType(SymbolTable.ClosedValueType closedValueType) {
+    public static ValueType fromClosedValueType(org.graalvm.wasm.types.ValueType closedValueType) {
         return switch (closedValueType.kind()) {
-            case Number -> fromValue(((SymbolTable.NumberType) closedValueType).value());
-            case Vector -> fromValue(((SymbolTable.VectorType) closedValueType).value());
+            case Number -> fromValue(((NumberType) closedValueType).value());
+            case Vector -> fromValue(((VectorType) closedValueType).value());
             case Reference -> {
-                SymbolTable.ClosedReferenceType referenceType = (SymbolTable.ClosedReferenceType) closedValueType;
+                ReferenceType referenceType = (ReferenceType) closedValueType;
                 yield switch (referenceType.heapType().kind()) {
                     case Abstract -> {
-                        SymbolTable.AbstractHeapType abstractHeapType = (SymbolTable.AbstractHeapType) referenceType.heapType();
+                        AbstractHeapType abstractHeapType = (AbstractHeapType) referenceType.heapType();
                         yield switch (abstractHeapType.value()) {
                             case WasmType.FUNC_HEAPTYPE -> anyfunc;
                             case WasmType.EXTERNREF_TYPE -> externref;
-                            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(abstractHeapType.value()));
+                            default -> throw WasmJsApiException.invalidValueType(closedValueType);
                         };
                     }
-                    case DefinedType -> anyfunc;
-                    case RecursiveTypeReference -> throw CompilerDirectives.shouldNotReachHere();
+                    default -> throw WasmJsApiException.invalidValueType(closedValueType);
                 };
             }
         };
