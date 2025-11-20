@@ -25,6 +25,7 @@
 package com.oracle.svm.thirdparty.jdk;
 
 import java.lang.reflect.Method;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.hosted.Feature;
@@ -41,11 +42,6 @@ public class JavaNetHttpFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return requiredModule().isPresent();
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        JavaNetHttpFeature.class.getModule().addReads(requiredModule().get());
     }
 
     @Override
@@ -68,19 +64,12 @@ public class JavaNetHttpFeature implements Feature {
     }
 
     protected static Class<?> clazz(FeatureAccess access, String className) {
-        Class<?> classByName = access.findClassByName(className);
-        if (classByName == null) {
-            throw new RuntimeException(String.format("should not reach here: class %s not found", className));
-        }
-        return classByName;
+        return Objects.requireNonNull(access.findClassByName(className), () -> String.format("should not reach here: class %s not found", className));
     }
 
     protected static Method method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
-        Class<?> declaringClass = clazz(access, className);
         try {
-            Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
-            result.setAccessible(true);
-            return result;
+            return clazz(access, className).getDeclaredMethod(methodName, parameterTypes);
         } catch (ReflectiveOperationException | LinkageError ex) {
             throw new RuntimeException(ex);
         }
