@@ -50,8 +50,9 @@ import org.graalvm.wasm.constants.Sizes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.wasm.types.ValueType;
 
-public final class WasmTable extends EmbedderDataHolder implements TruffleObject {
+public final class WasmTable implements TruffleObject, EmbedderDataHolder {
     /**
      * @see #declaredMinSize()
      */
@@ -90,6 +91,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     private final int maxAllowedSize;
 
     private Object[] elements;
+
+    private Object embedderData = WasmConstant.VOID;
 
     @TruffleBoundary
     private WasmTable(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize, int elemType, Object initialValue, SymbolTable symbolTable) {
@@ -163,8 +166,8 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * <p>
      * This table can only be imported with an equivalent elem type.
      *
-     * @return Either {@link WasmType#FUNCREF_TYPE}, {@link WasmType#EXTERNREF_TYPE} or some
-     *         concrete reference type.
+     * @return Either an abstract reference type such as {@link WasmType#FUNCREF_TYPE} or
+     *         {@link WasmType#EXTERNREF_TYPE}, or some concrete reference type.
      */
     public int elemType() {
         return elemType;
@@ -173,7 +176,7 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     /**
      * The closed form of the type of the elements in the table.
      */
-    public SymbolTable.ClosedValueType closedElemType() {
+    public ValueType closedElemType() {
         return SymbolTable.closedTypeOf(elemType, symbolTable);
     }
 
@@ -265,5 +268,15 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
             return size;
         }
         return -1;
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }

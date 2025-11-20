@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+public enum PackedType implements StorageType {
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+    I8,
+    I16;
 
-    private final int value;
-
-    TableKind(int value) {
-        this.value = value;
+    @Override
+    public boolean isSubtypeOf(StorageType that) {
+        return this == that;
     }
 
-    public int value() {
-        return value;
-    }
-
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
+    @Override
+    public String toString() {
+        return switch (this) {
+            case I8 -> "i8";
+            case I16 -> "i16";
         };
     }
 }

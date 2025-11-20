@@ -336,11 +336,17 @@ public class Bytecode {
     public static final int CALL_REF_U8 = 0xF9;
     public static final int CALL_REF_I32 = 0xFA;
 
-    public static final int MISC = 0xFB;
-
-    public static final int ATOMIC = 0xFC;
+    public static final int AGGREGATE = 0xFB;
+    public static final int MISC = 0xFC;
     public static final int VECTOR = 0xFD;
-    public static final int NOTIFY = 0xFE;
+    public static final int ATOMIC = 0xFE;
+    public static final int NOTIFY = 0xFF;
+
+    // Aggregate opcodes
+    public static final int REF_TEST_NON_NULL = 0x14;
+    public static final int REF_TEST_NULL = 0x15;
+    public static final int REF_CAST_NON_NULL = 0x16;
+    public static final int REF_CAST_NULL = 0x17;
 
     // Misc opcodes
     public static final int I32_TRUNC_SAT_F32_S = 0x00;
@@ -371,11 +377,11 @@ public class Bytecode {
     public static final int TABLE_SIZE = 0x19;
     public static final int TABLE_FILL = 0x1A;
 
-    // Exception opcodes
+    // Misc - Exception opcodes
     public static final int THROW = 0x1B;
     public static final int THROW_REF = 0x1C;
 
-    // Typed function references opcodes
+    // Misc - Typed function references opcodes
     public static final int TABLE_GET = 0x1D;
     public static final int TABLE_SET = 0x1E;
     public static final int REF_AS_NON_NULL = 0x1F;

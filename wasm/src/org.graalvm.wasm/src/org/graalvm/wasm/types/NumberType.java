@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+public enum NumberType implements ValueType {
+
+    I32(WasmType.I32_TYPE),
+    I64(WasmType.I64_TYPE),
+    F32(WasmType.F32_TYPE),
+    F64(WasmType.F64_TYPE);
 
     private final int value;
 
-    TableKind(int value) {
+    NumberType(int value) {
         this.value = value;
     }
 
@@ -57,11 +59,38 @@ public enum TableKind {
         return value;
     }
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
+    @Override
+    public Kind kind() {
+        return Kind.Number;
+    }
+
+    @Override
+    public boolean isSubtypeOf(ValueType that) {
+        return this == that;
+    }
+
+    @Override
+    public boolean isSubtypeOf(StorageType that) {
+        return this == that;
+    }
+
+    @Override
+    public boolean matchesValue(Object val) {
+        return switch (this) {
+            case I32 -> val instanceof Integer;
+            case I64 -> val instanceof Long;
+            case F32 -> val instanceof Float;
+            case F64 -> val instanceof Double;
+        };
+    }
+
+    @Override
+    public String toString() {
+        return switch (this) {
+            case I32 -> "i32";
+            case I64 -> "i64";
+            case F32 -> "f32";
+            case F64 -> "f64";
         };
     }
 }

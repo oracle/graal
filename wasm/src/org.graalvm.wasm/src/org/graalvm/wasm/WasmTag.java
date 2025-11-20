@@ -41,19 +41,32 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.wasm.types.FunctionType;
 
-public final class WasmTag extends EmbedderDataHolder implements TruffleObject {
+public final class WasmTag implements TruffleObject, EmbedderDataHolder {
     public static final class Attribute {
         public static final int EXCEPTION = 0;
     }
 
-    private final SymbolTable.ClosedFunctionType type;
+    private final FunctionType type;
 
-    public WasmTag(SymbolTable.ClosedFunctionType type) {
+    private Object embedderData = WasmConstant.VOID;
+
+    public WasmTag(FunctionType type) {
         this.type = type;
     }
 
-    public SymbolTable.ClosedFunctionType type() {
+    public FunctionType type() {
         return type;
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }
