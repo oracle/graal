@@ -158,6 +158,11 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
     }
 
     static JavaConstant readPrimitiveUnchecked(JavaKind kind, Object baseObject, long displacement, int bits, boolean isVolatile) {
+        if (Platform.includedIn(Platform.AARCH64.class) && isVolatile && !isAligned(displacement, bits)) {
+            /* Unaligned volatile accesses may cause segfaults on AArch64. */
+            return null;
+        }
+
         SignedWord offset = Word.signed(displacement);
         long rawValue;
         switch (bits) {
@@ -177,6 +182,12 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
                 throw VMError.shouldNotReachHereUnexpectedInput(bits); // ExcludeFromJacocoGeneratedReport
         }
         return toConstant(kind, rawValue);
+    }
+
+    private static boolean isAligned(long displacement, int bits) {
+        assert bits % Byte.SIZE == 0;
+        int accessBytes = bits / Byte.SIZE;
+        return displacement % accessBytes == 0;
     }
 
     public static JavaConstant toConstant(JavaKind kind, long rawValue) {

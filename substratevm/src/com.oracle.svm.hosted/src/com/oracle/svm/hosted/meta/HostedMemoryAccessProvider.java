@@ -37,13 +37,12 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.spi.MemoryAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider, MemoryAccessExtensionProvider {
+public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
@@ -53,17 +52,6 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
         this.hConstantReflection = hConstantReflection;
-    }
-
-    /**
-     * Unaligned volatile reads can cause crashes on AArch64. As this class is used at build-time,
-     * it doesn't need to use any volatile/atomic reads. Also note that the caller of this method
-     * only has access to the runtime offset, which isn't relevant for this class because it uses
-     * the hosted offset instead (which can be aligned differently).
-     */
-    @Override
-    public boolean supportsUnalignedReads() {
-        return true;
     }
 
     @Override

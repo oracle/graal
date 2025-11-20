@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.core.common.type;
 
-import jdk.graal.compiler.core.common.spi.MemoryAccessExtensionProvider;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -62,12 +60,6 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
         }
     }
 
-    private static boolean isAligned(long displacement, int numBits) {
-        GraalError.guarantee((numBits & 7) == 0, "numBits not a multiple of 8: %d", numBits);
-        int numBytes = numBits / 8;
-        return displacement % numBytes == 0;
-    }
-
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         return readJavaConstant(provider, base, displacement, getBits());
@@ -77,10 +69,6 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
      * @param accessBits the number of bits to read from memory (must be 8, 16, 32 or 64)
      */
     protected JavaConstant readJavaConstant(MemoryAccessProvider provider, Constant base, long displacement, int accessBits) {
-        if (!isAligned(displacement, accessBits) && !supportsUnalignedReads(provider)) {
-            // Avoid crash when performing unaligned reads (JDK-8275645)
-            return null;
-        }
         try {
             return provider.readPrimitiveConstant(getStackKind(), base, displacement, accessBits);
         } catch (IllegalArgumentException e) {
@@ -90,13 +78,6 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
              */
             return null;
         }
-    }
-
-    private static boolean supportsUnalignedReads(MemoryAccessProvider provider) {
-        if (provider instanceof MemoryAccessExtensionProvider ext) {
-            return ext.supportsUnalignedReads();
-        }
-        return false;
     }
 
     @Override
