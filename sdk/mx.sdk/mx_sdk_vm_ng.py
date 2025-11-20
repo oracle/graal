@@ -460,7 +460,7 @@ class NativeImageBuildTask(mx.BuildTask):
             '--parallelism=' + str(self.parallelism),
             '--link-at-build-time',
             # we want "25.0.0-dev" and not "dev" (the default used in NativeImage#prepareImageBuildArgs)
-            '-Dorg.graalvm.version={}'.format(_suite.release_version()),
+            '-Dorg.graalvm.version={}'.format(get_bootstrap_graalvm_version()),
         ] + mx_sdk_vm_impl.svm_experimental_options(experimental_build_args)
         if os.environ.get('JVMCI_VERSION_CHECK'):
             # Propagate this env var when running native image from mx
@@ -619,7 +619,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
             '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
-            '-DGRAALVM_VERSION=' + _suite.release_version(),
+            f'-DGRAALVM_VERSION={get_bootstrap_graalvm_version()}',
             ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
