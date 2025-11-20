@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InterAbsintInvokeHandler;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
@@ -16,11 +17,17 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
 
     private final SummaryFactory<Domain> summaryFactory;
     private final int maxRecursionDepth;
+    private final InterAnalyzerMode analyzerMode;
 
     private InterProceduralAnalyzer(Builder<Domain> builder) {
         super(builder);
         this.summaryFactory = builder.summaryFactory;
         this.maxRecursionDepth = builder.maxRecursionDepth;
+        this.analyzerMode = builder.analyzerMode;
+    }
+
+    public InterAnalyzerMode getAnalyzerMode() {
+        return analyzerMode;
     }
 
     @Override
@@ -34,10 +41,15 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         private static final int DEFAULT_MAX_RECURSION_DEPTH = 64;
         private final SummaryFactory<Domain> summaryFactory;
         private int maxRecursionDepth = DEFAULT_MAX_RECURSION_DEPTH;
+        private final InterAnalyzerMode analyzerMode;
 
-        public Builder(Domain initialDomain, AbstractInterpreter<Domain> abstractInterpreter, SummaryFactory<Domain> summaryFactory) {
+        public Builder(Domain initialDomain,
+                       AbstractInterpreter<Domain> abstractInterpreter,
+                       SummaryFactory<Domain> summaryFactory,
+                       InterAnalyzerMode analyzerMode) {
             super(initialDomain, abstractInterpreter);
             this.summaryFactory = summaryFactory;
+            this.analyzerMode = analyzerMode;
         }
 
         public Builder<Domain> maxRecursionDepth(int maxRecursionDepth) {
