@@ -502,7 +502,7 @@ public class DynamicObjectLibraryTest extends ParametrizedDynamicObjectTest {
         Assert.assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
 
         Shape before = o1.getShape();
-        assertTrue(lib.setPropertyFlags(o1, k1, f3));
+        assertEquals(!(run == TestRun.CACHED_NODES || run == TestRun.UNCACHED_NODES), lib.setPropertyFlags(o1, k1, f3));
         assertFalse(updatePropertyFlags(lib, o1, k1, f -> f | f2));
         assertEquals(f3, lib.getPropertyFlagsOrDefault(o1, k1, -1));
         Assert.assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());

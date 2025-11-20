@@ -237,13 +237,6 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         };
     }
 
-    private DynamicObject.GetPropertyNode createGetPropertyNodeForKey(@SuppressWarnings("unused") Object k) {
-        return switch (run) {
-            case CACHED -> DynamicObject.GetPropertyNode.create();
-            case UNCACHED -> DynamicObject.GetPropertyNode.getUncached();
-        };
-    }
-
     private DynamicObject.GetKeyArrayNode createGetKeyArrayNode() {
         return switch (run) {
             case CACHED -> DynamicObject.GetKeyArrayNode.create();
@@ -727,20 +720,21 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
         DynamicObject.SetPropertyFlagsNode setPropertyFlagsNode = createSetPropertyFlagsNodeForKey(k1);
         DynamicObject.GetPropertyFlagsNode getPropertyFlagsNode = createGetPropertyFlagsNodeForKey(k1);
-        DynamicObject.GetPropertyNode getPropertyNode = createGetPropertyNodeForKey(k1);
 
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, k1, v1, 0);
         assertTrue(setPropertyFlagsNode.execute(o1, k1, f1));
         assertEquals(f1, getPropertyFlagsNode.execute(o1, k1, -1));
         assertEquals(f1, uncachedGetProperty(o1, k1).getFlags());
-        assertTrue(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o1, k1, f -> f | f2));
+        assertTrue(setPropertyFlagsNode.executeAdd(o1, k1, f2));
         assertEquals(f3, getPropertyFlagsNode.execute(o1, k1, -1));
+        assertFalse(setPropertyFlagsNode.executeAdd(o1, k1, f2));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
 
         Shape before = o1.getShape();
-        assertTrue(setPropertyFlagsNode.execute(o1, k1, f3));
-        assertFalse(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o1, k1, f -> f | f2));
+        assertFalse(setPropertyFlagsNode.execute(o1, k1, f3));
+        assertFalse(setPropertyFlagsNode.executeAdd(o1, k1, f2));
+        assertFalse(setPropertyFlagsNode.executeRemove(o1, k1, 0x100));
         assertEquals(f3, getPropertyFlagsNode.execute(o1, k1, -1));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
         assertSame(before, o1.getShape());
@@ -749,29 +743,19 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         uncachedPut(o2, k1, v2, 0);
         assertTrue(setPropertyFlagsNode.execute(o2, k1, f1));
         assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
-        assertTrue(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o2, k1, f -> f | f2));
+        assertTrue(setPropertyFlagsNode.executeAdd(o2, k1, f2));
         assertEquals(f3, getPropertyFlagsNode.execute(o2, k1, -1));
         assertSame(o1.getShape(), o2.getShape());
+        assertTrue(setPropertyFlagsNode.executeRemove(o2, k1, f1));
+        assertEquals(f2, getPropertyFlagsNode.execute(o2, k1, -1));
+        assertTrue(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f3, f1));
+        assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
+        assertFalse(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f1, f1));
+        assertFalse(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f3, f1));
+        assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
 
         DynamicObject o3 = createEmpty();
         assertFalse(setPropertyFlagsNode.execute(o3, k1, f1));
-    }
-
-    private static boolean updatePropertyFlags(DynamicObject.GetPropertyNode getPropertyNode,
-                    DynamicObject.SetPropertyFlagsNode setPropertyFlagsNode,
-                    DynamicObject obj,
-                    String key,
-                    IntUnaryOperator updateFunction) {
-        Property property = getPropertyNode.execute(obj, key);
-        if (property == null) {
-            return false;
-        }
-        int oldFlags = property.getFlags();
-        int newFlags = updateFunction.applyAsInt(oldFlags);
-        if (oldFlags == newFlags) {
-            return false;
-        }
-        return setPropertyFlagsNode.execute(obj, key, newFlags);
     }
 
     @Test

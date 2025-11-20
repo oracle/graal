@@ -1797,9 +1797,12 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     /**
-     * Sets the property flags associated with the requested property key.
+     * Sets or updates property flags associated with the requested property key.
      *
      * @see #execute(DynamicObject, Object, int)
+     * @see #executeAdd(DynamicObject, Object, int)
+     * @see #executeRemove(DynamicObject, Object, int)
+     * @see #executeRemoveAndAdd(DynamicObject, Object, int, int)
      * @since 25.1
      */
     @ImportStatic(DynamicObject.class)
@@ -1818,17 +1821,53 @@ public abstract class DynamicObject implements TruffleObject {
          *            ({@code equals}). See {@link DynamicObject} for more information.
          * @return {@code true} if the property was found and its flags were changed, else
          *         {@code false}
+         * @since 25.1
          */
-        public abstract boolean execute(DynamicObject receiver, Object key, int propertyFlags);
+        public final boolean execute(DynamicObject receiver, Object key, int propertyFlags) {
+            return execute(receiver, key, 0, propertyFlags);
+        }
+
+        /**
+         * Adds property flags associated with the requested property.
+         *
+         * @see #execute(DynamicObject, Object, int)
+         * @since 25.1
+         */
+        public final boolean executeAdd(DynamicObject receiver, Object key, int addedFlags) {
+            return execute(receiver, key, ~0, addedFlags);
+        }
+
+        /**
+         * Removes (clears) property flags associated with the requested property.
+         *
+         * @see #execute(DynamicObject, Object, int)
+         * @since 25.1
+         */
+        public final boolean executeRemove(DynamicObject receiver, Object key, int removedFlags) {
+            return execute(receiver, key, ~removedFlags, 0);
+        }
+
+        /**
+         * Removes, then adds property flags associated with the requested property.
+         *
+         * @see #execute(DynamicObject, Object, int)
+         * @since 25.1
+         */
+        public final boolean executeRemoveAndAdd(DynamicObject receiver, Object key, int removedFlags, int addedFlags) {
+            return execute(receiver, key, ~removedFlags, addedFlags);
+        }
+
+        abstract boolean execute(DynamicObject receiver, Object key, int andFlags, int orFlags);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"shape == oldShape", "key == cachedKey", "propertyFlags == cachedPropertyFlags"}, limit = "SHAPE_CACHE_LIMIT")
-        static boolean doCached(DynamicObject receiver, Object key, int propertyFlags,
+        static boolean doCached(DynamicObject receiver, Object key, int andFlags, int orFlags,
                         @Bind("receiver.getShape()") Shape shape,
                         @Cached("shape") Shape oldShape,
                         @Cached("key") Object cachedKey,
-                        @Cached("propertyFlags") int cachedPropertyFlags,
                         @Cached("oldShape.getProperty(cachedKey)") Property cachedProperty,
+                        @Bind("computeFlags(cachedProperty, andFlags, orFlags)") int propertyFlags,
+                        @Cached("propertyFlags") int cachedPropertyFlags,
                         @Cached("setPropertyFlags(oldShape, cachedProperty, cachedPropertyFlags)") Shape newShape) {
             if (cachedProperty == null) {
                 return false;
@@ -1842,22 +1881,25 @@ public abstract class DynamicObject implements TruffleObject {
                 } else {
                     changePropertyFlagsGeneric(receiver, oldShape, cachedProperty, cachedPropertyFlags);
                 }
+                return true;
             }
-            return true;
+            return false;
         }
 
         @TruffleBoundary
         @Specialization(replaces = "doCached")
-        static boolean doGeneric(DynamicObject receiver, Object key, int propertyFlags) {
+        static boolean doGeneric(DynamicObject receiver, Object key, int andFlags, int orFlags) {
             Shape oldShape = receiver.getShape();
             Property existingProperty = oldShape.getProperty(key);
             if (existingProperty == null) {
                 return false;
             }
+            int propertyFlags = computeFlags(existingProperty, andFlags, orFlags);
             if (existingProperty.getFlags() != propertyFlags) {
                 changePropertyFlagsGeneric(receiver, oldShape, existingProperty, propertyFlags);
+                return true;
             }
-            return true;
+            return false;
         }
 
         @TruffleBoundary
@@ -1882,6 +1924,13 @@ public abstract class DynamicObject implements TruffleObject {
                 return shape;
             }
             return shape.setPropertyFlags(cachedProperty, propertyFlags);
+        }
+
+        static int computeFlags(Property property, int and, int or) {
+            if (property == null) {
+                return 0;
+            }
+            return (property.getFlags() & and) | or;
         }
 
         /**
