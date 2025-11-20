@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -64,6 +63,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
@@ -263,6 +263,17 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      */
     public boolean maybeInitializeAtBuildTime(Class<?> clazz) {
         return computeInitKindAndMaybeInitializeClass(clazz) == InitKind.BUILD_TIME;
+    }
+
+    /**
+     * Returns {@code true} if the provided type is registered to be initialized at build time.
+     * <p>
+     * In contrast to {@link #maybeInitializeAtBuildTime}, this method <b>does not</b> perform the
+     * class initialization as a side effect, which makes it useful in cases where one wants to only
+     * check the configuration without performing the actual initialization.
+     */
+    public boolean shouldInitializeAtBuildTime(ResolvedJavaType type) {
+        return specifiedInitKindFor(OriginalClassProvider.getJavaClass(type)) == InitKind.BUILD_TIME;
     }
 
     /**

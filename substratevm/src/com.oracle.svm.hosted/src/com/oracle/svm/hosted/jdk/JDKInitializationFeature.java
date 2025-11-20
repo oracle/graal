@@ -334,8 +334,18 @@ public class JDKInitializationFeature implements InternalFeature {
      * already set by the time the builder starts running.
      */
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ((FeatureImpl.BeforeAnalysisAccessImpl) access).allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+
+        // We force all Enum.hash fields to be eagerly computed.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(Enum.class, "hash"));
+
+        // The fields below are initialized in their static initializers or as a part of vm startup.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(ModuleLayer.class, "EMPTY_LAYER"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialIn"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialErr"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.util.jar.Attributes$Name", "KNOWN_NAMES"));
     }
 
     /**

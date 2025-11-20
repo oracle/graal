@@ -153,6 +153,7 @@ import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ResolvedJavaPackage;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -1438,12 +1439,24 @@ public class SVMHost extends HostVM {
      * as the field will get folded before/during analysis only in some builds when the
      * initialization happened fast enough, resulting in unstable number of reachable methods and
      * unstable decisions of the simulation of class initializers.
-     *
+     * <p>
+     * This method can be applied only if the following conditions are met:
+     * <ol>
+     * <li>The declaring class of the field should be explicitly registered for <i>build time
+     * initialization</i>.</li>
+     * <li>The field should be annotated with {@link Stable}.</li>
+     * </ol>
+     * 
      * @see #stableFieldsToFoldBeforeAnalysis
      * @see SimulateClassInitializerSupport
      */
     public void allowStableFieldFoldingBeforeAnalysis(AnalysisField field) {
-        stableFieldsToFoldBeforeAnalysis.add(field);
+        String fieldFormat = field.format("%H.%n");
+        VMError.guarantee(classInitializationSupport.shouldInitializeAtBuildTime(field.getDeclaringClass()),
+                        "Only fields of classes explicitly configured for build time initialization are allowed: %s.", fieldFormat);
+        VMError.guarantee(AnnotationValueSupport.getAnnotationValue(field.getWrapped(), Stable.class) != null, "This method should only be called for fields annotated with @Stable: %s.",
+                        fieldFormat);
+        VMError.guarantee(stableFieldsToFoldBeforeAnalysis.add(field), "Field %s is already registered.", fieldFormat);
     }
 
     @Override

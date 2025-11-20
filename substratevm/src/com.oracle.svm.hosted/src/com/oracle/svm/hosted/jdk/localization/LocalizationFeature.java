@@ -82,6 +82,7 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -341,8 +342,15 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
         addResourceBundles();
+        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        /*
+         * Static @Stable fields initialized in static initializers of build-time initialized
+         * classes.
+         */
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("sun.util.locale.BaseLocale", "constantBaseLocales"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.lang.CharacterDataLatin1", "sharpsMap"));
     }
 
     @Override
