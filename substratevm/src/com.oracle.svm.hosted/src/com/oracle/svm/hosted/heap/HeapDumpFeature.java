@@ -99,11 +99,10 @@ public class HeapDumpFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl();
-        ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
-        ImageSingletons.add(HeapDumping.class, heapDumpSupport);
-
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            HeapDumpSupportImpl heapDumpSupport = new HeapDumpSupportImpl();
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
             ImageSingletons.add(HeapDumpMetadata.class, new HeapDumpMetadata());
         }
         ImageSingletons.add(HeapDumpMetadata.HeapDumpEncodedData.class, new HeapDumpMetadata.HeapDumpEncodedData());
@@ -112,7 +111,7 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
-        if (VMInspectionOptions.hasHeapDumpSupport()) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && ImageLayerBuildingSupport.firstImageBuild()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
             RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
         }

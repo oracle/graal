@@ -34,6 +34,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 
 import jdk.graal.compiler.word.Word;
@@ -41,6 +45,7 @@ import jdk.graal.compiler.word.Word;
 /**
  * Support for POSIX global timer (see {@link PosixSubstrateSigprofHandler}).
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class PosixSubstrateGlobalSigprofHandler extends PosixSubstrateSigprofHandler {
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -86,6 +86,7 @@ import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
@@ -107,6 +108,11 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.VMError;
@@ -117,6 +123,7 @@ import jdk.graal.compiler.word.Word;
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 public final class GCImpl implements GC {
     private static final long K = 1024;
     static final long M = K * K;
@@ -140,7 +147,9 @@ public final class GCImpl implements GC {
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
         this.policy = CollectionPolicy.getInitialPolicy();
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(_ -> printGCSummary());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(_ -> printGCSummary());
+        }
     }
 
     @Override

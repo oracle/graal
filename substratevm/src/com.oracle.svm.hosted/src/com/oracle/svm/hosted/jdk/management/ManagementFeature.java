@@ -22,11 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.management;
+package com.oracle.svm.hosted.jdk.management;
 
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.CompilationMXBean;
-import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryManagerMXBean;
@@ -51,18 +50,48 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
+import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
 
 /** See {@link ManagementSupport} for documentation. */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ManagementFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class ManagementFeature extends JNIRegistrationUtil implements InternalFeature {
-    private Map<PlatformManagedObject, PlatformManagedObject> platformManagedObjectReplacements;
+    private static final int EMPTY_ID = -1;
+    private static final int TO_PROCESS = -2;
+
+    @SuppressWarnings({"unchecked", "rawtypes"}) //
+    private static final Class<? extends PlatformManagedObject>[] MANAGED_OBJECT_REPLACEMENT_CANDIDATES = new Class[]{ClassLoadingMXBean.class,
+                    CompilationMXBean.class, RuntimeMXBean.class,
+                    ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class};
+
+    private int[] manageObjectReplacementConstantIds = new int[]{EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID};
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -71,29 +100,78 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
-        ImageSingletons.add(SubstrateRuntimeMXBean.class, runtimeMXBean);
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
+            ImageSingletons.add(SubstrateRuntimeMXBean.class, runtimeMXBean);
 
-        SubstrateThreadMXBean threadMXBean = new SubstrateThreadMXBean();
-        ImageSingletons.add(SubstrateThreadMXBean.class, threadMXBean);
+            SubstrateThreadMXBean threadMXBean = new SubstrateThreadMXBean();
+            ImageSingletons.add(SubstrateThreadMXBean.class, threadMXBean);
 
-        ManagementSupport managementSupport = new ManagementSupport(runtimeMXBean, threadMXBean);
-        ImageSingletons.add(ManagementSupport.class, managementSupport);
-        ThreadListenerSupport.get().register(managementSupport);
+            ManagementSupport managementSupport = new ManagementSupport(runtimeMXBean, threadMXBean);
+            ImageSingletons.add(ManagementSupport.class, managementSupport);
+            ThreadListenerSupport.get().register(managementSupport);
+        }
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        platformManagedObjectReplacements = new IdentityHashMap<>();
-        for (Class<? extends PlatformManagedObject> clazz : Arrays.asList(ClassLoadingMXBean.class, CompilationMXBean.class, RuntimeMXBean.class,
-                        ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class)) {
-            PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
-            PlatformManagedObject target = ManagementSupport.getSingleton().getPlatformMXBeanRaw(clazz);
-            if (source != null && target != null) {
-                platformManagedObjectReplacements.put(source, target);
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            Map<PlatformManagedObject, PlatformManagedObject> platformManagedObjectReplacements = new IdentityHashMap<>();
+            var managementSupport = ManagementSupport.getSingleton();
+            for (int i = 0; i < MANAGED_OBJECT_REPLACEMENT_CANDIDATES.length; i++) {
+                var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
+                PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
+                PlatformManagedObject target = managementSupport.getPlatformMXBeanRaw(clazz);
+                if (source != null && target != null) {
+                    platformManagedObjectReplacements.put(source, target);
+                    /*
+                     * Mark slots corresponding to objects which need to be installed in the initial
+                     * layer.
+                     */
+                    manageObjectReplacementConstantIds[i] = TO_PROCESS;
+                }
             }
+
+            /*
+             * PlatformManagedObject are often caches in static final fields of application classes.
+             * Replacing the hosted objects with the proper runtime objects allows these application
+             * classes to be initialized at image build time. Note that only singleton beans can be
+             * automatically replaced, beans that have a list (like {@link GarbageCollectorMXBean}
+             * cannot be replaced automatically.
+             */
+            access.registerObjectReplacer(source -> {
+                if (source instanceof PlatformManagedObject) {
+                    Object replacement = platformManagedObjectReplacements.get(source);
+                    if (replacement != null) {
+                        return replacement;
+                    }
+                }
+                return source;
+            });
+        } else {
+            /*
+             * All beans were created in the initial layer. In subsequent layers we must ensure
+             * these objects are again properly linked.
+             */
+            Map<PlatformManagedObject, ImageHeapConstant> priorLayerPlatformManagedObjectReplacements = new IdentityHashMap<>();
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            for (int i = 0; i < manageObjectReplacementConstantIds.length; i++) {
+                int objectId = manageObjectReplacementConstantIds[i];
+                if (objectId != EMPTY_ID) {
+                    var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
+                    PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
+                    assert source != null;
+                    priorLayerPlatformManagedObjectReplacements.put(source, loader.getOrCreateConstant(objectId));
+                }
+            }
+
+            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(source -> {
+                if (source instanceof PlatformManagedObject) {
+                    return priorLayerPlatformManagedObjectReplacements.get(source);
+                }
+                return null;
+            });
         }
-        access.registerObjectReplacer(this::replaceHostedPlatformManagedObject);
 
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$Mappings");
@@ -105,30 +183,40 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitialization.initializeAtRunTime("com.sun.management.internal.PlatformMBeanProviderImpl");
     }
 
-    /**
-     * PlatformManagedObject are often caches in static final fields of application classes.
-     * Replacing the hosted objects with the proper runtime objects allows these application classes
-     * to be initialized at image build time. Note that only singleton beans can be automatically
-     * replaced, beans that have a list (like {@link GarbageCollectorMXBean} cannot be replaced
-     * automatically.
-     */
-    private Object replaceHostedPlatformManagedObject(Object source) {
-        if (source instanceof PlatformManagedObject) {
-            Object replacement = platformManagedObjectReplacements.get(source);
-            if (replacement != null) {
-                return replacement;
-            }
-        }
-        return source;
-    }
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(ManagementFeature::registerMBeanServerFactoryNewBuilder, method(access, "javax.management.MBeanServerFactory", "newBuilder", Class.class));
         access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
 
-        assert verifyMemoryManagerBeans();
-        assert ManagementSupport.getSingleton().verifyNoOverlappingMxBeans();
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            assert verifyMemoryManagerBeans();
+            assert ManagementSupport.getSingleton().verifyNoOverlappingMxBeans();
+
+            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                /*
+                 * When building an initial layer, we must ensure that all beans potentially
+                 * referred to by later layers are installed in the heap. Further, we must collect
+                 * their constant ids so that we can access them in later layers.
+                 */
+                var managementSupport = ManagementSupport.getSingleton();
+                var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+                var universe = config.getUniverse();
+                var snippetReflection = universe.getSnippetReflection();
+                AnalysisMetaAccess metaAccess = config.getMetaAccess();
+                var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(ManagementSupport.class, "getPlatformMXBeans", Class.class));
+                for (int i = 0; i < manageObjectReplacementConstantIds.length; i++) {
+                    int objectId = manageObjectReplacementConstantIds[i];
+                    if (objectId != EMPTY_ID) {
+                        assert objectId == TO_PROCESS : objectId;
+                        var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
+                        PlatformManagedObject target = managementSupport.getPlatformMXBeanRaw(clazz);
+                        var ihc = (ImageHeapConstant) snippetReflection.forObject(target);
+                        universe.registerEmbeddedRoot(ihc, new BytecodePosition(null, method, BytecodeFrame.UNKNOWN_BCI));
+                        manageObjectReplacementConstantIds[i] = ImageHeapConstant.getConstantID(ihc);
+                    }
+                }
+            }
+        }
     }
 
     private static boolean verifyMemoryManagerBeans() {
@@ -180,6 +268,29 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         for (String className : OpenType.ALLOWED_CLASSNAMES_LIST) {
             RuntimeReflection.register(clazz(access, className));
             RuntimeReflection.register(clazz(access, "[L" + className + ";"));
+        }
+    }
+
+    /**
+     * We must track the replaced objects so that all object replacements refer to the correct
+     * object.
+     */
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<ManagementFeature>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ManagementFeature singleton) {
+                    writer.writeIntList("objectIds", Arrays.stream(singleton.manageObjectReplacementConstantIds).boxed().toList());
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, ManagementFeature singleton) {
+                    singleton.manageObjectReplacementConstantIds = loader.readIntList("objectIds").stream().mapToInt(Integer::intValue).toArray();
+                }
+            });
         }
     }
 }

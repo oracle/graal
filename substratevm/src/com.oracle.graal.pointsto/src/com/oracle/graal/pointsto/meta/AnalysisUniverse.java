@@ -679,7 +679,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     /**
-     * Invokes all registered object replacers and "object to constant" replacers for an object.>
+     * Invokes all registered object replacers and "object to constant" replacers for an object.
      *
      * <p>
      * The "object to constant" replacer is allowed to successfully complete only when
