@@ -772,11 +772,9 @@ public class NativeImageGenerator {
     }
 
     private void runAbstractInterpretation(DebugContext debug) {
-        Optional<AnalysisMethod> root;
-        if (mainEntryPoint == null || mainEntryPoint.getLeft() == null) {
-            root = Optional.empty();
-        } else {
-            root = Optional.of(bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft()));
+        AnalysisMethod root = null;
+        if (mainEntryPoint != null && mainEntryPoint.getLeft() != null) {
+            root = bb.getMetaAccess().lookupJavaMethod(mainEntryPoint.getLeft());
         }
         AbstractInterpretationDriver driver = new AbstractInterpretationDriver(debug, root, bb);
         driver.run();
