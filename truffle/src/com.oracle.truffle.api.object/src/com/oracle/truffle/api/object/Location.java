@@ -452,14 +452,23 @@ public abstract sealed class Location permits ExtLocations.InstanceLocation, Ext
      */
     @SuppressWarnings("hiding")
     final void setInternal(DynamicObject store, Object value, boolean guard, Shape oldShape, Shape newShape) {
+        boolean init = newShape != oldShape;
+        if (init) {
+            DynamicObjectSupport.grow(store, oldShape, newShape);
+        }
+        setInternal(store, value, guard, init);
+    }
+
+    /**
+     * @see #setInternal(DynamicObject, Object, boolean, Shape, Shape)
+     */
+    @SuppressWarnings("hiding")
+    final void setInternal(DynamicObject store, Object value, boolean guard, boolean init) {
         assert canStoreValue(value) : value;
         DynamicObject receiver = unsafeNonNullCast(store);
         long idx = Integer.toUnsignedLong(index);
         FieldInfo field = this.field;
-        boolean init = newShape != oldShape;
-        if (init) {
-            DynamicObjectSupport.grow(receiver, oldShape, newShape);
-        } else {
+        if (!init) {
             AbstractAssumption assumption = getFinalAssumptionField();
             if (assumption == null || assumption.isValid()) {
                 invalidateFinalAssumption(assumption);

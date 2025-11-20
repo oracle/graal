@@ -43,6 +43,7 @@ package com.oracle.truffle.api.object.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -129,6 +130,13 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         return switch (run) {
             case CACHED -> DynamicObject.PutConstantNode.create();
             case UNCACHED -> DynamicObject.PutConstantNode.getUncached();
+        };
+    }
+
+    private DynamicObject.PutAllNode createPutAllNode() {
+        return switch (run) {
+            case CACHED -> DynamicObject.PutAllNode.create();
+            case UNCACHED -> DynamicObject.PutAllNode.getUncached();
         };
     }
 
@@ -1003,6 +1011,46 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertEquals(1, getNode.execute(o3, "k13", null));
     }
 
+    @Test
+    public void testPutAll() {
+        DynamicObject o1 = createEmpty();
+        DynamicObject o2 = createEmpty();
+        DynamicObject o3 = createEmpty();
+        DynamicObject o4 = createEmpty();
+        String k1 = "key1";
+        String k2 = "key2";
+        String k3 = "key3";
+        String k4 = "key4";
+        int v1 = 42;
+        int v2 = 43;
+        String v3 = "asdf";
+        String v4 = "qwer";
+        String[] keys = {k1, k2, k3};
+        Object[] values1 = {v1, v2, v3};
+        Object[] values2 = {v1, v4, v3};
+        uncachedPutAll(o1, keys, values1);
+        DynamicObject.PutAllNode putAllNode = createPutAllNode();
+        putAllNode.execute(o2, keys, values1);
+        assertSame(o1.getShape(), o2.getShape());
+        putAllNode.execute(o3, keys, values1);
+        putAllNode.execute(o3, keys, values2);
+        putAllNode.execute(o4, keys, values1);
+        String[] keys4 = {k4};
+        DynamicObject.PutAllNode putAllNode4 = createPutAllNode();
+        putAllNode4.executeIfPresent(o3, keys4, new Object[]{v4});
+        assertFalse(uncachedContainsKey(o3, k4));
+        assertNull(uncachedGet(o4, k4));
+        putAllNode4.executeIfAbsent(o4, keys4, new Object[]{v4});
+        assertTrue(uncachedContainsKey(o4, k4));
+        assertEquals(v4, uncachedGet(o4, k4));
+        for (int i = 0; i < keys.length; i++) {
+            assertEquals(values1[i], uncachedGet(o1, keys[i]));
+            assertEquals(values1[i], uncachedGet(o2, keys[i]));
+            assertEquals(values2[i], uncachedGet(o3, keys[i]));
+            assertEquals(values1[i], uncachedGet(o4, keys[i]));
+        }
+    }
+
     private void fillObjectWithProperties(DynamicObject obj, boolean b) {
         DynamicObject.PutNode putNode = createPutNode();
 
@@ -1065,6 +1113,14 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
     private static int uncachedGetPropertyFlags(DynamicObject obj, Object key, int defaultValue) {
         return DynamicObject.GetPropertyFlagsNode.getUncached().execute(obj, key, defaultValue);
+    }
+
+    private static boolean uncachedContainsKey(DynamicObject obj, Object key) {
+        return DynamicObject.ContainsKeyNode.getUncached().execute(obj, key);
+    }
+
+    private static void uncachedPutAll(DynamicObject obj, Object[] keys, Object[] values) {
+        DynamicObject.PutAllNode.getUncached().execute(obj, keys, values);
     }
 
     private static Object newObjectType() {
