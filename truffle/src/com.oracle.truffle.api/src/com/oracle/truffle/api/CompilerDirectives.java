@@ -627,4 +627,30 @@ public final class CompilerDirectives {
         }
 
     }
+
+    /**
+     * Marks a local variable as part of the key used for merging exploded loop iterations. This
+     * method must be used directly before a loop and the return value has to be assigned back to
+     * the variable.
+     *
+     * <pre>
+     * int bci = 0;
+     * // ...
+     * bci = CompilerDirectives.mergeExplodeKey(bci);
+     * while (bci != END_BCI) {
+     *     // ...
+     * }
+     * </pre>
+     *
+     * Only a single variable can currently be annotated with this method, and at every iteration,
+     * the value must be a constant integer.
+     *
+     * @param i the variable that should be used as the merge key.
+     * @return the unchanged value
+     */
+    @SuppressWarnings("unused")
+    public static int mergeExplodeKey(int i) {
+        return i;
+    }
+
 }
