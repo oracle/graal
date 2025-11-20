@@ -618,8 +618,8 @@ public final class HistogramInstructionTracer implements InstructionTracer {
                     continue;
                 }
                 InstructionDescriptor d = descriptor.getInstructionDescriptor(opcode);
+                assert d != null : "No InstructionDescriptor for opcode=" + opcode + ", counter=" + counter + ", values.length=" + values.length + ", descriptor=" + descriptor;
                 if (d == null) {
-                    assert d != null : "No InstructionDescriptor for opcode=" + opcode + ", counter=" + counter + ", values.length=" + values.length + ", descriptor=" + descriptor;
                     continue;
                 }
                 sum += counter;

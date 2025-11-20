@@ -215,6 +215,7 @@ public class MVNDownloader {
          */
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 
+        // Parfait_ALLOW missing-xml-validation (downloadDependencies verifies expected DOM)
         return factory.newDocumentBuilder();
     }
 
