@@ -44,29 +44,4 @@ public final class DataFlowIntervalAnalysisSummaryFactory implements SummaryFact
         }
         return new DataFlowIntervalAnalysisSummary(pre);
     }
-
-    @Override
-    public Summary<AbstractMemory> tryCreateEarlySummary(Invoke invoke, AbstractMemory callerPreCondition, List<AbstractMemory> argumentMemories) {
-        if (invoke.callTarget() == null || argumentMemories.isEmpty()) return null;
-        var argNodes = invoke.callTarget().arguments();
-        if (argNodes.size() == 0) return null;
-
-        Node firstArg = argNodes.get(0);
-        AbstractMemory firstArgMem = argumentMemories.get(0);
-        String nid = nodeId(firstArg);
-        IntInterval iv = firstArgMem.readStore(AccessPath.forLocal(nid));
-        if (!iv.isTop() && !iv.isBot() && !iv.isLowerInfinite() && iv.getUpper() < 2) {
-            // Return the argument itself for base case
-            AbstractMemory pre = new AbstractMemory();
-            pre.bindParamByName("param0", AccessPath.forLocal("param0"));
-            pre.writeStoreStrong(AccessPath.forLocal("param0"), iv);
-            DataFlowIntervalAnalysisSummary summary = new DataFlowIntervalAnalysisSummary(pre);
-            AbstractMemory post = new AbstractMemory();
-            post.bindLocalByName("ret", AccessPath.forLocal("ret"));
-            post.writeStoreStrong(AccessPath.forLocal("ret"), iv.copyOf());
-            summary.setPostCondition(post);
-            return summary;
-        }
-        return null;
-    }
 }

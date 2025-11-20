@@ -23,7 +23,7 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
      * The summaryFactory implementations need to be able to deal with BOT/TOP values in {@code callerPreCondition}.
      * NOTE: It should only be necessary to have the abstract context at the call site + arguments to create a summary.
      * Creation of a summary can include:
-     * Taking only a part of the abstract context, that is relevant for the analysisMethod call.
+     * Taking only a part of the abstract context, that is relevant for the invoke.
      * Renaming the formal arguments to actual arguments, etc.
      *
      * @param invoke             contains information about the invocation
@@ -34,19 +34,4 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
     Summary<Domain> createSummary(Invoke invoke,
                                   Domain callerPreCondition,
                                   List<Domain> arguments);
-
-    /**
-     * Tries to create an early summary for domain-specific base cases.
-     * This is an optional hook that can be implemented by the factory.
-     *
-     * @param invoke             contains information about the invocation
-     * @param callerPreCondition the abstract context precondition at the call site
-     * @param arguments          converted to the used abstract domain using the provided {@link AbstractInterpreter}
-     * @return a {@link Summary} if an early summary could be created, {@code null} otherwise
-     */
-    default Summary<Domain> tryCreateEarlySummary(Invoke invoke,
-                                                  Domain callerPreCondition,
-                                                  List<Domain> arguments) {
-        return null;
-    }
 }

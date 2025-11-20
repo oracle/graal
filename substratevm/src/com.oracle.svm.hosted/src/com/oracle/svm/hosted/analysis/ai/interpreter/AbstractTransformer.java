@@ -116,9 +116,6 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
 
     private boolean shouldSkipBlock(Node first, Domain preCondition) {
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.log("[shouldSKipBlock]: " + first + "  -> " + preCondition, LoggerVerbosity.DEBUG);
-        logger.log("isBot: " + preCondition.isBot(), LoggerVerbosity.DEBUG);
-        logger.log("instanceof Startnode: " + (first instanceof StartNode), LoggerVerbosity.DEBUG);
         return preCondition.isBot() && !(first instanceof StartNode);
     }
 }

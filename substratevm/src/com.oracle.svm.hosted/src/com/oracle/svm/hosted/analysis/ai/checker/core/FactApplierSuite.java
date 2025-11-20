@@ -55,24 +55,21 @@ public final class FactApplierSuite {
             return;
         }
 
-        for (FactApplier applier : appliers) {
-            applier.apply(method, graph,  aggregator);
+        // TODO: this thing just breaks ( BrokenPipe error ) when we analyze large amounts of methods, find a rational way to enable/disable it
+        try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
+            session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
+            for (FactApplier applier : appliers) {
+                logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
+                applier.apply(method, graph, aggregator);
+                if (!graph.verify()) {
+                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
+                }
+                logger.exportGraphToJson(graph, method, "After" + applier.getDescription());
+                session.dumpApplierSubphase(applier.getDescription());
+            }
+        } catch (Throwable e) {
+            logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
+            throw new RuntimeException(e);
         }
-//        // TODO: this thing just breaks ( BrokenPipe ) when we analyze large amounts of methods, find a rational way to enable/disable it
-//        try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
-//            session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
-//            for (FactApplier applier : appliers) {
-//                logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
-//                applier.apply(method, graph, aggregator);
-//                if (!graph.verify()) {
-//                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
-//                }
-//                logger.exportGraphToJson(graph, method, "After" + applier.getDescription());
-//                session.dumpApplierSubphase(applier.getDescription());
-//            }
-//        } catch (Throwable e) {
-//            logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
-//            throw new RuntimeException(e);
-//        }
     }
 }

@@ -94,7 +94,8 @@ public class AbstractInterpretationDriver {
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IndexSafetyChecker())
-                .maxRecursionDepth(32)
+                .maxRecursionDepth(64)
+                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
 
         /* 5. Register with manager */

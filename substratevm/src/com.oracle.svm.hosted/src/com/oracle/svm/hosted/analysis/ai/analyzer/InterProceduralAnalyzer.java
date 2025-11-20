@@ -16,7 +16,6 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
 
     private final SummaryFactory<Domain> summaryFactory;
     private final int maxRecursionDepth;
-    private static final int DEFAULT_MAX_RECURSION_DEPTH = 32;
 
     private InterProceduralAnalyzer(Builder<Domain> builder) {
         super(builder);
@@ -32,6 +31,7 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
+        private static final int DEFAULT_MAX_RECURSION_DEPTH = 64;
         private final SummaryFactory<Domain> summaryFactory;
         private int maxRecursionDepth = DEFAULT_MAX_RECURSION_DEPTH;
 

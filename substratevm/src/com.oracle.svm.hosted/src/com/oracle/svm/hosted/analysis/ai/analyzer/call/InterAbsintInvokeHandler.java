@@ -33,7 +33,6 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
 
     private final CallStack methodStack;
     private final SummaryManager<Domain> summaryManager;
-    private final SummaryRepository<Domain> summaryRepository;
     private final Map<AnalysisMethod, Map<String, Summary<Domain>>> memo = new HashMap<>();
 
     public InterAbsintInvokeHandler(
@@ -45,7 +44,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         super(initialDomain, abstractInterpreter, analysisContext);
         this.methodStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
-        this.summaryRepository = new SummaryRepository<>();
+//        SummaryRepository<Domain> summaryRepository = new SummaryRepository<>();
     }
 
     @Override
@@ -57,32 +56,33 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         AnalysisMethod targetAnalysisMethod;
         try {
             targetAnalysisMethod = getInvokeTargetAnalysisMethod(current, invoke);
+            assert targetAnalysisMethod != null;
         } catch (Exception e) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
-        logger.log("Handling invoke of method:  " + targetAnalysisMethod.getName(), LoggerVerbosity.DEBUG);
 
+        logger.log("Handling invoke of method:  " + targetAnalysisMethod.getName(), LoggerVerbosity.DEBUG);
         AbstractState<Domain> callerState = invokeInput.callerState();
         var argDomains = invokeInput.actualArgDomains();
         Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
 
-
-        Summary<Domain> early = summaryManager.summaryFactory().tryCreateEarlySummary(invoke, callerPreAtInvoke, argDomains);
-        if (early != null && early.isComplete()) {
-            logger.log("Early summary applied for invoke: " + invoke, LoggerVerbosity.SUMMARY);
-            summaryManager.putSummary(targetAnalysisMethod, early);
-            return AnalysisOutcome.ok(early);
-        }
-
+        // TODO: refactor analysisResult
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerPreAtInvoke, argDomains);
+        if (methodFilterManager.shouldSkipMethod(targetAnalysisMethod)) {
+            return new AnalysisOutcome<>(AnalysisResult.IN_SKIP_LIST, summary);
+        }
 
         if (summaryManager.containsSummary(targetAnalysisMethod, summary)) {
             logger.log("Summary cache contains targetMethod: " + targetAnalysisMethod, LoggerVerbosity.SUMMARY);
             Summary<Domain> completeSummary = summaryManager.getSummary(targetAnalysisMethod, summary);
             return AnalysisOutcome.ok(completeSummary);
         }
+
+        // TODO: move this into separate methods;
+        logger.log("countConsecutiveCalls: " + methodStack.countConsecutiveCalls(targetAnalysisMethod), LoggerVerbosity.DEBUG);
+        logger.log("getMaxRecursionDepth: " + methodStack.getMaxRecursionDepth(), LoggerVerbosity.DEBUG);
 
         if (methodStack.countConsecutiveCalls(targetAnalysisMethod) >= methodStack.getMaxRecursionDepth()) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);

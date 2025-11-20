@@ -36,6 +36,8 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
             this.weakTopologicalOrdering = cache.getMethodWtoMap().get(method);
         } else {
             logger.log("Computing Weak Topological Ordering for " + method.getQualifiedName(), LoggerVerbosity.DEBUG);
+            logger.log("Using AnalysisDirection:" + analysisContext.getIteratorPolicy().direction(), LoggerVerbosity.INFO);
+
             this.weakTopologicalOrdering = new WeakTopologicalOrdering(graphTraversalHelper);
             cache.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
