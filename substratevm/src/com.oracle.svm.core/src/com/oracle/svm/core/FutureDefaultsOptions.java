@@ -41,6 +41,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
 
 import jdk.graal.compiler.options.Option;
@@ -79,8 +80,10 @@ public class FutureDefaultsOptions {
 
     private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS);
+
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
-    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, COMPLETE_REFLECTION_TYPES);
+    private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
 
     public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS +
                     ")";
@@ -140,6 +143,15 @@ public class FutureDefaultsOptions {
                                 getOptionHelpText());
             }
 
+            if (RETIRED_FUTURE_DEFAULTS.contains(value)) {
+                LogUtils.warning("The '%s' option from %s contains the value '%s' which is enabled by default in this GraalVM release (%s) and can be removed.",
+                                SubstrateOptionsParser.commandArgument(FutureDefaults, value),
+                                valueWithOrigin.origin(),
+                                value,
+                                VM.getVersion());
+                return;
+            }
+
             if (!getAllValues().contains(value)) {
                 throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.%n%nUsage:%n%n%s",
                                 SubstrateOptionsParser.commandArgument(FutureDefaults, value),
@@ -169,12 +181,24 @@ public class FutureDefaultsOptions {
 
         /* Set build-time properties for user features */
         for (String futureDefault : getFutureDefaults()) {
-            System.setProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+            setSystemProperty(futureDefault, true);
         }
+
+        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
+            setSystemProperty(retiredFutureDefault, true);
+        }
+    }
+
+    private static void setSystemProperty(String futureDefault, boolean value) {
+        System.setProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.toString(value));
     }
 
     public static Set<String> getFutureDefaults() {
         return Collections.unmodifiableSet(Objects.requireNonNull(futureDefaults, "must be initialized before usage"));
+    }
+
+    public static List<String> getRetiredFutureDefaults() {
+        return RETIRED_FUTURE_DEFAULTS;
     }
 
     /**
@@ -182,13 +206,6 @@ public class FutureDefaultsOptions {
      */
     public static boolean allFutureDefaults() {
         return getFutureDefaults().containsAll(ALL_FUTURE_DEFAULTS);
-    }
-
-    /**
-     * @see FutureDefaultsOptions#FutureDefaults
-     */
-    public static boolean completeReflectionTypes() {
-        return getFutureDefaults().contains(COMPLETE_REFLECTION_TYPES);
     }
 
     /**

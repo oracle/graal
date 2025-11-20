@@ -77,6 +77,8 @@ abstract class HostMethodDesc {
 
     abstract boolean isConstructor();
 
+    abstract boolean isInvocable();
+
     abstract static class SingleMethod extends HostMethodDesc {
 
         static final int[] EMTPY_SCOPED_PARAMETERS = new int[0];
@@ -142,6 +144,26 @@ abstract class HostMethodDesc {
         }
 
         public abstract Executable getReflectionMethod();
+
+        private static final Method isInvocableMethod = TruffleOptions.AOT ? getIsInvocableMethod() : null;
+
+        private static Method getIsInvocableMethod() {
+            try {
+                return Class.forName("org.graalvm.nativeimage.MissingReflectionRegistrationError").getMethod("isInvocable", Executable.class);
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                /* API is not available */
+                return null;
+            }
+        }
+
+        @Override
+        boolean isInvocable() {
+            try {
+                return isInvocableMethod == null || (boolean) isInvocableMethod.invoke(null, getReflectionMethod());
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         public final boolean isVarArgs() {
             return varArgs;
@@ -593,6 +615,16 @@ abstract class HostMethodDesc {
         public boolean isInternal() {
             for (SingleMethod overload : overloads) {
                 if (!overload.isInternal()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        boolean isInvocable() {
+            for (SingleMethod overload : overloads) {
+                if (!overload.isInvocable()) {
                     return false;
                 }
             }

@@ -474,7 +474,12 @@ public class AnalysisUniverse implements Universe {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
             if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
-                AnalysisMethod aMethod = lookup(method);
+                AnalysisMethod aMethod = null;
+                try {
+                    aMethod = lookup(method);
+                } catch (UnsupportedFeatureException ignored) {
+                    /* Unsupported elements should not prevent querying other members of the type */
+                }
                 if (aMethod != null) {
                     result.add(aMethod);
                 }
