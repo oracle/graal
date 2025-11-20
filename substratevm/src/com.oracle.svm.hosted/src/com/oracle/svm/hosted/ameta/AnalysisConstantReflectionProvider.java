@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -195,21 +196,21 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
      * @param accessBytes number of bytes to read from the array (1, 2, 4, or 8)
      * @param accessedDataOffset offset in bytes, from the start of the first array element (not
      *            from the beginning of the array object)
-     * @return a {@link JavaConstant} containing the read value if successful; {@code null} if the
-     *         value could not be read
+     * @return a {@link JavaConstant} containing the read value
      *
-     * @throws IllegalArgumentException if {@code accessBytes} is not 1, 2, 4, or 8.
+     * @throws IllegalArgumentException if the value could not be read
      */
-    public JavaConstant readArrayUnaligned(JavaConstant array, int accessBytes, long accessedDataOffset, int runtimeIndexScale) {
+    public JavaConstant readArrayUnaligned(ImageHeapArray array, int accessBytes, long accessedDataOffset, int runtimeIndexScale) {
         if (accessBytes < 1 || accessBytes > 8 || !CodeUtil.isPowerOf2(accessBytes)) {
             throw new IllegalArgumentException(String.valueOf(accessBytes));
         }
 
-        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
-            return null;
+        if (array.getJavaKind() != JavaKind.Object) {
+            throw new IllegalArgumentException("Base of kind " + array.getJavaKind() + " is not supported.");
+        } else if (array.isNull()) {
+            throw new IllegalArgumentException("Base is null.");
         }
 
-        VMError.guarantee(array instanceof ImageHeapConstant);
         if (array instanceof ImageHeapPrimitiveArray heapArray) {
             /* Unaligned accesses are only allowed for primitive arrays. */
             MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
@@ -222,19 +223,21 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             Object primitiveArray = heapArray.getArray();
             long arrayDataSize = Array.getLength(primitiveArray) * hostedIndexScale;
             if (accessedDataOffset < 0 || accessedDataOffset + accessBytes > arrayDataSize) {
-                return null;
+                throw new IllegalArgumentException("Reading outside array bounds.");
             }
 
             /* Compute the accessed offset relative to the start of the array. */
             long accessedHostedOffset = accessedDataOffset + hostedBaseOffset;
 
             /* Read from the array and convert the value to a constant. */
-            heapArray.ensureReaderInstalled();
             Object value = readFromPrimitiveArray(accessBytes, primitiveArray, accessedHostedOffset);
             JavaConstant result = JavaConstant.forBoxedPrimitive(value);
             return checkExpectedValue(result);
+        } else if (array instanceof ImageHeapObjectArray) {
+            throw new IllegalArgumentException("Misaligned object read from array.");
+        } else {
+            throw VMError.shouldNotReachHere("Unexpected base: " + array.getClass());
         }
-        return null;
     }
 
     private static Object readFromPrimitiveArray(int accessBytes, Object primitiveArray, long hostedOffset) {

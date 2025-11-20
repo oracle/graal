@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -35,6 +37,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
@@ -42,17 +45,15 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Provides memory access during runtime compilation, so all displacements must be runtime field
- * offset of based on the runtime array base/scale.
+ * Provides memory access during runtime compilation.
  * 
  * Note that the implementation must not assume that the base and displacement constants are valid
  * matching pairs. The compiler performs constant folding as soon as the input nodes are constants.
- * When the folded memory access is in dead code, then the displacement often points outside of the
- * base object or to a field with the wrong type. Careful checking of the arguments is necessary,
+ * When the folded memory access is in dead code, then the displacement may point outside the base
+ * object or to a field with the wrong type. Careful checking of the arguments is necessary,
  * otherwise the compiler can crash.
  */
 public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryAccessProvider {
-
     public static final SubstrateMemoryAccessProviderImpl SINGLETON = new SubstrateMemoryAccessProviderImpl();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -70,56 +71,56 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
     }
 
     /**
-     * Object constants can only be returned when we are 100% sure that the loaded value is really a
-     * valid object. Otherwise, the GC will segfault. So we allow the read only when we find an
-     * instance field with the matching offset and type; or when accessing an Object[] array at an
-     * in-range and correctly aligned position.
+     * Object references may only be read when we are sure that the loaded value points to a valid
+     * object. Otherwise, the GC will segfault. So we allow the read only when we find an instance
+     * field with the matching offset and type; or when accessing an Object[] array at an in-range
+     * and correctly aligned position.
      */
     private static JavaConstant readObjectChecked(Constant baseConstant, long displacement, CompressEncoding compressedEncoding) {
         if (compressedEncoding != null) {
             assert ReferenceAccess.singleton().haveCompressedReferences();
             if (!compressedEncoding.equals(ReferenceAccess.singleton().getCompressEncoding())) {
-                /* Read with non-default compression not implemented. */
-                return null;
+                throw new IllegalArgumentException("Reading with non-default compression is not supported.");
             }
         }
 
         if (!(baseConstant instanceof SubstrateObjectConstant)) {
-            return null;
+            throw new IllegalArgumentException("Base " + baseConstant.getClass() + " is not supported.");
         }
         Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
         if (baseObject == null) {
-            /* SubstrateObjectConstant does not wrap null. But we are defensive. */
-            return null;
-        } else if (displacement <= 0) {
-            /* Trying to read before the object, or the hub. No need to look into the object. */
-            return null;
+            throw new IllegalArgumentException("Base is null.");
+        } else if (displacement < 0 || Word.unsigned(displacement + ConfigurationValues.getObjectLayout().getReferenceSize()).aboveThan(LayoutEncoding.getMomentarySizeFromObject(baseObject))) {
+            throw new IllegalArgumentException("Reading outside object bounds.");
         }
 
         SubstrateType baseObjectType = SubstrateMetaAccess.singleton().lookupJavaType(baseObject.getClass());
         if (baseObjectType.isInstanceClass()) {
             SubstrateField field = baseObjectType.findInstanceFieldWithOffset(displacement, JavaKind.Object);
-            if (field == null || field.getStorageKind() != JavaKind.Object) {
-                /* Not a valid instance field that has an Object type. */
-                return null;
-            }
-        } else if (baseObject instanceof Object[]) {
-            int layoutEncoding = baseObjectType.getHub().getLayoutEncoding();
-            assert LayoutEncoding.isObjectArray(layoutEncoding);
-            if (displacement < LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)) {
-                /* Trying to read before the first array element. */
-                return null;
-            } else if (Word.unsigned(displacement).aboveOrEqual(LayoutEncoding.getArrayElementOffset(layoutEncoding, ((Object[]) baseObject).length))) {
-                /* Trying to read after the last array element. */
-                return null;
-            } else if ((displacement & (LayoutEncoding.getArrayIndexScale(layoutEncoding) - 1)) != 0) {
-                /* Not aligned at the start of an array element. */
-                return null;
+            if (field == null) {
+                throw new IllegalArgumentException("Can't find field at displacement " + displacement + " in object of type " + baseObjectType.toJavaName() + ".");
+            } else if (field.getStorageKind() != JavaKind.Object) {
+                throw new IllegalArgumentException("Field at displacement " + displacement + " in object of type " + baseObjectType.toJavaName() +
+                                " is " + field.getStorageKind() + " but expected Object.");
             }
         } else {
-            /* Some other kind of object, for example a primitive array. */
-            return null;
+            int layoutEncoding = baseObjectType.getHub().getLayoutEncoding();
+            if (baseObject instanceof Object[]) {
+                assert LayoutEncoding.isObjectArray(layoutEncoding);
+                if (displacement < LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)) {
+                    throw new IllegalArgumentException("Reading from array header.");
+                } else if (Word.unsigned(displacement).aboveOrEqual(LayoutEncoding.getArrayElementOffset(layoutEncoding, ((Object[]) baseObject).length))) {
+                    throw new IllegalArgumentException("Reading after last array element.");
+                } else if ((displacement & (LayoutEncoding.getArrayIndexScale(layoutEncoding) - 1)) != 0) {
+                    throw new IllegalArgumentException("Misaligned object read from array.");
+                }
+            } else if (LayoutEncoding.isPrimitiveArray(layoutEncoding)) {
+                throw new IllegalArgumentException("Can't read objects from primitive array.");
+            } else {
+                throw VMError.shouldNotReachHere("Unexpected object type: " + baseObjectType.toJavaName());
+            }
         }
+
         return readObjectUnchecked(baseObject, displacement, compressedEncoding != null, false);
     }
 
@@ -129,8 +130,10 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
     }
 
     @Override
-    public JavaConstant readPrimitiveConstant(JavaKind kind, Constant baseConstant, long displacement, int bits) {
-        return readPrimitiveChecked(kind, baseConstant, displacement, bits);
+    public JavaConstant readPrimitiveConstant(JavaKind kind, Constant baseConstant, long displacement, int accessBits) {
+        assert accessBits % Byte.SIZE == 0 && accessBits > 0 && accessBits <= 64 : accessBits;
+        int accessBytes = accessBits / Byte.SIZE;
+        return readPrimitiveChecked(kind, baseConstant, displacement, accessBytes);
     }
 
     /**
@@ -139,77 +142,80 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
      * the compiler. We need to ensure though that we are only reading within the proper bounds of
      * the object, because a read before/after the object could be in unmapped memory and segfault.
      */
-    private static JavaConstant readPrimitiveChecked(JavaKind kind, Constant baseConstant, long displacement, int bits) {
+    private static JavaConstant readPrimitiveChecked(JavaKind kind, Constant baseConstant, long displacement, int accessBytes) {
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+
         if (!(baseConstant instanceof SubstrateObjectConstant)) {
-            return null;
+            throw new IllegalArgumentException("Base " + baseConstant.getClass() + " is not supported.");
         }
         Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
         if (baseObject == null) {
-            /* SubstrateObjectConstant does not wrap null. But we are defensive. */
-            return null;
-        } else if (displacement <= 0) {
-            /* Trying to read before the object, or the hub. No need to look into the object. */
-            return null;
-        } else if (Word.unsigned(displacement + bits / 8).aboveThan(LayoutEncoding.getMomentarySizeFromObject(baseObject))) {
-            /* Trying to read after the end of the object. */
-            return null;
+            throw new IllegalArgumentException("Base is null.");
+        } else if (displacement < 0 || Word.unsigned(displacement + accessBytes).aboveThan(LayoutEncoding.getMomentarySizeFromObject(baseObject))) {
+            throw new IllegalArgumentException("Reading outside object bounds.");
+        } else if (Platform.includedIn(Platform.AARCH64.class) && displacement % accessBytes != 0) {
+            /* Unaligned volatile accesses may cause segfaults on AArch64. */
+            throw new IllegalArgumentException("Read is unaligned.");
         }
-        return readPrimitiveUnchecked(kind, baseObject, displacement, bits, false);
+
+        SubstrateType baseObjectType = SubstrateMetaAccess.singleton().lookupJavaType(baseObject.getClass());
+        int layoutEncoding = baseObjectType.getHub().getLayoutEncoding();
+        if (LayoutEncoding.isPureInstance(layoutEncoding)) {
+            /* Field information may be missing, so allow most accesses to instance objects. */
+            if (displacement < ol.getFirstFieldOffset()) {
+                throw new IllegalArgumentException("Reading from object header.");
+            }
+        } else if (LayoutEncoding.isHybrid(layoutEncoding)) {
+            /* Field information may be missing, so allow most accesses to hybrid objects. */
+            if (displacement < ol.getFirstFieldOffset()) {
+                throw new IllegalArgumentException("Reading from object header.");
+            } else if (Word.unsigned(displacement).aboveOrEqual(LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(baseObject)))) {
+                throw new IllegalArgumentException("Reading after last array element.");
+            }
+        } else {
+            if (LayoutEncoding.isObjectArray(layoutEncoding)) {
+                throw new IllegalArgumentException("Reading primitive from object array.");
+            } else if (displacement < LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)) {
+                throw new IllegalArgumentException("Reading from array header.");
+            } else if (Word.unsigned(displacement).aboveOrEqual(LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(baseObject)))) {
+                throw new IllegalArgumentException("Reading after last array element.");
+            }
+        }
+
+        return readPrimitiveUnchecked(kind, baseObject, displacement, accessBytes, false);
     }
 
-    static JavaConstant readPrimitiveUnchecked(JavaKind kind, Object baseObject, long displacement, int bits, boolean isVolatile) {
-        if (Platform.includedIn(Platform.AARCH64.class) && isVolatile && !isAligned(displacement, bits)) {
-            /* Unaligned volatile accesses may cause segfaults on AArch64. */
-            return null;
-        }
-
-        SignedWord offset = Word.signed(displacement);
-        long rawValue;
-        switch (bits) {
-            case Byte.SIZE:
-                rawValue = isVolatile ? BarrieredAccess.readByteVolatile(baseObject, offset) : BarrieredAccess.readByte(baseObject, offset);
-                break;
-            case Short.SIZE:
-                rawValue = isVolatile ? BarrieredAccess.readShortVolatile(baseObject, offset) : BarrieredAccess.readShort(baseObject, offset);
-                break;
-            case Integer.SIZE:
-                rawValue = isVolatile ? BarrieredAccess.readIntVolatile(baseObject, offset) : BarrieredAccess.readInt(baseObject, offset);
-                break;
-            case Long.SIZE:
-                rawValue = isVolatile ? BarrieredAccess.readLongVolatile(baseObject, offset) : BarrieredAccess.readLong(baseObject, offset);
-                break;
-            default:
-                throw VMError.shouldNotReachHereUnexpectedInput(bits); // ExcludeFromJacocoGeneratedReport
-        }
+    static JavaConstant readPrimitiveUnchecked(JavaKind kind, Object baseObject, long displacement, int accessBytes, boolean isVolatile) {
+        long rawValue = readPrimitiveUnchecked0(baseObject, displacement, accessBytes, isVolatile);
         return toConstant(kind, rawValue);
     }
 
-    private static boolean isAligned(long displacement, int bits) {
-        assert bits % Byte.SIZE == 0;
-        int accessBytes = bits / Byte.SIZE;
-        return displacement % accessBytes == 0;
+    private static long readPrimitiveUnchecked0(Object baseObject, long displacement, int accessBytes, boolean isVolatile) {
+        SignedWord offset = Word.signed(displacement);
+        return switch (accessBytes) {
+            case Byte.BYTES ->
+                isVolatile ? BarrieredAccess.readByteVolatile(baseObject, offset) : BarrieredAccess.readByte(baseObject, offset);
+            case Short.BYTES ->
+                isVolatile ? BarrieredAccess.readShortVolatile(baseObject, offset) : BarrieredAccess.readShort(baseObject, offset);
+            case Integer.BYTES ->
+                isVolatile ? BarrieredAccess.readIntVolatile(baseObject, offset) : BarrieredAccess.readInt(baseObject, offset);
+            case Long.BYTES ->
+                isVolatile ? BarrieredAccess.readLongVolatile(baseObject, offset) : BarrieredAccess.readLong(baseObject, offset);
+            default -> throw VMError.shouldNotReachHereUnexpectedInput(accessBytes); // ExcludeFromJacocoGeneratedReport
+        };
     }
 
     public static JavaConstant toConstant(JavaKind kind, long rawValue) {
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.forBoolean(rawValue != 0);
-            case Byte:
-                return JavaConstant.forByte((byte) rawValue);
-            case Char:
-                return JavaConstant.forChar((char) rawValue);
-            case Short:
-                return JavaConstant.forShort((short) rawValue);
-            case Int:
-                return JavaConstant.forInt((int) rawValue);
-            case Long:
-                return JavaConstant.forLong(rawValue);
-            case Float:
-                return JavaConstant.forFloat(Float.intBitsToFloat((int) rawValue));
-            case Double:
-                return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
-            default:
-                throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
-        }
+        return switch (kind) {
+            case Boolean -> JavaConstant.forBoolean(rawValue != 0);
+            case Byte -> JavaConstant.forByte((byte) rawValue);
+            case Char -> JavaConstant.forChar((char) rawValue);
+            case Short -> JavaConstant.forShort((short) rawValue);
+            case Int -> JavaConstant.forInt((int) rawValue);
+            case Long -> JavaConstant.forLong(rawValue);
+            case Float -> JavaConstant.forFloat(Float.intBitsToFloat((int) rawValue));
+            case Double -> JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
+            default -> throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
+        };
     }
 }
