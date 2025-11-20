@@ -90,7 +90,7 @@ import org.graalvm.wasm.api.ExecuteHostFunctionNode;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
@@ -103,6 +103,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.ValueType;
 
 public class Linker {
     public enum LinkState {
@@ -191,7 +193,6 @@ public class Linker {
                 ArrayList<Throwable> failures = new ArrayList<>();
                 final int maxStartFunctionIndex = runLinkActions(store, instances, importValues, failures);
                 linkTopologically(store, failures, maxStartFunctionIndex);
-                assignTypeEquivalenceClasses(store);
                 resolutionDag = null;
                 runStartFunctions(instances, failures);
                 checkFailures(failures);
@@ -235,39 +236,6 @@ public class Linker {
         for (String moduleName : moduleOrdering) {
             store.moduleInstances().get(moduleName).setStartFunctionIndex(maxStartFunctionIndex + i + 1);
             i++;
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmStore store) {
-        final Map<String, WasmInstance> instances = store.moduleInstances();
-        for (WasmInstance instance : instances.values()) {
-            WasmModule module = instance.module();
-            if (instance.isLinkInProgress() && !module.isParsed()) {
-                assignTypeEquivalenceClasses(module, store.language());
-            }
-        }
-    }
-
-    private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
-        var lock = module.getLock();
-        lock.lock();
-        try {
-            if (module.isParsed()) {
-                return;
-            }
-            final SymbolTable symtab = module.symbolTable();
-            for (int index = 0; index < symtab.typeCount(); index++) {
-                SymbolTable.ClosedFunctionType type = symtab.closedFunctionTypeAt(index);
-                int equivalenceClass = language.equivalenceClassFor(type);
-                symtab.setEquivalenceClass(index, equivalenceClass);
-            }
-            for (int index = 0; index < symtab.numFunctions(); index++) {
-                final WasmFunction function = symtab.function(index);
-                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
-            }
-            module.setParsed();
-        } finally {
-            lock.unlock();
         }
     }
 
@@ -350,19 +318,19 @@ public class Linker {
 
                 externalGlobal = importedInstance.externalGlobal(exportedGlobalIndex);
             }
-            SymbolTable.ClosedValueType importType = instance.symbolTable().closedTypeOf(valueType);
-            SymbolTable.ClosedValueType exportType = externalGlobal.getClosedType();
+            ValueType importType = instance.symbolTable().closedTypeOf(valueType);
+            ValueType exportType = externalGlobal.getClosedType();
             if (mutability != externalGlobal.getMutability()) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(externalGlobal.getMutability()) + ".");
+                                "' with the modifier " + Mutability.asString(mutability) + ", " +
+                                "but it was exported in the module '" + importedModuleName + "' with the modifier " + Mutability.asString(externalGlobal.getMutability()) + ".");
             }
             // matching for mutable globals does not work by subtyping, but requires equivalent
             // types
-            if (!(externalGlobal.isMutable() ? importType.equals(exportType) : importType.isSupertypeOf(exportType))) {
+            if (!(externalGlobal.isMutable() ? importType.equals(exportType) : exportType.isSubtypeOf(importType))) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE, "Global variable '" + importedGlobalName + "' is imported into module '" + instance.name() +
-                                "' with the type " + GlobalModifier.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
-                                "but it was exported in the module '" + importedModuleName + "' with the type " + GlobalModifier.asString(externalGlobal.getMutability()) + " " +
+                                "' with the type " + Mutability.asString(mutability) + " " + WasmType.toString(valueType) + ", " +
+                                "but it was exported in the module '" + importedModuleName + "' with the type " + Mutability.asString(externalGlobal.getMutability()) + " " +
                                 WasmType.toString(externalGlobal.getType()) + ".");
             }
             instance.setExternalGlobal(globalIndex, externalGlobal);
@@ -424,7 +392,7 @@ public class Linker {
             Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
-                    if (!function.closedType().isSupertypeOf(functionInstance.function().closedType())) {
+                    if (!functionInstance.type().isSubtypeOf(function.type())) {
                         throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
                     }
                     instance.setTarget(function.index(), functionInstance.target());
@@ -457,7 +425,7 @@ public class Linker {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            if (!function.closedType().isSupertypeOf(importedFunction.closedType())) {
+            if (!importedFunction.type().isSubtypeOf(function.type())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
@@ -530,7 +498,7 @@ public class Linker {
         });
     }
 
-    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, SymbolTable.ClosedFunctionType type, ImportValueSupplier imports) {
+    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, FunctionType type, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedTagName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {

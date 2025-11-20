@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.wasm.WasmConstant;
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+public record ReferenceType(boolean nullable, HeapType heapType) implements ValueType {
 
-    private final int value;
+    public static ReferenceType FUNCREF = new ReferenceType(true, AbstractHeapType.FUNC);
+    public static ReferenceType EXTERNREF = new ReferenceType(true, AbstractHeapType.EXTERN);
+    public static ReferenceType EXNREF = new ReferenceType(true, AbstractHeapType.EXN);
 
-    TableKind(int value) {
-        this.value = value;
+    @Override
+    public boolean isSubtypeOf(ValueType thatValueType) {
+        return thatValueType instanceof ReferenceType that && (!this.nullable || that.nullable) && this.heapType.isSubtypeOf(that.heapType);
     }
 
-    public int value() {
-        return value;
+    @Override
+    public boolean isSubtypeOf(StorageType thatStorageType) {
+        return thatStorageType instanceof ReferenceType thatReferenceType && isSubtypeOf(thatReferenceType);
     }
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
+    @Override
+    public boolean matchesValue(Object value) {
+        return nullable() && value == WasmConstant.NULL || heapType().matchesValue(value);
+    }
+
+    @Override
+    public Kind kind() {
+        return Kind.Reference;
+    }
+
+    @Override
+    public void unroll(RecursiveTypes recursiveTypes) {
+        heapType.unroll(recursiveTypes);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        StringBuilder buf = new StringBuilder();
+        buf.append("(ref ");
+        if (nullable) {
+            buf.append("null ");
+        }
+        buf.append(heapType.toString());
+        buf.append(")");
+        return buf.toString();
     }
 }

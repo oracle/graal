@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+import com.oracle.truffle.api.CompilerAsserts;
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+public record ArrayType(FieldType fieldType) implements CompositeType {
 
-    private final int value;
-
-    TableKind(int value) {
-        this.value = value;
+    @Override
+    public Kind kind() {
+        return Kind.Array;
     }
 
-    public int value() {
-        return value;
+    @Override
+    public boolean isSubtypeOf(HeapType that) {
+        return that == AbstractHeapType.ARRAY || that == AbstractHeapType.EQ || that == AbstractHeapType.ANY ||
+                        that instanceof DefinedType definedSuperType && definedSuperType.expand() instanceof ArrayType arraySuperType && this.fieldType.isSubtypeOf(arraySuperType.fieldType);
     }
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
+    @Override
+    public void unroll(RecursiveTypes recursiveTypes) {
+        fieldType.unroll(recursiveTypes);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "(array (field " + fieldType + "))";
     }
 }

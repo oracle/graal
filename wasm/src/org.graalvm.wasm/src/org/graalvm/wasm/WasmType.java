@@ -117,17 +117,59 @@ public class WasmType implements TruffleObject {
     @CompilationFinal(dimensions = 1) public static final int[] V128_TYPE_ARRAY = {V128_TYPE};
 
     /**
+     * Packed Types.
+     */
+    public static final int I8_TYPE = -0x08;
+    public static final int I16_TYPE = -0x09;
+
+    /**
      * Reference Types.
      */
+    public static final int NOEXN_HEAPTYPE = -0x0b;
+    public static final int NOFUNC_HEAPTYPE = -0x0d;
+    public static final int NOEXTERN_HEAPTYPE = -0x0e;
+    public static final int NONE_HEAPTYPE = -0x0f;
     public static final int FUNC_HEAPTYPE = -0x10;
     public static final int EXTERN_HEAPTYPE = -0x11;
+    public static final int ANY_HEAPTYPE = -0x12;
+    public static final int EQ_HEAPTYPE = -0x13;
+    public static final int I31_HEAPTYPE = -0x14;
+    public static final int STRUCT_HEAPTYPE = -0x15;
+    public static final int ARRAY_HEAPTYPE = -0x16;
     public static final int EXN_HEAPTYPE = -0x17;
+
+    public static final int NULLEXNREF_TYPE = NOEXN_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] NULLEXNREF_TYPE_ARRAY = {NULLEXNREF_TYPE};
+
+    public static final int NULLFUNCREF_TYPE = NOFUNC_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] NULLFUNCREF_TYPE_ARRAY = {NULLFUNCREF_TYPE};
+
+    public static final int NULLEXTERNREF_TYPE = NOEXTERN_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] NULLEXTERNREF_TYPE_ARRAY = {NULLEXTERNREF_TYPE};
+
+    public static final int NULLREF_TYPE = NONE_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] NULLREF_TYPE_ARRAY = {NULLREF_TYPE};
 
     public static final int FUNCREF_TYPE = FUNC_HEAPTYPE;
     @CompilationFinal(dimensions = 1) public static final int[] FUNCREF_TYPE_ARRAY = {FUNCREF_TYPE};
 
     public static final int EXTERNREF_TYPE = EXTERN_HEAPTYPE;
     @CompilationFinal(dimensions = 1) public static final int[] EXTERNREF_TYPE_ARRAY = {EXTERNREF_TYPE};
+
+    public static final int ANYREF_TYPE = ANY_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] ANYREF_TYPE_ARRAY = {ANYREF_TYPE};
+
+    public static final int EQREF_TYPE = EQ_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] EQREF_TYPE_ARRAY = {EQREF_TYPE};
+
+    public static final int I31REF_TYPE = I31_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] I31REF_TYPE_ARRAY = {I31REF_TYPE};
+
+    public static final int STRUCTREF_TYPE = STRUCT_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] STRUCTREF_TYPE_ARRAY = {STRUCTREF_TYPE};
+
+    public static final int ARRAYREF_TYPE = ARRAY_HEAPTYPE;
+    @CompilationFinal(dimensions = 1) public static final int[] ARRAYREF_TYPE_ARRAY = {ARRAYREF_TYPE};
 
     public static final int EXNREF_TYPE = EXN_HEAPTYPE;
     @CompilationFinal(dimensions = 1) public static final int[] EXNREF_TYPE_ARRAY = {EXNREF_TYPE};
@@ -147,6 +189,8 @@ public class WasmType implements TruffleObject {
      */
     public static final byte REF_TYPE_HEADER = -0x1c;
     public static final byte REF_NULL_TYPE_HEADER = -0x1d;
+    public static final byte I8_TYPE_BYTE = 0x77;
+    public static final byte I16_TYPE_BYTE = 0x78;
     // -0x40 is what the void block type byte 0x40 looks like when read as a signed LEB128 value.
     public static final byte VOID_BLOCK_TYPE = -0x40;
     @CompilationFinal(dimensions = 1) public static final int[] VOID_TYPE_ARRAY = {};
@@ -171,14 +215,25 @@ public class WasmType implements TruffleObject {
             case F32_TYPE -> "f32";
             case F64_TYPE -> "f64";
             case V128_TYPE -> "v128";
+            case I8_TYPE -> "i8";
+            case I16_TYPE -> "i16";
             case TOP -> "top";
             case BOT -> "bot";
             default -> {
                 assert WasmType.isReferenceType(valueType);
                 boolean nullable = WasmType.isNullable(valueType);
                 yield switch (WasmType.getAbstractHeapType(valueType)) {
+                    case NOEXN_HEAPTYPE -> nullable ? "nullexnref" : "(ref noexn)";
+                    case NOFUNC_HEAPTYPE -> nullable ? "nullfuncref" : "(ref nofunc)";
+                    case NOEXTERN_HEAPTYPE -> nullable ? "nullexternref" : "(ref noextern)";
+                    case NONE_HEAPTYPE -> nullable ? "nullref" : "(ref none)";
                     case FUNC_HEAPTYPE -> nullable ? "funcref" : "(ref func)";
                     case EXTERN_HEAPTYPE -> nullable ? "externref" : "(ref extern)";
+                    case ANY_HEAPTYPE -> nullable ? "anyref" : "(ref any)";
+                    case EQ_HEAPTYPE -> nullable ? "eqref" : "(ref eq)";
+                    case I31_HEAPTYPE -> nullable ? "i31ref" : "(ref i31)";
+                    case STRUCT_HEAPTYPE -> nullable ? "structref" : "(ref struct)";
+                    case ARRAY_HEAPTYPE -> nullable ? "arrayref" : "(ref array)";
                     case EXN_HEAPTYPE -> nullable ? "exnref" : "(ref exn)";
                     default -> {
                         assert WasmType.isConcreteReferenceType(valueType);
@@ -205,7 +260,12 @@ public class WasmType implements TruffleObject {
     }
 
     public static boolean isReferenceType(int type) {
-        return isConcreteReferenceType(type) || withNullable(true, type) == FUNC_HEAPTYPE || withNullable(true, type) == EXTERN_HEAPTYPE || withNullable(true, type) == EXN_HEAPTYPE || type == BOT;
+        int nullableType = withNullable(true, type);
+        return isConcreteReferenceType(type) || (nullableType >= EXN_HEAPTYPE && nullableType <= NOFUNC_HEAPTYPE) || nullableType == NOEXN_HEAPTYPE;
+    }
+
+    public static boolean isPackedType(int type) {
+        return type == I8_TYPE || type == I16_TYPE || type == BOT;
     }
 
     /**
@@ -232,6 +292,15 @@ public class WasmType implements TruffleObject {
     public static int getAbstractHeapType(int type) {
         assert isReferenceType(type);
         return withNullable(true, type);
+    }
+
+    public static int getHeapType(int type) {
+        assert isReferenceType(type);
+        if (isConcreteReferenceType(type)) {
+            return getTypeIndex(type);
+        } else {
+            return getAbstractHeapType(type);
+        }
     }
 
     /**

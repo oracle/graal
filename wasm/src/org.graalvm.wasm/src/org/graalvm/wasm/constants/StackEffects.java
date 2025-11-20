@@ -58,10 +58,16 @@ public final class StackEffects {
     private static final byte POP_3 = -3;
     private static final byte UNREACHABLE = Byte.MIN_VALUE;
 
+    @CompilationFinal(dimensions = 1) private static final byte[] aggregateOpStackEffects = new byte[256];
     @CompilationFinal(dimensions = 1) private static final byte[] miscOpStackEffects = new byte[256];
     @CompilationFinal(dimensions = 1) private static final byte[] vectorOpStackEffects = new byte[256];
 
     static {
+        aggregateOpStackEffects[Bytecode.REF_TEST_NON_NULL] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_TEST_NULL] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_CAST_NON_NULL] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_CAST_NULL] = NO_EFFECT;
+
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_S] = NO_EFFECT;
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_U] = NO_EFFECT;
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F64_S] = NO_EFFECT;
@@ -362,6 +368,20 @@ public final class StackEffects {
     }
 
     private StackEffects() {
+    }
+
+    /**
+     * Indicates by how much the stack grows (positive return value) or shrinks (negative return
+     * value) after executing the {@link Bytecode#AGGREGATE}-prefixed bytecode
+     * {@code aggregateOpcode}.
+     *
+     * @param aggregateOpcode the {@code AGGREGATE} bytecode being executed
+     * @return the difference between the stack size after executing the bytecode and before
+     *         executing the bytecode
+     */
+    public static byte getAggregateOpStackEffect(int aggregateOpcode) {
+        assert aggregateOpcode < 256;
+        return aggregateOpStackEffects[aggregateOpcode];
     }
 
     /**

@@ -65,13 +65,13 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmHeapObject;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmMath;
@@ -106,6 +106,7 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.types.DefinedType;
 
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
@@ -553,8 +554,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     case Bytecode.CALL_INDIRECT_I32:
                     case Bytecode.CALL_REF_U8:
                     case Bytecode.CALL_REF_I32: {
-                        final SymbolTable symtab = module.symbolTable();
-
                         final int callNodeIndex;
                         final int expectedFunctionTypeIndex;
                         final int tableIndex;
@@ -614,16 +613,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                         if (opcode == Bytecode.CALL_INDIRECT_U8 || opcode == Bytecode.CALL_INDIRECT_I32) {
                             // Validate that the target function type matches the expected type of
-                            // the indirect call. We first try if the types are equivalent using the
-                            // equivalence classes...
-                            if (symtab.equivalenceClass(expectedFunctionTypeIndex) != function.typeEquivalenceClass()) {
-                                codeEntry.subtypingBranch();
-                                // If they are not equivalent, we run the full subtype matching
-                                // procedure.
-                                if (!symtab.closedTypeAt(expectedFunctionTypeIndex).isSupertypeOf(function.closedType())) {
-                                    enterErrorBranch();
-                                    failFunctionTypeCheck(function, expectedFunctionTypeIndex);
-                                }
+                            // the indirect call.
+                            if (!runTimeConcreteTypeCheck(expectedFunctionTypeIndex, functionInstance)) {
+                                enterErrorBranch();
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
                             }
                         }
 
@@ -1539,6 +1532,14 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         offset += 4;
                         break;
                     }
+                    case Bytecode.AGGREGATE: {
+                        final int aggregateOpcode = rawPeekU8(bytecode, offset);
+                        offset++;
+                        CompilerAsserts.partialEvaluationConstant(aggregateOpcode);
+                        offset = executeAggregate(instance, frame, offset, stackPointer, aggregateOpcode);
+                        stackPointer += StackEffects.getAggregateOpStackEffect(aggregateOpcode);
+                        break;
+                    }
                     case Bytecode.MISC: {
                         final int miscOpcode = rawPeekU8(bytecode, offset);
                         offset++;
@@ -2119,6 +2120,47 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 throw CompilerDirectives.shouldNotReachHere();
         }
         memory_fill(instance, n, val, dst, memoryIndex);
+    }
+
+    @SuppressWarnings("unused") // TODO: remove this after filling out this method
+    private int executeAggregate(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int aggregateOpcode) {
+        int offset = startingOffset;
+        int stackPointer = startingStackPointer;
+
+        CompilerAsserts.partialEvaluationConstant(aggregateOpcode);
+        switch (aggregateOpcode) {
+            case Bytecode.REF_TEST_NON_NULL:
+            case Bytecode.REF_TEST_NULL: {
+                final boolean nullable = aggregateOpcode == Bytecode.REF_TEST_NULL;
+                final int expectedHeapType = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                Object ref = WasmFrame.popReference(frame, stackPointer - 1);
+                boolean match = nullable && ref == WasmConstant.NULL || runTimeTypeCheck(expectedHeapType, ref);
+                WasmFrame.pushInt(frame, stackPointer - 1, match ? 1 : 0);
+                break;
+            }
+            case Bytecode.REF_CAST_NON_NULL:
+            case Bytecode.REF_CAST_NULL: {
+                final boolean nullable = aggregateOpcode == Bytecode.REF_CAST_NULL;
+                final int expectedHeapType = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                Object ref = WasmFrame.popReference(frame, stackPointer - 1);
+                boolean match = nullable && ref == WasmConstant.NULL || runTimeTypeCheck(expectedHeapType, ref);
+                if (!match) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.CAST, this);
+                }
+                WasmFrame.pushReference(frame, stackPointer - 1, ref);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        assert stackPointer - startingStackPointer == StackEffects.getAggregateOpStackEffect(aggregateOpcode);
+        return offset;
     }
 
     private int executeMisc(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int miscOpcode) {
@@ -4723,6 +4765,34 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 }
             }
             stackPointer++;
+        }
+    }
+
+    private boolean runTimeTypeCheck(int expectedHeapType, Object object) {
+        if (WasmType.isConcreteReferenceType(expectedHeapType)) {
+            return object instanceof WasmHeapObject heapObject && runTimeConcreteTypeCheck(expectedHeapType, heapObject);
+        } else {
+            return module.closedHeapTypeOf(expectedHeapType).matchesValue(object);
+        }
+    }
+
+    /**
+     * This is an optimized version of {@link DefinedType#isSubtypeOf(DefinedType)} that makes use
+     * of the type equivalence classes that are constructed after linking.
+     */
+    private boolean runTimeConcreteTypeCheck(int expectedTypeIndex, WasmHeapObject heapObject) {
+        DefinedType expectedType = module.closedTypeAt(expectedTypeIndex);
+        DefinedType actualType = heapObject.type();
+        if (actualType.typeEquivalenceClass() == expectedType.typeEquivalenceClass()) {
+            return true;
+        } else if (expectedType.isFinal()) {
+            return false;
+        } else {
+            codeEntry.subtypingBranch();
+            do {
+                actualType = (DefinedType) actualType.superType();
+            } while (actualType != null && actualType.typeEquivalenceClass() != expectedType.typeEquivalenceClass());
+            return actualType != null;
         }
     }
 

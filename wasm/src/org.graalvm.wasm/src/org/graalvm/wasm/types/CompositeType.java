@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.constants;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+public sealed interface CompositeType permits ArrayType, StructType, FunctionType {
 
-import com.oracle.truffle.api.CompilerAsserts;
-
-public final class GlobalModifier {
-    public static final byte CONSTANT = 0x00;
-    public static final byte MUTABLE = 0x01;
-
-    public static String asString(int modifier) {
-        CompilerAsserts.neverPartOfCompilation();
-        switch (modifier) {
-            case CONSTANT:
-                return "const";
-            case MUTABLE:
-                return "var";
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown modifier: 0x" + Integer.toHexString(modifier));
-        }
+    enum Kind {
+        Array,
+        Struct,
+        Function
     }
 
-    private GlobalModifier() {
-    }
+    Kind kind();
+
+    boolean isSubtypeOf(HeapType that);
+
+    void unroll(RecursiveTypes recursiveTypes);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+import java.util.Arrays;
 
-    private final int value;
+public record StructType(
+                @CompilerDirectives.CompilationFinal(dimensions = 1) FieldType[] fieldTypes) implements CompositeType {
 
-    TableKind(int value) {
-        this.value = value;
+    @Override
+    public Kind kind() {
+        return Kind.Struct;
     }
 
-    public int value() {
-        return value;
+    @Override
+    public boolean isSubtypeOf(HeapType thatHeapType) {
+        if (thatHeapType == AbstractHeapType.STRUCT || thatHeapType == AbstractHeapType.EQ || thatHeapType == AbstractHeapType.ANY) {
+            return true;
+        }
+        if (!(thatHeapType instanceof DefinedType thatDefinedType && thatDefinedType.expand() instanceof StructType that)) {
+            return false;
+        }
+        if (this.fieldTypes.length < that.fieldTypes.length) {
+            return false;
+        }
+        for (int i = 0; i < that.fieldTypes.length; i++) {
+            if (!this.fieldTypes[i].isSubtypeOf(that.fieldTypes[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
+    @Override
+    public void unroll(RecursiveTypes recursiveTypes) {
+        for (FieldType fieldType : fieldTypes) {
+            fieldType.unroll(recursiveTypes);
+        }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof StructType that && Arrays.equals(this.fieldTypes, that.fieldTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(fieldTypes);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        StringBuilder sb = new StringBuilder();
+        sb.append("(struct");
+        for (int i = 0; i < fieldTypes.length; i++) {
+            sb.append(" (field ");
+            sb.append(fieldTypes[i]);
+            sb.append(")");
+        }
+        sb.append(")");
+        return sb.toString();
     }
 }

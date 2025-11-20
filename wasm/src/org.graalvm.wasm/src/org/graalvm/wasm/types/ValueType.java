@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+/**
+ * Represents a WebAssembly value type in its closed form, with all type indices replaced with their
+ * definitions. You can query the subtyping relation on types using the predicate
+ * {@link #isSubtypeOf(ValueType)}.
+ * <p>
+ * If you need to check whether two types are equivalent, instead of checking
+ * {@code A.isSubtypeOf(B) && B.isSubtypeOf(A)}, you can use {@code A.equals(B)}, since, in the
+ * WebAssembly type system, type equivalence corresponds to structural equality.
+ * </p>
+ */
+public sealed interface ValueType extends StorageType permits NumberType, VectorType, ReferenceType {
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
-
-    private final int value;
-
-    TableKind(int value) {
-        this.value = value;
+    // This is a workaround until we can use pattern matching in JDK 21+.
+    enum Kind {
+        Number,
+        Vector,
+        Reference
     }
 
-    public int value() {
-        return value;
-    }
+    Kind kind();
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
-    }
+    boolean isSubtypeOf(ValueType that);
+
+    boolean matchesValue(Object value);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.api.Vector128;
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
+public enum VectorType implements ValueType {
+
+    V128(WasmType.V128_TYPE);
 
     private final int value;
 
-    TableKind(int value) {
+    VectorType(int value) {
         this.value = value;
     }
 
@@ -57,11 +57,28 @@ public enum TableKind {
         return value;
     }
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
+    @Override
+    public Kind kind() {
+        return Kind.Vector;
+    }
+
+    @Override
+    public boolean isSubtypeOf(ValueType that) {
+        return this == that;
+    }
+
+    @Override
+    public boolean isSubtypeOf(StorageType that) {
+        return this == that;
+    }
+
+    @Override
+    public boolean matchesValue(Object val) {
+        return val instanceof Vector128;
+    }
+
+    @Override
+    public String toString() {
+        return "v128";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.types;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.WasmJsApiException;
+public sealed interface HeapType permits AbstractHeapType, DefinedType {
 
-public enum TableKind {
-    externref(WasmType.EXTERNREF_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE);
-
-    private final int value;
-
-    TableKind(int value) {
-        this.value = value;
+    // This is a workaround until we can use pattern matching in JDK 21+.
+    enum Kind {
+        Abstract,
+        DefinedType
     }
 
-    public int value() {
-        return value;
-    }
+    Kind kind();
 
-    public static String toString(int value) {
-        return switch (value) {
-            case WasmType.EXTERNREF_TYPE -> "externref";
-            case WasmType.FUNCREF_TYPE -> "anyfunc";
-            default -> throw WasmJsApiException.invalidValueType(value);
-        };
+    boolean isSubtypeOf(HeapType that);
+
+    boolean isArrayType();
+
+    boolean isStructType();
+
+    boolean isFunctionType();
+
+    boolean matchesValue(Object value);
+
+    default void unroll(@SuppressWarnings("unused") RecursiveTypes recursiveTypes) {
     }
 }
