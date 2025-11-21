@@ -36,7 +36,13 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.jdk.management.ManagementFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -46,17 +52,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 public class JmxCommonFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJmxServerSupport() || VMInspectionOptions.hasJmxClientSupport();
+        return ImageLayerBuildingSupport.firstImageBuild() && (VMInspectionOptions.hasJmxServerSupport() || VMInspectionOptions.hasJmxClientSupport());
     }
 
     /**
      * This method adds JMX-specific initialization policies when JMX support is enabled.
      * <p>
      * Note that
-     * {@link com.oracle.svm.core.jdk.management.ManagementFeature#duringSetup(org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess)
+     * {@link ManagementFeature#duringSetup(org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess)
      * ManagementFeature#duringSetup()} adds additional JMX-related initialization policies
      * unconditionally.
      */

@@ -54,6 +54,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -80,8 +81,9 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitialization = access.getHostVM().getClassInitializationSupport();
+        boolean extensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         access.registerObjectReachableCallback(MBeanServerConnection.class, (_, obj, _) -> onMBeanServerConnectionReachable(obj, this::error));
-        access.registerObjectReachableCallback(PlatformManagedObject.class, (_, obj, _) -> onPlatformManagedObjectReachable(obj, this::error));
+        access.registerObjectReachableCallback(PlatformManagedObject.class, (_, obj, _) -> onPlatformManagedObjectReachable(obj, this::error, extensionLayer));
         access.registerObjectReachableCallback(Random.class, (_, obj, _) -> DisallowedImageHeapObjects.onRandomReachable(obj, this::error));
         access.registerObjectReachableCallback(SplittableRandom.class, (_, obj, _) -> DisallowedImageHeapObjects.onSplittableRandomReachable(obj, this::error));
         access.registerObjectReachableCallback(Thread.class, (_, obj, _) -> DisallowedImageHeapObjects.onThreadReachable(obj, this::error));
@@ -184,8 +186,8 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     /**
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
-    private static void onPlatformManagedObjectReachable(PlatformManagedObject platformManagedObject, DisallowedImageHeapObjects.DisallowedObjectReporter reporter) {
-        if (!ManagementSupport.getSingleton().isAllowedPlatformManagedObject(platformManagedObject)) {
+    private static void onPlatformManagedObjectReachable(PlatformManagedObject platformManagedObject, DisallowedImageHeapObjects.DisallowedObjectReporter reporter, boolean extensionLayer) {
+        if (extensionLayer || !ManagementSupport.getSingleton().isAllowedPlatformManagedObject(platformManagedObject)) {
             throw reporter.raise("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
                             "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image runtime. " +
                             "Class of disallowed object: " + platformManagedObject.getClass().getTypeName(),

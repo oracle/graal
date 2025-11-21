@@ -62,13 +62,15 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.ResolvedJavaModuleLayer;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class provides the SVM-specific MX bean support, which is accessible in the JDK via
@@ -105,6 +107,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * platform objects and directly calling methods on them is much easier and therefore the common use
  * case. We therefore believe that the automatic reflection registration is indeed unnecessary.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class ManagementSupport implements ThreadListener {
     private static final Class<? extends PlatformManagedObject> FLIGHT_RECORDER_MX_BEAN_CLASS = getFlightRecorderMXBeanClass();
 
@@ -117,7 +120,7 @@ public final class ManagementSupport implements ThreadListener {
     private MBeanServer platformMBeanServer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
+    public ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
         SubstrateClassLoadingMXBean classLoadingMXBean = new SubstrateClassLoadingMXBean();
         SubstrateCompilationMXBean compilationMXBean = new SubstrateCompilationMXBean();
         this.threadMXBean = threadMXBean;
@@ -135,7 +138,6 @@ public final class ManagementSupport implements ThreadListener {
         }
     }
 
-    @Fold
     public static ManagementSupport getSingleton() {
         return ImageSingletons.lookup(ManagementSupport.class);
     }

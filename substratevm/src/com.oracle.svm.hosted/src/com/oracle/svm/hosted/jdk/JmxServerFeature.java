@@ -40,11 +40,16 @@ import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -53,10 +58,11 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 public class JmxServerFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJmxServerSupport();
+        return ImageLayerBuildingSupport.firstImageBuild() && VMInspectionOptions.hasJmxServerSupport();
     }
 
     private static void handleNativeLibraries(BeforeAnalysisAccess access) {
@@ -113,8 +119,10 @@ public class JmxServerFeature implements InternalFeature {
     private static void configureReflection(BeforeAnalysisAccessImpl access) {
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
-            // The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
-            // that are meant to help initialize some MXBeans at runtime. Skip them here.
+            /*
+             * The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
+             * that are meant to help initialize some MXBeans at runtime. Skip them here.
+             */
             if (p instanceof ManagementSupport.PlatformManagedObjectSupplier) {
                 continue;
             }

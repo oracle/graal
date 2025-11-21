@@ -45,6 +45,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -53,11 +54,18 @@ import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTime
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecutionSampler {
     private static final ExecutionSampleCallback CALLBACK = new ExecutionSampleCallback();
 
@@ -162,7 +170,13 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 class JfrRecurringCallbackExecutionSamplerFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(JfrFeature.class);

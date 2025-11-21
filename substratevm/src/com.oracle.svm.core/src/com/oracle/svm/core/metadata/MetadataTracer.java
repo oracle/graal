@@ -52,6 +52,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.log.Log;
@@ -60,8 +61,11 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -630,7 +634,13 @@ record TraceOptions(Path path, boolean merge, Path debugLog) {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 class MetadataTracerFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return List.of(RuntimeSupportFeature.class);
@@ -638,6 +648,7 @@ class MetadataTracerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        /* GR-70850: Unconditionally include the hooks within the initial layer. */
         if (MetadataTracer.Options.MetadataTracingSupport.getValue()) {
             ImageSingletons.add(MetadataTracer.class, new MetadataTracer());
             RuntimeSupport.getRuntimeSupport().addInitializationHook(MetadataTracer.initializeMetadataTracingHook());

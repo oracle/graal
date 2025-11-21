@@ -32,12 +32,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.VMOperationListenerSupport;
 import com.oracle.svm.core.thread.VMOperationListenerSupportFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * The performance data feature (hsperfdata) provides monitoring data that can be access by external
@@ -92,11 +93,13 @@ public class PerfDataFeature implements InternalFeature {
 
             SystemCounters systemCounters = new SystemCounters(manager);
             manager.register(systemCounters);
-            VMOperationListenerSupport.get().register(systemCounters);
+            if (ImageLayerBuildingSupport.firstImageBuild()) {
+                VMOperationListenerSupport.get().register(systemCounters);
 
-            RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
-            runtime.addInitializationHook(manager.initializationHook());
-            runtime.addTearDownHook(manager.teardownHook());
+                RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
+                runtime.addInitializationHook(manager.initializationHook());
+                runtime.addTearDownHook(manager.teardownHook());
+            }
         } else {
             ImageSingletons.add(PerfDataSupport.class, new NoPerfDataSupport());
         }
