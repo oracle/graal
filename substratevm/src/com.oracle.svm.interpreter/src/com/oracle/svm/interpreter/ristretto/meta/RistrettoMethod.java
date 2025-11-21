@@ -29,6 +29,7 @@ import java.util.function.Function;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.profile.InterpreterProfileContainer;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
@@ -58,10 +59,11 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     // JIT COMPILER SUPPORT START
     /**
-     * Field exposed for profiling support for this method. May be written and read in a
-     * multithreaded fashion.
+     * Field exposed for profiling support for this method. Initialized once upon first profiling
+     * under heavy synchronization. Never written again. If a ristretto method is GCed profile is
+     * lost.
      */
-    public volatile Object profile;
+    private InterpreterProfileContainer profile;
     /**
      * State-machine for compilation handling of this crema method. Every methods starts in a
      * NEVER_COMPILED state and than can cycle through different states.
@@ -93,6 +95,23 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     public static RistrettoMethod create(InterpreterResolvedJavaMethod interpreterMethod) {
         return (RistrettoMethod) interpreterMethod.getRistrettoMethod(RISTRETTO_METHOD_FUNCTION);
+    }
+
+    public InterpreterProfileContainer getProfile() {
+        if (profile == null) {
+            /*
+             * Allocate the profile per method once. Note that out of test scenarios this is never
+             * done and thus the heavy locking code below is normally not run.
+             */
+            synchronized (this) {
+                profile = new InterpreterProfileContainer(this);
+            }
+        }
+        return profile;
+    }
+
+    public synchronized void resetProfile() {
+        profile = null;
     }
 
     @Override

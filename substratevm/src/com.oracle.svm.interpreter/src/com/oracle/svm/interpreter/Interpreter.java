@@ -622,10 +622,7 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-
-            if (RistrettoProfileSupport.isEnabled()) {
-                RistrettoProfileSupport.profileMethodCall(method);
-            }
+            RistrettoProfileSupport.profileMethodCall(method);
 
             int curBCI = startBCI;
             int top = startTop;
@@ -889,9 +886,12 @@ public final class Interpreter {
                         case IFGT: // fall through
                         case IFLE:
                             if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
+                            } else {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
                             }
                             break;
 
@@ -902,27 +902,36 @@ public final class Interpreter {
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
                             if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
+                            } else {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
                             }
                             break;
 
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
                             if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
+                            } else {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
                             }
                             break;
 
                         case IFNULL: // fall through
                         case IFNONNULL:
                             if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
+                            } else {
+                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
                             }
                             break;
 
@@ -1280,6 +1289,7 @@ public final class Interpreter {
     private static int beforeJumpChecks(InterpreterFrame frame, int curBCI, int targetBCI, int top) {
         if (targetBCI <= curBCI) {
             // GR-55055: Safepoint poll needed?
+            // TODO GR-71799 - add ristretto backedge profiles
         }
         return targetBCI;
     }
