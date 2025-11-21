@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
 
 public final class CustomTypeFieldHandler {
@@ -58,22 +57,20 @@ public final class CustomTypeFieldHandler {
          * types as allocated when the field is not yet accessed.
          */
         assert field.isAccessed();
-        if (fieldValueInterceptionSupport.hasFieldValueTransformer(field)) {
-            if (field.getStorageKind().isObject() && !fieldValueInterceptionSupport.isValueAvailable(field, null, !field.isStatic())) {
-                bb.injectFieldTypes(field, List.of(field.getType()), true);
-            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
-                ptaField.saturatePrimitiveField();
-            }
+        if (fieldValueInterceptionSupport.hasFieldValueTransformer(field) && !fieldValueInterceptionSupport.isValueAvailable(field, null, !field.isStatic())) {
+            field.injectDeclaredType();
         } else if (fieldValueInterceptionSupport.lookupFieldValueInterceptor(field) instanceof FieldValueComputer fieldValueComputer) {
             if (field.getStorageKind().isObject()) {
+                /* Insert the specified set of types. */
                 List<AnalysisType> types = transformTypes(field, fieldValueComputer.types());
                 for (AnalysisType type : types) {
                     assert !type.isPrimitive() : type + " for " + field;
                     type.registerAsInstantiated("Is declared as the type of an unknown object field.");
                 }
                 bb.injectFieldTypes(field, types, fieldValueComputer.canBeNull());
-            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
-                ptaField.saturatePrimitiveField();
+            } else {
+                /* It is a primitive field, let injectDeclaredType handle it. */
+                field.injectDeclaredType();
             }
         }
     }
