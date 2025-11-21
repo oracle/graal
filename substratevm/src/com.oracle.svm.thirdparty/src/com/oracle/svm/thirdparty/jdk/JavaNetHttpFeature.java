@@ -31,7 +31,6 @@ import java.util.Optional;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 public class JavaNetHttpFeature implements Feature {
 
@@ -73,30 +72,5 @@ public class JavaNetHttpFeature implements Feature {
         } catch (ReflectiveOperationException | LinkageError ex) {
             throw new RuntimeException(ex);
         }
-    }
-}
-
-class SimpleWebServerFeature implements Feature {
-
-    private static Optional<Module> requiredModule() {
-        return ModuleLayer.boot().findModule("jdk.httpserver");
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return requiredModule().isPresent();
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        // Allocates InetAddress in class initializers
-        RuntimeClassInitialization.initializeAtRunTime("sun.net.httpserver.simpleserver");
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(a -> {
-            RuntimeResourceAccess.addResourceBundle(requiredModule().get(), "sun.net.httpserver.simpleserver.resources.simpleserver");
-        }, access.findClassByName("sun.net.httpserver.simpleserver.SimpleFileServerImpl"));
     }
 }
