@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -119,10 +120,11 @@ public class ReplayCompilationRunner {
      *
      * @param args command-line arguments
      * @param out output stream for printing messages
+     * @param bridge the implementation to use for interacting with the PAPI bridge library
      * @return the exit status of the launcher
      */
     @SuppressWarnings("try")
-    public static ExitStatus run(String[] args, PrintStream out) {
+    public static ExitStatus run(String[] args, PrintStream out, HardwarePerformanceCounters.PAPIBridge bridge) {
         Program program = new Program("mx replaycomp", "Replay compilations from files.");
         OptionValue<Boolean> verboseArg = program.addNamed("--verbose", new BooleanValue("true|false", false, "Increase the verbosity of the output."));
         OptionValue<Boolean> compareGraphsArg = program.addNamed("--compare-graphs", new BooleanValue("true|false", false, "Verify that the replayed graph equals the recorded one."));
@@ -135,7 +137,7 @@ public class ReplayCompilationRunner {
         if (inputFiles == null) {
             return ExitStatus.Failure;
         }
-        return commandGroup.getSelectedCommand().run(out, inputFiles, verboseArg.getValue(), compareGraphsArg.getValue());
+        return commandGroup.getSelectedCommand().run(out, inputFiles, verboseArg.getValue(), compareGraphsArg.getValue(), bridge);
     }
 
     /**
@@ -159,9 +161,10 @@ public class ReplayCompilationRunner {
          * @param inputFiles the files that should be replayed
          * @param verbose increase the verbosity of the output
          * @param compareGraphs whether the replayed graph should be compared with the recorded one
+         * @param bridge the implementation to use for interacting with the PAPI bridge library
          * @return the exit status of the launcher
          */
-        public abstract ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs);
+        public abstract ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge);
     }
 
     /**
@@ -178,7 +181,7 @@ public class ReplayCompilationRunner {
 
         @SuppressWarnings("try")
         @Override
-        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs) {
+        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge) {
             OptionValues systemOptions = new OptionValues(HotSpotGraalOptionValues.parseOptions());
             OptionValues options = new OptionValues(systemOptions, GraalCompilerOptions.SystemicCompilationFailureRate, 0);
             CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
@@ -262,17 +265,24 @@ public class ReplayCompilationRunner {
 
         private final OptionValue<String> resultsFileArg;
 
+        private final OptionValue<String> eventNamesArg;
+
         private BenchmarkCommand() {
             super("--benchmark", "Replay compilations as a benchmark.");
             iterationsArg = addNamed("--iterations", new IntegerValue("N", 10, "The number of benchmark iterations."));
             resultsFileArg = addNamed("--results-file", new StringValue("RESULTS_FILE", null, "Write benchmark metrics to the file in CSV format."));
+            eventNamesArg = addNamed("--event-names", new StringValue("EVENT_NAMES", null, "Comma-separated list of PAPI events to count for each iteration."));
         }
 
         @SuppressWarnings("try")
         @Override
-        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs) {
+        public ExitStatus run(PrintStream out, List<Path> inputFiles, boolean verbose, boolean compareGraphs, HardwarePerformanceCounters.PAPIBridge bridge) {
             OptionValues options = new OptionValues(HotSpotGraalOptionValues.parseOptions());
             CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
+            List<String> eventNames = new ArrayList<>();
+            if (eventNamesArg.getValue() != null) {
+                eventNames = Arrays.asList(eventNamesArg.getValue().split(","));
+            }
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
             CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options, runtime);
             LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
@@ -305,20 +315,21 @@ public class ReplayCompilationRunner {
             try (PrintStream outStat = (resultsFileArg.isSet()) ? new PrintStream(PathUtilities.openOutputStream(resultsFileArg.getValue())) : null) {
                 for (int i = 0; i < iterationsArg.getValue(); i++) {
                     performCollection(out);
-                    BenchmarkIterationMetrics metrics = new BenchmarkIterationMetrics(i);
-                    metrics.beginIteration(out, outStat);
-                    for (Reproducer reproducer : reproducers) {
-                        try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
-                            ReplayResult replayResult = reproducer.compile();
-                            replayResult.compareCompilationProducts(compareGraphs);
-                            metrics.addVerifiedResult(replayResult);
-                        } catch (Exception e) {
-                            out.println("Replay failed: " + e);
-                            e.printStackTrace(out);
-                            return ExitStatus.Failure;
+                    try (BenchmarkIterationMetrics metrics = new BenchmarkIterationMetrics(i, eventNames, bridge)) {
+                        metrics.beginIteration(out, outStat);
+                        for (Reproducer reproducer : reproducers) {
+                            try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
+                                ReplayResult replayResult = reproducer.compile();
+                                replayResult.compareCompilationProducts(compareGraphs);
+                                metrics.addVerifiedResult(replayResult);
+                            } catch (Exception e) {
+                                out.println("Replay failed: " + e);
+                                e.printStackTrace(out);
+                                return ExitStatus.Failure;
+                            }
                         }
+                        metrics.endIteration(out, outStat);
                     }
-                    metrics.endIteration(out, outStat);
                 }
             } catch (IOException e) {
                 out.println("Failed to write benchmark statistics to " + resultsFileArg.getValue());
@@ -631,7 +642,7 @@ public class ReplayCompilationRunner {
     /**
      * Collects and prints compilation metrics for one iteration of a replay benchmark.
      */
-    private static final class BenchmarkIterationMetrics {
+    private static final class BenchmarkIterationMetrics implements AutoCloseable {
         private final int iteration;
 
         private long beginWallTime;
@@ -646,15 +657,33 @@ public class ReplayCompilationRunner {
 
         private int targetCodeHash;
 
-        private BenchmarkIterationMetrics(int iteration) {
+        private final List<String> eventNames;
+
+        private final HardwarePerformanceCounters performanceCounters;
+
+        private BenchmarkIterationMetrics(int iteration, List<String> eventNames, HardwarePerformanceCounters.PAPIBridge bridge) {
             this.iteration = iteration;
+            this.eventNames = eventNames;
+            if (!eventNames.isEmpty()) {
+                this.performanceCounters = new HardwarePerformanceCounters(eventNames, bridge);
+            } else {
+                this.performanceCounters = null;
+            }
         }
 
         public void beginIteration(PrintStream out, PrintStream outStat) {
             if (iteration == 0 && outStat != null) {
-                outStat.println("iteration,wall_time_ns,thread_time_ns,allocated_memory,compiled_bytecodes,target_code_size,target_code_hash");
+                outStat.print("iteration,wall_time_ns,thread_time_ns,allocated_memory,compiled_bytecodes,target_code_size,target_code_hash");
+                for (String eventName : eventNames) {
+                    outStat.print(",");
+                    outStat.print(eventName);
+                }
+                outStat.println();
             }
             out.printf("====== replaycomp iteration %d started ======%n", iteration);
+            if (performanceCounters != null) {
+                performanceCounters.start();
+            }
             beginMemory = getCurrentThreadAllocatedBytes();
             beginWallTime = System.nanoTime();
             beginThreadTime = getCurrentThreadCpuTime();
@@ -671,18 +700,37 @@ public class ReplayCompilationRunner {
             long endThreadTime = getCurrentThreadCpuTime();
             long endWallTime = System.nanoTime();
             long endMemory = getCurrentThreadAllocatedBytes();
+            Map<String, Long> counterValues = Collections.emptyMap();
+            if (performanceCounters != null) {
+                counterValues = performanceCounters.stop();
+            }
             long wallTimeNanos = endWallTime - beginWallTime;
             long threadTimeNanos = endThreadTime - beginThreadTime;
             long allocatedMemory = endMemory - beginMemory;
             if (outStat != null) {
-                outStat.printf("%d,%d,%d,%d,%d,%d,%08x%n", iteration, wallTimeNanos, threadTimeNanos, allocatedMemory, compiledBytecodes, targetCodeSize, targetCodeHash);
+                outStat.printf("%d,%d,%d,%d,%d,%d,%08x", iteration, wallTimeNanos, threadTimeNanos, allocatedMemory, compiledBytecodes, targetCodeSize, targetCodeHash);
+                for (String eventName : eventNames) {
+                    outStat.print(",");
+                    outStat.print(counterValues.get(eventName));
+                }
+                outStat.println();
             }
             out.printf("         Thread time: %12.3f ms%n", threadTimeNanos / ONE_MILLION);
             out.printf("    Allocated memory: %12.3f MB%n", allocatedMemory / ONE_MILLION);
             out.printf("  Compiled bytecodes: %12d B%n", compiledBytecodes);
             out.printf("    Target code size: %12d B%n", targetCodeSize);
             out.printf("    Target code hash:     %08x%n", targetCodeHash);
+            for (String eventName : eventNames) {
+                out.printf("%20s: %12d%n", eventName, counterValues.get(eventName));
+            }
             out.printf("====== replaycomp iteration %d completed (%.3f ms) ======%n", iteration, wallTimeNanos / ONE_MILLION);
+        }
+
+        @Override
+        public void close() {
+            if (performanceCounters != null) {
+                performanceCounters.close();
+            }
         }
     }
 }
