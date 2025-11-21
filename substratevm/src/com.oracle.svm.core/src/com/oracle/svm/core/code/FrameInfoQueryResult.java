@@ -110,6 +110,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         protected JavaKind kind;
         protected boolean isCompressedReference; // for JavaKind.Object
         protected boolean isEliminatedMonitor;
+        protected boolean isAutoBoxedPrimitive;
         protected long data;
         protected JavaConstant value;
 
@@ -145,6 +146,14 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         }
 
         /**
+         * Returns true if this is an automatically boxed primitive (i.e., a method like
+         * {@link Integer#valueOf} should be used to produce the value).
+         */
+        public boolean isAutoBoxedPrimitive() {
+            return isAutoBoxedPrimitive;
+        }
+
+        /**
          * Returns additional data for the value, according to the specification in
          * {@link ValueType}.
          */
@@ -172,6 +181,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
             copy.kind = javaKind;
             copy.isCompressedReference = isCompressedReference;
             copy.isEliminatedMonitor = isEliminatedMonitor;
+            copy.isAutoBoxedPrimitive = isAutoBoxedPrimitive;
             copy.data = data + offset;
             copy.value = value;
             return copy;

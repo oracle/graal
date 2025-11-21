@@ -24,33 +24,42 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
+    private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
     private final HostedConstantReflectionProvider hConstantReflection;
 
-    public HostedMemoryAccessProvider(HostedMetaAccess hMetaAccess, HostedConstantReflectionProvider hConstantReflection) {
+    public HostedMemoryAccessProvider(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess, HostedConstantReflectionProvider hConstantReflection) {
+        this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
         this.hConstantReflection = hConstantReflection;
     }
 
     @Override
-    public JavaConstant readPrimitiveConstant(JavaKind stackKind, Constant base, long displacement, int bits) {
+    public JavaConstant readPrimitiveConstant(JavaKind stackKind, Constant base, long displacement, int accessBits) {
+        assert accessBits % Byte.SIZE == 0 && accessBits > 0 && accessBits <= 64 : accessBits;
 
-        JavaConstant result = doRead(stackKind, (JavaConstant) base, displacement);
-
+        int accessBytes = accessBits / Byte.SIZE;
+        JavaConstant result = doRead(stackKind, (JavaConstant) base, displacement, accessBytes);
         if (result == null) {
             return null;
         }
@@ -76,7 +85,13 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
     @Override
     public JavaConstant readObjectConstant(Constant base, long displacement) {
-        return doRead(JavaKind.Object, (JavaConstant) base, displacement);
+        ObjectLayout layout = ImageSingletons.lookup(ObjectLayout.class);
+        JavaConstant result = doRead(JavaKind.Object, (JavaConstant) base, displacement, layout.getReferenceSize());
+        if (result instanceof ImageHeapRelocatableConstant) {
+            /* References to later layers can't be constant-folded. */
+            return null;
+        }
+        return result;
     }
 
     @Override
@@ -93,19 +108,44 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         return ((CompressibleConstant) result).compress();
     }
 
-    /**
-     * Try to look up the original field from the given displacement, and read the field value.
-     */
-    private JavaConstant doRead(JavaKind stackKind, JavaConstant base, long displacement) {
+    private JavaConstant doRead(JavaKind stackKind, JavaConstant base, long displacement, int accessBytes) {
+        assert displacement >= 0;
         if (base.getJavaKind() != JavaKind.Object) {
             return null;
         }
+
         HostedType type = hMetaAccess.lookupJavaType(base);
         HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
-        if (field == null) {
+        if (field != null) {
+            return readField(stackKind, base, field);
+        } else if (type.isArray() && !isUsedForCurrentLayersStaticFields(base)) {
+            return readArrayElement(base, displacement, accessBytes, type);
+        } else {
             return null;
         }
+    }
 
+    /**
+     * Read nodes for static final fields have an immutable location identity, so we will try to
+     * constant-fold such reads. However, there is no guarantee that the field value is already
+     * available at this point in time. So, we need to skip constant folding if we detect that the
+     * read happens on an array that is used for the static fields of the current layer.
+     */
+    private boolean isUsedForCurrentLayersStaticFields(JavaConstant base) {
+        if (base instanceof ImageHeapConstant imageHeapConstant) {
+            JavaConstant hostedObject = imageHeapConstant.getHostedObject();
+            if (hostedObject != null) {
+                Object object = hUniverse.getSnippetReflection().asObject(Object.class, hostedObject);
+                if (object != null) {
+                    return object == StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() || object == StaticFieldsSupport.getCurrentLayerStaticObjectFields();
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Try to look up the original field from the given displacement, and read the field value. */
+    private JavaConstant readField(JavaKind stackKind, JavaConstant base, HostedField field) {
         assert field.getStorageKind().getStackKind() == stackKind;
 
         JavaConstant result = hConstantReflection.readFieldValue(field, base);
@@ -118,5 +158,24 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
             return null;
         }
         return result;
+    }
+
+    private JavaConstant readArrayElement(JavaConstant base, long runtimeOffset, int accessBytes, HostedType type) {
+        JavaKind arrayKind = JavaKind.fromJavaClass(type.getComponentType().getJavaClass());
+        int runtimeBaseOffset = hMetaAccess.getArrayBaseOffset(arrayKind);
+        int runtimeIndexScale = hMetaAccess.getArrayIndexScale(arrayKind);
+
+        long accessedDataOffset = runtimeOffset - runtimeBaseOffset;
+        if (accessedDataOffset < 0) {
+            /* Out-of-bounds. */
+            return null;
+        } else if (accessedDataOffset % runtimeIndexScale != 0 || accessBytes != runtimeIndexScale) {
+            /* The read does not access a single array element. */
+            return hConstantReflection.readArrayUnaligned(base, accessBytes, accessedDataOffset, runtimeIndexScale);
+        } else {
+            /* The read accesses a single array element. */
+            long index = accessedDataOffset / runtimeIndexScale;
+            return hConstantReflection.readArrayElement(base, NumUtil.safeToInt(index));
+        }
     }
 }
