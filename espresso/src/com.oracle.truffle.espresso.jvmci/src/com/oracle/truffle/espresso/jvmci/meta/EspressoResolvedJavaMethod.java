@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,108 +22,20 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
-import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.ANNOTATION_DEFAULT_VALUE;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.DECLARED_ANNOTATIONS;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.PARAMETER_ANNOTATIONS;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceType.TYPE_ANNOTATIONS;
-import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.BRIDGE;
-import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SCOPED_METHOD;
-import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.SYNTHETIC;
-import static com.oracle.truffle.espresso.jvmci.meta.ExtendedModifiers.VARARGS;
-import static java.lang.reflect.Modifier.ABSTRACT;
-import static java.lang.reflect.Modifier.FINAL;
-import static java.lang.reflect.Modifier.NATIVE;
-import static java.lang.reflect.Modifier.PRIVATE;
-import static java.lang.reflect.Modifier.PROTECTED;
-import static java.lang.reflect.Modifier.PUBLIC;
-import static java.lang.reflect.Modifier.STATIC;
-import static java.lang.reflect.Modifier.STRICT;
-import static java.lang.reflect.Modifier.SYNCHRONIZED;
-
 import java.lang.reflect.Executable;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
-import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.TriState;
-import jdk.vm.ci.meta.annotation.AbstractAnnotated;
-import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public final class EspressoResolvedJavaMethod extends AbstractAnnotated implements ResolvedJavaMethod {
-    private static final int JVM_METHOD_MODIFIERS = PUBLIC | PRIVATE | PROTECTED | STATIC | FINAL | SYNCHRONIZED | BRIDGE | VARARGS | NATIVE | ABSTRACT | STRICT | SYNTHETIC;
-    public static final Parameter[] NO_PARAMETERS = new Parameter[0];
-
-    private final EspressoResolvedInstanceType holder;
-    private final boolean poisonPill;
+public final class EspressoResolvedJavaMethod extends AbstractEspressoResolvedJavaMethod {
     private Executable mirrorCache;
-    private String nameCache;
-    private byte[] code;
-    private EspressoSignature signature;
 
-    private EspressoResolvedJavaMethod(EspressoResolvedInstanceType holder, boolean poisonPill) {
-        this.holder = holder;
-        this.poisonPill = poisonPill;
+    EspressoResolvedJavaMethod(EspressoResolvedInstanceType holder, boolean poisonPill) {
+        super(holder, poisonPill);
     }
-
-    @Override
-    public byte[] getCode() {
-        if (getCodeSize() == 0) {
-            return null;
-        }
-        if (code == null && holder.isLinked()) {
-            code = getCode0();
-            assert code.length == getCodeSize() : "expected: " + getCodeSize() + ", actual: " + code.length;
-        }
-        return code;
-    }
-
-    private native byte[] getCode0();
-
-    @Override
-    public int getCodeSize() {
-        int codeSize = getCodeSize0();
-        if (codeSize > 0 && !getDeclaringClass().isLinked()) {
-            return -1;
-        }
-        return codeSize;
-    }
-
-    private native int getCodeSize0();
-
-    @Override
-    public String getName() {
-        if (nameCache == null) {
-            nameCache = getName0();
-        }
-        return nameCache;
-    }
-
-    private native String getName0();
-
-    @Override
-    public EspressoResolvedInstanceType getDeclaringClass() {
-        return holder;
-    }
-
-    @Override
-    public EspressoSignature getSignature() {
-        if (signature == null) {
-            signature = new EspressoSignature(getRawSignature());
-        }
-        return signature;
-    }
-
-    private native String getRawSignature();
 
     @Override
     public native int getMaxLocals();
@@ -132,97 +44,13 @@ public final class EspressoResolvedJavaMethod extends AbstractAnnotated implemen
     public native int getMaxStackSize();
 
     @Override
-    public boolean isSynthetic() {
-        return (getFlags() & SYNTHETIC) != 0;
-    }
-
-    @Override
-    public boolean isVarArgs() {
-        return (getFlags() & VARARGS) != 0;
-    }
-
-    @Override
-    public boolean isBridge() {
-        return (getFlags() & BRIDGE) != 0;
-    }
-
-    @Override
-    public boolean isDefault() {
-        // Copied from java.lang.Method.isDefault()
-        int mask = Modifier.ABSTRACT | Modifier.PUBLIC | Modifier.STATIC;
-        return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
-    }
-
-    @Override
-    public boolean isDeclared() {
-        if (isConstructor() || isClassInitializer()) {
-            return false;
-        }
-        return !poisonPill;
-    }
-
-    @Override
-    public boolean isClassInitializer() {
-        return isStatic() && "<clinit>".equals(getName());
-    }
-
-    @Override
-    public boolean isConstructor() {
-        return !isStatic() && "<init>".equals(getName());
-    }
-
-    @Override
-    public boolean canBeStaticallyBound() {
-        return (isFinal() || isPrivate() || isStatic() || holder.isLeaf() || isConstructor()) && isConcrete();
-    }
-
-    @Override
     public native ExceptionHandler[] getExceptionHandlers();
 
     @Override
     public native StackTraceElement asStackTraceElement(int bci);
 
     @Override
-    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        // Be optimistic and return false for exceptionSeen?
-        return DefaultProfilingInfo.get(TriState.FALSE);
-    }
-
-    @Override
-    public void reprofile() {
-        throw JVMCIError.unimplemented();
-    }
-
-    @Override
-    public EspressoConstantPool getConstantPool() {
-        return holder.getConstantPool();
-    }
-
-    @Override
-    public Type[] getGenericParameterTypes() {
-        return getMirror().getGenericParameterTypes();
-    }
-
-    @Override
-    public boolean canBeInlined() {
-        if (isForceInline()) {
-            return true;
-        }
-        if (hasNeverInlineDirective()) {
-            return false;
-        }
-        return hasBytecodes();
-    }
-
-    private native boolean isForceInline();
-
-    @Override
     public native boolean hasNeverInlineDirective();
-
-    @Override
-    public boolean shouldBeInlined() {
-        return isForceInline();
-    }
 
     @Override
     public native LineNumberTable getLineNumberTable();
@@ -231,64 +59,66 @@ public final class EspressoResolvedJavaMethod extends AbstractAnnotated implemen
     public native LocalVariableTable getLocalVariableTable();
 
     @Override
-    public Constant getEncoding() {
-        throw JVMCIError.unimplemented();
-    }
+    protected native byte[] getCode0();
 
     @Override
-    public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        EspressoResolvedInstanceType espressoResolved;
-        if (resolved instanceof EspressoResolvedInstanceType) {
-            espressoResolved = (EspressoResolvedInstanceType) resolved;
-        } else if (resolved instanceof EspressoResolvedArrayType) {
-            espressoResolved = runtime().getJavaLangObject();
-        } else {
-            return false;
-        }
-        int vtableIndex = getVtableIndex(espressoResolved);
-        return vtableIndex >= 0 && vtableIndex < espressoResolved.getVtableLength();
-    }
-
-    private int getVtableIndex(EspressoResolvedObjectType resolved) {
-        if (!holder.isLinked()) {
-            return -1;
-        }
-        if (holder.isInterface()) {
-            if (resolved.isInterface() || !resolved.isLinked() || !getDeclaringClass().isAssignableFrom(resolved)) {
-                return -1;
-            }
-            EspressoResolvedInstanceType type;
-            if (resolved instanceof EspressoResolvedArrayType) {
-                type = runtime().getJavaLangObject();
-            } else {
-                type = (EspressoResolvedInstanceType) resolved;
-            }
-            return getVtableIndexForInterfaceMethod(type);
-        }
-        return getVtableIndex();
-    }
-
-    private native int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved);
-
-    private native int getVtableIndex();
+    protected native int getCodeSize0();
 
     @Override
-    public SpeculationLog getSpeculationLog() {
-        throw JVMCIError.unimplemented();
-    }
-
-    private native boolean hasAnnotations();
+    protected native String getName0();
 
     @Override
-    public int getModifiers() {
-        return getFlags() & JVM_METHOD_MODIFIERS;
+    protected AbstractEspressoSignature getSignature0() {
+        return new EspressoSignature(getRawSignature());
     }
 
-    private native int getFlags();
+    private native String getRawSignature();
+
+    @Override
+    protected native boolean isForceInline();
+
+    @Override
+    protected native int getVtableIndexForInterfaceMethod(EspressoResolvedInstanceType resolved);
+
+    @Override
+    protected native int getVtableIndex();
+
+    @Override
+    protected native int getFlags();
+
+    @Override
+    protected native boolean isLeafMethod();
+
+    @Override
+    protected boolean equals0(AbstractEspressoResolvedJavaMethod that) {
+        if (that instanceof EspressoResolvedJavaMethod espressoResolvedJavaMethod) {
+            return equals0(espressoResolvedJavaMethod);
+        }
+        return false;
+    }
+
+    private native boolean equals0(EspressoResolvedJavaMethod that);
+
+    @Override
+    protected native int hashCode0();
+
+    public Executable getMirror() {
+        if (mirrorCache == null) {
+            mirrorCache = getMirror0();
+        }
+        return mirrorCache;
+    }
+
+    private native Executable getMirror0();
+
+    @Override
+    public Type[] getGenericParameterTypes() {
+        return getMirror().getGenericParameterTypes();
+    }
 
     @Override
     public Parameter[] getParameters() {
-        if (signature.getParameterCount(false) == 0) {
+        if (getSignature().getParameterCount(false) == 0) {
             return NO_PARAMETERS;
         }
         java.lang.reflect.Parameter[] javaParameters = getMirror().getParameters();
@@ -301,74 +131,9 @@ public final class EspressoResolvedJavaMethod extends AbstractAnnotated implemen
         return res;
     }
 
-    public Executable getMirror() {
-        if (mirrorCache == null) {
-            mirrorCache = getMirror0();
-        }
-        return mirrorCache;
-    }
-
-    private native Executable getMirror0();
-
-    public native boolean isLeafMethod();
+    @Override
+    protected native boolean hasAnnotations();
 
     @Override
-    public boolean isScoped() {
-        return (getFlags() & SCOPED_METHOD) != 0;
-    }
-
-    @Override
-    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
-        if (!hasAnnotations()) {
-            return null;
-        }
-        byte[] bytes = getRawAnnotationBytes(DECLARED_ANNOTATIONS);
-        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
-    }
-
-    @Override
-    public AnnotationsInfo getTypeAnnotationInfo() {
-        byte[] bytes = getRawAnnotationBytes(TYPE_ANNOTATIONS);
-        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
-    }
-
-    @Override
-    public AnnotationsInfo getAnnotationDefaultInfo() {
-        byte[] bytes = getRawAnnotationBytes(ANNOTATION_DEFAULT_VALUE);
-        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
-    }
-
-    @Override
-    public AnnotationsInfo getParameterAnnotationInfo() {
-        byte[] bytes = getRawAnnotationBytes(PARAMETER_ANNOTATIONS);
-        return AnnotationsInfo.make(bytes, getConstantPool(), getDeclaringClass());
-    }
-
-    private native byte[] getRawAnnotationBytes(int category);
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        EspressoResolvedJavaMethod that = (EspressoResolvedJavaMethod) o;
-        return this.poisonPill == that.poisonPill && equals0(that);
-    }
-
-    private native boolean equals0(EspressoResolvedJavaMethod that);
-
-    @Override
-    public int hashCode() {
-        return 13 * Boolean.hashCode(poisonPill) + hashCode0();
-    }
-
-    private native int hashCode0();
-
-    @Override
-    public String toString() {
-        return format("EspressoResolvedJavaMethod<%h.%n(%p)>");
-    }
+    protected native byte[] getRawAnnotationBytes(int category);
 }

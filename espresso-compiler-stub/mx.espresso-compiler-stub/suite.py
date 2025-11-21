@@ -32,7 +32,7 @@ suite = {
         "name": "GraalVM Development",
         "email": "graalvm-dev@oss.oracle.com",
         "organization": "Oracle Corporation",
-        "organizationUrl": "http://www.graalvm.org/",
+        "organizationUrl": "https://www.graalvm.org/",
     },
     "scm": {
         "url": "https://github.com/oracle/graal/tree/master/truffle",
@@ -86,6 +86,40 @@ suite = {
             # causes spotbugs analysis to fail due to missing classes
             "spotbugs": "false"
         },
+
+        "com.oracle.truffle.espresso.vmaccess": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "compiler:GRAAL",
+                "compiler:VMACCESS",
+                "espresso:ESPRESSO_JVMCI",
+                "sdk:POLYGLOT",
+                "com.oracle.truffle.espresso.graal",
+            ],
+            "requires": [
+                "jdk.internal.vm.ci",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.services",
+                    "jdk.vm.ci.runtime",
+                ],
+            },
+            "javaCompliance": "21+",
+            "checkstyle": "com.oracle.truffle.espresso",
+            # Reference to jdk.vm.ci.meta.annotation
+            # causes spotbugs analysis to fail due to missing classes
+            "spotbugs": "false"
+        },
     },
 
     # ------------- distributions
@@ -106,7 +140,39 @@ suite = {
         "ESPRESSO_GRAAL": {
             "subDir": "src",
             "moduleInfo": {
-                "name": "jdk.graal.compiler.espresso"
+                "name": "jdk.graal.compiler.espresso",
+                "exports": [
+                    "com.oracle.truffle.espresso.graal to jdk.graal.compiler.espresso.vmaccess",
+                ],
+                "requiresConcealed": {
+                    "jdk.graal.compiler": [
+                        "jdk.graal.compiler.api.replacements",
+                        "jdk.graal.compiler.api.runtime",
+                        "jdk.graal.compiler.bytecode",
+                        "jdk.graal.compiler.code",
+                        "jdk.graal.compiler.core.common",
+                        "jdk.graal.compiler.core.common.alloc",
+                        "jdk.graal.compiler.core.common.memory",
+                        "jdk.graal.compiler.core.common.spi",
+                        "jdk.graal.compiler.core.common.type",
+                        "jdk.graal.compiler.core.target",
+                        "jdk.graal.compiler.debug",
+                        "jdk.graal.compiler.graph",
+                        "jdk.graal.compiler.nodes",
+                        "jdk.graal.compiler.nodes.gc",
+                        "jdk.graal.compiler.nodes.graphbuilderconf",
+                        "jdk.graal.compiler.nodes.loop",
+                        "jdk.graal.compiler.nodes.memory",
+                        "jdk.graal.compiler.nodes.memory.address",
+                        "jdk.graal.compiler.nodes.spi",
+                        "jdk.graal.compiler.options",
+                        "jdk.graal.compiler.phases.tiers",
+                        "jdk.graal.compiler.phases.util",
+                        "jdk.graal.compiler.replacements",
+                        "jdk.graal.compiler.runtime",
+                        "jdk.graal.compiler.word",
+                    ],
+                },
             },
             "dependencies": [
                 "com.oracle.truffle.espresso.graal",
@@ -115,7 +181,47 @@ suite = {
                 "compiler:GRAAL",
                 "espresso:ESPRESSO_JVMCI",
             ],
+            "useModulePath": True,
             "description": "A dummy GraalJVMCICompiler implementation for Espresso",
+            "maven": False,
+        },
+
+        "ESPRESSO_VMACCESS": {
+            "subDir": "src",
+            "moduleInfo": {
+                "name": "jdk.graal.compiler.espresso.vmaccess",
+                "requires": [
+                    "jdk.internal.vm.ci",
+                    "jdk.graal.compiler",
+                    "jdk.graal.compiler.vmaccess",
+                    "transitive org.graalvm.polyglot",
+                ],
+                "exports": [
+                    "com.oracle.truffle.espresso.vmaccess",
+                ],
+                "requiresConcealed": {
+                    "jdk.graal.compiler": [
+                        "jdk.graal.compiler.api.replacements",
+                        "jdk.graal.compiler.core.common.spi",
+                        "jdk.graal.compiler.debug",
+                        "jdk.graal.compiler.nodes.loop",
+                        "jdk.graal.compiler.nodes.spi",
+                        "jdk.graal.compiler.phases.util",
+                        "jdk.graal.compiler.word",
+                    ],
+                },
+            },
+            "dependencies": [
+                "com.oracle.truffle.espresso.vmaccess",
+            ],
+            "distDependencies": [
+                "sdk:POLYGLOT",
+                "compiler:GRAAL",
+                "compiler:VMACCESS",
+                "espresso:ESPRESSO_JVMCI",
+                "ESPRESSO_GRAAL",
+            ],
+            "useModulePath": True,
             "maven": False,
         },
     }

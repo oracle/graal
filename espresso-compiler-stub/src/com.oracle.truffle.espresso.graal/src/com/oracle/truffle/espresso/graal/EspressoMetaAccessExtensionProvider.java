@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.graal;
 
+import com.oracle.truffle.espresso.jvmci.meta.ConstantReflectionProviderWithStaticsBase;
+
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.GraalError;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoConstantReflectionProvider;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -34,9 +34,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class EspressoMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
-    private final EspressoConstantReflectionProvider constantReflection;
+    private final ConstantReflectionProviderWithStaticsBase constantReflection;
 
-    public EspressoMetaAccessExtensionProvider(EspressoConstantReflectionProvider constantReflection) {
+    public EspressoMetaAccessExtensionProvider(ConstantReflectionProviderWithStaticsBase constantReflection) {
         this.constantReflection = constantReflection;
     }
 
@@ -65,10 +65,7 @@ public final class EspressoMetaAccessExtensionProvider implements MetaAccessExte
         if (accessKind.getSlotCount() <= 0) {
             throw new IllegalArgumentException("Unexpected access kind: " + accessKind);
         }
-        if (!(base instanceof EspressoObjectConstant)) {
-            return null;
-        }
-        ResolvedJavaType type = constantReflection.getTypeForStaticBase((EspressoObjectConstant) base);
+        ResolvedJavaType type = constantReflection.getTypeForStaticBase(base);
         if (type == null) {
             return null;
         }

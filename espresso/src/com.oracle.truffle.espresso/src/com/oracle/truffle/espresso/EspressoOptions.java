@@ -704,6 +704,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
 
+    @Option(help = "Expose the <JVMCI_HELPER> binding to support external/host JVMCI.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> ExposeJVMCIHelper = new OptionKey<>(false);
+
     public enum GuestFieldOffsetStrategyEnum {
         safety,
         compact,

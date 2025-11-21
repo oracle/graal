@@ -62,6 +62,7 @@ public abstract class AddPathToBindingsNode extends EspressoNode {
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         public Object execute(Object[] args,
                         @Cached AddPathToBindingsNode addPath) throws ArityException, UnsupportedTypeException {
             // Args are checked in addPathToBindingsNode.

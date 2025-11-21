@@ -27,7 +27,7 @@ import jdk.vm.ci.meta.VMConstant;
 public final class KlassConstant implements VMConstant {
     private final EspressoResolvedObjectType type;
 
-    public KlassConstant(EspressoResolvedObjectType type) {
+    KlassConstant(EspressoResolvedObjectType type) {
         this.type = type;
     }
 

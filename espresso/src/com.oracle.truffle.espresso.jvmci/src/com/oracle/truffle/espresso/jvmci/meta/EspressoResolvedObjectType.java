@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,10 @@ public abstract class EspressoResolvedObjectType extends EspressoResolvedJavaTyp
         if (obj.isNull() || !obj.getJavaKind().isObject()) {
             return false;
         }
-        return isAssignableFrom(((EspressoObjectConstant) obj).getType());
+        return isAssignableFrom(getObjectType(obj));
     }
+
+    protected abstract EspressoResolvedObjectType getObjectType(JavaConstant obj);
 
     @Override
     public final Class<?> getMirror() {
@@ -61,6 +63,10 @@ public abstract class EspressoResolvedObjectType extends EspressoResolvedJavaTyp
 
     @Override
     public abstract ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve);
+
+    protected abstract AbstractEspressoResolvedInstanceType getJavaLangObject();
+
+    protected abstract AbstractEspressoResolvedInstanceType[] getArrayInterfaces();
 
     @Override
     public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {

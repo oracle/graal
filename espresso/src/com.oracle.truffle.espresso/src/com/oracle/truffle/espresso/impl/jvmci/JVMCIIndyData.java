@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jvmci;
+package com.oracle.truffle.espresso.impl.jvmci;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEDYNAMIC;
-import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
 
 import java.util.ArrayList;
 import java.util.Arrays;

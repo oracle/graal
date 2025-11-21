@@ -43,7 +43,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaRe
     }
 
     @Substitution
-    abstract static class GetRawAnnotationBytes extends SubstitutionNode {
+    abstract static class GetRawAnnotationBytes0 extends SubstitutionNode {
         abstract @JavaType(byte[].class) StaticObject execute(@JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedInstanceType;") StaticObject holder,
                         int index, int category);
 
