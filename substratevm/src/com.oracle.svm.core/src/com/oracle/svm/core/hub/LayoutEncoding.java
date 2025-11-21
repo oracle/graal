@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -355,6 +357,7 @@ public class LayoutEncoding {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectWithoutOptionalIdHashFieldInGC(Object obj) {
         return getSizeFromObjectInline(obj, false);
     }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.ReferenceInternals.getReferentFieldAddress;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
@@ -251,6 +252,7 @@ final class ReferenceObjectProcessing {
         return space.isToSpace() || space.isCompactingOldSpace();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void updateForwardedRefs() {
         assert SerialGCOptions.useCompactingOldGen();
 
