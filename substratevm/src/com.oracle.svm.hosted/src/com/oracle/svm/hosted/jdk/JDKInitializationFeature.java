@@ -159,6 +159,10 @@ public class JDKInitializationFeature implements InternalFeature {
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Extended*Option need to be registered at run time. */
+            rci.initializeAtRunTime("com.sun.nio.file", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Static references to ExtendedOptions. Needs to be run-time initialized. */
+            rci.initializeAtRunTime("jdk.internal.misc.FileSystemOption", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
             rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
