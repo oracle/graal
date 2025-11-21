@@ -192,6 +192,7 @@ public final class RuntimeCodeInfoAccess {
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
         NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
     }
