@@ -49,6 +49,7 @@ import static org.graalvm.wasm.WasmMath.minUnsigned;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.collections.EconomicMap;
@@ -89,6 +90,10 @@ public abstract class SymbolTable {
     public static final int NO_EQUIVALENCE_CLASS = 0;
     public static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
+    private static final int FINAL_MASK = 1 << 31;
+    private static final int SUPERTYPE_MASK = FINAL_MASK - 1;
+    private static final int NO_SUPERTYPE = SUPERTYPE_MASK;
+
     /**
      * Represents a WebAssembly value type in its closed form, with all type indices replaced with
      * their definitions. You can query the subtyping relation on types using the predicates
@@ -115,13 +120,17 @@ public abstract class SymbolTable {
         public abstract boolean matchesValue(Object value);
 
         public abstract Kind kind();
+
+        public void unroll(ClosedRecursiveType recursiveType) {
+        }
     }
 
     public abstract static sealed class ClosedHeapType {
         // This is a workaround until we can use pattern matching in JDK 21+.
         public enum Kind {
             Abstract,
-            Function
+            DefinedType,
+            RecursiveTypeReference
         }
 
         public abstract boolean isSupertypeOf(ClosedHeapType heapSubType);
@@ -255,7 +264,7 @@ public abstract class SymbolTable {
         public static final ClosedReferenceType NONNULL_EXNREF = new ClosedReferenceType(false, AbstractHeapType.EXN);
 
         private final boolean nullable;
-        private final ClosedHeapType closedHeapType;
+        @CompilationFinal private ClosedHeapType closedHeapType;
 
         public ClosedReferenceType(boolean nullable, ClosedHeapType closedHeapType) {
             this.nullable = nullable;
@@ -290,6 +299,13 @@ public abstract class SymbolTable {
         @Override
         public Kind kind() {
             return Kind.Reference;
+        }
+
+        @Override
+        public void unroll(ClosedRecursiveType recursiveType) {
+            if (closedHeapType instanceof RecursiveTypeReference recType) {
+                closedHeapType = recType.unroll(recursiveType);
+            }
         }
 
         @Override
@@ -342,7 +358,7 @@ public abstract class SymbolTable {
         @Override
         public boolean isSupertypeOf(ClosedHeapType heapSubType) {
             return switch (this.value) {
-                case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedFunctionType;
+                case WasmType.FUNC_HEAPTYPE -> heapSubType == FUNC || heapSubType instanceof ClosedDefinedType definedSubType && definedSubType.isFunctionType();
                 case WasmType.EXTERN_HEAPTYPE -> heapSubType == EXTERN;
                 case WasmType.EXN_HEAPTYPE -> heapSubType == EXN;
                 default -> throw CompilerDirectives.shouldNotReachHere();
@@ -390,7 +406,24 @@ public abstract class SymbolTable {
         }
     }
 
-    public static final class ClosedFunctionType extends ClosedHeapType {
+    public abstract static sealed class ClosedCompositeType {
+
+        public enum Kind {
+            Function
+        }
+
+        public abstract Kind kind();
+
+        public abstract boolean isSupertypeOf(ClosedHeapType heapSubType);
+
+        public abstract boolean isSubtypeOf(ClosedHeapType heapSuperType);
+
+        public abstract boolean matchesValue(Object value);
+
+        public abstract void unroll(ClosedRecursiveType recursiveType);
+    }
+
+    public static final class ClosedFunctionType extends ClosedCompositeType {
         @CompilationFinal(dimensions = 1) private final ClosedValueType[] paramTypes;
         @CompilationFinal(dimensions = 1) private final ClosedValueType[] resultTypes;
 
@@ -410,7 +443,7 @@ public abstract class SymbolTable {
         @Override
         @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
         public boolean isSupertypeOf(ClosedHeapType heapSubType) {
-            if (!(heapSubType instanceof ClosedFunctionType functionSubType)) {
+            if (!(heapSubType instanceof ClosedDefinedType definedSubType && definedSubType.expand() instanceof ClosedFunctionType functionSubType)) {
                 return false;
             }
             if (this.paramTypes.length != functionSubType.paramTypes.length) {
@@ -440,7 +473,7 @@ public abstract class SymbolTable {
             if (heapSuperType == AbstractHeapType.FUNC) {
                 return true;
             }
-            if (!(heapSuperType instanceof ClosedFunctionType functionSuperType)) {
+            if (!(heapSuperType instanceof ClosedDefinedType definedSuperType && definedSuperType.expand() instanceof ClosedFunctionType functionSuperType)) {
                 return false;
             }
             if (this.paramTypes.length != functionSuperType.paramTypes.length) {
@@ -475,6 +508,17 @@ public abstract class SymbolTable {
         }
 
         @Override
+        public void unroll(ClosedRecursiveType recursiveType) {
+            for (int i = 0; i < this.paramTypes.length; i++) {
+                if (paramTypes[i] instanceof ClosedReferenceType refType) {
+                    if (refType.closedHeapType instanceof RecursiveTypeReference rec) {
+                        refType.closedHeapType = rec.unroll(recursiveType);
+                    }
+                }
+            }
+        }
+
+        @Override
         public boolean equals(Object obj) {
             return obj instanceof ClosedFunctionType that && Arrays.equals(this.paramTypes, that.paramTypes) && Arrays.equals(this.resultTypes, that.resultTypes);
         }
@@ -496,6 +540,208 @@ public abstract class SymbolTable {
                 resultNames[i] = resultTypes[i].toString();
             }
             return "(" + String.join(" ", paramNames) + ")->(" + String.join(" ", resultNames) + ")";
+        }
+    }
+
+    public static final class ClosedSubType {
+
+        private final boolean isFinal;
+        @CompilationFinal private ClosedDefinedType superType;
+        private final ClosedCompositeType compositeType;
+
+        public ClosedSubType(boolean isFinal, ClosedCompositeType compositeType) {
+            this.isFinal = isFinal;
+            this.compositeType = compositeType;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedSubType that && this.isFinal == that.isFinal && Objects.equals(this.superType, that.superType) && this.compositeType.equals(that.compositeType);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(isFinal, superType, compositeType);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("(sub ");
+            if (isFinal) {
+                sb.append("final ");
+            }
+            sb.append(compositeType);
+            sb.append(")");
+            return sb.toString();
+        }
+    }
+
+    public static final class ClosedRecursiveType {
+
+        private final ClosedSubType[] subTypes;
+
+        public ClosedRecursiveType(ClosedSubType[] subTypes) {
+            this.subTypes = subTypes;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedRecursiveType that && Arrays.equals(this.subTypes, that.subTypes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(subTypes);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("(rec ");
+            for (int i = 0; i < subTypes.length; i++) {
+                sb.append(subTypes[i]);
+                if (i < subTypes.length - 1) {
+                    sb.append(" ");
+                }
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+    }
+
+    public static final class ClosedDefinedType extends ClosedHeapType {
+
+        private final ClosedRecursiveType recursiveTypeGroup;
+        private final int subTypeIndex;
+        private final boolean recursiveReference;
+
+        public ClosedDefinedType(ClosedRecursiveType recursiveTypeGroup, int subTypeIndex) {
+            this(recursiveTypeGroup, subTypeIndex, false);
+        }
+
+        public ClosedDefinedType(ClosedRecursiveType recursiveTypeGroup, int subTypeIndex, boolean recursiveReference) {
+            this.recursiveTypeGroup = recursiveTypeGroup;
+            this.subTypeIndex = subTypeIndex;
+            this.recursiveReference = recursiveReference;
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.DefinedType;
+        }
+
+        public ClosedCompositeType expand() {
+            return recursiveTypeGroup.subTypes[subTypeIndex].compositeType;
+        }
+
+        public boolean isFunctionType() {
+            return expand() instanceof ClosedFunctionType;
+        }
+
+        public ClosedFunctionType asFunctionType() {
+            assert isFunctionType();
+            return (ClosedFunctionType) expand();
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
+            if (heapSubType instanceof ClosedDefinedType definedSubType) {
+                return isSupertypeOf(definedSubType);
+            } else {
+                return expand().isSupertypeOf(heapSubType);
+            }
+        }
+
+        public boolean isSupertypeOf(ClosedDefinedType definedSubType) {
+            return definedSubType.isSubtypeOf(this);
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            if (heapSuperType instanceof ClosedDefinedType definedSuperType) {
+                return isSubtypeOf(definedSuperType);
+            } else {
+                return expand().isSubtypeOf(heapSuperType);
+            }
+        }
+
+        public boolean isSubtypeOf(ClosedDefinedType definedSuperType) {
+            if (this.recursiveTypeGroup == definedSuperType.recursiveTypeGroup && this.subTypeIndex == definedSuperType.subTypeIndex) {
+                return true;
+            }
+            if (this.recursiveTypeGroup.equals(definedSuperType.recursiveTypeGroup) && this.subTypeIndex == definedSuperType.subTypeIndex) {
+                return true;
+            }
+            return this.recursiveTypeGroup.subTypes[subTypeIndex].superType != null && this.recursiveTypeGroup.subTypes[subTypeIndex].superType.isSubtypeOf(definedSuperType);
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            return expand().matchesValue(value);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedDefinedType that && this.recursiveReference == that.recursiveReference && this.subTypeIndex == that.subTypeIndex && (recursiveReference || this.recursiveTypeGroup.equals(that.recursiveTypeGroup));
+        }
+
+        @Override
+        public int hashCode() {
+            return recursiveReference ? new RecursiveTypeReference(subTypeIndex).hashCode() : Objects.hash(recursiveReference, subTypeIndex, recursiveTypeGroup);
+        }
+
+        @Override
+        public String toString() {
+            return recursiveReference ? new RecursiveTypeReference(subTypeIndex).toString() : recursiveTypeGroup.toString() + "." + subTypeIndex;
+        }
+    }
+
+    public static final class RecursiveTypeReference extends ClosedHeapType {
+
+        private final int recursiveTypeIndex;
+
+        public RecursiveTypeReference(int recursiveTypeIndex) {
+            this.recursiveTypeIndex = recursiveTypeIndex;
+        }
+
+        public ClosedDefinedType unroll(ClosedRecursiveType recursiveType) {
+            return new ClosedDefinedType(recursiveType, recursiveTypeIndex, true);
+        }
+
+        @Override
+        public Kind kind() {
+            return Kind.RecursiveTypeReference;
+        }
+
+        @Override
+        public boolean isSupertypeOf(ClosedHeapType heapSubType) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean isSubtypeOf(ClosedHeapType heapSuperType) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean matchesValue(Object value) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof RecursiveTypeReference that && this.recursiveTypeIndex == that.recursiveTypeIndex;
+        }
+
+        @Override
+        public int hashCode() {
+            return recursiveTypeIndex;
+        }
+
+        @Override
+        public String toString() {
+            return "(rec " + recursiveTypeIndex + ")";
         }
     }
 
@@ -568,7 +814,7 @@ public abstract class SymbolTable {
      * indices with the definitions of the referenced types, resulting in a tree-like data
      * structure.
      */
-    @CompilationFinal(dimensions = 1) private ClosedHeapType[] closedTypes;
+    @CompilationFinal(dimensions = 1) private ClosedDefinedType[] closedTypes;
 
     /**
      * Stores the type equivalence class.
@@ -579,6 +825,19 @@ public abstract class SymbolTable {
      * The equivalence classes are computed globally for all the modules, during linking.
      */
     @CompilationFinal(dimensions = 1) private int[] typeEquivalenceClasses;
+
+    @CompilationFinal(dimensions = 1) private int[] superTypes;
+
+    /**
+     * Stores the recursive type groups.
+     * <p>
+     * Types whose indices are mapped to the same value in {@link #recursiveTypeGroups} are part
+     * of the same recursive type group. The value {@code recursiveTypeGroups[typeIdx]} gives the
+     * index of the first (in declaration order, lowest-numbered) type that is part of the same
+     * recursive type group.
+     * </p>
+     */
+    @CompilationFinal(dimensions = 1) private int[] recursiveTypeGroups;
 
     @CompilationFinal private int typeDataSize;
     @CompilationFinal private int typeCount;
@@ -786,8 +1045,11 @@ public abstract class SymbolTable {
         CompilerAsserts.neverPartOfCompilation();
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.typeOffsets = new int[INITIAL_TYPE_SIZE];
-        this.closedTypes = new ClosedHeapType[INITIAL_TYPE_SIZE];
+        this.closedTypes = new ClosedDefinedType[INITIAL_TYPE_SIZE];
         this.typeEquivalenceClasses = new int[INITIAL_TYPE_SIZE];
+        this.superTypes = new int[INITIAL_TYPE_SIZE];
+        Arrays.fill(superTypes, NO_SUPERTYPE);
+        this.recursiveTypeGroups = new int[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
         this.importedSymbols = new ArrayList<>();
@@ -846,7 +1108,7 @@ public abstract class SymbolTable {
 
     /**
      * Ensure that the {@link #typeData} array has enough space to store {@code index}. If there is
-     * no enough space, then a reallocation of the array takes place, doubling its capacity.
+     * not enough space, then a reallocation of the array takes place, doubling its capacity.
      * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
@@ -859,26 +1121,69 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeOffsets} and {@link #typeEquivalenceClasses} arrays have enough
-     * space to store the data for the type at {@code index}. If there is not enough space, then a
+     * Ensure that the {@link #typeOffsets}, {@link #closedTypes}, {@link #superTypes},
+     * {@link #recursiveTypeGroups} and {@link #typeEquivalenceClasses} arrays have enough space
+     * to store the data for the type at {@code index}. If there is not enough space, then a
      * reallocation of the array takes place, doubling its capacity.
      * <p>
      * No synchronisation is required for this method, as it is only called during parsing, which is
      * carried out by a single thread.
      */
     private void ensureTypeCapacity(int index) {
+        int oldLength = typeOffsets.length;
         if (typeOffsets.length <= index) {
-            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeOffsets.length);
+            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * oldLength);
             typeOffsets = Arrays.copyOf(typeOffsets, newLength);
             closedTypes = Arrays.copyOf(closedTypes, newLength);
+            superTypes = Arrays.copyOf(superTypes, newLength);
+            Arrays.fill(superTypes, oldLength, newLength, NO_SUPERTYPE);
+            recursiveTypeGroups = Arrays.copyOf(recursiveTypeGroups, newLength);
             typeEquivalenceClasses = Arrays.copyOf(typeEquivalenceClasses, newLength);
         }
     }
 
-    int allocateFunctionType(int paramCount, int resultCount, boolean isMultiValue) {
+    void declareRecursiveTypeGroup(int subTypeCount) {
         checkNotParsed();
-        ensureTypeCapacity(typeCount);
-        int typeIdx = typeCount++;
+        ensureTypeCapacity(typeCount + subTypeCount - 1);
+        for (int typeIndex = typeCount; typeIndex < typeCount + subTypeCount; typeIndex++) {
+            recursiveTypeGroups[typeIndex] = typeCount;
+        }
+        typeCount += subTypeCount;
+    }
+
+    void registerFinalType(int typeIdx, boolean finalType) {
+        checkNotParsed();
+        ensureTypeCapacity(typeIdx);
+        if (finalType) {
+            superTypes[typeIdx] |= FINAL_MASK;
+        } else {
+            superTypes[typeIdx] &= ~FINAL_MASK;
+        }
+    }
+
+    public boolean isFinalType(int typeIdx) {
+        return (superTypes[typeIdx] & FINAL_MASK) != 0;
+    }
+
+    void registerSuperType(int typeIdx, int superTypeIdx) {
+        assert (superTypeIdx & SUPERTYPE_MASK) == superTypeIdx;
+        checkNotParsed();
+        ensureTypeCapacity(typeIdx);
+        superTypes[typeIdx] |= superTypeIdx;
+    }
+
+    public boolean hasSuperType(int typeIdx) {
+        return (superTypes[typeIdx] & SUPERTYPE_MASK) != NO_SUPERTYPE;
+    }
+
+    public int superType(int typeIdx) {
+        assert hasSuperType(typeIdx);
+        return superTypes[typeIdx] & SUPERTYPE_MASK;
+    }
+
+    void registerFunctionType(int typeIdx, int paramCount, int resultCount, boolean isMultiValue) {
+        checkNotParsed();
+        ensureTypeCapacity(typeIdx);
         typeOffsets[typeIdx] = typeDataSize;
 
         if (!isMultiValue && resultCount != 0 && resultCount != 1) {
@@ -890,19 +1195,21 @@ public abstract class SymbolTable {
         typeData[typeDataSize + 0] = paramCount;
         typeData[typeDataSize + 1] = resultCount;
         typeDataSize += size;
-        return typeIdx;
     }
 
     public int allocateFunctionType(int[] paramTypes, int[] resultTypes, boolean isMultiValue) {
         checkNotParsed();
-        final int typeIdx = allocateFunctionType(paramTypes.length, resultTypes.length, isMultiValue);
+        final int typeIdx = typeCount;
+        declareRecursiveTypeGroup(1);
+        registerFinalType(typeIdx, true);
+        registerFunctionType(typeIdx, paramTypes.length, resultTypes.length, isMultiValue);
         for (int i = 0; i < paramTypes.length; i++) {
             registerFunctionTypeParameterType(typeIdx, i, paramTypes[i]);
         }
         for (int i = 0; i < resultTypes.length; i++) {
             registerFunctionTypeResultType(typeIdx, i, resultTypes[i]);
         }
-        finishFunctionType(typeIdx);
+        finishRecursiveTypeGroup(typeIdx);
         return typeIdx;
     }
 
@@ -918,16 +1225,36 @@ public abstract class SymbolTable {
         typeData[idx] = type;
     }
 
-    void finishFunctionType(int funcTypeIdx) {
+    ClosedFunctionType finishFunctionType(int funcTypeIdx) {
+        int recursiveTypeGroup = recursiveTypeGroups[funcTypeIdx];
         ClosedValueType[] paramTypes = new ClosedValueType[functionTypeParamCount(funcTypeIdx)];
         for (int i = 0; i < paramTypes.length; i++) {
-            paramTypes[i] = closedTypeOf(functionTypeParamTypeAt(funcTypeIdx, i));
+            paramTypes[i] = closedTypeOf(functionTypeParamTypeAt(funcTypeIdx, i), recursiveTypeGroup);
         }
         ClosedValueType[] resultTypes = new ClosedValueType[functionTypeResultCount(funcTypeIdx)];
         for (int i = 0; i < resultTypes.length; i++) {
-            resultTypes[i] = closedTypeOf(functionTypeResultTypeAt(funcTypeIdx, i));
+            resultTypes[i] = closedTypeOf(functionTypeResultTypeAt(funcTypeIdx, i), recursiveTypeGroup);
         }
-        closedTypes[funcTypeIdx] = new ClosedFunctionType(paramTypes, resultTypes);
+        return new ClosedFunctionType(paramTypes, resultTypes);
+    }
+
+    void finishRecursiveTypeGroup(int recursiveTypeGroupStart) {
+        int recursiveTypeGroup =  recursiveTypeGroups[recursiveTypeGroupStart];
+        ClosedSubType[] subTypes = new ClosedSubType[typeCount - recursiveTypeGroupStart];
+        for (int typeIndex = recursiveTypeGroupStart; typeIndex < typeCount; typeIndex++) {
+            assert recursiveTypeGroups[typeIndex] == recursiveTypeGroup;
+            subTypes[typeIndex - recursiveTypeGroupStart] = new ClosedSubType(isFinalType(typeIndex), finishFunctionType(typeIndex));
+        }
+        ClosedRecursiveType recursiveType = new ClosedRecursiveType(subTypes);
+        for (int typeIndex = recursiveTypeGroupStart; typeIndex < typeCount; typeIndex++) {
+            closedTypes[typeIndex] = new ClosedDefinedType(recursiveType, typeIndex - recursiveTypeGroupStart);
+        }
+        for (int subTypeIndex = 0; subTypeIndex < subTypes.length; subTypeIndex++) {
+            if (hasSuperType(recursiveTypeGroupStart + subTypeIndex)) {
+                subTypes[subTypeIndex].superType = closedTypes[recursiveTypeGroupStart + subTypeIndex];
+            }
+            subTypes[subTypeIndex].compositeType.unroll(recursiveType);
+        }
     }
 
     public int equivalenceClass(int typeIndex) {
@@ -1048,7 +1375,7 @@ public abstract class SymbolTable {
         return resultTypes;
     }
 
-    int typeCount() {
+    public int typeCount() {
         return typeCount;
     }
 
@@ -1059,7 +1386,7 @@ public abstract class SymbolTable {
      * @see #closedTypeAt(int)
      */
     public ClosedFunctionType closedFunctionTypeAt(int typeIndex) {
-        return (ClosedFunctionType) closedTypeAt(typeIndex);
+        return closedTypeAt(typeIndex).asFunctionType();
     }
 
     /**
@@ -1067,7 +1394,7 @@ public abstract class SymbolTable {
      * 
      * @param typeIndex index of a type defined in this module
      */
-    public ClosedHeapType closedTypeAt(int typeIndex) {
+    public ClosedDefinedType closedTypeAt(int typeIndex) {
         return closedTypes[typeIndex];
     }
 
@@ -1078,7 +1405,15 @@ public abstract class SymbolTable {
      * @see #closedTypeOf(int, SymbolTable)
      */
     public ClosedValueType closedTypeOf(int type) {
-        return SymbolTable.closedTypeOf(type, this);
+        return SymbolTable.closedTypeOf(type, this, -1);
+    }
+
+    public ClosedValueType closedTypeOf(int type, int recursiveTypeGroup) {
+        return SymbolTable.closedTypeOf(type, this, recursiveTypeGroup);
+    }
+
+    public static ClosedValueType closedTypeOf(int type, SymbolTable symbolTable) {
+        return closedTypeOf(type, symbolTable, -1);
     }
 
     /**
@@ -1094,7 +1429,7 @@ public abstract class SymbolTable {
      * @param type the {@code int}-encoded Wasm type to be expanded
      * @param symbolTable used for lookup of type definitions when expanding type indices
      */
-    public static ClosedValueType closedTypeOf(int type, SymbolTable symbolTable) {
+    public static ClosedValueType closedTypeOf(int type, SymbolTable symbolTable, int recursiveTypeGroup) {
         return switch (type) {
             case WasmType.I32_TYPE -> NumberType.I32;
             case WasmType.I64_TYPE -> NumberType.I64;
@@ -1112,7 +1447,12 @@ public abstract class SymbolTable {
                         assert WasmType.isConcreteReferenceType(type);
                         assert symbolTable != null;
                         int typeIndex = WasmType.getTypeIndex(type);
-                        ClosedHeapType heapType = symbolTable.closedTypeAt(typeIndex);
+                        ClosedHeapType heapType;
+                        if (symbolTable.recursiveTypeGroups[typeIndex] == recursiveTypeGroup) {
+                            heapType = new RecursiveTypeReference(typeIndex - recursiveTypeGroup);
+                        } else {
+                            heapType = symbolTable.closedTypeAt(typeIndex);
+                        }
                         yield new ClosedReferenceType(nullable, heapType);
                     }
                 };
@@ -1141,7 +1481,9 @@ public abstract class SymbolTable {
                 return false;
             }
         }
-        return closedTypeOf(expectedType).isSupertypeOf(closedTypeOf(actualType));
+        ClosedValueType closedExpectedType = closedTypeOf(expectedType);
+        ClosedValueType closedActualType = closedTypeOf(actualType);
+        return closedExpectedType.equals(closedActualType) || closedExpectedType.isSupertypeOf(closedActualType);
     }
 
     public void importSymbol(ImportDescriptor descriptor) {

@@ -51,7 +51,7 @@ public final class WasmFunction {
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
-    private final SymbolTable.ClosedFunctionType closedFunctionType;
+    private final SymbolTable.ClosedDefinedType definedType;
     @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
@@ -66,7 +66,7 @@ public final class WasmFunction {
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.typeIndex = typeIndex;
-        this.closedFunctionType = symbolTable.closedFunctionTypeAt(typeIndex);
+        this.definedType = symbolTable.closedTypeAt(typeIndex);
     }
 
     public String moduleName() {
@@ -156,8 +156,8 @@ public final class WasmFunction {
         return typeIndex;
     }
 
-    public SymbolTable.ClosedFunctionType closedType() {
-        return closedFunctionType;
+    public SymbolTable.ClosedDefinedType closedType() {
+        return definedType;
     }
 
     public int typeEquivalenceClass() {
@@ -192,7 +192,7 @@ public final class WasmFunction {
         CallTarget callAdapter = this.interopCallAdapter;
         if (callAdapter == null) {
             // Benign initialization race: The call target will be the same each time.
-            callAdapter = language.interopCallAdapterFor(closedType());
+            callAdapter = language.interopCallAdapterFor(closedType().asFunctionType());
             this.interopCallAdapter = callAdapter;
         }
         return callAdapter;

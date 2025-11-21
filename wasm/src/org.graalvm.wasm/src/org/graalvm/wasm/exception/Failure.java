@@ -90,6 +90,7 @@ public enum Failure {
     UNKNOWN_LABEL(Type.INVALID, "unknown label"),
     UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
     UNKNOWN_TYPE(Type.INVALID, "unknown type"),
+    SUB_TYPE(Type.INVALID, "sub type"),
     START_FUNCTION_RESULT_VALUE(Type.INVALID, "start function"),
     START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),

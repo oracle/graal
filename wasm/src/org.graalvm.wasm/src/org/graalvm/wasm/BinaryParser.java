@@ -408,18 +408,54 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readTypeSection() {
-        final int typeCount = readLength();
-        module.limits().checkTypeCount(typeCount);
-        for (int typeIndex = 0; typeIndex != typeCount; typeIndex++) {
+        final int recursiveTypeGroupCount = readLength();
+        int recursiveTypeGroupIndex = 0;
+        int typeIndex = 0;
+        while (recursiveTypeGroupIndex < recursiveTypeGroupCount) {
+            int recursiveTypeGroupStart = typeIndex;
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final byte type = read1();
-            if (type == 0x60) {
-                readFunctionType();
+            int subTypeCount;
+            if (peek1() == 0x4e) {
+                offset++;
+                subTypeCount = readLength();
             } else {
-                // According to the official tests this should be an integer presentation too long
-                // error
-                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Only function types are supported in the type section");
+                subTypeCount = 1;
             }
+            module.declareRecursiveTypeGroup(subTypeCount);
+            for (int subTypeIndex = 0; subTypeIndex < subTypeCount; subTypeIndex++) {
+                module.limits().checkTypeCount(typeIndex + 1);
+                module.registerFinalType(typeIndex, peek1() != 0x50);
+                if (peek1() == 0x4f || peek1() == 0x50) {
+                    offset++;
+                    int superTypeCount = readLength();
+                    if (superTypeCount == 1) {
+                        module.registerSuperType(typeIndex, readTypeIndex());
+                    } else if (superTypeCount > 1) {
+                        fail(Failure.SUB_TYPE, "Only one supertype admissible in subtype definitions");
+                    }
+                }
+                switch (read1()) {
+                    case 0x60 -> readFunctionType(typeIndex);
+                    // According to the official tests this should be an integer presentation too long
+                    // error
+                    default -> fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, "Only function types are supported in the type section");
+                }
+                typeIndex++;
+            }
+            module.finishRecursiveTypeGroup(recursiveTypeGroupStart);
+            for (int subTypeIndex = typeIndex - subTypeCount; subTypeIndex < typeIndex; subTypeIndex++) {
+                if (module.hasSuperType(subTypeIndex)) {
+                    int superTypeIndex = module.superType(subTypeIndex);
+                    if (!module.isFinalType(superTypeIndex)) {
+                        Assert.fail(Failure.SUB_TYPE, "Declared supertype %d of subtype %d is not final", superTypeIndex, subTypeIndex);
+                    }
+                    // TODO: use expand on superType too?
+                    if (module.closedTypeAt(subTypeIndex).expand().isSubtypeOf(module.closedTypeAt(superTypeIndex))) {
+                        Assert.fail(Failure.SUB_TYPE, "Subtype %d does not match supertype %d", subTypeIndex, superTypeIndex);
+                    }
+                }
+            }
+            recursiveTypeGroupIndex++;
         }
     }
 
@@ -3197,7 +3233,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readFunctionType() {
+    private void readFunctionType(int funcTypeIdx) {
         int paramCount = readLength();
         module.limits().checkParamCount(paramCount);
         int[] paramTypes = new int[paramCount];
@@ -3212,14 +3248,13 @@ public class BinaryParser extends BinaryStreamParser {
             resultTypes[resultIdx] = readValueType();
         }
 
-        int funcTypeIdx = module.symbolTable().allocateFunctionType(paramCount, resultCount, multiValue);
+        module.symbolTable().registerFunctionType(funcTypeIdx, paramCount, resultCount, multiValue);
         for (int paramIdx = 0; paramIdx < paramCount; paramIdx++) {
             module.symbolTable().registerFunctionTypeParameterType(funcTypeIdx, paramIdx, paramTypes[paramIdx]);
         }
         for (int resultIdx = 0; resultIdx < resultCount; resultIdx++) {
             module.symbolTable().registerFunctionTypeResultType(funcTypeIdx, resultIdx, resultTypes[resultIdx]);
         }
-        module.symbolTable().finishFunctionType(funcTypeIdx);
     }
 
     protected int readValueType() {

@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
 
@@ -130,7 +131,8 @@ public enum ValueType {
                             default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(abstractHeapType.value()));
                         };
                     }
-                    case Function -> anyfunc;
+                    case DefinedType -> anyfunc;
+                    case RecursiveTypeReference -> throw CompilerDirectives.shouldNotReachHere();
                 };
             }
         };
