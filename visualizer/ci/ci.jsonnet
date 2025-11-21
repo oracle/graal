@@ -41,7 +41,7 @@
   },
 
   local _builds = [
-    common.linux_amd64 + self.linux_maven + common.oraclejdk17 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-17" },
+    common.linux_amd64 + self.linux_maven + common.oraclejdk21 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-21" },
     common.linux_amd64 + self.linux_maven + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-labsjdk-latest" },
   ],
 
