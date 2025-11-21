@@ -289,6 +289,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     void sweepAndCompact(Timers timers, ChunkReleaser chunkReleaser) {
         /*
          * Update or clear reference object referent fields now because planning below overwrites
@@ -319,12 +320,13 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void planCompaction() {
         planningVisitor.init(space);
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupReferencesBeforeCompaction(ChunkReleaser chunkReleaser, Timers timers) {
         Timer oldFixupAlignedChunksTimer = timers.oldFixupAlignedChunks.start();
         try {
@@ -396,7 +398,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Note that cards have already been cleaned and roots re-marked during the initial scan
@@ -406,7 +408,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupMetaspace() {
         if (!Metaspace.isSupported()) {
             return;
@@ -420,7 +422,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void fixupUnalignedChunkReferences(ChunkReleaser chunkReleaser) {
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
@@ -448,6 +450,7 @@ final class CompactingOldGeneration extends OldGeneration {
         GCImpl.walkStackRoots(refFixupVisitor, sp, false);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
