@@ -5,14 +5,11 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.InterDataFlowIntervalAnalyzerWrapper;
-import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.intra.IntraDataFlowIntervalAnalyzerWrapper;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.IndexSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
@@ -22,8 +19,6 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-
-import java.util.Optional;
 
 /**
  * The entry point of the abstract interpretation framework.
@@ -39,7 +34,7 @@ public class AbstractInterpretationDriver {
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
 
-    public AbstractInterpretationDriver(DebugContext debug, Optional<AnalysisMethod> mainEntryPoint, Inflation bb) {
+    public AbstractInterpretationDriver(DebugContext debug, AnalysisMethod mainEntryPoint, Inflation bb) {
         this.debug = debug;
         this.analyzerManager = new AnalyzerManager();
         this.engine = new AbstractInterpretationEngine(analyzerManager, mainEntryPoint, bb);
@@ -52,7 +47,7 @@ public class AbstractInterpretationDriver {
             /* Creating a new scope for logging, run with -H:Log=AbstractInterpretation to activate it */
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
-                engine.executeAbstractInterpretation(AnalyzerMode.INTER_ANALYZE_FROM_MAIN_ONLY);
+                engine.executeAbstractInterpretation();
             } catch (AbsintException e) {
                 debug.log("Abstract interpretation encountered a runtime error: ", e);
             }
@@ -81,7 +76,7 @@ public class AbstractInterpretationDriver {
                 new DataFlowIntervalAbstractInterpreter();
 
         /* 3. Example of building an intraprocedural analyzer */
-//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter)
+//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY)
 //                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
 //                .registerChecker(new ConstantValueChecker())
 //                .registerChecker(new IndexSafetyChecker())
@@ -90,7 +85,7 @@ public class AbstractInterpretationDriver {
 
         /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
-        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory)
+        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IndexSafetyChecker())
@@ -100,5 +95,12 @@ public class AbstractInterpretationDriver {
 
         /* 5. Register with manager */
         analyzerManager.registerAnalyzer(interDataFlowAnalyzer);
+        // TODO: right now we need to think of a way to :
+        // 1. When to apply checkers during interprocedural analysis (right now we run checkers everytime after absint)
+        // 2. When to export graphs to json and also when to dump graphs to IGV interprocedural analysis ( we export everytime we reach a method )
+        // 3. (This is tied together with 1.) If analysis of a method yields facts that will lead to modification of the given StructuredGraph of a method
+        //          when should we really modify the method ? It is not safe to modify it becase there could be other calls (with different parameters) that
+        //          would not produce given facts
+        // 4. Find optimizations that can either imporove performance or reduce the size of native images that we can do with out analyses
     }
 }

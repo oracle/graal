@@ -44,7 +44,6 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         super(initialDomain, abstractInterpreter, analysisContext);
         this.methodStack = new CallStack(maxRecursionDepth);
         this.summaryManager = new SummaryManager<>(summaryFactory);
-//        SummaryRepository<Domain> summaryRepository = new SummaryRepository<>();
     }
 
     @Override
@@ -63,12 +62,10 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return outcome;
         }
 
-        logger.log("Handling invoke of method:  " + targetAnalysisMethod.getName(), LoggerVerbosity.DEBUG);
         AbstractState<Domain> callerState = invokeInput.callerState();
         var argDomains = invokeInput.actualArgDomains();
         Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
 
-        // TODO: refactor analysisResult
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerPreAtInvoke, argDomains);
         if (methodFilterManager.shouldSkipMethod(targetAnalysisMethod)) {
             return new AnalysisOutcome<>(AnalysisResult.IN_SKIP_LIST, summary);
@@ -80,18 +77,15 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return AnalysisOutcome.ok(completeSummary);
         }
 
-        // TODO: move this into separate methods;
-        logger.log("countConsecutiveCalls: " + methodStack.countConsecutiveCalls(targetAnalysisMethod), LoggerVerbosity.DEBUG);
-        logger.log("getMaxRecursionDepth: " + methodStack.getMaxRecursionDepth(), LoggerVerbosity.DEBUG);
-
         if (methodStack.countConsecutiveCalls(targetAnalysisMethod) >= methodStack.getMaxRecursionDepth()) {
+            logger.log("Recursion limit of: " + methodStack.getMaxRecursionDepth() + " exceeded",  LoggerVerbosity.INFO);
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
-            logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
+
         if (methodStack.hasMethodCallCycle(targetAnalysisMethod)) {
+            logger.log("Analysis has encountered a mutual recursion cycle on: " + targetAnalysisMethod.getQualifiedName() + ", skipping analysis", LoggerVerbosity.INFO);
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
-            logger.log(outcome.toString(), LoggerVerbosity.INFO);
             logger.log(methodStack.formatCycleWithMethod(targetAnalysisMethod), LoggerVerbosity.INFO);
             return outcome;
         }
@@ -101,9 +95,8 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
             fixpointIterator.getIteratorContext().setCallContextSignature("depth" + methodStack.getDepth());
             fixpointIterator.getAbstractState().setStartNodeState(summary.getPreCondition());
-            logger.log("The current call stack: " + methodStack, LoggerVerbosity.INFO);
-            AbstractState<Domain> invokeAbstractState = fixpointIterator.iterateUntilFixpoint();
-            summary.finalizeSummary(invokeAbstractState);
+            AbstractState<Domain> calleeAbstractState = fixpointIterator.iterateUntilFixpoint();
+            summary.finalizeSummary(calleeAbstractState);
             summaryManager.putSummary(targetAnalysisMethod, summary);
         } finally {
             methodStack.pop();
@@ -130,6 +123,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             checkerManager.runCheckers(root, abstractState);
             logger.logSummariesStats(summaryManager);
         } finally {
+            // TODO: add cleanup logic perhaps
             // stack cleanup handled in pop
         }
     }
@@ -146,7 +140,6 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     }
 
     private boolean sameMethod(ResolvedJavaMethod a, ResolvedJavaMethod b) {
-        var logger = AbstractInterpretationLogger.getInstance();
         return a.getName().equals(b.getName()) &&
                 a.getSignature().toMethodDescriptor().equals(b.getSignature().toMethodDescriptor()) &&
                 a.getDeclaringClass().toJavaName().equals(b.getDeclaringClass().toJavaName());

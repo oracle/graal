@@ -16,16 +16,17 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 public interface Summary<Domain extends AbstractDomain<Domain>> {
 
     /**
-     * Returns the pre-condition of the summary.
-     * Pre-condition of a summary is the abstract context before the method body is executed.
-     * Implementations can choose only the relevant information from the abstract context and create a compact pre-condition.
+     * Returns the pre-condition of the summary, which is created by a corresponding {@link SummaryFactory}.
+     * Pre-condition of a method summary is the relevant abstract context at the entry point of the method .
+     * {@SummaryFactory} Implementations can choose to keep only the relevant information from the
+     * caller abstract context and create a compact pre-condition for the callee.
      */
     Domain getPreCondition();
 
     /**
      * Returns the post-condition of the summary.
-     * This is the abstract context at method exit (join of all normal returns). Implementations may elide
-     * information that is not needed by callers when applying the summary.
+     * This is the abstract context at method exit (join of all normal returns).
+     * Implementations may omit storing information not needed by callers when applying the summary.
      */
     Domain getPostCondition();
 
@@ -38,30 +39,18 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     boolean subsumesSummary(Summary<Domain> other);
 
     /**
+     * This method is supposed to modify the post-condition of a summary
      * Called after the callee fixpoint finishes; implementations should populate post-condition accordingly.
      * Must handle BOT/TOP callee states conservatively.
      */
     void finalizeSummary(AbstractState<Domain> calleeAbstractState);
 
     /**
-     * Apply this summary to a caller domain (optional convenience).
+     * Apply this summary back to the caller abstract context,
+     * this is necessary to propagate analysis results back to the caller.
      *
      * @param domain caller domain
      * @return resulting domain
      */
     Domain applySummary(Domain domain);
-
-    /**
-     * Checks if the summary is complete.
-     *
-     * @return true if the summary is complete
-     */
-    boolean isComplete();
-
-    /**
-     * Sets the post-condition of the summary.
-     *
-     * @param postCondition the post-condition to set
-     */
-    void setPostCondition(Domain postCondition);
 }

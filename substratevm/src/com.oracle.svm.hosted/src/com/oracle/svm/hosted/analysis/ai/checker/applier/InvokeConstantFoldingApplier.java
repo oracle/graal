@@ -7,23 +7,21 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.vm.ci.meta.JavaKind;
 
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This is an applier that folds invokes to the constant values that they return
+ */
 public final class InvokeConstantFoldingApplier implements FactApplier {
 
     @Override
@@ -81,8 +79,7 @@ public final class InvokeConstantFoldingApplier implements FactApplier {
                 FixedNode next = invokeNode.next();
                 invokeNode.replaceAtPredecessor(next);
                 graph.removeFixed(invokeNode);
-            }
-            else if (invokeAsNode instanceof InvokeWithExceptionNode invokeWithException) {
+            } else if (invokeAsNode instanceof InvokeWithExceptionNode invokeWithException) {
                 graph.removeSplitPropagate(invokeWithException, invokeWithException.getPrimarySuccessor());
             }
             folded++;

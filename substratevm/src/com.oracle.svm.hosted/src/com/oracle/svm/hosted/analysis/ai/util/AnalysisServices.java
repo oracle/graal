@@ -1,18 +1,16 @@
 package com.oracle.svm.hosted.analysis.ai.util;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * AnalysisServices centralizes access to svm utilities needed by the analysis framework:
@@ -64,29 +62,25 @@ public final class AnalysisServices {
                 .filter(AnalysisMethod::isSimplyImplementationInvoked).toList();
     }
 
-    public AnalysisMethod getMainMethod(AnalysisMethod mainEntryPoint) {
+    public Optional<AnalysisMethod> getMainMethod(AnalysisMethod mainEntryPoint) {
         var logger = AbstractInterpretationLogger.getInstance();
         logger.log("Main entry point: " + mainEntryPoint.getName(), LoggerVerbosity.DEBUG);
-        try {
-            AnalysisMethod doRunMethod = findInvokeWithName(mainEntryPoint, "doRun");
-            AnalysisMethod runCore0Method = findInvokeWithName(doRunMethod, "runCore0");
-            AnalysisMethod invokeMainMethod = findInvokeWithName(runCore0Method, "invokeMain");
-            return findInvokeWithName(invokeMainMethod, "main");
-        } catch (AnalysisError e) {
-            return null;
-        }
+        return findInvokeWithName(mainEntryPoint, "doRun")
+                .flatMap(m -> findInvokeWithName(m, "runCore0"))
+                .flatMap(m -> findInvokeWithName(m, "invokeMain"))
+                .flatMap(m -> findInvokeWithName(m, "main"));
     }
 
-    private AnalysisMethod findInvokeWithName(AnalysisMethod root, String name) {
+    private Optional<AnalysisMethod> findInvokeWithName(AnalysisMethod root, String name) {
         if (root == null) {
-            throw AnalysisError.interruptAnalysis("Root method is null when searching for invoke with name: " + name);
+            return Optional.empty();
         }
         for (var invokeInfo : root.getInvokes()) {
             if (invokeInfo.getTargetMethod().getName().equals(name)) {
-                return invokeInfo.getTargetMethod();
+                return Optional.of(invokeInfo.getTargetMethod());
             }
         }
-        throw AnalysisError.interruptAnalysis("No invoke with name: " + name + " found in: " + root);
+        return Optional.empty();
     }
 
     @Deprecated

@@ -1,13 +1,14 @@
 public class Factorial {
-  static int fact(int n) {
-    if (n <= 1) return 1;
-    else return n * fact(n - 1);
-  }
+  private static int y = 0;
 
-  static int input() { return 5; }  // unknown integer
+  private static int fact(int n) {
+    if (n <= 1) return 1;
+    return n * fact(n - 1);
+  }
 
   public static void main(String[] args) {
-    int x = input();    // unknown integer
-    int y = fact(x);
+    y = fact(5);
+    System.out.println(y);
   }
+
 }
