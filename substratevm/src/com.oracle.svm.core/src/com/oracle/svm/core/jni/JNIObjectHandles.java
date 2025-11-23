@@ -243,7 +243,7 @@ public final class JNIObjectHandles {
             result = JNIImageHeapHandles.toGlobal(handle);
         } else {
             Object obj = getObject(handle);
-            if (!obj.equals(nullHandle())) {
+            if (obj != null) {
                 result = JNIGlobalHandles.create(obj);
             }
         }
@@ -262,7 +262,7 @@ public final class JNIObjectHandles {
             result = JNIImageHeapHandles.toWeakGlobal(handle);
         } else {
             Object obj = getObject(handle);
-            if (!obj.equals(nullHandle())) {
+            if (obj != null) {
                 result = JNIGlobalHandles.createWeak(obj);
             }
         }
