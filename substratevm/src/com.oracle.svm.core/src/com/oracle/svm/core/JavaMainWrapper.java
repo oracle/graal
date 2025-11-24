@@ -206,7 +206,7 @@ public class JavaMainWrapper {
      */
     private static int runCore0() {
         try {
-            if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+            if (SubstrateOptions.InitializeVM.getValue()) {
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
                  * because they often depend on option values. The user is expected to manually run

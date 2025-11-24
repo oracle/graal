@@ -1348,7 +1348,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(self._graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
                     if isinstance(image_config, mx_sdk.LauncherConfig):
-                        build_args += svm_experimental_options(['-H:-ParseRuntimeOptions'])
+                        build_args += ['-H:-ParseRuntimeOptions'] + svm_experimental_options(['-H:-InitializeVM'])
 
                 if has_component('svmee', stage1=True):
                     build_args += [
