@@ -40,13 +40,13 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         this.initialDomain = initialDomain;
         this.abstractTransformer = abstractTransformer;
         this.analysisContext = analysisContext;
-        var cache = analysisContext.getMethodGraphCache();
-        if (cache.containsMethodGraph(method)) {
-            this.graph = cache.getMethodGraph().get(method);
+        var methodGraphCache = analysisContext.getMethodGraphCache();
+        if (methodGraphCache.containsMethodGraph(method)) {
+            this.graph = methodGraphCache.getMethodGraphMap().get(method);
         } else {
             var services = AnalysisServices.getInstance();
             this.graph = services.getGraph(method);
-            cache.addToMethodGraphMap(method, graph);
+            methodGraphCache.addToMethodGraphMap(method, graph);
         }
         logger.exportGraphToJson(graph, analysisMethod, analysisMethod.getName() + "_before_absint");
         this.abstractState = new AbstractState<>(initialDomain, graph);
@@ -71,7 +71,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     }
 
     protected void extrapolate(Node node) {
-        var state = abstractState.getState(node);
+        var state = abstractState.getNodeState(node);
         int visitedAmount = iteratorContext.getNodeVisitCount(node);
         logger.log("Before extrapolation: pre = " + abstractState.getPreCondition(node), LoggerVerbosity.DEBUG);
         logger.log("Before extrapolation: post = " + abstractState.getPostCondition(node), LoggerVerbosity.DEBUG);

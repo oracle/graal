@@ -3,12 +3,9 @@ package com.oracle.svm.hosted.analysis.ai.log;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
-import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import com.oracle.svm.hosted.analysis.ai.util.GraphExporter;
 import com.oracle.svm.util.ClassUtil;
@@ -180,16 +177,6 @@ public final class AbstractInterpretationLogger {
         }
     }
 
-    public <Domain extends AbstractDomain<Domain>> void logSummariesStats(SummaryManager<Domain> summaryManager) {
-        log("Summary cache contents: ", LoggerVerbosity.SUMMARY);
-        for (Summary<Domain> summary : summaryManager.summaryCache().getAllSummaries()) {
-            log("Summary pre-condition: " + summary.getPreCondition(), LoggerVerbosity.SUMMARY);
-            log("Summary post-condition: " + summary.getPostCondition(), LoggerVerbosity.SUMMARY);
-        }
-
-        log(summaryManager.getCacheStats(), LoggerVerbosity.SUMMARY);
-    }
-
     public void printGraph(AnalysisMethod root, ControlFlowGraph graph, GraphTraversalHelper graphTraversalHelper) {
         if (graph == null) {
             throw new IllegalArgumentException("ControlFlowGraph is null");
@@ -233,7 +220,7 @@ public final class AbstractInterpretationLogger {
     public void printLabelledGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractState<?> abstractState) {
         log("Computed post-conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
         for (Node node : graph.getNodes()) {
-            NodeState<?> nodeState = abstractState.getState(node);
+            NodeState<?> nodeState = abstractState.getNodeState(node);
             log(node + " -> " + nodeState.getPostCondition(), LoggerVerbosity.INFO);
         }
     }
