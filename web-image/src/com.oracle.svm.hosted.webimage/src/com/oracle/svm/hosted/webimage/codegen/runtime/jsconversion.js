@@ -519,24 +519,19 @@ class Conversion {
     }
 
     /**
-     * Try to convert the JavaScript object to a Java facade class, or return null.
+     * Wraps the JavaScript object in a Java facade class.
      *
-     * @param obj JavaScript object whose Java facade class we search for
-     * @param cls target Java class in the form of its JavaScript counterpart
-     * @return {*} the mirror instance wrapped into a JavaScript Java Proxy, or null
+     * @param obj JavaScript object which is wrapped in the Java facade
+     * @param jsObjectClazz target Java class for a proper subtype of JSObject in the form of its JavaScript counterpart
+     * @return {*} the mirror instance wrapped into a JavaScript Java Proxy
      */
-    tryExtractFacadeClass(obj, cls) {
-        const facades = runtime.findFacadesFor(obj.constructor);
-        const rawJavaHub = cls[runtime.symbol.javaNative];
+    coerceToFacadeClass(obj, jsObjectClazz) {
+        const rawJavaHub = jsObjectClazz[runtime.symbol.javaNative];
         const internalJavaClass = rawJavaHub[runtime.symbol.jsClass];
-        if (facades.has(internalJavaClass)) {
-            const rawJavaMirror = new internalJavaClass();
-            // Note: only one-way handshake, since the JavaScript object could be recast to a different Java facade class.
-            this.setJavaScriptNative(rawJavaMirror, obj);
-            return this.toProxy(rawJavaMirror);
-        } else {
-            return null;
-        }
+        const rawJavaMirror = new internalJavaClass();
+        // Note: only one-way handshake, since the JavaScript object could be recast to a different Java facade class.
+        this.setJavaScriptNative(rawJavaMirror, obj);
+        return this.toProxy(rawJavaMirror);
     }
 
     /**

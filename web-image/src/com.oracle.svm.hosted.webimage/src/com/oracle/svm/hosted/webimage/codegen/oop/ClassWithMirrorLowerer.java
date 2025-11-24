@@ -550,27 +550,4 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
             return p;
         }
     }
-
-    @Override
-    protected void lowerClassEnd() {
-        super.lowerClassEnd();
-
-        JSCodeBuffer buffer = (JSCodeBuffer) codeGenTool.getCodeBuffer();
-
-        // Store the mapping from the imported JavaScript class constructor to the Java facade class
-        // under which the JavaScript class was imported.
-        if (isImportedClass) {
-            buffer.emitScopeBegin();
-            buffer.emitLetDeclPrefix("facades");
-            buffer.emitText("runtime.ensureFacadeSetFor(" + internalMirrorClassName(codeGenTool, type) + ");");
-            buffer.emitNewLine();
-            buffer.emitText("facades.add(");
-            buffer.emitText(codeGenTool.getJSProviders().typeControl().requestTypeName(type));
-            buffer.emitText(");");
-            buffer.emitNewLine();
-            buffer.emitScopeEnd();
-            buffer.emitNewLine();
-            buffer.emitNewLine();
-        }
-    }
 }

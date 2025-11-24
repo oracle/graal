@@ -410,7 +410,7 @@ public class WasmGCHeapWriter {
      * object table for all indices and will correctly get {@code null} for index {@code 0}.
      */
     private void initializeObjects() {
-        int nullIndex = objectElements.addElement(new Instruction.RefNull(providers.util().getJavaLangObjectType()).setComment("Null Object"));
+        int nullIndex = objectElements.addElement(new Instruction.RefNull(WasmRefType.NONE).setComment("Null Object"));
         assert nullIndex == 0 : nullIndex + " image heap objects were added to image heap table before the null pointer";
 
         for (ObjectData data : getObjects()) {

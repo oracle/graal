@@ -280,12 +280,6 @@ class Runtime {
          * Function that checks if the first argument hub is the supertype or the same as the second argument hub.
          */
         this.isSupertype = null;
-        /**
-         * Mapping from JavaScript classes that were imported to the list of internal Java classes
-         * under which the corresponding JavaScript class was imported.
-         * See JS.Import annotation.
-         */
-        this.importMap = new Map();
     }
 
     /**
@@ -297,29 +291,6 @@ class Runtime {
      */
     setEndianness(isLittleEndian) {
         runtime.isLittleEndian = isLittleEndian;
-    }
-
-    /**
-     * Ensures that there is a Set entry for the given JavaScript class, and returns it.
-     */
-    ensureFacadeSetFor(cls) {
-        let facades = this.importMap.get(cls);
-        if (facades === undefined) {
-            facades = new Set();
-            this.importMap.set(cls, facades);
-        }
-        return facades;
-    }
-
-    /**
-     * Finds the set of Java facade classes for the given JavaScript class, or an empty set if there are none.
-     */
-    findFacadesFor(cls) {
-        let facades = this.importMap.get(cls);
-        if (facades === undefined) {
-            facades = new Set();
-        }
-        return facades;
     }
 
     _ensurePackage(container, name) {
