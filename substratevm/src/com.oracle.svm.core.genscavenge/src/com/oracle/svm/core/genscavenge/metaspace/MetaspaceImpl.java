@@ -45,6 +45,10 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
@@ -56,7 +60,11 @@ import jdk.graal.compiler.word.Word;
  * {@link FirstObjectTable}, similar to the writable part of the image heap. The chunks are managed
  * in a single "To"-{@link Space}, which ensures that the GC doesn't try to move or promote the
  * objects.
+ * <p>
+ * This singleton is not fully layer aware because the {@link MetaspaceImpl#space} should be either
+ * always relinked or properly duplicated for each layer.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 public class MetaspaceImpl implements Metaspace {
     private final Space space = new Space("Metaspace", "M", true, getAge());
     private final ChunkedMetaspaceMemory memory = new ChunkedMetaspaceMemory(space);

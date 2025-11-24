@@ -25,9 +25,14 @@
 package com.oracle.svm.hosted.util;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredImageSingleton(value = HostedSubstrateUtil.class)
 public class HostedSubstrateUtilDefaultImpl implements HostedSubstrateUtil {
 

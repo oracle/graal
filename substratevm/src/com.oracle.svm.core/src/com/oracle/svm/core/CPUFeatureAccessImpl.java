@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,7 +37,16 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
 
@@ -117,5 +127,53 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
             return false;
         }
         return cpuFeatures.readByte(offset) != 0;
+    }
+
+    public static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        private static final String BUILDTIME_CPU_FEATURES = "buildtimeCPUFeatures";
+        private static final String CPU_FEATURE_ERROR_MESSAGE = "cpuFeatureErrorMessage";
+        private static final String BUILDTIME_FEATURE_MASK = "buildtimeFeatureMask";
+        private static final String CPU_FEATURE_ENUM_TO_STRUCT_OFFSETS = "cpuFeatureEnumToStructOffsets";
+
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<CPUFeatureAccessImpl>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, CPUFeatureAccessImpl singleton) {
+                    writer.writeStringList(BUILDTIME_CPU_FEATURES, getCPUFeaturesList(singleton));
+                    writer.writeString(CPU_FEATURE_ERROR_MESSAGE, new String(singleton.cpuFeatureErrorMessage, StandardCharsets.ISO_8859_1));
+                    writer.writeString(BUILDTIME_FEATURE_MASK, new String(singleton.buildtimeFeatureMask, StandardCharsets.ISO_8859_1));
+                    writer.writeIntList(CPU_FEATURE_ENUM_TO_STRUCT_OFFSETS, Arrays.stream(singleton.cpuFeatureEnumToStructOffsets).boxed().toList());
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, CPUFeatureAccessImpl singleton) {
+                    List<String> previousLayerBuildtimeCPUFeatures = loader.readStringList(BUILDTIME_CPU_FEATURES);
+                    List<String> currentLayerBuildtimeCPUFeatures = getCPUFeaturesList(singleton);
+                    VMError.guarantee(previousLayerBuildtimeCPUFeatures.equals(currentLayerBuildtimeCPUFeatures),
+                                    "The buildtime CPU Features should be consistent across layers. The previous layer CPU Features were %s, but the current layer are %s",
+                                    previousLayerBuildtimeCPUFeatures, currentLayerBuildtimeCPUFeatures);
+
+                    byte[] previousLayerCpuFeatureErrorMessage = loader.readString(CPU_FEATURE_ERROR_MESSAGE).getBytes(StandardCharsets.ISO_8859_1);
+                    VMError.guarantee(Arrays.equals(singleton.cpuFeatureErrorMessage, previousLayerCpuFeatureErrorMessage), "Previous layer CPU Feature error message was %s, but current layer is %s",
+                                    Arrays.toString(previousLayerCpuFeatureErrorMessage), Arrays.toString(singleton.cpuFeatureErrorMessage));
+
+                    byte[] previousLayerBuildtimeFeatureMask = loader.readString(BUILDTIME_FEATURE_MASK).getBytes(StandardCharsets.ISO_8859_1);
+                    VMError.guarantee(Arrays.equals(singleton.buildtimeFeatureMask, previousLayerBuildtimeFeatureMask), "Previous layer buildtime Feature mask was %s, but current layer is %s",
+                                    Arrays.toString(previousLayerBuildtimeFeatureMask), Arrays.toString(singleton.buildtimeFeatureMask));
+
+                    int[] previousLayerCpuFeatureEnumToStructOffsets = loader.readIntList(CPU_FEATURE_ENUM_TO_STRUCT_OFFSETS).stream().mapToInt(Integer::intValue).toArray();
+                    VMError.guarantee(Arrays.equals(singleton.cpuFeatureEnumToStructOffsets, previousLayerCpuFeatureEnumToStructOffsets),
+                                    "Previous CPU Feature enum to struct offsets was %s, but current layer is %s",
+                                    Arrays.toString(previousLayerCpuFeatureEnumToStructOffsets), Arrays.toString(singleton.cpuFeatureEnumToStructOffsets));
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
+
+        private static List<String> getCPUFeaturesList(CPUFeatureAccessImpl cpuFeatureAccess) {
+            return cpuFeatureAccess.buildtimeCPUFeatures.stream().map(Enum::toString).toList();
+        }
     }
 }

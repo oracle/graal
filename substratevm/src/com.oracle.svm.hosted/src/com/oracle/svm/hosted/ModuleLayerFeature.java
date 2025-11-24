@@ -80,6 +80,10 @@ import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -622,7 +626,7 @@ public class ModuleLayerFeature implements InternalFeature {
                     Set<Module> analysisReachableUnnamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
         Set<String> applicationModuleNames = applicationModules.stream().map(Module::getName).collect(Collectors.toUnmodifiableSet());
-        ImageSingletons.add(ApplicationModules.class, () -> applicationModuleNames);
+        ImageSingletons.add(ApplicationModules.class, new ApplicationModuleImpl(applicationModuleNames));
 
         Map<Module, Module> namedModulePairs = analysisReachableNamedModules
                         .stream()
@@ -1457,4 +1461,9 @@ public class ModuleLayerFeature implements InternalFeature {
             }
         }
     }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    public record ApplicationModuleImpl(Set<String> names) implements ApplicationModules {
+    }
+
 }

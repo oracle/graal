@@ -782,7 +782,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
      * not always possible to match on method id. When it is not possible, we store
      * {@link PriorDispatchMethod#UNPERSISTED_METHOD_ID} as the value.
      */
-    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, boolean isVirtualCallTarget) {
-        static final int UNPERSISTED_METHOD_ID = -1;
+    public record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, boolean isVirtualCallTarget) {
+        public static final int UNPERSISTED_METHOD_ID = -1;
     }
 }
