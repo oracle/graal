@@ -7,6 +7,5 @@ public class BoundsOffByOne {
     if (a.length > 0) {
       last = a[a.length - 1]; 
     }
-    // if (last == -1) System.out.println("impossible");
   }
 }
