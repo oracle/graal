@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 
+// CFLAGS=-Wl,-z,stack-size=4194304
+
 void OutlierRemovalAverageSummary() {
 }
 
@@ -32,6 +34,9 @@ double OutlierRemovalAverageSummaryLowerThreshold() {
 
 double OutlierRemovalAverageSummaryUpperThreshold() {
   return 0.5;
+}
+
+void setup() {
 }
 
 int run() {
