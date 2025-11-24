@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
-import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
 import static com.oracle.truffle.api.strings.TStringGuards.isReturnNegative;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
@@ -53,6 +52,7 @@ import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
@@ -188,7 +188,7 @@ final class JCodingsImpl implements JCodings {
             cpi++;
             TStringConstants.truffleSafePointPoll(location, cpi);
         }
-        return TStringInternalNodes.CodePointIndexToRawNode.atEnd(a.length(), extraOffsetRaw, index, isLength, cpi);
+        return TStringInternalNodes.CodePointIndexToRaw.atEnd(a.length(), extraOffsetRaw, index, isLength, cpi);
     }
 
     @Override
@@ -294,16 +294,23 @@ final class JCodingsImpl implements JCodings {
                         JCodingsImpl::asBytesMaterializeNative,
                         JCodingsImpl::getBytesEncoding);
         checkArrayRange(result.buffer(), 0, result.length());
-        return TStringInternalNodesFactory.FromBufferWithStringCompactionNodeGen.getUncached().execute(location,
+        return TStringInternalNodes.FromBufferWithStringCompaction.fromBufferWithStringCompaction(location,
                         result.buffer(), 0, result.length(), targetEncoding, result.length() != result.buffer().length || targetEncoding.isSupported(),
-                        isBroken(a.codeRange()) || result.undefinedConversion() || a.isMutable());
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached());
     }
 
     private static byte[] asBytesMaterializeNative(AbstractTruffleString replacementString) {
-        Object dataA = TStringInternalNodes.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data());
-        if (dataA instanceof AbstractTruffleString.NativePointer nativePointer) {
+        Object dataA = replacementString.data();
+        if (dataA instanceof byte[] bytes) {
+            return bytes;
+        } else if (dataA instanceof AbstractTruffleString.NativePointer nativePointer) {
             return nativePointer.materializeByteArray(replacementString);
+        } else {
+            return replacementString.materializeLazy(null, dataA);
         }
-        return (byte[]) dataA;
     }
 }

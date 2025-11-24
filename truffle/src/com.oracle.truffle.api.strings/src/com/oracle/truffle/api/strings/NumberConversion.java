@@ -345,8 +345,19 @@ final class NumberConversion {
         return sign + digits;
     }
 
-    static void writeLongToBytes(long i, byte[] buf, int stride, int fromIndex, int length) {
-        writeLongToBytesIntl(i, fromIndex + length, buf, stride);
+    @InliningCutoff
+    static void writeLongToBytesS0(long i, byte[] buf, int fromIndex, int length) {
+        writeLongToBytesIntl(i, fromIndex + length, buf, 0);
+    }
+
+    @InliningCutoff
+    static void writeLongToBytesS1(long i, byte[] buf, int fromIndex, int length) {
+        writeLongToBytesIntl(i, fromIndex + length, buf, 1);
+    }
+
+    @InliningCutoff
+    static void writeLongToBytesS2(long i, byte[] buf, int fromIndex, int length) {
+        writeLongToBytesIntl(i, fromIndex + length, buf, 2);
     }
 
     /**

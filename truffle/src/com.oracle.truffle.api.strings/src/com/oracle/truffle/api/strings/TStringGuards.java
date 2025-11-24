@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.api.strings;
 
+import static com.oracle.truffle.api.strings.TStringInternalNodes.getCodePointLength;
+
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TStringGuards {
@@ -113,9 +116,8 @@ final class TStringGuards {
     }
 
     static boolean indexOfCannotMatch(Node node, int codeRangeA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int codeRangeB,
-                    int regionLength, Encoding encoding, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+                    AbstractTruffleString b, byte[] arrayB, long offsetB, int codeRangeB, int regionLength, Encoding encoding, InlinedConditionProfile calcCodePointLengthBProfile) {
+        return regionLength < getCodePointLength(node, b, arrayB, offsetB, encoding, calcCodePointLengthBProfile) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, int lengthB, int codeRangeB, byte[] mask, int regionLength) {

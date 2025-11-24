@@ -83,6 +83,6 @@ public class TStringBuilderAppendIntTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        expectNullPointerException(() -> node.execute(null, 0));
+        expectNullPointerException(() -> node.execute((TruffleStringBuilder) null, 0));
     }
 }
