@@ -7,12 +7,16 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.summary.ContextSummary;
+import com.oracle.svm.hosted.analysis.ai.summary.MethodSummary;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class CheckerManager {
 
@@ -33,7 +37,7 @@ public final class CheckerManager {
     }
 
     @SuppressWarnings("unchecked")
-    public <Domain extends AbstractDomain<Domain>> void runCheckers(AnalysisMethod method, AbstractState<Domain> abstractState) {
+    public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
         List<Fact> allFacts = new ArrayList<>();
@@ -50,7 +54,6 @@ public final class CheckerManager {
         }
 
         logger.logFacts(allFacts);
-        StructuredGraph graph = abstractState.getGraph();
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         FactApplierSuite applierSuite = FactApplierSuite.fromRegistry(aggregator, true);
         applierSuite.runAppliers(method, graph, aggregator);
@@ -65,5 +68,15 @@ public final class CheckerManager {
     private void applyAbstractInterpretationResults(AnalysisMethod method, StructuredGraph graph) {
         EncodedGraph encoded = GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE);
         method.setAnalyzedGraph(encoded);
+    }
+
+    public <Domain extends AbstractDomain<Domain>> void runCheckersOnMethodSummaries(Map<AnalysisMethod, MethodSummary<Domain>> methodSummaryMap,
+                                                                                     Map<AnalysisMethod, StructuredGraph> methodGraphMap) {
+        for (var entry : methodSummaryMap.entrySet()) {
+            AnalysisMethod method = entry.getKey();
+            MethodSummary<Domain> methodSummary = entry.getValue();
+            var abstractState = methodSummary.getStateAcrossAllContexts();
+            runCheckersOnSingleMethod(method, abstractState, methodGraphMap.get(method));
+        }
     }
 }

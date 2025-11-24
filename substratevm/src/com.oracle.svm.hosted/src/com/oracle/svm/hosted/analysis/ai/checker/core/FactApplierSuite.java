@@ -55,7 +55,6 @@ public final class FactApplierSuite {
             return;
         }
 
-        // TODO: this thing just breaks ( BrokenPipe error ) when we analyze large amounts of methods, find a rational way to enable/disable it
         try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
             session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
             for (FactApplier applier : appliers) {

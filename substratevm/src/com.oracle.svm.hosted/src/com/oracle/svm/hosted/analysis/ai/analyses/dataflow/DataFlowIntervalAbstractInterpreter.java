@@ -8,6 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
@@ -97,7 +98,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
                 if (target.equals(ifNode.trueSuccessor())) {
                     if (defFalse) {
-                        // skip infeasible true edge
+                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
                         AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y is definitely false): " + source + " -> " + target,
                                 LoggerVerbosity.DEBUG);
                         return;
@@ -108,6 +109,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 } else if (target.equals(ifNode.falseSuccessor())) {
                     if (defTrue) {
                         // skip infeasible false edge
+                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
                         AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y is definitely true): " + source + " -> " + target,
                                 LoggerVerbosity.DEBUG);
                         return;
@@ -125,6 +127,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
                 if (target.equals(ifNode.trueSuccessor())) {
                     if (defFalse) {
+                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
                         AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y (below) definitely false): " + source + " -> " + target,
                                 LoggerVerbosity.DEBUG);
                         return;
@@ -134,6 +137,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                     return;
                 } else if (target.equals(ifNode.falseSuccessor())) {
                     if (defTrue) {
+                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
                         AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y (below) definitely true): " + source + " -> " + target,
                                 LoggerVerbosity.DEBUG);
                         return;
