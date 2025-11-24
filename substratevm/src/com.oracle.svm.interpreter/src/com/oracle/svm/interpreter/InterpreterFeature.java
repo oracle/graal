@@ -206,7 +206,7 @@ public class InterpreterFeature implements InternalFeature {
         AnalysisMetaAccess metaAccess = accessImpl.getMetaAccess();
 
         AnalysisType interpreterRootType = metaAccess.lookupJavaType(Interpreter.Root.class);
-        AnalysisMethod interpreterRoot = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, interpreterRootType, "executeBodyFromBCI",
+        AnalysisMethod interpreterRoot = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, interpreterRootType, "executeBodyFromBCI",
                         InterpreterFrame.class, InterpreterResolvedJavaMethod.class, int.class, int.class, boolean.class);
 
         LocalVariableTable interpreterVariableTable = interpreterRoot.getLocalVariableTable();
@@ -216,7 +216,7 @@ public class InterpreterFeature implements InternalFeature {
         int bciSlot = findLocalSlotByName("curBCI", interpreterVariableTable.getLocals());
 
         AnalysisType intrinsicRootType = metaAccess.lookupJavaType(Interpreter.IntrinsicRoot.class);
-        AnalysisMethod intrinsicRoot = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, intrinsicRootType, "execute",
+        AnalysisMethod intrinsicRoot = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, intrinsicRootType, "execute",
                         InterpreterFrame.class, InterpreterResolvedJavaMethod.class, SignaturePolymorphicIntrinsic.class, boolean.class);
 
         LocalVariableTable intrinsicVariableTable = intrinsicRoot.getLocalVariableTable();

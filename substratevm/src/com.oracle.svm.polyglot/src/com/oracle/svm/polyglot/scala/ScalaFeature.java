@@ -109,7 +109,7 @@ public class ScalaFeature implements InternalFeature {
                             .toArray(ResolvedJavaMethod[]::new);
             JVMCIRuntimeReflection.register(relevantMethods);
             try {
-                JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getDeclaredMethod(access.getMetaAccess(), scalaEnumVal, "id"));
+                JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredMethod(access.getMetaAccess(), scalaEnumVal, "id"));
             } catch (NoSuchMethodError e) {
                 throw UserError.abort("%s", UNSUPPORTED_SCALA_VERSION);
             }

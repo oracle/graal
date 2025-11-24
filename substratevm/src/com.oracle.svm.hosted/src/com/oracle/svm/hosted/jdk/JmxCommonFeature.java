@@ -199,7 +199,7 @@ public class JmxCommonFeature implements InternalFeature {
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         ResolvedJavaType type = metaAccess.lookupJavaType(Arrays.class);
         JVMCIRuntimeJNIAccess.register(type);
-        JVMCIRuntimeJNIAccess.register(JVMCIReflectionUtil.getDeclaredMethod(metaAccess, type, "asList", Object[].class));
+        JVMCIRuntimeJNIAccess.register(JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, type, "asList", Object[].class));
     }
 
     /**

@@ -513,7 +513,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         addRootClass(type, false, false);
-        return addRootField((AnalysisField) JVMCIReflectionUtil.getDeclaredField(type, fieldName));
+        return addRootField((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(type, fieldName));
     }
 
     @Override
