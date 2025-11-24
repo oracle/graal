@@ -277,7 +277,7 @@ public final class JVMCIReflectionUtil {
                     dimensions++;
                     cl = cl.getComponentType();
                 } while (cl.isArray());
-                return cl.getName().concat("[]".repeat(dimensions));
+                return cl.toClassName().concat("[]".repeat(dimensions));
             } catch (Throwable e) {
                 /* FALLTHRU */
             }
