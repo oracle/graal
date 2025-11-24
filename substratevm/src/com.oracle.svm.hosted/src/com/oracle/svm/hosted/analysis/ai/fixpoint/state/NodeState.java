@@ -12,6 +12,12 @@ public final class NodeState<Domain extends AbstractDomain<Domain>> {
 
     private Domain preCondition;
     private Domain postCondition;
+    private NodeMark mark = NodeMark.NORMAL;
+
+    public enum NodeMark {
+        NORMAL,
+        UNREACHABLE
+    }
 
     public NodeState(Domain initialDomain) {
         this.preCondition = initialDomain.copyOf();
@@ -37,6 +43,18 @@ public final class NodeState<Domain extends AbstractDomain<Domain>> {
 
     public void setPostCondition(Domain postCondition) {
         this.postCondition = postCondition.copyOf();
+    }
+
+    public boolean isUnreachable() {
+        return mark == NodeMark.UNREACHABLE;
+    }
+
+    public void setMark(NodeMark mark) {
+        this.mark = mark;
+    }
+
+    public NodeMark getMark() {
+        return mark;
     }
 
     @Override

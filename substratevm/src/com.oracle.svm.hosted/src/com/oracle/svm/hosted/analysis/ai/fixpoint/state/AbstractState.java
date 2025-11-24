@@ -40,36 +40,32 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
         return stateMap.containsKey(node);
     }
 
-    public NodeState<Domain> getState(Node node) {
+    public NodeState<Domain> getNodeState(Node node) {
         return stateMap.computeIfAbsent(node, n -> new NodeState<>(initialDomain));
     }
 
     public Domain getPreCondition(Node node) {
-        return getState(node).getPreCondition();
-    }
-
-    public StructuredGraph getGraph() {
-        return graph;
+        return getNodeState(node).getPreCondition();
     }
 
     public Domain getPostCondition(Node node) {
-        return getState(node).getPostCondition();
+        return getNodeState(node).getPostCondition();
     }
 
     public void setPostCondition(Node node, Domain postCondition) {
-        NodeState<Domain> state = getState(node);
+        NodeState<Domain> state = getNodeState(node);
         state.setPostCondition(postCondition);
     }
 
     public void setPreCondition(Node node, Domain preCondition) {
-        NodeState<Domain> state = getState(node);
+        NodeState<Domain> state = getNodeState(node);
         state.setPreCondition(preCondition);
     }
 
-    public void join(AbstractState<Domain> other) {
+    public void joinWith(AbstractState<Domain> other) {
         for (Node node : other.stateMap.keySet()) {
             NodeState<Domain> state = other.stateMap.get(node);
-            NodeState<Domain> thisState = getState(node);
+            NodeState<Domain> thisState = getNodeState(node);
             thisState.getPreCondition().joinWith(state.getPreCondition());
             thisState.getPostCondition().joinWith(state.getPostCondition());
         }
