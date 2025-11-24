@@ -167,10 +167,9 @@ final class HostClassLoader extends ClassLoader implements Closeable {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void definePackage(String className) {
         String packageName = getPackageName(className);
-        if (getPackage(packageName) == null) {
+        if (getDefinedPackage(packageName) == null) {
             definePackage(packageName, null, null, null, null, null, null, null);
         }
     }

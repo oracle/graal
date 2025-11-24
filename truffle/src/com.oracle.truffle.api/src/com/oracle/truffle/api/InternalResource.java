@@ -223,8 +223,7 @@ public interface InternalResource {
             if (location.isAbsolute()) {
                 throw new IllegalArgumentException("Location must be a relative path, but the absolute path " + location + " was given.");
             }
-            String resourceName = getResourceName(location);
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(getResourceStream(resourceName), StandardCharsets.UTF_8))) {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(getResourceStream(location), StandardCharsets.UTF_8))) {
                 List<String> content = new ArrayList<>();
                 for (String line = in.readLine(); line != null; line = in.readLine()) {
                     content.add(line);
@@ -305,8 +304,7 @@ public interface InternalResource {
 
         private Properties loadFileList(Path source) throws IOException {
             Properties props = new Properties();
-            String resourceName = getResourceName(source);
-            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(resourceName))) {
+            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(source))) {
                 props.load(in);
             }
             return props;
@@ -324,11 +322,8 @@ public interface InternalResource {
             return PosixFilePermissions.fromString(attrComponents[0].trim());
         }
 
-        private static String getResourceName(Path path) {
-            return path.toString().replace(File.separatorChar, '/');
-        }
-
-        private InputStream getResourceStream(String resourceName) throws IOException {
+        private InputStream getResourceStream(Path resourcePath) throws IOException {
+            String resourceName = resourcePath.toString().replace(File.separatorChar, '/');
             InputStream stream;
             if (owner.isNamed()) {
                 stream = owner.getResourceAsStream(resourceName);
@@ -397,13 +392,13 @@ public interface InternalResource {
         }
 
         private void copyResource(Path source, Path target, Set<PosixFilePermission> attrs) throws IOException {
-            String resourceName = getResourceName(source);
             Path parent = target.getParent();
             if (parent == null) {
                 throw new AssertionError("RelativeResourcePath must be non-empty.");
             }
             Files.createDirectories(parent);
-            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(resourceName))) {
+            try (BufferedInputStream in = new BufferedInputStream(getResourceStream(source))) {
+                // Parfait_ALLOW path-traversal (ClassLoader#getResources protects from root escape)
                 Files.copy(in, target);
             }
             if (getOS() != OS.WINDOWS) {

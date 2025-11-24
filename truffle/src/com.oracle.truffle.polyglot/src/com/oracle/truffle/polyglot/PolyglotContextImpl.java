@@ -2166,35 +2166,35 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
              */
             interruptingLock.lock();
             try {
-                validateInterruptPrecondition(this);
-                List<Future<Void>> futures;
-                synchronized (this) {
-                    if (state.isClosed()) {
-                        // already closed
-                        return true;
-                    }
-                    futures = new ArrayList<>(setInterrupting());
-                    if (!futures.isEmpty()) {
-                        childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
-                    }
-                }
-
-                if (childContextsToInterrupt != null) {
-                    for (PolyglotContextImpl childCtx : childContextsToInterrupt) {
-                        futures.addAll(childCtx.interruptChildContexts());
-                    }
-                }
-
-                /*
-                 * No matter whether we successfully transitioned into one of the interrupting
-                 * states, we wait for threads to be completed (which is done as a part of the
-                 * cancel method) as the states that override interrupting states also lead to
-                 * threads being stopped. If that happens before the timeout, the interrupt is
-                 * successful.
-                 */
-                return PolyglotEngineImpl.cancelOrExitOrInterrupt(this, futures, startMillis, timeout);
-            } finally {
                 try {
+                    validateInterruptPrecondition(this);
+                    List<Future<Void>> futures;
+                    synchronized (this) {
+                        if (state.isClosed()) {
+                            // already closed
+                            return true;
+                        }
+                        futures = new ArrayList<>(setInterrupting());
+                        if (!futures.isEmpty()) {
+                            childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+                        }
+                    }
+
+                    if (childContextsToInterrupt != null) {
+                        for (PolyglotContextImpl childCtx : childContextsToInterrupt) {
+                            futures.addAll(childCtx.interruptChildContexts());
+                        }
+                    }
+
+                    /*
+                     * No matter whether we successfully transitioned into one of the interrupting
+                     * states, we wait for threads to be completed (which is done as a part of the
+                     * cancel method) as the states that override interrupting states also lead to
+                     * threads being stopped. If that happens before the timeout, the interrupt is
+                     * successful.
+                     */
+                    return PolyglotEngineImpl.cancelOrExitOrInterrupt(this, futures, startMillis, timeout);
+                } finally {
                     if (childContextsToInterrupt != null) {
                         PolyglotContextImpl[] childContextsToFinishInterrupt;
                         synchronized (this) {
@@ -2205,9 +2205,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                             childCtx.finishInterruptForChildContexts();
                         }
                     }
-                } finally {
-                    interruptingLock.unlock();
                 }
+            } finally {
+                interruptingLock.unlock();
             }
         } catch (Throwable thr) {
             throw PolyglotImpl.guestToHostException(engine, thr);
@@ -2998,6 +2998,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             synchronized (this) {
                 assert !state.isClosing();
                 closingThread = null;
+                // Parfait_ALLOW release-unacquired-lock
                 closingLock.unlock();
             }
         }
