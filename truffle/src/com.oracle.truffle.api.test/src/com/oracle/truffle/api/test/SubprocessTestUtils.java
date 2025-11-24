@@ -66,6 +66,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +98,7 @@ import org.junit.Test;
 
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.junit.experimental.theories.Theory;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.Description;
@@ -181,16 +183,23 @@ public final class SubprocessTestUtils {
     private static Method findTestMethod(Class<?> testClass) {
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         if (stack != null) {
+            Map<String, Method> testMethodByName = new HashMap<>();
+            for (Method method : testClass.getDeclaredMethods()) {
+                if (method.getAnnotation(Test.class) != null || method.getAnnotation(Theory.class) != null) {
+                    Method prev = testMethodByName.put(method.getName(), method);
+                    if (prev != null) {
+                        throw new IllegalStateException(String.format("Multiple test methods with the same name '%s' found in class %s. Conflicting methods: %s and %s.",
+                                        method.getName(), testClass.getName(), prev, method));
+                    }
+                }
+            }
+
             for (int i = stack.length - 1; i >= 0; i--) {
                 StackTraceElement element = stack[i];
                 if (testClass.getName().equals(element.getClassName())) {
-                    try {
-                        Method method = testClass.getDeclaredMethod(element.getMethodName());
-                        if (method.getAnnotation(Test.class) != null) {
-                            return method;
-                        }
-                    } catch (NoSuchMethodException noSuchMethodException) {
-                        // skip methods with arguments.
+                    Method method = testMethodByName.get(element.getMethodName());
+                    if (method != null) {
+                        return method;
                     }
                 }
             }
