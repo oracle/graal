@@ -180,6 +180,30 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
     }
 
+    /**
+     * Determine if the field is by default closed in an open-world analysis. A field is considered
+     * closed if it cannot be written *directly* from the open world. This applies for example to
+     * core VM fields whose writes should only come from code included in the base image.
+     * <p>
+     * Note that flows of closed fields can still contain values coming from the open world. For
+     * example the field could be the target of a field-store that is reached directly from a
+     * parameter of an entry point method. Similarly, the field could be unsafe accessed.
+     */
+    public boolean isClosed(ResolvedJavaField field) {
+        if (hostVM.isClosedTypeWorld()) {
+            /* In a closed type world all fields are closed. */
+            return true;
+        }
+        if (hostVM.isAlwaysClosedField(field)) {
+            return true;
+        }
+        if (hostVM.isCoreType(field.getDeclaringClass())) {
+            /* All the other svm.core fields are by default closed. */
+            return true;
+        }
+        return false;
+    }
+
     @Override
     protected CompletionExecutor.Timing getTiming() {
         return timing;

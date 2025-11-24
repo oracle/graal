@@ -1395,9 +1395,7 @@ public class NativeImageGenerator {
         ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
         WordTypes wordTypes = aProviders.getWordTypes();
         String reason = "included by " + SubstrateOptionsParser.commandArgument(LayerCreate, "");
-        ClassInclusionPolicy classInclusionPolicy = ImageLayerBuildingSupport.buildingSharedLayer()
-                        ? new ClassInclusionPolicy.SharedLayerImageInclusionPolicy(reason)
-                        : new ClassInclusionPolicy.DefaultAllInclusionPolicy(reason);
+        ClassInclusionPolicy classInclusionPolicy = ImageLayerBuildingSupport.buildingSharedLayer() ? new ClassInclusionPolicy.SharedLayerImageInclusionPolicy(reason) : null;
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
             ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
             if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {

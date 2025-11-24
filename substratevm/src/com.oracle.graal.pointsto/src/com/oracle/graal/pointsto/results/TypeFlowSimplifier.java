@@ -182,19 +182,27 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
     }
 
     private void handleLoadField(LoadFieldNode node, SimplifierTool tool) {
-        /*
-         * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because then
-         * there is no artificial anchor after which the more precise type is available. However,
-         * the memory load will be a floating node later, so we can only update the stamp directly
-         * to the stamp that is correct for the whole method and all inlined methods.
-         */
         PointsToAnalysisField field = (PointsToAnalysisField) node.field();
+        if (!analysis.isClosed(field)) {
+            /*
+             * We cannot trust the field's state if the field is open as it may be written from the
+             * open world.
+             */
+            return;
+        }
         Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, field.getSinkFlow(), node, tool);
         if (fieldNewStampOrConstant instanceof JavaConstant) {
             ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, analysis.getMetaAccess(), graph);
             graph.replaceFixedWithFloating(node, replacement);
             tool.addToWorkList(replacement);
         } else {
+            /*
+             * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because
+             * then there is no artificial anchor after which the more precise type is available.
+             * However, the memory load will be a floating node later, so we can only update the
+             * stamp directly to the stamp that is correct for the whole method and all inlined
+             * methods.
+             */
             super.updateStampInPlace(node, (Stamp) fieldNewStampOrConstant, tool);
 
             /*

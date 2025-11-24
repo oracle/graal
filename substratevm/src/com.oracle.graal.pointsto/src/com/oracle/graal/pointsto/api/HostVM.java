@@ -182,7 +182,7 @@ public abstract class HostVM {
     public void onTypeInstantiated(BigBang bb, AnalysisType type) {
     }
 
-    public boolean isCoreType(@SuppressWarnings("unused") AnalysisType type) {
+    public boolean isCoreType(@SuppressWarnings("unused") ResolvedJavaType type) {
         return false;
     }
 
@@ -426,6 +426,11 @@ public abstract class HostVM {
     /** Determine if field should be included in the shared layer. */
     @SuppressWarnings("unused")
     public boolean isFieldIncludedInSharedLayer(ResolvedJavaField field) {
+        return true;
+    }
+
+    /** Returns true for fields that should be always closed, even in an open-world analysis. */
+    public boolean isAlwaysClosedField(@SuppressWarnings("unused") ResolvedJavaField field) {
         return true;
     }
 

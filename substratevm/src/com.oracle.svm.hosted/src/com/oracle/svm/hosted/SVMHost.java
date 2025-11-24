@@ -248,7 +248,11 @@ public class SVMHost extends HostVM {
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
-    private final Set<ResolvedJavaField> sharedLayerExcludedFields;
+    /**
+     * Contains fields that should be kept as closed in an open-world analysis. In general these are
+     * fields that should not be written to because, e.g., they need to be folded in the base image.
+     */
+    private final Set<ResolvedJavaField> closedWorldFields;
     /**
      * Some modules contain native methods that should never be in the image, as they are either
      * hosted only, or currently unsupported in layered images.
@@ -297,13 +301,10 @@ public class SVMHost extends HostVM {
             parsingSupport = null;
         }
         layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
-        if (buildingSharedLayer) {
-            sharedLayerExcludedFields = initializeSharedLayerExcludedFields();
-            sharedLayerForbiddenModules = initializeSharedLayerForbiddenModules();
-        } else {
-            sharedLayerExcludedFields = null;
-            sharedLayerForbiddenModules = null;
-        }
+
+        /* In a closed-world analysis all fields are closed, so the set is null. */
+        closedWorldFields = isClosedTypeWorld ? null : getAlwaysClosedFields();
+        sharedLayerForbiddenModules = buildingSharedLayer ? initializeSharedLayerForbiddenModules() : null;
         layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
         optionKeyType = lookupOriginalType(OptionKey.class);
@@ -322,8 +323,8 @@ public class SVMHost extends HostVM {
      * time then they cannot be an {@link AnalysisType}.
      */
     @Override
-    public boolean isCoreType(AnalysisType type) {
-        return loader.getBuilderModules().contains(type.getJavaClass().getModule());
+    public boolean isCoreType(ResolvedJavaType type) {
+        return loader.getBuilderModules().contains(OriginalClassProvider.getJavaClass(type).getModule());
     }
 
     @Override
@@ -983,43 +984,46 @@ public class SVMHost extends HostVM {
         return originalMetaAccess.lookupJavaField(ReflectionUtil.lookupField(declaringClass, fieldName));
     }
 
-    private Set<ResolvedJavaField> initializeSharedLayerExcludedFields() {
-        Set<ResolvedJavaField> excludedFields = new HashSet<>();
+    /**
+     * @return fields that should stay closed even in an open-world analysis.
+     */
+    private Set<ResolvedJavaField> getAlwaysClosedFields() {
+        Set<ResolvedJavaField> closedFields = new HashSet<>();
 
         /*
          * These fields need to be folded as they are used in snippets, and they must be accessed
          * without producing reads with side effects.
          */
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
 
         /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
-        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
+        closedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
 
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
          * FastThreadLocalBytes.getSizeSupplier
          */
-        excludedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
+        closedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
         /* This field cannot be written to (see documentation) */
-        excludedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
+        closedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
         /* This field can contain a reference to a Thread, which is not allowed in the heap */
-        excludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
+        closedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
 
-        return excludedFields;
+        return closedFields;
     }
 
     protected Set<Module> initializeSharedLayerForbiddenModules() {
@@ -1253,19 +1257,21 @@ public class SVMHost extends HostVM {
     }
 
     /**
-     * Checks the exclusion list to determine if field should be included in the shared layer.
+     * Determine if a field should be force-included in the shared layer.
      */
     @Override
     public boolean isFieldIncludedInSharedLayer(ResolvedJavaField field) {
-        if (sharedLayerExcludedFields.contains(OriginalFieldProvider.getOriginalField(field))) {
+        if (isAlwaysClosedField(field)) {
             return false;
         }
+        // GR-71702 will prevent batch registering svm.core fields as roots
+        return !field.getDeclaringClass().toJavaName().startsWith("jdk.graal.compiler");
+    }
 
-        /* Fields from the Graal compiler should not be in the shared layer unconditionally. */
-        if (field.getDeclaringClass().toJavaName().startsWith("jdk.graal.compiler")) {
-            return false;
-        }
-        return true;
+    @Override
+    public boolean isAlwaysClosedField(ResolvedJavaField field) {
+        /* Note that DynamicHub may not be seen as core. */
+        return closedWorldFields.contains(OriginalFieldProvider.getOriginalField(field));
     }
 
     @Override
