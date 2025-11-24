@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -146,6 +148,7 @@ public final class RuntimeCodeInfoAccess {
         return objectFields;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean areAllObjectsOnImageHeap(CodeInfo info) {
         return cast(info).getAllObjectsAreInImageHeap();
     }
@@ -189,6 +192,7 @@ public final class RuntimeCodeInfoAccess {
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
         NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
     }

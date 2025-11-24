@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.compacting;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
 
 import org.graalvm.nativeimage.Platform;
@@ -31,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
@@ -58,13 +60,15 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     public PlanningVisitor() {
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void init(Space space) {
         allocChunk = space.getFirstAlignedHeapChunk();
         allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
     }
 
     @Override
-    public boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
         boolean sweeping = chunk.getShouldSweepInsteadOfCompact();
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
@@ -160,10 +164,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             BrickTable.setEntry(chunk, brickIndex, objSeq);
             brickIndex = brickIndex.add(1);
         }
-
-        return true;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private Pointer allocate(UnsignedWord size, AlignedHeapChunk.AlignedHeader currentChunk) {
         assert size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
         Pointer p = allocPointer;
@@ -182,6 +185,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         return p;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
         assert chunk.getShouldSweepInsteadOfCompact();
         if (GCImpl.getGCImpl().isOutOfMemoryCollection()) {

@@ -83,6 +83,7 @@ public final class ObjectMoveInfo {
      */
     public static final int MAX_CHUNK_SIZE = ~(~0xffff * 8) + 1;
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setNewAddress(Pointer objSeqStart, Pointer newAddress) {
         if (useCompressedLayout()) {
             long offset = newAddress.subtract(objSeqStart).rawValue();
@@ -105,6 +106,7 @@ public final class ObjectMoveInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setObjectSeqSize(Pointer objSeqStart, UnsignedWord nbytes) {
         if (useCompressedLayout()) {
             UnsignedWord value = nbytes.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
@@ -125,6 +127,7 @@ public final class ObjectMoveInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setNextObjectSeqOffset(Pointer objSeqStart, UnsignedWord offset) {
         if (useCompressedLayout()) {
             UnsignedWord value = offset.unsignedDivide(ConfigurationValues.getObjectLayout().getAlignment());
@@ -241,6 +244,7 @@ public final class ObjectMoveInfo {
     }
 
     @AlwaysInline("GC performance: enables non-virtual visitor call")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void visit(AlignedHeapChunk.AlignedHeader chunk, Visitor visitor) {
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
         UnsignedWord size = getObjectSeqSize(p);
@@ -271,6 +275,7 @@ public final class ObjectMoveInfo {
          *
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
     }
 

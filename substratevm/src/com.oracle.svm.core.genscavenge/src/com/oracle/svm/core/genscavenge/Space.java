@@ -171,6 +171,7 @@ public final class Space {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
         AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
