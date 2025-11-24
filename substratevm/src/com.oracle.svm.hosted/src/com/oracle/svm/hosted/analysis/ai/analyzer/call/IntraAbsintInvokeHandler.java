@@ -10,8 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFacto
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
  * Represents an intra-procedural invoke handler.
@@ -39,10 +38,12 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }
+
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.printLabelledGraph(analysisContext.getMethodGraphCache().getMethodGraph().get(root), root, abstractState);
-        checkerManager.runCheckers(root, abstractState);
+        StructuredGraph graph = analysisContext.getMethodGraphCache().getMethodGraphMap().get(root);
+        logger.printLabelledGraph(graph, root, abstractState);
+        checkerManager.runCheckersOnSingleMethod(root, abstractState, graph);
     }
 }

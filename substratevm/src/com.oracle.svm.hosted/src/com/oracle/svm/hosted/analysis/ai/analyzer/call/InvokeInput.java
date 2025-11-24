@@ -24,6 +24,7 @@ public record InvokeInput<Domain extends AbstractDomain<Domain>>(
         Optional<ContextKey> contextKey,
         Optional<String> contextSignature) {
 
+    /** This method should be used if interpreters want to create their own custom signatures of methods **/
     public static <D extends AbstractDomain<D>> InvokeInput<D> of(
             AnalysisMethod callerMethod,
             AbstractState<D> callerState,
@@ -36,6 +37,7 @@ public record InvokeInput<Domain extends AbstractDomain<Domain>>(
                 Optional.ofNullable(contextKey), Optional.ofNullable(contextSignature));
     }
 
+    /** In this case, if the contextKey is empty, the framework will use the default context signature builder **/
     public static <D extends AbstractDomain<D>> InvokeInput<D> of(
             AnalysisMethod callerMethod,
             AbstractState<D> callerState,

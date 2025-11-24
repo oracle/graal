@@ -16,12 +16,12 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Creates a {@link Summary} from the abstract context at a given call site.
-     * The created summary will be then used for lookup in {@link SummaryCache}, more specifically,
+     * The created summary (alongside the context key) will be then used for lookup in {@link SummaryRepository}, more specifically,
      * the framework will check if this summary is subsumed by any of the summaries in the cache.
      * When calling {@code createSummary} we don't know what the post-condition of the summary will be yet,
      * so implementation can either leave the post-condition empty or set it to some default value (TOP value of the domain most of the time).
      * The summaryFactory implementations need to be able to deal with BOT/TOP values in {@code callerPreCondition}.
-     * NOTE: It should only be necessary to have the abstract context at the call site + arguments to create a summary.
+     * NOTE: It should only be necessary to have the abstract context at the call site and arguments to create a summary.
      * Creation of a summary can include:
      * Taking only a part of the abstract context, that is relevant for the invoke.
      * Renaming the formal arguments to actual arguments, etc.
