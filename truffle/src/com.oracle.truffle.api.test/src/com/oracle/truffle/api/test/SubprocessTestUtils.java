@@ -127,12 +127,19 @@ public final class SubprocessTestUtils {
     private static final boolean DEBUG_SUBPROCESSES = Boolean.getBoolean("SubprocessTestUtils.javaDebugger");
 
     /**
-     * Recommended value of the subprocess timeout. After exceeding it, the process is forcibly
+     * The default subprocess timeout. If the subprocess exceeds this duration, it is forcibly
      * terminated.
      *
      * @see Builder#timeout(Duration)
      */
-    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
+
+    /**
+     * Disables the subprocess timeout. When set, the subprocess is allowed to run indefinitely.
+     *
+     * @see Builder#timeout(Duration)
+     */
+    public static final Duration NO_TIMEOUT = Duration.ZERO;
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
@@ -468,7 +475,7 @@ public final class SubprocessTestUtils {
         private final List<String> prefixVmArgs = new ArrayList<>();
         private final List<String> postfixVmArgs = new ArrayList<>();
         private boolean failOnNonZeroExit = true;
-        private Duration timeout;
+        private Duration timeout = DEFAULT_TIMEOUT;
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
         private boolean removeOptimizedRuntimeOptions;
@@ -528,9 +535,11 @@ public final class SubprocessTestUtils {
 
         /**
          * Sets the subprocess timeout. After its expiration, the subprocess is forcibly terminated.
-         * By default, there is no timeout and the subprocess execution time is not limited.
+         * By default, the subprocess timeout is {@link #DEFAULT_TIMEOUT}. To set no subprocess
+         * timeout, use {@link #NO_TIMEOUT}.
          *
          * @see SubprocessTestUtils#DEFAULT_TIMEOUT
+         * @see SubprocessTestUtils#NO_TIMEOUT
          *
          */
         public Builder timeout(Duration duration) {
@@ -776,7 +785,7 @@ public final class SubprocessTestUtils {
         }
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
-        if (timeout == null) {
+        if (timeout == NO_TIMEOUT) {
             String line;
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
