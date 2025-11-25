@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.phases;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.alloc.AllocationStageVerifier;
+import jdk.graal.compiler.lir.alloc.verifier.RegisterAllocationVerifierPhase;
 import jdk.graal.compiler.lir.stackslotalloc.LSStackSlotAllocator;
 import jdk.graal.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 import jdk.graal.compiler.lir.alloc.lsra.LinearScanPhase;
@@ -38,6 +39,14 @@ public class AllocationStage extends LIRPhaseSuite<AllocationPhase.AllocationCon
     public AllocationStage(OptionValues options) {
         appendPhase(new MarkBasePointersPhase());
         appendPhase(new LinearScanPhase());
+
+        // For now, verify before stack allocator
+        if (RegisterAllocationVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
+            var raPhase = new RegisterAllocationVerifierPhase();
+
+            prependPhase(raPhase.getPreAllocPhase());
+            appendPhase(raPhase);
+        }
 
         // build frame map
         if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue(options)) {
