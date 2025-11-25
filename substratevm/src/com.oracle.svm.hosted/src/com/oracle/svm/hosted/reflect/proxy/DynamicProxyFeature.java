@@ -78,9 +78,9 @@ public final class DynamicProxyFeature implements InternalFeature {
         AccessConditionResolver<AccessCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
 
         ProxyConfigurationParser<AccessCondition> parser = new ProxyConfigurationParser<>(conditionResolver, ConfigurationFiles.Options.getConfigurationParserOptions(), proxyRegistry);
-        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
+        loadedConfigurations = FallbackFeature.adjustLoadedConfigurations(ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
-                        ConfigurationFile.DYNAMIC_PROXY.getFileName());
+                        ConfigurationFile.DYNAMIC_PROXY.getFileName()));
     }
 
     private static ProxyRegistry proxyRegistry() {
