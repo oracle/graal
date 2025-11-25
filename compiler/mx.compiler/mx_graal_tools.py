@@ -26,11 +26,11 @@
 from __future__ import print_function
 
 import os
-import shutil
 import re
+import shutil
 import sys
-from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
+from os.path import join, exists
 
 import mx
 
@@ -41,7 +41,7 @@ else:
 
 _suite = mx.suite('compiler')
 
-def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
+def run_netbeans_app(app_name, jdkhome, args=None, dist=None, launch_message=None):
     args = [] if args is None else args
     if dist is None:
         dist = app_name.upper() + '_DIST'
@@ -75,12 +75,12 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
     if mx.get_os() == 'linux':
         # Mitigates X server crashes on Linux
         launch.append('-J-Dsun.java2d.xrender=false')
-    print('Consider flag -J-Dsun.java2d.uiScale=2 if on a high resolution display')
-    print('Consider flag -J-Xms4g -J-Xmx8g if dealing with large graphs')
+    if launch_message:
+        launch_message()
     mx.run(launch+args)
 
 
-def netbeans_docstring(fullname, mixedname, mxname):
+def netbeans_docstring(fullname, mxname):
     return f"""run the {fullname}
 
     The current version is based on NetBeans 26 which officially supports JDK 17 through JDK 24.  A
@@ -100,7 +100,7 @@ def netbeans_docstring(fullname, mixedname, mxname):
 
     """
 
-def launch_netbeans_app(fullname, mixedname, mxname, args):
+def launch_netbeans_app(fullname, distname, mxname, args, launch_message=None):
     min_version = 17
     max_version = 24
     min_version_spec = mx.VersionSpec(str(min_version))
@@ -127,17 +127,21 @@ def launch_netbeans_app(fullname, mixedname, mxname, args):
                 mx.warn(f'If you experience any problems try to use an LTS release between JDK {min_version} and JDK {max_version} instead.')
                 mx.warn(f'mx help {mxname} provides more details.')
 
-    run_netbeans_app(mixedname, jdkhome, args=args, dist=f'{mixedname.upper()}_DIST')
+    run_netbeans_app(distname, jdkhome, args=args, dist=f'{distname.upper()}_DIST', launch_message=launch_message)
 
 def igv(args):
-    launch_netbeans_app('Ideal Graph Visualizer', 'IdealGraphVisualizer', 'igv', args)
+    def help_message():
+        print('Consider flag -J-Dsun.java2d.uiScale=2 if on a high resolution display')
+        print('Consider flag -J-Xms4g -J-Xmx8g if dealing with large graphs')
 
-igv.__doc__ = netbeans_docstring('Ideal Graph Visualizer', 'IdealGraphVisualizer', 'igv')
+    launch_netbeans_app('Ideal Graph Visualizer', 'IdealGraphVisualizer', 'igv', args, launch_message=help_message)
+
+igv.__doc__ = netbeans_docstring('Ideal Graph Visualizer', 'igv')
 
 def c1visualizer(args):
     launch_netbeans_app('C1 Visualizer', 'C1Visualizer', 'c1visualizer', args)
 
-c1visualizer.__doc__ = netbeans_docstring('C1 Visualizer', 'C1Visualizer', 'c1visualizer')
+c1visualizer.__doc__ = netbeans_docstring('C1 Visualizer', 'c1visualizer')
 
 
 def hsdis(args, copyToDir=None):
