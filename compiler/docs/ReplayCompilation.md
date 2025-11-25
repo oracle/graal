@@ -115,3 +115,53 @@ The `-Djdk.graal.ReplayDivergenceIsFailure=true` argument prevents using default
 ```shell
 mx replaycomp -Djdk.graal.ReplayDivergenceIsFailure=true ./replay-files
 ```
+
+## Performance Counters
+
+When replaying with the `--benchmark` command on the AMD64 Linux platform, the replay launcher can count hardware
+performance events via the [PAPI](https://github.com/icl-utk-edu/papi) library. To enable this, it is necessary to set
+up PAPI and build the optional PAPI bridge library. Note that recent architectures may not be supported; see the list
+here: https://github.com/icl-utk-edu/papi/wiki/Supported-Architectures.
+
+### PAPI Setup
+
+PAPI can usually be installed with the package manager (`papi-devel` on Fedora, `libpapi-dev` on Ubuntu). The PAPI
+bridge links against the PAPI available on the system.
+
+To monitor hardware events, it may be necessary to lower the system's restrictions for accessing hardware performance
+counters like shown below.
+
+```shell
+sudo sysctl kernel.perf_event_paranoid=-1
+```
+
+Additionally, the performance monitoring library (libpfm) may fail to select the appropriate performance monitoring unit
+(PMU). The selection can be forced to `amd64` using an environment variable.
+
+```shell
+export LIBPFM_FORCE_PMU=amd64
+```
+
+To discover the available counters, use the `papi_avail` and `papi_native_avail` commands, which are part of the PAPI
+installation. Verify that a particular event like `PAPI_TOT_INS` (retired instruction count) is counted using the
+`papi_command_line` utility.
+
+```shell
+papi_avail
+papi_native_avail
+papi_command_line PAPI_TOT_INS
+```
+
+### PAPI Bridge
+
+The below command builds the PAPI bridge library using the PAPI library available on the system.
+
+```shell
+ENABLE_PAPI_BRIDGE=true mx build --dependencies PAPI_BRIDGE
+```
+
+The launcher accepts a comma-separated list of event names. The event counts are reported for every benchmark iteration.
+
+```shell
+ENABLE_PAPI_BRIDGE=true mx replaycomp ./replay-files --benchmark --event-names PAPI_TOT_INS
+```
