@@ -2,9 +2,9 @@ package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.core.NodeUtil;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.IndexSafetyFact;
+import com.oracle.svm.hosted.analysis.ai.checker.core.facts.SafeBoundsAccessFact;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
@@ -12,10 +12,16 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.AccessIndexedNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
@@ -31,15 +37,15 @@ import java.util.HashSet;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 
 /**
- * Produces IndexSafetyFact for array loads/stores proven to be within bounds.
+ * Produces facts for array loads/stores proven to be always within bounds.
  */
-public final class IndexSafetyChecker implements Checker<AbstractMemory> {
+public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
 
     private static final int MAX_TRACE_DEPTH = 64;
 
     @Override
     public String getDescription() {
-        return "Array index safety checker";
+        return "Array bounds safety checker";
     }
 
     @Override
@@ -47,23 +53,35 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
         List<Fact> facts = new ArrayList<>();
         var logger = AbstractInterpretationLogger.getInstance();
         for (Node n : abstractState.getStateMap().keySet()) {
-            if (n instanceof LoadIndexedNode lin) {
-                var mem = pickMem(abstractState, lin);
-                if (mem == null) continue;
-                IntInterval idx = intervalOf(lin.index(), mem);
-                int len = constantArrayLenFromState(abstractState, lin.array());
-                if (len < 0) len = deriveLengthFromGuard(abstractState, lin.index());
-                if (isSafe(idx, len)) {
-                    facts.add(new IndexSafetyFact(lin, true, idx, len));
+            if (n instanceof AccessIndexedNode ain) {
+                var boundsCheck = ain.getBoundsCheck().asNode();
+                Stamp s = boundsCheck.stamp(NodeView.DEFAULT);
+                logger.log("bounds check node: " + boundsCheck,   LoggerVerbosity.CHECKER);
+                logger.log("Stamp: " + s, LoggerVerbosity.CHECKER);
+
+                IfNode guardingIf = NodeUtil.findGuardingIf(ain);
+                if (guardingIf == null) {
+                    continue;
                 }
-            } else if (n instanceof StoreIndexedNode sin) {
-                var mem = pickMem(abstractState, sin);
+
+                if (!NodeUtil.leadsToByteCodeException(guardingIf)) {
+                    continue;
+                }
+
+                logger.log("Checking bounds safety of: " + ain, LoggerVerbosity.CHECKER);
+
+                var mem = pickMem(abstractState, ain);
                 if (mem == null) continue;
-                IntInterval idx = intervalOf(sin.index(), mem);
-                int len = constantArrayLenFromState(abstractState, sin.array());
-                if (len < 0) len = deriveLengthFromGuard(abstractState, sin.index());
+                IntInterval idx = intervalOf(ain.index(), mem);
+                int len = constantArrayLenFromState(abstractState, ain.array());
+                if (len < 0) {
+                    len = deriveLengthFromGuard(abstractState, ain.getBoundsCheck());
+                }
+
+                logger.log("The index interval is: " + idx, LoggerVerbosity.CHECKER);
+                logger.log("The array len is: " + len, LoggerVerbosity.CHECKER);
                 if (isSafe(idx, len)) {
-                    facts.add(new IndexSafetyFact(sin, true, idx, len));
+                    facts.add(new SafeBoundsAccessFact(ain, true, idx, len));
                 }
             }
         }
@@ -75,10 +93,10 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
         return abstractState.getInitialDomain() instanceof AbstractMemory;
     }
 
-    private static AbstractMemory pickMem(AbstractState<AbstractMemory> st, Node n) {
-        var post = st.getPostCondition(n);
+    private static AbstractMemory pickMem(AbstractState<AbstractMemory> state, Node node) {
+        var post = state.getPostCondition(node);
         if (post != null) return post;
-        return st.getPreCondition(n);
+        return state.getPreCondition(node);
     }
 
     private static boolean isSafe(IntInterval idx, int len) {
@@ -95,6 +113,12 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
             long v = cn.asJavaConstant().asLong();
             return new IntInterval(v, v);
         }
+
+        if (n instanceof ParameterNode pn) {
+            String id = "param" + pn.index();
+            return mem.readStore(AccessPath.forLocal(id));
+        }
+
         String id = "n" + Integer.toHexString(System.identityHashCode(n));
         return mem.readStore(AccessPath.forLocal(id));
     }
@@ -112,7 +136,7 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
         for (Map.Entry<Node, NodeState<AbstractMemory>> e : st.getStateMap().entrySet()) {
             Node n = e.getKey();
             if (n instanceof ArrayLengthNode aln) {
-                if (sameValue(aln.array(), arrayNode)) {
+                if (sameNode(aln.array(), arrayNode)) {
                     AbstractMemory mem = pickMem(st, aln);
                     IntInterval iv = intervalOf(aln, mem);
                     if (iv != null && !iv.isTop() && !iv.isBot() && !iv.isLowerInfinite() && !iv.isUpperInfinite() && iv.getLower() == iv.getUpper()) {
@@ -125,17 +149,29 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
         return -1;
     }
 
-    private static int deriveLengthFromGuard(AbstractState<AbstractMemory> st, Node indexNode) {
-        for (Node n : st.getStateMap().keySet()) {
-            if (n instanceof IntegerLessThanNode itn) {
-                Node x = itn.getX();
-                Node y = itn.getY();
-                if (sameValue(x, indexNode) && y instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
-                    long v = cn.asJavaConstant().asLong();
-                    if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
-                }
+    private static int deriveLengthFromGuard(AbstractState<AbstractMemory> st, GuardingNode guardingNode) {
+        Node node = guardingNode.asNode();
+
+        var logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Guarding node: " + node, LoggerVerbosity.CHECKER);
+
+        IfNode ifNode = NodeUtil.findGuardingIf(node);
+        logger.log("Deriving length from guard: ", LoggerVerbosity.CHECKER);
+        logger.log("Guarding ifNode: " + ifNode, LoggerVerbosity.CHECKER);
+        if (ifNode == null) return -1;
+
+        Node condition = ifNode.condition();
+        if (condition instanceof CompareNode compareNode) {
+            logger.log("It is an compareNode", LoggerVerbosity.CHECKER);
+            Node y = compareNode.getY();
+            logger.log("The y is:" + y, LoggerVerbosity.CHECKER);
+            if (y instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                long v = cn.asJavaConstant().asLong();
+                if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
             }
+
         }
+
         return -1;
     }
 
@@ -172,10 +208,10 @@ public final class IndexSafetyChecker implements Checker<AbstractMemory> {
         return null;
     }
 
-    private static boolean sameValue(Node a, Node b) {
+    private static boolean sameNode(Node a, Node b) {
         if (a == b) return true;
-        if (a instanceof ValueProxy vp) return sameValue(vp.getOriginalNode(), b);
-        if (b instanceof ValueProxy vp2) return sameValue(a, vp2.getOriginalNode());
+        if (a instanceof ValueProxy vp) return sameNode(vp.getOriginalNode(), b);
+        if (b instanceof ValueProxy vp2) return sameNode(a, vp2.getOriginalNode());
         return false;
     }
 }

@@ -4,13 +4,13 @@ import jdk.graal.compiler.graph.Node;
 
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 
-public final class IndexSafetyFact implements Fact {
+public final class SafeBoundsAccessFact implements Fact {
     private final Node access;
     private final boolean inBounds;
     private final IntInterval indexRange;
     private final int arrayLength;
 
-    public IndexSafetyFact(Node arrayAccess, boolean inBounds, IntInterval indexRange, int arrayLength) {
+    public SafeBoundsAccessFact(Node arrayAccess, boolean inBounds, IntInterval indexRange, int arrayLength) {
         this.access = arrayAccess;
         this.inBounds = inBounds;
         this.indexRange = indexRange == null ? null : indexRange.copyOf();

@@ -10,7 +10,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
-import com.oracle.svm.hosted.analysis.ai.checker.checkers.IndexSafetyChecker;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -88,7 +88,7 @@ public class AbstractInterpretationDriver {
         var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
-                .registerChecker(new IndexSafetyChecker())
+                .registerChecker(new BoundsSafetyChecker())
                 .maxRecursionDepth(64)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();

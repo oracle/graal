@@ -40,6 +40,8 @@ public final class CheckerManager {
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
+        logger.log("Computed Abstract State: " + abstractState.toString(), LoggerVerbosity.CHECKER);
+
         List<Fact> allFacts = new ArrayList<>();
 
         for (var checker : checkers) {
