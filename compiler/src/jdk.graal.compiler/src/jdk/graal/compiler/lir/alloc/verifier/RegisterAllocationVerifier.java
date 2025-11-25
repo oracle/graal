@@ -211,6 +211,8 @@ public final class RegisterAllocationVerifier {
                 var orig = values.orig[idx];
                 var curr = values.curr[idx];
 
+                assert curr != null;
+
                 if (orig.equals(curr)) {
                     // In this case nothing has changed so we have nothing to verify
                     continue;
@@ -299,6 +301,8 @@ public final class RegisterAllocationVerifier {
                         }
 
                         if (op.dests.curr[i] == null) {
+                            // This can happen for certain instructions - jump or label, and we need to
+                            // resolve appropriate registers for these, if we do not, we throw in check()
                             continue;
                         }
 

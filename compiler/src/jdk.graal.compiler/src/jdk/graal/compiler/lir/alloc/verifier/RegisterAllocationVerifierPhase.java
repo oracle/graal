@@ -121,8 +121,6 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 instruction.forEachTemp(opRAVInstr.temp.copyCurrentProc);
                 instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
 
-                // assert opRAVInstr.verifyContents();
-
                 instructionList.add(opRAVInstr);
                 var virtualMoves = opRAVInstr.getVirtualMoveList();
                 instructionList.addAll(virtualMoves);

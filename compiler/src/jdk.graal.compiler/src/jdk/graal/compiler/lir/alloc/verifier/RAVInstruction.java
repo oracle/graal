@@ -144,10 +144,6 @@ public class RAVInstruction {
             this.alive = new ValueArrayPair(countValuesProc.getCount());
         }
 
-        public boolean verifyContents() {
-            return this.uses.verifyContents() && this.dests.verifyContents() && this.temp.verifyContents() && this.alive.verifyContents();
-        }
-
         public boolean hasMissingDefinitions() {
             return this.dests.count > 0 && this.dests.orig[0] instanceof Variable && this.dests.curr[0] == null;
         }
