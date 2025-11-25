@@ -71,6 +71,8 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes({
                 TruffleTypes.CompilerDirectives_TruffleBoundary_Name,
+                TruffleTypes.CompilerDirectives_EarlyInline_Name,
+                TruffleTypes.CompilerDirectives_EarlyEscapeAnalysis_Name,
                 TruffleTypes.Node_Child_Name,
                 TruffleTypes.Node_Children_Name})
 public class VerifyTruffleProcessor extends AbstractProcessor {
@@ -220,7 +222,46 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                 }
             }
 
+            for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_EarlyInline))) {
+                if (!element.getKind().isExecutable()) {
+                    continue;
+                }
+
+                checkExclusivity(element, types.CompilerDirectives_EarlyInline, types.CompilerDirectives_TruffleBoundary,
+                                " Early inlining partial-evaluatable methods and boundary methods are not partial-evaluatable.");
+
+                checkExclusivity(element, types.CompilerDirectives_EarlyInline, types.CompilerDirectives_EarlyEscapeAnalysis,
+                                " If early escape analysis methods would get early inlined, the annotation would no longer have any effect.");
+
+                checkExclusivity(element, types.CompilerDirectives_EarlyInline, types.ExplodeLoop,
+                                " If exploded methods would get early inlined, the explode loop annotation would no longer have any effect. " +
+                                                "To resolve this it is typically necessary to extract another method.");
+
+                if (!ElementUtils.isFinal((ExecutableElement) element)) {
+                    emitError(String.format(
+                                    "Methods annotated with @%s cannot be overridable. " +
+                                                    "All calls to early inline methods must be resolvable as direct calls. " + //
+                                                    "Make them private, static or final to resolve this problem.",
+                                    ElementUtils.getSimpleName(types.CompilerDirectives_EarlyInline)), element);
+                }
+
+            }
+
+            for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_EarlyEscapeAnalysis))) {
+                checkExclusivity(element, types.CompilerDirectives_EarlyEscapeAnalysis, types.CompilerDirectives_TruffleBoundary,
+                                " Early escape analysed methods must be partial evaluatable and therefore cannot be boundary methods.");
+
+            }
+
             return true;
+        }
+    }
+
+    private void checkExclusivity(Element element, TypeMirror annotationType, TypeMirror otherAnnotationType, String hint) {
+        if (ElementUtils.findAnnotationMirror(element, annotationType) != null && ElementUtils.findAnnotationMirror(element, otherAnnotationType) != null) {
+            emitError(String.format("@%s and @%s are mutually exlusive and cannot be used on the same element.%s", ElementUtils.getSimpleName(annotationType),
+                            ElementUtils.getSimpleName(otherAnnotationType), hint), element);
+            return;
         }
     }
 

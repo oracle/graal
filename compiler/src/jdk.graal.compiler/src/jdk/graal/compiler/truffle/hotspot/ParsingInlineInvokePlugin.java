@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.truffle.hotspot;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -30,7 +30,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
-
+import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,7 +53,7 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
         for (ValueNode argument : arguments) {
             if (argument.isConstant()) {
                 JavaConstant constant = argument.asJavaConstant();
-                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && partialEvaluator.types.MethodHandle.isInstance(constant)) {
+                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && partialEvaluator.getTypes().MethodHandle.isInstance(constant)) {
                     return true;
                 }
             }

@@ -1521,7 +1521,8 @@ public class GraphDecoder {
              * because it will never be needed to be merged (we are exploding until we hit a
              * return).
              */
-            assert methodScope.loopExplosion.duplicateLoopExits();
+            assert methodScope.loopExplosion.duplicateLoopExits() || phiNodeScope.trigger == LoopScopeTrigger.LOOP_EXIT_DUPLICATION : Assertions.errorMessage("Should be exit duplication but is",
+                            methodScope.loopExplosion, existing, merge);
             assert phiNodeScope.loopIteration > 0 : Assertions.errorMessageContext("phiNodeScope.loopIteration", phiNodeScope.loopIteration);
             existing = null;
         }
