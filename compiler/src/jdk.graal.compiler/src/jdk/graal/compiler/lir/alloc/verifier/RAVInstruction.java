@@ -187,10 +187,10 @@ public class RAVInstruction {
     }
 
     public static class VirtualMove extends Base {
-        public Variable to;
+        public Value to;
         public RegisterValue from;
 
-        public VirtualMove(LIRInstruction instr, Variable to, RegisterValue from) {
+        public VirtualMove(LIRInstruction instr, Value to, RegisterValue from) {
             super(instr);
             this.to = to;
             this.from = from;

@@ -1,8 +1,10 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
@@ -59,6 +61,16 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
      */
     protected RAVInstruction.Base getRAVMoveInstruction(LIRInstruction instruction) {
         if (!instruction.isValueMoveOp()) {
+            if (instruction.isLoadConstantOp()) {
+                var constatLoad = StandardOp.LoadConstantOp.asLoadConstantOp(instruction);
+                var constant = constatLoad.getConstant();
+                var result = (RegisterValue) constatLoad.getResult();
+
+                // This isn't really a virtual move, but it currently acts the same, so we keep it,
+                // we take constants as variables. TODO: maybe remove virtual move altogether for Move(reg, var/constant)
+                return new RAVInstruction.VirtualMove(instruction, new ConstantValue(result.getValueKind(), constant), result);
+            }
+
             return null;
         }
         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);

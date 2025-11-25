@@ -3,6 +3,7 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
@@ -55,16 +56,16 @@ public final class RegisterAllocationVerifier {
      * @param block Block that needs phi function output
      * @param labelInstr Label instruction of said block
      */
-    private void fillMissingVariableLocationsForPhi(BasicBlock<?> block, RAVInstruction.Op labelInstr) {
+    private void resolveVariableLocationsForPhi(BasicBlock<?> block, RAVInstruction.Op labelInstr) {
         for (int i = 0; i < labelInstr.dests.count; i++) {
             Set<Value> locations = null;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 var pred = block.getPredecessorAt(j);
                 var state = this.blockStates.get(pred);
                 var jump = (RAVInstruction.Op) blockInstructions.get(pred).getLast();
-                var inputVariable = (Variable) jump.alive.orig[i];
+                var inputValue = jump.alive.orig[i];
 
-                var varLoc = state.registerValues.getVariableLocations(inputVariable);
+                var varLoc = state.registerValues.getValueLocations(inputValue);
                 if (locations == null) {
                     locations = varLoc;
                     continue;
@@ -103,8 +104,10 @@ public final class RegisterAllocationVerifier {
             var instructions = this.blockInstructions.get(block);
 
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
+            var changedLabelArgs = false;
             if (labelInstr.hasMissingDefinitions() && this.doPrecessorsHaveStates(block)) {
-                this.fillMissingVariableLocationsForPhi(block, labelInstr);
+                this.resolveVariableLocationsForPhi(block, labelInstr);
+                changedLabelArgs = true;
             }
 
             // Create new entry state for successor blocks out of current block state
@@ -116,7 +119,20 @@ public final class RegisterAllocationVerifier {
 
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
-                var succState = this.blockEntryStates.get(succ) == null ? new VerifierState() : this.blockEntryStates.get(succ);
+
+                VerifierState succState;
+                if (this.blockEntryStates.get(succ) == null || changedLabelArgs) {
+                    succState = new VerifierState();
+
+                    // Either there's no state because it was not yet processed first part of the condition
+                    // or, we need to reset it because label changed, second part of the condition
+
+                    // Label change will hopefully work for children of children and there won't be need for us
+                    // to reset all the children.
+                    this.blockStates.put(succ, null);
+                } else {
+                    succState = this.blockEntryStates.get(succ);
+                }
 
                 if (succState.meetWith(state)) { // State changed, add to worklist
                     this.blockEntryStates.put(succ, succState);
@@ -396,7 +412,7 @@ public final class RegisterAllocationVerifier {
         protected Value value;
 
         public ValueAllocationState(Value value) {
-            if (value instanceof RegisterValue || value instanceof Variable) {
+            if (value instanceof RegisterValue || value instanceof Variable || value instanceof ConstantValue) {
                 // We use variables as symbols for register validation
                 // but real registers can also be used as that, in some cases.
                 this.value = value;
@@ -448,7 +464,7 @@ public final class RegisterAllocationVerifier {
 
         boolean mergeWith(AllocationStateMap<K> other);
 
-        Set<K> getVariableLocations(Variable variable);
+        Set<K> getValueLocations(Value value);
     }
 
     @SuppressWarnings("serial")
@@ -471,11 +487,11 @@ public final class RegisterAllocationVerifier {
             return value;
         }
 
-        public Set<K> getVariableLocations(Variable variable) {
+        public Set<K> getValueLocations(Value value) {
             Set<K> locations = new HashSet<>();
             for (Map.Entry<K, AllocationState> entry : entrySet()) {
                 if (entry.getValue() instanceof ValueAllocationState valState) {
-                    if (valState.getValue().equals(variable)) {
+                    if (valState.getValue().equals(value)) {
                         locations.add(entry.getKey());
                     }
                 }
