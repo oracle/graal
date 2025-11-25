@@ -45,6 +45,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
@@ -127,7 +128,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                         throw reportObjectTooLargeForAlignedChunkError(info, "Class metadata (dynamic hubs) cannot be in unaligned heap chunks: the dynamic hub %s", info.getObject().toString());
                     }
                     throw reportObjectTooLargeForAlignedChunkError(info, "Objects in image heap with relocatable pointers cannot be in unaligned heap chunks. Detected an object of type %s",
-                                    info.getObject().getClass().getTypeName());
+                                    getTypeName(info));
                 }
                 return getUnalignedReadOnly();
             }
@@ -143,6 +144,18 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
             }
             return getAlignedWritableRegular();
         }
+    }
+
+    private static String getTypeName(ImageHeapObject info) {
+        if (SubstrateUtil.HOSTED) {
+            return JVMCIReflectionUtil.getTypeName(info.getObjectType());
+        }
+        return getTypeNameRuntime(info);
+    }
+
+    private static String getTypeNameRuntime(ImageHeapObject info) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        return info.getObjectClass().getTypeName();
     }
 
     private Error reportObjectTooLargeForAlignedChunkError(ImageHeapObject info, String objectTypeMsg, String objectText) {

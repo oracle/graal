@@ -90,7 +90,7 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
         String name = getInitialPolicyName();
-        if (BasicCollectionPolicies.BasicPolicy.class.isAssignableFrom(getPolicyClass(name))) {
+        if (ReflectionUtil.isAssignableFrom(BasicCollectionPolicies.BasicPolicy.class, getPolicyClass(name))) {
             return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
         }
         return AbstractCollectionPolicy.getMaxSurvivorSpaces(userValue);
