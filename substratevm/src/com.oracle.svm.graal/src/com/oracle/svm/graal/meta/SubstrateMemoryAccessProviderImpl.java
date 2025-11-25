@@ -52,6 +52,10 @@ import jdk.vm.ci.meta.JavaKind;
  * When the folded memory access is in dead code, then the displacement may point outside the base
  * object or to a field with the wrong type. Careful checking of the arguments is necessary,
  * otherwise the compiler can crash.
+ *
+ * All reads are treated as volatile for simplicity as those functions can be used both for reading
+ * Java fields declared as volatile as well as for constant folding Unsafe.get* methods with
+ * volatile semantics.
  */
 public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryAccessProvider {
     public static final SubstrateMemoryAccessProviderImpl SINGLETON = new SubstrateMemoryAccessProviderImpl();
@@ -121,7 +125,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             }
         }
 
-        return readObjectUnchecked(baseObject, displacement, compressedEncoding != null, false);
+        return readObjectUnchecked(baseObject, displacement, compressedEncoding != null, true);
     }
 
     static JavaConstant readObjectUnchecked(Object baseObject, long displacement, boolean createCompressedConstant, boolean isVolatile) {
@@ -182,7 +186,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             }
         }
 
-        return readPrimitiveUnchecked(kind, baseObject, displacement, accessBytes, false);
+        return readPrimitiveUnchecked(kind, baseObject, displacement, accessBytes, true);
     }
 
     static JavaConstant readPrimitiveUnchecked(JavaKind kind, Object baseObject, long displacement, int accessBytes, boolean isVolatile) {
