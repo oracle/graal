@@ -127,7 +127,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-        if (SubstrateOptions.EnableSignalHandling.getValue() && optionValue != Boolean.FALSE && isFirst()) {
+        if (SubstrateOptions.isSignalHandlingAllowed() && optionValue != Boolean.FALSE && isFirst()) {
             ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
         }
     }

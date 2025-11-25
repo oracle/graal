@@ -1284,6 +1284,10 @@ public class SubstrateOptions {
             }
         });
 
+        /** Use {@link SubstrateOptions#isSignalHandlingAllowed()} instead. */
+        @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+        public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable);
+
         /** Use {@link SubstrateOptions#useRistretto()} instead. */
         @Option(help = "Prepare native image to compile bytecodes at runtime.")//
         public static final HostedOptionKey<Boolean> GraalJITCompileAtRuntime = new HostedOptionKey<>(false, actualValue -> {
@@ -1300,27 +1304,6 @@ public class SubstrateOptions {
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
-
-    @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
-    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, Immutable) {
-        @Override
-        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-            if (values.containsKey(this)) {
-                return (Boolean) values.get(this);
-            }
-            /*
-             * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an
-             * executable application layer is currently supported on Layered Images, the current
-             * solution is to enable this by default.
-             */
-            return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
-        }
-
-        @Override
-        public Boolean getValue(OptionValues values) {
-            return getValueOrDefault(values.getMap());
-        }
-    };
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Determines if the system locale should be used at run-time. If this is disabled, the locale 'en-US' will be used instead.", stability = OptionStability.EXPERIMENTAL, type = Expert)//
@@ -1573,6 +1556,19 @@ public class SubstrateOptions {
     @Fold
     public static int interfaceHashingMaxId() {
         return InterfaceHashingMaxId.getValue();
+    }
+
+    public static boolean isSignalHandlingAllowed() {
+        Boolean value = ConcealedOptions.EnableSignalHandling.getValue();
+        if (value != null) {
+            return value;
+        }
+        /*
+         * GR-70850: ImageInfo.isExecutable is inconsistent across layers. Since only an executable
+         * application layer is currently supported on Layered Images, the current solution is to
+         * enable this by default.
+         */
+        return ImageInfo.isExecutable() || ImageLayerBuildingSupport.buildingImageLayer();
     }
 
     public static class TruffleStableOptions {
