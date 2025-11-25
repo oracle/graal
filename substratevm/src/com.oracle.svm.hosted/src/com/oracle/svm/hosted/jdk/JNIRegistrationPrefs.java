@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.JavaNetHttpFeature;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -64,7 +63,7 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HostModuleUtil.addReads(JavaNetHttpFeature.class, requiredModule().get());
+        HostModuleUtil.addReads(JNIRegistrationPrefs.class, requiredModule().get());
     }
 
     @Override
