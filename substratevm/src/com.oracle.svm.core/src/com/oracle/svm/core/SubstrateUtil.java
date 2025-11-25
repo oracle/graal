@@ -133,6 +133,18 @@ public class SubstrateUtil {
         return sb.toString();
     }
 
+    /**
+     * Guarantees that the code is only executed at run time and not at image build time. The call
+     * should always be at the beginning of a method. It is not supposed to mark conditional code
+     * branches. It always indicates that the whole containing method is run-time only.
+     */
+    @AlwaysInline("Should be eliminated")
+    public static void guaranteeRuntimeOnly() {
+        if (HOSTED) {
+            throw VMError.shouldNotReachHere("Should only be called at run time");
+        }
+    }
+
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
     static final class Target_com_oracle_svm_core_SubstrateUtil {
         @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)//
