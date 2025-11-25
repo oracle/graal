@@ -723,7 +723,7 @@ public final class ClassInitializationInfo {
     private void invokeClassInitializer0(DynamicHub hub) {
         if (RuntimeClassLoading.isSupported() && runtimeClassInitializer == INTERPRETER_INITIALIZATION_MARKER) {
             ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
-            CremaSupport.singleton().execute(classInitializer, new Object[0]);
+            CremaSupport.singleton().execute(classInitializer, new Object[0], false);
         } else {
             ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) runtimeClassInitializer.functionPointer;
             VMError.guarantee(functionPointer.isNonNull());

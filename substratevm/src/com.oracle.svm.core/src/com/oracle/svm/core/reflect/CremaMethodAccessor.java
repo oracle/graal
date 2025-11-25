@@ -59,7 +59,7 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
             System.arraycopy(args, 0, finalArgs, 1, args.length);
         }
         try {
-            return CremaSupport.singleton().execute(targetMethod, finalArgs);
+            return CremaSupport.singleton().execute(targetMethod, finalArgs, !targetMethod.isStatic());
         } catch (Throwable t) {
             throw new InvocationTargetException(t);
         }
