@@ -321,6 +321,55 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
+    "com.oracle.graal.vmaccess": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "jdk.graal.compiler",
+      ],
+      "requires": [
+        "jdk.internal.vm.ci",
+      ],
+      "requiresConcealed": {
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+        "java.base": [
+          "jdk.internal.module",
+        ],
+      },
+      "javaCompliance": "21+",
+      "checkstyle" : "jdk.graal.compiler",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.graal.hostvmaccess": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "com.oracle.graal.vmaccess",
+      ],
+      "requires": [
+        "jdk.internal.vm.ci",
+      ],
+      "requiresConcealed": {
+        "java.base": [
+          "jdk.internal.access",
+          "jdk.internal.loader",
+          "jdk.internal.module",
+        ],
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.runtime",
+          "jdk.vm.ci.code",
+        ],
+      },
+      "javaCompliance": "21+",
+      "checkstyle" : "jdk.graal.compiler",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "jdk.graal.compiler.microbenchmarks" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -634,6 +683,83 @@ suite = {
         "artifactId" : "compiler-management",
         "tag": ["default", "public"],
       },
+    },
+
+    "VMACCESS": {
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.vmaccess",
+        "requires": [
+          "jdk.internal.vm.ci",
+          "jdk.graal.compiler",
+        ],
+        "exports": [
+          "com.oracle.graal.vmaccess",
+        ],
+        "requiresConcealed": {
+          "jdk.internal.vm.ci": [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.code",
+          ],
+          "jdk.graal.compiler": [
+            "jdk.graal.compiler.phases.util",
+          ]
+        },
+        "uses": [
+          "com.oracle.graal.vmaccess.VMAccess",
+        ],
+      },
+      "subDir": "src",
+      "dependencies": [
+        "com.oracle.graal.vmaccess",
+      ],
+      "distDependencies": [
+        "GRAAL",
+      ],
+      "useModulePath": True,
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "HOSTVMACCESS": {
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.hostvmaccess",
+        "requires": [
+          "jdk.graal.compiler",
+          "jdk.graal.compiler.vmaccess",
+          "jdk.internal.vm.ci",
+        ],
+        "exports": [
+          "com.oracle.graal.hostvmaccess",
+        ],
+        "requiresConcealed": {
+          "java.base": [
+            "jdk.internal.access",
+            "jdk.internal.loader",
+            "jdk.internal.module",
+          ],
+          "jdk.internal.vm.ci": [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.runtime",
+          ],
+          "jdk.graal.compiler": [
+            "jdk.graal.compiler.api.replacements",
+            "jdk.graal.compiler.api.runtime",
+            "jdk.graal.compiler.core.target",
+            "jdk.graal.compiler.phases.util",
+            "jdk.graal.compiler.runtime",
+          ]
+        },
+      },
+      "subDir": "src",
+      "dependencies": [
+        "com.oracle.graal.hostvmaccess",
+      ],
+      "distDependencies": [
+        "VMACCESS",
+      ],
+      "useModulePath": True,
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "LIBGRAAL_LOADER" : {

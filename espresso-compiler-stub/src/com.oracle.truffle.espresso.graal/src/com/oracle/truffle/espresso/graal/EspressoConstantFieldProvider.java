@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.espresso.graal;
 
+import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedJavaField;
+
 import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import jdk.graal.compiler.options.OptionValues;
-import com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedJavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -39,8 +40,7 @@ public final class EspressoConstantFieldProvider extends JavaConstantFieldProvid
         if (field.isStatic() && !isStaticFieldConstant(field, tool.getOptions())) {
             return false;
         }
-
-        if (((EspressoResolvedJavaField) field).isStable()) {
+        if (((AbstractEspressoResolvedJavaField) field).isStable()) {
             return true;
         }
         return super.isStableField(field, tool);
@@ -51,7 +51,6 @@ public final class EspressoConstantFieldProvider extends JavaConstantFieldProvid
         if (field.isStatic() && !isStaticFieldConstant(field, tool.getOptions())) {
             return false;
         }
-
         return super.isFinalField(field, tool);
     }
 
