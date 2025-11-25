@@ -69,7 +69,7 @@ public interface CremaSupport {
      */
     Object allocateInstance(ResolvedJavaType type);
 
-    Object execute(ResolvedJavaMethod targetMethod, Object[] args);
+    Object execute(ResolvedJavaMethod targetMethod, Object[] args, boolean isVirtual);
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 

@@ -49,7 +49,7 @@ public final class CremaConstructorAccessor extends AbstractCremaAccessor implem
         finalArgs[0] = newReference;
         System.arraycopy(args, 0, finalArgs, 1, args.length);
         try {
-            CremaSupport.singleton().execute(targetMethod, finalArgs);
+            CremaSupport.singleton().execute(targetMethod, finalArgs, false);
         } catch (Throwable t) {
             throw new InvocationTargetException(t);
         }

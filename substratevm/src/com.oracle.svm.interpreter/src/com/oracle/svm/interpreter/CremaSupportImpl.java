@@ -1079,8 +1079,13 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
-    public Object execute(ResolvedJavaMethod targetMethod, Object[] args) {
-        return Interpreter.execute((InterpreterResolvedJavaMethod) targetMethod, args);
+    public Object execute(ResolvedJavaMethod targetMethod, Object[] args, boolean isVirtual) {
+        InterpreterResolvedJavaMethod iMethod = (InterpreterResolvedJavaMethod) targetMethod;
+        try {
+            return InterpreterToVM.dispatchInvocation(iMethod, args, isVirtual, false, false, iMethod.isInterface(), false);
+        } catch (SemanticJavaException e) {
+            throw uncheckedThrow(e.getCause());
+        }
     }
 
     @Override
