@@ -22,10 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.truffle.hotspot;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.truffle.CachingPEGraphDecoder;
+import jdk.graal.compiler.truffle.ConstantFieldInfo;
+import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**

@@ -65,7 +65,7 @@ public class BytecodeDSLBuiltins {
 
     public static void addBuiltins(BytecodeDSLModel m, TruffleTypes types, ProcessorContext context) {
         m.popInstruction = m.instruction(InstructionKind.POP, "pop", m.signature(void.class, Object.class));
-        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(void.class));
+        m.dupInstruction = m.instruction(InstructionKind.DUP, "dup", m.signature(Object.class));
         m.returnInstruction = m.instruction(InstructionKind.RETURN, "return", m.signature(void.class, Object.class));
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
@@ -326,7 +326,7 @@ public class BytecodeDSLBuiltins {
             m.tagEnterInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagLeaveValueInstruction = m.instruction(InstructionKind.TAG_LEAVE, "tag.leave", m.signature(Object.class, Object.class));
             m.tagLeaveValueInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(Object.class));
+            m.tagLeaveVoidInstruction = m.instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", m.signature(void.class));
             m.tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             m.tagOperation = m.operation(OperationKind.TAG, "Tag",
                             """

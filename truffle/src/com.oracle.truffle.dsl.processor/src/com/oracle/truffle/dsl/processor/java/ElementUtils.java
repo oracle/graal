@@ -1844,6 +1844,27 @@ public class ElementUtils {
         return !mods.contains(FINAL) && !mods.contains(STATIC) && (mods.contains(PUBLIC) || mods.contains(PROTECTED));
     }
 
+    public static boolean isFinal(ExecutableElement ex) {
+        Set<Modifier> mods = ex.getModifiers();
+        if (mods.contains(STATIC) || mods.contains(FINAL) || mods.contains(Modifier.PRIVATE)) {
+            return true;
+        }
+        if (ex.getKind() != ElementKind.METHOD) {
+            // only methods are overridable, constructors are not
+            return true;
+        }
+        Element enclosing = ex.getEnclosingElement();
+        if (enclosing != null) {
+            if (enclosing.getKind() == ElementKind.INTERFACE) {
+                return false;
+            }
+            if (enclosing.getModifiers().contains(Modifier.FINAL) || enclosing.getKind() == ElementKind.RECORD) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<ExecutableElement> getOverridableMethods(TypeElement t) {
         return ElementFilter.methodsIn(t.getEnclosedElements()).stream() //
                         .filter(ElementUtils::isOverridable).collect(Collectors.toList());

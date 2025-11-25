@@ -27,7 +27,9 @@ package jdk.graal.compiler.truffle.test;
 import static jdk.graal.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 
+import java.lang.StackWalker.StackFrame;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.junit.Assert;
@@ -233,6 +235,52 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node + " (" + node.targetMethod() + ")");
         }
+    }
+
+    private static final StackWalker WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    @SuppressWarnings("unchecked")
+    protected <T, R> void assertPartialEvalEquals(Function<T, R> expected, Function<T, R> actual, T argument) {
+        // capture stack frame for better root node names
+        StackFrame frame = WALKER.walk(stream -> stream.skip(1).findFirst().orElse(null));
+        assertPartialEvalEquals(new TestRootNode("Expected_", frame, (Function<Object, ?>) expected), new TestRootNode("Actual_", frame, (Function<Object, ?>) actual), argument);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T> void assertPartialEvalEquals(Supplier<T> expected, Supplier<T> actual) {
+        // capture stack frame for better root node names
+        StackFrame frame = WALKER.walk(stream -> stream.skip(1).findFirst().orElse(null));
+        assertPartialEvalEquals(new TestRootNode("Expected_", frame, (_) -> expected.get()), new TestRootNode("Actual_", frame, (_) -> actual.get()), 42);
+    }
+
+    private static final class TestRootNode extends RootNode {
+
+        private final String namePrefix;
+        private final StackFrame caller;
+        private final Function<Object, ?> f;
+
+        TestRootNode(String namePrefix, StackFrame caller, Function<Object, ?> f) {
+            super(null);
+            this.namePrefix = namePrefix;
+            this.caller = caller;
+            this.f = f;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return f.apply(frame.getArguments()[0]);
+        }
+
+        @Override
+        public String getName() {
+            return namePrefix + caller.getClassName() + "_" + caller.getMethodName() + "_" + caller.getLineNumber();
+        }
+
+        @Override
+        public String toString() {
+            return getName();
+        }
+
     }
 
     protected StructuredGraph partialEval(RootNode root, Object... arguments) {

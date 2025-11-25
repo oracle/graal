@@ -295,7 +295,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     }
 
-    private short id = -1;
     private int byteLength = OPCODE_WIDTH;
     public final InstructionKind kind;
     public final String name;
@@ -406,23 +405,6 @@ public final class InstructionModel implements PrettyPrintable {
             return false;
         }
         return epilogExceptional.operation.instruction == this;
-    }
-
-    public short getId() {
-        if (id == -1) {
-            throw new IllegalStateException("Id not yet assigned");
-        }
-        return id;
-    }
-
-    void setId(short id) {
-        if (id < 0) {
-            throw new IllegalArgumentException("Invalid id.");
-        }
-        if (this.id != -1) {
-            throw new IllegalStateException("Id already assigned ");
-        }
-        this.id = id;
     }
 
     public List<InstructionModel> getFlattenedQuickenedInstructions() {
@@ -701,7 +683,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
-        b.append(getId());
         b.append(" : short");
         for (InstructionImmediate imm : immediates) {
             b.append(", ");

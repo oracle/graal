@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.annotation.EnumElement;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -40,6 +39,7 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime.LoopExplosionKind;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.EnumElement;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
@@ -65,12 +65,9 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
-import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
@@ -93,8 +90,8 @@ public abstract class PartialEvaluator {
     private volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
     // Plugins
     private final GraphBuilderConfiguration graphBuilderConfigPrototype;
-    private final InvocationPlugins firstTierDecodingPlugins;
-    private final InvocationPlugins lastTierDecodingPlugins;
+    protected final InvocationPlugins firstTierDecodingPlugins;
+    protected final InvocationPlugins lastTierDecodingPlugins;
     protected final PELoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
     private final NodePlugin[] nodePlugins;
     // Misc
@@ -117,7 +114,6 @@ public abstract class PartialEvaluator {
     protected boolean persistentEncodedGraphCache;
 
     protected final TruffleConstantFieldProvider constantFieldProvider;
-    private final TruffleCachingConstantFieldProvider graphCacheConstantFieldProvider;
 
     @SuppressWarnings("this-escape")
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
@@ -128,7 +124,6 @@ public abstract class PartialEvaluator {
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
         this.constantFieldProvider = new TruffleConstantFieldProvider(this, getProviders().getConstantFieldProvider());
-        this.graphCacheConstantFieldProvider = new TruffleCachingConstantFieldProvider(this, getProviders().getConstantFieldProvider());
     }
 
     protected void initialize(OptionValues options) {
@@ -522,34 +517,11 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings("unused")
-    protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+    protected abstract PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
-                    Supplier<AutoCloseable> createCachedGraphScope) {
-        final GraphBuilderConfiguration newConfig = getGraphBuilderConfigurationCopy(context.forceNodeSourcePositions);
-        InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
+                    Supplier<AutoCloseable> createCachedGraphScope);
 
-        Plugins plugins = newConfig.getPlugins();
-        ReplacementsImpl replacements = (ReplacementsImpl) config.lastTier().providers().getReplacements();
-        plugins.clearInlineInvokePlugins();
-        plugins.appendInlineInvokePlugin(replacements);
-        plugins.appendInlineInvokePlugin(new ParsingInlineInvokePlugin(this, replacements, parsingInvocationPlugins, loopExplosionPlugin));
-        plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
-        InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
-        DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
-                        method -> getMethodInfo(method).inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
-
-        Providers graphCacheProviders = config.lastTier().providers().copyWith(graphCacheConstantFieldProvider);
-        Providers decoderProviders = config.lastTier().providers().copyWith(constantFieldProvider);
-
-        assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
-        return new CachingPEGraphDecoder(config.architecture(), context.graph, graphCacheProviders, decoderProviders, newConfig,
-                        loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
-                        createGraphBuilderPhaseInstance(graphCacheProviders, newConfig, TruffleCompilerImpl.Optimizations),
-                        allowAssumptionsDuringParsing, false, true);
-    }
-
-    private GraphBuilderConfiguration getGraphBuilderConfigurationCopy(boolean forceNodeSourcePositions) {
+    protected final GraphBuilderConfiguration getGraphBuilderConfigurationCopy(boolean forceNodeSourcePositions) {
         GraphBuilderConfiguration copy = getGraphBuilderConfigForParsing().copy();
         return copy.withNodeSourcePosition(copy.trackNodeSourcePosition() || forceNodeSourcePositions);
     }

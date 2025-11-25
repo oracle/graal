@@ -120,6 +120,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -149,9 +150,12 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -714,17 +718,60 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         private Object parseRuntimeCompiledMethod(BigBang bb, DebugContext debug, AnalysisMethod method) {
+            try {
+                StructuredGraph graph = buildRuntimeGraph(bb, debug, method);
+                try (DebugContext.Scope _ = debug.scope("RuntimeCompile", graph, method)) {
+                    Function<ResolvedJavaMethod, StructuredGraph> buildGraph = (m) -> {
+                        return buildRuntimeGraph(bb, debug, (AnalysisMethod) m);
+                    };
 
+                    CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+                    canonicalizer.apply(graph, analysisProviders);
+
+                    applyTrufflePhases(debug, graph, buildGraph, canonicalizer);
+
+                    if (deoptimizeOnExceptionPredicate != null) {
+                        new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph, analysisProviders);
+                    }
+
+                    /*
+                     * ConvertDeoptimizeToGuardPhase reduces the number of merges in the graph, so
+                     * that fewer frame states will be created. This significantly reduces the
+                     * number of nodes in the initial graph.
+                     */
+                    new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
+                    if (GraalOptions.EarlyGVN.getValue(graph.getOptions())) {
+                        new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graph, analysisProviders);
+                    }
+
+                } catch (Throwable ex) {
+                    debug.handle(ex);
+                }
+                return graph;
+            } catch (PermanentBailoutException ex) {
+                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
+                recordFailed(method);
+                runtimeCompilationsFailedDuringParsing.add(method);
+                return HostVM.PARSING_FAILED;
+            }
+        }
+
+        private void applyTrufflePhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer) {
+            if (!ImageSingletons.contains(KnownTruffleTypes.class)) {
+                return;
+            }
+            KnownTruffleTypes truffleTypes = ImageSingletons.lookup(KnownTruffleTypes.class);
+            new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes,
+                            analysisProviders, canonicalizer, buildGraph).apply(graph, analysisProviders);
+        }
+
+        private StructuredGraph buildRuntimeGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
             boolean parsed = false;
-
             StructuredGraph graph = method.buildGraph(debug, method, analysisProviders, GraphProvider.Purpose.PREPARE_RUNTIME_COMPILATION);
             if (graph == null) {
                 if (!method.hasBytecodes()) {
-                    recordFailed(method);
-                    runtimeCompilationsFailedDuringParsing.add(method);
-                    return HostVM.PARSING_FAILED;
+                    throw new PermanentBailoutException("Graph has no bytecodes.");
                 }
-
                 parsed = true;
                 graph = new StructuredGraph.Builder(debug.getOptions(), debug, StructuredGraph.AllowAssumptions.YES)
                                 .method(method)
@@ -739,25 +786,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     // enable this logging to get log output in compilation passes
                     try (Indent _ = debug.logAndIndent("parse graph phases")) {
                         RuntimeCompiledMethodSupport.RuntimeGraphBuilderPhase.createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts).apply(graph);
-                    } catch (PermanentBailoutException ex) {
-                        bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
-                        recordFailed(method);
-                        runtimeCompilationsFailedDuringParsing.add(method);
-                        return HostVM.PARSING_FAILED;
                     }
                 }
-
-                CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-                canonicalizer.apply(graph, analysisProviders);
-                if (deoptimizeOnExceptionPredicate != null) {
-                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
-                }
-                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
-
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
-
             return graph;
         }
 
