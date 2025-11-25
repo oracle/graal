@@ -56,7 +56,7 @@ final class StackVerifier {
     public static boolean verifyAllThreads() {
         boolean result = true;
 
-        STACK_FRAME_VISITOR.initialize();
+        STACK_FRAME_VISITOR.initialize(CurrentIsolate.getCurrentThread());
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), STACK_FRAME_VISITOR);
         result &= STACK_FRAME_VISITOR.result;
 
@@ -65,7 +65,7 @@ final class StackVerifier {
                 continue;
             }
 
-            STACK_FRAME_VISITOR.initialize();
+            STACK_FRAME_VISITOR.initialize(thread);
             JavaStackWalker.walkThread(thread, STACK_FRAME_VISITOR);
             result &= STACK_FRAME_VISITOR.result;
         }
@@ -76,20 +76,23 @@ final class StackVerifier {
         private final VerifyFrameReferencesVisitor verifyFrameReferencesVisitor;
 
         private boolean result;
+        private IsolateThread thread;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         StackFrameVerificationVisitor() {
             verifyFrameReferencesVisitor = new VerifyFrameReferencesVisitor();
         }
 
-        public void initialize() {
+        @SuppressWarnings("hiding")
+        public void initialize(IsolateThread thread) {
             this.result = true;
+            this.thread = thread;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitRegularFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo) {
-            verifyFrameReferencesVisitor.initialize(currentSP, currentIP);
+            verifyFrameReferencesVisitor.initialize(thread, currentSP, currentIP);
             CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, verifyFrameReferencesVisitor);
             result &= verifyFrameReferencesVisitor.result;
             return true;
@@ -104,6 +107,7 @@ final class StackVerifier {
     }
 
     public static class VerifyFrameReferencesVisitor implements ObjectReferenceVisitor {
+        private IsolateThread thread;
         private Pointer sp;
         private CodePointer ip;
         private boolean result;
@@ -113,10 +117,15 @@ final class StackVerifier {
         }
 
         @SuppressWarnings("hiding")
-        public void initialize(Pointer sp, CodePointer ip) {
+        public void initialize(IsolateThread thread, Pointer sp, CodePointer ip) {
+            this.thread = thread;
             this.sp = sp;
             this.ip = ip;
             this.result = true;
+        }
+
+        public IsolateThread getIsolateThread() {
+            return thread;
         }
 
         public Pointer getSP() {
