@@ -129,6 +129,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableRootBodyTagging;
     public boolean enableBlockScoping;
     public boolean enableThreadedSwitch;
+    public boolean enableStackPointerBoxing = false;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
     public String variadicStackLimit;
@@ -475,9 +476,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        short currentId = getInstructionStartIndex();
         for (InstructionModel m : newInstructions.values()) {
-            m.setId(currentId++);
             m.validateAlignment();
             /*
              * Make sure the instruction format for quickening is valid.

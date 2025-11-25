@@ -228,7 +228,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                 }
 
                 checkExclusivity(element, types.CompilerDirectives_EarlyInline, types.CompilerDirectives_TruffleBoundary,
-                                " Early inlining partial-evaluatable methods and boundary methods are not partial-evaluatable.");
+                                " Early inlined methods must be partial evaluatable and therefore cannot be boundary methods.");
 
                 checkExclusivity(element, types.CompilerDirectives_EarlyInline, types.CompilerDirectives_EarlyEscapeAnalysis,
                                 " If early escape analysis methods would get early inlined, the annotation would no longer have any effect.");
