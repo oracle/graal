@@ -1353,6 +1353,23 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.features": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance" : "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.thirdparty": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1959,6 +1976,7 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
+                "com.oracle.svm.features",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],
