@@ -7,6 +7,7 @@ import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
 import java.util.HashMap;
@@ -53,7 +54,7 @@ public final class RegisterAllocationVerifier {
      * that contents are alive that that point and for label to define where the result of phi
      * will be held to used in said block.
      *
-     * @param block Block that needs phi function output
+     * @param block      Block that needs phi function output
      * @param labelInstr Label instruction of said block
      */
     private void resolveVariableLocationsForPhi(BasicBlock<?> block, RAVInstruction.Op labelInstr) {
@@ -215,7 +216,13 @@ public final class RegisterAllocationVerifier {
                     continue;
                 }
 
-                var state = this.registerValues.get(curr);
+                AllocationState state;
+                if (curr instanceof RegisterValue) {
+                    state = this.registerValues.get(curr);
+                } else {
+                    state = this.spillSlotValues.get(curr);
+                }
+
                 if (state.isConflicted() || state.isUnknown()) {
                     return false;
                 }
@@ -307,8 +314,13 @@ public final class RegisterAllocationVerifier {
                         this.registerValues.putClone(reload.to, this.spillSlotValues.get(reload.from));
                 case RAVInstruction.Move move ->
                         this.registerValues.putClone(move.to, this.registerValues.get(move.from));
-                case RAVInstruction.VirtualMove virtMove ->
-                        this.registerValues.put(virtMove.from, new ValueAllocationState(virtMove.to));
+                case RAVInstruction.VirtualMove virtMove -> {
+                    if (virtMove.location instanceof RegisterValue) {
+                        this.registerValues.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
+                    } else {
+                        this.spillSlotValues.put(virtMove.location, new ValueAllocationState(virtMove.variableOrConstant));
+                    }
+                }
                 default -> throw new IllegalStateException();
             }
         }
@@ -412,9 +424,10 @@ public final class RegisterAllocationVerifier {
         protected Value value;
 
         public ValueAllocationState(Value value) {
-            if (value instanceof RegisterValue || value instanceof Variable || value instanceof ConstantValue) {
+            if (value instanceof RegisterValue || value instanceof Variable || value instanceof ConstantValue || value instanceof StackSlot) {
                 // We use variables as symbols for register validation
                 // but real registers can also be used as that, in some cases.
+                // TODO: reconsider handling of StackSlots
                 this.value = value;
             } else {
                 throw new IllegalStateException();

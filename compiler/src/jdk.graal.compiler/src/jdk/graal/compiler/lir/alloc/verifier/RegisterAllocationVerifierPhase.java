@@ -16,6 +16,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 
 import java.util.ArrayList;
@@ -84,6 +85,10 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             return new RAVInstruction.Spill(instruction, stackSlot, reg);
         } else if (input instanceof RegisterValue reg1 && result instanceof RegisterValue reg2) {
             return new RAVInstruction.Move(instruction, reg1, reg2);
+        } else if (input instanceof StackSlot stackSlot && result instanceof RegisterValue reg) {
+            return new RAVInstruction.Reload(instruction, reg, stackSlot);
+        } else if (input instanceof RegisterValue reg && result instanceof StackSlot stackSlot) {
+            return new RAVInstruction.Spill(instruction, stackSlot, reg);
         }
 
         return null;
@@ -105,8 +110,6 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                         instructionList.add(movOp);
                         continue;
                     }
-
-                    // TODO: handle constants in Phi's
 
                     throw new GraalError("Unknown instruction type for verification - " + instruction);
                 }
@@ -159,10 +162,10 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                         assert previousInstr != null;
 
                         var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
-                        var register = (RegisterValue) valueMov.getInput();
+                        var location = valueMov.getInput();
                         var variable = (Variable) valueMov.getResult();
 
-                        var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, register);
+                        var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, location);
                         previousInstr.addVirtualMove(virtualMove);
                         continue; // No need to store virtual move here, it is stored into previous instruction.
                     }
@@ -196,7 +199,8 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             }
 
             var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
-            return valueMov.getInput() instanceof RegisterValue && valueMov.getResult() instanceof Variable;
+            var input = valueMov.getInput();
+            return (input instanceof RegisterValue || input instanceof StackSlot) && valueMov.getResult() instanceof Variable;
         }
     }
 }

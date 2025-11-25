@@ -165,10 +165,10 @@ public class RAVInstruction {
     }
 
     public static class Reload extends Base {
-        public VirtualStackSlot from;
+        public Value from;
         public RegisterValue to;
 
-        public Reload(LIRInstruction instr, RegisterValue to, VirtualStackSlot from) {
+        public Reload(LIRInstruction instr, RegisterValue to, Value from) {
             super(instr);
             this.from = from;
             this.to = to;
@@ -176,10 +176,10 @@ public class RAVInstruction {
     }
 
     public static class Spill extends Base {
-        public VirtualStackSlot to;
+        public Value to;
         public RegisterValue from;
 
-        public Spill(LIRInstruction instr, VirtualStackSlot to, RegisterValue from) {
+        public Spill(LIRInstruction instr, Value to, RegisterValue from) {
             super(instr);
             this.to = to;
             this.from = from;
@@ -187,13 +187,13 @@ public class RAVInstruction {
     }
 
     public static class VirtualMove extends Base {
-        public Value to;
-        public RegisterValue from;
+        public Value variableOrConstant;
+        public Value location;
 
-        public VirtualMove(LIRInstruction instr, Value to, RegisterValue from) {
+        public VirtualMove(LIRInstruction instr, Value variableOrConstant, Value location) {
             super(instr);
-            this.to = to;
-            this.from = from;
+            this.variableOrConstant = variableOrConstant;
+            this.location = location;
         }
     }
 }
