@@ -95,7 +95,6 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     @Override
     public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
-        Object defaultValue = getDefaultValue();
         if (defaultValue instanceof MultiOptionValue) {
             MultiOptionValue<?> value = (MultiOptionValue<?>) values.get(this);
             if (value == null) {

@@ -207,7 +207,7 @@ public class ImplicitExceptions {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void vmErrorIfImplicitExceptionsAreFatal(boolean cachedException) {
-        if (cachedException && SubstrateDiagnostics.Options.implicitExceptionWithoutStacktraceIsFatal()) {
+        if (cachedException && SubstrateDiagnostics.Options.ImplicitExceptionWithoutStacktraceIsFatal.getValue()) {
             throw VMError.shouldNotReachHere("AssertionError without stack trace.");
         } else if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
