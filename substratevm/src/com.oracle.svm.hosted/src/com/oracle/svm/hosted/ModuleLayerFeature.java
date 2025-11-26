@@ -219,7 +219,8 @@ public class ModuleLayerFeature implements InternalFeature {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             Module module = (Module) receiver;
-            if (!LayeredModuleSingleton.singleton().getModules().contains(GraalAccess.lookupModule(module))) {
+
+            if (!LayeredModuleSingleton.singleton().containsModule(GraalAccess.lookupModule(module))) {
                 /*
                  * Modules that are not processed by the LayeredModuleSingleton don't need to be
                  * delayed until the application layer.

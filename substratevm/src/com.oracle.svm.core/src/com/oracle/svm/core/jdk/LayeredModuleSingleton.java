@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -48,19 +48,19 @@ public abstract class LayeredModuleSingleton {
     public static final String ALL_UNNAMED_MODULE_NAME = "native-image-all-unnamed";
     public static final String EVERYONE_MODULE_NAME = "native-image-everyone";
 
-    protected final Map<String, Map<String, Set<String>>> moduleOpenPackages;
-    protected final Map<String, Map<String, Set<String>>> moduleExportedPackages;
+    protected final EconomicMap<String, Map<String, Set<String>>> moduleOpenPackages;
+    protected final EconomicMap<String, Map<String, Set<String>>> moduleExportedPackages;
 
-    private final Map<String, ResolvedJavaModule> nameToModule = new HashMap<>();
+    private final EconomicMap<String, ResolvedJavaModule> nameToModule = EconomicMap.create();
 
     private ResolvedJavaModule everyoneModule;
     private ResolvedJavaModule allUnnamedModule;
 
     public LayeredModuleSingleton() {
-        this(new HashMap<>(), new HashMap<>());
+        this(EconomicMap.create(), EconomicMap.create());
     }
 
-    public LayeredModuleSingleton(Map<String, Map<String, Set<String>>> moduleOpenPackages, Map<String, Map<String, Set<String>>> moduleExportedPackages) {
+    public LayeredModuleSingleton(EconomicMap<String, Map<String, Set<String>>> moduleOpenPackages, EconomicMap<String, Map<String, Set<String>>> moduleExportedPackages) {
         this.moduleOpenPackages = moduleOpenPackages;
         this.moduleExportedPackages = moduleExportedPackages;
     }
@@ -82,8 +82,17 @@ public abstract class LayeredModuleSingleton {
         return moduleExportedPackages.get(module.getName());
     }
 
-    public Collection<ResolvedJavaModule> getModules() {
-        return nameToModule.values();
+    public Iterable<ResolvedJavaModule> getModules() {
+        return nameToModule.getValues();
+    }
+
+    public boolean containsModule(ResolvedJavaModule module) {
+        for (ResolvedJavaModule m : nameToModule.getValues()) {
+            if (m.equals(module)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setOpenPackages(ResolvedJavaModule module, Map<String, Set<Module>> openPackages) {
@@ -94,7 +103,7 @@ public abstract class LayeredModuleSingleton {
         setPackages(module, moduleExportedPackages, exportedPackages, "exported");
     }
 
-    private void setPackages(ResolvedJavaModule module, Map<String, Map<String, Set<String>>> modulePackages, Map<String, Set<Module>> packages, String mode) {
+    private void setPackages(ResolvedJavaModule module, EconomicMap<String, Map<String, Set<String>>> modulePackages, Map<String, Set<Module>> packages, String mode) {
         ResolvedJavaModule oldValue = nameToModule.put(module.toString(), module);
         if (oldValue != null && !oldValue.equals(module)) {
             throw UserError.abort("Layered images require all modules to have a different name because their identity hash code is not consistent across layers. " +
