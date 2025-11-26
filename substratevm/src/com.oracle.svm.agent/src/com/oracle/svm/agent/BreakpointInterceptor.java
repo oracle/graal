@@ -840,7 +840,7 @@ final class BreakpointInterceptor {
         }
         JNIObjectHandle zipFileReceiver = getReceiver(thread);
         String zipFileName = fromJniString(jni, Support.callObjectMethod(jni, zipFileReceiver, agent.handles().getJavaUtilZipZipFileGetName(jni)));
-        if (!agent.classPathEntries.contains(zipFileName)) {
+        if (zipFileName == null || !agent.classPathEntries.contains(zipFileName)) {
             return true;
         }
 
