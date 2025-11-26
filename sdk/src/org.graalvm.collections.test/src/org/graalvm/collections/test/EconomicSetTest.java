@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,21 @@ public class EconomicSetTest {
         Assert.assertTrue(set.add(1));
         set.clear();
         Assert.assertEquals(set.size(), 0);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testContainsNull() {
+        Assert.assertFalse(EconomicSet.create(0).contains(null));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testAddNull() {
+        Assert.assertFalse(EconomicSet.create(0).add(null));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testRemoveNull() {
+        EconomicSet.create(0).remove(null);
     }
 
     @Test

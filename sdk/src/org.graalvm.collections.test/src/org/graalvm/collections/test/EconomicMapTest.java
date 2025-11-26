@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,4 +97,23 @@ public class EconomicMapTest {
         Assert.assertEquals(Integer.valueOf(5), map.get(1));
     }
 
+    @Test(expected = UnsupportedOperationException.class)
+    public void testPutNullKey() {
+        EconomicMap.create(0).put(null, 0);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testContainsNullKey() {
+        EconomicMap.create(0).containsKey(null);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testGetNullKey() {
+        EconomicMap.create(0).get(null);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testRemoveNullKey() {
+        EconomicMap.create(0).removeKey(null);
+    }
 }

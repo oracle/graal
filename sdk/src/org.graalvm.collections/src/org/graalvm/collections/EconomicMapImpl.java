@@ -240,7 +240,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
-        checkKeyNonNull(key);
+        checkNonNull(key);
 
         int index = find(key);
         if (index != -1) {
@@ -418,7 +418,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        checkKeyNonNull(key);
+        checkNonNull(key);
         int index = find(key);
         if (index != -1) {
             Object oldValue = getValue(index);
@@ -601,6 +601,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public boolean containsKey(K key) {
+        EconomicMapImpl.checkNonNull(key);
         return find(key) != -1;
     }
 
@@ -618,7 +619,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings("unchecked")
     @Override
     public V removeKey(K key) {
-        checkKeyNonNull(key);
+        checkNonNull(key);
         int index;
         if (hasHashArray()) {
             index = this.findAndRemoveHash(key);
@@ -634,9 +635,9 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         return null;
     }
 
-    private void checkKeyNonNull(K key) {
+    static void checkNonNull(Object key) {
         if (key == null) {
-            throw new UnsupportedOperationException("null not supported as key!");
+            throw new UnsupportedOperationException("null not supported");
         }
     }
 
