@@ -66,11 +66,12 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.driver.IncludeOptionsSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
@@ -84,7 +85,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
      * <li>All internal modules.</li>
      * <li>All tooling modules such as the java.compiler.</li>
      * <li>Modules that are currently not supported with Native Image (e.g.,
-     * <code>java.management</code>.</li>
+     * <code>java.management</code>).</li>
      * </ul>
      */
     public static final Set<String> JDK_MODULES_TO_PRESERVE = Set.of(
@@ -186,14 +187,29 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         return joiner.toString();
     }
 
-    public static void registerPreservedClasses(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
-        var classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
+    /**
+     * Sorts types such that subclasses precede superclasses and classes of the same class hierarchy
+     * depth are sorted alphabetically by name. This sort order avoids complexity related to field
+     * registration.
+     */
+    private static final Comparator<ResolvedJavaType> PRESERVED_CLASSES_COMPARATOR = (t1, t2) -> {
+        int t1Depth = JVMCIReflectionUtil.countSuperclasses(t1);
+        int t2Depth = JVMCIReflectionUtil.countSuperclasses(t2);
+        if (t1Depth == t2Depth) {
+            return t1.toClassName().compareTo(t2.toClassName());
+        }
+        return t2Depth - t1Depth;
+    };
+
+    public static void registerPreservedClasses(BigBang bb, NativeImageClassLoaderSupport classLoaderSupport) {
+        Set<String> classesOrPackagesToIgnore = SubstrateOptions.IgnorePreserveForClasses.getValue().valuesAsSet();
         ClassInclusionPolicy classInclusionPolicy = new DefaultAllInclusionPolicy("included by " + SubstrateOptionsParser.commandArgument(Preserve, ""));
         classInclusionPolicy.setBigBang(bb);
         var classesToPreserve = classLoaderSupport.getClassesToPreserve()
-                        .filter(clazz -> classInclusionPolicy.isOriginalTypeIncluded(originalMetaAccess.lookupJavaType(clazz)))
-                        .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                        .sorted(Comparator.comparing(ReflectionUtil::getClassHierarchyDepth).reversed())
+                        .filter(classInclusionPolicy::isOriginalTypeIncluded)
+                        .filter(t -> !(classesOrPackagesToIgnore.contains(JVMCIReflectionUtil.getPackageName(t)) || classesOrPackagesToIgnore.contains(t.toClassName())))
+                        .sorted(PRESERVED_CLASSES_COMPARATOR)
+                        .map(OriginalClassProvider::getJavaClass)
                         .toList();
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
@@ -202,10 +218,6 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         final RuntimeSerializationSupport<AccessCondition> serialization = RuntimeSerializationSupport.singleton();
         final AccessCondition always = AccessCondition.unconditional();
 
-        /*
-         * Sort descending by class hierarchy depth to avoid complexity related to field
-         * registration.
-         */
         classesToPreserve.forEach(c -> {
             registerType(reflection, c);
 

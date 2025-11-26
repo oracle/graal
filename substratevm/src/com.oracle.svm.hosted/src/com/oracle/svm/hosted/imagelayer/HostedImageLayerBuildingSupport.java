@@ -79,7 +79,6 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsContainer;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSupport {
@@ -428,8 +427,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         nativeLibs.addDynamicNonJniLibrary(libName);
     }
 
-    public static void registerBaseLayerTypes(BigBang bb, MetaAccessProvider originalMetaAccess, NativeImageClassLoaderSupport classLoaderSupport) {
-        classLoaderSupport.getClassesToIncludeUnconditionally().forEach(clazz -> bb.tryRegisterTypeForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+    public static void registerBaseLayerTypes(BigBang bb, NativeImageClassLoaderSupport classLoaderSupport) {
+        classLoaderSupport.getClassesToIncludeUnconditionally().forEach(bb::tryRegisterTypeForBaseImage);
     }
 
     /**
@@ -440,7 +439,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      * native library need to be in the same layer. This method iterate through all native methods
      * and try to include them in the current layer.
      */
-    public static void registerNativeMethodsForBaseImage(BigBang bb, MetaAccessProvider originalMetaAccess, ImageClassLoader loader) {
-        loader.getApplicationClasses().forEach(clazz -> bb.tryRegisterNativeMethodsForBaseImage(originalMetaAccess.lookupJavaType(clazz)));
+    public static void registerNativeMethodsForBaseImage(BigBang bb, ImageClassLoader loader) {
+        loader.getApplicationTypes().forEach(bb::tryRegisterNativeMethodsForBaseImage);
     }
 }

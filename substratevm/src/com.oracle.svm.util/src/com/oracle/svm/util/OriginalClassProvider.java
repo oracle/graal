@@ -26,6 +26,9 @@ package com.oracle.svm.util;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -34,6 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * @see GraalAccess
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface OriginalClassProvider {
 
     /**

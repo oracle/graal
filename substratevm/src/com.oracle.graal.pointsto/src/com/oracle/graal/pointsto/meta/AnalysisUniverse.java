@@ -264,7 +264,7 @@ public class AnalysisUniverse implements Universe {
                     if (result == null) {
                         /*
                          * The other thread gave up, probably because of an exception. Re-try to
-                         * create the type ourself. Probably we are going to fail and throw an
+                         * create the type our self. Probably we are going to fail and throw an
                          * exception too, but that is OK.
                          */
                         continue retry;

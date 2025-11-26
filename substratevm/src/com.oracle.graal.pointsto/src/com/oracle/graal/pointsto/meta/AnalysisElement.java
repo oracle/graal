@@ -374,7 +374,7 @@ public abstract class AnalysisElement extends AbstractAnnotated {
 
             } else if (current instanceof ResolvedJavaField field) {
                 /*
-                 * In {@code AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
+                 * In AnalysisUniverse.lookupAllowUnresolved(JavaField) we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is
