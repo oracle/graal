@@ -46,7 +46,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -73,6 +72,7 @@ import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -966,6 +966,11 @@ public final class NativeImageHeap implements ImageHeap {
         @Override
         public Class<?> getObjectClass() {
             return clazz.getJavaClass();
+        }
+
+        @Override
+        public HostedType getObjectType() {
+            return clazz;
         }
 
         public ImageHeapConstant getConstant() {
