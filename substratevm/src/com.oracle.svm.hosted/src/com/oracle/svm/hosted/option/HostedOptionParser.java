@@ -33,11 +33,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.graal.compiler.options.OptionsContainer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -48,6 +48,7 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsContainer;
 
 public class HostedOptionParser implements HostedOptionProvider {
 
@@ -88,24 +89,19 @@ public class HostedOptionParser implements HostedOptionProvider {
     }
 
     public List<String> parse() {
-
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
         InterruptImageBuilding interrupt = null;
         for (String arg : arguments) {
-            boolean isImageBuildOption = false;
             try {
-                isImageBuildOption |= SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, errors, arg, System.out);
+                CommonOptionParser.OptionParseResult parseResult = tryParseHostedOption(arg);
+                if (parseResult == null) {
+                    remainingArgs.add(arg);
+                } else if (!parseResult.isValid()) {
+                    errors.add(parseResult.getError());
+                }
             } catch (InterruptImageBuilding e) {
                 interrupt = e;
-            }
-            try {
-                isImageBuildOption |= SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, errors, arg, System.out);
-            } catch (InterruptImageBuilding e) {
-                interrupt = e;
-            }
-            if (!isImageBuildOption) {
-                remainingArgs.add(arg);
             }
         }
         if (interrupt != null) {
@@ -127,6 +123,21 @@ public class HostedOptionParser implements HostedOptionProvider {
         }
 
         return remainingArgs;
+    }
+
+    private CommonOptionParser.OptionParseResult tryParseHostedOption(String arg) {
+        if (arg.startsWith(SubstrateOptionsParser.HOSTED_OPTION_PREFIX)) {
+            CommonOptionParser.OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, arg);
+            if (result.optionUnrecognized()) {
+                /* Allow "-H:..." for Native Image runtime options. */
+                return SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
+            }
+            return result;
+        } else if (arg.startsWith(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX)) {
+            return SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
+        } else {
+            return null;
+        }
     }
 
     public List<String> getArguments() {

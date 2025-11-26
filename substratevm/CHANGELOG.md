@@ -12,6 +12,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-70136) Add a new tool `--tool:llvm` for the LLVM backend of Native Image.
 * (GR-68984) Ship the `reachability-metadata-schema.json` together with GraalVM at `<graalvm-home>/lib/svm/schemas/reachability-metadata-schema.json`.
 * (GR-68984) Improve the schema to capture detailed constraints about each element in the `reachability-metadata-schema.json`.
+* (GR-57214) `-H:...` can now be used at build-time to set new defaults for both build-time and run-time options (for example, run-time option `-R:MaxHeapSize` can now also be set via `-H:MaxHeapSize`).
 * (GR-70046) Remove all support for running image builder on classpath.
 
 ## GraalVM 25

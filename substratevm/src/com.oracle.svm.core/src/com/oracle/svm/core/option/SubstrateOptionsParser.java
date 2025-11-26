@@ -27,7 +27,6 @@ package com.oracle.svm.core.option;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -74,30 +73,22 @@ public class SubstrateOptionsParser {
      * @param options all possible options
      * @param valuesMap all current option values
      * @param booleanOptionFormat help expected for boolean options
-     * @param errors a set that contains all error messages
      * @param arg the argument currently processed
-     * @return true if {@code arg.startsWith(optionPrefix)}
      */
-    public static boolean parseHostedOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
-                    BooleanOptionFormat booleanOptionFormat, Set<String> errors, String arg, PrintStream out) {
-        if (!arg.startsWith(optionPrefix)) {
-            return false;
-        }
-
+    public static OptionParseResult parseHostedOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
+                    BooleanOptionFormat booleanOptionFormat, String arg) {
         Predicate<OptionKey<?>> isHosted = optionKey -> optionKey instanceof HostedOptionKey;
-        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), valuesMap,
-                        optionPrefix, booleanOptionFormat);
+        OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> {
                 OptionKey<?> key = d.getOptionKey();
                 return !IntentionallyUnsupportedOptions.contains(key) &&
                                 optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
-            }, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
+            }, options, optionPrefix, System.out, optionParseResult.printFlagsWithExtraHelp());
             throw new InterruptImageBuilding("");
         }
         if (!optionParseResult.isValid()) {
-            errors.add(optionParseResult.getError());
-            return true;
+            return optionParseResult;
         }
 
         // Print a warning if the option is deprecated.
@@ -112,7 +103,7 @@ public class SubstrateOptionsParser {
             message += ". Please refer to the GraalVM release notes.";
             LogUtils.warning(message);
         }
-        return true;
+        return optionParseResult;
     }
 
     public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, Consumer<OptionDescriptor> optionDescriptorConsumer) {
