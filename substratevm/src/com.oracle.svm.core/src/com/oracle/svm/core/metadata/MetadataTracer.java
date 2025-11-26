@@ -647,7 +647,7 @@ class MetadataTracerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        /* GR-70850: Unconditionally include the hooks within the initial layer. */
+        /* GR-72843: Unconditionally include the hooks within the initial layer. */
         if (MetadataTracer.Options.MetadataTracingSupport.getValue()) {
             ImageSingletons.add(MetadataTracer.class, new MetadataTracer());
             RuntimeSupport.getRuntimeSupport().addInitializationHook(MetadataTracer.initializeMetadataTracingHook());

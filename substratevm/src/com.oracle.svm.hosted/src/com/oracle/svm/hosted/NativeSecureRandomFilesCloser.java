@@ -67,8 +67,8 @@ public class NativeSecureRandomFilesCloser implements InternalFeature {
         access.registerReachabilityHandler(this::registerShutdownHook, element);
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             /*
-             * GR-70850: We should always register the shutdown hook, but only execute it when then
-             * element is seen in a layer.
+             * We should always register the shutdown hook, but only execute it when then element is
+             * seen in a layer.
              */
             access.registerAsUsed(element);
         }
