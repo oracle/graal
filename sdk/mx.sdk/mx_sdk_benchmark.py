@@ -4120,7 +4120,8 @@ class StagesInfo:
 
 class StageAwareBenchmarkMixin():
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.stages_info: Optional[StagesInfo] = None
 
     def run_stage(self, vm, stage: Stage, command, out, err, cwd, nonZeroIsFatal):
