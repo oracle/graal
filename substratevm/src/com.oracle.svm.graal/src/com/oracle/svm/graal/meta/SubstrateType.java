@@ -550,12 +550,6 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
-
     @Override
     public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport

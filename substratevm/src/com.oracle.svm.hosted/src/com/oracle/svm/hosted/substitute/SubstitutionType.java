@@ -377,12 +377,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
         throw JVMCIError.unimplemented();
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
-    }
-
     @Override
     public String toString() {
         return "SubstitutionType<definition " + original.toString() + ", implementation " + annotated.toString() + ">";

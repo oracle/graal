@@ -59,12 +59,6 @@ public final class RistrettoType extends SubstrateType {
     }
 
     @Override
-    public ResolvedJavaType getHostClass() {
-        // GR-71587 - will be removed in the future
-        return null;
-    }
-
-    @Override
     public String toString() {
         return "RistrettoType{super=" + super.toString() + ", interpreterType=" + interpreterType + "}";
     }
