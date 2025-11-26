@@ -1,0 +1,37 @@
+{
+  "reflection": [
+    {
+      "type": "org.apache.coyote.AbstractProtocol",
+      "methods": [
+        {
+          "name": "setProperty",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "getAddress",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.coyote.http11.AbstractHttp11Protocol",
+      "methods": [
+        {
+          "name": "isSSLEnabled",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.zaxxer.hikari.HikariDataSource",
+      "fields": [
+        {
+          "name": "pool"
+        }
+      ]
+    }
+  ]
+}

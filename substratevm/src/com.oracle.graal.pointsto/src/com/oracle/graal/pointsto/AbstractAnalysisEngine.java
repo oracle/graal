@@ -421,7 +421,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * Some modules contain native methods that should not be included in the image because they
          * are hosted only, or because they are currently unsupported.
          */
-        Set<Module> forbiddenModules = hostVM.getForbiddenModules();
+        Set<Module> forbiddenModules = hostVM.getSharedLayerForbiddenModules();
         if (forbiddenModules.contains(OriginalClassProvider.getJavaClass(type).getModule())) {
             return;
         }

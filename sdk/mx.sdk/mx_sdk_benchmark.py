@@ -5627,6 +5627,12 @@ class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
 
+    def extra_image_build_argument(self, benchmark, args):
+        additional_configuration = os.path.join(getattr(self, '.mxsuite').mxDir, "petclinic-config")
+        return [
+            f"-H:ConfigurationFileDirectories={additional_configuration}",
+        ] + super(BasePetClinicBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
 
 class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, BaseWrkBenchmarkSuite):
     """PetClinic benchmark suite that measures throughput using Wrk."""
@@ -5728,8 +5734,14 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
             "org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder",
             "org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder"
         ]
+        tika_run_time_init = [
+            # Prevents build-time initialization of sun.awt.datatransfer.DesktopDatatransferServiceImpl through DefaultDesktopDatatransferService.INSTANCE
+            # This class is made reachable through DragSource.<init>, which is reachable because XToolkit.createDragGestureRecognizer is registered for reflective querying
+            "sun.datatransfer.DataFlavorUtil$DefaultDesktopDatatransferService"
+        ]
         return [
             f"--initialize-at-build-time={','.join(tika_build_time_init)}",
+            f"--initialize-at-run-time={','.join(tika_run_time_init)}",
         ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
