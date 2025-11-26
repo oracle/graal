@@ -73,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
@@ -248,7 +249,12 @@ public class FeatureImpl {
             if (clazz == null) {
                 return null;
             }
-            return getMetaAccess().lookupJavaType(clazz);
+            try {
+                return getMetaAccess().lookupJavaType(clazz);
+            } catch (AnalysisError.TypeNotFoundError e) {
+                // Type not found during analysis
+                return null;
+            }
         }
 
         public List<AnalysisType> findSubtypes(AnalysisType baseClass) {
