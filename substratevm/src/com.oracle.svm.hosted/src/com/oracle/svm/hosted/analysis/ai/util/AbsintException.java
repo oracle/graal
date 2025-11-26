@@ -22,12 +22,15 @@ public class AbsintException extends RuntimeException {
         super(ex);
     }
 
-    public static WideningThresholdExceededException exceededWideningThreshold(Node node, AnalysisMethod method) {
+    public static void exceededWideningThreshold(Node node, AnalysisMethod method) {
         throw new WideningThresholdExceededException(("Widen iteration threshold exceeded for node: " + node + ", in method: " + method.getName() + " please check the provided widening operator/abstract interpreter"));
     }
 
-    public static class WideningThresholdExceededException extends AbsintException {
+    public static void analysisMethodGraphNotFound(AnalysisMethod method) {
+        throw new AnalysisMethodGraphUnavailableException(("The graph of analysis method: " + method.getQualifiedName() + " could not be found during abstract interpretation"));
+    }
 
+    public static class WideningThresholdExceededException extends AbsintException {
         @Serial
         private static final long serialVersionUID = 1L;
 
@@ -40,6 +43,23 @@ public class AbsintException extends RuntimeException {
         }
 
         WideningThresholdExceededException(Throwable ex) {
+            super(ex);
+        }
+    }
+
+    public static class AnalysisMethodGraphUnavailableException extends AbsintException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        AnalysisMethodGraphUnavailableException(String message) {
+            super(message);
+        }
+
+        AnalysisMethodGraphUnavailableException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        AnalysisMethodGraphUnavailableException(Throwable ex) {
             super(ex);
         }
     }

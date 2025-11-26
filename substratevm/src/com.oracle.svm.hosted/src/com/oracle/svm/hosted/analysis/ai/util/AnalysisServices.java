@@ -50,7 +50,7 @@ public final class AnalysisServices {
         DebugContext debug = inflation.getDebug();
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, null);
         if (graph == null) {
-            throw AnalysisError.interruptAnalysis("Unable to get graph for analysisMethod: " + method);
+            AbsintException.analysisMethodGraphNotFound(method);
         }
         return graph;
     }
@@ -63,8 +63,6 @@ public final class AnalysisServices {
     }
 
     public Optional<AnalysisMethod> getMainMethod(AnalysisMethod mainEntryPoint) {
-        var logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Main entry point: " + mainEntryPoint.getName(), LoggerVerbosity.DEBUG);
         return findInvokeWithName(mainEntryPoint, "doRun")
                 .flatMap(m -> findInvokeWithName(m, "runCore0"))
                 .flatMap(m -> findInvokeWithName(m, "invokeMain"))
