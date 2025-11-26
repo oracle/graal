@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.1 (Internal Version 25.1.0)
+* (GR-70601) (GR-70592) (GR-70593) (GR-70598) (GR-71096): Add experimental support for just-in-time compilation of Java bytecodes loaded at run-time.
 * (GR-44384) Add size warnings for bundles when individual or cumulative file sizes exceed limits. Configure with options `size-warning-file-limit` and `size-warning-total-limit` to `bundle-create`, sizes in MiB.
 * (GR-43070) Add a new API flag `-Werror` to treat warnings as errors.
 * (GR-69280) Allow use of the `graal.` prefix for options without issuing a warning.

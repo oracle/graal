@@ -85,9 +85,9 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.SubstrateGraalUtils;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalCompilerFeature;
@@ -149,13 +149,11 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
-import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -170,9 +168,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compilation, ensures that all required {@link SubstrateType}, {@link SubstrateMethod},
  * {@link SubstrateField} objects are created by {@link GraalGraphObjectReplacer} and added to the
  * image. Data that is prepared during image generation and used at run time is stored in
- * {@link TruffleRuntimeCompilationSupport}.
+ * {@link RuntimeCompilationSupport}.
  */
-public final class RuntimeCompilationFeature implements Feature, RuntimeCompilationCallbacks {
+public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCallbacks {
 
     public static class Options {
         @Option(help = "Print methods available for runtime compilation")//
@@ -191,11 +189,36 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public static final HostedOptionKey<Boolean> RuntimeCompilationInlineBeforeAnalysis = new HostedOptionKey<>(true);
     }
 
+    public static final class AnyRuntimeCompilationEnabled implements BooleanSupplier {
+
+        @Override
+        public boolean getAsBoolean() {
+            /*
+             * Note this is the only occurrence where we breach the abstraction of runtime
+             * compilation support. We import Ristretto logic in RuntimeCompilationFeature.
+             */
+            return isEnabled() || SubstrateOptions.useRistretto();
+        }
+
+    }
+
+    public static final class OnlyTruffleRuntimeCompilationEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return isEnabled() && !SubstrateOptions.useRistretto();
+        }
+    }
+
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(RuntimeCompilationFeature.class);
+            return isEnabled();
         }
+
+    }
+
+    public static boolean isEnabled() {
+        return ImageSingletons.contains(RuntimeCompilationFeature.class);
     }
 
     public static RuntimeCompilationFeature singleton() {
@@ -225,7 +248,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private OptimisticOptimizations optimisticOpts;
     private RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
     private boolean runtimeCompilationCandidatePredicateUpdated = false;
-    private Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
+    protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
     private SubstrateUniverseFactory universeFactory = new SubstrateUniverseFactory();
 
@@ -391,7 +414,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
         }
-        ImageSingletons.add(TruffleRuntimeCompilationSupport.class, new TruffleRuntimeCompilationSupport());
+        ImageSingletons.add(RuntimeCompilationSupport.class, new RuntimeCompilationSupport());
         if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
@@ -399,13 +422,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
         AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
         SubstrateWordTypes wordTypes = new SubstrateWordTypes(aMetaAccess, ConfigurationValues.getWordKind());
-        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess, wordTypes);
+        SubstrateRuntimeProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess, wordTypes);
         objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, universeFactory);
         config.registerObjectReplacer(objectReplacer);
     }
 
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
-        Function<Providers, SubstrateBackend> backendProvider = TruffleRuntimeCompilationSupport.getRuntimeBackendProvider();
+        Function<Providers, SubstrateBackend> backendProvider = RuntimeCompilationSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(
                         ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
@@ -431,7 +454,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true,
-                        new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner()));
+                        createGraphEncoder(config));
 
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, false);
@@ -439,8 +462,15 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
 
-        TruffleRuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites,
-                        createRuntimeInvocationPlugins(hostedProviders.getGraphBuilderPlugins().getInvocationPlugins(), ConfigurationValues.getTarget().arch));
+        InvocationPlugins runtimeInvocationPlugins = createRuntimeInvocationPlugins(hostedProviders.getGraphBuilderPlugins().getInvocationPlugins(), ConfigurationValues.getTarget().arch);
+        RuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites, runtimeInvocationPlugins);
+    }
+
+    /**
+     * Create the graph encoder for the runtime compilation.
+     */
+    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder createGraphEncoder(BeforeAnalysisAccessImpl config) {
+        return new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
     }
 
     private static InvocationPlugins createRuntimeInvocationPlugins(InvocationPlugins hostedInvocationPlugins, Architecture arch) {
@@ -471,12 +501,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
+        graphEncoder = createGraphEncoder(config);
 
         /*
          * Ensure all snippet types are registered as used.
          */
-        SubstrateReplacements replacements = (SubstrateReplacements) TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements();
+        SubstrateReplacements replacements = (SubstrateReplacements) RuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements();
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
@@ -525,7 +555,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         if (newRuntimeMethodsSeen) {
             SubstrateMethod[] methodsToCompileArr = substrateAnalysisMethods.stream().toArray(SubstrateMethod[]::new);
-            TruffleRuntimeCompilationSupport.setMethodsToCompile(config, methodsToCompileArr);
+            RuntimeCompilationSupport.setMethodsToCompile(config, methodsToCompileArr);
             config.requireAnalysisIteration();
             newRuntimeMethodsSeen = false;
         }
@@ -536,7 +566,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsInstantiated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
-        if (TruffleRuntimeCompilationSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
+        if (RuntimeCompilationSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
     }
@@ -617,8 +647,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     @Override
     public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
         objectReplacer.registerImmutableObjects(a);
-        TruffleRuntimeCompilationSupport.registerImmutableObjects(a);
-        ((SubstrateReplacements) TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
+        RuntimeCompilationSupport.registerImmutableObjects(a);
+        ((SubstrateReplacements) RuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
     }
 
     @Override
@@ -669,6 +699,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         } else {
             System.out.println("trace unavailable");
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer,
+                    Providers providers) {
+        // default implementation is empty
     }
 
     private final class RuntimeCompilationParsingSupport implements SVMParsingSupport {
@@ -728,10 +764,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                     canonicalizer.apply(graph, analysisProviders);
 
-                    applyTrufflePhases(debug, graph, buildGraph, canonicalizer);
+                    applyParsingHookPhases(debug, graph, buildGraph, canonicalizer, analysisProviders);
 
                     if (deoptimizeOnExceptionPredicate != null) {
-                        new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph, analysisProviders);
+                        var deoptOnExceptionPhase = getDeoptOnExceptionPhase();
+                        if (deoptOnExceptionPhase != null) {
+                            deoptOnExceptionPhase.apply(graph);
+                        }
                     }
 
                     /*
@@ -754,15 +793,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 runtimeCompilationsFailedDuringParsing.add(method);
                 return HostVM.PARSING_FAILED;
             }
-        }
-
-        private void applyTrufflePhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer) {
-            if (!ImageSingletons.contains(KnownTruffleTypes.class)) {
-                return;
-            }
-            KnownTruffleTypes truffleTypes = ImageSingletons.lookup(KnownTruffleTypes.class);
-            new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes,
-                            analysisProviders, canonicalizer, buildGraph).apply(graph, analysisProviders);
         }
 
         private StructuredGraph buildRuntimeGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
@@ -893,6 +923,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             }
             return null;
         }
+    }
+
+    protected Phase getDeoptOnExceptionPhase() {
+        // default implementation empty
+        return null;
     }
 
     /**

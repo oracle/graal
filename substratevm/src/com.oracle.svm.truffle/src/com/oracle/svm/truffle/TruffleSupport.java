@@ -28,14 +28,13 @@ import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode;
@@ -58,6 +57,7 @@ import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.truffle.EconomyPartialEvaluatorConfiguration;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
@@ -102,21 +102,23 @@ public class TruffleSupport {
     }
 
     protected static TruffleCompilerConfiguration createSubstrateTruffleCompilerConfig(SubstrateTruffleRuntime runtime, String compilerConfigurationName, Method optimizedCallTargetMethod) {
-        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilationFeature = TruffleRuntimeCompilationFeature.singleton();
         final GraphBuilderConfiguration.Plugins graphBuilderPlugins = runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins();
-        SubstrateBackend substrateBackend = TruffleRuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
+        SubstrateBackend substrateBackend = RuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
         substrateBackend.setRuntimeToRuntimeInvokeMethod(optimizedCallTargetMethod);
         KnownTruffleTypes types = ImageSingletons.lookup(KnownTruffleTypes.class);
         final TruffleTierConfiguration firstTier = new TruffleTierConfiguration(new EconomyPartialEvaluatorConfiguration(), substrateBackend,
-                        TruffleRuntimeCompilationSupport.getFirstTierProviders(), TruffleRuntimeCompilationSupport.getFirstTierSuites(), TruffleRuntimeCompilationSupport.getFirstTierLirSuites(),
+                        RuntimeCompilationSupport.getFirstTierProviders(), RuntimeCompilationSupport.getFirstTierSuites(),
+                        RuntimeCompilationSupport.getFirstTierLirSuites(),
                         types);
 
         PartialEvaluatorConfiguration peConfig = TruffleCompilerImpl.createPartialEvaluatorConfiguration(compilerConfigurationName);
         final TruffleTierConfiguration lastTier = new TruffleTierConfiguration(peConfig, substrateBackend,
-                        TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders(), TruffleRuntimeCompilationSupport.getFullOptSuites(), TruffleRuntimeCompilationSupport.getLIRSuites(),
+                        RuntimeCompilationSupport.getRuntimeConfig().getProviders(), RuntimeCompilationSupport.getFullOptSuites(),
+                        RuntimeCompilationSupport.getLIRSuites(),
                         types);
         return new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, runtimeCompilationFeature.getHostedProviders().getSnippetReflection(), firstTier, lastTier, types,
-                        TruffleRuntimeCompilationSupport.getFullOptSuites(), null);
+                        RuntimeCompilationSupport.getFullOptSuites(), null);
     }
 
     public static boolean isIsolatedCompilation() {

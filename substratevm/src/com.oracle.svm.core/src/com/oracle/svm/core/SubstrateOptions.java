@@ -54,6 +54,7 @@ import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.APIOption;
@@ -1280,6 +1281,16 @@ public class SubstrateOptions {
                                 SubstrateOptionsParser.commandArgument(ClosedTypeWorldHubLayout, "-"));
             }
         });
+
+        /** Use {@link SubstrateOptions#useRistretto()} instead. */
+        @Option(help = "Prepare native image to compile bytecodes at runtime.")//
+        public static final HostedOptionKey<Boolean> GraalJITCompileAtRuntime = new HostedOptionKey<>(false, actualValue -> {
+            if (actualValue.getValue()) {
+                if (!RuntimeClassLoading.Options.RuntimeClassLoading.getValue()) {
+                    throw UserError.abort("Cannot enable Ristretto compilation if RuntimeClassLoading is not enabled.");
+                }
+            }
+        });
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -1681,5 +1692,13 @@ public class SubstrateOptions {
             }
         });
     });
+
+    /**
+     * Determine if Ristretto is enabled as the bytecode JIT at runtime.
+     */
+    @Fold
+    public static boolean useRistretto() {
+        return ConcealedOptions.GraalJITCompileAtRuntime.getValue();
+    }
 
 }

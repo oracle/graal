@@ -29,6 +29,8 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -75,6 +77,11 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     // Assigned after analysis.
     @UnknownObjectField(availability = AfterAnalysis.class, types = Object[].class) protected Object[] cachedEntries;
 
+    // TODO move to crema once GR-71517 is resolved
+    private volatile jdk.vm.ci.meta.ConstantPool ristrettoConstantPool;
+    private static final AtomicReferenceFieldUpdater<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> RISTRETTO_CONSTANT_POOL_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(InterpreterConstantPool.class, jdk.vm.ci.meta.ConstantPool.class, "ristrettoConstantPool");
+
     Object objAt(int cpi) {
         if (cpi == 0) {
             // 0 implies unknown (!= unresolved) e.g. unknown class, field, method ...
@@ -101,6 +108,27 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     @VisibleForSerialization
     public static InterpreterConstantPool create(InterpreterResolvedObjectType holder, ParserConstantPool parserConstantPool, Object[] cachedEntries) {
         return new InterpreterConstantPool(holder, parserConstantPool, cachedEntries);
+    }
+
+    public jdk.vm.ci.meta.ConstantPool getRistrettoConstantPool(Function<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> ristrettoConstantPoolSupplier) {
+        if (this.ristrettoConstantPool != null) {
+            return this.ristrettoConstantPool;
+        }
+        /*
+         * We allow concurrent allocation of a ristretto constant pool per interpreter constant
+         * pool. Eventually however we CAS on the pointer in the interpreter representation, if
+         * another thread was faster return its constant pool.
+         */
+        return getOrSetRistrettoConstantPool(ristrettoConstantPoolSupplier.apply(this));
+    }
+
+    private jdk.vm.ci.meta.ConstantPool getOrSetRistrettoConstantPool(jdk.vm.ci.meta.ConstantPool newRistrettoConstantPool) {
+        if (RISTRETTO_CONSTANT_POOL_UPDATER.compareAndSet(this, null, newRistrettoConstantPool)) {
+            return newRistrettoConstantPool;
+        }
+        var cp = this.ristrettoConstantPool;
+        assert cp != null : "If CAS for null fails must have written a constant pool already";
+        return cp;
     }
 
     @Override

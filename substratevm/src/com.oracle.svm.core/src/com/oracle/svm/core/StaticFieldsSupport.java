@@ -175,6 +175,7 @@ public final class StaticFieldsSupport {
 
     public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
         if (field instanceof SharedField sField) {
+            assert sField.getStaticFieldBaseForRuntimeLoadedClass() == null : "Static field support with static field base should be handled in lowering providers";
             boolean primitive = sField.getStorageKind().isPrimitive();
             return new StaticFieldResolvedBaseNode(primitive, sField.getInstalledLayerNum());
         } else {
@@ -203,7 +204,7 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseProxyNode(ValueNode staticFieldsArray) {
             super(TYPE, StampFactory.objectNonNull());
-            assert ImageLayerBuildingSupport.buildingImageLayer();
+            assert ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.useRistretto();
             this.staticFieldsArray = staticFieldsArray;
         }
 

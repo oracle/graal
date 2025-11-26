@@ -47,4 +47,10 @@ public class SubstrateTruffleField extends SubstrateField implements TruffleFiel
     public ConstantFieldInfo getConstantFieldInfo() {
         return constantFieldInfo;
     }
+
+    @Override
+    public Object getStaticFieldBaseForRuntimeLoadedClass() {
+        // only AOT known static fields available, those are in regular static arrays
+        return null;
+    }
 }

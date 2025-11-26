@@ -25,10 +25,10 @@
 package com.oracle.svm.graal.isolated;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateProviders;
+import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateRuntimeProviders;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 
-public final class IsolateAwareProviders extends SubstrateProviders {
+public final class IsolateAwareProviders extends SubstrateRuntimeProviders {
     public IsolateAwareProviders(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
         super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess), new IsolateAwareSnippetReflectionProvider());
     }

@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
@@ -85,40 +86,40 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private static final int NUM_BITS_CALLING_CONVENTION_KIND = 2;
     private static final int FLAG_BIT_CALLEE_SAVED_REGISTERS = 9;
 
-    private final int flags;
-    private final byte[] encodedLineNumberTable;
-    private final int modifiers;
-    private final String name;
-    private final int hashCode;
-    private SubstrateType declaringClass;
-    private LocalVariableTable localVariableTable;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private int encodedGraphStartOffset;
-    @UnknownPrimitiveField(availability = AfterCompilation.class) private int vTableIndex;
-    @UnknownObjectField(availability = AfterCompilation.class) private SubstrateMethod indirectCallTarget;
+    protected final int flags;
+    protected final byte[] encodedLineNumberTable;
+    protected final int modifiers;
+    protected final String name;
+    protected final int hashCode;
+    protected SubstrateType declaringClass;
+    protected LocalVariableTable localVariableTable;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) protected int encodedGraphStartOffset;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) protected int vTableIndex;
+    @UnknownObjectField(availability = AfterCompilation.class) protected SubstrateMethod indirectCallTarget;
 
     /**
      * A metadata object describing the image code that contains the compiled code of this method.
      * This is not a {@link CodeInfo} structure because those are not available until runtime.
      */
-    private final ImageCodeInfo imageCodeInfo;
+    protected final ImageCodeInfo imageCodeInfo;
 
     /**
      * The offset of the first instruction of the compiled code in the image code described by
      * {@link #imageCodeInfo}. Used to compute the destination address in a direct call.
      */
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int imageCodeOffset;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) protected int imageCodeOffset;
 
     /**
      * The offset of the deoptimization target code in the image code described by
      * {@link #imageCodeInfo}. Used to compute the destination address for deoptimization. This is
      * only != 0 if there actually is a deoptimization target method in the image for this method.
      */
-    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int imageCodeDeoptOffset;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) protected int imageCodeDeoptOffset;
 
     @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true, availability = ReadyForCompilation.class)//
     protected Object implementations;
 
-    private SubstrateSignature signature;
+    protected SubstrateSignature signature;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateMethod(AnalysisMethod original, ImageCodeInfo codeInfo, HostedStringDeduplication stringTable) {
@@ -150,6 +151,19 @@ public class SubstrateMethod implements SharedRuntimeMethod {
                         makeFlag(AnnotationUtil.isAnnotationPresent(original, SubstrateForeignCallTarget.class), FLAG_BIT_FOREIGN_CALL_TARGET) |
                         makeFlag(callingConventionKind.ordinal(), FLAG_BIT_CALLING_CONVENTION_KIND, NUM_BITS_CALLING_CONVENTION_KIND) |
                         makeFlag(StubCallingConvention.Utils.hasStubCallingConvention(original), FLAG_BIT_CALLEE_SAVED_REGISTERS);
+    }
+
+    /**
+     * Must only be called at run-time from Ristretto.
+     */
+    protected SubstrateMethod(int flags, byte[] encodedLineNumberTable, int modifiers, String name, int hashCode, ImageCodeInfo imageCodeInfo) {
+        assert SubstrateOptions.useRistretto() : "Must only be initialized at runtime by ristretto";
+        this.flags = flags;
+        this.encodedLineNumberTable = encodedLineNumberTable;
+        this.modifiers = modifiers;
+        this.name = name;
+        this.hashCode = hashCode;
+        this.imageCodeInfo = imageCodeInfo;
     }
 
     private static int makeFlag(boolean value, int flagBit) {

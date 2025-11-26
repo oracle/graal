@@ -27,6 +27,8 @@ package com.oracle.svm.graal.substitutions;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
+import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AnyRuntimeCompilationEnabled;
+import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.OnlyTruffleRuntimeCompilationEnabled;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -57,7 +59,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalCompilerSupport;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalCompilerFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
@@ -94,7 +96,7 @@ import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@TargetClass(value = InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = InvocationPlugins.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
@@ -108,22 +110,22 @@ final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
     }
 }
 
-@TargetClass(value = InlineableGraph.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = InlineableGraph.class, onlyWith = OnlyTruffleRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused"})
-final class Target_jdk_graal_compiler_phases_common_inlining_info_elem_InlineableGraph {
+final class Target_jdk_graal_compiler_phases_common_inlining_info_elem_InlineableGraph_TruffleRC {
 
     @Substitute
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, Invoke invoke, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller,
                     boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph result = TruffleRuntimeCompilationSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method, caller);
+        StructuredGraph result = RuntimeCompilationSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method, caller);
         assert result != null : "should not try to inline method when no graph is in the native image";
         assert !trackNodeSourcePosition || result.trackNodeSourcePosition();
         return result;
     }
 }
 
-@TargetClass(value = ComputeInliningRelevance.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = ComputeInliningRelevance.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_jdk_graal_compiler_phases_common_inlining_walker_ComputeInliningRelevance {
 
@@ -202,7 +204,7 @@ final class Target_jdk_graal_compiler_debug_TimeSource {
     // Checkstyle: resume
 }
 
-@TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
 final class Target_jdk_graal_compiler_debug_TTY {
 
     @Alias//
@@ -303,7 +305,7 @@ final class Target_jdk_graal_compiler_core_match_MatchRuleRegistry {
     }
 }
 
-@TargetClass(value = BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 
@@ -319,7 +321,7 @@ final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicNode
     }
 }
 
-@TargetClass(value = UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicNode {
 

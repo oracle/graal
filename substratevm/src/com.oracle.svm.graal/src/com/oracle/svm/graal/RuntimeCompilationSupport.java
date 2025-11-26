@@ -78,11 +78,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
- * Truffle compilation.
+ * multi-tier based runtime compilation system.
  */
-public class TruffleRuntimeCompilationSupport {
+public class RuntimeCompilationSupport {
 
-    private static final ScanReason scanReason = new OtherReason("Manual rescan of Graal objects triggered from " + TruffleRuntimeCompilationSupport.class);
+    private static final ScanReason scanReason = new OtherReason("Manual rescan of Graal objects triggered from " + RuntimeCompilationSupport.class);
 
     private RuntimeConfiguration runtimeConfig;
 
@@ -128,7 +128,7 @@ public class TruffleRuntimeCompilationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public TruffleRuntimeCompilationSupport() {
+    public RuntimeCompilationSupport() {
         /* By default the backend configuration is the same as for the native image. */
         runtimeBackendProvider = SubstrateBackendFactory.get()::newBackend;
     }
@@ -169,10 +169,10 @@ public class TruffleRuntimeCompilationSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean setMethodsToCompile(DuringAnalysisAccessImpl config, SubstrateMethod[] methodsToCompile) {
         boolean result = false;
-        TruffleRuntimeCompilationSupport support = get();
+        RuntimeCompilationSupport support = get();
         if (!Arrays.equals(support.methodsToCompile, methodsToCompile)) {
             support.methodsToCompile = methodsToCompile;
-            TruffleRuntimeCompilationSupport.rescan(config, methodsToCompile);
+            RuntimeCompilationSupport.rescan(config, methodsToCompile);
             result = true;
         }
         return result;
@@ -203,7 +203,7 @@ public class TruffleRuntimeCompilationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClassMap graphNodeTypes) {
-        TruffleRuntimeCompilationSupport support = get();
+        RuntimeCompilationSupport support = get();
         if (support.graphObjects == null && graphObjects.length == 0) {
             assert graphEncoding.length == 0;
             return false;
@@ -215,13 +215,13 @@ public class TruffleRuntimeCompilationSupport {
         }
         if (!Arrays.deepEquals(support.graphObjects, graphObjects)) {
             support.graphObjects = graphObjects;
-            TruffleRuntimeCompilationSupport.rescan(a, graphObjects);
+            RuntimeCompilationSupport.rescan(a, graphObjects);
             result = true;
         }
         if (support.graphNodeTypesSize != graphNodeTypes.size() || support.graphNodeTypes != graphNodeTypes) {
             support.graphNodeTypesSize = graphNodeTypes.size();
             support.graphNodeTypes = graphNodeTypes;
-            TruffleRuntimeCompilationSupport.rescan(a, graphNodeTypes);
+            RuntimeCompilationSupport.rescan(a, graphNodeTypes);
             result = true;
         }
         return result;
@@ -251,8 +251,8 @@ public class TruffleRuntimeCompilationSupport {
         access.registerAsImmutable(get().graphNodeTypes);
     }
 
-    public static TruffleRuntimeCompilationSupport get() {
-        return ImageSingletons.lookup(TruffleRuntimeCompilationSupport.class);
+    public static RuntimeCompilationSupport get() {
+        return ImageSingletons.lookup(RuntimeCompilationSupport.class);
     }
 
     public static RuntimeConfiguration getRuntimeConfig() {
