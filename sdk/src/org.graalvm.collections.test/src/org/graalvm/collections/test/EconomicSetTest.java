@@ -181,4 +181,99 @@ public class EconomicSetTest {
         return new Integer(value);
     }
 
+    @Test
+    public void testCreateWithEquivalenceAndCapacity() {
+        EconomicSet<Integer> set = EconomicSet.create(Equivalence.IDENTITY, 1);
+        Integer a1 = newInteger(1);
+        Integer a2 = newInteger(1);
+        Assert.assertTrue(set.add(a1));
+        Assert.assertFalse(set.add(a1));
+        Assert.assertFalse("identity equivalence shouldn't match equal value", set.contains(a2));
+        Assert.assertEquals(1, set.size());
+    }
+
+    @Test
+    public void testCreateWithEquivalenceAndUnmodifiableSet() {
+        EconomicSet<Integer> source = EconomicSet.create();
+        Integer a1 = newInteger(1);
+        Integer a1dup = newInteger(1);
+        source.add(a1);
+        source.add(a1dup); // deduped by default equivalence
+        EconomicSet<Integer> idSet = EconomicSet.create(Equivalence.IDENTITY, source);
+        Assert.assertEquals(1, idSet.size());
+        Assert.assertTrue(idSet.contains(a1));
+        Assert.assertFalse(idSet.contains(newInteger(1)));
+    }
+
+    @Test
+    public void testCreateFromIterable() {
+        EconomicSet<Integer> set = EconomicSet.create(Arrays.asList(0, 1, 0));
+        Assert.assertEquals(2, set.size());
+        Assert.assertTrue(set.contains(0));
+        Assert.assertTrue(set.contains(1));
+    }
+
+    @Test
+    public void testAddAllIterator() {
+        EconomicSet<Integer> set = EconomicSet.create();
+        set.add(0);
+        set.addAll(Arrays.asList(1, 2, 1).iterator());
+        Assert.assertEquals(3, set.size());
+        Assert.assertTrue(set.contains(0));
+        Assert.assertTrue(set.contains(1));
+        Assert.assertTrue(set.contains(2));
+    }
+
+    @Test
+    public void testRemoveAllIterator() {
+        EconomicSet<Integer> set = EconomicSet.create();
+        set.addAll(Arrays.asList(0, 1, 2, 3));
+        set.removeAll(Arrays.asList(1, 3, 4).iterator());
+        Assert.assertEquals(2, set.size());
+        Assert.assertTrue(set.contains(0));
+        Assert.assertTrue(set.contains(2));
+        Assert.assertFalse(set.contains(1));
+        Assert.assertFalse(set.contains(3));
+    }
+
+    @Test
+    public void testIdentityEquivalenceContains() {
+        EconomicSet<Integer> set = EconomicSet.create(Equivalence.IDENTITY);
+        Integer a1 = newInteger(42);
+        Integer a2 = newInteger(42);
+        set.add(a1);
+        Assert.assertTrue(set.contains(a1));
+        Assert.assertFalse(set.contains(a2));
+    }
+
+    @Test
+    public void testEmptySetBasics() {
+        EconomicSet<Integer> empty = EconomicSet.emptySet();
+        Assert.assertTrue(empty.isEmpty());
+        Assert.assertEquals(0, empty.size());
+        Assert.assertFalse(empty.contains(123));
+        Integer[] arr = empty.toArray(new Integer[0]);
+        Assert.assertEquals(0, arr.length);
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testEmptySetContainsNull() {
+        EconomicSet.emptySet().contains(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testEmptySetAdd() {
+        EconomicSet.emptySet().add(1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testEmptySetRemove() {
+        EconomicSet.emptySet().remove(1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testEmptySetClear() {
+        EconomicSet.emptySet().clear();
+    }
+
 }

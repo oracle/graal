@@ -40,9 +40,13 @@
  */
 package org.graalvm.collections.test;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,6 +59,90 @@ public class EconomicMapTest {
         map.put(0, 1);
         Assert.assertEquals(map.get(0, 2), Integer.valueOf(1));
         Assert.assertEquals(map.get(1, 2), Integer.valueOf(2));
+    }
+
+    @Test
+    public void testClear() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        map.put(0, 0);
+        map.put(1, 1);
+        map.clear();
+        Assert.assertTrue(map.isEmpty());
+    }
+
+    @Test
+    public void testRemoveKey() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        map.put(0, 0);
+        map.put(1, 1);
+        Assert.assertEquals(Integer.valueOf(0), map.removeKey(0));
+        Assert.assertNull(map.get(0));
+    }
+
+    @Test
+    public void testReplaceAll() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        map.put(0, 0);
+        map.put(1, 1);
+        map.replaceAll((k, v) -> v + 1);
+        Assert.assertEquals(Integer.valueOf(1), map.get(0));
+        Assert.assertEquals(Integer.valueOf(2), map.get(1));
+    }
+
+    @Test
+    public void testCreateWithInitialCapacity() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create(10);
+        for (int i = 0; i < 10; i++) {
+            map.put(i, i);
+        }
+        Assert.assertEquals(10, map.size());
+    }
+
+    @Test
+    public void testCreateWithEquivalence() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create(Equivalence.DEFAULT);
+        map.put(0, 0);
+        Assert.assertEquals(Integer.valueOf(0), map.get(0));
+    }
+
+    @Test
+    public void testWrapMap() {
+        Map<Integer, Integer> javaMap = new HashMap<>();
+        javaMap.put(0, 0);
+        EconomicMap<Integer, Integer> map = EconomicMap.wrapMap(javaMap);
+        Assert.assertEquals(Integer.valueOf(0), map.get(0));
+    }
+
+    @Test
+    public void testEmptyCursor() {
+        MapCursor<Integer, Integer> cursor = EconomicMap.emptyCursor();
+        Assert.assertFalse(cursor.advance());
+    }
+
+    @Test
+    public void testEmptyMap() {
+        EconomicMap<Integer, Integer> map = EconomicMap.emptyMap();
+        Assert.assertTrue(map.isEmpty());
+    }
+
+    @Test
+    public void testOf() {
+        EconomicMap<Integer, Integer> map = EconomicMap.of(0, 0);
+        Assert.assertEquals(Integer.valueOf(0), map.get(0));
+    }
+
+    @Test
+    public void testOfTwoElements() {
+        EconomicMap<Integer, Integer> map = EconomicMap.of(0, 0, 1, 1);
+        Assert.assertEquals(Integer.valueOf(0), map.get(0));
+        Assert.assertEquals(Integer.valueOf(1), map.get(1));
+    }
+
+    @Test
+    public void testComputeIfAbsent() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        Assert.assertEquals(Integer.valueOf(0), map.computeIfAbsent(0, k -> 0));
+        Assert.assertEquals(Integer.valueOf(0), map.get(0));
     }
 
     @Test
