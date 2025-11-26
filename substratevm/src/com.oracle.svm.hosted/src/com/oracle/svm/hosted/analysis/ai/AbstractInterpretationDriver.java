@@ -5,12 +5,17 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
+import com.oracle.svm.hosted.analysis.ai.analyses.heap.HeapAwareIntervalInterpreter;
+import com.oracle.svm.hosted.analysis.ai.analyses.heap.inter.HeapAnalysisSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
+import com.oracle.svm.hosted.analysis.ai.domain.heap.HeapObjectDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -24,7 +29,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
  * The most important component of the framework is the {@link AnalyzerManager}, which manages all registered analyzers
- * and coordinates their execram being analyzed.
+ * and coordinates their execution.
  * The actual analysis is performed by the {@link AbstractInterpretationEngine},
  * which uses the registered analyzers to analyze the program.
  */
@@ -75,14 +80,14 @@ public class AbstractInterpretationDriver {
         DataFlowIntervalAbstractInterpreter interpreter =
                 new DataFlowIntervalAbstractInterpreter();
 
-        /* 3. Example of building an intraprocedural analyzer */
+//        /* 3. Example of building an intraprocedural analyzer */
 //        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY)
 //                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
 //                .registerChecker(new ConstantValueChecker())
-//                .registerChecker(new IndexSafetyChecker())
+//                .registerChecker(new BoundsSafetyChecker())
 //                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
 //                .build();
-
+//
         /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
         var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
@@ -95,12 +100,5 @@ public class AbstractInterpretationDriver {
 
         /* 5. Register with manager */
         analyzerManager.registerAnalyzer(interDataFlowAnalyzer);
-        // TODO: right now we need to think of a way to :
-        // 1. When to apply checkers during interprocedural analysis (right now we run checkers everytime after absint)
-        // 2. When to export graphs to json and also when to dump graphs to IGV interprocedural analysis ( we export everytime we reach a method )
-        // 3. (This is tied together with 1.) If analysis of a method yields facts that will lead to modification of the given StructuredGraph of a method
-        //          when should we really modify the method ? It is not safe to modify it becase there could be other calls (with different parameters) that
-        //          would not produce given facts
-        // 4. Find optimizations that can either imporove performance or reduce the size of native images that we can do with out analyses
     }
 }

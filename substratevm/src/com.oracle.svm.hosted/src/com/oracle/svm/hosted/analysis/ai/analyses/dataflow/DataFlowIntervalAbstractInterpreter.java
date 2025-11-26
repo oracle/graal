@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeInput;
+import com.oracle.svm.hosted.analysis.ai.checker.core.NodeUtil;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
@@ -13,6 +14,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -25,7 +27,9 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
@@ -51,6 +55,8 @@ import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -90,7 +96,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (source instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
             if (cond instanceof IntegerLessThanNode itn) {
-                // compute feasibility from current intervals
                 IntInterval ix = getNodeResultInterval(itn.getX(), post);
                 IntInterval iy = getNodeResultInterval(itn.getY(), post);
                 boolean defTrue = !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower();
@@ -511,6 +516,15 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             case IntegerBelowNode integerBelowNode -> {
                 return evalIntegerBelowNode(integerBelowNode, mem);
             }
+            case IntegerEqualsNode integerEqualsNode -> {
+                return evalIntegerEqualsNode(integerEqualsNode, mem);
+            }
+            case UnsignedRightShiftNode unsignedRightShiftNode -> {
+                return evalUnsignedRightShiftNode(unsignedRightShiftNode, mem);
+            }
+            case RightShiftNode rightShiftNode -> {
+                return evalRightShiftNode(rightShiftNode, mem);
+            }
             case IsNullNode isNullNode -> {
                 // Boolean result in {0,1}; we do not track nullness precisely in interval domain
                 IntInterval res = new IntInterval(0, 1);
@@ -525,6 +539,9 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 IntInterval v = getNodeResultInterval(original, mem);
                 bindNodeResult(node, v, mem);
                 return mem;
+            }
+            case AllocatedObjectNode allocatedObjectNode -> {
+                return evalAllocatedObjectNode(allocatedObjectNode, mem);
             }
             default -> {
                 // Fallback: bind TOP for unsupported node kinds to avoid endless recursion or NPEs
@@ -596,7 +613,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
             logger.log("  PhiNode not found in state, evaluating conservatively", LoggerVerbosity.DEBUG);
         }
-        boolean isLoopHeader = (merge instanceof jdk.graal.compiler.nodes.LoopBeginNode);
+        boolean isLoopHeader = (merge instanceof LoopBeginNode);
         boolean isFirstVisit = false;
 
         if (isLoopHeader && iteratorContext != null) {
@@ -936,10 +953,25 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private AbstractMemory evalAllocatedObjectNode(AllocatedObjectNode node, AbstractMemory mem) {
-        // Treat as an allocation root for aliasing purposes
         String aid = "allocObj" + Integer.toHexString(System.identityHashCode(node));
         AccessPath root = AccessPath.forAllocSite(aid);
         mem.bindTempByName(nodeId(node), root);
+
+        if (node.getVirtualObject() instanceof VirtualArrayNode vArr) {
+            var bb = AnalysisServices.getInstance().getInflation();
+            var constRef = bb.getConstantReflectionProvider();
+            var lenNode = vArr.findLength(ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, constRef);
+            if (lenNode instanceof ConstantNode cn &&
+                    cn.asJavaConstant() != null &&
+                    cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                long len = cn.asJavaConstant().asLong();
+                if (len >= 0) {
+                    IntInterval sizeIv = new IntInterval(len, len);
+                    bindNodeResult(node, sizeIv, mem);
+                }
+            }
+        }
+
         return mem;
     }
 
@@ -969,7 +1001,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                     refined.setToTop();
                 }
             }
-            // We could add more cases (non-null object stamps ignored for numeric domain)
         }
         bindNodeResult(piNode, refined, mem);
         return mem;

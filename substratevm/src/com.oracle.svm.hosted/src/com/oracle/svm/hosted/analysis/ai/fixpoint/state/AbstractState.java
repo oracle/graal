@@ -108,14 +108,14 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Merge abstract contexts from different {@link ReturnNode}s into a single abstract context.
-     * This context the represents the over-approximation of all different return contexts,
+     * This context represents the over-approximation of all different return contexts,
      * which is used to compute the final return value of the method.
      *
      * @return the abstract context of the {@link ReturnNode}
      */
+    // FIXME: some weird shit is probably happening here, investigate
     public Domain getReturnDomain() {
         Domain returnDomain = initialDomain.copyOf();
-        // Start with bottom so that first join adopts reachable return; if initialDomain is not bottom explicitly set.
         if (!returnDomain.isBot()) {
             returnDomain.setToBot();
         }
@@ -123,7 +123,6 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
             if (node instanceof ReturnNode) {
                 Domain pre = getPreCondition(node);
                 if (pre != null && pre.isBot()) {
-                    // unreachable return -> skip
                     continue;
                 }
                 returnDomain.joinWith(getPostCondition(node));

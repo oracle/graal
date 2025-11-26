@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
@@ -46,10 +47,13 @@ public class AbstractInterpretationEngine {
     private void executeAnalyzer(Analyzer<?> analyzer) {
         if (analyzer instanceof InterProceduralAnalyzer<?> interProceduralAnalyzer) {
             executeInterProceduralAnalysis(interProceduralAnalyzer);
+            return;
         }
-        else if (analyzer instanceof IntraProceduralAnalyzer<?> intraProceduralAnalyzer) {
+        if (analyzer instanceof IntraProceduralAnalyzer<?> intraProceduralAnalyzer) {
             executeIntraProceduralAnalysis(intraProceduralAnalyzer);
+            return;
         }
+        AnalysisError.shouldNotReachHere("The provided absint analyzer is neither an Intra nor Inter procedural analyzer");
     }
 
     private void executeIntraProceduralAnalysis(IntraProceduralAnalyzer<?> analyzer) {
@@ -61,21 +65,21 @@ public class AbstractInterpretationEngine {
             return;
         }
 
-        logger.log("Running intraprocedural analyzer on the main entry point only", LoggerVerbosity.INFO);
+        logger.log("Running intraprocedural analyzer on all trivially invoked methods", LoggerVerbosity.INFO);
         invokedMethods.parallelStream().forEach(analyzer::runAnalysis);
     }
 
     private void executeInterProceduralAnalysis(InterProceduralAnalyzer<?> analyzer) {
         var logger = AbstractInterpretationLogger.getInstance();
-        InterAnalyzerMode mode =  analyzer.getAnalyzerMode();
+        InterAnalyzerMode mode = analyzer.getAnalyzerMode();
 
         if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT && analysisRoot != null) {
-            logger.log("Running interprocedural analyzer from the main entry point only",  LoggerVerbosity.INFO);
+            logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
             analyzer.runAnalysis(analysisRoot);
             return;
         }
 
-        logger.log("Running interprocedural analyzer from all root methods",  LoggerVerbosity.INFO);
+        logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
         for (var method : rootMethods) {
             analyzer.runAnalysis(method);
         }

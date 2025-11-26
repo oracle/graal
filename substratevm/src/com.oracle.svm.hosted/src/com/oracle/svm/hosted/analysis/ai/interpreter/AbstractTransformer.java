@@ -9,6 +9,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -61,37 +63,32 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         GraphTraversalHelper graphTraversalHelper = context.getGraphTraversalHelper();
         HIRBlock currentBlock = context.getBlockForNode(node);
 
-        /* FIXME: This implementation is kinda retarded, but there is no smarter way to do it, because we don't expect
-           implementations of execEdge to set the mark to NORMAL,
-           One way we could fix it is by making execEdge return a NodeMark, but that seems like a really bad idea, since
-           it makes the implementations a lot more annoying, whereas now execEdge implementation can choose their
-           internal logic when they set a target of an edge unreachable, set the mark and we will read it here,
-           and then set it back to normal, and evaluate it after
-         */
-
-        /* Node is reachable if there is least one edge that reaches this node, or if it is a StartNode in the StructuredGraph*/
+        // Node is considered initially unreachable unless it is a graph entry with no predecessors.
         int predecessorCount = graphTraversalHelper.getPredecessorCount(currentBlock);
-        NodeState.NodeMark nodeMark = predecessorCount == 0 ? NodeState.NodeMark.NORMAL : NodeState.NodeMark.UNREACHABLE;
+        NodeState.NodeMark aggregateMark = predecessorCount == 0 ? NodeState.NodeMark.NORMAL : NodeState.NodeMark.UNREACHABLE;
         NodeState<Domain> nodeState = abstractState.getNodeState(node);
 
-        for (int i = 0; i < graphTraversalHelper.getPredecessorCount(currentBlock); i++) {
+        for (int i = 0; i < predecessorCount; i++) {
             HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
             Node predecessor = graphTraversalHelper.getEndNode(predBlock);
             context.setEdgeTraversal(predBlock, currentBlock);
             logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
 
+            // Skip edges coming from unreachable predecessors.
             if (predecessor == null || abstractState.getNodeState(predecessor).isUnreachable()) {
                 continue;
             }
 
+            // Reset mark for this edge traversal and let execEdge potentially mark it unreachable.
             nodeState.setMark(NodeState.NodeMark.NORMAL);
             analyzeEdge(predecessor, node, abstractState, context);
+
             if (nodeState.getMark() == NodeState.NodeMark.NORMAL) {
-                nodeMark = NodeState.NodeMark.NORMAL;
+                aggregateMark = NodeState.NodeMark.NORMAL;
             }
         }
 
-        nodeState.setMark(nodeMark);
+        nodeState.setMark(aggregateMark);
     }
 
     /**
@@ -110,18 +107,20 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         }
 
         boolean blockUnreachable = abstractState.getNodeState(blockBeginNode).isUnreachable();
-        logger.log("SkippingBlock: " + blockUnreachable, LoggerVerbosity.DEBUG);
+        logger.log("  Block head " + blockBeginNode + " unreachable=" + blockUnreachable, LoggerVerbosity.DEBUG);
 
         Node previousNode = null;
         for (Node node : block.getNodes()) {
             if (previousNode != null) {
                 Domain prevPost = abstractState.getPostCondition(previousNode);
-                /* Inside a block the abstract state flows trivially */
+                // Inside a block the abstract state flows trivially
                 abstractState.setPreCondition(node, prevPost);
             }
 
             Domain pre = abstractState.getPreCondition(node);
+
             if (blockUnreachable) {
+                // Propagate pre to post unchanged and mark all nodes in this block unreachable.
                 abstractState.setPostCondition(node, pre);
                 logger.log("  Skipping unreachable node: " + node, LoggerVerbosity.DEBUG);
                 abstractState.getNodeState(node).setMark(NodeState.NodeMark.UNREACHABLE);

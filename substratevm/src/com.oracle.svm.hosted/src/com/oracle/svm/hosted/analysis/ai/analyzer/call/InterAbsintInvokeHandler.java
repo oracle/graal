@@ -15,7 +15,9 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.*;
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.Optional;
@@ -52,6 +54,8 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         try {
             targetAnalysisMethod = getInvokeTargetAnalysisMethod(current, invoke);
             assert targetAnalysisMethod != null;
+            StructuredGraph graph = AnalysisServices.getInstance().getGraph(targetAnalysisMethod);
+            assert graph != null;
         } catch (Exception e) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);

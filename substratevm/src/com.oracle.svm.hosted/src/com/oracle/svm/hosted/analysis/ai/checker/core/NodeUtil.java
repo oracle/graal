@@ -1,8 +1,12 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
+import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -29,7 +33,6 @@ public class NodeUtil {
         return null;
     }
 
-    // FIXME: this probably needs a better heuristic
     public static boolean leadsToByteCodeException(IfNode guardingIf) {
         Node falseBegin = guardingIf.falseSuccessor();
         if (falseBegin == null) return false;

@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext;
@@ -75,6 +76,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         int visitedAmount = iteratorContext.getNodeVisitCount(node);
         logger.log("Before extrapolation: pre = " + abstractState.getPreCondition(node), LoggerVerbosity.DEBUG);
         logger.log("Before extrapolation: post = " + abstractState.getPostCondition(node), LoggerVerbosity.DEBUG);
+
         var newPre = abstractState.getPreCondition(node).copyOf();
         IteratorPolicy policy = analysisContext.getIteratorPolicy();
 
@@ -87,7 +89,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         if (visitedAmount < policy.maxJoinIterations()) {
             logger.log("Extrapolating (join) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
             newPre.joinWith(abstractState.getPostCondition(node));
-        } else if (visitedAmount < policy.maxWidenIterations()) {
+        } else if (visitedAmount < policy.maxWidenIterations() + policy.maxJoinIterations()) {
             logger.log("Extrapolating (widen) at visit " + visitedAmount + " for node: " + node, LoggerVerbosity.DEBUG);
             newPre.widenWith(abstractState.getPostCondition(node));
         } else {
