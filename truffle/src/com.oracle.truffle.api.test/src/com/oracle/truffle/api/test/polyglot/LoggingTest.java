@@ -66,6 +66,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.After;
@@ -529,43 +531,55 @@ public class LoggingTest {
     }
 
     @Test
-    public void testGarbageCollectedContext() {
-        TestHandler handler = new TestHandler();
-        Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
-        collectedContext.eval(LoggingLanguageFirst.ID, "");
-        List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
-        Assert.assertEquals(expected, handler.getLog());
-        Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
-        collectedContext = null;
-        GCUtils.assertGc("Cannot free context.", collectedContextRef);
-        handler = new TestHandler();
-        try (Context newContext = newContextBuilder().logHandler(handler).build()) {
-            newContext.eval(LoggingLanguageFirst.ID, "");
-            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap());
+    public void testGarbageCollectedContext() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            TestHandler handler = new TestHandler();
+            Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+            collectedContext.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
             Assert.assertEquals(expected, handler.getLog());
+            Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
+            collectedContext = null;
+            GCUtils.assertGc("Cannot free context.", collectedContextRef);
+            handler = new TestHandler();
+            try (Context newContext = newContextBuilder().logHandler(handler).build()) {
+                newContext.eval(LoggingLanguageFirst.ID, "");
+                expected = createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap());
+                Assert.assertEquals(expected, handler.getLog());
+            }
+        });
+    }
+
+    private static void runInSubprocess(Runnable runnable) throws IOException, InterruptedException {
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(LoggingTest.class, runnable).run();
         }
     }
 
     @Test
-    public void testGarbageCollectedContext2() {
-        TestHandler collectedContextHandler = new TestHandler();
-        Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(collectedContextHandler).build();
-        TestHandler contextHandler = new TestHandler();
-        try (Context context = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build()) {
-            collectedContext.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
-            Assert.assertEquals(expected, collectedContextHandler.getLog());
-            context.eval(LoggingLanguageFirst.ID, "");
-            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
-            Assert.assertEquals(expected, contextHandler.getLog());
-            Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
-            collectedContext = null;
-            GCUtils.assertGc("Cannot free context.", collectedContextRef);
-            contextHandler.clear();
-            context.eval(LoggingLanguageFirst.ID, "");
-            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
-            Assert.assertEquals(expected, contextHandler.getLog());
-        }
+    public void testGarbageCollectedContext2() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            TestHandler collectedContextHandler = new TestHandler();
+            Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(collectedContextHandler).build();
+            TestHandler contextHandler = new TestHandler();
+            try (Context context = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build()) {
+                collectedContext.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
+                Assert.assertEquals(expected, collectedContextHandler.getLog());
+                context.eval(LoggingLanguageFirst.ID, "");
+                expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
+                Assert.assertEquals(expected, contextHandler.getLog());
+                Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
+                collectedContext = null;
+                GCUtils.assertGc("Cannot free context.", collectedContextRef);
+                contextHandler.clear();
+                context.eval(LoggingLanguageFirst.ID, "");
+                expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
+                Assert.assertEquals(expected, contextHandler.getLog());
+            }
+        });
     }
 
     @Test
@@ -1388,27 +1402,30 @@ public class LoggingTest {
     }
 
     @Test
-    public void testGR49739() {
-        Assume.assumeTrue(GCUtils.isSupported());
-        AtomicReference<TruffleLogger> loggerHolder = new AtomicReference<>();
-        AbstractLoggingLanguage.action = (ctx, defaultLoggers) -> {
-            loggerHolder.set(ctx.env.getLogger("after.close"));
-            return false;
-        };
-        Context.Builder contextBuilder = newContextBuilder();
-        contextBuilder.option("log." + LoggingLanguageFirst.ID + ".level", "CONFIG");
-        Context ctx = contextBuilder.build();
-        Reference<Context> ctxRef = new WeakReference<>(ctx);
-        try {
-            ctx.eval(LoggingLanguageFirst.ID, "");
-        } finally {
-            ctx.close();
-            ctx = null;
-        }
-        GCUtils.assertGc("Context should be collected.", ctxRef);
-        TruffleLogger closedLogger = loggerHolder.getAndSet(null);
-        Assert.assertNotNull(closedLogger);
-        AbstractPolyglotTest.assertFails(() -> closedLogger.config("Should fail"), AssertionError.class, (e) -> Assert.assertTrue(e.getMessage().contains("Invalid sharing of bound TruffleLogger")));
+    public void testGR49739() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            Assume.assumeTrue(GCUtils.isSupported());
+            AtomicReference<TruffleLogger> loggerHolder = new AtomicReference<>();
+            AbstractLoggingLanguage.action = (ctx, defaultLoggers) -> {
+                loggerHolder.set(ctx.env.getLogger("after.close"));
+                return false;
+            };
+            Context.Builder contextBuilder = newContextBuilder();
+            contextBuilder.option("log." + LoggingLanguageFirst.ID + ".level", "CONFIG");
+            Context ctx = contextBuilder.build();
+            Reference<Context> ctxRef = new WeakReference<>(ctx);
+            try {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+            } finally {
+                ctx.close();
+                ctx = null;
+            }
+            GCUtils.assertGc("Context should be collected.", ctxRef);
+            TruffleLogger closedLogger = loggerHolder.getAndSet(null);
+            Assert.assertNotNull(closedLogger);
+            AbstractPolyglotTest.assertFails(() -> closedLogger.config("Should fail"), AssertionError.class,
+                            (e) -> Assert.assertTrue(e.getMessage().contains("Invalid sharing of bound TruffleLogger")));
+        });
     }
 
     @Test
