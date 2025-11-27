@@ -42,7 +42,6 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.PauseNode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoProfileSupport {
 
@@ -190,14 +189,6 @@ public class RistrettoProfileSupport {
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
         }
-    }
-
-    // TODO - will be resolved after GR-71160
-    public static boolean canInstall(ResolvedJavaMethod method) {
-        if (method.isStatic() || method.isConstructor()) {
-            return false;
-        }
-        return true;
     }
 
 }

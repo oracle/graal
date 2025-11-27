@@ -209,7 +209,6 @@ public class RistrettoCompilationManager {
                         RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing,
                                         "[Ristretto Compile Queue]Still draining compile queue, submitted=%s, started=%s, finished=%s%n",
                                         m.submittedRequests.get(), m.startedRequests.get(), m.finishedRequests.get());
-
                     }
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);

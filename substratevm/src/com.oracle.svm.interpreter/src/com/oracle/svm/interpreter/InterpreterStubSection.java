@@ -67,6 +67,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -268,7 +269,17 @@ public abstract class InterpreterStubSection {
             interpSlot++;
         }
 
-        Object retVal = Interpreter.execute(interpreterMethod, args);
+        Object retVal;
+        com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        InstalledCode installedCode = rMethod.installedCode;
+        if (installedCode != null && installedCode.isValid()) {
+            System.out.printf("Found code for method %s, executing it now %n", rMethod);
+            /* A JIT compiled version is available, execute this one instead */
+            CFunctionPointer entryPoint = Word.pointer(installedCode.getEntryPoint());
+            retVal = leaveInterpreter(entryPoint, interpreterMethod, accessingClass, args);
+        } else {
+            retVal = Interpreter.execute(interpreterMethod, args);
+        }
 
         switch (returnType.getJavaKind()) {
             case Boolean:

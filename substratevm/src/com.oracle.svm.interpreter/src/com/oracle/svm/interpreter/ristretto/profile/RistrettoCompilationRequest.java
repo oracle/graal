@@ -65,27 +65,19 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
          *
          * We can never compile the same method concurrently and race on the update of this pointer
          * because of the synchronization enforced by the rMethod.compilationState state machine.
+         *
+         * The rMethod.installedCode is used by the interpreter to access any installed code and
+         * call it instead of interpreter frames.
          */
-        rMethod.installedCode = code;
+        if (RistrettoCompilationManager.TestingBackdoor.installCode()) {
+            rMethod.installedCode = code;
+        }
 
         if (!RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_SUBMITTED,
                         RistrettoConstants.COMPILE_STATE_COMPILED)) {
             throw GraalError.shouldNotReachHere(
                             String.format("Only a single compile of this method should ever reach the compile queue, it cannot be that we reach here with a different state but did %s",
                                             RistrettoCompileStateMachine.toString(RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(rMethod))));
-        }
-
-        if (RistrettoCompilationManager.TestingBackdoor.installCode()) {
-            if (RistrettoProfileSupport.canInstall(rMethod)) {
-                int vTableIndex = RistrettoUtils.installInCremaVTable(code, rMethod);
-                if (vTableIndex >= 0) {
-                    RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing,
-                                    "[Ristretto Compile Queue]Installed code for method %s and vtable index %s at entry adr %s%n",
-                                    rMethod, vTableIndex, code.getEntryPoint());
-                } else {
-                    throw GraalError.shouldNotReachHere(String.format("Unable to install code %s in vtable of declaring type", rMethod));
-                }
-            }
         }
         return code;
     }
