@@ -968,8 +968,7 @@ public abstract class InteropLibrary extends Library {
      * static receiver}. A static receiver represents the static or class-level members associated
      * with the receiver's type, such as static fields or methods.
      * <p>
-     * This message may only return {@code true} if {@link #hasMembers(Object)} returns
-     * {@code true}. Invoking this message must not cause any observable side effects.
+     * Invoking this message must not cause any observable side effects.
      * <p>
      * By default, this method returns {@code false}.
      *
@@ -993,15 +992,15 @@ public abstract class InteropLibrary extends Library {
      * writeMember}, and {@link #invokeMember(Object, String, Object...) invokeMember} when
      * accessing static members.
      * <p>
+     * The returned static receiver is always expected to provide {@link #hasMembers(Object)
+     * members}, representing the receiver's static context.
+     * <p>
      * <b>Examples:</b>
      * <ul>
      * <li>In Java, the static receiver would expose static fields and methods of a class.</li>
-     * <li>In Python, the static receiver would expose class-level variables and methods.</li>
+     * <li>In Python, the static receiver would expose class-level variables and methods,
+     * effectively corresponding to the members provided by the Python metaobject.</li>
      * </ul>
-     * <p>
-     * When the receiver {@linkplain #hasMembers(Object) has members}, the corresponding static
-     * receiver is also expected to have (static) members and/or declared members representing the
-     * receiver's static context.
      *
      * @throws UnsupportedMessageException if and only if the receiver does not
      *             {@linkplain #hasStaticReceiver(Object) have a static receiver}
@@ -3062,13 +3061,13 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns {@code true} if the argument is wrapped Java host language object. This method must
      * not cause any observable side-effects. If this method is implemented then also
-     * {@link #getHostObject(Object)} must be implemented.
+     * {@link #asHostObject(Object)} must be implemented.
      *
-     * @see #getHostObject(Object)
-     * @since 26.0
+     * @see #asHostObject(Object)
+     * @since 25.1
      */
-    @Abstract(ifExported = "getHostObject")
-    public boolean hasHostObject(Object receiver) {
+    @Abstract(ifExported = "asHostObject")
+    public boolean isHostObject(Object receiver) {
         return false;
     }
 
@@ -3076,19 +3075,19 @@ public abstract class InteropLibrary extends Library {
      * Returns the Java host object representation of the given Truffle guest object.
      * <p>
      * Implementations of this method must not produce any observable side effects. If this method
-     * is implemented, {@link #hasHostObject(Object)} must also be implemented and return
+     * is implemented, {@link #isHostObject(Object)} must also be implemented and return
      * {@code true} for the same receiver.
      *
-     * @throws UnsupportedMessageException if {@link #hasHostObject(Object)} returns {@code false}
+     * @throws UnsupportedMessageException if {@link #isHostObject(Object)} returns {@code false}
      *             for the given receiver.
      * @throws HeapIsolationException if the guest object represents a host object located in a
      *             foreign heap, for example in a polyglot isolate.
      *
-     * @see #hasHostObject(Object)
-     * @since 26.0
+     * @see #isHostObject(Object)
+     * @since 25.1
      */
-    @Abstract(ifExported = "hasHostObject")
-    public Object getHostObject(Object receiver) throws UnsupportedMessageException, HeapIsolationException {
+    @Abstract(ifExported = "isHostObject")
+    public Object asHostObject(Object receiver) throws UnsupportedMessageException, HeapIsolationException {
         throw UnsupportedMessageException.create();
     }
 
@@ -3975,18 +3974,13 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getStaticReceiver(receiver);
                 assert hadStaticReceiver || isMultiThreaded(receiver) : violationInvariant(receiver);
                 assert validInteropReturn(receiver, result);
-                assert verifyStaticReceiver(receiver, result);
+                assert UNCACHED.hasMembers(result) : violationPost(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
                 assert isMultiThreaded(receiver) || !hadStaticReceiver : violationInvariant(receiver);
                 throw e;
             }
-        }
-
-        private static boolean verifyStaticReceiver(Object instanceReceiver, Object staticReceiver) throws UnsupportedMessageException {
-            assert UNCACHED.hasMembers(instanceReceiver) && UNCACHED.hasMembers(staticReceiver) : violationPost(instanceReceiver, staticReceiver);
-            return true;
         }
 
         @Override
@@ -5635,15 +5629,15 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean hasHostObject(Object receiver) {
+        public boolean isHostObject(Object receiver) {
             if (CompilerDirectives.inCompiledCode()) {
-                return delegate.hasHostObject(receiver);
+                return delegate.isHostObject(receiver);
             }
             assert preCondition(receiver);
-            boolean result = delegate.hasHostObject(receiver);
+            boolean result = delegate.isHostObject(receiver);
             if (result) {
                 try {
-                    delegate.getHostObject(receiver);
+                    delegate.asHostObject(receiver);
                 } catch (InteropException e) {
                     assert e instanceof HeapIsolationException : violationInvariant(receiver);
                 } catch (Exception e) {
@@ -5657,7 +5651,7 @@ public abstract class InteropLibrary extends Library {
 
         private boolean assertHasNoHostObject(Object receiver) {
             try {
-                delegate.getHostObject(receiver);
+                delegate.asHostObject(receiver);
                 assert false : violationInvariant(receiver);
             } catch (UnsupportedMessageException | HeapIsolationException e) {
             }
@@ -5684,14 +5678,14 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public Object getHostObject(Object receiver) throws HeapIsolationException, UnsupportedMessageException {
+        public Object asHostObject(Object receiver) throws HeapIsolationException, UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
-                return delegate.getHostObject(receiver);
+                return delegate.asHostObject(receiver);
             }
             assert preCondition(receiver);
-            boolean wasHasHostObject = delegate.hasHostObject(receiver);
+            boolean wasHasHostObject = delegate.isHostObject(receiver);
             try {
-                Object result = delegate.getHostObject(receiver);
+                Object result = delegate.asHostObject(receiver);
                 assert wasHasHostObject : violationInvariant(receiver);
                 return result;
             } catch (UnsupportedMessageException e) {

@@ -631,7 +631,7 @@ abstract class SerializeArgumentNode extends Node {
 
         final Object asHostObject(Object value, InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                return interop.getHostObject(value);
+                return interop.asHostObject(value);
             } catch (UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             } catch (HeapIsolationException e) {
@@ -639,7 +639,7 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
-        @Specialization(guards = {"interop.hasHostObject(value)", "tag != null"}, limit = "3")
+        @Specialization(guards = {"interop.isHostObject(value)", "tag != null"}, limit = "3")
         void doHostObject(@SuppressWarnings("unused") Object value, NativeArgumentBuffer buffer,
                         @CachedLibrary("value") InteropLibrary interop,
                         @Bind("asHostObject(value, interop)") Object hostObject,

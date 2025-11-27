@@ -76,13 +76,13 @@ final class HostFunction implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasHostObject() {
+    boolean isHostObject() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Object getHostObject() throws HeapIsolationException {
+    Object asHostObject() throws HeapIsolationException {
         throw HeapIsolationException.create();
     }
 

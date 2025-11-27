@@ -3312,7 +3312,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @ExportMessage(limit = "LIMIT")
+    @ExportMessage
     @TruffleBoundary
     boolean isMetaInstance(Object other,
                     @Bind Node node,
@@ -3321,10 +3321,10 @@ final class HostObject implements TruffleObject {
             Class<?> c = asClass();
             HostLanguage language = context != null ? HostLanguage.get(node) : null;
             InteropLibrary otherInterop = InteropLibrary.getUncached(other);
-            if (otherInterop.hasHostObject(other)) {
+            if (otherInterop.isHostObject(other)) {
                 Object otherHostObj;
                 try {
-                    otherHostObj = otherInterop.getHostObject(other);
+                    otherHostObj = otherInterop.asHostObject(other);
                 } catch (HeapIsolationException e) {
                     error.enter(node);
                     throw UnsupportedMessageException.create();
@@ -3420,14 +3420,15 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    Object getStaticReceiver() throws UnsupportedMessageException {
-        if (hasStaticReceiver()) {
-            Class<?> clz = getLookupClass();
-            return new HostObject(clz, context, clz);
-        } else {
-            CompilerDirectives.transferToInterpreter();
+    Object getStaticReceiver(
+                    @Bind Node node,
+                    @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
+        if (!hasStaticReceiver()) {
+            error.enter(node);
             throw UnsupportedMessageException.create();
         }
+        Class<?> clz = obj.getClass();
+        return HostObject.forStaticClass(clz, context);
     }
 
     boolean isStaticClass() {
@@ -3487,12 +3488,12 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasHostObject() {
+    boolean isHostObject() {
         return true;
     }
 
     @ExportMessage
-    Object getHostObject() {
+    Object asHostObject() {
         return this.obj;
     }
 

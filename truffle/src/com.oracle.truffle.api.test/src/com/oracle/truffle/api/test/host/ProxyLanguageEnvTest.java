@@ -98,9 +98,9 @@ public abstract class ProxyLanguageEnvTest {
                     return;
                 }
                 causes.add(cause.getClass());
-                if (interopLibrary.hasHostObject(cause) && interopLibrary.isException(cause)) {
+                if (interopLibrary.isHostObject(cause) && interopLibrary.isException(cause)) {
                     try {
-                        cause = (Throwable) interopLibrary.getHostObject(cause);
+                        cause = (Throwable) interopLibrary.asHostObject(cause);
                     } catch (HeapIsolationException ex) {
                         cause = cause.getCause();
                     } catch (UnsupportedMessageException ex) {

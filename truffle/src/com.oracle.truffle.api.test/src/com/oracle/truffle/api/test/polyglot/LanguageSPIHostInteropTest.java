@@ -105,8 +105,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void conversionToClassYieldsTheClass() throws Exception {
-        Object javaValue = INTEROP.getHostObject(languageEnv.asGuestValue(TestClass.class));
-        Object javaSymbol = INTEROP.getHostObject(languageEnv.lookupHostSymbol(TestClass.class.getName()));
+        Object javaValue = INTEROP.asHostObject(languageEnv.asGuestValue(TestClass.class));
+        Object javaSymbol = INTEROP.asHostObject(languageEnv.lookupHostSymbol(TestClass.class.getName()));
 
         assertTrue(javaValue instanceof Class);
         assertSame("Both class objects are the same", javaValue, javaSymbol);
@@ -121,8 +121,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void nullAsJavaObject() throws Exception {
         Object nullObject = languageEnv.asGuestValue(null);
-        assertTrue(INTEROP.hasHostObject(nullObject));
-        assertNull(INTEROP.getHostObject(nullObject));
+        assertTrue(INTEROP.isHostObject(nullObject));
+        assertNull(INTEROP.asHostObject(nullObject));
     }
 
     @SuppressWarnings("unchecked")
@@ -155,7 +155,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         Object string = INTEROP.invokeMember(obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
         Object clazz = INTEROP.invokeMember(obj, "getClass");
-        assertTrue(clazz instanceof TruffleObject && INTEROP.getHostObject(clazz) == Data.class);
+        assertTrue(clazz instanceof TruffleObject && INTEROP.asHostObject(clazz) == Data.class);
         assertEquals(true, INTEROP.invokeMember(obj, "equals", obj));
         assertTrue(INTEROP.invokeMember(obj, "hashCode") instanceof Integer);
 
@@ -247,8 +247,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertInvocable(testNumber.hashCode(), guestValue, "hashCode");
         assertInvocable(testNumber.toString(), guestValue, "toString");
 
-        assertTrue(INTEROP.hasHostObject(guestValue));
-        assertEquals(testNumber, INTEROP.getHostObject(guestValue));
+        assertTrue(INTEROP.isHostObject(guestValue));
+        assertEquals(testNumber, INTEROP.asHostObject(guestValue));
     }
 
     private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) throws InteropException {
@@ -293,8 +293,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertInvocable(string.equals(unboxValue), stringObject, "equals", unboxValue);
         assertInvocable(string.hashCode(), stringObject, "hashCode");
         assertInvocable(string.toString(), stringObject, "toString");
-        assertTrue(INTEROP.hasHostObject(stringObject));
-        assertEquals(string, INTEROP.getHostObject(stringObject));
+        assertTrue(INTEROP.isHostObject(stringObject));
+        assertEquals(string, INTEROP.asHostObject(stringObject));
     }
 
     private static void assertBooleanMembers(Object unboxValue, Object booleanObject) throws InteropException {
@@ -307,8 +307,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertInvocable(b.hashCode(), booleanObject, "hashCode");
         assertInvocable(b.toString(), booleanObject, "toString");
 
-        assertTrue(INTEROP.hasHostObject(booleanObject));
-        assertEquals(b, INTEROP.getHostObject(booleanObject));
+        assertTrue(INTEROP.isHostObject(booleanObject));
+        assertEquals(b, INTEROP.asHostObject(booleanObject));
     }
 
     private static void assertCharacterMembers(Character unboxValue, Object charObject) throws InteropException {
@@ -321,8 +321,8 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertInvocable(b.hashCode(), charObject, "hashCode");
         assertInvocable(b.toString(), charObject, "toString");
 
-        assertTrue(INTEROP.hasHostObject(charObject));
-        assertEquals(unboxValue, INTEROP.getHostObject(charObject));
+        assertTrue(INTEROP.isHostObject(charObject));
+        assertEquals(unboxValue, INTEROP.asHostObject(charObject));
     }
 
     @Test
@@ -357,9 +357,9 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
             callable.call();
             fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
         } catch (Exception e) {
-            assertTrue(INTEROP.hasHostObject(e) && INTEROP.isException(e));
+            assertTrue(INTEROP.isHostObject(e) && INTEROP.isException(e));
             try {
-                assertSame(exception, INTEROP.getHostObject(e).getClass());
+                assertSame(exception, INTEROP.asHostObject(e).getClass());
             } catch (UnsupportedMessageException | HeapIsolationException ex) {
                 throw CompilerDirectives.shouldNotReachHere(ex);
             }
@@ -372,18 +372,19 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
         Object exit = INTEROP.readMember(system, "exit");
         assertTrue(exit instanceof TruffleObject);
-        assertTrue(INTEROP.hasHostObject(exit));
-        assertTrue(INTEROP.hasHostObject(exit) && INTEROP.isExecutable(exit) && !INTEROP.hasMembers(exit));
+        assertTrue(INTEROP.isHostObject(exit));
+        assertTrue(INTEROP.isHostObject(exit) && INTEROP.isExecutable(exit) && !INTEROP.hasMembers(exit));
+        assertFails(() -> INTEROP.asHostObject(exit), HeapIsolationException.class);
         assertTrue(languageEnv.isHostFunction(exit));
 
         Object out = INTEROP.readMember(system, "out");
         assertTrue(exit instanceof TruffleObject);
-        assertTrue(INTEROP.hasHostObject(out));
-        assertFalse(INTEROP.hasHostObject(out) && INTEROP.isExecutable(out) && !INTEROP.hasMembers(out));
+        assertTrue(INTEROP.isHostObject(out));
+        assertFalse(INTEROP.isHostObject(out) && INTEROP.isExecutable(out) && !INTEROP.hasMembers(out));
         assertFalse(languageEnv.isHostFunction(out));
 
         assertFalse(languageEnv.isHostFunction(system));
-        assertFalse(INTEROP.hasHostObject(system) && INTEROP.isExecutable(system) && !INTEROP.hasMembers(system));
+        assertFalse(INTEROP.isHostObject(system) && INTEROP.isExecutable(system) && !INTEROP.hasMembers(system));
         assertFalse(languageEnv.isHostFunction(false));
     }
 

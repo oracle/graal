@@ -5634,7 +5634,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects) {
-                return objects.hasHostObject(receiver);
+                return objects.isHostObject(receiver);
             }
         }
 
@@ -5660,7 +5660,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile isolatedHeap) {
                 try {
-                    return objects.getHostObject(receiver);
+                    return objects.asHostObject(receiver);
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter(node);
                     return asHostObjectUnsupported(context, receiver);

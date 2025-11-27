@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  * Exception thrown when a {@link TruffleObject} cannot unbox a host object because the object
  * resides in a foreign heap.
  *
- * @since 26.0
+ * @since 25.1
  */
 @SuppressWarnings("serial")
 public final class HeapIsolationException extends InteropException {
@@ -62,7 +62,7 @@ public final class HeapIsolationException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 26.0
+     * @since 25.1
      */
     @Override
     public String getMessage() {
@@ -72,12 +72,12 @@ public final class HeapIsolationException extends InteropException {
     /**
      * Creates a new {@link HeapIsolationException} indicating that a host object cannot be unboxed
      * because it was allocated in a foreign heap. For example, when
-     * {@link InteropLibrary#getHostObject(Object)} is invoked from within a polyglot isolate.
+     * {@link InteropLibrary#asHostObject(Object)} is invoked from within a polyglot isolate.
      * <p>
      * This factory method is intended for use in {@link CompilerDirectives#inCompiledCode()
      * compiled code paths}.
      *
-     * @since 26.0
+     * @since 25.1
      */
     public static HeapIsolationException create() {
         return new HeapIsolationException();
@@ -86,7 +86,7 @@ public final class HeapIsolationException extends InteropException {
     /**
      * Creates a new {@link HeapIsolationException} indicating that a host object cannot be unboxed
      * because it was allocated in a foreign heap. For example, when
-     * {@link InteropLibrary#getHostObject(Object)} is invoked from within a polyglot isolate.
+     * {@link InteropLibrary#asHostObject(Object)} is invoked from within a polyglot isolate.
      * <p>
      * In addition, a cause may be provided. The cause should only be set if the guest language code
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
@@ -102,7 +102,7 @@ public final class HeapIsolationException extends InteropException {
      * This factory method is intended for use in {@link CompilerDirectives#inCompiledCode()
      * compiled code paths}.
      *
-     * @since 26.0
+     * @since 25.1
      */
     public static HeapIsolationException create(Throwable cause) {
         return new HeapIsolationException(cause);

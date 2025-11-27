@@ -59,7 +59,6 @@ meth public boolean hasExceptionMessage(java.lang.Object)
 meth public boolean hasExceptionStackTrace(java.lang.Object)
 meth public boolean hasExecutableName(java.lang.Object)
 meth public boolean hasHashEntries(java.lang.Object)
-meth public boolean hasHostObject(java.lang.Object)
 meth public boolean hasIterator(java.lang.Object)
 meth public boolean hasIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public boolean hasLanguage(java.lang.Object)
@@ -90,6 +89,7 @@ meth public boolean isHashEntryModifiable(java.lang.Object,java.lang.Object)
 meth public boolean isHashEntryReadable(java.lang.Object,java.lang.Object)
 meth public boolean isHashEntryRemovable(java.lang.Object,java.lang.Object)
 meth public boolean isHashEntryWritable(java.lang.Object,java.lang.Object)
+meth public boolean isHostObject(java.lang.Object)
 meth public boolean isIdentical(java.lang.Object,java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary)
 meth public boolean isInstantiable(java.lang.Object)
 meth public boolean isIterator(java.lang.Object)
@@ -131,6 +131,7 @@ meth public int identityHashCode(java.lang.Object) throws com.oracle.truffle.api
 meth public int readBufferInt(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> getLanguage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")
+meth public java.lang.Object asHostObject(java.lang.Object) throws com.oracle.truffle.api.interop.HeapIsolationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getDeclaringMetaObject(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionCause(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getExceptionMessage(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -139,7 +140,6 @@ meth public java.lang.Object getExecutableName(java.lang.Object) throws com.orac
 meth public java.lang.Object getHashEntriesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getHashKeysIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getHashValuesIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
-meth public java.lang.Object getHostObject(java.lang.Object) throws com.oracle.truffle.api.interop.HeapIsolationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIterator(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getIteratorNextElement(java.lang.Object) throws com.oracle.truffle.api.interop.StopIterationException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException

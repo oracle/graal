@@ -656,7 +656,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "interop.hasHostObject(value)",
+                        "interop.isHostObject(value)",
                         "!isStaticObject(value)"
         })
         @SuppressWarnings("truffle-static-method")
@@ -734,7 +734,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "interop.hasHostObject(value)",
+                        "interop.isHostObject(value)",
                         "!isStaticObject(value)"
         })
         @SuppressWarnings("truffle-static-method")
@@ -812,7 +812,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.isIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "interop.hasHostObject(value)",
+                        "interop.isHostObject(value)",
                         "!isStaticObject(value)"
         })
         @SuppressWarnings("truffle-static-method")
@@ -890,7 +890,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasHashEntries(value)",
                         "interop.hasMetaObject(value)",
-                        "interop.hasHostObject(value)",
+                        "interop.isHostObject(value)",
                         "!isStaticObject(value)"
         })
         @SuppressWarnings("truffle-static-method")
@@ -966,7 +966,7 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.hasMetaObject(value)",
-                        "interop.hasHostObject(value)",
+                        "interop.isHostObject(value)",
                         "!isStaticObject(value)"
         })
         @SuppressWarnings("truffle-static-method")
@@ -1715,7 +1715,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!isStaticObject(value)",
                         "!interop.isNull(value)",
-                        "interop.hasHostObject(value)"
+                        "interop.isHostObject(value)"
         })
         StaticObject doForeignInterface(Object value,
                         @Bind Node node,
@@ -1780,7 +1780,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!isStaticObject(value)",
                         "!interop.isNull(value)",
-                        "interop.hasHostObject(value)"
+                        "interop.isHostObject(value)"
         })
         StaticObject doForeignConverter(Object value,
                         @Bind Node node,
@@ -1855,7 +1855,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!isStaticObject(value)",
                         "!interop.isNull(value)",
-                        "interop.hasHostObject(value)"
+                        "interop.isHostObject(value)"
         })
         StaticObject doForeignInternalConverter(Object value,
                         @Bind Node node,

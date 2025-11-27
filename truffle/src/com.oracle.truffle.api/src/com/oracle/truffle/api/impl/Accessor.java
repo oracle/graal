@@ -509,7 +509,7 @@ public abstract class Accessor {
 
         public abstract boolean isHostException(Throwable exception);
 
-        public abstract Throwable asHostException(Throwable exception) throws Exception;
+        public abstract Throwable asHostException(Throwable exception);
 
         public abstract Object getCurrentHostContext();
 

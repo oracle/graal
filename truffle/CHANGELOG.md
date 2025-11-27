@@ -39,7 +39,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-70086 Deprecated `Message.resolve(Class<?>, String)`. Use `Message.resolveExact(Class<?>, String, Class<?>...)` with argument types instead. This deprecation was necessary as library messages are no longer unique by message name, if the previous message was deprecated.
 * GR-71299 Improved the responsiveness of the Truffle compilation queue by refining the computation of the execution rate of compilation units in the queue.
   * Added `engine.TraversingQueueRateHalfLife` to allow fine-tuning of the compilation queue responsiveness.
-* GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
 
 * GR-36894: Added `DynamicObject` nodes for dealing with `DynamicObject` properties and shapes, as a more lightweight replacement for `DynamicObjectLibrary`, including:
     * `DynamicObject.GetNode`: gets the value of a property or a default value if absent
@@ -63,6 +62,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71870 Truffle DSL no longer supports mixed exclusive and shared inlined caches. Sharing will now be disabled if mixing was used. To resolve the new warnings it is typically necessary to use either `@Exclusive` or `@Shared` for all caches.
 * GR-71887: Bytecode DSL: Added a `ClearLocal` operation for fast clearing of local values.
 * GR-71402: Added `InteropLibrary#hasHostObject` and `InteropLibrary#getHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
+* GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
 * GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
 
 

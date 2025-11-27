@@ -47,8 +47,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -183,9 +181,9 @@ final class ExceptionAccessor extends Accessor {
 
         private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost, Object polyglotEngine) {
             StackTraceElement[] hostStack = null;
-            if (ACCESSOR.engineSupport().isHostException(throwable)) {
-                Throwable original = unboxHostException(throwable);
-                hostStack = original.getStackTrace();
+            Throwable originalHostException;
+            if (ACCESSOR.engineSupport().isHostException(throwable) && (originalHostException = ACCESSOR.engineSupport().asHostException(throwable)) != null) {
+                hostStack = originalHostException.getStackTrace();
             } else if (throwable instanceof AbstractTruffleException) {
                 Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
                 if (lazyStackTrace != null) {
@@ -243,14 +241,6 @@ final class ExceptionAccessor extends Accessor {
                 elementsList.add(mergedElements.next());
             }
             return elementsList.toArray();
-        }
-
-        private static Throwable unboxHostException(Throwable throwable) {
-            try {
-                return ACCESSOR.engineSupport().asHostException(throwable);
-            } catch (Exception e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
         }
 
         private static int indexOfLastGuestToHostFrame(List<TruffleStackTraceElement> guestStack) {

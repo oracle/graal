@@ -1956,73 +1956,73 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
     }
 
     @Test
-    public void testHasHostObject() {
-        GetHostObjectTest hostObject = new GetHostObjectTest();
+    public void testIsHostObject() {
+        AsHostObjectTest hostObject = new AsHostObjectTest();
         InteropLibrary hostObjectLib = createLibrary(InteropLibrary.class, hostObject);
 
-        hostObject.hasHostObject = true;
+        hostObject.isHostObject = true;
         hostObject.hostObjectProvider = () -> {
             throw UnsupportedMessageException.create();
         };
-        assertFails(() -> hostObjectLib.hasHostObject(hostObject), AssertionError.class);
+        assertFails(() -> hostObjectLib.isHostObject(hostObject), AssertionError.class);
 
         hostObject.hostObjectProvider = () -> Pair.create(42, "42");
-        assertTrue(hostObjectLib.hasHostObject(hostObject));
+        assertTrue(hostObjectLib.isHostObject(hostObject));
 
         hostObject.hostObjectProvider = () -> {
             throw HeapIsolationException.create();
         };
-        assertTrue(hostObjectLib.hasHostObject(hostObject));
+        assertTrue(hostObjectLib.isHostObject(hostObject));
 
-        hostObject.hasHostObject = false;
+        hostObject.isHostObject = false;
         hostObject.hostObjectProvider = null;
-        assertFalse(hostObjectLib.hasHostObject(hostObject));
+        assertFalse(hostObjectLib.isHostObject(hostObject));
 
         hostObject.hostObjectProvider = () -> Pair.create(42, "42");
-        assertFails(() -> hostObjectLib.hasHostObject(hostObject), AssertionError.class);
+        assertFails(() -> hostObjectLib.isHostObject(hostObject), AssertionError.class);
 
         hostObject.hostObjectProvider = () -> {
             throw HeapIsolationException.create();
         };
-        assertFalse(hostObjectLib.hasHostObject(hostObject));
+        assertFalse(hostObjectLib.isHostObject(hostObject));
     }
 
     @Test
-    public void testGetHostObject() throws UnsupportedMessageException, HeapIsolationException {
-        GetHostObjectTest hostObject = new GetHostObjectTest();
+    public void testAsHostObject() throws UnsupportedMessageException, HeapIsolationException {
+        AsHostObjectTest hostObject = new AsHostObjectTest();
         InteropLibrary l = createLibrary(InteropLibrary.class, hostObject);
 
-        hostObject.hasHostObject = false;
+        hostObject.isHostObject = false;
         hostObject.hostObjectProvider = null;
-        assertFails(() -> l.getHostObject(hostObject), UnsupportedMessageException.class);
+        assertFails(() -> l.asHostObject(hostObject), UnsupportedMessageException.class);
 
-        hostObject.hasHostObject = true;
+        hostObject.isHostObject = true;
         Object value = new Object();
         hostObject.hostObjectProvider = () -> value;
-        assertSame(value, l.getHostObject(hostObject));
+        assertSame(value, l.asHostObject(hostObject));
 
-        hostObject.hasHostObject = true;
+        hostObject.isHostObject = true;
         hostObject.hostObjectProvider = null;
-        assertFails(() -> l.getHostObject(hostObject), AssertionError.class);
+        assertFails(() -> l.asHostObject(hostObject), AssertionError.class);
 
-        hostObject.hasHostObject = false;
+        hostObject.isHostObject = false;
         hostObject.hostObjectProvider = () -> value;
-        assertFails(() -> l.getHostObject(hostObject), AssertionError.class);
+        assertFails(() -> l.asHostObject(hostObject), AssertionError.class);
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static class GetHostObjectTest implements TruffleObject {
+    static class AsHostObjectTest implements TruffleObject {
 
-        boolean hasHostObject;
+        boolean isHostObject;
         HostObjectProvider hostObjectProvider;
 
         @ExportMessage
-        boolean hasHostObject() {
-            return hasHostObject;
+        boolean isHostObject() {
+            return isHostObject;
         }
 
         @ExportMessage
-        Object getHostObject() throws UnsupportedMessageException, HeapIsolationException {
+        Object asHostObject() throws UnsupportedMessageException, HeapIsolationException {
             if (hostObjectProvider != null) {
                 return hostObjectProvider.call();
             } else {

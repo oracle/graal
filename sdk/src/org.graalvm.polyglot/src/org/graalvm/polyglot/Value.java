@@ -1012,8 +1012,6 @@ public final class Value extends AbstractValue {
      * Returns {@code true} if this value provides a {@linkplain #getStaticReceiver() static
      * receiver}. A static receiver represents the static or class-level members associated with
      * this value's type, such as static fields or methods.
-     * <p>
-     * This method may only return {@code true} if {@link #hasMembers()} also returns {@code true}.
      *
      * @throws IllegalStateException if the context is already {@linkplain Context#close() closed}
      * @throws PolyglotException if a guest language error occurs during execution
@@ -1033,14 +1031,15 @@ public final class Value extends AbstractValue {
      * {@link #getMember(String)}, {@link #getMemberKeys()}, or
      * {@link #invokeMember(String, Object...)}.
      * <p>
-     * When this value {@linkplain #hasMembers() has members}, its static receiver is also expected
-     * to provide (static) members and/or declared members representing the value's static context.
+     * The returned static receiver is always expected to provide {@link #hasMembers() members},
+     * representing the receiver's static context.
      * <p>
      * <b>Examples:</b>
      * <ul>
      * <li>For a Java class instance, the static receiver exposes the class's static fields and
      * methods.</li>
-     * <li>For a Python object, the static receiver exposes class-level attributes and methods.</li>
+     * <li>For a Python object, the static receiver exposes class-level attributes and methods,
+     * effectively corresponding to the members provided by the Python metaobject.</li>
      * </ul>
      *
      * @throws UnsupportedOperationException if and only if this value does not

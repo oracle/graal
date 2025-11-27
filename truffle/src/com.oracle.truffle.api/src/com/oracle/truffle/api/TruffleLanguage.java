@@ -2238,8 +2238,8 @@ public abstract class TruffleLanguage<C> {
          * Truffle interop.
          *
          * @deprecated Use
-         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#hasHostObject(Object)
-         *             hosHostObject}.
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isHostObject(Object)
+         *             isHostObject}.
          * @see #asHostObject(Object)
          * @since 19.0
          */
@@ -2259,8 +2259,8 @@ public abstract class TruffleLanguage<C> {
          * {@link #isHostObject(Object) host object}.
          *
          * @deprecated Use
-         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
-         *             getHostObject}.
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#asHostObject(Object)
+         *             asHostObject}.
          * @since 19.0
          */
         @Deprecated(since = "25.1")
@@ -2400,8 +2400,8 @@ public abstract class TruffleLanguage<C> {
          * @see #isHostException(Throwable)
          * @since 19.0
          * @deprecated Use
-         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#getHostObject(Object)
-         *             getHostObject}.
+         *             {@linkplain com.oracle.truffle.api.interop.InteropLibrary#asHostObject(Object)
+         *             asHostObject}.
          */
         @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")

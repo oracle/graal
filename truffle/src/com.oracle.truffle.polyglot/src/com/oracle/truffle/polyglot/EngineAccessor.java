@@ -74,6 +74,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -628,7 +629,7 @@ final class EngineAccessor extends Accessor {
             }
             if (isPrimitive(guestObject)) {
                 return false;
-            } else if (InteropLibrary.getFactory().getUncached(guestObject).hasHostObject(guestObject) || context.engine.host.isHostProxy(guestObject) || guestObject instanceof PolyglotBindings) {
+            } else if (InteropLibrary.getFactory().getUncached(guestObject).isHostObject(guestObject) || context.engine.host.isHostProxy(guestObject) || guestObject instanceof PolyglotBindings) {
                 return true;
             }
             PolyglotLanguage language = findObjectLanguage(context.engine, guestObject);
@@ -1259,21 +1260,28 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        @TruffleBoundary
         public boolean isHostException(Throwable exception) {
             InteropLibrary interop = InteropLibrary.getUncached(exception);
-            return interop.hasHostObject(exception) && interop.isException(exception);
+            return interop.isHostObject(exception) && interop.isException(exception);
         }
 
         @Override
-        public Throwable asHostException(Throwable exception) throws Exception {
+        @TruffleBoundary
+        public Throwable asHostException(Throwable exception) {
             if (exception != null) {
                 InteropLibrary interop = InteropLibrary.getUncached(exception);
-                boolean isHostException = interop.hasHostObject(exception) && interop.isException(exception);
+                boolean isHostException = interop.isHostObject(exception) && interop.isException(exception);
                 if (isHostException) {
-                    return (Throwable) interop.getHostObject(exception);
+                    try {
+                        return (Throwable) interop.asHostObject(exception);
+                    } catch (HeapIsolationException e) {
+                        return null;
+                    } catch (UnsupportedMessageException e) {
+                        // Fall through to IllegalArgumentException
+                    }
                 }
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Provided value not a host exception.");
         }
 
@@ -1541,32 +1549,40 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object asHostObject(Object obj) throws Exception {
+        @TruffleBoundary
+        public Object asHostObject(Object obj) {
             InteropLibrary interop = InteropLibrary.getUncached(obj);
-            if (interop.hasHostObject(obj)) {
-                return interop.getHostObject(obj);
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException("Provided value not a host object.");
+            if (interop.isHostObject(obj)) {
+                try {
+                    return interop.asHostObject(obj);
+                } catch (HeapIsolationException e) {
+                    return null;
+                } catch (UnsupportedMessageException e) {
+                    // Fall through to IllegalArgumentException
+                }
             }
+            throw new IllegalArgumentException("Provided value not a host object.");
         }
 
         @Override
+        @TruffleBoundary
         public boolean isHostFunction(Object obj) {
             InteropLibrary interop = InteropLibrary.getUncached(obj);
-            return interop.hasHostObject(obj) && interop.isExecutable(obj) && !interop.hasMembers(obj);
+            return interop.isHostObject(obj) && interop.isExecutable(obj) && !interop.hasMembers(obj);
         }
 
         @Override
+        @TruffleBoundary
         public boolean isHostObject(Object obj) {
             InteropLibrary interop = InteropLibrary.getUncached(obj);
-            return interop.hasHostObject(obj);
+            return interop.isHostObject(obj);
         }
 
         @Override
+        @TruffleBoundary
         public boolean isHostSymbol(Object obj) {
             InteropLibrary interop = InteropLibrary.getUncached(obj);
-            return interop.hasHostObject(obj) && !interop.isNull(obj) && !interop.hasStaticReceiver(obj);
+            return interop.isHostObject(obj) && !interop.isNull(obj) && !interop.hasStaticReceiver(obj);
         }
 
         @Override
