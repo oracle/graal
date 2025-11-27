@@ -52,14 +52,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ENABLE_POLYBENCH_HPC: 'yes',
       POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
       POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
-    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name  == 'e3' ||  self.machine_name  == 'e4_36_256' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
+    } + if !std.objectHasAll(self, 'machine_name') then {} else if self.machine_name  == 'e3' ||  self.machine_name  == 'e4_8_64' then {LIBPFM_FORCE_PMU: 'amd64'} else if self.machine_name == 'x52' then {} else {},
   },
 
   vm_bench_polybenchmarks_base(env): {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: common.deps.svm + common.deps.truffleruby + common.deps.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
+  vm_bench_polybenchmarks_linux_build: common.deps.svm + common.deps.truffleruby + common.deps.graalpy + vm.custom_vm + vm.vm_java_Latest + self.polybench_hpc_linux_common(shape='e4_8_64') + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -125,7 +125,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
-  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.polybench_hpc_linux_common(shape='e4_36_256') + self.vm_bench_polybench_linux_common(env=env, fail_fast=false, skip_machine=true) + {
+  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.polybench_hpc_linux_common(shape='e4_8_64') + self.vm_bench_polybench_linux_common(env=env, fail_fast=false, skip_machine=true) + {
     machine_name_prefix:: "gate-",
     run+: [
       self.base_cmd + ['benchmark', 'polybench:'+benchmarks,
@@ -325,7 +325,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       notify_groups:: ['javascript'],
     },
 
-    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_bench_polybenchmarks_linux_common(is_gate=true, shape='e4_36_256')    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-' + utils.jdk_and_hardware(self)},
+    vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_bench_polybenchmarks_linux_common(is_gate=true, shape='e4_8_64')    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-' + utils.jdk_and_hardware(self)},
     vm_common.vm_base('linux', 'amd64', 'gate') + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-' + utils.jdk_and_hardware(self)},
   ],
 
