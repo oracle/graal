@@ -218,7 +218,16 @@ public final class HeapImpl extends Heap {
     public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
+<<<<<<< HEAD
         getChunkProvider().tearDown();
+=======
+        chunkProvider.tearDown();
+        gcImpl.tearDown();
+
+        if (Metaspace.isSupported()) {
+            MetaspaceImpl.singleton().tearDown();
+        }
+>>>>>>> 40b566ff15b (Remove the Java heap allocation in AbstractCollectionPolicy.updateSizeParameters().)
         return true;
     }
 
@@ -1093,7 +1102,7 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private long maxMemory() {
-        GCImpl.getPolicy().updateSizeParameters();
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
         return GCImpl.getPolicy().getMaximumHeapSize().rawValue();
     }
 

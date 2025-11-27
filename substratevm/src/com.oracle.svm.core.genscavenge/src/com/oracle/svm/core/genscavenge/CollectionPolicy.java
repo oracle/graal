@@ -226,4 +226,8 @@ public interface CollectionPolicy {
     default void onMaximumHeapSizeExceeded() {
         throw OutOfMemoryUtil.heapSizeExceeded();
     }
+
+    @Uninterruptible(reason = "Tear-down in progress.")
+    default void tearDown() {
+    }
 }

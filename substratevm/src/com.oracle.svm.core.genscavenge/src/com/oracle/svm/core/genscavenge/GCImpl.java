@@ -142,6 +142,11 @@ public final class GCImpl implements GC {
         RuntimeSupport.getRuntimeSupport().addShutdownHook(isFirstIsolate -> printGCSummary());
     }
 
+    @Uninterruptible(reason = "Tear-down in progress.")
+    public void tearDown() {
+        policy.tearDown();
+    }
+
     @Override
     public String getName() {
         if (SubstrateOptions.useEpsilonGC()) {
