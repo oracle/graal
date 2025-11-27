@@ -444,7 +444,7 @@ public class LoadImageSingletonFeature implements InternalFeature {
         for (var notInstalledSingleton : notInstalledSingletons) {
             if (heapScanner.hasImageHeapConstant(notInstalledSingleton)) {
                 ObjectInfo objectInfo = heap.getObjectInfo(notInstalledSingleton);
-                VMError.guarantee(objectInfo == null, "Singleton of %s annotated with %s cannot be installed in the image heap", notInstalledSingletons.getClass(), UNAVAILABLE_AT_RUNTIME);
+                VMError.guarantee(objectInfo == null, "Singleton of %s annotated with %s cannot be installed in the image heap", notInstalledSingleton.getClass(), UNAVAILABLE_AT_RUNTIME);
             }
         }
     }

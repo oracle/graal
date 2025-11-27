@@ -31,9 +31,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticallyRegisteredImageSingleton(JDKLibDirectoryProvider.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class HostJDKLibDirectoryProvider implements JDKLibDirectoryProvider {
     @Override
     public Path getJDKLibDirectory() {

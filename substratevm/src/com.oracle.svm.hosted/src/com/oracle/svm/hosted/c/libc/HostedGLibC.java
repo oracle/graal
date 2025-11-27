@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.hosted.c.libc;
 
-import com.oracle.svm.core.c.libc.GLibC;
-
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.c.libc.GLibC;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HostedGLibC extends GLibC implements HostedLibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {

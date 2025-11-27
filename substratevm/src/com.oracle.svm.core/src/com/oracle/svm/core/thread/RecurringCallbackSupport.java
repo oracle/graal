@@ -43,7 +43,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
 /**
@@ -74,7 +73,7 @@ public class RecurringCallbackSupport {
     private static final FastThreadLocalObject<RecurringCallbackTimer> timerTL = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class, "RecurringCallbackSupport.timer");
     private static final FastThreadLocalInt suspendedTL = FastThreadLocalFactory.createInt("RecurringCallbackSupport.suspended");
 
-    @Fold
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isEnabled() {
         return ConcealedOptions.SupportRecurringCallback.getValue() || JfrRecurringCallbackExecutionSampler.isPresent();
     }

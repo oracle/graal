@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 
@@ -43,7 +44,7 @@ public interface ThreadCpuTimeSupport {
      * @throws UnsupportedOperationException if OS specific implementation does not support given
      *             parameters.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getCurrentThreadCpuTime(boolean includeSystemTime);
 
     /**
@@ -53,10 +54,10 @@ public interface ThreadCpuTimeSupport {
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime);
 
-    @Fold
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static ThreadCpuTimeSupport getInstance() {
         return ImageSingletons.lookup(ThreadCpuTimeSupport.class);
     }

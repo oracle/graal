@@ -31,6 +31,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 /**
@@ -69,6 +72,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
  * </ol>
  * </p>
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class JNICallWrapperFeature implements Feature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {

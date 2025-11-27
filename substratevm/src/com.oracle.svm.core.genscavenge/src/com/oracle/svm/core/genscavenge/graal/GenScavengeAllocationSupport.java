@@ -28,6 +28,7 @@ import static com.oracle.svm.guest.staging.Uninterruptible.CALLED_FROM_UNINTERRU
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
@@ -41,9 +42,11 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.word.impl.Word;
 
 /**
  * This class contains the {@link SubstrateForeignCallTarget}s for the allocation slow path. These
@@ -51,6 +54,7 @@ import org.graalvm.word.impl.Word;
  * the young generation or that all their covered cards are marked as dirty. This allows the
  * compiler to safely eliminate GC write barriers for initializing writes, which reduces code size.
  */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "slowNewInstance", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(GenScavengeAllocationSupport.class, "slowNewArray", NO_SIDE_EFFECT);
