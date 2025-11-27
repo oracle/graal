@@ -30,9 +30,9 @@ import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.SnippetStub;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 /**
@@ -70,46 +70,46 @@ public class AMD64MathStub extends SnippetStub {
 
     @Snippet
     private static double log(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.LOG);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.LOG);
     }
 
     @Snippet
     private static double log10(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.LOG10);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.LOG10);
     }
 
     @Snippet
     private static double sin(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.SIN);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.SIN);
     }
 
     @Snippet
     private static double cos(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.COS);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.COS);
     }
 
     @Snippet
     private static double tan(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.TAN);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.TAN);
     }
 
     @Snippet
     private static double tanh(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.TANH);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.TANH);
     }
 
     @Snippet
     private static double exp(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.EXP);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.EXP);
     }
 
     @Snippet
     private static double pow(double value1, double value2) {
-        return BinaryMathIntrinsicNode.compute(value1, value2, BinaryOperation.POW);
+        return BinaryMathIntrinsicGenerationNode.compute(value1, value2, BinaryOperation.POW);
     }
 
     @Snippet
     private static double cbrt(double value) {
-        return UnaryMathIntrinsicNode.compute(value, UnaryOperation.CBRT);
+        return UnaryMathIntrinsicGenerationNode.compute(value, UnaryOperation.CBRT);
     }
 }
