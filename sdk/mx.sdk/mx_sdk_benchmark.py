@@ -431,6 +431,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
         if vm.native_architecture:
             base_image_build_args += ['-march=native']
+        if vm.crema:
+            base_image_build_args += ["-H:+RuntimeClassLoading", "-H:EnableURLProtocols=jar"]
         if vm.preserve_all:
             base_image_build_args += ['-H:Preserve=all']
         if vm.preserve_classpath:
@@ -868,6 +870,7 @@ class NativeImageVM(StageAwareGraalVm):
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
+        self.crema = False
         self.preserve_all = False
         self.preserve_classpath = False
         self.future_defaults_all = False
@@ -908,6 +911,8 @@ class NativeImageVM(StageAwareGraalVm):
         config = []
         if self.native_architecture is True:
             config += ["native-architecture"]
+        if self.crema is True:
+            config += ["crema"]
         if self.use_string_inlining is True:
             config += ["string-inlining"]
         if self.use_open_type_world is True:
@@ -998,7 +1003,7 @@ class NativeImageVM(StageAwareGraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<crema>crema-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
                r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
@@ -1014,6 +1019,10 @@ class NativeImageVM(StageAwareGraalVm):
         if matching.group("native_architecture") is not None:
             mx.logv(f"'native-architecture' is enabled for {config_name}")
             self.native_architecture = True
+
+        if matching.group("crema") is not None:
+            mx.logv(f"'crema' is enabled for {config_name}")
+            self.crema = True
 
         if matching.group("preserve_all") is not None:
             mx.logv(f"'preserve-all' is enabled for {config_name}")
@@ -2003,12 +2012,12 @@ def register_graalvm_vms():
     for short_name, config_suffix in [(None, ''), ('niee', '-ee'), ('ni', '-ce')]:
         if short_name is None or any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             config_names = list()
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity + (['g1gc', 'pgo', 'g1gc-pgo'] if config_suffix != '-ce' else []):
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'crema', 'future-defaults-all', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity + (['g1gc', 'pgo', 'g1gc-pgo'] if config_suffix != '-ce' else []):
                 config_names.append(f'{main_config}{config_suffix}')
 
             for optimization_level in optimization_levels:
                 config_names.append(f'{optimization_level}{config_suffix}')
-                for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
+                for main_config in ['llvm', 'native-architecture', 'crema', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
                     config_names.append(f'{main_config}-{optimization_level}{config_suffix}')
 
             for config_name in config_names:
