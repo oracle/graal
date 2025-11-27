@@ -26,12 +26,12 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /** A port of HotSpot's SerialGC size policy. */
 final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
@@ -50,7 +50,6 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     static final int MAX_TENURING_THRESHOLD = 15;
     static final int TARGET_SURVIVOR_RATIO = 50;
 
-    private int totalCollections;
     private boolean oldSizeExceededInPreviousCollection;
     private int shrinkFactor;
 
@@ -95,19 +94,17 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         UnsignedWord oldLive = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
-        oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
+        oldSizeExceededInPreviousCollection = oldLive.aboveThan(sizes.getOldSize());
 
         boolean resizeOldOnlyForPromotions = !completeCollection;
         computeNewOldGenSize(resizeOldOnlyForPromotions);
         computeNewYoungGenSize();
         adjustDesiredTenuringThreshold();
-
-        totalCollections++;
     }
 
     private void adjustDesiredTenuringThreshold() { // DefNewGeneration::adjust_desired_tenuring_threshold
         // Set the desired survivor size to half the real survivor space
-        UnsignedWord desiredSurvivorSize = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(survivorSize) * TARGET_SURVIVOR_RATIO / 100);
+        UnsignedWord desiredSurvivorSize = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(sizes.getSurvivorSize()) * TARGET_SURVIVOR_RATIO / 100);
 
         // AgeTable::compute_tenuring_threshold
         YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
@@ -126,10 +123,10 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     }
 
     private void computeNewOldGenSize(boolean resizeOnlyForPromotions) { // TenuredGeneration::compute_new_size_inner
-        UnsignedWord capacityAtPrologue = oldSize;
+        UnsignedWord capacityAtPrologue = sizes.getOldSize();
         UnsignedWord usedAfterGc = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
-        if (oldSize.belowThan(usedAfterGc)) {
-            oldSize = usedAfterGc;
+        if (sizes.getOldSize().belowThan(usedAfterGc)) {
+            sizes.setOldSize(usedAfterGc);
         }
         if (resizeOnlyForPromotions) {
             return;
@@ -142,24 +139,24 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         double maximumUsedPercentage = 1 - minimumFreePercentage;
 
         UnsignedWord minimumDesiredCapacity = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(usedAfterGc) / maximumUsedPercentage);
-        minimumDesiredCapacity = UnsignedUtils.max(minimumDesiredCapacity, sizes.initialOldSize());
+        minimumDesiredCapacity = UnsignedUtils.max(minimumDesiredCapacity, sizes.getInitialOldSize());
 
-        if (oldSize.belowThan(minimumDesiredCapacity)) {
-            oldSize = alignUp(minimumDesiredCapacity);
+        if (sizes.getOldSize().belowThan(minimumDesiredCapacity)) {
+            sizes.setOldSize(alignUp(minimumDesiredCapacity));
             return;
         }
 
-        UnsignedWord maxShrinkBytes = oldSize.subtract(minimumDesiredCapacity);
+        UnsignedWord maxShrinkBytes = sizes.getOldSize().subtract(minimumDesiredCapacity);
         UnsignedWord shrinkBytes = Word.zero();
         if (MAX_HEAP_FREE_RATIO < 100) {
             double maximumFreePercentage = MAX_HEAP_FREE_RATIO / 100.0;
             double minimumUsedPercentage = 1 - maximumFreePercentage;
             UnsignedWord maximumDesiredCapacity = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(usedAfterGc) / minimumUsedPercentage);
-            maximumDesiredCapacity = UnsignedUtils.max(maximumDesiredCapacity, sizes.initialOldSize());
+            maximumDesiredCapacity = UnsignedUtils.max(maximumDesiredCapacity, sizes.getInitialOldSize());
             assert minimumDesiredCapacity.belowOrEqual(maximumDesiredCapacity);
 
-            if (oldSize.aboveThan(maximumDesiredCapacity)) {
-                shrinkBytes = oldSize.subtract(maximumDesiredCapacity);
+            if (sizes.getOldSize().aboveThan(maximumDesiredCapacity)) {
+                shrinkBytes = sizes.getOldSize().subtract(maximumDesiredCapacity);
                 if (SHRINK_HEAP_IN_STEPS) {
                     /*
                      * We don't want to shrink all the way back to initSize if people call
@@ -180,39 +177,36 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
             }
         }
 
-        if (oldSize.aboveThan(capacityAtPrologue)) {
+        if (sizes.getOldSize().aboveThan(capacityAtPrologue)) {
             /*
              * We might have expanded for promotions, in which case we might want to take back that
              * expansion if there's room after GC. That keeps us from stretching the heap with
              * promotions when there's plenty of room.
              */
-            UnsignedWord expansionForPromotion = oldSize.subtract(capacityAtPrologue);
+            UnsignedWord expansionForPromotion = sizes.getOldSize().subtract(capacityAtPrologue);
             expansionForPromotion = UnsignedUtils.min(expansionForPromotion, maxShrinkBytes);
             shrinkBytes = UnsignedUtils.max(shrinkBytes, expansionForPromotion);
         }
 
         if (shrinkBytes.aboveThan(MIN_HEAP_FREE_RATIO)) {
-            oldSize = oldSize.subtract(shrinkBytes);
+            sizes.setOldSize(sizes.getOldSize().subtract(shrinkBytes));
         }
     }
 
     private void computeNewYoungGenSize() { // DefNewGeneration::compute_new_size
-        UnsignedWord desiredNewSize = oldSize.unsignedDivide(NEW_RATIO);
-        desiredNewSize = UnsignedUtils.clamp(desiredNewSize, sizes.initialYoungSize(), sizes.maxYoungSize);
+        UnsignedWord desiredNewSize = sizes.getOldSize().unsignedDivide(NEW_RATIO);
+        desiredNewSize = UnsignedUtils.clamp(desiredNewSize, sizes.getInitialYoungSize(), sizes.getMaxYoungSize());
 
         // DefNewGeneration::compute_space_boundaries, DefNewGeneration::compute_survivor_size
-        survivorSize = minSpaceSize(alignDown(desiredNewSize.unsignedDivide(SURVIVOR_RATIO)));
-        UnsignedWord desiredEdenSize = Word.zero();
-        if (desiredNewSize.aboveThan(survivorSize.multiply(2))) {
-            desiredEdenSize = desiredNewSize.subtract(survivorSize.multiply(2));
-        }
-        edenSize = minSpaceSize(alignDown(desiredEdenSize));
-        assert edenSize.aboveThan(0) && survivorSize.belowOrEqual(edenSize);
-    }
+        UnsignedWord newSurvivorSize = minSpaceSize(alignDown(desiredNewSize.unsignedDivide(SURVIVOR_RATIO)));
+        sizes.setSurvivorSize(newSurvivorSize);
 
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected long gcCount() {
-        return totalCollections;
+        UnsignedWord desiredEdenSize = Word.zero();
+        if (desiredNewSize.aboveThan(newSurvivorSize.multiply(2))) {
+            desiredEdenSize = desiredNewSize.subtract(newSurvivorSize.multiply(2));
+        }
+        UnsignedWord newEdenSize = minSpaceSize(alignDown(desiredEdenSize));
+        sizes.setEdenSize(newEdenSize);
+        assert newEdenSize.aboveThan(0) && newSurvivorSize.belowOrEqual(newEdenSize);
     }
 }

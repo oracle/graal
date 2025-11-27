@@ -50,20 +50,21 @@ class DynamicCollectionPolicy extends AdaptiveCollectionPolicy {
 
     @Override
     public boolean isOutOfMemory(UnsignedWord usedBytes) {
-        if (ImageSingletons.contains(DynamicHeapSizeManager.class)) {
-            return ImageSingletons.lookup(DynamicHeapSizeManager.class).outOfMemory(usedBytes);
+        boolean outOfMemory = super.isOutOfMemory(usedBytes);
+        if (ImageSingletons.contains(DynamicHeapSizeManager.class) && outOfMemory) {
+            outOfMemory = ImageSingletons.lookup(DynamicHeapSizeManager.class).outOfMemory(usedBytes);
+            if (!outOfMemory) {
+                /* No longer out-of-memory - update the heap size parameters to reflect that. */
+                GCImpl.getPolicy().updateSizeParameters();
+            }
         }
-
-        return super.isOutOfMemory(usedBytes);
+        return outOfMemory;
     }
 
     @Override
     public void onMaximumHeapSizeExceeded() {
         if (isOutOfMemory(HeapImpl.getAccounting().getUsedBytes())) {
             super.onMaximumHeapSizeExceeded();
-        } else {
-            /* No longer out-of-memory - update the heap size parameters to reflect that. */
-            GCImpl.getPolicy().updateSizeParameters();
         }
     }
 }

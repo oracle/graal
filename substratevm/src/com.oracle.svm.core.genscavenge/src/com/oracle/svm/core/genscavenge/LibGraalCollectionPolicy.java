@@ -91,7 +91,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
             edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
         }
         return edenUsedBytes.aboveOrEqual(Word.unsigned(Options.ExpectedEdenSize.getValue())) ||
-                        (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
+                        (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(sizes.getEdenSize()) >= Options.UsedEdenProportionThreshold.getValue());
     }
 
     @Override
@@ -142,17 +142,19 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     protected void computeEdenSpaceSize(boolean completeCollection, GCCause cause) {
         if (cause == GCCause.HintedGC) {
             if (completeCollection && lastGCCause == GCCause.HintedGC) {
-                UnsignedWord newEdenSize = UnsignedUtils.max(sizes.initialEdenSize, alignUp(edenSize.unsignedDivide(2)));
-                if (edenSize.aboveThan(newEdenSize)) {
-                    edenSize = newEdenSize;
+                UnsignedWord curEdenSize = sizes.getEdenSize();
+                UnsignedWord newEdenSize = UnsignedUtils.max(sizes.getInitialEdenSize(), alignUp(curEdenSize.unsignedDivide(2)));
+                if (curEdenSize.aboveThan(newEdenSize)) {
+                    sizes.setEdenSize(newEdenSize);
                 }
             }
         } else {
             UnsignedWord sizeAfter = GCImpl.getChunkBytes();
             if (sizeBefore.notEqual(0) && sizeBefore.belowThan(sizeAfter.multiply(2))) {
-                UnsignedWord newEdenSize = UnsignedUtils.min(getMaximumEdenSize(), alignUp(edenSize.multiply(2)));
-                if (edenSize.belowThan(newEdenSize)) {
-                    edenSize = newEdenSize;
+                UnsignedWord curEdenSize = sizes.getEdenSize();
+                UnsignedWord newEdenSize = UnsignedUtils.min(getMaximumEdenSize(), alignUp(curEdenSize.multiply(2)));
+                if (curEdenSize.belowThan(newEdenSize)) {
+                    sizes.setEdenSize(newEdenSize);
                 }
             } else {
                 super.computeEdenSpaceSize(completeCollection, cause);

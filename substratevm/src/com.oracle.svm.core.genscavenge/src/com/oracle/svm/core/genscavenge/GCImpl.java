@@ -151,6 +151,11 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Tear-down in progress.")
+    public void tearDown() {
+        policy.tearDown();
+    }
+
     @Override
     public String getName() {
         if (SubstrateOptions.useEpsilonGC()) {

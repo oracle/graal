@@ -212,7 +212,8 @@ public final class HeapImpl extends Heap {
     public boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
-        getChunkProvider().tearDown();
+        chunkProvider.tearDown();
+        gcImpl.tearDown();
 
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().tearDown();
@@ -1017,7 +1018,7 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private long maxMemory() {
-        GCImpl.getPolicy().updateSizeParameters();
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
         return GCImpl.getPolicy().getMaximumHeapSize().rawValue();
     }
 
