@@ -717,6 +717,7 @@ suite = {
     },
 
     "HOSTVMACCESS": {
+      "description" : "Implements the VMAccess interface with a classloader in the host VM.",
       "moduleInfo": {
         "name": "jdk.graal.compiler.hostvmaccess",
         "requires": [
@@ -754,7 +755,10 @@ suite = {
         "VMACCESS",
       ],
       "useModulePath": True,
-      "maven": False,
+      "noMavenJavadoc": True,
+        "maven": {
+          "tag": ["default", "public"],
+      },
       "graalCompilerSourceEdition": "ignore",
     },
 

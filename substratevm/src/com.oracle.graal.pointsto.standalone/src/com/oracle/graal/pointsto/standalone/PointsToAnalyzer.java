@@ -27,13 +27,13 @@
 package com.oracle.graal.pointsto.standalone;
 
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.graal.vmaccess.VMAccess;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -81,6 +82,7 @@ import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -229,23 +231,13 @@ public final class PointsToAnalyzer {
     }
 
     /**
-     * @see #createAnalyzer(String[], ClassLoaderAccess)
-     */
-    public static PointsToAnalyzer createAnalyzer(String[] args) {
-        return createAnalyzer(args, null);
-    }
-
-    /**
      * Create a PointsToAnalyzer instance with given arguments. The arguments should specify one
      * analysis entry class, and additional analysis options in Substrate VM's hosted option style.
      *
      * @param args entry class name and additional analysis options
-     * @param cla for loading the analyzed classes. If null, they will be loaded by a new
-     *            classloader based on -H:AnalysisTargetAppCP
      * @return PointsToAnalyzer instance
      */
-    public static PointsToAnalyzer createAnalyzer(String[] args, ClassLoaderAccess cla) {
-        ClassLoaderAccess classLoaderAccess = cla;
+    public static PointsToAnalyzer createAnalyzer(String[] args) {
         String mainEntryClass = null;
         List<String> optionArgs = new ArrayList<>();
         for (String arg : args) {
@@ -256,65 +248,56 @@ public final class PointsToAnalyzer {
             }
         }
         OptionValues options = PointsToOptionParser.getInstance().parse(optionArgs.toArray(new String[0]));
-        if (classLoaderAccess == null) {
-            String appCP = StandaloneOptions.AnalysisTargetAppCP.getValue(options);
-            if (appCP == null) {
-                AnalysisError.shouldNotReachHere("Must specify analysis target application's classpath with -H:" + StandaloneOptions.AnalysisTargetAppCP.getName());
-            }
-            List<URL> urls = new ArrayList<>();
-            for (String cp : appCP.split(File.pathSeparator)) {
-                try {
-                    File file = new File(cp);
-                    if (file.exists()) {
-                        urls.add(file.toURI().toURL());
-                    }
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
-            }
+        String classpath = StandaloneOptions.AnalysisTargetAppCP.getValue(options);
+        AnalysisError.guarantee(classpath != null, "Must specify analysis target application's classpath with -H:%s", StandaloneOptions.AnalysisTargetAppCP.getName());
+        VMAccess vmAccess = getVmAccess(classpath);
+        return new PointsToAnalyzer(mainEntryClass, options, new ClassLoaderAccess(vmAccess));
+    }
 
-            ClassLoader analysisClassLoader = new URLClassLoader(urls.toArray(new URL[0]), ClassLoader.getPlatformClassLoader());
-            classLoaderAccess = new HostClassLoaderAccess(analysisClassLoader);
+    private static VMAccess getVmAccess(String classpath) {
+        VMAccess.Builder builder = getVmAccessBuilder();
+        builder.classPath(Arrays.asList(classpath.split(File.pathSeparator)));
+        return builder.build();
+    }
+
+    private static VMAccess.Builder getVmAccessBuilder() {
+        String requestedAccessName = GraalServices.getSavedProperty("com.oracle.graal.pointsto.standalone.vmaccessname", "host");
+        ServiceLoader<VMAccess.Builder> loader = ServiceLoader.load(VMAccess.Builder.class);
+        VMAccess.Builder selected = null;
+        for (VMAccess.Builder builder : loader) {
+            if (requestedAccessName.equals(builder.getVMAccessName())) {
+                selected = builder;
+                break;
+            }
         }
-
-        return new PointsToAnalyzer(mainEntryClass, options, classLoaderAccess);
+        if (selected == null) {
+            AnalysisError.shouldNotReachHere("No VMAccess.Builder service found with name " +
+                            requestedAccessName + ". Found: " +
+                            loader.stream().map(p -> p.get().getVMAccessName()).collect(Collectors.joining(", ")));
+        }
+        return selected;
     }
 
     /**
      * Encapsulates the access to class loaders to decouple the standalone analysis from hotspot.
      */
-    public abstract static class ClassLoaderAccess {
-        public abstract ResolvedJavaType forName(String name);
+    public static class ClassLoaderAccess {
+        private final VMAccess vmAccess;
 
-        public abstract boolean isClassAllowed(AnalysisType type);
-    }
-
-    public static final class HostClassLoaderAccess extends ClassLoaderAccess {
-        private final ClassLoader classLoader;
-
-        public HostClassLoaderAccess(ClassLoader classLoader) {
-            this.classLoader = classLoader;
+        public ClassLoaderAccess(VMAccess vmAccess) {
+            this.vmAccess = vmAccess;
         }
 
-        @Override
         public ResolvedJavaType forName(String name) {
-            try {
-                Class<?> clazz = Class.forName(name, false, classLoader);
-                return GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
-            } catch (ClassNotFoundException e) {
-                return null;
-            }
+            return vmAccess.lookupAppClassLoaderType(name);
         }
 
-        /**
-         * We only allow scanning analysis target classes which are loaded by
-         * platformClassloader(e.g. the JDK classes) or the classloader dedicated for analysis
-         * targets.
-         */
-        @Override
         public boolean isClassAllowed(AnalysisType type) {
-            ClassLoader typeCla = type.getJavaClass().getClassLoader();
-            return ClassLoader.getPlatformClassLoader().equals(typeCla) || this.classLoader.equals(typeCla);
+            /*
+             * GR-70770 - Analysis of classes loaded by the boot class loader should eventually be
+             * supported as well.
+             */
+            return vmAccess.lookupBootClassLoaderType(type.toJavaName()) == null;
         }
     }
 
