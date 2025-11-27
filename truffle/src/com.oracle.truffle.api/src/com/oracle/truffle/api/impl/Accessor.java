@@ -1444,6 +1444,35 @@ public abstract class Accessor {
 
         public abstract Thread currentCarrierThread();
 
+        /**
+         * Executes the given {@code action} while the current virtual thread is pinned to its
+         * carrier thread.
+         * <p>
+         * Pinning a virtual thread prevents the scheduler from mounting it on a different carrier
+         * thread for the duration of the {@code action}. This ensures that the carrier thread
+         * remains stable for operations that require thread local affinity or depend on native
+         * thread identity.
+         * <p>
+         * If the current thread is not a virtual thread, then no pinning is performed and the
+         * {@code action} is executed normally. In this case the call behaves as a simple
+         * {@code action.get()} invocation without any interaction with the virtual-thread
+         * scheduler.
+         * <p>
+         * Pinning is performed by the native method {@link #runPinned0(Supplier)}, which enters a
+         * region where the virtual-thread scheduler is prevented from unmounting the current
+         * virtual thread from its carrier thread. The virtual thread remains mounted on the same
+         * carrier for the duration of the call, and is unpinned when the native method returns.
+         */
+        public final <T> T runInPinnedVirtualThread(Supplier<T> action) {
+            if (JDKAccessor.isVirtualThread(Thread.currentThread())) {
+                return runPinned0(action);
+            } else {
+                return action.get();
+            }
+        }
+
+        private static native <T> T runPinned0(Supplier<T> action);
+
         private static native void registerJVMTIHook();
 
         /** Called from a JVMTI VirtualThreadMount hook. */
