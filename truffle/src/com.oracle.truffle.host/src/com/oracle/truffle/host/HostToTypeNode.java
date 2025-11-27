@@ -322,7 +322,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (value instanceof TruffleObject) {
-            if (priority < HOST_PROXY && interop.hasHostObject(value)) {
+            if (priority < HOST_PROXY && interop.isHostObject(value)) {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
@@ -432,8 +432,8 @@ abstract class HostToTypeNode extends Node {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
-        Object hostObject;
-        if ((hostObject = toJavaInstance(value, targetType, interop)) != null) {
+        Object hostObject = toJavaInstance(value, targetType, interop);
+        if (hostObject != null) {
             obj = hostObject;
         } else if (targetType == Object.class) {
             obj = convertToObject(node, hostContext, value, interop);
@@ -658,9 +658,9 @@ abstract class HostToTypeNode extends Node {
     }
 
     private static Object toJavaInstance(Object value, Class<?> targetType, InteropLibrary interop) {
-        if (interop.hasHostObject(value)) {
+        if (interop.isHostObject(value)) {
             try {
-                Object hostObject = interop.getHostObject(value);
+                Object hostObject = interop.asHostObject(value);
                 if (hostObject != null && targetType.isInstance(hostObject)) {
                     return hostObject;
                 }

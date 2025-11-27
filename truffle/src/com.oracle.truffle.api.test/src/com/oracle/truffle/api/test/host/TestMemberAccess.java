@@ -430,7 +430,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
     public void testOverloadedConstructor3() throws InteropException {
         TruffleObject clazz = asTruffleHostSymbol(TestConstructorException.class);
         Object testObj = INTEROP.instantiate(clazz, "test", 42);
-        assertTrue(testObj instanceof TruffleObject && INTEROP.getHostObject(testObj) instanceof TestConstructorException);
+        assertTrue(testObj instanceof TruffleObject && INTEROP.asHostObject(testObj) instanceof TestConstructorException);
         assertThrowsExceptionWithCause(() -> INTEROP.instantiate(clazz, "test"), IOException.class);
     }
 

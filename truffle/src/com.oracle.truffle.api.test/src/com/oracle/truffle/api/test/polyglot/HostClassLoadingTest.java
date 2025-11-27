@@ -471,7 +471,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Path jar = createJar(tempDir);
         languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
         Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-        Class<?> clz = (Class<?>) INTEROP.getHostObject(newSymbol);
+        Class<?> clz = (Class<?>) INTEROP.asHostObject(newSymbol);
         ProtectionDomain protectionDomain = clz.getProtectionDomain();
         assertNotNull(protectionDomain);
         CodeSource codeSource = protectionDomain.getCodeSource();
@@ -488,7 +488,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
         Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
-        Class<?> clz = (Class<?>) INTEROP.getHostObject(newSymbol);
+        Class<?> clz = (Class<?>) INTEROP.asHostObject(newSymbol);
         ProtectionDomain protectionDomain = clz.getProtectionDomain();
         assertNotNull(protectionDomain);
         CodeSource codeSource = protectionDomain.getCodeSource();

@@ -145,7 +145,7 @@ final class HostEntryPoint {
         return guestToHost(api.getValueReceiver(v));
     }
 
-    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) {
+    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) throws InteropException {
         Context c = unmarshall(Context.class, contextId);
         c.enter();
         try {
@@ -156,7 +156,7 @@ final class HostEntryPoint {
             try {
                 result = lib.send(receiver, message, localValues);
             } catch (InteropException e) {
-                throw sneakyThrow(e);
+                throw e;
             } catch (AbstractTruffleException e) {
                 // also send over stack traces and messages
                 return new GuestExceptionPointer(guestToHost(e), e.getMessage());
@@ -167,11 +167,6 @@ final class HostEntryPoint {
         } finally {
             c.leave();
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
-        throw (T) ex;
     }
 
     static class GuestExceptionPointer {

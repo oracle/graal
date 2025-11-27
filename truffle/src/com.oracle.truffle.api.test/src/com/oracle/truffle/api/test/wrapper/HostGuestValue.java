@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.wrapper;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -81,7 +82,7 @@ class HostGuestValue implements TruffleObject {
         }
     }
 
-    static Object sendImpl(HostEntryPoint hostToGuest, long contextId, long guestId, Message message, Object... args) throws AbstractTruffleException {
+    static Object sendImpl(HostEntryPoint hostToGuest, long contextId, long guestId, Message message, Object... args) throws InteropException, AbstractTruffleException {
         Object[] marshalledArgs = marshalToRemote(hostToGuest, args);
         Object result = hostToGuest.remoteMessage(contextId, guestId, message, marshalledArgs);
         return unmarshallAtHost(hostToGuest, contextId, result);

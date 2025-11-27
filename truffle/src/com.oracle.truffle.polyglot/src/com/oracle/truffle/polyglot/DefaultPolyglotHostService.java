@@ -83,7 +83,7 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
 
     private static boolean isHostException(Throwable throwable) {
         InteropLibrary interop = InteropLibrary.getUncached(throwable);
-        return interop.hasHostObject(throwable) && interop.isException(throwable);
+        return interop.isHostObject(throwable) && interop.isException(throwable);
     }
 
     @Override

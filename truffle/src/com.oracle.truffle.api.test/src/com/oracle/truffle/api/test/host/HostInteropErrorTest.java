@@ -210,10 +210,10 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         Object foo = INTEROP.readMember(hostObj, "cce");
 
         AbstractPolyglotTest.assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), RuntimeException.class, (e) -> {
-            assertTrue(INTEROP.hasHostObject(e) && INTEROP.isException(e));
+            assertTrue(INTEROP.isHostObject(e) && INTEROP.isException(e));
         });
         AbstractPolyglotTest.assertFails(() -> INTEROP.execute(foo, 42), RuntimeException.class, (e) -> {
-            assertTrue(INTEROP.hasHostObject(e) && INTEROP.isException(e));
+            assertTrue(INTEROP.isHostObject(e) && INTEROP.isException(e));
         });
     }
 

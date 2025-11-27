@@ -168,8 +168,8 @@ public class PolyglotBuiltinTest extends InteropTestBase {
         Object ret = testHostInterop.call();
 
         InteropLibrary interop = InteropLibrary.getUncached(ret);
-        Assert.assertTrue("hasHostObject", interop.hasHostObject(ret));
-        Assert.assertSame("ret", BigInteger.class, interop.getHostObject(ret));
+        Assert.assertTrue("isHostObject", interop.isHostObject(ret));
+        Assert.assertSame("ret", BigInteger.class, interop.asHostObject(ret));
     }
 
     public static class TestEvalNoLang extends SulongTestNode {

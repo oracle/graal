@@ -591,12 +591,12 @@ final class PolyglotExceptionImpl {
 
     private static boolean isHostException(Throwable cause) {
         InteropLibrary interop = InteropLibrary.getUncached(cause);
-        return interop.hasHostObject(cause) && interop.isException(cause);
+        return interop.isHostObject(cause) && interop.isException(cause);
     }
 
     private static Throwable unboxHostException(Throwable cause) {
         try {
-            return (Throwable) InteropLibrary.getUncached(cause).getHostObject(cause);
+            return (Throwable) InteropLibrary.getUncached(cause).asHostObject(cause);
         } catch (Exception e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
