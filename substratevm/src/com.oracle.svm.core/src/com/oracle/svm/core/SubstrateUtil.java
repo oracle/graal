@@ -139,7 +139,7 @@ public class SubstrateUtil {
      * branches. It always indicates that the whole containing method is run-time only.
      */
     @AlwaysInline("Should be eliminated")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void guaranteeRuntimeOnly() {
         if (HOSTED) {
             throw VMError.shouldNotReachHere("Should only be called at run time");
