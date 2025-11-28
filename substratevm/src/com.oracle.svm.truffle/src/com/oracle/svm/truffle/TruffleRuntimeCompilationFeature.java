@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class TruffleRuntimeCompilationFeature extends RuntimeCompilationFeature {
 
-    private TruffleRuntimeCompilationFeature() {
+    public TruffleRuntimeCompilationFeature() {
         // in order to pass all runtime compilation available checks
         ImageSingletons.add(RuntimeCompilationFeature.class, this);
     }
