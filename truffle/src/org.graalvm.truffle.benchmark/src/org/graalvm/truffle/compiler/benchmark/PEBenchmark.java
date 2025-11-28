@@ -92,6 +92,7 @@ public class PEBenchmark extends AbstractBytecodeBenchmark {
         Context.Builder builder = Context.newBuilder("bm").allowExperimentalOptions(true);
         builder.option("engine.BackgroundCompilation", Boolean.FALSE.toString());
         builder.option("engine.MaximumCompilations", "-1"); // no limit
+        builder.option("engine.CompilationFailureAction", "ExitVM");
         context = builder.build();
         context.enter();
 
