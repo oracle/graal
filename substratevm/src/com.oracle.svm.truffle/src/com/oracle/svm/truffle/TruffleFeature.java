@@ -316,7 +316,7 @@ public class TruffleFeature implements InternalFeature {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
 
-        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(TruffleRuntimeCompilationFeature.singleton().getObjectReplacer());
+        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -384,7 +384,7 @@ public class TruffleFeature implements InternalFeature {
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true,
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
-        RuntimeCompilationFeature runtimeCompilationFeature = TruffleRuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -866,7 +866,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private void checkBlockList(CallTreeInfo treeInfo) {
-        RuntimeCompilationFeature runtimeCompilation = TruffleRuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();
         boolean failBlockListViolations;
         if (Options.TruffleCheckBlackListedMethods.hasBeenSet()) {
             failBlockListViolations = Options.TruffleCheckBlackListedMethods.getValue();
@@ -1015,7 +1015,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        CallTreeInfo treeInfo = TruffleRuntimeCompilationFeature.singleton().getCallTreeInfo();
+        CallTreeInfo treeInfo = RuntimeCompilationFeature.singleton().getCallTreeInfo();
 
         checkBlockList(treeInfo);
 

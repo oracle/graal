@@ -53,7 +53,6 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
@@ -139,7 +138,7 @@ public class RuntimeCompiledMethodSupport {
 
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
-        GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
+        GraphEncoder graphEncoder = RuntimeCompilationFeature.singleton().createGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
         HostedProviders runtimeCompilationProviders = hostedProviders //
                         .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))) //
                         .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
@@ -220,7 +219,7 @@ public class RuntimeCompiledMethodSupport {
 
             AnalysisMethod aMethod = method.getWrapped();
             StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
-                            (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
+                            (arch, analyzedGraph) -> RuntimeCompilationFeature.singleton().createDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
             }
@@ -318,7 +317,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         HeapBreakdownProvider.singleton().setGraphEncodingByteLength(compilationState.graphEncoder.getEncoding().length);
-        RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
+        com.oracle.svm.graal.RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
                         compilationState.graphEncoder.getNodeClasses());
 
         compilationState.objectReplacer.setMethodsImplementations(hUniverse);
@@ -374,7 +373,7 @@ public class RuntimeCompiledMethodSupport {
      * SubstrateReplacements#snippetObjects which are then scanned.
      */
     @SuppressWarnings("javadoc")
-    public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+    public abstract static class RuntimeCompilationGraphEncoder extends GraphEncoder {
         public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
         protected final ImageHeapScanner heapScanner;
@@ -386,7 +385,7 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
-            return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
+            return RuntimeCompilationFeature.singleton().createDecoder(architecture, decodedGraph, heapScanner);
         }
 
         @Override
@@ -398,11 +397,11 @@ public class RuntimeCompiledMethodSupport {
         }
     }
 
-    static class RuntimeCompilationGraphDecoder extends GraphDecoder {
+    public static abstract class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
-        private final ImageHeapScanner heapScanner;
+        protected final ImageHeapScanner heapScanner;
 
-        RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        public RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
             super(architecture, graph);
             this.heapScanner = heapScanner;
         }
@@ -417,14 +416,14 @@ public class RuntimeCompiledMethodSupport {
         }
     }
 
-    public static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
+    static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
 
         private RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, SVMHost hostVM) {
             super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, hostVM);
         }
 
-        public static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
+        static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
 
             // Adjust graphbuilderconfig to match analysis phase

@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -170,7 +171,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * image. Data that is prepared during image generation and used at run time is stored in
  * {@link RuntimeCompilationSupport}.
  */
-public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCallbacks {
+public abstract class RuntimeCompilationFeature implements Feature, RuntimeCompilationCallbacks {
 
     public static class Options {
         @Option(help = "Print methods available for runtime compilation")//
@@ -454,7 +455,7 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true,
-                        createGraphEncoder(config));
+                        createGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner()));
 
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, false);
@@ -462,15 +463,8 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
         Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
 
-        InvocationPlugins runtimeInvocationPlugins = createRuntimeInvocationPlugins(hostedProviders.getGraphBuilderPlugins().getInvocationPlugins(), ConfigurationValues.getTarget().arch);
-        RuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites, runtimeInvocationPlugins);
-    }
-
-    /**
-     * Create the graph encoder for the runtime compilation.
-     */
-    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder createGraphEncoder(BeforeAnalysisAccessImpl config) {
-        return new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
+        RuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites,
+                        createRuntimeInvocationPlugins(hostedProviders.getGraphBuilderPlugins().getInvocationPlugins(), ConfigurationValues.getTarget().arch));
     }
 
     private static InvocationPlugins createRuntimeInvocationPlugins(InvocationPlugins hostedInvocationPlugins, Architecture arch) {
@@ -501,7 +495,7 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
 
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        graphEncoder = createGraphEncoder(config);
+        graphEncoder = createGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
 
         /*
          * Ensure all snippet types are registered as used.
@@ -691,6 +685,21 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
         }
     }
 
+    protected Phase getDeoptOnExceptionPhase() {
+        // default implementation empty
+        return null;
+    }
+
+    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
+        // override in concrete subtype feature
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        // override in concrete subtype feature
+        throw VMError.intentionallyUnimplemented();
+    }
+
     private void printFailingRuntimeMethodTrace(CallTreeInfo treeInfo, AnalysisMethod failingRuntimeMethod, AnalysisMethod errorMethod) {
         System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
         System.out.println("Method reachability trace");
@@ -772,7 +781,6 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
                             deoptOnExceptionPhase.apply(graph);
                         }
                     }
-
                     /*
                      * ConvertDeoptimizeToGuardPhase reduces the number of merges in the graph, so
                      * that fewer frame states will be created. This significantly reduces the
@@ -923,11 +931,6 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
             }
             return null;
         }
-    }
-
-    protected Phase getDeoptOnExceptionPhase() {
-        // default implementation empty
-        return null;
     }
 
     /**
