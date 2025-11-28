@@ -37,6 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.api.runtime.GraalRuntime;

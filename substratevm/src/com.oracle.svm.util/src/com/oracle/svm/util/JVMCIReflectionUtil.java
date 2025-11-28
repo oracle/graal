@@ -33,6 +33,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
+import com.oracle.graal.vmaccess.ResolvedJavaPackage;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -357,4 +361,12 @@ public final class JVMCIReflectionUtil {
     public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
         return JVMCIReflectionUtilFallback.bootLoaderPackages();
     }
+
+    /**
+     * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
+     */
+    public static ResolvedJavaModuleLayer bootModuleLayer() {
+        return JVMCIReflectionUtilFallback.bootModuleLayer();
+    }
+
 }

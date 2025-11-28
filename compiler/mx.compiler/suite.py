@@ -333,6 +333,7 @@ suite = {
       "requiresConcealed": {
         "jdk.internal.vm.ci": [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.code",
         ],
         "java.base": [
@@ -342,6 +343,9 @@ suite = {
       "javaCompliance": "21+",
       "checkstyle" : "jdk.graal.compiler",
       "graalCompilerSourceEdition": "ignore",
+      # Direct reference to jdk.vm.ci.meta.annotation.Annotated
+      # causes spotbugs analysis to fail with "missing class" error.
+      "spotbugs": "false",
     },
 
     "com.oracle.graal.hostvmaccess": {
@@ -686,6 +690,7 @@ suite = {
     },
 
     "VMACCESS": {
+      "description" : "Provides access to VM abstractions.",
       "moduleInfo": {
         "name": "jdk.graal.compiler.vmaccess",
         "requires": [
@@ -698,6 +703,7 @@ suite = {
         "requiresConcealed": {
           "jdk.internal.vm.ci": [
             "jdk.vm.ci.meta",
+            "jdk.vm.ci.meta.annotation",
             "jdk.vm.ci.code",
           ],
           "jdk.graal.compiler": [
@@ -716,7 +722,10 @@ suite = {
         "GRAAL",
       ],
       "useModulePath": True,
-      "maven": False,
+      "noMavenJavadoc": True,
+      "maven": {
+        "tag": ["default", "public"],
+      },
       "graalCompilerSourceEdition": "ignore",
     },
 

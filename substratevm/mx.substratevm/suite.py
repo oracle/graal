@@ -226,6 +226,7 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
                 "compiler:GRAAL",
+                "compiler:VMACCESS",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -2341,6 +2342,7 @@ suite = {
             ],
             "distDependencies": [
                 "compiler:GRAAL",
+                "compiler:VMACCESS",
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
             ],

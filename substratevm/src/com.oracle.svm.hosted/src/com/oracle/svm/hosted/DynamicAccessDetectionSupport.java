@@ -52,8 +52,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.loader.BuiltinClassLoader;
@@ -100,7 +100,7 @@ public class DynamicAccessDetectionSupport {
 
     public DynamicAccessDetectionSupport(AnalysisMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
-        boolean jdkUnsupportedModulePresent = ResolvedJavaModuleLayer.boot().findModule("jdk.unsupported").isPresent();
+        boolean jdkUnsupportedModulePresent = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.unsupported").isPresent();
 
         put(reflectionMethods, Class.class, Set.of(
                         new MethodSignature("forName", String.class),
