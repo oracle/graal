@@ -181,13 +181,6 @@ public class RistrettoCompilationManager {
             m.submittedRequests.set(0);
             m.startedRequests.set(0);
             m.finishedRequests.set(0);
-            if (!UNINSTALL_TASKS.isEmpty()) {
-                Log.log().string("Uninstalling ").signed(UNINSTALL_TASKS.size()).string(" tasks").newline();
-                for (Runnable task : UNINSTALL_TASKS) {
-                    task.run();
-                }
-                UNINSTALL_TASKS.clear();
-            }
         }
 
         /**
@@ -218,12 +211,6 @@ public class RistrettoCompilationManager {
                             "[Ristretto Compile Queue]Done draining compile queue, submitted=%s, started=%s, finished=%s%n",
                             m.submittedRequests.get(), m.startedRequests.get(), m.finishedRequests.get());
 
-        }
-
-        public static final List<Runnable> UNINSTALL_TASKS = Collections.synchronizedList(new ArrayList<>());
-
-        public static synchronized void recordUninstallTask(Runnable task) {
-            UNINSTALL_TASKS.add(task);
         }
 
         /**
