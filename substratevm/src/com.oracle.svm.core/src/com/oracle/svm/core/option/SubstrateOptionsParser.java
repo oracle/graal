@@ -31,15 +31,14 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
-import com.oracle.svm.common.option.IntentionallyUnsupportedOptions;
 import com.oracle.svm.common.option.UnsupportedOptionClassException;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -56,7 +55,7 @@ public class SubstrateOptionsParser {
     public static final String HOSTED_OPTION_PREFIX = CommonOptionParser.HOSTED_OPTION_PREFIX;
     public static final String RUNTIME_OPTION_PREFIX = CommonOptionParser.RUNTIME_OPTION_PREFIX;
 
-    static OptionParseResult parseOption(EconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
+    static OptionParseResult parseOption(UnmodifiableEconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
                     String optionPrefix, BooleanOptionFormat booleanOptionFormat) {
         try {
             return CommonOptionParser.parseOption(options, isHosted, option, valuesMap, optionPrefix, booleanOptionFormat);
@@ -75,21 +74,15 @@ public class SubstrateOptionsParser {
      * @param booleanOptionFormat help expected for boolean options
      * @param arg the argument currently processed
      */
-    public static OptionParseResult parseHostedOption(String optionPrefix, EconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
+    public static OptionParseResult parseHostedOption(String optionPrefix, UnmodifiableEconomicMap<String, OptionDescriptor> options, EconomicMap<OptionKey<?>, Object> valuesMap,
                     BooleanOptionFormat booleanOptionFormat, String arg) {
         Predicate<OptionKey<?>> isHosted = optionKey -> optionKey instanceof HostedOptionKey;
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
-        if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
-            SubstrateOptionsParser.printFlags(d -> {
-                OptionKey<?> key = d.getOptionKey();
-                return !IntentionallyUnsupportedOptions.contains(key) &&
-                                optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
-            }, options, optionPrefix, System.out, optionParseResult.printFlagsWithExtraHelp());
-            throw new InterruptImageBuilding("");
-        }
         if (!optionParseResult.isValid()) {
             return optionParseResult;
         }
+
+        assert !optionParseResult.printFlags() && !optionParseResult.printFlagsWithExtraHelp();
 
         // Print a warning if the option is deprecated.
         OptionKey<?> option = optionParseResult.getOptionKey();
@@ -129,7 +122,7 @@ public class SubstrateOptionsParser {
      * Since this method is not performance critical and it is only rarely called the tradeoff
      * between space and execution efficiency is acceptable.
      */
-    static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
+    public static void printFlags(Predicate<OptionDescriptor> filter, UnmodifiableEconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
         CommonOptionParser.printFlags(filter, options, prefix, out, verbose);
     }
 

@@ -35,9 +35,11 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.common.option.IntentionallyUnsupportedOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -51,16 +53,28 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsContainer;
 
 public class HostedOptionParser implements HostedOptionProvider {
-
     private final List<String> arguments;
     private final EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
     private final EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
-    private final EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
-    private final EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
+    private final UnmodifiableEconomicMap<String, OptionDescriptor> allOptions;
+    private final UnmodifiableEconomicMap<String, OptionDescriptor> allHostedOptions;
+    private final UnmodifiableEconomicMap<String, OptionDescriptor> allRuntimeOptions;
 
+    @SuppressWarnings("hiding")
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
-        this.arguments = Collections.unmodifiableList(arguments);
+        /* Collect options. */
+        EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
+        EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
         collectOptions(OptionsContainer.getDiscoverableOptions(imageClassLoader), allHostedOptions, allRuntimeOptions);
+
+        EconomicMap<String, OptionDescriptor> allOptions = EconomicMap.create(allHostedOptions);
+        allOptions.putAll(allRuntimeOptions);
+
+        /* Write fields. */
+        this.arguments = Collections.unmodifiableList(arguments);
+        this.allOptions = allOptions;
+        this.allHostedOptions = allHostedOptions;
+        this.allRuntimeOptions = allRuntimeOptions;
     }
 
     public static void collectOptions(Iterable<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,
@@ -94,7 +108,7 @@ public class HostedOptionParser implements HostedOptionProvider {
         InterruptImageBuilding interrupt = null;
         for (String arg : arguments) {
             try {
-                CommonOptionParser.OptionParseResult parseResult = tryParseHostedOption(arg);
+                OptionParseResult parseResult = tryParseHostedOption(arg);
                 if (parseResult == null) {
                     remainingArgs.add(arg);
                 } else if (!parseResult.isValid()) {
@@ -125,30 +139,48 @@ public class HostedOptionParser implements HostedOptionProvider {
         return remainingArgs;
     }
 
-    private CommonOptionParser.OptionParseResult tryParseHostedOption(String arg) {
+    private OptionParseResult tryParseHostedOption(String arg) {
         if (arg.startsWith(SubstrateOptionsParser.HOSTED_OPTION_PREFIX)) {
-            CommonOptionParser.OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, arg);
-            if (result.optionUnrecognized()) {
-                /* Allow "-H:..." for Native Image runtime options. */
-                return SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
-            }
+            /* All options can be set via -H:<OptionName>. */
+            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, hostedValues, PLUS_MINUS, arg);
+            maybePrintOptions(result, SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allOptions, false);
             return result;
         } else if (arg.startsWith(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX)) {
-            return SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
-        } else {
-            return null;
+            /* Only run-time options can be set via -R:<OptionName>. */
+            OptionParseResult result = SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, arg);
+            /* Only print non-SVM run-time options (SVM options are already printed above). */
+            maybePrintOptions(result, SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, allRuntimeOptions, true);
+            return result;
         }
+        return null;
+    }
+
+    private static void maybePrintOptions(OptionParseResult parseResult, String hostedOptionPrefix, UnmodifiableEconomicMap<String, OptionDescriptor> options, boolean skipSvmRuntimeOptions) {
+        if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
+            SubstrateOptionsParser.printFlags(d -> shouldPrintOption(d, parseResult, skipSvmRuntimeOptions), options, hostedOptionPrefix, System.out, parseResult.printFlagsWithExtraHelp());
+            throw new InterruptImageBuilding("");
+        }
+    }
+
+    private static boolean shouldPrintOption(OptionDescriptor optionDesc, OptionParseResult parseResult, boolean skipSvmRuntimeOptions) {
+        OptionKey<?> key = optionDesc.getOptionKey();
+        if (skipSvmRuntimeOptions && key instanceof RuntimeOptionKey<?>) {
+            return false;
+        }
+
+        boolean isSvmOption = (key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
+        return !IntentionallyUnsupportedOptions.contains(key) && parseResult.matchesFlags(optionDesc, isSvmOption);
     }
 
     public List<String> getArguments() {
         return arguments;
     }
 
-    public EconomicMap<String, OptionDescriptor> getAllHostedOptions() {
+    public UnmodifiableEconomicMap<String, OptionDescriptor> getAllHostedOptions() {
         return allHostedOptions;
     }
 
-    public EconomicMap<String, OptionDescriptor> getAllRuntimeOptions() {
+    public UnmodifiableEconomicMap<String, OptionDescriptor> getAllRuntimeOptions() {
         return allRuntimeOptions;
     }
 
