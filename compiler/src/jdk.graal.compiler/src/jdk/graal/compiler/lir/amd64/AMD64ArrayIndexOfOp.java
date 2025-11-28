@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -199,6 +199,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
+        AMD64Assembler.AMD64SIMDInstructionEncoding oldEncoding = asm.setTemporaryAvxEncoding(AMD64Assembler.AMD64SIMDInstructionEncoding.VEX);
+
         int nVectors = getNumberOfVectorsInBulkLoop();
         Register arrayPtr = asRegister(arrayReg);
         Register arrayLength = asRegister(lengthReg);
@@ -508,6 +510,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.addq(index, cmpResult);
 
         asm.bind(ret);
+
+        asm.resetAvxEncoding(oldEncoding);
     }
 
     private static void reverseBytesScalar(AMD64MacroAssembler asm, OperandSize valueSize, Register value) {

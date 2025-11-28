@@ -692,13 +692,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
 
         OperandSize opSize = kind == AMD64Kind.SINGLE ? PS : PD;
+        boolean useAVX = ((AMD64ArithmeticLIRGenerator) getArithmetic()).supportAVX();
+        var avxEncoding = ((AMD64ArithmeticLIRGenerator) getArithmetic()).simdEncoding;
         if (y instanceof AMD64AddressValue addr) {
-            append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, opSize, asAllocatable(x), addr, state));
+            if (useAVX) {
+                VexRMOp op = (kind == AMD64Kind.SINGLE ? VexRMOp.VUCOMISS : VexRMOp.VUCOMISD).encoding(avxEncoding);
+                append(new AMD64BinaryConsumer.MemoryAvxOp(op, AVXSize.XMM, asAllocatable(x), addr, state));
+            } else {
+                append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, opSize, asAllocatable(x), addr, state));
+            }
         } else {
             if (x instanceof AMD64AddressValue) {
                 x = arithmeticLIRGen.emitLoad(LIRKind.value(kind), x, state, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             }
-            append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, opSize, asAllocatable(x), asAllocatable(y)));
+            if (useAVX) {
+                VexRMOp op = (kind == AMD64Kind.SINGLE ? VexRMOp.VUCOMISS : VexRMOp.VUCOMISD).encoding(avxEncoding);
+                append(new AMD64BinaryConsumer.AvxOp(op, AVXSize.XMM, asAllocatable(x), asAllocatable(y)));
+            } else {
+                append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, opSize, asAllocatable(x), asAllocatable(y)));
+            }
         }
         return c;
     }
