@@ -24,30 +24,24 @@
  */
 package com.oracle.svm.interpreter.ristretto;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
-import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
 import com.oracle.svm.interpreter.CremaFeature;
 import com.oracle.svm.interpreter.InterpreterFeature;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.vm.ci.code.Architecture;
 
 /**
  * Ristretto provides runtime Just-In-Time (JIT) compilation support for the Crema interpreter in
@@ -67,22 +61,9 @@ import jdk.vm.ci.code.Architecture;
  * @see RistrettoDirectives
  */
 @AutomaticallyRegisteredFeature
-public final class RistrettoFeature extends RuntimeCompilationFeature implements InternalFeature {
+public final class RistrettoFeature implements InternalFeature {
 
     public RistrettoFeature() {
-        ImageSingletons.add(RuntimeCompilationFeature.class, this);
-    }
-
-    @Override
-    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
-        return new RuntimeCompiledMethodSupport.RuntimeCompilationGraphDecoder(architecture, graph, heapScanner) {
-        };
-    }
-
-    @Override
-    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
-        return new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(architecture, heapScanner) {
-        };
     }
 
     @Override
@@ -92,14 +73,11 @@ public final class RistrettoFeature extends RuntimeCompilationFeature implements
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        List<Class<? extends Feature>> f = new ArrayList<>(super.getRequiredFeatures());
-        f.add(CremaFeature.class);
-        return f;
+        return List.of(RuntimeCompilationFeature.class, CremaFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        super.afterRegistration(access);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(RistrettoCompilationManager.getProfileSupportShutdownHook());
         RuntimeSupport.getRuntimeSupport().addStartupHook(RistrettoCompilationManager.getProfileSupportStartupHook());
     }
@@ -109,7 +87,6 @@ public final class RistrettoFeature extends RuntimeCompilationFeature implements
      */
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        super.beforeAnalysis(access);
         RistrettoUtils.forcePreserveType(RistrettoDirectives.class);
     }
 
@@ -140,6 +117,5 @@ public final class RistrettoFeature extends RuntimeCompilationFeature implements
         public boolean getAsBoolean() {
             return SubstrateOptions.useRistretto();
         }
-
     }
 }

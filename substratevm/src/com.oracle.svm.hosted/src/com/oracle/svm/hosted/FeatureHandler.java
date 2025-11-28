@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
@@ -63,7 +64,6 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
-import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -182,7 +182,6 @@ public class FeatureHandler {
         }
 
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
-
         for (Class<?> featureClass : automaticFeatures) {
             registerFeature(featureClass, specificClassProvider, access);
         }

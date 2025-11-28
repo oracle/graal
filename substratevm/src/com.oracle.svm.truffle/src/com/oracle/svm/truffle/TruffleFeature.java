@@ -131,6 +131,7 @@ import com.oracle.svm.graal.hosted.runtimecompilation.CallTreeInfo;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidate;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -257,7 +258,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(TruffleRuntimeCompilationFeature.class, TruffleBaseFeature.class);
+        return List.of(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
     }
 
     /*
@@ -280,6 +281,8 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(RuntimeCompiledMethodSupport.class, new TruffleRuntimeCompiledMethodSupport());
+
         TruffleRuntime runtime = Truffle.getRuntime();
         if (runtime instanceof DefaultTruffleRuntime defaultTruffleRuntime) {
             String errorMessage = defaultTruffleRuntime.getFallbackReason();

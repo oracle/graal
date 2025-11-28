@@ -36,12 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.svm.core.annotate.Delete;
-import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
-import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -54,6 +48,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -67,7 +62,6 @@ import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalCompilerFeature;
-import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -83,17 +77,22 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
+import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import jdk.graal.compiler.phases.common.inlining.walker.ComputeInliningRelevance;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -205,7 +204,7 @@ final class Target_jdk_graal_compiler_debug_TimeSource {
     // Checkstyle: resume
 }
 
-@TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
+@TargetClass(value = TTY.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 final class Target_jdk_graal_compiler_debug_TTY {
 
     @Alias//
@@ -311,7 +310,7 @@ final class Target_jdk_graal_compiler_core_match_MatchRuleRegistry {
  * compiled. Therefore, MathIntrinsicNodes that generate foreign calls to the AOT-compiled code will
  * be used instead, but the static analysis cannot detect that, so we manually delete the class.
  */
-@TargetClass(value = BinaryMathIntrinsicGenerationNode.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
+@TargetClass(value = BinaryMathIntrinsicGenerationNode.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicGenerationNode {
     @Substitute
@@ -320,7 +319,7 @@ final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicGene
     }
 }
 
-@TargetClass(value = UnaryMathIntrinsicGenerationNode.class, onlyWith = RuntimeCompilationFeature.AnyRuntimeCompilationEnabled.class)
+@TargetClass(value = UnaryMathIntrinsicGenerationNode.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicGenerationNode {
     @Substitute
@@ -330,13 +329,13 @@ final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicGener
 }
 
 @Delete
-@TargetClass(value = AMD64MathIntrinsicBinaryOp.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = AMD64MathIntrinsicBinaryOp.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused"})
 final class Target_jdk_graal_compiler_replacements_nodes_AMD64MathIntrinsicBinaryOp {
 }
 
 @Delete
-@TargetClass(value = AMD64MathIntrinsicUnaryOp.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = AMD64MathIntrinsicUnaryOp.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused"})
 final class Target_jdk_graal_compiler_replacements_nodes_AMD64MathIntrinsicUnaryOp {
 }

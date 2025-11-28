@@ -33,9 +33,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -69,6 +71,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
@@ -102,6 +105,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaConstant;
@@ -132,13 +136,18 @@ public class RuntimeCompiledMethodSupport {
                     Set<AnalysisMethod> registeredRuntimeCompilations) {
     }
 
-    public static void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue, HostedProviders hostedProviders,
+    @Fold
+    public static RuntimeCompiledMethodSupport singleton() {
+        return ImageSingletons.lookup(RuntimeCompiledMethodSupport.class);
+    }
+
+    public void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue, HostedProviders hostedProviders,
                     Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper,
                     GraalGraphObjectReplacer objectReplacer, Set<AnalysisMethod> registeredRuntimeCompilations, Stream<HostedMethod> methodsToCompile) {
 
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
-        GraphEncoder graphEncoder = RuntimeCompilationFeature.singleton().createGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
+        GraphEncoder graphEncoder = createGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
         HostedProviders runtimeCompilationProviders = hostedProviders //
                         .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))) //
                         .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
@@ -189,6 +198,23 @@ public class RuntimeCompiledMethodSupport {
 
     }
 
+    protected DeoptimizeOnExceptionPhase getDeoptOnExceptionPhase(Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
+        return null;
+    }
+
+    protected RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
+        return new RuntimeCompilationGraphEncoder(architecture, heapScanner) {
+        };
+    }
+
+    protected RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        return new RuntimeCompilationGraphDecoder(architecture, graph, heapScanner) {
+        };
+    }
+
+    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
+    }
+
     private static class RuntimeCompileTask implements CompletionExecutor.DebugContextRunnable {
         final HostedMethod method;
         final CompilationState compilationState;
@@ -219,7 +245,7 @@ public class RuntimeCompiledMethodSupport {
 
             AnalysisMethod aMethod = method.getWrapped();
             StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition, false,
-                            (arch, analyzedGraph) -> RuntimeCompilationFeature.singleton().createDecoder(arch, analyzedGraph, compilationState.heapScanner));
+                            (arch, analyzedGraph) -> RuntimeCompiledMethodSupport.singleton().createDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
             }
@@ -273,7 +299,7 @@ public class RuntimeCompiledMethodSupport {
                                 return deoptMethod;
                             }));
 
-            assert verifyNodes(graph);
+            assert RuntimeCompiledMethodSupport.singleton().verifyNodes(graph);
             var previous = compilationState.runtimeGraphs.put(method, graph);
             assert previous == null;
 
@@ -288,7 +314,7 @@ public class RuntimeCompiledMethodSupport {
      * Checks if any illegal nodes are present within the graph. Runtime Compiled methods should
      * never have explicit BytecodeExceptions; instead they should have deoptimizations.
      */
-    static boolean verifyNodes(StructuredGraph graph) {
+    boolean verifyNodes(StructuredGraph graph) {
         for (var node : graph.getNodes()) {
             boolean invalidNodeKind = node instanceof BytecodeExceptionNode || node instanceof ThrowBytecodeExceptionNode;
             assert !invalidNodeKind : "illegal node in graph: " + node + " method: " + graph.method();
@@ -385,7 +411,7 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
-            return RuntimeCompilationFeature.singleton().createDecoder(architecture, decodedGraph, heapScanner);
+            return RuntimeCompiledMethodSupport.singleton().createDecoder(architecture, decodedGraph, heapScanner);
         }
 
         @Override
