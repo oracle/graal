@@ -77,17 +77,18 @@ public final class TruffleEarlyInliningPhase extends Phase {
     }
 
     private final Providers providers;
-    private final KnownTruffleTypes types;
     private final Function<ResolvedJavaMethod, StructuredGraph> lookup;
-    protected final CanonicalizerPhase canonicalizer;
+    private final ResolvedJavaType unwrappedAnnotationType;
+    private final CanonicalizerPhase canonicalizer;
     private final int maxDepth;
 
-    public TruffleEarlyInliningPhase(OptionValues options, CanonicalizerPhase canonicalizer, KnownTruffleTypes types, Providers providers, Function<ResolvedJavaMethod, StructuredGraph> lookup) {
-        this.types = types;
+    public TruffleEarlyInliningPhase(OptionValues options, CanonicalizerPhase canonicalizer, KnownTruffleTypes types, Providers providers,
+                    Function<ResolvedJavaMethod, StructuredGraph> lookup, Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
         this.providers = providers;
         this.lookup = lookup;
         this.canonicalizer = canonicalizer;
         this.maxDepth = Options.TruffleEarlyInliningMaxDepth.getValue(options);
+        this.unwrappedAnnotationType = unwrapType.apply(types.CompilerDirectives_EarlyInline);
     }
 
     @Override
@@ -176,7 +177,7 @@ public final class TruffleEarlyInliningPhase extends Phase {
             return false;
         }
         Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(targetMethod);
-        if (!declaredAnnotationValues.containsKey(types.CompilerDirectives_EarlyInline)) {
+        if (!declaredAnnotationValues.containsKey(unwrappedAnnotationType)) {
             return false;
         }
         String failureMessage = InliningUtil.checkInvokeConditions(invoke);

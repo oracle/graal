@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle.phases;
 
 import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
@@ -40,11 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
 
-    private final KnownTruffleTypes types;
+    private final ResolvedJavaType unwrappedAnnotationType;
 
-    public TruffleEarlyEscapeAnalysisPhase(CanonicalizerPhase canonicalizer, OptionValues options, KnownTruffleTypes truffleTypes) {
+    public TruffleEarlyEscapeAnalysisPhase(CanonicalizerPhase canonicalizer, OptionValues options, KnownTruffleTypes truffleTypes,
+                    Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
         super(false, canonicalizer, options);
-        this.types = truffleTypes;
+        this.unwrappedAnnotationType = unwrapType.apply(truffleTypes.CompilerDirectives_EarlyEscapeAnalysis);
     }
 
     @Override
@@ -55,7 +57,7 @@ public final class TruffleEarlyEscapeAnalysisPhase extends PartialEscapePhase {
     @Override
     protected boolean matchGraph(StructuredGraph graph) {
         Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(graph.method());
-        if (!declaredAnnotationValues.containsKey(types.CompilerDirectives_EarlyEscapeAnalysis)) {
+        if (!declaredAnnotationValues.containsKey(unwrappedAnnotationType)) {
             return false;
         }
         // we do not respect the PE only option for Truffle because PE depends on escape analysis

@@ -39,6 +39,7 @@ import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -82,9 +83,10 @@ public final class TruffleRuntimeCompilationFeature extends RuntimeCompilationFe
         if (!ImageSingletons.contains(KnownTruffleTypes.class)) {
             return;
         }
+
         KnownTruffleTypes truffleTypes = ImageSingletons.lookup(KnownTruffleTypes.class);
         new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes,
-                        providers, canonicalizer, buildGraph).apply(graph, providers);
+                        providers, canonicalizer, buildGraph, OriginalClassProvider::getOriginalType).apply(graph, providers);
     }
 
     @SuppressWarnings("javadoc")
