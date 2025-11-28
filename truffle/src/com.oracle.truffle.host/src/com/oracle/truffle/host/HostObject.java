@@ -3429,7 +3429,12 @@ final class HostObject implements TruffleObject {
             error.enter(node);
             throw UnsupportedMessageException.create();
         }
-        Class<?> clz = obj.getClass();
+        Class<?> clz;
+        if (isClass()) {
+            clz = (Class<?>) obj;
+        } else {
+            clz = obj.getClass();
+        }
         return HostObject.forStaticClass(clz, context);
     }
 

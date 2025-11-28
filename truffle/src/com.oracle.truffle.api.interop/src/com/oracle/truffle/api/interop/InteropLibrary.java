@@ -983,7 +983,10 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns the static receiver associated with the given receiver. A static receiver is an
      * object that exposes static members, members whose values or behaviors are independent of any
-     * particular instance of the receiver.
+     * particular instance of the receiver. If the {@code receiver} is a
+     * {@link #isMetaObject(Object) metaobject}, its static receiver is the same object that would
+     * be returned for an instance of the type represented by that metaobject, it exposes the static
+     * members of the represented type rather than static members of the metaobject itself.
      * <p>
      * The static receiver typically serves as an artificial or meta-level object that provides
      * access to instance-independent members declared by the receiver's type or meta object. The

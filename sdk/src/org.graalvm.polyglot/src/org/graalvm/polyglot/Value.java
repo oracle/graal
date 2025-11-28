@@ -1025,7 +1025,10 @@ public final class Value extends AbstractValue {
     /**
      * Returns the static receiver associated with this value. A static receiver is an object that
      * exposes static members, members whose values or behaviors are independent of any particular
-     * instance of this value.
+     * instance of this value. If this value is a {@link #isMetaObject() metaobject}, its static
+     * receiver is the same object that would be returned for an instance of the type represented by
+     * that metaobject, it exposes the static members of the represented type rather than static
+     * members of the metaobject itself.
      * <p>
      * The returned static receiver can be used to access static members using
      * {@link #getMember(String)}, {@link #getMemberKeys()}, or
