@@ -70,7 +70,8 @@ def create_ni_standalone(base_standalone_name, register_distribution):
         else:
             idx = layout['languages/java/lib/'].index('dependency:espresso:ESPRESSO_JVM_STANDALONE_MOKAPOT_SUPPORT/*')
             if mx.is_darwin():
-                layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/fatpot/<lib:jvm>'
+                del layout['languages/java/lib/'][idx]
+                layout['languages/java/lib/fatpot/'] = [f'dependency:espresso:{base_standalone_name}/languages/java/lib/fatpot/<lib:jvm>']
             else:
                 layout['languages/java/lib/'][idx] = f'dependency:espresso:{base_standalone_name}/languages/java/lib/<lib:jvm>'
 
