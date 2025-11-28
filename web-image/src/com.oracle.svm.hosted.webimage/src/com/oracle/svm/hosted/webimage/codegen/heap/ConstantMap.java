@@ -44,7 +44,7 @@ import com.oracle.svm.webimage.object.ObjectInspector;
 import com.oracle.svm.webimage.object.ObjectInspector.ObjectType;
 
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -193,7 +193,7 @@ public class ConstantMap {
 
     /**
      * Function for generating the code that emits the properties on each object, each object was
-     * identified using {@link IdentityHashCodeProvider}.
+     * identified using {@link ConstantReflectionProvider}.
      */
     public static final JSGenericFunctionDefinition WEB_IMAGE_CONST_PROPERTY_INIT_F_NAME = new JSGenericFunctionDefinition("generateConstantProperties", 0, false, null, false);
 

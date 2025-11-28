@@ -54,7 +54,6 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.util.GraalAccess;
 
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -68,7 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider, TypeReachedProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, TypeReachedProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
@@ -96,14 +95,16 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public Integer identityHashCode(JavaConstant constant) {
-        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
-            return null;
-        } else if (constant.isNull()) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
         } else if (constant instanceof PatchedWordConstant) {
             /* Kind of a primitive constant, so it does not have an identity hash code. */
-            return null;
+            throw new IllegalArgumentException("PatchedWordConstant has no identity hash code: " + constant);
         }
 
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;

@@ -38,7 +38,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -48,7 +47,7 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider {
+public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider original;
     private final AnalysisField commonPoolField;
@@ -83,14 +82,17 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
 
     @Override
     public Integer identityHashCode(JavaConstant constant) {
-        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
-            return null;
-        } else if (constant.isNull()) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
         }
-
-        ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;
+        if (!(constant instanceof ImageHeapConstant imageHeapConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
         if (imageHeapConstant.hasIdentityHashCode()) {
             return imageHeapConstant.getIdentityHashCode();
         }

@@ -444,7 +444,7 @@ public class RuntimeCompilationFeature implements Feature, RuntimeCompilationCal
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getProviders().getSnippetReflection(), runtimeProviders.getWordTypes(), runtimeProviders.getPlatformConfigurationProvider(),
                         new GraphPrepareMetaAccessExtensionProvider(),
-                        runtimeProviders.getLoopsDataProvider(), runtimeProviders.getIdentityHashCodeProvider());
+                        runtimeProviders.getLoopsDataProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
