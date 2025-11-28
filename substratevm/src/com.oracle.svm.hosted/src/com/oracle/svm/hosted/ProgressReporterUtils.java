@@ -27,11 +27,11 @@ package com.oracle.svm.hosted;
 
 import java.net.URL;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+import com.oracle.graal.vmaccess.ResolvedJavaPackage;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.ResolvedJavaModule;
-import com.oracle.svm.util.ResolvedJavaPackage;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

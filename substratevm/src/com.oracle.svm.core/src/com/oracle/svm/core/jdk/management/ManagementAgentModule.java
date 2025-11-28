@@ -28,11 +28,11 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ResolvedJavaModule;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 public class ManagementAgentModule {
 
@@ -45,7 +45,7 @@ public class ManagementAgentModule {
     static final String CONFIG_FILE_OPEN_FAILED;
 
     static {
-        Optional<ResolvedJavaModule> agentModule = ResolvedJavaModuleLayer.boot().findModule("jdk.management.agent");
+        Optional<ResolvedJavaModule> agentModule = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.management.agent");
         if (agentModule.isPresent()) {
             HostModuleUtil.addReads(ManagementAgentModule.class, agentModule.get());
             var agentClass = ReflectionUtil.lookupClass(false, "jdk.internal.agent.Agent");

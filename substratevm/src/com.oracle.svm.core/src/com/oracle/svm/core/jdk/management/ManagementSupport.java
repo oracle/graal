@@ -69,7 +69,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
 
 /**
@@ -301,7 +301,7 @@ public final class ManagementSupport implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
     private static Class<? extends PlatformManagedObject> getFlightRecorderMXBeanClass() {
-        var jfrModule = ResolvedJavaModuleLayer.boot().findModule("jdk.management.jfr");
+        var jfrModule = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.management.jfr");
         if (jfrModule.isPresent()) {
             HostModuleUtil.addReads(ManagementSupport.class, jfrModule.get());
             try {
