@@ -96,16 +96,31 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
             JavaConstant base = ConstantDataConverter.toClient(baseData);
             JavaConstant result;
             if (kindChar == JavaKind.Object.getTypeChar()) {
-                if (compressBase != 0 || compressShift != 0) {
-                    result = SubstrateMemoryAccessProviderImpl.SINGLETON.readNarrowObjectConstant(base, displacement, new CompressEncoding(compressBase, compressShift));
-                } else {
-                    result = SubstrateMemoryAccessProviderImpl.SINGLETON.readObjectConstant(base, displacement);
-                }
+                result = readObjectConstant(displacement, compressBase, compressShift, base);
             } else {
                 JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar(kindChar);
-                result = SubstrateMemoryAccessProviderImpl.SINGLETON.readPrimitiveConstant(kind, base, displacement, primitiveBits);
+                result = readPrimitiveConstant(displacement, primitiveBits, kind, base);
             }
             ConstantDataConverter.fromClient(result, resultData);
+        }
+
+        private static JavaConstant readObjectConstant(long displacement, long compressBase, int compressShift, JavaConstant base) {
+            try {
+                if (compressBase != 0 || compressShift != 0) {
+                    return SubstrateMemoryAccessProviderImpl.SINGLETON.readNarrowObjectConstant(base, displacement, new CompressEncoding(compressBase, compressShift));
+                }
+                return SubstrateMemoryAccessProviderImpl.SINGLETON.readObjectConstant(base, displacement);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+
+        private static JavaConstant readPrimitiveConstant(long displacement, int primitiveBits, JavaKind kind, JavaConstant base) {
+            try {
+                return SubstrateMemoryAccessProviderImpl.SINGLETON.readPrimitiveConstant(kind, base, displacement, primitiveBits);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
         }
     }
 

@@ -32,7 +32,6 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.Target_java_lang_Integer_IntegerCache;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -91,38 +90,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         return readFieldValue((SubstrateField) field, receiver);
     }
 
-    protected boolean canBoxPrimitive(JavaConstant source) {
-        boolean result = source.getJavaKind().isPrimitive() && isCachedPrimitive(source);
-        assert !result || source.asBoxedPrimitive() == source.asBoxedPrimitive() : "value must be cached";
-        return result;
-    }
-
-    /**
-     * Check if the constant is a boxed value that is guaranteed to be cached by the platform.
-     * Otherwise the generated code might be the only reference to the boxed value and since object
-     * references from code are weak this can cause invalidation problems.
-     */
-    private static boolean isCachedPrimitive(JavaConstant source) {
-        switch (source.getJavaKind()) {
-            case Boolean:
-                return true;
-            case Char:
-                return source.asInt() <= 127;
-            case Byte:
-            case Short:
-                return source.asInt() >= -128 && source.asInt() <= 127;
-            case Int:
-                return source.asInt() >= -128 && source.asInt() <= Target_java_lang_Integer_IntegerCache.high;
-            case Long:
-                return source.asLong() >= -128 && source.asLong() <= 127;
-            case Float:
-            case Double:
-                return false;
-            default:
-                throw new IllegalArgumentException("Unexpected kind " + source.getJavaKind());
-        }
-    }
-
     public static JavaConstant readFieldValue(SubstrateField field, JavaConstant receiver) {
         if (field.constantValue != null) {
             return field.constantValue;
@@ -160,7 +127,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (kind.isObject()) {
             result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false, isVolatile);
         } else {
-            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8, isVolatile);
+            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount(), isVolatile);
         }
         return result;
     }

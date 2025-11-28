@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.meta;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -60,27 +61,15 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
         int accessBytes = accessBits / Byte.SIZE;
         JavaConstant result = doRead(stackKind, (JavaConstant) base, displacement, accessBytes);
-        if (result == null) {
-            return null;
-        }
-
         /* Wrap the result in the expected stack kind. */
-        JavaConstant wrappedResult;
-        switch (stackKind) {
-            case Int:
-                wrappedResult = JavaConstant.forInt(result.asInt());
-                break;
-            case Long:
-            case Float:
-            case Double:
+        return switch (stackKind) {
+            case Int -> JavaConstant.forInt(result.asInt());
+            case Long, Float, Double -> {
                 assert result.getJavaKind() == stackKind;
-                wrappedResult = result;
-                break;
-            default:
-                throw VMError.shouldNotReachHereUnexpectedInput(stackKind); // ExcludeFromJacocoGeneratedReport
-        }
-
-        return wrappedResult;
+                yield result;
+            }
+            default -> throw VMError.shouldNotReachHereUnexpectedInput(stackKind); // ExcludeFromJacocoGeneratedReport
+        };
     }
 
     @Override
@@ -88,8 +77,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         ObjectLayout layout = ImageSingletons.lookup(ObjectLayout.class);
         JavaConstant result = doRead(JavaKind.Object, (JavaConstant) base, displacement, layout.getReferenceSize());
         if (result instanceof ImageHeapRelocatableConstant) {
-            /* References to later layers can't be constant-folded. */
-            return null;
+            throw new IllegalArgumentException("References to later layers cannot be constant-folded.");
         }
         return result;
     }
@@ -99,9 +87,6 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         assert SubstrateOptions.SpawnIsolates.getValue();
         // NOTE: the encoding parameter only applies at image runtime, not for hosted execution
         JavaConstant result = readObjectConstant(base, displacement);
-        if (result == null) {
-            return null;
-        }
         if (JavaConstant.NULL_POINTER.equals(result)) {
             return CompressedNullConstant.COMPRESSED_NULL;
         }
@@ -109,19 +94,33 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
     }
 
     private JavaConstant doRead(JavaKind stackKind, JavaConstant base, long displacement, int accessBytes) {
-        assert displacement >= 0;
-        if (base.getJavaKind() != JavaKind.Object) {
-            return null;
+        if (base.isNull()) {
+            throw new IllegalArgumentException("Base is null.");
+        } else if (base.getJavaKind() != JavaKind.Object) {
+            throw new IllegalArgumentException("Base " + base.getClass() + " is not supported.");
         }
 
         HostedType type = hMetaAccess.lookupJavaType(base);
-        HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
-        if (field != null) {
+        if (type.isInstanceClass()) {
+            /*
+             * Hybrid objects end up in this branch as well. For them, we only constant-fold field
+             * reads at the moment (reads from the array part are not constant-folded).
+             */
+            HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
+            if (field == null) {
+                throw new IllegalArgumentException("Can't find field at displacement " + displacement + " in object of type " + type.toJavaName() + ".");
+            } else if (field.getStorageKind().getStackKind() != stackKind) {
+                throw new IllegalArgumentException("Field at displacement " + displacement + " in object of type " + type.toJavaName() +
+                                " is " + field.getStorageKind().getStackKind() + " but expected " + stackKind + ".");
+            }
             return readField(stackKind, base, field);
-        } else if (type.isArray() && !isUsedForCurrentLayersStaticFields(base)) {
+        } else if (type.isArray()) {
+            if (isUsedForCurrentLayersStaticFields(base)) {
+                throw new IllegalArgumentException("Static fields in the current layer may not be available yet.");
+            }
             return readArrayElement(base, displacement, accessBytes, type);
         } else {
-            return null;
+            throw VMError.shouldNotReachHere("Unexpected object type: " + type.toJavaName());
         }
     }
 
@@ -144,38 +143,53 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         return false;
     }
 
-    /** Try to look up the original field from the given displacement, and read the field value. */
     private JavaConstant readField(JavaKind stackKind, JavaConstant base, HostedField field) {
         assert field.getStorageKind().getStackKind() == stackKind;
 
         JavaConstant result = hConstantReflection.readFieldValue(field, base);
-        if (result == null || result.getJavaKind().getStackKind() != stackKind) {
-            /*
-             * For certain Word types like RelocatedPointer, the boxed value is returned by
-             * field.readValue(). We cannot constant-fold such a field late in the lower tiers of
-             * the compilation pipeline.
-             */
-            return null;
+        if (result == null) {
+            throw new IllegalArgumentException("Could not read field " + field.format("%H.%n"));
         }
+
+        JavaKind resultStackKind = result.getJavaKind().getStackKind();
+        if (stackKind != resultStackKind) {
+            /* Primarily happens because Word types have a primitive type at run-time. */
+            throw new IllegalArgumentException("Stack kind mismatch for field " + field.format("%H.%n") + ".");
+        }
+
         return result;
     }
 
     private JavaConstant readArrayElement(JavaConstant base, long runtimeOffset, int accessBytes, HostedType type) {
+        if (!(base instanceof ImageHeapArray array)) {
+            throw VMError.shouldNotReachHere("May only be called for arrays.");
+        }
+
         JavaKind arrayKind = JavaKind.fromJavaClass(type.getComponentType().getJavaClass());
         int runtimeBaseOffset = hMetaAccess.getArrayBaseOffset(arrayKind);
         int runtimeIndexScale = hMetaAccess.getArrayIndexScale(arrayKind);
 
         long accessedDataOffset = runtimeOffset - runtimeBaseOffset;
         if (accessedDataOffset < 0) {
-            /* Out-of-bounds. */
-            return null;
-        } else if (accessedDataOffset % runtimeIndexScale != 0 || accessBytes != runtimeIndexScale) {
+            throw new IllegalArgumentException("Reading outside array bounds.");
+        }
+
+        if (accessedDataOffset % runtimeIndexScale != 0 || accessBytes != runtimeIndexScale) {
             /* The read does not access a single array element. */
-            return hConstantReflection.readArrayUnaligned(base, accessBytes, accessedDataOffset, runtimeIndexScale);
+            return hConstantReflection.readArrayUnaligned(array, accessBytes, accessedDataOffset, runtimeIndexScale);
         } else {
             /* The read accesses a single array element. */
             long index = accessedDataOffset / runtimeIndexScale;
-            return hConstantReflection.readArrayElement(base, NumUtil.safeToInt(index));
+            if (index >= array.getLength()) {
+                throw new IllegalArgumentException("Reading after last array element.");
+            }
+
+            assert index >= 0;
+            JavaConstant result = hConstantReflection.readArrayElement(base, NumUtil.safeToInt(index));
+            if (result == null) {
+                throw new IllegalArgumentException("Could not read array element.");
+            }
+            return result;
         }
     }
 }
