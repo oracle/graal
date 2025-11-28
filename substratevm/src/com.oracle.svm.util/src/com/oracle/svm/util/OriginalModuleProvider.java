@@ -24,25 +24,12 @@
  */
 package com.oracle.svm.util;
 
-import jdk.vm.ci.meta.annotation.Annotated;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * JVMCI equivalent to {@link Package}. Do not compare with {@code ==}, use {@code #equals(Object)}
- * instead.
- */
-public interface ResolvedJavaPackage extends Annotated {
-    /**
-     * Return the version of this implementation. See {@link Package#getImplementationVersion()}.
-     */
-    String getImplementationVersion();
-
-    /**
-     * Return the name of this package. See {@link Package#getName()}.
-     */
-    String getName();
-
-    /**
-     * Returns the module of this named package. See {@code NamedPackage#module()}.
-     */
-    ResolvedJavaModule module();
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface OriginalModuleProvider {
+    static Module getJavaModule(ResolvedJavaModule m) {
+        return ResolvedJavaModuleImpl.getJavaModule(m);
+    }
 }

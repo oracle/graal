@@ -35,15 +35,16 @@ import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
+import com.oracle.svm.hosted.meta.HostedType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class CodeBreakdownProvider {
-    private Map<Class<?>, Long> codeBreakdown;
+    private Map<HostedType, Long> codeBreakdown;
 
     CodeBreakdownProvider(Collection<CompileTask> compilationTasks) {
         codeBreakdown = Map.copyOf(compilationTasks.stream().collect(
                         Collectors.groupingBy(
-                                        compileTask -> compileTask.method.getDeclaringClass().getJavaClass(),
+                                        compileTask -> compileTask.method.getDeclaringClass(),
                                         Collectors.summingLong(compileTask -> compileTask.result.getTargetCodeSize()))));
     }
 
@@ -53,7 +54,7 @@ class CodeBreakdownProvider {
      *
      * @return the code breakdown
      */
-    public static Map<Class<?>, Long> getAndClear() {
+    public static Map<HostedType, Long> getAndClear() {
         CodeBreakdownProvider singleton = ImageSingletons.lookup(CodeBreakdownProvider.class);
         var map = singleton.codeBreakdown;
         singleton.codeBreakdown = null;

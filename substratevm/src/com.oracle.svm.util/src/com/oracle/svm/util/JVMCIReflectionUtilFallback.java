@@ -27,7 +27,9 @@ package com.oracle.svm.util;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
+import java.util.stream.Stream;
 
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -56,5 +58,9 @@ final class JVMCIReflectionUtilFallback {
             return null;
         }
         return cs.getLocation();
+    }
+
+    public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
+        return BootLoader.packages().map(ResolvedJavaPackageImpl::new);
     }
 }

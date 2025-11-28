@@ -86,8 +86,10 @@ import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.OriginalModuleProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.module.DefaultRoots;
@@ -217,7 +219,7 @@ public class ModuleLayerFeature implements InternalFeature {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             Module module = (Module) receiver;
-            if (!LayeredModuleSingleton.singleton().getModules().contains(module)) {
+            if (!LayeredModuleSingleton.singleton().getModules().contains(GraalAccess.lookupModule(module))) {
                 /*
                  * Modules that are not processed by the LayeredModuleSingleton don't need to be
                  * delayed until the application layer.
@@ -381,8 +383,9 @@ public class ModuleLayerFeature implements InternalFeature {
             FeatureImpl.BeforeCompilationAccessImpl access = (FeatureImpl.BeforeCompilationAccessImpl) a;
             CrossLayerConstantRegistryFeature singleton = CrossLayerConstantRegistryFeature.singleton();
             for (var module : LayeredModuleSingleton.singleton().getModules()) {
-                finalizeFutureHeapConstant(singleton, module, PackageType.OPENED, moduleLayerFeatureUtils.moduleOpenPackagesField);
-                finalizeFutureHeapConstant(singleton, module, PackageType.EXPORTED, moduleLayerFeatureUtils.moduleExportedPackagesField);
+                Module javaModule = OriginalModuleProvider.getJavaModule(module);
+                finalizeFutureHeapConstant(singleton, javaModule, PackageType.OPENED, moduleLayerFeatureUtils.moduleOpenPackagesField);
+                finalizeFutureHeapConstant(singleton, javaModule, PackageType.EXPORTED, moduleLayerFeatureUtils.moduleExportedPackagesField);
             }
         }
     }
@@ -805,7 +808,7 @@ public class ModuleLayerFeature implements InternalFeature {
 
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     LayeredModuleSingleton singleton = LayeredModuleSingleton.singleton();
-                    singleton.setUnnamedModules(everyoneModule, allUnnamedModule);
+                    singleton.setUnnamedModules(GraalAccess.lookupModule(everyoneModule), GraalAccess.lookupModule(allUnnamedModule));
                 }
 
                 moduleDescriptorField = findFieldByName(moduleClassFields, "descriptor");
@@ -1082,7 +1085,7 @@ public class ModuleLayerFeature implements InternalFeature {
                         }
                         moduleExportedPackagesField.set(m, exportedPackages);
                         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                            LayeredModuleSingleton.singleton().setExportedPackages(m, exportedPackages);
+                            LayeredModuleSingleton.singleton().setExportedPackages(GraalAccess.lookupModule(m), exportedPackages);
                         }
                         rescan(access, exportedPackages, m, moduleExportedPackagesField);
                     } else {
@@ -1137,8 +1140,8 @@ public class ModuleLayerFeature implements InternalFeature {
                         moduleExportedPackagesField.set(m, exportedPackages);
                         if (ImageLayerBuildingSupport.buildingImageLayer()) {
                             LayeredModuleSingleton singleton = LayeredModuleSingleton.singleton();
-                            singleton.setOpenPackages(m, openPackages);
-                            singleton.setExportedPackages(m, exportedPackages);
+                            singleton.setOpenPackages(GraalAccess.lookupModule(m), openPackages);
+                            singleton.setExportedPackages(GraalAccess.lookupModule(m), exportedPackages);
                         }
                         rescan(access, openPackages, m, moduleOpenPackagesField);
                         rescan(access, exportedPackages, m, moduleExportedPackagesField);
@@ -1215,7 +1218,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 prev.add(other == null ? allUnnamedModule : other);
             }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                LayeredModuleSingleton.singleton().setExportedPackages(module, exports);
+                LayeredModuleSingleton.singleton().setExportedPackages(GraalAccess.lookupModule(module), exports);
             }
             rescan(accessImpl, exports, module, moduleExportedPackagesField);
         }
@@ -1272,20 +1275,20 @@ public class ModuleLayerFeature implements InternalFeature {
                 prev.add(other == null ? allUnnamedModule : other);
             }
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                LayeredModuleSingleton.singleton().setOpenPackages(module, opens);
+                LayeredModuleSingleton.singleton().setOpenPackages(GraalAccess.lookupModule(module), opens);
             }
             rescan(accessImpl, opens, module, moduleOpenPackagesField);
         }
 
         private void addPreviousLayerOpenPackages(Module module, Map<String, Set<Module>> packages, Function<String, Module> nameToModule) {
             if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getOpenPackages(module));
+                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getOpenPackages(GraalAccess.lookupModule(module)));
             }
         }
 
         private void addPreviousLayerExportedPackages(Module module, Map<String, Set<Module>> packages, Function<String, Module> nameToModule) {
             if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
-                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getExportedPackages(module));
+                addPreviousLayerPackages(packages, nameToModule, LayeredModuleSingleton.singleton().getExportedPackages(GraalAccess.lookupModule(module)));
             }
         }
 

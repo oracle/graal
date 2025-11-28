@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -101,6 +102,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isAssumedReachable(Class<?> clazz) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         Class<?>[] classesAssumedReachable = RuntimeCodeCacheCleaner.CLASSES_ASSUMED_REACHABLE;
         for (Class<?> aClass : classesAssumedReachable) {
             if (aClass.isAssignableFrom(clazz)) {

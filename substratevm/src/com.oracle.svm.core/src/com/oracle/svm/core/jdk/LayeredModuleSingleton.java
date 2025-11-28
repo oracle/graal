@@ -35,6 +35,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.OriginalModuleProvider;
+import com.oracle.svm.util.ResolvedJavaModule;
 
 /**
  * This singleton keeps track of the {@code Module#openPackages} and {@code Module#exportedPackages}
@@ -48,10 +51,10 @@ public abstract class LayeredModuleSingleton {
     protected final Map<String, Map<String, Set<String>>> moduleOpenPackages;
     protected final Map<String, Map<String, Set<String>>> moduleExportedPackages;
 
-    private final Map<String, Module> moduleNames = new HashMap<>();
+    private final Map<String, ResolvedJavaModule> nameToModule = new HashMap<>();
 
-    private Module everyoneModule;
-    private Module allUnnamedModule;
+    private ResolvedJavaModule everyoneModule;
+    private ResolvedJavaModule allUnnamedModule;
 
     public LayeredModuleSingleton() {
         this(new HashMap<>(), new HashMap<>());
@@ -66,46 +69,46 @@ public abstract class LayeredModuleSingleton {
         return ImageSingletons.lookup(LayeredModuleSingleton.class);
     }
 
-    public void setUnnamedModules(Module everyoneModule, Module allUnnamedModule) {
+    public void setUnnamedModules(ResolvedJavaModule everyoneModule, ResolvedJavaModule allUnnamedModule) {
         this.everyoneModule = everyoneModule;
         this.allUnnamedModule = allUnnamedModule;
     }
 
-    public Map<String, Set<String>> getOpenPackages(Module module) {
+    public Map<String, Set<String>> getOpenPackages(ResolvedJavaModule module) {
         return moduleOpenPackages.get(module.getName());
     }
 
-    public Map<String, Set<String>> getExportedPackages(Module module) {
+    public Map<String, Set<String>> getExportedPackages(ResolvedJavaModule module) {
         return moduleExportedPackages.get(module.getName());
     }
 
-    public Collection<Module> getModules() {
-        return moduleNames.values();
+    public Collection<ResolvedJavaModule> getModules() {
+        return nameToModule.values();
     }
 
-    public void setOpenPackages(Module module, Map<String, Set<Module>> openPackages) {
+    public void setOpenPackages(ResolvedJavaModule module, Map<String, Set<Module>> openPackages) {
         setPackages(module, moduleOpenPackages, openPackages, "opened");
     }
 
-    public void setExportedPackages(Module module, Map<String, Set<Module>> exportedPackages) {
+    public void setExportedPackages(ResolvedJavaModule module, Map<String, Set<Module>> exportedPackages) {
         setPackages(module, moduleExportedPackages, exportedPackages, "exported");
     }
 
-    private void setPackages(Module module, Map<String, Map<String, Set<String>>> modulePackages, Map<String, Set<Module>> packages, String mode) {
-        Module oldValue = moduleNames.put(module.toString(), module);
-        if (oldValue != null && oldValue != module) {
+    private void setPackages(ResolvedJavaModule module, Map<String, Map<String, Set<String>>> modulePackages, Map<String, Set<Module>> packages, String mode) {
+        ResolvedJavaModule oldValue = nameToModule.put(module.toString(), module);
+        if (oldValue != null && !oldValue.equals(module)) {
             throw UserError.abort("Layered images require all modules to have a different name because their identity hash code is not consistent across layers. " +
                             "The modules %s and %s have the same name and were added to the %s packages", module, oldValue, mode);
         }
         Map<String, Set<String>> namesMap = modulePackages.computeIfAbsent(module.getName(), _ -> new HashMap<>());
         for (var entry : packages.entrySet()) {
             Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), _ -> new HashSet<>());
-            modules.addAll(entry.getValue().stream().map(Module::getName).toList());
+            modules.addAll(entry.getValue().stream().map(GraalAccess::lookupModule).map(ResolvedJavaModule::getName).toList());
             modules.remove(null);
-            if (entry.getValue().contains(allUnnamedModule)) {
+            if (entry.getValue().contains(OriginalModuleProvider.getJavaModule(allUnnamedModule))) {
                 modules.add(ALL_UNNAMED_MODULE_NAME);
             }
-            if (entry.getValue().contains(everyoneModule)) {
+            if (entry.getValue().contains(OriginalModuleProvider.getJavaModule(everyoneModule))) {
                 modules.add(EVERYONE_MODULE_NAME);
             }
         }

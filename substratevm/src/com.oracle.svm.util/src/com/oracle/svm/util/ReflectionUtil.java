@@ -238,4 +238,14 @@ public final class ReflectionUtil {
     public static void writeStaticField(Class<?> declaringClass, String fieldName, Object value) {
         writeField(declaringClass, fieldName, null, value);
     }
+
+    /**
+     * Helper method to indicate that a certain {@link Class#isAssignableFrom} check is ok, for
+     * example because it compares against class literals of SVM implementation classes. In general,
+     * we should not use <em>core reflection</em>, but
+     * {@link jdk.vm.ci.meta.ResolvedJavaType#isAssignableFrom} in hosted code.
+     */
+    public static boolean isAssignableFrom(Class<?> clazz, Class<?> other) {
+        return clazz.isAssignableFrom(other);
+    }
 }

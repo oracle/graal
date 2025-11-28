@@ -103,4 +103,8 @@ final class ResolvedJavaModuleImpl implements ResolvedJavaModule {
     static void addReads(Module accessingModule, ResolvedJavaModule declaringModule) {
         ModuleSupport.accessModule(ModuleSupport.Access.OPEN, accessingModule, toImpl(declaringModule).module);
     }
+
+    static Module getJavaModule(ResolvedJavaModule m) {
+        return toImpl(m).module;
+    }
 }

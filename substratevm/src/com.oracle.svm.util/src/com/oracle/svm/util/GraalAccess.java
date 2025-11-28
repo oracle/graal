@@ -133,4 +133,8 @@ public final class GraalAccess {
     public static <T> T getGraalCapability(Class<T> clazz) {
         return graalRuntime.getCapability(clazz);
     }
+
+    public static ResolvedJavaModule lookupModule(Module module) {
+        return new ResolvedJavaModuleImpl(module);
+    }
 }
