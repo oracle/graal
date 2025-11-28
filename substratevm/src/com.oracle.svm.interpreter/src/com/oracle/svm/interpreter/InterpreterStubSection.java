@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -271,11 +272,10 @@ public abstract class InterpreterStubSection {
 
         Object retVal;
         com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
-        InstalledCode installedCode = rMethod.installedCode;
-        if (installedCode != null && installedCode.isValid()) {
-            System.out.printf("Found code for method %s, executing it now %n", rMethod);
+        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+            Log.log().string("Found code for method ").string(rMethod.getDeclaringClass().getName()).string("::").string(rMethod.getName()).newline();
             /* A JIT compiled version is available, execute this one instead */
-            CFunctionPointer entryPoint = Word.pointer(installedCode.getEntryPoint());
+            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
             retVal = leaveInterpreter(entryPoint, interpreterMethod, accessingClass, args);
         } else {
             retVal = Interpreter.execute(interpreterMethod, args);
