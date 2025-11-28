@@ -2151,7 +2151,6 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeLoad(ValueNode node, ValueNode object, TypeFlowsOfNodes state) {
         /* All unsafe accessed primitive fields are always saturated. */
         if (node.getStackKind() == JavaKind.Object) {
-            TypeFlowBuilder<?> objectBuilder = state.lookup(object);
 
             TypeFlowBuilder<?> loadBuilder;
             if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
@@ -2167,6 +2166,7 @@ public class MethodTypeFlowBuilder {
                     return preSaturated;
                 });
             } else {
+                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 /*
                  * Use the Object type as a conservative approximation for both the receiver object
                  * type and the loaded values type.
@@ -2176,9 +2176,9 @@ public class MethodTypeFlowBuilder {
                     flowsGraph.addMiscEntryFlow(loadTypeFlow);
                     return loadTypeFlow;
                 });
+                loadBuilder.addObserverDependency(objectBuilder);
             }
 
-            loadBuilder.addObserverDependency(objectBuilder);
             state.add(node, loadBuilder);
         }
     }
