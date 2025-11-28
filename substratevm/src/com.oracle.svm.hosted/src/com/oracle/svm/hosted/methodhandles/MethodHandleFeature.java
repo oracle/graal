@@ -301,6 +301,17 @@ public class MethodHandleFeature implements InternalFeature {
         } catch (ReflectiveOperationException e) {
             VMError.shouldNotReachHere("Can not invoke createFormsForm method to register base types from the java.lang.invoke.LambdaForm$BasicType class.");
         }
+
+        /*
+         * Allocating PerfCounter objects at run-time is not supported. For more details see the
+         * Target_jdk_internal_perf_PerfCounter substitutions. Here we ensure that the @Stable field
+         * java.lang.invoke.LambdaForm.LF_FAILED is initialized and is allowed to be folded before
+         * analysis to eliminate any code paths that would try initializing it.
+         */
+        Method failedCompilationCounterMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "failedCompilationCounter");
+        ReflectionUtil.invokeMethod(failedCompilationCounterMethod, null);
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(lambdaFormClass, "LF_FAILED"));
+
         // The following call sites produce side effects by generating BoundMethodHandle
         // species, which are subsequently referenced by java.lang.invoke.LambdaForm$Holder.
         MethodHandles.constant(long.class, 0L);
