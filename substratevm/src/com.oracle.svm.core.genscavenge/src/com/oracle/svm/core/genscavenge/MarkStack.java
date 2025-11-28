@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.compacting;
+package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.vm.ci.code.CodeUtil.K;
@@ -50,11 +50,11 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 /**
- * LIFO stack for objects to visit during the mark phase. Without it, recursive calls could exhaust
- * the {@linkplain StackOverflowCheck yellow zone stack space} during GC. Callers can also push
- * other kinds of values, for example indexes for object arrays to keep track of the scanned range.
+ * LIFO stack for marked objects to scan. Without it, recursive calls could exhaust the
+ * {@linkplain StackOverflowCheck yellow zone stack space} during GC. Callers can also push other
+ * kinds of values, for example indexes for object arrays to keep track of the scanned range.
  */
-public final class MarkStack {
+final class MarkStack {
     private static final int SEGMENT_SIZE = 64 * K - /* avoid potential malloc() overallocation */ 64;
 
     @Fold
@@ -73,7 +73,7 @@ public final class MarkStack {
     private int cursor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MarkStack() {
+    MarkStack() {
     }
 
     @AlwaysInline("GC performance")

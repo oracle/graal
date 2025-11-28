@@ -40,7 +40,6 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.compacting.CompactingVisitor;
-import com.oracle.svm.core.genscavenge.compacting.MarkStack;
 import com.oracle.svm.core.genscavenge.compacting.ObjectFixupVisitor;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
 import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
@@ -54,18 +53,13 @@ import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 
 /**
  * Core of the mark-compact implementation for the old generation, which collects using (almost)
@@ -80,12 +74,12 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
  * <li>{@linkplain #markPinnedObject Mark pinned objects as reachable}. These objects must remain at
  * their current address, so the chunks that contain them will be swept instead of compacted.
  *
- * <li>Scan reachable objects, starting from roots, in {@link #promoteAlignedObject} and
- * {@link #scanGreyObjects}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
- * combination of bits} in the object header. Marked objects are pushed to the {@link #markStack} to
- * subsequently scan the objects that are transitively reachable from them. Only objects that have
- * an identity hash code that is based on their current address are copied to a new location, during
- * which a field is added that stores the identity hash code.
+ * <li>Scan reachable objects, starting from roots, in {@link GCImpl#scanGreyObjects} and
+ * {@link #promoteAlignedObject}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
+ * combination of bits} in the object header. Marked objects are {@linkplain GCImpl#mark pushed onto
+ * the mark stack} to subsequently scan the objects that are transitively reachable from them. Only
+ * objects that have an identity hash code that is based on their current address are copied to a
+ * new location, during which a field is added that stores the identity hash code.
  *
  * <li>Begin {@linkplain #sweepAndCompact compaction and sweeping,} first
  * {@linkplain ReferenceObjectProcessing#updateForwardedRefs() updating reference objects} before
@@ -117,8 +111,6 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 final class CompactingOldGeneration extends OldGeneration {
 
     private final Space space = new Space("Old", "O", false, getAge());
-    private final MarkStack markStack = new MarkStack();
-    private final MarkStack arrayMarkStack = new MarkStack();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
     private final PlanningVisitor planningVisitor = new PlanningVisitor();
@@ -160,60 +152,14 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     boolean scanGreyObjects(boolean completeCollection) {
-        if (!completeCollection) {
-            if (!toGreyObjectsWalker.haveGreyObjects()) {
-                return false;
-            }
-            toGreyObjectsWalker.walkGreyObjects();
-            return true;
+        if (completeCollection) {
+            return false; // all objects are scanned via the mark stack in GCImpl
         }
-
-        if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
+        if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }
-        GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-        do {
-            while (!markStack.isEmpty()) {
-                visitor.visitObject(markStack.popObject());
-            }
-
-            // Process array ranges one at a time to avoid bloating the marking stack
-            if (!arrayMarkStack.isEmpty()) {
-                scanArrayRange(visitor);
-            }
-        } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
+        toGreyObjectsWalker.walkGreyObjects();
         return true;
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void pushOntoMarkStack(Object obj) {
-        DynamicHub objHub = DynamicHubIntrinsics.readHub(obj);
-        if (objHub.getHubType() == HubType.OBJECT_ARRAY) {
-            if (ArrayLengthNode.arrayLength(obj) != 0) {
-                arrayMarkStack.pushObject(obj);
-                arrayMarkStack.pushInt(0);
-            }
-        } else {
-            markStack.pushObject(obj);
-        }
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void scanArrayRange(GreyToBlackObjectVisitor visitor) {
-        int index = arrayMarkStack.popInt();
-        Object array = arrayMarkStack.popObject();
-
-        int length = ArrayLengthNode.arrayLength(array);
-        final int stride = 2048;
-        int count = length - index;
-        if (count > stride) {
-            count = stride;
-            arrayMarkStack.pushObject(array);
-            arrayMarkStack.pushInt(index + count);
-        }
-
-        visitor.visitObjectArrayRange(array, index, count);
     }
 
     @AlwaysInline("GC performance")
@@ -242,8 +188,7 @@ final class CompactingOldGeneration extends OldGeneration {
             result = ObjectPromoter.copyAlignedObject(original, originalSpace, space);
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
-        ObjectHeaderImpl.setMarked(result);
-        pushOntoMarkStack(result);
+        GCImpl.getGCImpl().mark(result);
         return result;
     }
 
@@ -257,10 +202,7 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         assert originalSpace == space;
-        if (!ObjectHeaderImpl.isMarked(original)) {
-            ObjectHeaderImpl.setMarked(original);
-            pushOntoMarkStack(original);
-        }
+        GCImpl.getGCImpl().mark(original);
         return original;
     }
 
@@ -273,8 +215,7 @@ final class CompactingOldGeneration extends OldGeneration {
             return;
         }
         chunk.setSweep(true);
-        ObjectHeaderImpl.setMarked(obj);
-        pushOntoMarkStack(obj);
+        GCImpl.getGCImpl().mark(obj);
     }
 
     @Override
@@ -569,22 +510,8 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    void checkSanityBeforeCollection() {
-        assert markStack.isEmpty();
-        assert arrayMarkStack.isEmpty();
-    }
-
-    @Override
-    void checkSanityAfterCollection() {
-        assert markStack.isEmpty();
-        assert arrayMarkStack.isEmpty();
-    }
-
-    @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
-        markStack.tearDown();
-        arrayMarkStack.tearDown();
         space.tearDown();
     }
 }

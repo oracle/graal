@@ -80,6 +80,8 @@ import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
@@ -102,6 +104,7 @@ import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -117,6 +120,7 @@ import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -131,6 +135,8 @@ public final class GCImpl implements GC {
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
     private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor();
+    private final MarkStack markStack = new MarkStack();
+    private final MarkStack arrayMarkStack = new MarkStack();
 
     private final GCAccounting accounting = new GCAccounting();
     private final Timers timers = new Timers();
@@ -161,6 +167,8 @@ public final class GCImpl implements GC {
     @Uninterruptible(reason = "Tear-down in progress.")
     public void tearDown() {
         policy.tearDown();
+        markStack.tearDown();
+        arrayMarkStack.tearDown();
     }
 
     @Override
@@ -531,16 +539,23 @@ public final class GCImpl implements GC {
         return Log.log().string("[").rational(uptimeMs, TimeUtils.millisPerSecond, 3).string("s").string("] GC(").unsigned(collectionEpoch).string(") ");
     }
 
-    private static void checkSanityBeforeCollection() {
+    private void checkSanityBeforeCollection() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().checkSanityBeforeCollection();
         heap.getOldGeneration().checkSanityBeforeCollection();
+        checkSanityBeforeOrAfterCollection();
     }
 
-    private static void checkSanityAfterCollection() {
+    private void checkSanityAfterCollection() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().checkSanityAfterCollection();
         heap.getOldGeneration().checkSanityAfterCollection();
+        checkSanityBeforeOrAfterCollection();
+    }
+
+    private void checkSanityBeforeOrAfterCollection() {
+        assert markStack.isEmpty();
+        assert arrayMarkStack.isEmpty();
     }
 
     @Fold
@@ -765,7 +780,7 @@ public final class GCImpl implements GC {
 
         startTicks = JfrGCEvents.startGCPhasePause();
         try {
-            /* Visit all the Objects promoted since the snapshot. */
+            /* Visit remaining grey objects: promoted objects and objects on mark stacks. */
             scanGreyObjects();
 
             if (RuntimeCodeInstallation.isEnabled()) {
@@ -1064,26 +1079,33 @@ public final class GCImpl implements GC {
     private void scanGreyObjects() {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.start();
         try {
-            if (completeCollection) {
-                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects(true);
-            } else {
-                incrementalScanGreyObjectsLoop();
-            }
+            scanGreyObjectsLoop();
         } finally {
             scanGreyObjectsTimer.stop();
         }
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    private void incrementalScanGreyObjectsLoop() {
-        assert !completeCollection;
+    private void scanGreyObjectsLoop() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
+
         boolean hasGrey;
         do {
-            hasGrey = youngGen.scanGreyObjects();
-            hasGrey |= oldGen.scanGreyObjects(false);
+            hasGrey = !completeCollection && youngGen.scanGreyObjects();
+            hasGrey |= oldGen.scanGreyObjects(completeCollection);
+
+            while (!markStack.isEmpty() || !arrayMarkStack.isEmpty()) {
+                hasGrey = true;
+                while (!markStack.isEmpty()) {
+                    greyToBlackObjectVisitor.visitObject(markStack.popObject());
+                }
+                // Process array ranges one at a time to avoid bloating the marking stack
+                if (!arrayMarkStack.isEmpty()) {
+                    scanArrayRange(greyToBlackObjectVisitor);
+                }
+            }
         } while (hasGrey);
     }
 
@@ -1186,6 +1208,49 @@ public final class GCImpl implements GC {
         if (!promoted) {
             heap.getOldGeneration().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace);
         }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
+    void mark(Object obj) {
+        assert SerialGCOptions.useCompactingOldGen() && completeCollection &&
+                        HeapChunk.getEnclosingHeapChunk(obj).getSpace().isCompactingOldSpace();
+
+        if (!ObjectHeaderImpl.isMarked(obj)) {
+            ObjectHeaderImpl.setMarked(obj);
+            pushOntoMarkStack(obj);
+        }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
+    private void pushOntoMarkStack(Object obj) {
+        DynamicHub objHub = DynamicHubIntrinsics.readHub(obj);
+        if (objHub.getHubType() == HubType.OBJECT_ARRAY) {
+            if (ArrayLengthNode.arrayLength(obj) != 0) {
+                arrayMarkStack.pushObject(obj);
+                arrayMarkStack.pushInt(0);
+            }
+        } else {
+            markStack.pushObject(obj);
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
+    private void scanArrayRange(GreyToBlackObjectVisitor visitor) {
+        int index = arrayMarkStack.popInt();
+        Object array = arrayMarkStack.popObject();
+
+        int length = ArrayLengthNode.arrayLength(array);
+        final int stride = 2048;
+        int count = length - index;
+        if (count > stride) {
+            count = stride;
+            arrayMarkStack.pushObject(array);
+            arrayMarkStack.pushInt(index + count);
+        }
+
+        visitor.visitObjectArrayRange(array, index, count);
     }
 
     private static void swapSpaces() {
