@@ -1,8 +1,7 @@
 public class RecursiveFibonacci {
-    private static int res = 0;
 
     public static void main(String[] args) {
-        res = getFibonacci(45);
+        int res = getFibonacci(45);
         System.out.println(res);
     }
 
