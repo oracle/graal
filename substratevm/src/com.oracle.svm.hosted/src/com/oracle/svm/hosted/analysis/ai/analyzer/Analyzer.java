@@ -39,6 +39,10 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
         this.methodFilterManager = builder.methodFilterManager;
     }
 
+    /**
+     * Execute analysis starting from the given method. Concrete analyzers are free to
+     * traverse more methods (e.g., via invokes) as part of their strategy.
+     */
     public abstract void runAnalysis(AnalysisMethod method);
 
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {

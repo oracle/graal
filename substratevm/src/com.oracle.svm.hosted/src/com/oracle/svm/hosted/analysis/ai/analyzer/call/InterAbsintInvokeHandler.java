@@ -15,15 +15,13 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.*;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import java.util.Optional;
-
 /**
- * Inter-procedural invoke handler using per-call context and summary caching.
+ * Inter-procedural invoke handler which uses per-call method context and summary caching.
  */
 public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain>> extends AbsintInvokeHandler<Domain> {
 
@@ -54,7 +52,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         try {
             targetAnalysisMethod = getInvokeTargetAnalysisMethod(current, invoke);
             assert targetAnalysisMethod != null;
-            StructuredGraph graph = AnalysisServices.getInstance().getGraph(targetAnalysisMethod);
+            StructuredGraph graph = AbstractInterpretationServices.getInstance().getGraph(targetAnalysisMethod);
             assert graph != null;
         } catch (Exception e) {
             AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
@@ -102,6 +100,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
 
             fixpointIterator.getAbstractState().setStartNodeState(preSummary.getPreCondition());
+            AbstractInterpretationServices.getInstance().markMethodTouched(targetAnalysisMethod);
             AbstractState<Domain> calleeAbstractState = fixpointIterator.iterateUntilFixpoint();
             preSummary.finalizeSummary(calleeAbstractState);
 
@@ -124,21 +123,21 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return;
         }
 
+        AbstractInterpretationServices.getInstance().markMethodTouched(root);
         String ctxSig = CallContextHolder.buildKCFASignature(methodStack.getCallStack(), 2);
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
         methodStack.push(root);
         try {
             AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
-            // We have to run checkers on the main method manually, since we don't have a summary entry for the root method unfortunately
+            /* We have to run checkers on the main method manually, since we don't have a summary entry for the root method unfortunately */
+            // FIXME: this is fundamentally wrong, because we cannot optimize this before having all contexts from all methods ( summaries )
+
             checkerManager.runCheckersOnSingleMethod(root, abstractState, analysisContext.getMethodGraphCache().getMethodGraphMap().get(root));
             checkerManager.runCheckersOnMethodSummaries(summaryManager.getSummaryRepository().getMethodSummaryMap(), analysisContext.getMethodGraphCache().getMethodGraphMap());
-            var logger = AbstractInterpretationLogger.getInstance();
-            // TODO: print abstract interpretation checkers
         } finally {
             methodStack.pop();
         }
-
     }
 
     private AnalysisMethod getInvokeTargetAnalysisMethod(AnalysisMethod root, Invoke invoke) {

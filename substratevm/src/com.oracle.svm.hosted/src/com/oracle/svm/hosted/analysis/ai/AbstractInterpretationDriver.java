@@ -5,23 +5,19 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.analyses.heap.HeapAwareIntervalInterpreter;
-import com.oracle.svm.hosted.analysis.ai.analyses.heap.inter.HeapAnalysisSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
-import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
-import com.oracle.svm.hosted.analysis.ai.domain.heap.HeapObjectDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
+import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 
@@ -53,10 +49,16 @@ public class AbstractInterpretationDriver {
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
                 engine.executeAbstractInterpretation();
-            } catch (AbsintException e) {
+//                printAbstractInterpretationStats();
+            } catch (AbstractInterpretationException e) {
                 debug.log("Abstract interpretation encountered a runtime error: ", e);
             }
         }
+    }
+
+    private void printAbstractInterpretationStats() {
+        var stats = AbstractInterpretationServices.getInstance().getStats();
+        debug.log(stats.toString());
     }
 
     /**

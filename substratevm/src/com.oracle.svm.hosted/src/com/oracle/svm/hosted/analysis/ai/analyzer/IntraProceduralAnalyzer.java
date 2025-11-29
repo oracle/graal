@@ -24,11 +24,7 @@ public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     public IntraAnalyzerMode getAnalyzerMode() {
         return analyzerMode;
     }
-    /**
-     * The {@code runAnalysis} method is responsible for executing the analysis on the given method.
-     *
-     * @param method the method to be analyzed.
-     */
+
     @Override
     public void runAnalysis(AnalysisMethod method) {
         AnalysisContext analysisContext = new AnalysisContext(iteratorPolicy, checkerManager, methodFilterManager);
