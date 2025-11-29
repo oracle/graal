@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.classinitialization;
+package jdk.graal.compiler.ide;
 
 /**
- * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
- * on it.
+ * Represents a qualified stack trace element, containing information about the file name and line
+ * number.
+ * <p>
+ * This record is used to provide a concise representation of a stack trace element, with the file
+ * name being fully qualified.
+ *
+ * @param qualifiedFileName the fully qualified name of the file
+ * @param line the line number within the file
  */
-public enum InitKind {
-    /** Class is initialized during image building, so it is already initialized at runtime. */
-    BUILD_TIME,
-    /** Class should be initialized at runtime and not during image building. */
-    RUN_TIME;
-
-    InitKind max(InitKind other) {
-        return this.ordinal() > other.ordinal() ? this : other;
-    }
+public record QualifiedStacktraceElement(String qualifiedFileName, int line) {
 }

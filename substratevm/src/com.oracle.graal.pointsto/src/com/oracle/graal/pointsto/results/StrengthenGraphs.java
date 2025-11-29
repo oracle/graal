@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.ide.AnalysisIDEReporting;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -215,6 +216,9 @@ public abstract class StrengthenGraphs {
         if (beforeCounters != null) {
             beforeCounters.collect(graph);
         }
+
+        AnalysisIDEReporting.reportConstantParamAndReturnTypes(method);
+
         try (var s = debug.scope("StrengthenGraphs", graph); var a = debug.activate()) {
             new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
         } catch (Throwable ex) {
