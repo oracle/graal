@@ -13,6 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
 

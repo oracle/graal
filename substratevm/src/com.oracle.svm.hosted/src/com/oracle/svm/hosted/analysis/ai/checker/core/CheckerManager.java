@@ -88,7 +88,7 @@ public final class CheckerManager {
         for (var entry : methodSummaryMap.entrySet()) {
             AnalysisMethod method = entry.getKey();
             MethodSummary<Domain> methodSummary = entry.getValue();
-            var abstractState = methodSummary.getStateAcrossAllContexts();
+            AbstractState<Domain> abstractState = methodSummary.getStateAcrossAllContexts();
             runCheckersOnSingleMethod(method, abstractState, methodGraphMap.get(method));
         }
     }

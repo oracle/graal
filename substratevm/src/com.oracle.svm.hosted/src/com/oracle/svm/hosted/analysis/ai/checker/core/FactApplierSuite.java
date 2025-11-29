@@ -4,6 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.applier.*;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.ArrayList;
@@ -53,21 +54,32 @@ public final class FactApplierSuite {
         }
 
         ApplierResult total = ApplierResult.empty();
-//        try {
-//            for (FactApplier applier : appliers) {
-//                logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
-//                ApplierResult r = applier.apply(method, graph, aggregator);
-//                total = total.plus(r);
-//                if (!graph.verify()) {
-//                    logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
-//                }
-//            }
-//        } catch (Throwable e) {
-//            logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
-//            throw new RuntimeException(e);
-//        }
-        try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
-            session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
+
+        if (logger.isGraphDumpEnabled() && graph.getDebug().isDumpEnabledForMethod()) {
+            try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
+                session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
+
+                for (FactApplier applier : appliers) {
+
+                    logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
+                    ApplierResult r = applier.apply(method, graph, aggregator);
+                    total = total.plus(r);
+
+                    if (!graph.verify()) {
+                        logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
+                    }
+                    session.dumpApplierSubphase(applier.getDescription());
+                }
+
+                return total;
+            } catch (Throwable e) {
+                logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);
+                throw new RuntimeException(e);
+            }
+        }
+
+        /* Otherwise perform fact applying without dumping */
+        try {
             for (FactApplier applier : appliers) {
                 logger.log("[FactApplier] Applying: " + applier.getDescription(), LoggerVerbosity.CHECKER);
                 ApplierResult r = applier.apply(method, graph, aggregator);
@@ -75,7 +87,6 @@ public final class FactApplierSuite {
                 if (!graph.verify()) {
                     logger.log("[FactApplier] Graph verification failed after " + applier.getDescription(), LoggerVerbosity.CHECKER_WARN);
                 }
-                session.dumpApplierSubphase(applier.getDescription());
             }
         } catch (Throwable e) {
             logger.log("[FactApplier] IGV dump failed" + e.getMessage(), LoggerVerbosity.CHECKER_WARN);

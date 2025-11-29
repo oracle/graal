@@ -49,7 +49,6 @@ public class AbstractInterpretationDriver {
             try (var scope = debug.scope("AbstractInterpretation")) {
                 prepareAnalyses();
                 engine.executeAbstractInterpretation();
-//                printAbstractInterpretationStats();
             } catch (AbstractInterpretationException e) {
                 debug.log("Abstract interpretation encountered a runtime error: ", e);
             }
@@ -70,11 +69,12 @@ public class AbstractInterpretationDriver {
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
                 .setConsoleEnabled(false)             /* only write to file */
-                .setFileEnabled(true)                /* ensure file logging is on */
-                .setFileThreshold(LoggerVerbosity.DEBUG)
-                .setConsoleThreshold(LoggerVerbosity.INFO); /* irrelevant since console disabled */
-        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
+                .setFileEnabled(false)                /* ensure file logging is on */
+                .setFileThreshold(LoggerVerbosity.INFO)
+                .setConsoleThreshold(LoggerVerbosity.INFO)
+                .setGraphDumpEnabled(true); /* irrelevant since console disabled */
 
+        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();
 
@@ -92,11 +92,11 @@ public class AbstractInterpretationDriver {
 //
         /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
-        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
+        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new BoundsSafetyChecker())
-                .maxRecursionDepth(64)
+                .maxRecursionDepth(32)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
 

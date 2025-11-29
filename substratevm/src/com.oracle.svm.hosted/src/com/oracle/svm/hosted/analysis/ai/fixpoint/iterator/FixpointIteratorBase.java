@@ -48,6 +48,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
             this.graph = services.getGraph(method);
             methodGraphCache.addToMethodGraphMap(method, graph);
         }
+
         logger.exportGraphToJson(graph, analysisMethod, analysisMethod.getName() + "_before_absint");
         this.abstractState = new AbstractState<>(initialDomain, graph);
         this.graphTraversalHelper = new GraphTraversalHelper(graph, analysisContext.getIteratorPolicy().direction());

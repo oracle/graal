@@ -39,6 +39,8 @@ public final class AbstractInterpretationLogger {
     private boolean colorEnabled = true;
     private boolean consoleEnabled = true;
     private boolean fileEnabled = true;
+    private boolean isGraphExportEnabled = false;
+    private boolean isGraphDumpEnabled = false;
 
     private AbstractInterpretationLogger(String customFileName,
                                          LoggerVerbosity loggerVerbosity) {
@@ -101,6 +103,20 @@ public final class AbstractInterpretationLogger {
     public AbstractInterpretationLogger setFileEnabled(boolean enabled) {
         this.fileEnabled = enabled;
         return this;
+    }
+
+    public AbstractInterpretationLogger setGraphExportEnabled(boolean enabled) {
+        this.isGraphExportEnabled = enabled;
+        return this;
+    }
+
+    public AbstractInterpretationLogger setGraphDumpEnabled(boolean enabled) {
+        this.isGraphDumpEnabled = enabled;
+        return this;
+    }
+
+    public boolean isGraphDumpEnabled() {
+        return isGraphDumpEnabled;
     }
 
     private static class ANSI {
@@ -255,7 +271,9 @@ public final class AbstractInterpretationLogger {
     }
 
     public void exportGraphToJson(StructuredGraph graph, AnalysisMethod method, String outputPath) {
-        exportGraphToJson(new ControlFlowGraphBuilder(graph).build(), method, outputPath);
+        if (isGraphExportEnabled) {
+            exportGraphToJson(new ControlFlowGraphBuilder(graph).build(), method, outputPath);
+        }
     }
 
     public void logFacts(List<Fact> facts) {
