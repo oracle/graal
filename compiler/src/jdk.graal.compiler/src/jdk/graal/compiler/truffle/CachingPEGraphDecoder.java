@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -128,7 +129,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             Providers p = this.graphCacheProviders;
 
-            new PrePartialEvaluationSuite(graphToEncode.getOptions(), truffleTypes, p, canonicalizer, (m) -> buildGraph(m, canonicalizer)).apply(graphToEncode, p);
+            new PrePartialEvaluationSuite(graphToEncode.getOptions(), truffleTypes, p, canonicalizer, (m) -> buildGraph(m, canonicalizer), Function.identity()).apply(graphToEncode, p);
 
             new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, p);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
