@@ -2,7 +2,6 @@ package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.nodes.Invoke;
 
 import java.util.List;

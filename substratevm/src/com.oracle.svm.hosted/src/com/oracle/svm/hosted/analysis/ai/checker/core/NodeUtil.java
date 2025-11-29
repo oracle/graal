@@ -1,12 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
