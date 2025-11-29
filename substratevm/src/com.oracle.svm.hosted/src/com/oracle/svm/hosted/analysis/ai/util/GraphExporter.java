@@ -15,37 +15,8 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Utility class for exporting Graal IR graphs in various formats for analysis and debugging.
- * This is particularly useful for sharing graphs with others for abstract interpretation analysis.
- *
- * <h2>Supported Export Formats:</h2>
- * <ul>
- *   <li><b>JSON</b>: Structured format, easy to parse programmatically</li>
- *   <li><b>Text</b>: Human-readable format with full details</li>
- *   <li><b>Compact</b>: Concise representation for quick sharing</li>
- *   <li><b>DOT</b>: GraphViz format for visualization</li>
- * </ul>
- *
- * <h2>Usage Example:</h2>
- * <pre>{@code
- * GraphExporter exporter = new GraphExporter();
- * exporter.exportToJson(graph, cfg, analysisMethod, "/tmp/graph.json");
- * exporter.exportToText(graph, cfg, analysisMethod, "/tmp/graph.txt");
- * }</pre>
- */
 public class GraphExporter {
 
-    /**
-     * Export graph to JSON format.
-     * This format is best for programmatic analysis and sharing with AI assistants.
-     *
-     * @param cfg        The control flow graph
-     * @param method     The analysis method
-     * @param outputPath Path to write the JSON file
-     * @throws IOException If writing fails
-     */
-    // TODO: we should have a separate method only for structuredGraph export
     public static void exportToJson(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) throws IOException {
         StructuredGraph graph = cfg.graph;
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
@@ -69,7 +40,6 @@ public class GraphExporter {
                 writer.println("      \"type\": \"" + node.getNodeClass().shortName() + "\",");
                 writer.println("      \"class\": \"" + node.getClass().getSimpleName() + "\",");
 
-                // Successors (control flow)
                 writer.print("      \"successors\": [");
                 boolean firstSucc = true;
                 for (Node succ : node.successors()) {
@@ -79,7 +49,6 @@ public class GraphExporter {
                 }
                 writer.println("],");
 
-                // Inputs (data flow)
                 writer.print("      \"inputs\": [");
                 boolean firstInput = true;
                 for (Node input : node.inputs()) {
@@ -89,7 +58,6 @@ public class GraphExporter {
                 }
                 writer.println("],");
 
-                // Usages
                 writer.print("      \"usages\": [");
                 boolean firstUsage = true;
                 for (Node usage : node.usages()) {
@@ -99,7 +67,6 @@ public class GraphExporter {
                 }
                 writer.println("],");
 
-                // Special node information
                 writer.print("      \"properties\": {");
                 switch (node) {
                     case PhiNode phi -> writer.print("\"valueCount\": " + phi.valueCount());
@@ -116,7 +83,6 @@ public class GraphExporter {
             writer.println();
             writer.println("  ],");
 
-            // Export CFG blocks
             writer.println("  \"cfg\": [");
             first = true;
             for (HIRBlock block : cfg.getBlocks()) {
@@ -156,15 +122,6 @@ public class GraphExporter {
         }
     }
 
-    /**
-     * Export graph to human-readable text format.
-     * This format is best for manual inspection and understanding the graph structure.
-     *
-     * @param cfg        The control flow graph
-     * @param method     The analysis method
-     * @param outputPath Path to write the text file
-     * @throws IOException If writing fails
-     */
     public void exportToText(ControlFlowGraph cfg, AnalysisMethod method, String outputPath) throws IOException {
         StructuredGraph graph = cfg.graph;
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
@@ -322,16 +279,6 @@ public class GraphExporter {
         }
     }
 
-    /**
-     * Export graph to compact text format.
-     * This format is best for quick sharing via chat/email.
-     *
-     * @param graph      The structured graph to export
-     * @param cfg        The control flow graph
-     * @param method     The analysis method
-     * @param outputPath Path to write the text file
-     * @throws IOException If writing fails
-     */
     public void exportToCompact(StructuredGraph graph, ControlFlowGraph cfg, AnalysisMethod method, String outputPath) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
             writer.println("Method: " + method.format("%H.%n(%p)"));
@@ -400,15 +347,6 @@ public class GraphExporter {
         }
     }
 
-    /**
-     * Export graph to GraphViz DOT format for visualization.
-     * Use: dot -Tpng output.dot -o graph.png
-     *
-     * @param graph      The structured graph to export
-     * @param method     The analysis method
-     * @param outputPath Path to write the DOT file
-     * @throws IOException If writing fails
-     */
     public void exportToDot(StructuredGraph graph, AnalysisMethod method, String outputPath) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
             writer.println("digraph G {");
@@ -417,14 +355,12 @@ public class GraphExporter {
             writer.println("  label=\"" + method.format("%H.%n(%p)") + "\";");
             writer.println();
 
-            // Create node ID mapping
             Map<Node, Integer> nodeIds = new HashMap<>();
             int id = 0;
             for (Node node : graph.getNodes()) {
                 nodeIds.put(node, id++);
             }
 
-            // Nodes
             for (Node node : graph.getNodes()) {
                 String label = node.getNodeClass().shortName();
                 String color = "black";
@@ -447,14 +383,12 @@ public class GraphExporter {
 
             writer.println();
 
-            // Control edges (solid)
             for (Node node : graph.getNodes()) {
                 for (Node succ : node.successors()) {
                     writer.println("  n" + nodeIds.get(node) + " -> n" + nodeIds.get(succ) + " [style=solid, color=black];");
                 }
             }
 
-            // Data edges (dashed)
             for (Node node : graph.getNodes()) {
                 for (Node input : node.inputs()) {
                     writer.println("  n" + nodeIds.get(input) + " -> n" + nodeIds.get(node) + " [style=dashed, color=blue];");

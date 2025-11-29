@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConditionTruthFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
@@ -29,13 +30,15 @@ public final class ConditionTruthApplier implements FactApplier {
     }
 
     @Override
-    public void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
-        var logger = AbstractInterpretationLogger.getInstance();
+    public ApplierResult apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         List<Fact> facts = aggregator.factsOfKind(FactKind.CONDITION_TRUTH);
         if (facts.isEmpty()) {
-            return;
+            return ApplierResult.empty();
         }
-        int folded = 0;
+
+        int trueFolded = 0;
+        int falseFolded = 0;
+
         for (Fact f : facts) {
             if (!(f instanceof ConditionTruthFact tf)) {
                 continue;
@@ -47,19 +50,22 @@ public final class ConditionTruthApplier implements FactApplier {
             switch (tf.truth()) {
                 case ALWAYS_TRUE -> {
                     GraphRewrite.foldIfTrue(graph, ifn);
-                    folded++;
+                    trueFolded++;
                 }
                 case ALWAYS_FALSE -> {
                     GraphRewrite.foldIfFalse(graph, ifn);
-                    folded++;
+                    falseFolded++;
                 }
                 default -> {
-                    // no action
+                    // uncertain -> no action
                 }
             }
         }
-        if (folded > 0) {
-            logger.log("[ConditionTruthFolding] Folded If nodes: " + folded, LoggerVerbosity.CHECKER);
-        }
+
+        return ApplierResult.builder()
+                .appliedFacts(trueFolded + falseFolded)
+                .branchesFoldedTrue(trueFolded)
+                .branchesFoldedFalse(falseFolded)
+                .build();
     }
 }

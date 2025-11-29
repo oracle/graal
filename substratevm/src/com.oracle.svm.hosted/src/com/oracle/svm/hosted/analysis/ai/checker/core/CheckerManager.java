@@ -7,9 +7,8 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.summary.ContextSummary;
 import com.oracle.svm.hosted.analysis.ai.summary.MethodSummary;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -39,6 +38,7 @@ public final class CheckerManager {
     @SuppressWarnings("unchecked")
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        var stats = AbstractInterpretationServices.getInstance().getStats();
         logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
         logger.log("Computed Abstract State: " + abstractState.toString(), LoggerVerbosity.CHECKER);
 
@@ -56,9 +56,20 @@ public final class CheckerManager {
         }
 
         logger.logFacts(allFacts);
+
+        /* Apply the facts to the analysisMethod */
         FactAggregator aggregator = FactAggregator.aggregate(allFacts);
         FactApplierSuite applierSuite = FactApplierSuite.fromRegistry(aggregator, true);
-        applierSuite.runAppliers(method, graph, aggregator);
+        ApplierResult result = applierSuite.runAppliers(method, graph, aggregator);
+
+        /* Update stats */
+        stats.addMethodBoundsEliminated(method, result.boundsChecksEliminated());
+        stats.addMethodBranchesFoldedTrue(method, result.branchesFoldedTrue());
+        stats.addMethodBranchesFoldedFalse(method, result.branchesFoldedFalse());
+        stats.addMethodConstantsStamped(method, result.constantsStamped());
+        stats.addMethodConstantsPropagated(method, result.constantsPropagated());
+        stats.addMethodInvokesReplaced(method, result.invokesReplacedWithConstants());
+        stats.finalizeMethod(method);
 
         if (persistRewrites) {
             applyAbstractInterpretationResults(method, graph);

@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
@@ -33,11 +34,10 @@ public final class ConstantStampApplier implements FactApplier {
     }
 
     @Override
-    public void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
-        var logger = AbstractInterpretationLogger.getInstance();
+    public ApplierResult apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         List<Fact> facts = aggregator.factsOfKind(FactKind.CONSTANT);
         if (facts.isEmpty()) {
-            return;
+            return ApplierResult.empty();
         }
 
         int tightened = 0;
@@ -63,8 +63,6 @@ public final class ConstantStampApplier implements FactApplier {
             }
         }
 
-        if (tightened > 0) {
-            logger.log("[ConstantStamp] Tightened stamps: " + tightened, LoggerVerbosity.CHECKER);
-        }
+        return ApplierResult.constantsStamped(tightened);
     }
 }

@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import com.oracle.svm.hosted.analysis.ai.util.GraphExporter;
 import com.oracle.svm.util.ClassUtil;
 import jdk.graal.compiler.debug.DebugContext;
@@ -274,9 +274,9 @@ public final class AbstractInterpretationLogger {
             System.err.println("dumpGraph: method or graph is null; skipping dump (phase=" + phaseName + ")");
             return;
         }
-        AnalysisServices services;
+        AbstractInterpretationServices services;
         try {
-            services = AnalysisServices.getInstance();
+            services = AbstractInterpretationServices.getInstance();
         } catch (IllegalStateException ise) {
             System.err.println("dumpGraph: AnalysisServices not initialized; skipping dump for method=" + method + ", phase=" + phaseName);
             return;
@@ -360,9 +360,9 @@ public final class AbstractInterpretationLogger {
             if (method == null) {
                 return null;
             }
-            AnalysisServices services;
+            AbstractInterpretationServices services;
             try {
-                services = AnalysisServices.getInstance();
+                services = AbstractInterpretationServices.getInstance();
             } catch (IllegalStateException ise) {
                 return null;
             }

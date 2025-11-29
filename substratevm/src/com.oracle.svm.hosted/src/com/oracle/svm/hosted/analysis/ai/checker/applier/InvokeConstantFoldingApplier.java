@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
@@ -35,11 +36,10 @@ public final class InvokeConstantFoldingApplier implements FactApplier {
     }
 
     @Override
-    public void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
-        var logger = AbstractInterpretationLogger.getInstance();
+    public ApplierResult apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         List<Fact> facts = aggregator.factsOfKind(FactKind.CONSTANT);
         if (facts.isEmpty()) {
-            return;
+            return ApplierResult.empty();
         }
 
         int folded = 0;
@@ -84,9 +84,11 @@ public final class InvokeConstantFoldingApplier implements FactApplier {
             }
             folded++;
         }
-        if (folded > 0) {
-            logger.log("[InvokeConstantFolding] Folded invokes: " + folded, LoggerVerbosity.CHECKER);
-        }
+
+        return ApplierResult.builder()
+                .appliedFacts(folded)
+                .invokesReplacedWithConstants(folded)
+                .build();
     }
 
     private static ConstantNode createIntegerConstant(StructuredGraph graph, JavaKind kind, long value) {

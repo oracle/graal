@@ -1,45 +1,67 @@
 package com.oracle.svm.hosted.analysis.ai.util;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
+import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
+import com.oracle.svm.hosted.analysis.ai.stats.AbstractInterpretationStatistics;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * AnalysisServices centralizes access to svm utilities needed by the analysis framework:
+ * Represents centralized information about utilities needed by the abstract interpretation analysis
  */
-public final class AnalysisServices {
+public final class AbstractInterpretationServices {
 
-    private static AnalysisServices instance;
+    private static AbstractInterpretationServices instance;
     private final Inflation inflation;
+    private final AbstractInterpretationStatistics stats = new AbstractInterpretationStatistics();
+    private final Set<AnalysisMethod> touchedMethods = new HashSet<>();
 
-    private AnalysisServices(Inflation inflation) {
+    private AbstractInterpretationServices(Inflation inflation) {
         this.inflation = inflation;
     }
 
-    public static AnalysisServices getInstance(Inflation inflation) {
+    public static AbstractInterpretationServices getInstance(Inflation inflation) {
         if (instance == null) {
-            instance = new AnalysisServices(inflation);
+            instance = new AbstractInterpretationServices(inflation);
         }
         return instance;
     }
 
-    public static AnalysisServices getInstance() {
+    public static AbstractInterpretationServices getInstance() {
         if (instance == null) {
             throw new IllegalStateException("AnalysisServices not initialized. Call getInstance(Inflation) first.");
         }
         return instance;
     }
 
+    public AbstractInterpretationStatistics getStats() {
+        return stats;
+    }
+
     public Inflation getInflation() {
         return inflation;
+    }
+
+    public void markMethodTouched(AnalysisMethod method) {
+        if (method != null) {
+            touchedMethods.add(method);
+        }
+    }
+
+    public int getTouchedMethodsCount() {
+        return touchedMethods.size();
+    }
+
+    public Set<AnalysisMethod> getTouchedMethods() {
+        return Collections.unmodifiableSet(touchedMethods);
     }
 
     public ResolvedJavaType lookUpType(Class<?> clazz) {
@@ -50,7 +72,7 @@ public final class AnalysisServices {
         DebugContext debug = inflation.getDebug();
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, null);
         if (graph == null) {
-            AbsintException.analysisMethodGraphNotFound(method);
+            AbstractInterpretationException.analysisMethodGraphNotFound(method);
         }
         return graph;
     }
@@ -80,16 +102,4 @@ public final class AnalysisServices {
         }
         return Optional.empty();
     }
-
-    @Deprecated
-    public void printInvokes(AnalysisMethod method, int depth, int maxDepth) {
-        if (depth > maxDepth) {
-            return;
-        }
-        for (var invoke : method.getInvokes()) {
-            System.out.println("  ".repeat(depth) + "- " + invoke.getTargetMethod().getName());
-            printInvokes(invoke.getTargetMethod(), depth + 1, maxDepth);
-        }
-    }
-
 }

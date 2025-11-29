@@ -2,7 +2,6 @@ package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeInput;
-import com.oracle.svm.hosted.analysis.ai.checker.core.NodeUtil;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
@@ -14,7 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -27,7 +26,6 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
@@ -55,8 +53,6 @@ import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
-import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -958,7 +954,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         mem.bindTempByName(nodeId(node), root);
 
         if (node.getVirtualObject() instanceof VirtualArrayNode vArr) {
-            var bb = AnalysisServices.getInstance().getInflation();
+            var bb = AbstractInterpretationServices.getInstance().getInflation();
             var constRef = bb.getConstantReflectionProvider();
             var lenNode = vArr.findLength(ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, constRef);
             if (lenNode instanceof ConstantNode cn &&

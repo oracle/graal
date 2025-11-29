@@ -1,24 +1,24 @@
-package com.oracle.svm.hosted.analysis.ai.util;
+package com.oracle.svm.hosted.analysis.ai.exception;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import jdk.graal.compiler.graph.Node;
 
 import java.io.Serial;
 
-public class AbsintException extends RuntimeException {
+public class AbstractInterpretationException extends RuntimeException {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    AbsintException(String message) {
+    AbstractInterpretationException(String message) {
         super(message);
     }
 
-    AbsintException(String message, Throwable cause) {
+    AbstractInterpretationException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    AbsintException(Throwable ex) {
+    AbstractInterpretationException(Throwable ex) {
         super(ex);
     }
 
@@ -30,7 +30,7 @@ public class AbsintException extends RuntimeException {
         throw new AnalysisMethodGraphUnavailableException(("The graph of analysis method: " + method.getQualifiedName() + " could not be found during abstract interpretation"));
     }
 
-    public static class WideningThresholdExceededException extends AbsintException {
+    public static class WideningThresholdExceededException extends AbstractInterpretationException {
         @Serial
         private static final long serialVersionUID = 1L;
 
@@ -47,7 +47,7 @@ public class AbsintException extends RuntimeException {
         }
     }
 
-    public static class AnalysisMethodGraphUnavailableException extends AbsintException {
+    public static class AnalysisMethodGraphUnavailableException extends AbstractInterpretationException {
         @Serial
         private static final long serialVersionUID = 1L;
 

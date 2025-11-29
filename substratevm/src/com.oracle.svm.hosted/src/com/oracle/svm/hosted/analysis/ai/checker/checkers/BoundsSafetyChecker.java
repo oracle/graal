@@ -12,16 +12,13 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
-import jdk.graal.compiler.core.common.type.Stamp;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
-import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.AccessIndexedNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
@@ -30,7 +27,6 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -159,7 +155,6 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
 
         Node condition = ifNode.condition();
         if (condition instanceof CompareNode compareNode) {
-            logger.log("It is an compareNode", LoggerVerbosity.CHECKER);
             Node y = compareNode.getY();
             logger.log("The y is:" + y, LoggerVerbosity.CHECKER);
             if (y instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
@@ -167,46 +162,41 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
                 if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
             }
 
-            // FIXME: refactor this
             if (y instanceof ArrayLengthNode aln) {
                 return getLengthFromArray(st, aln.array());
             }
-
         }
 
         return -1;
     }
 
     private static int getLengthFromArray(AbstractState<AbstractMemory> st, ValueNode array) {
-
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Get Length from array: " + array, LoggerVerbosity.CHECKER);
-        if (array == null) return -1;
-
-        if (array instanceof VirtualArrayNode vArr) {
-            logger.log("Virtual Array Node", LoggerVerbosity.CHECKER);
-            Node node = vArr.findLength(ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, AnalysisServices.getInstance().getInflation().getConstantReflectionProvider());
-            if (node instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
-                long v = cn.asJavaConstant().asLong();
-                if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
+        switch (array) {
+            case null -> {
+                return -1;
             }
-            return -1;
-        }
-
-        if (array instanceof PiNode piNode) {
-            logger.log("Pi Node", LoggerVerbosity.CHECKER);
-            return getLengthFromArray(st, piNode.object());
-        }
-
-        if (array instanceof  ParameterNode pn) {
-            // now the parameter has the length of the array
-            logger.log("Parameter Node: " + pn, LoggerVerbosity.CHECKER);
-            String id = "param" + pn.index();
-            IntInterval value = st.getStartNodeState().getPreCondition().readStore(AccessPath.forLocal(id));
-            if (value.isSingleton() && value.getLower() <= Integer.MAX_VALUE && value.getLower() >= Integer.MIN_VALUE) {
-                return (int) value.getLower();
+            case VirtualArrayNode vArr -> {
+                Node node = vArr.findLength(ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, AbstractInterpretationServices.getInstance().getInflation().getConstantReflectionProvider());
+                if (node instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
+                    long v = cn.asJavaConstant().asLong();
+                    if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
+                }
+                return -1;
+            }
+            case PiNode piNode -> {
+                return getLengthFromArray(st, piNode.object());
+            }
+            case ParameterNode pn -> {
+                String id = "param" + pn.index();
+                IntInterval value = st.getStartNodeState().getPreCondition().readStore(AccessPath.forLocal(id));
+                if (value.isSingleton() && value.getLower() <= Integer.MAX_VALUE && value.getLower() >= Integer.MIN_VALUE) {
+                    return (int) value.getLower();
+                }
+            }
+            default -> {
             }
         }
+
         return -1;
     }
 

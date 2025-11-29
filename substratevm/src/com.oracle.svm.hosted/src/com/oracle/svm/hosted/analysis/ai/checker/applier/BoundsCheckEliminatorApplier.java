@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.NodeUtil;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
@@ -35,13 +36,13 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
     }
 
     @Override
-    public void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
-        var logger = AbstractInterpretationLogger.getInstance();
+    public ApplierResult apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator) {
         List<Fact> idxFacts = aggregator.factsOfKind(FactKind.BOUNDS_SAFETY);
         if (idxFacts.isEmpty()) {
-            logger.log("[BoundsCheckEliminator] No index safety facts.", LoggerVerbosity.CHECKER);
-            return;
+            return ApplierResult.empty();
         }
+
+        int folded = 0;
         for (Fact f : idxFacts.reversed()) {
             SafeBoundsAccessFact isf = (SafeBoundsAccessFact) f;
             if (!isf.isInBounds()) continue;
@@ -54,9 +55,10 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             }
 
             if (guardIf.condition() instanceof IntegerLessThanNode || guardIf.condition() instanceof IntegerBelowNode) {
-                logger.log("[GraphRewrite] Folding IfNode to true branch: " + guardIf, LoggerVerbosity.CHECKER);
                 graph.removeSplitPropagate(guardIf, guardIf.trueSuccessor());
+                folded++;
             }
         }
+        return ApplierResult.boundsEliminated(folded);
     }
 }

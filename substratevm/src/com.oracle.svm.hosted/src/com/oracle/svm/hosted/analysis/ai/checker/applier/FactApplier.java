@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.applier;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -27,6 +28,8 @@ public interface FactApplier {
     /**
      * Apply graph rewrites driven by facts in the aggregator. Appliers should be idempotent
      * and resilient to partially optimized graphs.
+     *
+     * @return per-applier counters for statistics aggregation.
      */
-    void apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator);
+    ApplierResult apply(AnalysisMethod method, StructuredGraph graph, FactAggregator aggregator);
 }

@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext;
@@ -12,8 +11,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.AbsintException;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisServices;
+import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -45,7 +44,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         if (methodGraphCache.containsMethodGraph(method)) {
             this.graph = methodGraphCache.getMethodGraphMap().get(method);
         } else {
-            var services = AnalysisServices.getInstance();
+            var services = AbstractInterpretationServices.getInstance();
             this.graph = services.getGraph(method);
             methodGraphCache.addToMethodGraphMap(method, graph);
         }
@@ -94,7 +93,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
             newPre.widenWith(abstractState.getPostCondition(node));
         } else {
             if (!newPre.isTop()) {
-                AbsintException.exceededWideningThreshold(node, analysisMethod);
+                AbstractInterpretationException.exceededWideningThreshold(node, analysisMethod);
             }
             iteratorContext.setConverged(true);
         }
