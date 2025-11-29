@@ -137,6 +137,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   linux_amd64_latest:                       graal_common.labsjdkLatest + self.espresso_jdkLatest_llvm + self.linux_amd64,
   linux_aarch64_latest:                     graal_common.labsjdkLatest                                + self.linux_aarch64,
+  darwin_aarch64_latest:                    graal_common.labsjdkLatest                                + self.darwin_aarch64,
 
   linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm  + self.linux_amd64,
 
@@ -198,13 +199,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk25_monthly_darwin_aarch64  : self.monthly       + self.darwin_aarch64_25,
   jdk25_monthly_windows_amd64   : self.monthly       + self.windows_25,
 
-  jdkLatest_tier1_linux_amd64   : self.tier1         + self.linux_amd64_latest,
-  jdkLatest_tier2_linux_amd64   : self.tier2         + self.linux_amd64_latest,
-  jdkLatest_tier3_linux_amd64   : self.tier3         + self.linux_amd64_latest,
-  jdkLatest_daily_linux_amd64   : self.daily         + self.linux_amd64_latest,
-  jdkLatest_daily_linux_aarch64 : self.daily         + self.linux_aarch64_latest,
-  jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
-  jdkLatest_weekly_linux_aarch64: self.weekly        + self.linux_aarch64_latest,
+  jdkLatest_tier1_linux_amd64    : self.tier1         + self.linux_amd64_latest,
+  jdkLatest_tier2_linux_amd64    : self.tier2         + self.linux_amd64_latest,
+  jdkLatest_tier3_linux_amd64    : self.tier3         + self.linux_amd64_latest,
+  jdkLatest_daily_linux_amd64    : self.daily         + self.linux_amd64_latest,
+  jdkLatest_daily_linux_aarch64  : self.daily         + self.linux_aarch64_latest,
+  jdkLatest_daily_darwin_aarch64 : self.daily         + self.darwin_aarch64_latest,
+  jdkLatest_weekly_linux_amd64   : self.weekly        + self.linux_amd64_latest,
+  jdkLatest_weekly_linux_aarch64 : self.weekly        + self.linux_aarch64_latest,
 
   // shared snippets
   eclipse: graal_common.deps.eclipse,
