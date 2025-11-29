@@ -27,6 +27,8 @@ package com.oracle.svm.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface OriginalModuleProvider {
     static Module getJavaModule(ResolvedJavaModule m) {

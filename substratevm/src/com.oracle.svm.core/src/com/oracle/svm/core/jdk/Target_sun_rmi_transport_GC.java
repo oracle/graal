@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.util.HostModuleUtil;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 /**
  * Note that sun.rmi.transport.GC is initialized at build-time to avoid including the rmi library,
@@ -57,7 +57,7 @@ class JavaRMIModuleAvailable implements BooleanSupplier {
     private static final boolean hasModule;
 
     static {
-        var module = ResolvedJavaModuleLayer.boot().findModule("java.rmi");
+        var module = JVMCIReflectionUtil.bootModuleLayer().findModule("java.rmi");
         if (module.isPresent()) {
             HostModuleUtil.addReads(JavaRMIModuleAvailable.class, module.get());
         }
