@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;

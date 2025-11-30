@@ -19,17 +19,7 @@ import java.util.Map;
 
 public final class CheckerManager {
 
-    private final List<Checker<?>> checkers;
-    private final boolean persistRewrites;
-
-    public CheckerManager() {
-        this(true);
-    }
-
-    public CheckerManager(boolean persistRewrites) {
-        this.checkers = new ArrayList<>();
-        this.persistRewrites = persistRewrites;
-    }
+    private final List<Checker<?>> checkers = new ArrayList<>();
 
     public void registerChecker(Checker<?> checker) {
         checkers.add(checker);
@@ -39,9 +29,6 @@ public final class CheckerManager {
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         var stats = AbstractInterpretationServices.getInstance().getStats();
-        logger.log("Running provided checkers on method: " + method.getName(), LoggerVerbosity.CHECKER);
-        logger.log("Computed Abstract State: " + abstractState.toString(), LoggerVerbosity.CHECKER);
-
         List<Fact> allFacts = new ArrayList<>();
 
         for (var checker : checkers) {
@@ -69,13 +56,8 @@ public final class CheckerManager {
         stats.addMethodConstantsStamped(method, result.constantsStamped());
         stats.addMethodConstantsPropagated(method, result.constantsPropagated());
         stats.addMethodInvokesReplaced(method, result.invokesReplacedWithConstants());
-        stats.finalizeMethod(method);
 
-        if (persistRewrites) {
-            applyAbstractInterpretationResults(method, graph);
-        } else {
-            logger.log("[CheckerManager] Skipping persistence of rewrites (persistRewrites=false)", LoggerVerbosity.CHECKER_WARN);
-        }
+        applyAbstractInterpretationResults(method, graph);
     }
 
     private void applyAbstractInterpretationResults(AnalysisMethod method, StructuredGraph graph) {

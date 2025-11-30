@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.stats;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -13,11 +14,8 @@ import java.util.StringJoiner;
  * optimizations that followed.
  */
 public class AbstractInterpretationStatistics {
-    private int methodsOptimized; /* at least one applier changed the graph */
 
-    /** Global counters keyed by optimization kind. */
     private final EnumMap<OptimizationKind, Integer> globalOptCounters = new EnumMap<>(OptimizationKind.class);
-
     private final Map<AnalysisMethod, MethodStats> methodStats = new LinkedHashMap<>();
 
     public static final class MethodStats {
@@ -45,7 +43,7 @@ public class AbstractInterpretationStatistics {
                     sj.add(k.label() + "=" + v);
                 }
             }
-            if (sj.length() == 2) { // only "{}"
+            if (sj.length() == 2) {
                 sj.add("no-optimizations");
             }
             return sj.toString();
@@ -94,20 +92,8 @@ public class AbstractInterpretationStatistics {
         addMethodOpt(method, OptimizationKind.INVOKE_REPLACED_WITH_CONSTANT, count);
     }
 
-    public void finalizeMethod(AnalysisMethod method) {
-        MethodStats ms = statsFor(method);
-        if (ms.anyOptimization()) {
-            methodsOptimized++;
-        }
-    }
-
-    public Map<AnalysisMethod, MethodStats> getMethodStats() {
-        return methodStats;
-    }
-
     public void merge(AbstractInterpretationStatistics other) {
         if (other == null) return;
-        methodsOptimized += other.methodsOptimized;
         for (var e : other.globalOptCounters.entrySet()) {
             globalOptCounters.merge(e.getKey(), e.getValue(), Integer::sum);
         }
@@ -123,11 +109,15 @@ public class AbstractInterpretationStatistics {
         }
     }
 
+    private int getNumOfOptimizedMethods() {
+        return Math.toIntExact(methodStats.entrySet().stream().filter(entry -> entry.getValue().anyOptimization()).count());
+    }
+
     @Override
     public String toString() {
         StringJoiner sj = new StringJoiner(", ", "[AI Stats] ", "");
         sj.add("methodsAnalyzed=" + methodStats.size())
-                .add("methodsOptimized=" + methodsOptimized);
+                .add("methodsOptimized=" + getNumOfOptimizedMethods());
         for (OptimizationKind k : OptimizationKind.values()) {
             int v = globalOptCounters.getOrDefault(k, 0);
             if (v > 0) {
@@ -138,9 +128,9 @@ public class AbstractInterpretationStatistics {
     }
 
     public String toMultilineReport() {
-        StringBuilder sb = new StringBuilder(256);
-        sb.append("Methods analyzed: ").append(methodStats.size()).append('\n');
-        sb.append("Methods optimized: ").append(methodsOptimized).append('\n');
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("Methods analyzed: ").append(AbstractInterpretationServices.getInstance().getTouchedMethods().size()).append('\n');
+        sb.append("Methods optimized: ").append(getNumOfOptimizedMethods()).append('\n');
 
         sb.append("Optimizations performed: ");
         boolean first = true;
@@ -162,7 +152,7 @@ public class AbstractInterpretationStatistics {
                 .sorted((o1, o2) -> Integer.compare(totalOptimizations(o2.getValue()), totalOptimizations(o1.getValue())))
                 .limit(10)
                 .forEach(entry -> sb.append("  ")
-                        .append(entry.getKey().format("%H.%n(%P)"))
+                        .append(entry.getKey().wrapped.format("%H.%n(%p)"))
                         .append(" ")
                         .append(entry.getValue())
                         .append('\n'));

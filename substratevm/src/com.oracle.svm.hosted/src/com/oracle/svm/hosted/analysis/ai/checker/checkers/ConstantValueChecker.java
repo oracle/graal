@@ -39,15 +39,11 @@ public class ConstantValueChecker implements Checker<AbstractMemory> {
             AbstractMemory post = abstractState.getPostCondition(node);
             if (post == null) continue;
 
-            // 0) constant nodes
             if (node instanceof ConstantNode cn) {
-                if (cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
-                    long v = cn.asJavaConstant().asLong();
-                    facts.add(new ConstantFact(node, v));
-                }
+                continue;
             }
 
-            // 1) temps bound to this node
+            /* 1) temps bound to this node */
             String nid = nodeId(node);
             var p = post.lookupTempByName(nid);
             if (p != null) {
@@ -58,7 +54,7 @@ public class ConstantValueChecker implements Checker<AbstractMemory> {
                 }
             }
 
-            // 2) if this is a StoreFieldNode check the field value in the post-condition
+            /* 2) if this is a StoreFieldNode, check the field value in the post-condition */
             if (node instanceof StoreFieldNode sfn) {
                 ResolvedJavaField field = sfn.field();
                 if (field != null && field.getType().getJavaKind().isNumericInteger()) {
@@ -71,7 +67,7 @@ public class ConstantValueChecker implements Checker<AbstractMemory> {
                             facts.add(new ConstantFact(node, c));
                         }
                     } else {
-                        // instance field: try to resolve base from evaluated temps
+                        /* instance field: try to resolve base from evaluated temps */
                         Node objNode = sfn.object();
                         AccessPath base = null;
                         if (objNode != null) base = post.lookupTempByName(nodeId(objNode));

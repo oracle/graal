@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeInput;
+import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeInput;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
@@ -384,57 +384,51 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             var invokeLogger = AbstractInterpretationLogger.getInstance();
             invokeLogger.log("[InvokeEval] Enter invoke node: " + inv + ", targetMethod=" + (inv.callTarget() != null ? inv.callTarget().targetMethod() : "<null>") +
                     ", preMemory=" + post, LoggerVerbosity.DEBUG);
-            if (invokeCallBack != null) {
-                List<Node> args = new ArrayList<>(inv.callTarget().arguments());
-                AbstractMemory afterArgs = post.copyOf();
-                List<AbstractMemory> argDomains = new ArrayList<>(args.size());
-                List<IntInterval> argIntervals = new ArrayList<>(args.size());
 
-                for (Node arg : args) {
-                    afterArgs = evalNode(arg, afterArgs, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
-                    abstractState.setPostCondition(arg, afterArgs.copyOf());
-                    argDomains.add(afterArgs.copyOf());
-                    IntInterval ai = getNodeResultInterval(arg, afterArgs);
-                    argIntervals.add(ai);
-                }
+            List<Node> args = new ArrayList<>(inv.callTarget().arguments());
+            AbstractMemory afterArgs = post.copyOf();
+            List<AbstractMemory> argDomains = new ArrayList<>(args.size());
+            List<IntInterval> argIntervals = new ArrayList<>(args.size());
 
-                invokeLogger.log("[InvokeEval] Collected argument intervals: " + argIntervals, LoggerVerbosity.DEBUG);
-                var callerMethod = iteratorContext.getCurrentAnalysisMethod();
-                InvokeInput<AbstractMemory> input = InvokeInput.of(callerMethod, abstractState, inv, args, argDomains);
-                var outcome = invokeCallBack.handleInvoke(input);
+            for (Node arg : args) {
+                afterArgs = evalNode(arg, afterArgs, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+                abstractState.setPostCondition(arg, afterArgs.copyOf());
+                argDomains.add(afterArgs.copyOf());
+                IntInterval ai = getNodeResultInterval(arg, afterArgs);
+                argIntervals.add(ai);
+            }
 
-                if (outcome == null) {
-                    invokeLogger.log("[InvokeEval] Invoke outcome is null, binding TOP.", LoggerVerbosity.DEBUG);
-                    IntInterval top = new IntInterval();
-                    top.setToTop();
-                    bindNodeResult(inv.asNode(), top, post);
-                } else if (outcome.isError()) {
-                    invokeLogger.log("[InvokeEval] Invoke outcome indicates ERROR: " + outcome + ", setting whole memory TOP.", LoggerVerbosity.DEBUG);
-                    post.setToTop();
-                    IntInterval top = new IntInterval();
-                    top.setToTop();
-                    bindNodeResult(inv.asNode(), top, post);
-                } else if (outcome.summary() != null) {
-                    Summary<AbstractMemory> sum = outcome.summary();
-                    AbstractMemory calleePost = sum.getPostCondition();
-                    IntInterval retVal = calleePost.readStore(AccessPath.forLocal("ret"));
+            invokeLogger.log("[InvokeEval] Collected argument intervals: " + argIntervals, LoggerVerbosity.DEBUG);
+            var callerMethod = iteratorContext.getCurrentAnalysisMethod();
+            InvokeInput<AbstractMemory> input = InvokeInput.of(callerMethod, abstractState, inv, args, argDomains);
+            var outcome = invokeCallBack.handleInvoke(input);
 
-                    if (retVal == null) {
-                        retVal = new IntInterval();
-                        retVal.setToTop();
-                        invokeLogger.log("[InvokeEval] Summary found but return value missing; using TOP.", LoggerVerbosity.DEBUG);
-                    } else {
-                        invokeLogger.log("[InvokeEval] Summary return interval: " + retVal, LoggerVerbosity.DEBUG);
-                    }
-                    bindNodeResult(inv.asNode(), retVal, post);
+            if (outcome == null) {
+                invokeLogger.log("[InvokeEval] Invoke outcome is null, binding TOP.", LoggerVerbosity.DEBUG);
+                IntInterval top = new IntInterval();
+                top.setToTop();
+                bindNodeResult(inv.asNode(), top, post);
+            } else if (outcome.isError()) {
+                invokeLogger.log("[InvokeEval] Invoke outcome indicates ERROR: " + outcome + ", setting whole memory TOP.", LoggerVerbosity.DEBUG);
+                post.setToTop();
+                IntInterval top = new IntInterval();
+                top.setToTop();
+                bindNodeResult(inv.asNode(), top, post);
+            } else if (outcome.summary() != null) {
+                Summary<AbstractMemory> sum = outcome.summary();
+                AbstractMemory calleePost = sum.getPostCondition();
+                IntInterval retVal = calleePost.readStore(AccessPath.forLocal("ret"));
+
+                if (retVal == null) {
+                    retVal = new IntInterval();
+                    retVal.setToTop();
+                    invokeLogger.log("[InvokeEval] Summary found but return value missing; using TOP.", LoggerVerbosity.DEBUG);
                 } else {
-                    invokeLogger.log("[InvokeEval] Outcome without summary; binding TOP.", LoggerVerbosity.DEBUG);
-                    IntInterval top = new IntInterval();
-                    top.setToTop();
-                    bindNodeResult(inv.asNode(), top, post);
+                    invokeLogger.log("[InvokeEval] Summary return interval: " + retVal, LoggerVerbosity.DEBUG);
                 }
+                bindNodeResult(inv.asNode(), retVal, post);
             } else {
-                invokeLogger.log("[InvokeEval] No invokeCallBack registered; binding TOP.", LoggerVerbosity.DEBUG);
+                invokeLogger.log("[InvokeEval] Outcome without summary; binding TOP.", LoggerVerbosity.DEBUG);
                 IntInterval top = new IntInterval();
                 top.setToTop();
                 bindNodeResult(inv.asNode(), top, post);

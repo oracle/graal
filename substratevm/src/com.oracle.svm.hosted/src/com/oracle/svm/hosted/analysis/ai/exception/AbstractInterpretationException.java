@@ -30,6 +30,10 @@ public class AbstractInterpretationException extends RuntimeException {
         throw new AnalysisMethodGraphUnavailableException(("The graph of analysis method: " + method.getQualifiedName() + " could not be found during abstract interpretation"));
     }
 
+    public static void graphVerifyFailed(String description, AnalysisMethod method) {
+        throw new GraphVerifyFailedException("[analysisMethod: " + method.getQualifiedName() + "] graph.verify() failed after performing fact applier: " + description);
+    }
+
     public static class WideningThresholdExceededException extends AbstractInterpretationException {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -60,6 +64,23 @@ public class AbstractInterpretationException extends RuntimeException {
         }
 
         AnalysisMethodGraphUnavailableException(Throwable ex) {
+            super(ex);
+        }
+    }
+
+    public static class GraphVerifyFailedException extends AbstractInterpretationException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        GraphVerifyFailedException(String message) {
+            super(message);
+        }
+
+        GraphVerifyFailedException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        GraphVerifyFailedException(Throwable ex) {
             super(ex);
         }
     }

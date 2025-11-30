@@ -8,7 +8,7 @@ import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
 
-public class NodeUtil {
+public final class NodeUtil {
     /**
      * Used to find the nearest enclosing {@link IfNode} of a given node
      */

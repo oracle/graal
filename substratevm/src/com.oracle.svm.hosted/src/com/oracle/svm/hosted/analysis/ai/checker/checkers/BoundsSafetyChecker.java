@@ -146,17 +146,13 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
 
         Node node = guardingNode.asNode();
         var logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Guarding node: " + node, LoggerVerbosity.CHECKER);
 
         IfNode ifNode = NodeUtil.findGuardingIf(node);
-        logger.log("Deriving length from guard: ", LoggerVerbosity.CHECKER);
-        logger.log("Guarding ifNode: " + ifNode, LoggerVerbosity.CHECKER);
         if (ifNode == null) return -1;
 
         Node condition = ifNode.condition();
         if (condition instanceof CompareNode compareNode) {
             Node y = compareNode.getY();
-            logger.log("The y is:" + y, LoggerVerbosity.CHECKER);
             if (y instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
                 long v = cn.asJavaConstant().asLong();
                 if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;

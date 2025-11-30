@@ -10,10 +10,10 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
-import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
 
@@ -36,7 +36,6 @@ public class AbstractInterpretationEngine {
         this.invokedMethods = analysisServices.getInvokedMethods();
     }
 
-    /* TODO: remove/refactor analyzerMode to not contain intra/inter */
     public void executeAbstractInterpretation() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         for (var analyzer : analyzerManager.getAnalyzers()) {
@@ -45,16 +44,17 @@ public class AbstractInterpretationEngine {
         logger.close();
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private void executeAnalyzer(Analyzer<?> analyzer) {
         if (analyzer instanceof InterProceduralAnalyzer<?> interProceduralAnalyzer) {
-            executeInterProceduralAnalysis(interProceduralAnalyzer);
+            executeInterProceduralAnalysis((InterProceduralAnalyzer) interProceduralAnalyzer);
             return;
         }
         if (analyzer instanceof IntraProceduralAnalyzer<?> intraProceduralAnalyzer) {
             executeIntraProceduralAnalysis(intraProceduralAnalyzer);
             return;
         }
-        AnalysisError.shouldNotReachHere("The provided absint analyzer is neither an Intra nor Inter procedural analyzer");
+        throw new RuntimeException("The provided absint analyzer is neither an Intra nor Inter procedural analyzer");
     }
 
     private void executeIntraProceduralAnalysis(IntraProceduralAnalyzer<?> analyzer) {
@@ -62,33 +62,32 @@ public class AbstractInterpretationEngine {
         IntraAnalyzerMode mode = analyzer.getAnalyzerMode();
         if (mode == IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY && analysisRoot != null) {
             logger.log("Running intraprocedural analyzer on the main entry point only", LoggerVerbosity.INFO);
-            AbstractInterpretationServices.getInstance().markMethodTouched(analysisRoot);
             analyzer.runAnalysis(analysisRoot);
             return;
         }
 
         logger.log("Running intraprocedural analyzer on all trivially invoked methods", LoggerVerbosity.INFO);
         invokedMethods.parallelStream().forEach(m -> {
-            AbstractInterpretationServices.getInstance().markMethodTouched(m);
             analyzer.runAnalysis(m);
         });
     }
 
-    private void executeInterProceduralAnalysis(InterProceduralAnalyzer<?> analyzer) {
+    private <Domain extends AbstractDomain<Domain>> void executeInterProceduralAnalysis(InterProceduralAnalyzer<Domain> analyzer) {
         var logger = AbstractInterpretationLogger.getInstance();
         InterAnalyzerMode mode = analyzer.getAnalyzerMode();
 
         if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT && analysisRoot != null) {
             logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
-            AbstractInterpretationServices.getInstance().markMethodTouched(analysisRoot);
             analyzer.runAnalysis(analysisRoot);
-            return;
+        } else {
+            logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
+            for (var method : rootMethods) {
+                analyzer.runAnalysis(method);
+            }
         }
 
-        logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
-        for (var method : rootMethods) {
-            AbstractInterpretationServices.getInstance().markMethodTouched(method);
-            analyzer.runAnalysis(method);
-        }
+        var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
+        var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+        analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
     }
 }

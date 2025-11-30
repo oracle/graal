@@ -1,11 +1,8 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.call;
+package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.Invoke;
 
 /**
  * Interface for handling method invocations during abstract interpretation.

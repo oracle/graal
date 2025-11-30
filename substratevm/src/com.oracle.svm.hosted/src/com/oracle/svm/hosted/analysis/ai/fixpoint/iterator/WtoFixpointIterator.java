@@ -46,9 +46,10 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     }
 
     @Override
-    public AbstractState<Domain> iterateUntilFixpoint() {
+    public AbstractState<Domain> doRunFixpointIteration() {
         logger.log("Starting WTO fixpoint iteration of method: " + analysisMethod.getName(), LoggerVerbosity.INFO);
         iteratorContext.reset();
+        assert graph != null;
 
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
             iteratorContext.incrementGlobalIteration();

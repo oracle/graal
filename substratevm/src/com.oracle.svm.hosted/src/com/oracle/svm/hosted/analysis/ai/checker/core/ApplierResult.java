@@ -6,23 +6,23 @@ package com.oracle.svm.hosted.analysis.ai.checker.core;
 public final class ApplierResult {
     public final int appliedFacts;
     private final int boundsEliminated;
-    private final int branchesTrue;
-    private final int branchesFalse;
+    private final int branchesFoldedTrue;
+    private final int branchesFoldedFalse;
     private final int constantsStamped;
     private final int constantsPropagated;
     private final int invokesReplacedWithConstants;
 
     private ApplierResult(int appliedFacts,
                           int boundsEliminated,
-                          int branchesTrue,
-                          int branchesFalse,
+                          int branchesFoldedTrue,
+                          int branchesFoldedFalse,
                           int constantsStamped,
                           int constantsPropagated,
                           int invokesReplacedWithConstants) {
         this.appliedFacts = appliedFacts;
         this.boundsEliminated = boundsEliminated;
-        this.branchesTrue = branchesTrue;
-        this.branchesFalse = branchesFalse;
+        this.branchesFoldedTrue = branchesFoldedTrue;
+        this.branchesFoldedFalse = branchesFoldedFalse;
         this.constantsStamped = constantsStamped;
         this.constantsPropagated = constantsPropagated;
         this.invokesReplacedWithConstants = invokesReplacedWithConstants;
@@ -36,8 +36,8 @@ public final class ApplierResult {
         return new ApplierResult(
                 this.appliedFacts + other.appliedFacts,
                 this.boundsEliminated + other.boundsEliminated,
-                this.branchesTrue + other.branchesTrue,
-                this.branchesFalse + other.branchesFalse,
+                this.branchesFoldedTrue + other.branchesFoldedTrue,
+                this.branchesFoldedFalse + other.branchesFoldedFalse,
                 this.constantsStamped + other.constantsStamped,
                 this.constantsPropagated + other.constantsPropagated,
                 this.invokesReplacedWithConstants + other.invokesReplacedWithConstants
@@ -48,12 +48,13 @@ public final class ApplierResult {
         return boundsEliminated;
     }
 
+    // TODO: merge branchesFoldedTrue together with branchesFoldedFalse
     public int branchesFoldedTrue() {
-        return branchesTrue;
+        return branchesFoldedTrue;
     }
 
     public int branchesFoldedFalse() {
-        return branchesFalse;
+        return branchesFoldedFalse;
     }
 
     public int constantsStamped() {
@@ -66,6 +67,10 @@ public final class ApplierResult {
 
     public int invokesReplacedWithConstants() {
         return invokesReplacedWithConstants;
+    }
+
+    public boolean anyOptimizations() {
+        return boundsEliminated + branchesFoldedTrue + branchesFoldedFalse + constantsPropagated + invokesReplacedWithConstants > 0;
     }
 
     public static final class Builder {

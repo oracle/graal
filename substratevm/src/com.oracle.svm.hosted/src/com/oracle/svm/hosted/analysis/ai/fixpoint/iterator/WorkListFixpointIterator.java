@@ -30,7 +30,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
     }
 
     @Override
-    public AbstractState<Domain> iterateUntilFixpoint() {
+    public AbstractState<Domain> doRunFixpointIteration() {
         logger.log("Starting WorkList fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         Queue<Node> worklist = new LinkedList<>();
         Set<Node> inWorklist = new HashSet<>(); /* nodes that are in the worklist */

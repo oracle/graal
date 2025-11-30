@@ -7,8 +7,11 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJNIMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
@@ -20,7 +23,7 @@ import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationExcepti
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-
+// FIXME: THE CONSTANT STAMP APPLIER HAS SOME INTERNAL MISTAKE THAT COMPLETELY FUCKS UP THE NATIVE IMAGE ONCE IT IS BUILT, INVESITGATE
 /**
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
@@ -30,7 +33,6 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
  * which uses the registered analyzers to analyze the program.
  */
 public class AbstractInterpretationDriver {
-
     private final DebugContext debug;
     private final AnalyzerManager analyzerManager;
     private final AbstractInterpretationEngine engine;
@@ -68,13 +70,12 @@ public class AbstractInterpretationDriver {
      */
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
-                .setConsoleEnabled(false)             /* only write to file */
-                .setFileEnabled(false)                /* ensure file logging is on */
+                .setConsoleEnabled(false)
+                .setFileEnabled(false)
                 .setFileThreshold(LoggerVerbosity.INFO)
                 .setConsoleThreshold(LoggerVerbosity.INFO)
-                .setGraphDumpEnabled(true); /* irrelevant since console disabled */
+                .setGraphIgvDumpEnabled(true);
 
-        debug.log("Abstract Interpretation Logger initialized: %s", logger.getLogFilePath());
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();
 
@@ -83,21 +84,22 @@ public class AbstractInterpretationDriver {
                 new DataFlowIntervalAbstractInterpreter();
 
 //        /* 3. Example of building an intraprocedural analyzer */
-//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY)
+//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_ALL_INVOKED_METHODS)
 //                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
 //                .registerChecker(new ConstantValueChecker())
 //                .registerChecker(new BoundsSafetyChecker())
 //                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
 //                .build();
-//
-        /* 4. Example of building an interprocedural analyzer */
+
+//        /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
-        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
+        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
                 .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new BoundsSafetyChecker())
-                .maxRecursionDepth(32)
+                .maxCallStackDepth(8)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+                .addMethodFilter(new SkipJNIMethodFilter())
                 .build();
 
         /* 5. Register with manager */

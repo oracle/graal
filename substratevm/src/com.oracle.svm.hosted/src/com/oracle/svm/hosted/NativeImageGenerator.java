@@ -638,6 +638,7 @@ public class NativeImageGenerator {
              * chain information. Only the summarized information stored in the
              * StaticAnalysisResult objects is available after this point.
              */
+
             bb.cleanupAfterAnalysis();
 
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();

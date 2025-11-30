@@ -39,8 +39,8 @@ public final class AbstractInterpretationLogger {
     private boolean colorEnabled = true;
     private boolean consoleEnabled = true;
     private boolean fileEnabled = true;
-    private boolean isGraphExportEnabled = false;
-    private boolean isGraphDumpEnabled = false;
+    private boolean isGraphJsonExportEnabled = false;
+    private boolean isGraphIgvDumpEnabled = false;
 
     private AbstractInterpretationLogger(String customFileName,
                                          LoggerVerbosity loggerVerbosity) {
@@ -105,18 +105,18 @@ public final class AbstractInterpretationLogger {
         return this;
     }
 
-    public AbstractInterpretationLogger setGraphExportEnabled(boolean enabled) {
-        this.isGraphExportEnabled = enabled;
+    public AbstractInterpretationLogger setGraphJsonExportEnabled(boolean enabled) {
+        this.isGraphJsonExportEnabled = enabled;
         return this;
     }
 
-    public AbstractInterpretationLogger setGraphDumpEnabled(boolean enabled) {
-        this.isGraphDumpEnabled = enabled;
+    public AbstractInterpretationLogger setGraphIgvDumpEnabled(boolean enabled) {
+        this.isGraphIgvDumpEnabled = enabled;
         return this;
     }
 
-    public boolean isGraphDumpEnabled() {
-        return isGraphDumpEnabled;
+    public boolean isGraphIgvDumpEnabled() {
+        return isGraphIgvDumpEnabled;
     }
 
     private static class ANSI {
@@ -234,6 +234,7 @@ public final class AbstractInterpretationLogger {
     }
 
     public void printLabelledGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractState<?> abstractState) {
+        assert graph != null;
         log("Computed post-conditions of method: " + analysisMethod, LoggerVerbosity.INFO);
         for (Node node : graph.getNodes()) {
             NodeState<?> nodeState = abstractState.getNodeState(node);
@@ -271,7 +272,7 @@ public final class AbstractInterpretationLogger {
     }
 
     public void exportGraphToJson(StructuredGraph graph, AnalysisMethod method, String outputPath) {
-        if (isGraphExportEnabled) {
+        if (isGraphJsonExportEnabled) {
             exportGraphToJson(new ControlFlowGraphBuilder(graph).build(), method, outputPath);
         }
     }
@@ -391,9 +392,6 @@ public final class AbstractInterpretationLogger {
         return new IGVDumpSession(debug, graph, scopeName);
     }
 
-    /**
-     * Close the underlying file writer (optional).
-     */
     public synchronized void close() {
         if (fileWriter != null) {
             try {

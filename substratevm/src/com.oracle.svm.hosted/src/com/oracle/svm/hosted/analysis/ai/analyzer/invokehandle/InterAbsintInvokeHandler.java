@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.call;
+package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -79,8 +79,8 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return AnalysisOutcome.ok(cached);
         }
 
-        if (callStack.countConsecutiveCalls(targetAnalysisMethod) >= callStack.getMaxRecursionDepth()) {
-            logger.log("Recursion limit of: " + callStack.getMaxRecursionDepth() + " exceeded", LoggerVerbosity.INFO);
+        if (callStack.getDepth() >= callStack.getMaxCallStackDepth()) {
+            logger.log("Recursion limit of: " + callStack.getMaxCallStackDepth() + " exceeded", LoggerVerbosity.INFO);
             return AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
         }
 
@@ -99,9 +99,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
                     () -> CallContextHolder.buildKCFASignature(callStack.getCallStack(), 2));
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
 
-            fixpointIterator.getAbstractState().setStartNodeState(preSummary.getPreCondition());
-            AbstractInterpretationServices.getInstance().markMethodTouched(targetAnalysisMethod);
-            AbstractState<Domain> calleeAbstractState = fixpointIterator.iterateUntilFixpoint();
+            AbstractState<Domain> calleeAbstractState = fixpointIterator.runFixpointIteration(preSummary.getPreCondition());
             preSummary.finalizeSummary(calleeAbstractState);
 
             ContextKey ctxKey = invokeInput.contextKey()
@@ -123,13 +121,12 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return;
         }
 
-        AbstractInterpretationServices.getInstance().markMethodTouched(root);
         String ctxSig = CallContextHolder.buildKCFASignature(callStack.getCallStack(), 2);
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
         callStack.push(root);
         try {
-            AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
+            AbstractState<Domain> abstractState = fixpointIterator.runFixpointIteration();
             checkerManager.runCheckersOnSingleMethod(root, abstractState, analysisContext.getMethodGraphCache().getMethodGraphMap().get(root));
         } finally {
             callStack.pop();

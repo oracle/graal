@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.call;
+package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
@@ -10,7 +10,6 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFacto
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
@@ -40,11 +39,15 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }
-
+        // FIXME: we should investigate why we are getting null graphs here:
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
-        AbstractState<Domain> abstractState = fixpointIterator.iterateUntilFixpoint();
+        AbstractState<Domain> abstractState = fixpointIterator.runFixpointIteration();
         StructuredGraph graph = analysisContext.getMethodGraphCache().getMethodGraphMap().get(root);
-        logger.printLabelledGraph(graph, root, abstractState);
+
+        // TODO: temporary fix but investigate how did we even get here with the graph being null;
+        if (graph == null) {
+            return;
+        }
         checkerManager.runCheckersOnSingleMethod(root, abstractState, graph);
     }
 }

@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.call;
+package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;

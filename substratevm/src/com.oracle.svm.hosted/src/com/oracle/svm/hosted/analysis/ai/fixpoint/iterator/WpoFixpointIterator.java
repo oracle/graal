@@ -55,7 +55,7 @@ public final class WpoFixpointIterator<
     }
 
     @Override
-    public AbstractState<Domain> iterateUntilFixpoint() {
+    public AbstractState<Domain> doRunFixpointIteration() {
         logger.log("Starting concurrent WPO fixpoint iteration of analysisMethod: " + analysisMethod, LoggerVerbosity.INFO);
         buildWorkNodes();
         runAnalysis();

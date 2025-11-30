@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
@@ -9,10 +9,6 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.LoopBeginNode;
-import jdk.graal.compiler.nodes.StartNode;
-import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**

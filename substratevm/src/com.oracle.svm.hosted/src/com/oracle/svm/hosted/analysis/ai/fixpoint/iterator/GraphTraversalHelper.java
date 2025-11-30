@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Helper class for direction-aware traversal of control flow graphs.
  */
-public class GraphTraversalHelper {
+public final class GraphTraversalHelper {
 
     private final ControlFlowGraph cfgGraph;
     private final IteratorDirection direction;

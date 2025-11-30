@@ -22,7 +22,7 @@ import java.util.Map;
  * <p>
  * This class is mutable and should be updated by the fixpoint iterator as it progresses.
  */
-public class BasicIteratorContext implements IteratorContext {
+public final class BasicIteratorContext implements IteratorContext {
 
     private final GraphTraversalHelper graphTraversalHelper;
     private final Map<Node, Integer> loopIterationCounts;

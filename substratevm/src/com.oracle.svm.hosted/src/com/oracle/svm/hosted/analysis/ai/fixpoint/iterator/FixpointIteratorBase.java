@@ -35,6 +35,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
                                    Domain initialDomain,
                                    AbstractTransformer<Domain> abstractTransformer,
                                    AnalysisContext analysisContext) {
+
         this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;
         this.initialDomain = initialDomain;
@@ -49,6 +50,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
             methodGraphCache.addToMethodGraphMap(method, graph);
         }
 
+        logger.log("Fixpoint iteration of method: " + analysisMethod.wrapped.format("%H.%n(%p)") ,LoggerVerbosity.CHECKER);
         logger.exportGraphToJson(graph, analysisMethod, analysisMethod.getName() + "_before_absint");
         this.abstractState = new AbstractState<>(initialDomain, graph);
         this.graphTraversalHelper = new GraphTraversalHelper(graph, analysisContext.getIteratorPolicy().direction());

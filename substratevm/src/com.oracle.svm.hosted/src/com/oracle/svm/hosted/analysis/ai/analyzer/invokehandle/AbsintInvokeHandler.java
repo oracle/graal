@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.call;
+package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.AnalysisMethodFilterManager;
