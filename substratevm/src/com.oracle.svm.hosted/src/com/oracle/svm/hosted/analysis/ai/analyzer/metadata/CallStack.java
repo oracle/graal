@@ -13,10 +13,10 @@ import java.util.List;
 public final class CallStack {
 
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
-    private final int maxRecursionDepth;
+    private final int maxCallStackDepth;
 
-    public CallStack(int maxRecursionDepth) {
-        this.maxRecursionDepth = maxRecursionDepth;
+    public CallStack(int maxCallStackDepth) {
+        this.maxCallStackDepth = maxCallStackDepth;
     }
 
     public void push(AnalysisMethod analysisMethod) {
@@ -31,8 +31,8 @@ public final class CallStack {
         return callStack.peek();
     }
 
-    public int getMaxRecursionDepth() {
-        return maxRecursionDepth;
+    public int getMaxCallStackDepth() {
+        return maxCallStackDepth;
     }
 
     /**

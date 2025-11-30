@@ -7,6 +7,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Central cache for per-method graph artifacts (CFG, WTO, WPO), so they are built once per method
@@ -14,9 +15,9 @@ import java.util.Map;
  */
 public final class MethodGraphCache {
 
-    private final Map<AnalysisMethod, StructuredGraph> methodGraphMap = new HashMap<>();
-    private final Map<AnalysisMethod, WeakTopologicalOrdering> methodWtoMap = new HashMap<>();
-    private final Map<AnalysisMethod, WeakPartialOrdering> methodWpoMap = new HashMap<>();
+    private final Map<AnalysisMethod, StructuredGraph> methodGraphMap = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, WeakTopologicalOrdering> methodWtoMap = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, WeakPartialOrdering> methodWpoMap = new ConcurrentHashMap<>();
 
     public Map<AnalysisMethod, StructuredGraph> getMethodGraphMap() {
         return methodGraphMap;

@@ -9,6 +9,6 @@ public final class SkipJavaLangAnalysisMethodFilter implements AnalysisMethodFil
 
     @Override
     public boolean shouldSkipMethod(AnalysisMethod method) {
-        return method.getQualifiedName().startsWith("java") || method.getQualifiedName().startsWith("jdk");
+        return method.getQualifiedName().startsWith("java") || method.getQualifiedName().startsWith("jdk") || method.getQualifiedName().startsWith("sun");
     }
 }

@@ -40,7 +40,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Execute analysis starting from the given method. Concrete analyzers are free to
+     * Execute analysis starting from the given analysis method. Concrete analyzers are free to
      * traverse more methods (e.g., via invokes) as part of their strategy.
      */
     public abstract void runAnalysis(AnalysisMethod method);

@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+
 import java.util.ArrayList;
 import java.util.List;
 

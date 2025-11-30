@@ -1,11 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.call.IntraAbsintInvokeHandler;
+import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.IntraAbsintInvokeHandler;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 
 /**
