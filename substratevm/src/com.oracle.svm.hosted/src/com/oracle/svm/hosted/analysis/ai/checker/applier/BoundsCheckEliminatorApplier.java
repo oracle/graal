@@ -7,8 +7,6 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.NodeUtil;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.SafeBoundsAccessFact;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -23,7 +21,7 @@ import java.util.Set;
 /**
  * Applies IndexSafetyFact instances by folding proven-safe bounds checks.
  */
-public final class BoundsCheckEliminatorApplier implements FactApplier {
+public final class BoundsCheckEliminatorApplier extends BaseApplier {
 
     @Override
     public Set<FactKind> getApplicableFactKinds() {
@@ -33,6 +31,11 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
     @Override
     public String getDescription() {
         return "BoundsCheckEliminator";
+    }
+
+    @Override
+    public boolean shouldApply() {
+        return true;
     }
 
     @Override
@@ -55,8 +58,10 @@ public final class BoundsCheckEliminatorApplier implements FactApplier {
             }
 
             if (guardIf.condition() instanceof IntegerLessThanNode || guardIf.condition() instanceof IntegerBelowNode) {
-                graph.removeSplitPropagate(guardIf, guardIf.trueSuccessor());
                 folded++;
+                if (shouldApply()) {
+                    graph.removeSplitPropagate(guardIf, guardIf.trueSuccessor());
+                }
             }
         }
         return ApplierResult.boundsEliminated(folded);

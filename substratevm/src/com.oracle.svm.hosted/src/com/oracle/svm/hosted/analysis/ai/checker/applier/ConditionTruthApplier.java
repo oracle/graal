@@ -6,8 +6,6 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConditionTruthFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -17,7 +15,7 @@ import java.util.Set;
 /**
  * Applies ConditionTruthFact by folding always-true/false branches.
  */
-public final class ConditionTruthApplier implements FactApplier {
+public final class ConditionTruthApplier extends BaseApplier {
 
     @Override
     public Set<FactKind> getApplicableFactKinds() {
@@ -49,12 +47,16 @@ public final class ConditionTruthApplier implements FactApplier {
             }
             switch (tf.truth()) {
                 case ALWAYS_TRUE -> {
-                    GraphRewrite.foldIfTrue(graph, ifn);
                     trueFolded++;
+                    if (shouldApply()) {
+                        GraphRewrite.foldIfTrue(graph, ifn);
+                    }
                 }
                 case ALWAYS_FALSE -> {
-                    GraphRewrite.foldIfFalse(graph, ifn);
                     falseFolded++;
+                    if (shouldApply()) {
+                        GraphRewrite.foldIfFalse(graph, ifn);
+                    }
                 }
                 default -> {
                     // uncertain -> no action

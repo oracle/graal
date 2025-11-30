@@ -16,14 +16,20 @@ import java.util.Set;
 public interface FactApplier {
 
     /**
+     * Each FactApplier can only react to a certain subset of the fact produced by the provided checkers.
      * @return the kinds of facts this applier can handle.
      */
     Set<FactKind> getApplicableFactKinds();
 
     /**
-     * @return a human-readable description of this applier.
+     * @return a description of this applier.
      */
     String getDescription();
+
+    /**
+     * @return false if this applier can be skipped in the abstract interpretation analysis
+     */
+    boolean shouldApply();
 
     /**
      * Apply graph rewrites driven by facts in the aggregator. Appliers should be idempotent

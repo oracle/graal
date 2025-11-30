@@ -6,8 +6,6 @@ import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
-import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -23,7 +21,7 @@ import java.util.Set;
 /**
  * This is an applier that folds invokes to the constant values that they return
  */
-public final class InvokeConstantFoldingApplier implements FactApplier {
+public final class InvokeConstantFoldingApplier extends BaseApplier {
 
     @Override
     public Set<FactKind> getApplicableFactKinds() {
@@ -73,16 +71,18 @@ public final class InvokeConstantFoldingApplier implements FactApplier {
                 continue;
             }
 
-            ConstantNode constantNode = createIntegerConstant(graph, retKind, value);
-            invokeAsNode.replaceAtUsages(constantNode);
-            if (invokeAsNode instanceof InvokeNode invokeNode) {
-                FixedNode next = invokeNode.next();
-                invokeNode.replaceAtPredecessor(next);
-                graph.removeFixed(invokeNode);
-            } else if (invokeAsNode instanceof InvokeWithExceptionNode invokeWithException) {
-                graph.removeSplitPropagate(invokeWithException, invokeWithException.getPrimarySuccessor());
-            }
             folded++;
+            if (shouldApply()) {
+                ConstantNode constantNode = createIntegerConstant(graph, retKind, value);
+                invokeAsNode.replaceAtUsages(constantNode);
+                if (invokeAsNode instanceof InvokeNode invokeNode) {
+                    FixedNode next = invokeNode.next();
+                    invokeNode.replaceAtPredecessor(next);
+                    graph.removeFixed(invokeNode);
+                } else if (invokeAsNode instanceof InvokeWithExceptionNode invokeWithException) {
+                    graph.removeSplitPropagate(invokeWithException, invokeWithException.getPrimarySuccessor());
+                }
+            }
         }
 
         return ApplierResult.builder()
