@@ -33,13 +33,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSBigInt;
 import org.graalvm.webimage.api.JSBoolean;
-import org.graalvm.webimage.api.ThrownFromJavaScript;
 import org.graalvm.webimage.api.JSNumber;
 import org.graalvm.webimage.api.JSObject;
 import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 import org.graalvm.webimage.api.JSUndefined;
 import org.graalvm.webimage.api.JSValue;
+import org.graalvm.webimage.api.ThrownFromJavaScript;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.webimage.JSExceptionSupport;
@@ -376,104 +376,8 @@ public abstract class JSConversion {
         throw throwClassCastException(obj, "string");
     }
 
-    /**
-     * Coerces a Java array to the corresponding typed array.
-     *
-     * All other Java classes cannot be coerced. This method must not be called with {@link JSValue}
-     * subclasses -- only Java objects that become Java Proxies are valid arguments.
-     */
-    @WasmExport("convert.coerce.object")
-    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
-    public static Object coerceToJavaScriptObject(Object obj) {
-        if (obj instanceof boolean[] || obj instanceof byte[] || obj instanceof char[] || obj instanceof short[] || obj instanceof int[] || obj instanceof float[] || obj instanceof long[] ||
-                        obj instanceof double[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "object");
-    }
-
-    /**
-     * Coerces a Java {@code boolean[]} object to a JavaScript Uint8Array.
-     */
-    public static Object coerceToJavaScriptUint8Array(Object obj) {
-        if (obj instanceof boolean[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Uint8Array");
-    }
-
-    /**
-     * Coerces a Java {@code byte[]} object to a JavaScript Int8Array.
-     */
-    public static Object coerceToJavaScriptInt8Array(Object obj) {
-        if (obj instanceof byte[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int8Array");
-    }
-
-    /**
-     * Coerces a Java {@code char[]} object to a JavaScript Uint16Array.
-     */
-    public static Object coerceToJavaScriptUint16Array(Object obj) {
-        if (obj instanceof char[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Uint16Array");
-    }
-
-    /**
-     * Coerces a Java {@code short[]} object to a JavaScript Int16Array.
-     */
-    public static Object coerceToJavaScriptInt16Array(Object obj) {
-        if (obj instanceof short[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int16Array");
-    }
-
-    /**
-     * Coerces a Java {@code int[]} object to a JavaScript Int32Array.
-     */
-    public static Object coerceToJavaScriptInt32Array(Object obj) {
-        if (obj instanceof int[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Int32Array");
-    }
-
-    /**
-     * Coerces a Java {@code float[]} object to a JavaScript Float32Array.
-     */
-    public static Object coerceToJavaScriptFloat32Array(Object obj) {
-        if (obj instanceof float[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Float32Array");
-    }
-
-    /**
-     * Coerces a Java {@code long[]} object to a JavaScript BigInt64Array.
-     */
-    public static Object coerceToJavaScriptBigInt64Array(Object obj) {
-        if (obj instanceof long[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "BigInt64Array");
-    }
-
     public static char[] createCharArray(int length) {
         return new char[length];
-    }
-
-    /**
-     * Coerces a Java {@code double[]} object to a JavaScript Float64Array.
-     */
-    public static Object coerceToJavaScriptFloat64Array(Object obj) {
-        if (obj instanceof double[]) {
-            return obj;
-        }
-        throw throwClassCastException(obj, "Float64Array");
     }
 
     // Various other helper methods.

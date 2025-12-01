@@ -254,24 +254,12 @@ class WasmGCConversion extends Conversion {
                 return BigInt(bs);
             case "string":
                 return this.#unwrapExtern(getExport("convert.coerce.string")(o));
-            case "object":
-                return this.#unwrapExtern(getExport("convert.coerce.object")(o));
             case "function":
                 const sam = proxyHandler._getSingleAbstractMethod(proxy);
                 if (sam !== undefined) {
                     return (...args) => proxyHandler._applyWithObject(proxy, args);
                 }
                 this.throwClassCastException(o, tpe);
-            case Uint8Array:
-            case Int8Array:
-            case Uint16Array:
-            case Int16Array:
-            case Int32Array:
-            case Float32Array:
-            case BigInt64Array:
-            case Float64Array:
-                // TODO GR-60603 Support array coercion
-                throw new Error("Coercion to arrays is not supported yet");
             default:
                 this.throwClassCastException(o, tpe);
         }

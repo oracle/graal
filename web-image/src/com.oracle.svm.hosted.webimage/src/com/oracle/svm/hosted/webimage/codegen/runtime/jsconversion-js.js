@@ -322,46 +322,12 @@ class JSConversion extends Conversion {
                 return BigInt(bs);
             case "string":
                 return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptString"](o);
-            case "object":
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptObject"](o);
             case "function":
                 const sam = proxyHandler._getSingleAbstractMethod(proxy);
                 if (sam !== undefined) {
                     return (...args) => proxyHandler._applyWithObject(proxy, args);
                 }
                 this.throwClassCastException(o, tpe);
-            case Uint8Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptUint8Array"](
-                    o
-                );
-            case Int8Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt8Array"](
-                    o
-                );
-            case Uint16Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptUint16Array"
-                ](o);
-            case Int16Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt16Array"](
-                    o
-                );
-            case Int32Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["coerceToJavaScriptInt32Array"](
-                    o
-                );
-            case Float32Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptFloat32Array"
-                ](o);
-            case BigInt64Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptBigInt64Array"
-                ](o);
-            case Float64Array:
-                return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m[
-                    "coerceToJavaScriptFloat64Array"
-                ](o);
             default:
                 this.throwClassCastException(o, tpe);
         }
