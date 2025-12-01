@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1175,7 +1175,8 @@ public final class InlineSupport {
                 // slow path with parent resolve
                 value = resolveReceiverSlow(node);
             }
-            return receiverClass.cast(value);
+            assert receiverClass.isInstance(value);
+            return value;
         }
 
         /**
@@ -1184,26 +1185,20 @@ public final class InlineSupport {
          */
         @ExplodeLoop
         private Object resolveReceiverSlow(Object node) {
-            if (receiverClass.isInstance(node)) {
-                /*
-                 * if the receiver type does not happen to be exact, handle this here to not slow
-                 * down the fast-path.
-                 */
-                return node;
-            }
             Object receiver = node;
             while (receiver != null) {
+                if (receiverClass.isInstance(receiver)) {
+                    /*
+                     * if the receiver type does not happen to be exact, handle this here to not
+                     * slow down the fast-path.
+                     */
+                    return receiver;
+                }
                 assert validateForParentLookup(node, receiver);
                 receiver = U.getObject(receiver, PARENT.offset);
-                if (receiverClass.isInstance(receiver)) {
-                    break;
-                }
             }
 
-            if (receiver == null) {
-                throw nullError(node);
-            }
-            return receiver;
+            throw nullError(node);
         }
 
         /**
