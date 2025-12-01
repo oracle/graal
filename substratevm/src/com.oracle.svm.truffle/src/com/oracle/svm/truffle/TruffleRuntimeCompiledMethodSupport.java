@@ -28,17 +28,15 @@ package com.oracle.svm.truffle;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.graal.SubstrateGraalUtils;
-import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
-import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -50,47 +48,40 @@ import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Truffle specific runtime compilation feature enriching runtime-compilation with truffle specific
  * parts.
  */
-public final class TruffleRuntimeCompilationFeature extends RuntimeCompilationFeature {
-
-    private TruffleRuntimeCompilationFeature() {
-        // in order to pass all runtime compilation available checks
-        ImageSingletons.add(RuntimeCompilationFeature.class, this);
-    }
-
-    public static TruffleRuntimeCompilationFeature singleton() {
-        return ImageSingletons.lookup(TruffleRuntimeCompilationFeature.class);
-    }
-
+public final class TruffleRuntimeCompiledMethodSupport extends RuntimeCompiledMethodSupport {
     @Override
-    protected DeoptimizeOnExceptionPhase getDeoptOnExceptionPhase() {
+    public DeoptimizeOnExceptionPhase getDeoptOnExceptionPhase(Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
         return new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate);
     }
 
     @Override
-    protected RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder createGraphEncoder(FeatureImpl.BeforeAnalysisAccessImpl config) {
-        return new TruffleRuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
+    public RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
+        return new TruffleRuntimeCompilationGraphEncoder(architecture, heapScanner);
     }
 
     @Override
-    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer,
-                    Providers providers) {
+    public RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+        return new TruffleRuntimeCompilationGraphDecoder(architecture, graph, heapScanner);
+    }
+
+    @Override
+    public void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
         if (!ImageSingletons.contains(KnownTruffleTypes.class)) {
             return;
         }
-
         KnownTruffleTypes truffleTypes = ImageSingletons.lookup(KnownTruffleTypes.class);
-        new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes,
-                        providers, canonicalizer, buildGraph, OriginalClassProvider::getOriginalType).apply(graph, providers);
+        new PrePartialEvaluationSuite(debug.getOptions(), truffleTypes, providers, canonicalizer, buildGraph, OriginalClassProvider::getOriginalType).apply(graph, providers);
     }
 
     @SuppressWarnings("javadoc")
-    private static final class TruffleRuntimeCompilationGraphEncoder extends RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder {
+    private static final class TruffleRuntimeCompilationGraphEncoder extends RuntimeCompilationGraphEncoder {
         /**
          * Cache already converted location identity objects to avoid creating multiple new
          * instances for the same underlying location identity.
@@ -106,10 +97,30 @@ public final class TruffleRuntimeCompilationFeature extends RuntimeCompilationFe
         protected Object replaceObjectForEncoding(Object object) {
             if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
                 return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc, heapScanner.getConstantReflection())));
-
             }
             return super.replaceObjectForEncoding(object);
         }
     }
 
+    private static final class TruffleRuntimeCompilationGraphDecoder extends RuntimeCompilationGraphDecoder {
+        /**
+         * Cache already converted location identity objects to avoid creating multiple new
+         * instances for the same underlying location identity.
+         */
+        private final Map<JavaConstant, LocationIdentity> locationIdentityCache;
+
+        private TruffleRuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+            super(architecture, graph, heapScanner);
+            this.locationIdentityCache = new ConcurrentHashMap<>();
+        }
+
+        @Override
+        protected Object readObject(MethodScope methodScope) {
+            Object object = super.readObject(methodScope);
+            if (object instanceof ObjectLocationIdentity oli) {
+                return locationIdentityCache.computeIfAbsent(oli.getObject(), (constant) -> ObjectLocationIdentity.create(SubstrateGraalUtils.runtimeToHosted(constant, heapScanner)));
+            }
+            return object;
+        }
+    }
 }

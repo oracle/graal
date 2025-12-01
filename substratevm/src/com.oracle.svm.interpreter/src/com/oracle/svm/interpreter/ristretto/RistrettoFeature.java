@@ -70,7 +70,7 @@ public final class RistrettoFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(CremaFeature.class, RuntimeCompilationFeature.class);
+        return List.of(RuntimeCompilationFeature.class, CremaFeature.class);
     }
 
     @Override
@@ -114,6 +114,5 @@ public final class RistrettoFeature implements InternalFeature {
         public boolean getAsBoolean() {
             return SubstrateOptions.useRistretto();
         }
-
     }
 }

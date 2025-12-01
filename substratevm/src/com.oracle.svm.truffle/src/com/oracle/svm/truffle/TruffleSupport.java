@@ -102,7 +102,7 @@ public class TruffleSupport {
     }
 
     protected static TruffleCompilerConfiguration createSubstrateTruffleCompilerConfig(SubstrateTruffleRuntime runtime, String compilerConfigurationName, Method optimizedCallTargetMethod) {
-        RuntimeCompilationFeature runtimeCompilationFeature = TruffleRuntimeCompilationFeature.singleton();
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         final GraphBuilderConfiguration.Plugins graphBuilderPlugins = runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins();
         SubstrateBackend substrateBackend = RuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
         substrateBackend.setRuntimeToRuntimeInvokeMethod(optimizedCallTargetMethod);
