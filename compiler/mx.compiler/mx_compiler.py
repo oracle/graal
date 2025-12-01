@@ -817,8 +817,8 @@ def _remove_redundant_entries(cp):
 
 class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    def __init__(self):
-        super(GraalUnittestConfig, self).__init__('graal')
+    def __init__(self, name='graal'):
+        super(GraalUnittestConfig, self).__init__(name)
 
     def _replace_graal_test_deps(self, cp):
         """

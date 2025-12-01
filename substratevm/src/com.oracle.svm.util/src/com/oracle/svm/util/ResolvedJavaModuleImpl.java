@@ -28,6 +28,8 @@ import java.lang.module.ModuleDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+
 /**
  * Fallback implementation of {@link ResolvedJavaModule} based on {@link Module}.
  */

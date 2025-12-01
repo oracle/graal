@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.graal.vmaccess;
 
 import java.util.Optional;
 
@@ -31,12 +31,6 @@ import java.util.Optional;
  * {@code #equals(Object)} instead.
  */
 public interface ResolvedJavaModuleLayer {
-    /**
-     * Returns the boot layer. See {@link java.lang.ModuleLayer#boot()}.
-     */
-    static ResolvedJavaModuleLayer boot() {
-        return new ResolvedJavaModuleLayerImpl(ModuleLayer.boot());
-    }
 
     /**
      * Returns the module with the given name in this layer, or if not in this layer, the parent

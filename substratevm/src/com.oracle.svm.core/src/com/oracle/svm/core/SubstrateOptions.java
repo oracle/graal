@@ -80,8 +80,8 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -930,7 +930,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                boolean isLLVMBackendMissing = ResolvedJavaModuleLayer.boot().findModule("org.graalvm.nativeimage.llvm").isEmpty();
+                boolean isLLVMBackendMissing = JVMCIReflectionUtil.bootModuleLayer().findModule("org.graalvm.nativeimage.llvm").isEmpty();
                 if (isLLVMBackendMissing) {
                     throw UserError.invalidOptionValue(CompilerBackend, newValue,
                                     "The LLVM backend for GraalVM Native Image is missing and needs to be built from source. " +

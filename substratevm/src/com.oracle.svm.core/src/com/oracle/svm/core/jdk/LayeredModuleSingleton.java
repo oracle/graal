@@ -34,10 +34,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.OriginalModuleProvider;
-import com.oracle.svm.util.ResolvedJavaModule;
 
 /**
  * This singleton keeps track of the {@code Module#openPackages} and {@code Module#exportedPackages}

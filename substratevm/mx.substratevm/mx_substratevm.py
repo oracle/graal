@@ -622,6 +622,7 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
                       '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+                      '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
                       '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
                       'com.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator#' + test_case])
     config_output_dir = join(nic_test_dir, 'config-output')
@@ -638,6 +639,7 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
          '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
          '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
          'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
 
@@ -656,6 +658,7 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
                   '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
                   'com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
     # This run verifies that the generated configuration matches the expected one
@@ -664,6 +667,7 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
                   '--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
+                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
                   '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
                   'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
 
@@ -1391,6 +1395,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:POINTSTO',
         'substratevm:SVM_CAPNPROTO_RUNTIME',
         'substratevm:NATIVE_IMAGE_BASE',
+        'compiler:VMACCESS',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() and not mx.get_arch() == 'riscv64' else None,

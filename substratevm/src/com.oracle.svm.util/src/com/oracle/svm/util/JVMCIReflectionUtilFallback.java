@@ -29,6 +29,10 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.stream.Stream;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
+import com.oracle.graal.vmaccess.ResolvedJavaPackage;
+
 import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -62,5 +66,9 @@ final class JVMCIReflectionUtilFallback {
 
     public static Stream<ResolvedJavaPackage> bootLoaderPackages() {
         return BootLoader.packages().map(ResolvedJavaPackageImpl::new);
+    }
+
+    public static ResolvedJavaModuleLayer bootModuleLayer() {
+        return new ResolvedJavaModuleLayerImpl(ModuleLayer.boot());
     }
 }

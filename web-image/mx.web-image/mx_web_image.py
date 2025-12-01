@@ -517,6 +517,12 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
                     mx.log(f"{self.name}: increased -JUnitMaxTestTime from {limit} to {max_test_time}")
             previous_entry = entry
 
+        # Export JVMCI packages to vmaccess
+        main_class_args += [
+            "-JUnitOpenPackages",
+            "jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess",
+        ]
+
         return vm_args, main_class, main_class_args
 
 

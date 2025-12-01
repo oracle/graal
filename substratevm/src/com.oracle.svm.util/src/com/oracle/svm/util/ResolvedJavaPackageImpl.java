@@ -29,6 +29,9 @@ import java.lang.reflect.Method;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+import com.oracle.graal.vmaccess.ResolvedJavaPackage;
+
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;

@@ -107,7 +107,6 @@ import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.svm.util.ResolvedJavaModuleLayer;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -255,7 +254,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            if (ResolvedJavaModuleLayer.boot().findModule("jdk.unsupported").isPresent()) {
+            if (JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.unsupported").isPresent()) {
                 Registration customConstructor = new Registration(plugins, loader.findClassOrFail("sun.reflect.ReflectionFactory"));
                 customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
                     @Override
