@@ -147,6 +147,7 @@ public class WasmBinaryTools {
         // invalid wasm files.
         commandLine.add("-v"); // prints to stderr
         commandLine.add("--no-check");
+        commandLine.add("--enable-tail-call");
         for (WabtOption option : options) {
             switch (option) {
                 case GC -> commandLine.add("--enable-gc");

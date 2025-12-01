@@ -667,6 +667,34 @@ public class ParserState {
     }
 
     /**
+     * Adds an indirect return-call instruction to the bytecode, along with its immediate arguments
+     * and the call node index.
+     *
+     * @param typeIndex The index of the defined function type.
+     * @param tableIndex The index of the table in which the function will be looked up.
+     */
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        bytecode.addIndirectReturnCall(typeIndex, tableIndex);
+    }
+
+    /**
+     * Adds a direct return-call instruction to the bytecode, along with its immediate argument
+     * and the call node index.
+     *
+     * @param functionIndex The index of the defined function.
+     */
+    public void addReturnCall(int functionIndex) {
+        bytecode.addReturnCall(functionIndex);
+    }
+
+    /**
+     * Adds a ReturnCallLoop to the bytecode.
+     */
+    public void addReturnCallLoop() {
+        bytecode.addReturnCallLoop();
+    }
+
+    /**
      * Adds the aggregate flag to the bytecode.
      */
     public void addAggregateFlag() {

@@ -937,6 +937,60 @@ public class BinaryParser extends BinaryStreamParser {
                     callNodes.add(new CallNode(bytecode.location()));
                     break;
                 }
+                case Instructions.RETURN_CALL: {
+                    final int callFunctionIndex = readDeclaredFunctionIndex();
+                    // Pop parameters
+                    final WasmFunction function = module.function(callFunctionIndex);
+                    byte[] params = new byte[function.paramCount()];
+                    for (int i = function.paramCount() - 1; i >= 0; --i) {
+                        params[i] = function.paramTypeAt(i);
+                    }
+                    state.checkParamTypes(params);
+                    // Check whether result types match
+                    if (!multiValue) {
+                        assertIntLessOrEqual(function.resultCount(), 1, Failure.INVALID_RESULT_ARITY);
+                    }
+                    final byte[] callResultTypes = function.type().resultTypes();
+                    checkResultTypesMatch(callResultTypes, resultTypes);
+                    // Push result values
+                    state.pushAll(callResultTypes);
+                    // Make a recursive function iterative
+                    if(callFunctionIndex == functionIndex){
+                        state.addReturnCallLoop();
+                        state.setUnreachable();
+                        break;
+                    }
+                    state.addReturnCall(callFunctionIndex);
+                    state.setUnreachable();
+                    break;
+                }
+                case Instructions.RETURN_CALL_INDIRECT: {
+                    final int expectedFunctionTypeIndex = readUnsignedInt32();
+                    final int tableIndex = readTableIndex();
+                    // Pop the function index to call
+                    state.popChecked(I32_TYPE);
+                    state.checkFunctionTypeExists(expectedFunctionTypeIndex, module.typeCount());
+                    assertByteEqual(FUNCREF_TYPE, module.tableElementType(tableIndex), Failure.TYPE_MISMATCH);
+                    // Pop parameters
+                    for (int i = module.functionTypeParamCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
+                        state.popChecked(module.functionTypeParamTypeAt(expectedFunctionTypeIndex, i));
+                    }
+                    // Check whether result types match
+                    final int resultCount = module.functionTypeResultCount(expectedFunctionTypeIndex);
+                    if (!multiValue) {
+                        assertIntLessOrEqual(resultCount, 1, Failure.INVALID_RESULT_ARITY);
+                    }
+                    byte[] callResultTypes = new byte[resultCount];
+                    for (int i = 0; i < resultCount; i++) {
+                        callResultTypes[i] = module.functionTypeResultTypeAt(expectedFunctionTypeIndex, i);
+                    }
+                    checkResultTypesMatch(callResultTypes, resultTypes);
+                    // Push result values
+                    state.pushAll(callResultTypes);
+                    state.addIndirectReturnCall(expectedFunctionTypeIndex, tableIndex);
+                    state.setUnreachable();
+                    break;
+                }
                 case Instructions.DROP:
                     final int type = state.pop();
                     if (WasmType.isNumberType(type)) {
@@ -2887,6 +2941,13 @@ public class BinaryParser extends BinaryStreamParser {
             default:
                 fail(Failure.ILLEGAL_OPCODE, "Unknown opcode: 0x%02x", opcode);
                 break;
+        }
+    }
+
+    private void checkResultTypesMatch(byte[] actualResultTypes, byte[] expectedResultTypes) {
+        assertIntEqual(actualResultTypes.length, expectedResultTypes.length, Failure.TYPE_MISMATCH);
+        for(int i = 0; i < actualResultTypes.length; i++){
+            assertByteEqual(actualResultTypes[i], expectedResultTypes[i], Failure.TYPE_MISMATCH);
         }
     }
 

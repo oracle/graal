@@ -97,6 +97,7 @@ import org.graalvm.wasm.constants.StackEffects;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
+import org.graalvm.wasm.exception.WasmTailCallException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.validation.ExceptionHandler;
@@ -4633,6 +4634,139 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     pushReference(frame, virtualState.stackPointer++, reference);
                 } else {
                     nextOffset = offset + 8;
+                }
+                break;
+            }
+            case Bytecode.TAIL_CALL_U8:
+            case Bytecode.TAIL_CALL_I32: {
+                int callNodeIndex;
+                final int functionIndex;
+                if (opcode == Bytecode.TAIL_CALL_U8) {
+                    callNodeIndex = rawPeekU8(bytecode, offset);
+                    functionIndex = rawPeekU8(bytecode, offset + 1);
+                    offset += 2;
+                } else {
+                    callNodeIndex = rawPeekI32(bytecode, offset);
+                    functionIndex = rawPeekI32(bytecode, offset + 4);
+                    offset += 8;
+                }
+
+                WasmFunction function = module.symbolTable().function(functionIndex);
+                int paramCount = function.paramCount();
+
+                Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
+                stackPointer -= paramCount;
+
+                while(true){
+                    try {
+                        stackPointer = executeDirectCall(frame, stackPointer, instance, callNodeIndex, function, args);
+                        CompilerAsserts.partialEvaluationConstant(stackPointer);
+                        break;
+                    } catch (WasmTailCallException e) {
+                        Object result = e.callTarget.call(e.arguments);
+                        stackPointer = pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
+                    }
+                }
+                break;
+            }
+            case Bytecode.TAIL_CALL_INDIRECT_U8:
+            case Bytecode.TAIL_CALL_INDIRECT_I32: {
+                // Extract the function object.
+                stackPointer--;
+                final SymbolTable symtab = module.symbolTable();
+
+                                final int expectedFunctionTypeIndex;
+                                final int tableIndex;
+                                if (miscOpcode == Bytecode.RETURN_CALL_INDIRECT_U8) {
+                                    expectedFunctionTypeIndex = rawPeekU8(bytecode, offset);
+                                    tableIndex = rawPeekU8(bytecode, offset + 1);
+                                    offset += 2;
+                                } else {
+                                    expectedFunctionTypeIndex = rawPeekI32(bytecode, offset);
+                                    tableIndex = rawPeekI32(bytecode, offset + 4);
+                                    offset += 8;
+                                }
+                                final WasmTable table = instance.store().tables().table(instance.tableAddress(tableIndex));
+                                final Object[] elements = table.elements();
+                                final int elementIndex = popInt(frame, stackPointer);
+                                if (elementIndex < 0 || elementIndex >= elements.length) {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.UNDEFINED_ELEMENT, this, "Element index '%d' out of table bounds.", elementIndex);
+                                }
+                                // Currently, table elements may only be functions.
+                                // We can add a check here when this changes in the future.
+                                final Object element = elements[elementIndex];
+                                if (element == WasmConstant.NULL) {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
+                                }
+                                final WasmFunctionInstance functionInstance;
+                                final WasmFunction function;
+                                final CallTarget target;
+                                final WasmContext functionInstanceContext;
+                                if (element instanceof WasmFunctionInstance) {
+                                    functionInstance = (WasmFunctionInstance) element;
+                                    function = functionInstance.function();
+                                    target = functionInstance.target();
+                                    functionInstanceContext = functionInstance.context();
+                                } else {
+                                    enterErrorBranch();
+                                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
+                                }
+
+                int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+
+                // Target function instance must be from the same context.
+                assert functionInstanceContext == WasmContext.get(this);
+
+                // Validate that the target function type matches the expected type of the
+                // indirect call by performing an equivalence-class check.
+                if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                    enterErrorBranch();
+                    failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                }
+
+                // Invoke the resolved function.
+                int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
+                Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
+                stackPointer -= paramCount;
+                WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
+
+                final Object result = executeIndirectCallNode(callNodeIndex, target, args);
+                stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, WasmLanguage.get(this));
+                CompilerAsserts.partialEvaluationConstant(stackPointer);
+                break;
+            }
+            case Bytecode.TAIL_CALL_LOOP: {
+                int paramCount = module.symbolTable().functionTypeParamCount(codeEntry.functionIndex());
+                unwindStack(frame, stackPointer, 0, paramCount);
+                dropStack(frame, stackPointer, stackPointer - paramCount);
+                offset = bytecodeStartOffset;
+                stackPointer = localCount;
+                for (int i = paramCount; i != localCount; ++i) {
+                    byte type = codeEntry.localType(i);
+                    switch (type) {
+                        case WasmType.I32_TYPE:
+                            pushInt(frame, i, 0);
+                            break;
+                        case WasmType.I64_TYPE:
+                            pushLong(frame, i, 0L);
+                            break;
+                        case WasmType.F32_TYPE:
+                            pushFloat(frame, i, 0F);
+                            break;
+                        case WasmType.F64_TYPE:
+                            pushDouble(frame, i, 0D);
+                            break;
+                        case WasmType.V128_TYPE:
+                            pushVector128(frame, i, Vector128Ops.SINGLETON_IMPLEMENTATION.fromVector128(Vector128.ZERO));
+                            break;
+                        case WasmType.FUNCREF_TYPE:
+                        case WasmType.EXTERNREF_TYPE:
+                        case WasmType.EXNREF_TYPE:
+                            pushReference(frame, i, WasmConstant.NULL);
+                            break;
+                    }
                 }
                 break;
             }

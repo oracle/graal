@@ -430,6 +430,12 @@ public class Bytecode {
     public static final int I64_MUL_WIDE_S = 0x2D;
     public static final int I64_MUL_WIDE_U = 0x2E;
 
+    // Misc - Tail calls
+    public static final int RETURN_CALL_U8 = 0x25;
+    public static final int RETURN_CALL_I32 = 0x26;
+    public static final int RETURN_CALL_INDIRECT_U8 = 0x27;
+    public static final int RETURN_CALL_INDIRECT_I32 = 0x28;
+
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;

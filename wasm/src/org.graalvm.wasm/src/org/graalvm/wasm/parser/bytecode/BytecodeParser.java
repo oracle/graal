@@ -882,7 +882,8 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_MUL_WIDE_U:
                         case Bytecode.THROW_REF:
                         case Bytecode.REF_EQ:
-                        case Bytecode.LEGACY_CATCH_DROP: {
+                        case Bytecode.LEGACY_CATCH_DROP:
+                        case Bytecode.RETURN_CALL_LOOP: {
                             break;
                         }
                         case Bytecode.LEGACY_CATCH_UNWIND: {
@@ -927,13 +928,22 @@ public abstract class BytecodeParser {
                         case Bytecode.TABLE_FILL:
                         case Bytecode.THROW:
                         case Bytecode.TABLE_GET:
-                        case Bytecode.TABLE_SET: {
+                        case Bytecode.TABLE_SET:
+                        case Bytecode.RETURN_CALL_I32: {
                             offset += 4;
                             break;
                         }
                         case Bytecode.BR_ON_NULL_I32:
                         case Bytecode.BR_ON_NON_NULL_I32: {
                             offset += 6;
+                            break;
+                        }
+                        case Bytecode.RETURN_CALL_U8: {
+                            offset += 1;
+                            break;
+                        }
+                        case Bytecode.RETURN_CALL_INDIRECT_U8: {
+                            offset += 2;
                             break;
                         }
                         case Bytecode.MEMORY_INIT:
@@ -943,7 +953,8 @@ public abstract class BytecodeParser {
                         case Bytecode.MEMORY64_COPY_D64_S32:
                         case Bytecode.MEMORY64_COPY_D64_S64:
                         case Bytecode.TABLE_INIT:
-                        case Bytecode.TABLE_COPY: {
+                        case Bytecode.TABLE_COPY:
+                        case Bytecode.RETURN_CALL_INDIRECT_I32: {
                             offset += 8;
                             break;
                         }

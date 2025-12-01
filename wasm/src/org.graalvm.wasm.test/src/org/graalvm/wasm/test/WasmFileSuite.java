@@ -333,7 +333,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         }
     }
 
-    private WasmTestStatus runTestCase(WasmCase testCase, Engine sharedEngine) {
+    private WasmTestStatus  runTestCase(WasmCase testCase, Engine sharedEngine) {
         ByteArrayOutputStream testOut = new ByteArrayOutputStream();
         Path tempWorkingDirectory = null;
         try {

@@ -671,6 +671,53 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         }
     }
 
+    /**
+     * Adds a return-call instruction to the bytecode. Starts by adding a misc flag and a return_call
+     * instruction. If the nodeIndex and functionIndex both fit into a u8 value, two u8 values are added.
+     * Otherwise, two i32 values are added.
+     *
+     * @param functionIndex The function index of the return call
+     */
+    public void addReturnCall(int functionIndex) {
+        add1(Bytecode.MISC);
+        if (fitsIntoUnsignedByte(functionIndex)) {
+            add1(Bytecode.TAIL_CALL_U8);
+            add1(functionIndex);
+        } else {
+            add1(Bytecode.TAIL_CALL_I32);
+            add4(functionIndex);
+        }
+    }
+
+    /**
+     * Adds an indirect return-call instruction to the bytecode. Starts by adding a misc flag and a
+     * return_call_indirect instruction. If the nodeIndex, typeIndex, and tableIndex all fit into a u8 value, three u8 values are added.
+     * Otherwise, three i32 values are added. In both cases, a 2-byte profile is added.
+     *
+     * @param typeIndex The type index of the indirect tail call
+     * @param tableIndex The table index of the indirect tail call
+     */
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        add1(Bytecode.MISC);
+        if (fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
+            add1(Bytecode.TAIL_CALL_INDIRECT_U8);
+            add1(typeIndex);
+            add1(tableIndex);
+        } else {
+            add1(Bytecode.TAIL_CALL_INDIRECT_I32);
+            add4(typeIndex);
+            add4(tableIndex);
+        }
+    }
+
+    /**
+     * Adds a tail call loop instruction to the bytecode.
+     */
+    public void addReturnCallLoop() {
+        add1(Bytecode.MISC);
+        add1(Bytecode.TAIL_CALL_LOOP);
+    }
+
     public void addSelect(int instruction) {
         add1(instruction);
         addProfile();
