@@ -52,7 +52,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
@@ -272,7 +271,6 @@ public abstract class InterpreterStubSection {
         Object retVal;
         com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
-            Log.log().string("Found code for method ").string(rMethod.getDeclaringClass().getName()).string("::").string(rMethod.getName()).newline();
             /* A JIT compiled version is available, execute this one instead */
             CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
             retVal = leaveInterpreter(entryPoint, interpreterMethod, accessingClass, args);
