@@ -198,6 +198,7 @@ public class RuntimeCompiledMethodSupport {
 
     }
 
+    @SuppressWarnings("unused")
     protected DeoptimizeOnExceptionPhase getDeoptOnExceptionPhase(Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
         return null;
     }
@@ -212,6 +213,7 @@ public class RuntimeCompiledMethodSupport {
         };
     }
 
+    @SuppressWarnings("unused")
     protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
     }
 
