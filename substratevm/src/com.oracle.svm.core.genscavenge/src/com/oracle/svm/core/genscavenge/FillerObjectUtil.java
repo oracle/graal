@@ -41,7 +41,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public class FillerObjectUtil {
@@ -50,8 +49,8 @@ public class FillerObjectUtil {
     private static final int ARRAY_ELEMENT_SIZE = ARRAY_ELEMENT_KIND.getByteCount();
 
     @Fold
-    public static UnsignedWord objectMinSize() {
-        return Word.unsigned(ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize());
+    static int instanceMinSize() {
+        return ConfigurationValues.getObjectLayout().getMinRuntimeHeapInstanceSize();
     }
 
     @Fold
@@ -65,13 +64,13 @@ public class FillerObjectUtil {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void writeFillerObjectAt(Pointer p, UnsignedWord size) {
-        assert size.aboveThan(0);
+    public static void writeFillerObjectAt(Pointer p, UnsignedWord size, boolean rememberedSet) {
+        assert size.equal(instanceMinSize()) || size.aboveOrEqual(arrayMinSize());
         if (size.aboveOrEqual(arrayMinSize())) {
             int length = UnsignedUtils.safeToInt(size.subtract(arrayBaseOffset()).unsignedDivide(ARRAY_ELEMENT_SIZE));
-            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, true, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
+            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, rememberedSet, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         } else {
-            FormatObjectNode.formatObject(p, FillerObject.class, true, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
+            FormatObjectNode.formatObject(p, FillerObject.class, rememberedSet, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         }
         assert LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size);
     }

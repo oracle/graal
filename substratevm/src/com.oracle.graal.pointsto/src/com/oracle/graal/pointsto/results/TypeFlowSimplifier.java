@@ -347,18 +347,13 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
          * 2. The receiver TypeFlow's type is a closed type, so it may be not extended in a later
          * layer.
          *
-         * 3. The receiver TypeFlow's type is a core type, so it may be not extended in a later
-         * layer. (GR-70846: This check condition will be merged with the previous one once core
-         * types are fully considered as closed.)
-         *
-         * 4. The receiver TypeFlow is not saturated.
+         * 3. The receiver TypeFlow is not saturated.
          *
          * Otherwise, when the receiver's analysis results are incomplete, then it is possible for
          * more types to be observed in subsequent layers.
          */
         boolean receiverAnalysisResultsComplete = strengthenGraphs.isClosedTypeWorld ||
-                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || analysis.getHostVM().isCoreType(invokeFlow.getReceiverType()) ||
-                                        !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
+                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
 
         if (callTarget.invokeKind().isDirect()) {
             /*
@@ -399,14 +394,14 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         } else {
             TypeState receiverTypeState = null;
             if (hasReceiver) {
-                if (methodFlow.isSaturated(analysis, invokeFlow)) {
+                if (methodFlow.isSaturated(analysis, invokeFlow.getReceiver())) {
                     /*
-                     * For saturated invokes use all seen instantiated subtypes of target method
-                     * declaring class. Note if this analysis results are not complete this is
-                     * incomplete as new types may be seen later, but it is an optimistic
+                     * Saturated receivers can be all instantiated subtypes of the target method's
+                     * declaring class. Note if receiverAnalysisResultsComplete is false then new
+                     * types may be seen later; however, this still serves as an optimistic
                      * approximation.
                      */
-                    receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(analysis, false).getState();
+                    receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(analysis, true).getState();
                 } else {
                     assert receiverAnalysisResultsComplete;
                     receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());

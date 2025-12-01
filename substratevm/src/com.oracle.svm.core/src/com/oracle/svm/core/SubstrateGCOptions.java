@@ -47,8 +47,6 @@ import jdk.graal.compiler.word.Word;
  */
 @DuplicatedInNativeCode
 public class SubstrateGCOptions {
-    private static final int K = 1024;
-
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new NotifyGCRuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser) {
         @Override
@@ -106,20 +104,20 @@ public class SubstrateGCOptions {
     @Option(help = "Determines if references from runtime-compiled code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
 
+    @Option(help = "Use thread-local object allocation.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(true);
+
+    @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
+
     @DuplicatedInNativeCode
-    public static class TlabOptions {
-        @Option(help = "Use thread-local object allocation.", type = OptionType.Expert)//
-        public static final HostedOptionKey<Boolean> UseTLAB = new HostedOptionKey<>(true);
-
-        @Option(help = "Dynamically resize TLAB size for threads.", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Boolean> ResizeTLAB = new RuntimeOptionKey<>(true, IsolateCreationOnly);
-
+    public static class ConcealedOptions {
+        /** Use GC-specific accessors instead. */
         @Option(help = "Minimum allowed TLAB size (in bytes).", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Long> MinTLABSize = new RuntimeOptionKey<>(2L * K, RegisterForIsolateArgumentParser);
+        public static final RuntimeOptionKey<Long> MinTLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
+        /** Use GC-specific accessors instead. */
         @Option(help = "Starting TLAB size (in bytes); zero means set ergonomically.", type = OptionType.Expert)//
         public static final RuntimeOptionKey<Long> TLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
-
     }
-
 }

@@ -285,7 +285,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
-        r.register(new InvocationPlugin(name, double.class) {
+        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
@@ -295,7 +295,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerBinaryMath(Registration r, String name, BinaryMathIntrinsicNode.BinaryOperation operation) {
-        r.register(new InvocationPlugin(name, double.class, double.class) {
+        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin(name, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));

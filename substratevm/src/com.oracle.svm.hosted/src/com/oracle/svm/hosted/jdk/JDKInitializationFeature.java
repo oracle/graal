@@ -159,6 +159,10 @@ public class JDKInitializationFeature implements InternalFeature {
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.nio.file.spi", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("sun.nio.fs", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Extended*Option need to be registered at run time. */
+            rci.initializeAtRunTime("com.sun.nio.file", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
+            /* Static references to ExtendedOptions. Needs to be run-time initialized. */
+            rci.initializeAtRunTime("jdk.internal.misc.FileSystemOption", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
 
             rci.initializeAtRunTime("java.nio.file.FileSystems", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
             rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
@@ -186,9 +190,6 @@ public class JDKInitializationFeature implements InternalFeature {
              */
             rci.initializeAtBuildTime("sun.nio.fs.UnixPath", "Allow UnixPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
-
-            /* JrtFS support. */
-            rci.initializeAtBuildTime("jdk.internal.jrtfs.SystemImage", FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON);
         }
 
         rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
@@ -337,8 +338,18 @@ public class JDKInitializationFeature implements InternalFeature {
      * already set by the time the builder starts running.
      */
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ((FeatureImpl.BeforeAnalysisAccessImpl) access).allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.allowStableFieldFoldingBeforeAnalysis(ModuleEnableNativeAccessPlugin.ENABLE_NATIVE_ACCESS_FIELD);
+
+        // We force all Enum.hash fields to be eagerly computed.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(Enum.class, "hash"));
+
+        // The fields below are initialized in their static initializers or as a part of vm startup.
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(ModuleLayer.class, "EMPTY_LAYER"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialIn"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField(System.class, "initialErr"));
+        access.allowStableFieldFoldingBeforeAnalysis(access.findField("java.util.jar.Attributes$Name", "KNOWN_NAMES"));
     }
 
     /**

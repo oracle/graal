@@ -36,11 +36,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.AnnotationValueType;
 import jdk.graal.compiler.annotation.EnumElement;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.EconomicHashMap;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
@@ -53,21 +56,41 @@ import jdk.vm.ci.meta.annotation.Annotated;
  */
 public final class AnnotationUtil {
 
+    /**
+     * Lazily created singleton to be used when outside the scope of a Native Image build.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     static class Lazy {
         static final AnnotatedObjectAccess instance;
+        static final Throwable initLocation;
         static {
-            if (ImageSingletons.contains(AnnotationExtractor.class)) {
-                instance = (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
-            } else {
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
-                instance = new AnnotatedObjectAccess();
-            }
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, AnnotatedObjectAccess.class, false, "java.base", "sun.reflect.annotation");
+            instance = new AnnotatedObjectAccess();
+            initLocation = new Throwable("Lazy.instance created here:");
         }
     }
 
+    /**
+     * Used to ensure only one path through {@link #instance()} is taken per VM execution to prevent
+     * leaking data via {@link Lazy#instance}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static Boolean instanceIsSingleton;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static AnnotatedObjectAccess instance() {
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(AnnotationExtractor.class)) {
+            if (instanceIsSingleton == null) {
+                instanceIsSingleton = true;
+            } else if (!instanceIsSingleton) {
+                throw new GraalError(Lazy.initLocation, "Cannot use image singleton AnnotatedObjectAccess after Lazy.instance initialized");
+            }
+            return (AnnotatedObjectAccess) ImageSingletons.lookup(AnnotationExtractor.class);
+        }
+        // Fall back to singleton when no AnnotationExtractor singleton is available (e.g.,
+        // running `mx unittest com.oracle.graal.pointsto.standalone.test`).
+        GraalError.guarantee(instanceIsSingleton == null || !instanceIsSingleton, "Cannot use image singleton AnnotatedObjectAccess and Lazy.instance in one process");
+        instanceIsSingleton = false;
         return Lazy.instance;
     }
 
@@ -94,13 +117,33 @@ public final class AnnotationUtil {
     public static <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
         // Checkstyle: allow direct annotation access
         if (ImageInfo.inImageRuntimeCode()) {
-            if (element instanceof AnnotatedElement ae) {
-                return ae.getAnnotation(annotationType);
+            if (element instanceof RuntimeAnnotated ra) {
+                return ra.getAnnotation(annotationType);
             }
-            throw new IllegalArgumentException("Cannot cast " + element.getClass() + " to " + AnnotatedElement.class.getName() + ": " + element);
+            throw new IllegalArgumentException("Cannot cast " + element.getClass() + " to " + RuntimeAnnotated.class.getName() + ": " + element);
         }
         return instance().getAnnotation(element, annotationType);
         // Checkstyle: disallow direct annotation access
+    }
+
+    @SuppressWarnings("unchecked")
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Annotation[][] getParameterAnnotations(ResolvedJavaMethod method) {
+        List<List<AnnotationValue>> values = instance().getParameterAnnotationValues(method);
+        if (values == null) {
+            return null;
+        }
+        Annotation[][] res = new Annotation[values.size()][];
+        for (int i = 0; i < values.size(); i++) {
+            List<AnnotationValue> annotations = values.get(i);
+            res[i] = new Annotation[annotations.size()];
+            for (int j = 0; j < annotations.size(); j++) {
+                AnnotationValue a = annotations.get(j);
+                Class<? extends Annotation> aType = (Class<? extends Annotation>) OriginalClassProvider.getJavaClass(a.getAnnotationType());
+                res[i][j] = instance().asAnnotation(a, aType);
+            }
+        }
+        return res;
     }
 
     /**

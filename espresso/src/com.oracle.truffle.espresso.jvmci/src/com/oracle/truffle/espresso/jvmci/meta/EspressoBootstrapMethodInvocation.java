@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
+import static com.oracle.truffle.espresso.jvmci.meta.EspressoConstantPool.INVOKEDYNAMIC;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -36,14 +38,15 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public final class EspressoBootstrapMethodInvocation implements ConstantPool.BootstrapMethodInvocation {
     private final boolean indy;
-    private final EspressoResolvedJavaMethod method;
+    private final AbstractEspressoResolvedJavaMethod method;
     private final String name;
     private final JavaConstant type;
     private final List<JavaConstant> staticArguments;
     private final int cpi;
-    private final EspressoConstantPool constantPool;
+    private final AbstractEspressoConstantPool constantPool;
 
-    EspressoBootstrapMethodInvocation(boolean indy, EspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int cpi, EspressoConstantPool constantPool) {
+    EspressoBootstrapMethodInvocation(boolean indy, AbstractEspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int cpi,
+                    AbstractEspressoConstantPool constantPool) {
         this.indy = indy;
         this.method = method;
         this.name = name;
@@ -54,7 +57,7 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     }
 
     @Override
-    public EspressoResolvedJavaMethod getMethod() {
+    public AbstractEspressoResolvedJavaMethod getMethod() {
         return method;
     }
 
@@ -81,7 +84,7 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public void resolve() {
         if (isInvokeDynamic()) {
-            constantPool.loadReferencedType(cpi, EspressoConstantPool.INVOKEDYNAMIC);
+            constantPool.loadReferencedType(cpi, INVOKEDYNAMIC);
         } else {
             constantPool.lookupConstant(cpi, true);
         }
@@ -90,7 +93,7 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public JavaConstant lookup() {
         if (isInvokeDynamic()) {
-            return constantPool.lookupAppendix(cpi, EspressoConstantPool.INVOKEDYNAMIC);
+            return constantPool.lookupAppendix(cpi, INVOKEDYNAMIC);
         } else {
             return (JavaConstant) constantPool.lookupConstant(cpi, false);
         }

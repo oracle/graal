@@ -27,6 +27,7 @@ package com.oracle.svm.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public final class GlobUtils {
@@ -72,6 +73,10 @@ public final class GlobUtils {
     }
 
     public static String validatePattern(String pattern) {
+        return validatePattern(pattern, LogUtils::warning);
+    }
+
+    public static String validatePattern(String pattern, Consumer<String> warner) {
         StringBuilder sb = new StringBuilder();
 
         if (pattern.isEmpty()) {
@@ -120,9 +125,10 @@ public final class GlobUtils {
                         break outer;
                     } else if (token.kind == GlobToken.Kind.STAR_STAR) {
                         String patternWithoutModule = pattern.substring(ALL_UNNAMED.length() + 1);
-                        LogUtils.warning("Pattern: " + patternWithoutModule + " contains ** without previous literal. " +
+                        String message = "Pattern: " + patternWithoutModule + " contains ** without previous literal. " +
                                         "This pattern is too generic and therefore can match many resources. " +
-                                        "Please make the pattern more specific by adding non-generic level before ** level.");
+                                        "Please make the pattern more specific by adding non-generic level before ** level.";
+                        warner.accept(message);
                     }
                 }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,28 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
-import static com.oracle.truffle.espresso.jvmci.EspressoJVMCIRuntime.runtime;
-import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedArrayType.findArrayClass;
-
 import java.lang.annotation.Annotation;
 
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 
-public abstract class EspressoResolvedJavaType implements ResolvedJavaType {
+public abstract class EspressoResolvedJavaType extends AbstractAnnotated implements ResolvedJavaType {
     static final Annotation[] NO_ANNOTATIONS = {};
     protected static final EspressoResolvedJavaField[] NO_FIELDS = new EspressoResolvedJavaField[0];
     protected static final ResolvedJavaType[] NO_TYPES = new ResolvedJavaType[0];
     protected static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[0];
-    protected EspressoResolvedArrayType arrayType;
+    protected AbstractEspressoResolvedArrayType arrayType;
 
     @Override
-    public EspressoResolvedArrayType getArrayClass() {
+    public AbstractEspressoResolvedArrayType getArrayClass() {
         if (arrayType == null) {
-            arrayType = new EspressoResolvedArrayType(this, 1, this, findArrayClass(getMirror(), 1));
+            arrayType = getArrayClass0();
         }
         return arrayType;
     }
+
+    protected abstract AbstractEspressoResolvedArrayType getArrayClass0();
 
     @Override
     public abstract EspressoResolvedJavaType resolve(ResolvedJavaType accessingClass);
@@ -75,12 +73,12 @@ public abstract class EspressoResolvedJavaType implements ResolvedJavaType {
         return getClass().getSimpleName() + "<" + getName() + ">";
     }
 
-    static ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, EspressoResolvedInstanceType accessingType, boolean resolve) {
-        JavaType javaType = runtime().lookupType(unresolvedJavaType.getName(), accessingType, resolve);
-        if (javaType instanceof ResolvedJavaType resolved) {
-            return resolved;
-        }
-        return null;
-    }
+    @Override
+    public abstract void link();
 
+    @Override
+    public abstract boolean declaresDefaultMethods();
+
+    @Override
+    public abstract boolean hasDefaultMethods();
 }

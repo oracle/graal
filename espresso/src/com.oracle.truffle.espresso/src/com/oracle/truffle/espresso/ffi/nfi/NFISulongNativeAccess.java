@@ -64,8 +64,8 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     @TruffleBoundary
-    private static boolean isSulongSymbolClass(Object symbolClass) {
-        return "LLVMLanguage".equals(((Class<?>) symbolClass).getSimpleName());
+    private static boolean isSulongLanguage(String languageId) {
+        return "llvm".equals(languageId);
     }
 
     @Override
@@ -85,16 +85,16 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     static boolean isFallbackSymbol(TruffleObject symbol, InteropLibrary interop) {
-        Object symbolClass = getSymbolClass(symbol, interop);
-        return symbolClass == null || !isSulongSymbolClass(symbolClass);
+        String languageId = getSymbolClass(symbol, interop);
+        return languageId == null || !isSulongLanguage(languageId);
     }
 
-    private static Object getSymbolClass(TruffleObject symbol, InteropLibrary interop) {
-        if (!interop.hasLanguage(symbol)) {
+    private static String getSymbolClass(TruffleObject symbol, InteropLibrary interop) {
+        if (!interop.hasLanguageId(symbol)) {
             return null;
         }
         try {
-            return interop.getLanguage(symbol);
+            return interop.getLanguageId(symbol);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);

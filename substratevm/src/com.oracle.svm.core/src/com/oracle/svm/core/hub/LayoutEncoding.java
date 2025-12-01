@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -35,6 +37,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
@@ -368,6 +371,7 @@ public class LayoutEncoding {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectWithoutOptionalIdHashFieldInGC(Object obj) {
         return getSizeFromObjectInline(obj, false);
     }
@@ -406,8 +410,17 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getImageHeapObjectEnd(Object obj) {
-        // Image heap objects never move and always have an identity hash code field.
+        assert Heap.getHeap().isInImageHeap(obj);
+        /* Image heap objects never move and always have an identity hash code field. */
         UnsignedWord size = getSizeFromObjectInline(obj, true);
+        return Word.objectToUntrackedPointer(obj).add(size);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Pointer getMetaspaceObjectEnd(Object obj) {
+        assert Metaspace.isSupported() && Metaspace.singleton().isInAddressSpace(obj);
+        /* Metaspace objects don't move and have no identity hash code field. */
+        UnsignedWord size = getSizeFromObjectInline(obj, false);
         return Word.objectToUntrackedPointer(obj).add(size);
     }
 

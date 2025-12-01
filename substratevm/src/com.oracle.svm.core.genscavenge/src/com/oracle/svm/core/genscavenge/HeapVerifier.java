@@ -30,7 +30,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
@@ -318,9 +320,14 @@ public class HeapVerifier {
             // Not all objects in the image heap have the remembered set bit in the header, so
             // we can't verify that this bit is set.
 
-        } else if (space.isOldSpace()) {
+        } else if (space.isOldSpace() || space.isMetaspace()) {
             if (SerialGCOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
-                Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                Log.log().string("Object ").zhex(ptr).string(" is in ").string(space.getName()).string(" chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                return false;
+            }
+        } else if (space.isYoungSpace()) {
+            if (SerialGCOptions.useRememberedSet() && RememberedSet.get().hasRememberedSet(header)) {
+                Log.log().string("Object ").zhex(ptr).string(" is in ").string(space.getName()).string(" chunk ").zhex(chunk).string(" but has a remembered set.").newline();
                 return false;
             }
         }
@@ -381,7 +388,7 @@ public class HeapVerifier {
         if (ObjectHeaderImpl.isAlignedHeader(header)) {
             AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
             if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk.");
+                Log.log().string("Object reference at ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk. ");
                 printParent(parentObject);
                 return false;
             }
@@ -389,7 +396,8 @@ public class HeapVerifier {
             assert ObjectHeaderImpl.isUnalignedHeader(header);
             UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
             if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding unaligned chunk.");
+                Log.log().string("Object reference at ").zhex(reference).string(" points to ").zhex(referencedObject)
+                                .string(", which is outside the usable part of the corresponding unaligned chunk. ");
                 printParent(parentObject);
                 return false;
             }
@@ -400,7 +408,13 @@ public class HeapVerifier {
 
     private static void printParent(Object parentObject) {
         if (parentObject instanceof VerifyFrameReferencesVisitor visitor) {
-            Log.log().string("The invalid reference is on the stack: sp=").zhex(visitor.getSP()).string(", ip=").zhex(visitor.getIP()).newline();
+            Log.log().string("The invalid reference is on the stack:").indent(true);
+            Log.log().string("isolate thread: ").zhex(visitor.getIsolateThread()).newline();
+            Log.log().string("sp=").zhex(visitor.getSP()).newline();
+
+            Log.log().string("ip=").zhex(visitor.getIP()).string(" (");
+            SubstrateDiagnostics.printLocationInfo(Log.log(), (UnsignedWord) visitor.getIP(), true, false);
+            Log.log().string(")").indent(false);
         } else {
             assert parentObject != null;
             Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();

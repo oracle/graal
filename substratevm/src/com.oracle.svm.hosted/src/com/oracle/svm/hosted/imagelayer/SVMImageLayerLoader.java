@@ -85,11 +85,11 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
@@ -109,6 +109,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod.WrappedMember;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.Reader;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
@@ -845,7 +846,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                             return;
                         }
                     }
-                } else {
+                } else if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
                     LogUtils.warning("Arguments reflectively loading %s. %s could not be found: %s", methodData.getClassName().toString(), methodData.getName().toString(),
                                     Arrays.toString(parameterTypes));
                 }
@@ -958,7 +959,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                     return true;
                 }
             }
-            LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogLoadingFailures.getValue()) {
+                LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            }
             return false;
         }
         return false;
@@ -1827,7 +1830,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
         boolean result = IdentityHashCodeUtil.injectIdentityHashCode(object, identityHashCode);
         if (!result) {
-            if (SubstrateOptions.LoggingHashCodeInjection.getValue()) {
+            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {
                 LogUtils.warning("Object of type %s already had an hash code: %s", object.getClass(), object);
             }
         }
@@ -1856,6 +1859,36 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private void scanCompanionField(DynamicHub hub) {
         var instance = (ImageHeapInstance) getValueForObject(hub);
         instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
+    }
+
+    public boolean isReachableInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsReachable);
+    }
+
+    public boolean isInstantiatedInPreviousLayer(AnalysisType type) {
+        return getPropertyInPreviousLayer(type, Reader::getIsInstantiated);
+    }
+
+    private boolean getPropertyInPreviousLayer(AnalysisType type, Function<PersistedAnalysisType.Reader, Boolean> propertyGetter) {
+        Integer typeId;
+        if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
+            typeId = baseLayerType.getBaseLayerId();
+        } else {
+            /*
+             * Types that cannot be loaded manually can be duplicated and can get a new type id even
+             * if they were in a shared layer. In this case, using the type identifier can still
+             * retrieve the id from the shared layer.
+             */
+            String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+            typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+        }
+        if (typeId != null) {
+            var typeInfo = findType(typeId);
+            if (typeInfo != null) {
+                return propertyGetter.apply(typeInfo);
+            }
+        }
+        return false;
     }
 
     public record LayeredSimulationResult(boolean successful, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {

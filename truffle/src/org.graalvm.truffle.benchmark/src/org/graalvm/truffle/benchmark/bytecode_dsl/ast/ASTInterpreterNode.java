@@ -314,7 +314,12 @@ public abstract class ASTInterpreterNode extends Node {
                     return caseNodes[i].execute(frame);
                 }
             }
-            return CompilerDirectives.shouldNotReachHere("unhandled value " + value);
+            return CompilerDirectives.shouldNotReachHere(unhandledValue(value));
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private String unhandledValue(Object value) {
+            return "unhandled value " + value;
         }
     }
 

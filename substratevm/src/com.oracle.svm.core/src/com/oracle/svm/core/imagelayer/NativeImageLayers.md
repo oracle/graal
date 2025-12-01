@@ -95,6 +95,7 @@ In the future we will eventually provide a solution to refine the resource inclu
 
 Suboption `package` allows the inclusion of individual Java packages. For this kind of inclusion it does not matter if the specified package is from a classpath entry or part of a module, both are supported.
 Contrary to the `module` suboption, resources are not also automatically included. If resource inclusion is needed, the usual ways can be used (`resource-config.json`, `reachability-metadata.json` or resource related Feature API).
+When a given package name ends with `.*`, all packages that share the same package-prefix are registered for inclusion. E.g. `package=io.netty.*` registers all packages that start with `io.netty` for inclusion.
 
 ##### `--layer-create` suboption `path=<classpath-entry>`
 

@@ -26,7 +26,12 @@
 package com.oracle.svm.hosted.webimage.wasm.phases;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 public class WebImageWasmLMSuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public WebImageWasmLMSuitesCreatorProvider() {
         super(new WebImageWasmLMSuitesCreator(), new WebImageWasmLMSuitesCreator());

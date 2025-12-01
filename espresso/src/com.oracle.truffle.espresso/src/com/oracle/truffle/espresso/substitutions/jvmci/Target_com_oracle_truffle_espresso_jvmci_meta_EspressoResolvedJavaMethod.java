@@ -52,7 +52,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jvmci.JVMCIIndyData;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -400,22 +400,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
         return method.getAttribute(Names.RuntimeVisibleAnnotations) != null;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean hasParameterAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.RuntimeVisibleParameterAnnotations) != null;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean hasDefaultAnnotations(StaticObject self, @Inject EspressoContext context) {
-        assert context.getLanguage().isInternalJVMCIEnabled();
-        Meta meta = context.getMeta();
-        Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Names.AnnotationDefault) != null;
     }
 
     @Substitution(hasReceiver = true)

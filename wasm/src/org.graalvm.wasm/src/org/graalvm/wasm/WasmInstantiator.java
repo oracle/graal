@@ -143,7 +143,7 @@ public class WasmInstantiator {
             final ImportDescriptor tableDescriptor = module.importedTable(tableIndex);
             if (tableDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {
-                    instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS);
+                    instance.setTable(tableIndex, null);
                     store.linker().resolveTableImport(store, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType, imports);
                 });
             } else {
@@ -152,8 +152,7 @@ public class WasmInstantiator {
                     final int maxAllowedSize = WasmMath.minUnsigned(tableMaxSize, limits.tableInstanceSizeLimit());
                     limits.checkTableInstanceSize(tableMinSize);
                     final WasmTable wasmTable = new WasmTable(tableMinSize, tableMaxSize, maxAllowedSize, tableElemType, module);
-                    final int address = store.tables().register(wasmTable);
-                    instance.setTableAddress(tableIndex, address);
+                    instance.setTable(tableIndex, wasmTable);
 
                     final byte[] initBytecode = module.tableInitializerBytecode(tableIndex);
                     final Object initValue = module.tableInitialValue(tableIndex);
@@ -187,9 +186,7 @@ public class WasmInstantiator {
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
                     final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, memoryIndexType64, memoryShared,
                                     context.getContextOptions().useUnsafeMemory(), context.getContextOptions().directByteBufferMemoryAccess(), context);
-                    final int address = store.memories().register(wasmMemory);
-                    final WasmMemory allocatedMemory = store.memories().memory(address);
-                    instance.setMemory(memoryIndex, allocatedMemory);
+                    instance.setMemory(memoryIndex, wasmMemory);
                 });
             }
         }

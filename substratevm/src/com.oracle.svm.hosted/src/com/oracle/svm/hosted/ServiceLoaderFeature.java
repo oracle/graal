@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -41,6 +39,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -50,6 +49,9 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
@@ -59,6 +61,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.util.locale.provider.LocaleDataMetaInfo;
 
 /**
@@ -160,54 +164,75 @@ public class ServiceLoaderFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
-            Class<?> serviceClass = access.findClassByName(serviceName);
-            boolean skipService = false;
-            /* If the service should not end up in the image, we remove all the providers with it */
             Collection<String> providersToSkip = providers;
-            if (servicesToSkip.contains(serviceName)) {
-                skipService = true;
-            } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
-                skipService = true;
-            } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
-                skipService = true;
-            } else {
-                providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
-                if (!providersToSkip.isEmpty()) {
+            try {
+                /*
+                 * The following will throw an `UnsupportedPlatformException` if the service is not
+                 * supported.
+                 */
+                ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
+                boolean skipService = false;
+                /*
+                 * If the service should not end up in the image, we remove all the providers with
+                 * it.
+                 */
+                if (servicesToSkip.contains(serviceName)) {
                     skipService = true;
+                } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
+                    skipService = true;
+                } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+                    skipService = true;
+                } else {
+                    providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
+                    if (!providersToSkip.isEmpty()) {
+                        skipService = true;
+                    }
                 }
+                if (!skipService) {
+                    access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
+                    return;
+                }
+            } catch (UnsupportedPlatformException e) {
+                // Service class is not supported - skipping
             }
-            if (skipService) {
-                ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip));
-                return;
-            }
-            access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
+            // skip service
+            ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip));
         });
     }
 
-    void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, Collection<String> providers) {
+    void handleServiceClassIsReachable(DuringAnalysisAccess access, ResolvedJavaType serviceProvider, Collection<String> providers) {
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(java.security.Provider.class) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
+            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
                 SecurityProvidersSupport.singleton().markSecurityProviderAsNotLoaded(provider);
             } else {
                 registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
             }
         }
-        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.getName(), registeredProviders);
+        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.toClassName(), registeredProviders);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         /* Make provider reflectively instantiable */
-        Class<?> providerClass = access.findClassByName(provider);
+        ResolvedJavaType providerClass;
+        try {
+            providerClass = accessImpl.findTypeByName(provider);
+        } catch (UnsupportedPlatformException e) {
+            return;
+        } catch (DeletedElementException e) {
+            /* Disallow services with implementation classes that are marked as @Deleted */
+            return;
+        }
 
         if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
             return;
         }
-        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         if (!accessImpl.getHostVM().platformSupported(providerClass)) {
             return;
         }
@@ -222,10 +247,10 @@ public class ServiceLoaderFeature implements InternalFeature {
          *
          * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
          */
-        Method nullaryProviderMethod = findProviderMethod(providerClass);
-        Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
+        ResolvedJavaMethod nullaryProviderMethod = findProviderMethod(providerClass);
+        ResolvedJavaMethod nullaryConstructor = findNullaryConstructor(providerClass);
         if (nullaryConstructor != null || nullaryProviderMethod != null) {
-            RuntimeReflection.register(providerClass);
+            JVMCIRuntimeReflection.register(providerClass);
             if (nullaryConstructor != null) {
                 /*
                  * Registering a constructor with
@@ -235,22 +260,22 @@ public class ServiceLoaderFeature implements InternalFeature {
                  * if-statement cannot be eliminated.
                  *
                  */
-                RuntimeReflection.register(nullaryConstructor);
+                JVMCIRuntimeReflection.register(nullaryConstructor);
             } else {
                 /*
                  * If there's no nullary constructor, register it as negative lookup to avoid
                  * throwing a MissingReflectionRegistrationError at run time.
                  */
-                RuntimeReflection.registerConstructorLookup(providerClass);
+                JVMCIRuntimeReflection.registerConstructorLookup(providerClass);
             }
             if (nullaryProviderMethod != null) {
-                RuntimeReflection.register(nullaryProviderMethod);
+                JVMCIRuntimeReflection.register(nullaryProviderMethod);
             } else {
                 /*
                  * If there's no declared public provider() method, register it as negative lookup
                  * to avoid throwing a MissingReflectionRegistrationError at run time.
                  */
-                RuntimeReflection.registerMethodLookup(providerClass, "provider");
+                JVMCIRuntimeReflection.registerMethodLookup(providerClass, "provider");
             }
         }
         /*
@@ -270,28 +295,28 @@ public class ServiceLoaderFeature implements InternalFeature {
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
-    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
-        Constructor<?> nullaryConstructor = null;
+    private static ResolvedJavaMethod findNullaryConstructor(ResolvedJavaType providerClass) {
+        ResolvedJavaMethod nullaryConstructor = null;
         try {
-            Constructor<?> constructor = providerClass.getDeclaredConstructor();
+            ResolvedJavaMethod constructor = JVMCIReflectionUtil.getDeclaredConstructor(false, providerClass);
             if (Modifier.isPublic(constructor.getModifiers())) {
                 nullaryConstructor = constructor;
             }
-        } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+        } catch (SecurityException | LinkageError e) {
             // ignore
         }
         return nullaryConstructor;
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
-    private static Method findProviderMethod(Class<?> providerClass) {
-        Method nullaryProviderMethod = null;
+    private static ResolvedJavaMethod findProviderMethod(ResolvedJavaType providerClass) {
+        ResolvedJavaMethod nullaryProviderMethod = null;
         try {
             /* Only look for a provider() method if provider class is in an explicit module. */
-            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                for (Method method : providerClass.getDeclaredMethods()) {
+            if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).getDescriptor().isAutomatic()) {
+                for (ResolvedJavaMethod method : providerClass.getDeclaredMethods(false)) {
                     if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                                    method.getSignature().getParameterCount(false) == 0 && method.getName().equals("provider")) {
                         if (nullaryProviderMethod == null) {
                             nullaryProviderMethod = method;
                         } else {

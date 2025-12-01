@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -264,7 +264,7 @@ public abstract class DSLExpression {
         try {
             expression.accept(resolver);
             List<Element> deprecatedElements = expression.findBoundDeprecatedElements();
-            if (!deprecatedElements.isEmpty() && !TruffleSuppressedWarnings.isSuppressed(container.getMessageElement(), "deprecated")) {
+            if (!deprecatedElements.isEmpty() && !TruffleSuppressedWarnings.isSuppressed(container.getMessageElement(), TruffleSuppressedWarnings.DEPRECATION, "deprecated")) {
                 AnnotationMirror mirror = container.getMessageAnnotation();
                 AnnotationValue value = null;
                 if (mirror != null && annotationValueName != null) {
@@ -277,7 +277,7 @@ public abstract class DSLExpression {
                     b.append(String.format("%n  - "));
                     b.append(relativeName);
                 }
-                b.append(String.format("%nUpdate the usage of the elements or suppress the warning with @SuppressWarnings(\"deprecated\")."));
+                b.append(String.format("%nUpdate the usage of the elements or suppress the warning with @SuppressWarnings(\"" + TruffleSuppressedWarnings.DEPRECATION + "\")."));
                 container.addWarning(value, b.toString());
             }
             return expression;

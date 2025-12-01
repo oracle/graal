@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
@@ -34,21 +33,26 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.CodeSource;
-import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ResolvedJavaPackage;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A feature that detects whether a native image may be vulnerable to Log4Shell.
@@ -67,14 +71,8 @@ public class Log4ShellFeature implements InternalFeature {
     /* Different versions of log4j overload all these methods. */
     private static final Set<String> targetMethods = Set.of("debug", "error", "fatal", "info", "log", "trace", "warn");
 
-    private static Optional<String> getPomVersion(Class<?> log4jClass) {
-        ProtectionDomain pd = log4jClass.getProtectionDomain();
-        CodeSource cs = pd.getCodeSource();
-
-        if (cs == null) {
-            return Optional.empty();
-        }
-        URL location = cs.getLocation();
+    private static Optional<String> getPomVersion(ResolvedJavaType log4jClass) {
+        URL location = JVMCIReflectionUtil.getOrigin(log4jClass);
         if (location == null) {
             return Optional.empty();
         }
@@ -148,20 +146,20 @@ public class Log4ShellFeature implements InternalFeature {
         return false;
     }
 
-    private AfterAnalysisAccess afterAnalysisAccess;
+    private AfterAnalysisAccessImpl afterAnalysisAccess;
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        this.afterAnalysisAccess = access;
+        this.afterAnalysisAccess = (AfterAnalysisAccessImpl) access;
     }
 
     public String getUserWarning() {
-        Class<?> log4jClass = afterAnalysisAccess.findClassByName(log4jClassName);
+        AnalysisType log4jClass = afterAnalysisAccess.findTypeByName(log4jClassName);
         if (log4jClass == null) {
             return null;
         }
 
-        Package log4jPackage = log4jClass.getPackage();
+        ResolvedJavaPackage log4jPackage = JVMCIReflectionUtil.getPackage(log4jClass);
         String version = log4jPackage.getImplementationVersion();
 
         if (version == null) {
@@ -186,21 +184,21 @@ public class Log4ShellFeature implements InternalFeature {
         Set<String> vulnerableMethods = new HashSet<>();
 
         if (("1".equals(components[0]) && vulnerableLog4jOne(components)) || ("2".equals(components[0]) && vulnerableLog4jTwo(components))) {
-            for (Method method : log4jClass.getMethods()) {
+            for (AnalysisMethod method : log4jClass.getDeclaredMethods(false)) {
                 String methodName = method.getName();
-                if (targetMethods.contains(methodName) && (afterAnalysisAccess.isReachable(method) || (afterAnalysisAccess.reachableMethodOverrides(method).size() > 0))) {
-                    vulnerableMethods.add(method.getDeclaringClass().getName() + "." + method.getName());
+                if (targetMethods.contains(methodName) && (afterAnalysisAccess.isReachable(method) || (!afterAnalysisAccess.reachableMethodOverrides(method).isEmpty()))) {
+                    vulnerableMethods.add(method.getDeclaringClass().toClassName() + "." + method.getName());
                 }
             }
         }
 
-        if (vulnerableMethods.size() == 0) {
+        if (vulnerableMethods.isEmpty()) {
             return null;
         }
 
         StringBuilder renderedErrorMessage = new StringBuilder(String.format(log4jVulnerableErrorMessage));
         for (String method : vulnerableMethods) {
-            renderedErrorMessage.append(System.lineSeparator() + "    - " + method);
+            renderedErrorMessage.append(System.lineSeparator()).append("    - ").append(method);
         }
         return renderedErrorMessage.toString();
     }

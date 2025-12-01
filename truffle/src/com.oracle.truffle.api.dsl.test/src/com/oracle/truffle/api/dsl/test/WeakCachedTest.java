@@ -42,10 +42,13 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -73,13 +76,23 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 public class WeakCachedTest extends AbstractPolyglotTest {
 
     @Test
-    public void testWeakSimpleNode() {
-        WeakSimpleNode node = WeakSimpleNodeGen.create();
-        Object o = new String("");
-        WeakReference<Object> ref = new WeakReference<>(o);
-        node.execute(o);
-        o = null;
-        GCUtils.assertGc("Reference is not collected", ref);
+    public void testWeakSimpleNode() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            WeakSimpleNode node = WeakSimpleNodeGen.create();
+            Object o = new String("");
+            WeakReference<Object> ref = new WeakReference<>(o);
+            node.execute(o);
+            o = null;
+            GCUtils.assertGc("Reference is not collected", ref);
+        });
+    }
+
+    private static void runInSubprocess(Runnable runnable) throws IOException, InterruptedException {
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(WeakCachedTest.class, runnable).run();
+        }
     }
 
     @GenerateUncached
@@ -96,26 +109,28 @@ public class WeakCachedTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testWeakInlineCache() {
-        WeakInlineCacheNode node = WeakInlineCacheNodeGen.create();
-        Object o0 = new String("");
-        Object o1 = new String("");
-        Object o2 = new String("");
-        WeakReference<Object> ref0 = new WeakReference<>(o0);
-        WeakReference<Object> ref1 = new WeakReference<>(o1);
-        WeakReference<Object> ref2 = new WeakReference<>(o2);
-        node.execute(o0);
-        node.execute(o1);
-        o0 = null;
-        GCUtils.assertGc("Reference is not collected", ref0);
+    public void testWeakInlineCache() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            WeakInlineCacheNode node = WeakInlineCacheNodeGen.create();
+            Object o0 = new String("");
+            Object o1 = new String("");
+            Object o2 = new String("");
+            WeakReference<Object> ref0 = new WeakReference<>(o0);
+            WeakReference<Object> ref1 = new WeakReference<>(o1);
+            WeakReference<Object> ref2 = new WeakReference<>(o2);
+            node.execute(o0);
+            node.execute(o1);
+            o0 = null;
+            GCUtils.assertGc("Reference is not collected", ref0);
 
-        node.execute(o1);
-        node.execute(o2);
-        o1 = null;
-        o2 = null;
-        GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
+            node.execute(o1);
+            node.execute(o2);
+            o1 = null;
+            o2 = null;
+            GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
 
-        assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
+            assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
+        });
     }
 
     @GenerateUncached
@@ -133,26 +148,28 @@ public class WeakCachedTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testWeakCachedLibrary() {
-        WeakCachedLibraryNode node = adoptNode(WeakCachedLibraryNodeGen.create()).get();
-        Object o0 = new String("");
-        Object o1 = new String("");
-        Object o2 = new String("");
-        WeakReference<Object> ref0 = new WeakReference<>(o0);
-        WeakReference<Object> ref1 = new WeakReference<>(o1);
-        WeakReference<Object> ref2 = new WeakReference<>(o2);
-        node.execute(o0);
-        node.execute(o1);
-        o0 = null;
-        GCUtils.assertGc("Reference is not collected", ref0);
+    public void testWeakCachedLibrary() throws InterruptedException, IOException {
+        runInSubprocess(() -> {
+            WeakCachedLibraryNode node = adoptNode(WeakCachedLibraryNodeGen.create()).get();
+            Object o0 = new String("");
+            Object o1 = new String("");
+            Object o2 = new String("");
+            WeakReference<Object> ref0 = new WeakReference<>(o0);
+            WeakReference<Object> ref1 = new WeakReference<>(o1);
+            WeakReference<Object> ref2 = new WeakReference<>(o2);
+            node.execute(o0);
+            node.execute(o1);
+            o0 = null;
+            GCUtils.assertGc("Reference is not collected", ref0);
 
-        node.execute(o1);
-        node.execute(o2);
-        o1 = null;
-        o2 = null;
-        GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
+            node.execute(o1);
+            node.execute(o2);
+            o1 = null;
+            o2 = null;
+            GCUtils.assertGc("Reference is not collected", List.of(ref1, ref2));
 
-        assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
+            assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
+        });
     }
 
     @GenerateUncached
@@ -181,14 +198,16 @@ public class WeakCachedTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testWeakSharedNode() {
-        WeakSharedCacheNode node = WeakSharedCacheNodeGen.create();
-        Object o0 = new String("");
-        WeakReference<Object> ref1 = new WeakReference<>(o0);
-        node.execute(o0, false);
-        o0 = null;
-        GCUtils.assertGc("Reference is not collected", ref1);
-        node.execute("", false);
+    public void testWeakSharedNode() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            WeakSharedCacheNode node = WeakSharedCacheNodeGen.create();
+            Object o0 = new String("");
+            WeakReference<Object> ref1 = new WeakReference<>(o0);
+            node.execute(o0, false);
+            o0 = null;
+            GCUtils.assertGc("Reference is not collected", ref1);
+            node.execute("", false);
+        });
     }
 
     @GenerateUncached
@@ -217,28 +236,33 @@ public class WeakCachedTest extends AbstractPolyglotTest {
      * reference cannot get collected.
      */
     @Test
-    public void testConsistentGuardAndSpecialization() throws InterruptedException {
-        ConsistentGuardAndSpecializationNode node = ConsistentGuardAndSpecializationNodeGen.create();
-        Object o0 = new String("");
-        WeakReference<Object> ref1 = new WeakReference<>(o0);
-        node.execute(o0);
-        Thread t = new Thread(new Runnable() {
-            public void run() {
-                node.locksEnabled = true;
-                node.execute(new String(""));
+    public void testConsistentGuardAndSpecialization() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            ConsistentGuardAndSpecializationNode node = ConsistentGuardAndSpecializationNodeGen.create();
+            Object o0 = new String("");
+            WeakReference<Object> ref1 = new WeakReference<>(o0);
+            node.execute(o0);
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    node.locksEnabled = true;
+                    node.execute(new String(""));
+                }
+            });
+            t.start();
+            try {
+                node.waitForGuard.acquire();
+                o0 = null;
+                try {
+                    GCUtils.assertNotGc("Reference is not collected", ref1);
+                } finally {
+                    node.waitForSpecialization.release();
+                    t.join();
+                }
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
             }
+            GCUtils.assertGc("Reference is not collected", ref1);
         });
-        t.start();
-        node.waitForGuard.acquire();
-        o0 = null;
-        try {
-            GCUtils.assertNotGc("Reference is not collected", ref1);
-        } finally {
-            node.waitForSpecialization.release();
-            t.join();
-        }
-        GCUtils.assertGc("Reference is not collected", ref1);
-
     }
 
     @Test

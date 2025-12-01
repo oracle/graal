@@ -28,6 +28,7 @@ import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -41,6 +42,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedMetaAccess extends UniverseMetaAccess {
@@ -52,6 +54,11 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     @Override
     public HostedType lookupJavaType(Class<?> clazz) {
         return (HostedType) super.lookupJavaType(clazz);
+    }
+
+    @Override
+    public ResolvedJavaRecordComponent lookupJavaRecordComponent(RecordComponent recordComponent) {
+        return wrapped.lookupJavaRecordComponent(recordComponent);
     }
 
     @Override

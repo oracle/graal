@@ -229,6 +229,14 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        if (createFloatingReads) {
+            /*
+             * This is required so that FloatingReadNode.create can check it's ok to introduce
+             * FloatingReadNodes.
+             */
+            graph.getGraphState().setDuringStage(StageFlag.FLOATING_READS);
+        }
+
         EconomicSet<ValueNode> initMemory = EconomicSet.create(Equivalence.IDENTITY);
 
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;

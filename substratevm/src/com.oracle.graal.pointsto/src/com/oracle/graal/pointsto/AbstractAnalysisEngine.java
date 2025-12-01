@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy.SharedLayerImageInclusionPolicy;
@@ -50,6 +49,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -421,7 +421,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * Some modules contain native methods that should not be included in the image because they
          * are hosted only, or because they are currently unsupported.
          */
-        Set<Module> forbiddenModules = hostVM.getForbiddenModules();
+        Set<Module> forbiddenModules = hostVM.getSharedLayerForbiddenModules();
         if (forbiddenModules.contains(OriginalClassProvider.getJavaClass(type).getModule())) {
             return;
         }
@@ -430,7 +430,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
          * injects an annotation, or provides an alias, without changing the implementation. Those
          * methods should not be included in the image.
          */
-        if (AnnotationAccess.isAnnotationPresent(type, TargetClass.class)) {
+        if (AnnotationUtil.isAnnotationPresent(type, TargetClass.class)) {
             return;
         }
         ResolvedJavaMethod[] methods = tryApply(type, t -> t.getDeclaredMethods(false), NO_METHODS);

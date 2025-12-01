@@ -463,7 +463,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                 this.jniEnv = JniEnv.create(this); // libnespresso
                 this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
-                vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava, libverify
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
                 this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, this, language);
 
@@ -618,7 +618,8 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
             bindingsLoader = createBindingsLoader(systemClassLoader);
             topBindings = new EspressoBindings(
                             getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
-                            bindingsLoader != systemClassLoader);
+                            bindingsLoader != systemClassLoader,
+                            getLanguage().isExternalJVMCIEnabled());
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;

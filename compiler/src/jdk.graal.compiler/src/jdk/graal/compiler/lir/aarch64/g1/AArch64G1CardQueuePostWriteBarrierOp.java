@@ -147,7 +147,7 @@ public class AArch64G1CardQueuePostWriteBarrierOp extends AArch64LIRInstruction 
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
                 AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
                 masm.str(64, cardPointer, cArg0);
-                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : scratch1, null);
+                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : scratch1, null);
                 masm.jmp(done);
             }
         });

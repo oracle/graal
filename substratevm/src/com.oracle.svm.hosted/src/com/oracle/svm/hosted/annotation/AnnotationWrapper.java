@@ -45,7 +45,7 @@ public interface AnnotationWrapper extends AnnotatedElement {
 
     @Override
     default <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(this, annotationClass, false);
+        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(this, annotationClass);
     }
 
     @Override

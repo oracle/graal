@@ -25,7 +25,7 @@
 
 from __future__ import print_function
 import os
-from functools import total_ordering
+from functools import total_ordering, lru_cache
 from os.path import join, exists, basename, dirname, isdir
 import argparse
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
@@ -43,6 +43,7 @@ import mx_sdk_vm
 from mx_sdk_benchmark import JVMCI_JDK_TAG, DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite, RenaissanceBenchmarkSuite
 import mx_graal_benchmark #pylint: disable=unused-import
 
+from mx_cmake import CMakeNinjaProject
 import mx_gate
 from mx_gate import Task
 
@@ -252,6 +253,7 @@ def _ctw_jvmci_export_args(arg_prefix='--'):
         'add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
         'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
         'add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
@@ -1563,6 +1565,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     graal_jdk_dist.description = "GraalJDK CE distribution"
     graal_jdk_dist.maven = {'groupId': 'org.graalvm', 'tag': 'graaljdk'}
     register_distribution(graal_jdk_dist)
+    register_papi_bridge_dynamic_suite_constituents(register_project, register_distribution)
 
 
 def _parse_graaljdk_edition(description, args):
@@ -1584,18 +1587,88 @@ def profdiff(args):
     vm_args = ['-cp', cp, 'org.graalvm.profdiff.Profdiff'] + args
     return jdk.run_java(args=vm_args)
 
+ENABLE_PAPI_BRIDGE_VAR = 'ENABLE_PAPI_BRIDGE'
+"""The environment variable that enables the PAPI bridge library."""
+
+def papi_smoke_test():
+    """Verifies that PAPI is available and can measure the PAPI_TOT_INS event."""
+    command = ['papi_command_line', 'PAPI_TOT_INS']
+    capture = mx.OutputCapture()
+    try:
+        retval = mx.run(command, nonZeroIsFatal=False, out=capture)
+    except FileNotFoundError:
+        mx.abort(f'The PAPI utility `{command[0]}` could not be found in your PATH or is not executable. '
+                 f'Please ensure PAPI is installed and configured correctly, or unset the {ENABLE_PAPI_BRIDGE_VAR} environment variable.')
+    output = repr(capture)
+    if retval != 0 or 'Successfully added' not in output:
+        mx.abort(f'''The PAPI smoke test failed. Your system may not be supported by PAPI, or it may require some extra
+configuration. Note that PAPI may not support recent architectures.
+
+You can try:
+    - Widening permissions for performance events, e.g., sudo sysctl kernel.perf_event_paranoid=-1
+    - Forcing a specific PMU model, e.g., export LIBPFM_FORCE_PMU=amd64
+
+Test command: {" ".join(command)}
+
+Test output:
+{output}''')
+
+@lru_cache
+def papi_bridge_enabled() -> bool:
+    """Checks if the PAPI bridge library is enabled with an environment variable and runs a smoke test."""
+    if mx.get_env(ENABLE_PAPI_BRIDGE_VAR) == 'true':
+        if mx.get_os() != 'linux' or mx.get_arch() != 'amd64':
+            mx.abort(f'The PAPI bridge library is not supported on this platform. Please unset the {ENABLE_PAPI_BRIDGE_VAR} environment variable.')
+        papi_smoke_test()
+        return True
+    else:
+        return False
+
+PAPI_BRIDGE_DISTRIBUTION = 'PAPI_BRIDGE'
+"""The name of the distribution of the PAPI bridge library."""
+
+def register_papi_bridge_dynamic_suite_constituents(register_project, register_distribution):
+    """Registers the PAPI bridge library as a dynamic suite constituent if it is enabled and supported."""
+    if papi_bridge_enabled():
+        package = 'org.graalvm.papibridge'
+        register_project(CMakeNinjaProject(
+            suite=_suite,
+            name=package,
+            deps=[],
+            buildDependencies=['sdk:LLVM_TOOLCHAIN'],
+            workingSets=None,
+            subDir='src',
+            ninja_targets=['<lib:papibridge>'],
+            results=['<lib:papibridge>'],
+            vpath=True,
+            cmakeConfig={'CMAKE_C_COMPILER': '<path:LLVM_TOOLCHAIN>/bin/<exe:clang>'},
+        ))
+        register_distribution(mx.LayoutTARDistribution(_suite,
+                                                       PAPI_BRIDGE_DISTRIBUTION,
+                                                       [package],
+                                                       {'./': f'dependency:{package}'},
+                                                       None,
+                                                       True,
+                                                       None))
+
+
 def replaycomp_vm_args(distributions):
     """Returns the VM arguments required to run the replay compilation launcher.
 
     :param distributions the distributions to add to the classpath
     :return the list of VM arguments
     """
+    extra_options = []
+    if papi_bridge_enabled():
+        path = os.path.join(mx.dependency(PAPI_BRIDGE_DISTRIBUTION).get_output(), 'libpapibridge.so')
+        extra_options.append(f'-Ddebug.jdk.graal.PAPIBridgePath={path}')
     return [
         '-XX:-UseJVMCICompiler',
         '--enable-native-access=ALL-UNNAMED',
         '--illegal-native-access=allow',
         '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
         '-Djdk.graal.CompilationFailureAction=Print',
+        *extra_options,
         '-cp',
         mx.classpath(distributions, jdk=jdk),
     ]

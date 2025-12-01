@@ -47,8 +47,8 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.ImageLayerWriter;
-import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -264,7 +264,7 @@ public class AnalysisUniverse implements Universe {
                     if (result == null) {
                         /*
                          * The other thread gave up, probably because of an exception. Re-try to
-                         * create the type ourself. Probably we are going to fail and throw an
+                         * create the type our self. Probably we are going to fail and throw an
                          * exception too, but that is OK.
                          */
                         continue retry;
@@ -419,12 +419,11 @@ public class AnalysisUniverse implements Universe {
         if (rawMethod == null) {
             return null;
         }
-        if (!(rawMethod instanceof ResolvedJavaMethod)) {
+        if (!(rawMethod instanceof ResolvedJavaMethod method)) {
             return rawMethod;
         }
         assert !(rawMethod instanceof AnalysisMethod) : rawMethod;
 
-        ResolvedJavaMethod method = (ResolvedJavaMethod) rawMethod;
         method = substitutions.lookup(method);
         AnalysisMethod result = methods.get(method);
         if (result == null) {
@@ -475,7 +474,12 @@ public class AnalysisUniverse implements Universe {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
             if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
-                AnalysisMethod aMethod = lookup(method);
+                AnalysisMethod aMethod = null;
+                try {
+                    aMethod = lookup(method);
+                } catch (UnsupportedFeatureException ignored) {
+                    /* Unsupported elements should not prevent querying other members of the type */
+                }
                 if (aMethod != null) {
                     result.add(aMethod);
                 }
@@ -680,7 +684,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     /**
-     * Invokes all registered object replacers and "object to constant" replacers for an object.>
+     * Invokes all registered object replacers and "object to constant" replacers for an object.
      *
      * <p>
      * The "object to constant" replacer is allowed to successfully complete only when

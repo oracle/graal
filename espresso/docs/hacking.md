@@ -139,6 +139,20 @@ $ mx espresso --java.JavaHome=/path/to/java/8/home -version
 $ mx espresso --java.JavaHome=/path/to/java/11/home -version
 ```
 
+## No-Native Espresso
+
+To run Espresso without native access, use the experimental option `java.NativeBackend=no-native` via the command line:
+```bash
+$ mx espresso --experimental-options --java.NativeBackend=no-native 
+```
+
+or on the context builder: 
+```java
+builder.allowExperimentalOptions(true).option("java.NativeBackend", "no-native") 
+```
+
+Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory will be provided (GR-70643). However, some functionality might be limited (e.g. you will have no access to LibAWT).
+
 ## Limitations
 
 ### Linux
@@ -151,32 +165,13 @@ $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar c
 
 ### macOS
 
-On macOS there is nothing like `dlmopen` available, therefore `jvm-ce` does not work. However, there is another mode available where libraries can be executed via Sulong (internally called `nfi-llvm`). This requires the OpenJDK libraries to be compiled with the Sulong toolchain, such builds are available through `mx fetch-jdk` with a `-llvm` suffix. Unfortunately this mode is only supported on `darwin-amd64`, so on an Apple Silicon machine the `x86_64` emulator Rosetta 2 must be used:
+Nothing like `dlmopen` is available on macOS. Instead we default to `nfi-staticlib` for the JVM mode, which statically links in (most) of the OpenJDK libraries into `libjvm.dylib`.
+A notable exception is `libawt.dylib` and its related libraries, which only work via dynamic loading.
+This means in practice only the host _or_ the guest can use AWT, but not both at the same time.
 
-```bash
-$ arch -arch x86_64 zsh
 
-$ export MX_PYTHON=`xcode-select -p`/usr/bin/python3
-$ file $MX_PTYHON
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64:Mach-O 64-bit executable arm64]
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture x86_64):	Mach-O 64-bit executable x86_64
-/Applications/Xcode16.2.app/Contents/Developer/usr/bin/python3 (for architecture arm64):	Mach-O 64-bit executable arm64
-
-$ # the important part above is that there is also a Mach-O included for x86_64
-
-$ cd $graal/espresso
-$ mx fetch-jdk # fetch JDK latest, 21 and 21-llvm
-
-$ export ESPRESSO_JAVA_HOME=<JDK21 path for amd64>
-$ export LLVM_JAVA_HOME=<JDK21-llvm path for amd64>
-$ export JAVA_HOME=<JDK-latest path for amd64>
-
-$ # Note: ESPRESSO_JAVA_HOME and LLVM_JAVA_HOME must match regarding version.
-
-$ mx --env jvm-ce-llvm build
-
-```
-
+Currently `nfi-staticlib` only works for one Espresso context. Using `nfi-staticlib` with more than one context will likely result in a SIGSEGV in `libtrufflenfi.dylib`.
+We are exploring how to implement support for multiple contexts (GR-71082).
 
 ## _Espressoⁿ_ Java-ception
 

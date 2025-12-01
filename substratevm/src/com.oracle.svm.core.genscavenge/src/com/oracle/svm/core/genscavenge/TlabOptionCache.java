@@ -25,7 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.core.genscavenge.TlabSupport.maxSize;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -34,13 +33,16 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.core.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * Sanitize and cache TLAB option values. Unfortunately, proper error reporting is impossible during
@@ -49,16 +51,13 @@ import jdk.graal.compiler.core.common.NumUtil;
  * options and reports errors (see {@link #registerOptionValidations}).
  */
 public class TlabOptionCache {
+    private static final long DEFAULT_INITIAL_TLAB_SIZE = 8 * 1024;
 
     private long minTlabSize;
     private long tlabSize;
-    private long initialTLABSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public TlabOptionCache() {
-        minTlabSize = getAbsoluteMinTlabSize();
-        tlabSize = SubstrateGCOptions.TlabOptions.TLABSize.getHostedValue();
-        initialTLABSize = SerialAndEpsilonGCOptions.InitialTLABSize.getHostedValue();
     }
 
     @Fold
@@ -66,109 +65,103 @@ public class TlabOptionCache {
         return ImageSingletons.lookup(TlabOptionCache.class);
     }
 
-    /*
-     * The minimum size a TLAB must always have. A smaller TLAB may lead to a VM crash.
-     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void validateHostedOptionValues() {
+        validateMinTlabSize(SubstrateGCOptions.ConcealedOptions.MinTLABSize);
+        validateTlabSize(SubstrateGCOptions.ConcealedOptions.TLABSize);
+    }
+
+    /** The minimum size that a TLAB must have. Anything smaller than that could crash the VM. */
     @Fold
     static long getAbsoluteMinTlabSize() {
         int additionalHeaderBytes = SubstrateOptions.AdditionalHeaderBytes.getValue();
         long absoluteMinTlabSize = 2 * 1024L + additionalHeaderBytes;
-        return NumUtil.roundUp(absoluteMinTlabSize, ConfigurationValues.getObjectLayout().getAlignment());
+        return ConfigurationValues.getObjectLayout().alignUp(absoluteMinTlabSize);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getMinTlabSize() {
+        if (SubstrateUtil.HOSTED) {
+            return Math.max(getAbsoluteMinTlabSize(), SubstrateGCOptions.ConcealedOptions.MinTLABSize.getHostedValue());
+        }
+
+        assert minTlabSize >= getAbsoluteMinTlabSize() && ConfigurationValues.getObjectLayout().isAligned(minTlabSize) && minTlabSize <= TlabSupport.maxSize().rawValue();
         return minTlabSize;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getTlabSize() {
+        assert tlabSize >= minTlabSize && ConfigurationValues.getObjectLayout().isAligned(tlabSize) && tlabSize <= TlabSupport.maxSize().rawValue();
         return tlabSize;
     }
 
+    /**
+     * Based on the build-time and run-time option values, compute sane values that are at least
+     * good enough for VM startup.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getInitialTLABSize() {
-        return initialTLABSize;
+    public void cacheOptionValues() {
+        long maxTlabSize = TlabSupport.maxSize().rawValue();
+        assert ConfigurationValues.getObjectLayout().isAligned(maxTlabSize) : "rounded values must not exceed max size";
+
+        cacheMinTlabSize(maxTlabSize);
+        cacheTlabSize(maxTlabSize);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void cacheOptionValues() {
-        int minTlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.TlabOptions.MinTLABSize);
-        long minTlabSizeValue = IsolateArgumentParser.singleton().getLongOptionValue(minTlabSizeIdx);
-        cacheMinTlabSize(minTlabSizeValue);
+    private void cacheMinTlabSize(long maxTlabSize) {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ConcealedOptions.MinTLABSize);
+        long optionValue = IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
+        optionValue = UninterruptibleUtils.Math.clamp(optionValue, getAbsoluteMinTlabSize(), maxTlabSize);
+        minTlabSize = ConfigurationValues.getObjectLayout().alignUp(optionValue);
+    }
 
-        int tlabSizeIdx = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.TlabOptions.TLABSize);
-        long tlabSizeValue = IsolateArgumentParser.singleton().getLongOptionValue(tlabSizeIdx);
-        cacheTlabSize(tlabSizeValue);
-
-        int initialTlabSizeIdx = IsolateArgumentParser.getOptionIndex(SerialAndEpsilonGCOptions.InitialTLABSize);
-        long initialTlabSizeValue = IsolateArgumentParser.singleton().getLongOptionValue(initialTlabSizeIdx);
-        cacheInitialTlabSize(initialTlabSizeValue, initialTLABSize != initialTlabSizeValue);
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void cacheTlabSize(long maxTlabSize) {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ConcealedOptions.TLABSize);
+        long optionValue = IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
+        if (optionValue == 0) {
+            optionValue = UninterruptibleUtils.Math.clamp(DEFAULT_INITIAL_TLAB_SIZE, minTlabSize, maxTlabSize);
+        } else {
+            optionValue = UninterruptibleUtils.Math.clamp(optionValue, minTlabSize, maxTlabSize);
+        }
+        tlabSize = ConfigurationValues.getObjectLayout().alignUp(optionValue);
     }
 
     public static void registerOptionValidations() {
-
-        long maxSize = maxSize().rawValue();
-
         RuntimeOptionValidationSupport validationSupport = RuntimeOptionValidationSupport.singleton();
-
-        validationSupport.register(new RuntimeOptionValidationSupport.RuntimeOptionValidation<>(optionKey -> {
-            long minTlabSizeValue = optionKey.getValue();
-
-            if (optionKey.hasBeenSet() && minTlabSizeValue < getAbsoluteMinTlabSize()) {
-                throw new IllegalArgumentException(String.format("MinTLABSize (%d) must be greater than or equal to reserved area in TLAB (%d).", minTlabSizeValue, getAbsoluteMinTlabSize()));
-            }
-            if (minTlabSizeValue > maxSize) {
-                throw new IllegalArgumentException(String.format("MinTLABSize (%d) must be less than or equal to ergonomic TLAB maximum (%d).", minTlabSizeValue, maxSize));
-            }
-        }, SubstrateGCOptions.TlabOptions.MinTLABSize));
-
-        validationSupport.register(new RuntimeOptionValidationSupport.RuntimeOptionValidation<>(optionKey -> {
-            // Check that TLABSize is still the default value or size >= abs min && size <= abs max.
-            long tlabSizeValue = optionKey.getValue();
-            if (optionKey.hasBeenSet() && tlabSizeValue < SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()) {
-                throw new IllegalArgumentException(
-                                String.format("TLABSize (%d) must be greater than or equal to MinTLABSize (%d).", tlabSizeValue, SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()));
-            }
-            if (tlabSizeValue > maxSize) {
-                throw new IllegalArgumentException(String.format("TLABSize (%d) must be less than or equal to ergonomic TLAB maximum size (%d).", tlabSizeValue, maxSize));
-            }
-        }, SubstrateGCOptions.TlabOptions.TLABSize));
-
-        validationSupport.register(new RuntimeOptionValidationSupport.RuntimeOptionValidation<>(optionKey -> {
-            long initialTlabSizeValue = optionKey.getValue();
-            if (initialTlabSizeValue < SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()) {
-                throw new IllegalArgumentException(
-                                String.format("InitialTLABSize (%d) must be greater than or equal to MinTLABSize (%d).", initialTlabSizeValue, SubstrateGCOptions.TlabOptions.MinTLABSize.getValue()));
-            }
-            if (initialTlabSizeValue > maxSize) {
-                throw new IllegalArgumentException(String.format("TLABSize (%d) must be less than or equal to ergonomic TLAB maximum size (%d).", initialTlabSizeValue, maxSize));
-            }
-        }, SerialAndEpsilonGCOptions.InitialTLABSize));
-
+        validationSupport.register(new RuntimeOptionValidation<>(TlabOptionCache::validateMinTlabSize, SubstrateGCOptions.ConcealedOptions.MinTLABSize));
+        validationSupport.register(new RuntimeOptionValidation<>(TlabOptionCache::validateTlabSize, SubstrateGCOptions.ConcealedOptions.TLABSize));
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void cacheMinTlabSize(long optionValue) {
-        if (getAbsoluteMinTlabSize() <= optionValue && optionValue <= maxSize().rawValue()) {
-            minTlabSize = optionValue;
+    private static void validateMinTlabSize(RuntimeOptionKey<Long> optionKey) {
+        long optionValue = optionKey.getValue();
+        if (optionKey.hasBeenSet() && optionValue < getAbsoluteMinTlabSize()) {
+            throw invalidOptionValue("Option 'MinTLABSize' (" + optionValue + ") must not be smaller than " + getAbsoluteMinTlabSize());
+        }
+
+        long maxSize = TlabSupport.maxSize().rawValue();
+        if (optionValue > maxSize) {
+            throw invalidOptionValue("Option 'MinTLABSize' (" + optionValue + ") must not be larger than " + maxSize);
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void cacheTlabSize(long optionValue) {
-        if (getAbsoluteMinTlabSize() <= optionValue && optionValue <= maxSize().rawValue()) {
-            tlabSize = optionValue;
+    private static void validateTlabSize(RuntimeOptionKey<Long> optionKey) {
+        long optionValue = optionKey.getValue();
+        if (optionKey.hasBeenSet() && optionValue < TlabOptionCache.singleton().getMinTlabSize()) {
+            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be smaller than 'MinTLABSize' (" + TlabOptionCache.singleton().getMinTlabSize() + ").");
+        }
+
+        long maxSize = TlabSupport.maxSize().rawValue();
+        if (optionValue > maxSize) {
+            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be larger than " + maxSize);
         }
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void cacheInitialTlabSize(long optionValue, boolean hasBeenSet) {
-        if (!hasBeenSet && minTlabSize > initialTLABSize) {
-            initialTLABSize = minTlabSize;
-        } else if (getAbsoluteMinTlabSize() <= optionValue && optionValue <= maxSize().rawValue()) {
-            initialTLABSize = UninterruptibleUtils.Math.max(minTlabSize, optionValue);
+    private static RuntimeException invalidOptionValue(String msg) {
+        if (SubstrateUtil.HOSTED) {
+            throw UserError.abort(msg);
         }
+        throw new IllegalArgumentException(msg);
     }
-
 }

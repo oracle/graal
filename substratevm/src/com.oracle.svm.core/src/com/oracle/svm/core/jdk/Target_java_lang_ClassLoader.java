@@ -353,7 +353,8 @@ public final class Target_java_lang_ClassLoader {
                     @SuppressWarnings("unused") boolean initialize, int flags, Object classData) {
         // Note that if name is not null, it is a binary name in either / or .-form
         String actualName = name;
-        if (LambdaUtils.isLambdaClassName(name)) {
+        assert !(PredefinedClassesSupport.hasBytecodeClasses() && RuntimeClassLoading.isSupported());
+        if (!RuntimeClassLoading.isSupported() && LambdaUtils.isLambdaClassName(name)) {
             actualName += Digest.digest(b);
         }
         boolean isNestMate = (flags & ClassLoaderHelper.NESTMATE_CLASS) != 0;

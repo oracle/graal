@@ -1920,7 +1920,8 @@ public final class ResidentJDWP implements JDWP {
 
         static Result ofInvoke(boolean isVirtual, InterpreterResolvedJavaMethod method, Object... args) {
             try {
-                return fromValue(InterpreterToVM.dispatchInvocation(method, args, isVirtual, false, false, false));
+                boolean isInvokeInterface = method.getDeclaringClass().isInterface();
+                return fromValue(InterpreterToVM.dispatchInvocation(method, args, isVirtual, false, false, isInvokeInterface, false));
             } catch (SemanticJavaException e) {
                 return fromThrowable(e.getCause());
             } catch (StackOverflowError | OutOfMemoryError error) {

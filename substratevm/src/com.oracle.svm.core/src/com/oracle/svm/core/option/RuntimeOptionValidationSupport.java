@@ -66,7 +66,6 @@ public class RuntimeOptionValidationSupport {
     }
 
     public static class RuntimeOptionValidation<T> {
-
         private final Consumer<RuntimeOptionKey<T>> validation;
         private final RuntimeOptionKey<T> optionKey;
 
@@ -78,7 +77,5 @@ public class RuntimeOptionValidationSupport {
         void validate() {
             validation.accept(optionKey);
         }
-
     }
-
 }

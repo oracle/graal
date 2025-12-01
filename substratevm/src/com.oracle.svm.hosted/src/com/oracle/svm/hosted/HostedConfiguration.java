@@ -364,24 +364,30 @@ public class HostedConfiguration {
     }
 
     public NativeImageCodeCacheFactory newCodeCacheFactory() {
-        return new NativeImageCodeCacheFactory() {
-            @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
-            }
-        };
+        return new DefaultNativeImageCodeCacheFactory();
     }
 
     public ObjectFileFactory newObjectFileFactory() {
-        return new ObjectFileFactory() {
-            @Override
-            public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
-                return ObjectFile.getNativeObjectFile(pageSize);
-            }
-        };
+        return new DefaultObjectFileFactory();
     }
 
     public HeapBreakdownProvider createHeapBreakdownProvider() {
         return new HeapBreakdownProvider();
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static final class DefaultNativeImageCodeCacheFactory extends NativeImageCodeCacheFactory {
+        @Override
+        public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
+            return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+        }
+    }
+
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    private static final class DefaultObjectFileFactory implements ObjectFileFactory {
+        @Override
+        public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
+            return ObjectFile.getNativeObjectFile(pageSize);
+        }
     }
 }

@@ -106,7 +106,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.runtimecompilation.GraalGraphObjectReplacer;
 import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateGraalCompilerSetup;
-import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateProviders;
+import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateRuntimeProviders;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -671,7 +671,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (graalGraphObjectReplacer == null) {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
             SubstrateWordTypes wordTypes = new SubstrateWordTypes(config.getMetaAccess(), ConfigurationValues.getWordKind());
-            SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess, wordTypes);
+            SubstrateRuntimeProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess, wordTypes);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
             graalGraphObjectReplacer.setAnalysisAccess(config);
         }
@@ -1253,7 +1253,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         private static final class StaticObjectPodBasedSupport {
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
-                PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
+                if (PodSupport.isPresent()) {
+                    PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
+                }
             }
 
         }

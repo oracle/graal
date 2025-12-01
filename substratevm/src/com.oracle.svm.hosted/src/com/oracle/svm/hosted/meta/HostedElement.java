@@ -24,50 +24,16 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
-
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.AnnotationUtil;
-
-import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class HostedElement implements AnnotatedElement {
+public abstract class HostedElement extends AbstractAnnotated {
 
-    protected abstract AnnotatedElement getWrapped();
-
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
-        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
-    }
-
-    public AnnotationsInfo getTypeAnnotationInfo() {
-        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
-    }
+    protected abstract Annotated getWrapped();
 
     @Override
-    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return AnnotationUtil.isAnnotationPresent((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationUtil.getAnnotation((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        throw GraalError.shouldNotReachHere("The getDeclaredAnnotation method is not supported");
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return getWrapped().getDeclaredAnnotationInfo(null);
     }
 }

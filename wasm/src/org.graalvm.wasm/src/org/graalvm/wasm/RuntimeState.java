@@ -73,16 +73,7 @@ public abstract class RuntimeState {
 
     private final GlobalRegistry globals;
 
-    /**
-     * This array is monotonically populated from the left. An index i denotes the i-th table in
-     * this module. The value at index i denotes the address of the table in the memory space for
-     * all the tables from all the module (see {@link TableRegistry}).
-     * <p>
-     * The separation of table instances is done because the index spaces of the tables are
-     * module-specific, and the tables can be imported across modules. Thus, the address-space of
-     * the tables is not the same as the module-specific index-space.
-     */
-    @CompilationFinal(dimensions = 1) private int[] tableAddresses;
+    @CompilationFinal(dimensions = 1) private WasmTable[] tables;
 
     @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
 
@@ -121,10 +112,10 @@ public abstract class RuntimeState {
     }
 
     private void ensureTablesCapacity(int index) {
-        if (index >= tableAddresses.length) {
-            final int[] nTableAddresses = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * tableAddresses.length)];
-            System.arraycopy(tableAddresses, 0, nTableAddresses, 0, tableAddresses.length);
-            tableAddresses = nTableAddresses;
+        if (index >= tables.length) {
+            final WasmTable[] nTables = new WasmTable[Math.max(Integer.highestOneBit(index) << 1, 2 * tables.length)];
+            System.arraycopy(tables, 0, nTables, 0, tables.length);
+            tables = nTables;
         }
     }
 
@@ -148,7 +139,7 @@ public abstract class RuntimeState {
         this.store = store;
         this.module = module;
         this.globals = new GlobalRegistry(module.numInternalGlobals(), module.numExternalGlobals());
-        this.tableAddresses = new int[INITIAL_TABLES_SIZE];
+        this.tables = new WasmTable[INITIAL_TABLES_SIZE];
         this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.tags = new WasmTag[INITIAL_TAG_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
@@ -265,16 +256,16 @@ public abstract class RuntimeState {
         globals.setExternalGlobal(symbolTable().globalAddress(globalIndex), global);
     }
 
-    public int tableAddress(int index) {
-        final int result = tableAddresses[index];
-        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized table at index: " + index;
+    public WasmTable table(int index) {
+        final WasmTable result = tables[index];
+        assert result != null : "Uninitialized table at index: " + index;
         return result;
     }
 
-    public void setTableAddress(int tableIndex, int address) {
+    public void setTable(int tableIndex, WasmTable table) {
         ensureTablesCapacity(tableIndex);
         checkNotLinked();
-        tableAddresses[tableIndex] = address;
+        tables[tableIndex] = table;
     }
 
     public WasmMemory memory(int index) {

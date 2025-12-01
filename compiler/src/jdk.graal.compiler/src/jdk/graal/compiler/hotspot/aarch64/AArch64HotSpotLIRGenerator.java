@@ -171,7 +171,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
-        if (AArch64Call.isNearCall(linkage)) {
+        if (AArch64Call.isNearCall(linkage, getCodeCache())) {
             append(new AArch64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info, label));
         } else {
             append(new AArch64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info, label));

@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.library;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GeneratedBy;
@@ -158,11 +161,13 @@ public abstract class LibraryExport<T extends Library> {
      * @since 20.0
      */
     protected static FinalBitSet createMessageBitSet(LibraryFactory<?> factory, String... messageNames) {
-        Message[] messages = new Message[messageNames.length];
+        List<Message> messages = new ArrayList<>(messageNames.length);
         for (int i = 0; i < messageNames.length; i++) {
-            messages[i] = factory.nameToMessages.get(messageNames[i]);
+            for (Message m : factory.nameToMessages.get(messageNames[i])) {
+                messages.add(m);
+            }
         }
-        return factory.createMessageBitSet(messages);
+        return factory.createMessageBitSet(messages.toArray(Message[]::new));
     }
 
     /**

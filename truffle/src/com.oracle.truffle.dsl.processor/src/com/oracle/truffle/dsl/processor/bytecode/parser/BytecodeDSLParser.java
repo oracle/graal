@@ -71,7 +71,6 @@ import javax.lang.model.util.ElementFilter;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
@@ -137,7 +136,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
             topLevelAnnotationMirror = generateBytecodeMirror;
 
-            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", types.BytecodeBuilder));
+            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen"));
         }
 
         BytecodeDSLModels modelList = new BytecodeDSLModels(context, typeElement, topLevelAnnotationMirror, models);
@@ -167,8 +166,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         boolean enableMaterializedLocalAccessors = false;
         boolean enableTagInstrumentation = false;
 
-        TypeMirror abstractBuilderType = BytecodeDSLCodeGenerator.createAbstractBuilderType(typeElement).asType();
-
         List<BytecodeDSLModel> result = new ArrayList<>();
 
         for (AnnotationMirror variant : variants) {
@@ -178,7 +175,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue generateBytecodeMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
             AnnotationMirror generateBytecodeMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateBytecodeMirrorValue);
 
-            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix, abstractBuilderType);
+            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix);
 
             if (!first && suffixes.contains(suffix)) {
                 model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
@@ -225,13 +222,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return result;
     }
 
-    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, TypeMirror abstractBuilderType) {
-        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, typeElement.getSimpleName() + suffix, abstractBuilderType);
+    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix) {
+        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror,
+                        typeElement.getSimpleName() + suffix);
     }
 
     @SuppressWarnings("unchecked")
     private void parseBytecodeDSLModel(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
+        AnnotationMirror languageRegistration = ElementUtils.findAnnotationMirror(model.languageClass.asElement(), types.TruffleLanguage_Registration);
+        model.languageId = languageRegistration != null ? (String) ElementUtils.getAnnotationValue(languageRegistration, "id").getValue() : null;
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
         model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
@@ -240,6 +240,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableMaterializedLocalAccesses = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableMaterializedLocalAccesses");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
+        model.captureFramesForTrace = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "captureFramesForTrace");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
         model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
@@ -252,6 +253,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.additionalAssertions = TruffleProcessorOptions.additionalAssertions(processingEnv) ||
                         ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "additionalAssertions", true);
         model.enableThreadedSwitch = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableThreadedSwitch");
+        model.enableInstructionTracing = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionTracing");
 
         BytecodeDSLBuiltins.addBuiltins(model, types, context);
 
@@ -388,53 +390,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.interceptInternalException = ElementUtils.findMethod(typeElement, "interceptInternalException");
         model.interceptTruffleException = ElementUtils.findMethod(typeElement, "interceptTruffleException");
 
-        // Detect method implementations that will be overridden by the generated class.
-        List<ExecutableElement> overrides = new ArrayList<>(List.of(
-                        ElementUtils.findMethod(types.RootNode, "execute"),
-                        ElementUtils.findMethod(types.RootNode, "computeSize"),
-                        ElementUtils.findMethod(types.RootNode, "findBytecodeIndex"),
-                        ElementUtils.findMethod(types.RootNode, "findInstrumentableCallNode"),
-                        ElementUtils.findMethod(types.RootNode, "isInstrumentable"),
-                        ElementUtils.findMethod(types.RootNode, "isCaptureFramesForTrace"),
-                        ElementUtils.findMethod(types.RootNode, "prepareForCall"),
-                        ElementUtils.findMethod(types.RootNode, "prepareForInstrumentation"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getBytecodeNode"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getRootNodes"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "executeOSR"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "getOSRMetadata"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
-                        ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments")));
-
-        for (ExecutableElement override : overrides) {
-            ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
-            if (declared == null) {
-                continue;
-            }
-
-            if (declared.getModifiers().contains(Modifier.FINAL)) {
-                model.addError(declared,
-                                "This method is overridden by the generated Bytecode DSL class, so it cannot be declared final. " +
-                                                "You can remove the final modifier to resolve this issue, but since the override will make this method unreachable, it is recommended to simply remove it.");
-            } else {
-                model.addWarning(declared, "This method is overridden by the generated Bytecode DSL class, so this definition is unreachable and can be removed.");
-            }
-        }
-
-        List<ExecutableElement> overridesWithDelegation = new ArrayList<>(List.of(
-                        ElementUtils.findMethod(types.RootNode, "prepareForCompilation")));
-
-        for (ExecutableElement override : overridesWithDelegation) {
-            ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
-            if (declared == null) {
-                continue;
-            }
-
-            if (declared.getModifiers().contains(Modifier.FINAL)) {
-                model.addError(declared, "This method is overridden by the generated Bytecode DSL class, so it cannot be declared final.");
-            }
-        }
-
+        checkRootNodeOverrides(typeElement, model);
         if (model.hasErrors()) {
             return;
         }
@@ -547,11 +503,11 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomRegularOperation(mir, te, null);
         }
 
-        if (model.getInstrumentations().size() > MAX_INSTRUMENTATIONS) {
-            model.addError("Too many @Instrumentation annotated operations specified. The number of instrumentations is " + model.getInstrumentations().size() +
+        if (model.getInstrumentationsCount() > MAX_INSTRUMENTATIONS) {
+            model.addError("Too many @Instrumentation annotated operations specified. The number of instrumentations is " + model.getInstrumentationsCount() +
                             ". The maximum number of instrumentations is " + MAX_INSTRUMENTATIONS + ".");
-        } else if (model.getInstrumentations().size() + model.getProvidedTags().size() > MAX_TAGS_AND_INSTRUMENTATIONS) {
-            model.addError("Too many @Instrumentation and provided tags specified. The number of instrumentrations is " + model.getInstrumentations().size() + " and provided tags is " +
+        } else if (model.getInstrumentationsCount() + model.getProvidedTags().size() > MAX_TAGS_AND_INSTRUMENTATIONS) {
+            model.addError("Too many @Instrumentation and provided tags specified. The number of instrumentrations is " + model.getInstrumentationsCount() + " and provided tags is " +
                             model.getProvidedTags().size() +
                             ". The maximum number of instrumentations and provided tags is " + MAX_TAGS_AND_INSTRUMENTATIONS + ".");
         }
@@ -711,6 +667,92 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return;
     }
 
+    /**
+     * Detect method implementations that will be overridden by the generated class and report an
+     * appropriate message.
+     */
+    private void checkRootNodeOverrides(TypeElement typeElement, BytecodeDSLModel model) {
+        List<ExecutableElement> overrides = new ArrayList<>(List.of(
+                        ElementUtils.findMethod(types.RootNode, "execute"),
+                        ElementUtils.findMethod(types.RootNode, "computeSize"),
+                        ElementUtils.findMethod(types.RootNode, "findBytecodeIndex"),
+                        ElementUtils.findMethod(types.RootNode, "isInstrumentable"),
+                        ElementUtils.findMethod(types.RootNode, "prepareForCall"),
+                        ElementUtils.findMethod(types.RootNode, "prepareForInstrumentation"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getBytecodeNode"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getRootNodes"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "executeOSR"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "getOSRMetadata"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments")));
+
+        for (ExecutableElement override : overrides) {
+            checkRootNodeOverride(typeElement, override, model, false, null);
+        }
+
+        String captureFramesForTraceMessage = String.format("Bytecode DSL interpreters should use %s#captureFramesForTrace instead.", getSimpleName(types.GenerateBytecode));
+        checkRootNodeOverride(typeElement, ElementUtils.findInstanceMethod(context.getTypeElement(types.RootNode), "isCaptureFramesForTrace", new TypeMirror[]{context.getType(boolean.class)}), model,
+                        false, captureFramesForTraceMessage);
+
+        List<ExecutableElement> overridesWithDelegation = new ArrayList<>(List.of(
+                        ElementUtils.findMethod(types.RootNode, "findInstrumentableCallNode"),
+                        ElementUtils.findMethod(types.RootNode, "prepareForCompilation")));
+
+        for (ExecutableElement override : overridesWithDelegation) {
+            checkRootNodeOverride(typeElement, override, model, true, null);
+        }
+    }
+
+    private void checkRootNodeOverride(TypeElement typeElement, ExecutableElement rootNodeMethod, BytecodeDSLModel model, boolean delegated, String customMessage) {
+        ExecutableElement override = ElementUtils.findOverride(rootNodeMethod, typeElement);
+        if (override == null || ElementUtils.typeEquals(override.getEnclosingElement().asType(), types.RootNode) || override.getModifiers().contains(Modifier.ABSTRACT)) {
+            return;
+        }
+        boolean inherited = !override.getEnclosingElement().equals(typeElement);
+
+        Element messageElement;
+        String message;
+        if (inherited) {
+            messageElement = typeElement;
+            message = String.format("Method %s in supertype %s", ElementUtils.getReadableSignature(override), override.getEnclosingElement());
+        } else {
+            messageElement = override;
+            message = "This method";
+        }
+        message += " is overridden by the generated Bytecode DSL class.";
+
+        if (override.getModifiers().contains(Modifier.FINAL)) {
+            model.addError(messageElement, message + " " + badFinalOverrideMessage(delegated, inherited, customMessage));
+        } else if (!delegated) {
+            model.addWarning(messageElement, message + " " + badOverrideMessage(inherited, customMessage));
+        }
+    }
+
+    private static String badFinalOverrideMessage(boolean delegated, boolean inherited, String customMessage) {
+        String message = "It cannot be declared final.";
+        if (!delegated && !inherited) {
+            message += " You can remove the final modifier to resolve this issue, but since the override will make this method unreachable, it is recommended to simply remove it.";
+        }
+        if (customMessage != null) {
+            message += " " + customMessage;
+        }
+        return message;
+    }
+
+    private static String badOverrideMessage(boolean inherited, String customMessage) {
+        String message;
+        if (inherited) {
+            message = "You can suppress this warning by re-declaring the method as abstract in this class.";
+        } else {
+            message = "It is unreachable and can be removed.";
+        }
+        if (customMessage != null) {
+            message += " " + customMessage;
+        }
+        return message;
+    }
+
     private void resolveBoxingElimination(BytecodeDSLModel model, List<QuickenDecision> manualQuickenings) {
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
@@ -853,24 +895,44 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
-                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, node,
+                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(
+                                includedSpecializationElements, node,
                                 quickening.operation().constantOperands);
 
-                Signature signature = SpecializationSignatureParser.createPolymorphicSignature(includedSpecializationSignatures,
+                Signature signature = SpecializationSignatureParser.createPolymorphicSignature(
+                                includedSpecializationSignatures,
                                 includedSpecializationElements, node);
 
                 // inject custom signatures.
-                for (int i = 0; i < quickening.types().size(); i++) {
-                    TypeMirror type = quickening.types().get(i);
-                    if (model.isBoxingEliminated(type)) {
-                        signature = signature.specializeOperandType(i, type);
-                    }
-                }
-
                 InstructionModel baseInstruction = quickening.operation().instruction;
+                List<TypeMirror> genericSignature = baseInstruction.signature.getDynamicOperandTypes();
+                if (quickening.types().size() != genericSignature.size()) {
+                    throw new AssertionError("Invalid signature size in quickening " + quickening.types() + " : " + genericSignature);
+                }
+                for (int i = 0; i < genericSignature.size(); i++) {
+                    TypeMirror specialized = quickening.types().get(i);
+                    TypeMirror target;
+
+                    if (model.isBoxingEliminated(specialized) &&
+                                    /*
+                                     * Handles the corner case when the set of quickened
+                                     * specializations happens to be incompatible with boxing
+                                     * elimination of this type. May happen if implicit cast and
+                                     * non-implicit casts types of the same specialization argument
+                                     * are mixed in the same quickening. The only safe thing to do
+                                     * is to not boxing eliminate.
+                                     */
+                                    !ElementUtils.isObject(signature.getDynamicOperandType(i))) {
+                        target = specialized;
+                    } else {
+                        target = genericSignature.get(i);
+                    }
+                    signature = signature.specializeDynamicOperandType(i, target);
+                }
 
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;
+                validateQuickening(model, quickenedInstruction);
             }
         }
 
@@ -884,7 +946,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     case CUSTOM:
 
                         for (int i = 0; i < instruction.signature.dynamicOperandCount; i++) {
-                            if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
+                            if (instruction.getQuickeningRoot().needsChildBciForBoxingElimination(model, i)) {
                                 instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(i));
                             }
                         }
@@ -1067,7 +1129,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.specializedType = boxedType;
 
                             InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
-                                            instruction.signature.specializeOperandType(0, boxedType),
+                                            instruction.signature.specializeDynamicOperandType(0, boxedType),
                                             ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)));
                             argumentQuickening.returnTypeQuickening = false;
                             argumentQuickening.specializedType = boxedType;
@@ -1083,16 +1145,35 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
             }
 
-            for (InstructionModel instruction1 : model.getInstructions()) {
-                if (instruction1.nodeData != null) {
-                    if (instruction1.getQuickeningRoot().hasSpecializedQuickenings()) {
-                        instruction1.nodeData.setForceSpecialize(true);
+            for (InstructionModel instruction : model.getInstructions()) {
+                if (instruction.nodeData != null) {
+                    if (instruction.getQuickeningRoot().hasSpecializedQuickenings()) {
+                        instruction.nodeData.setForceSpecialize(true);
                     }
                 }
             }
-
         }
 
+    }
+
+    private static void validateQuickening(BytecodeDSLModel model, InstructionModel instruction) throws AssertionError {
+        if (instruction.isQuickening()) {
+            List<TypeMirror> genericTypes = instruction.getQuickeningRoot().signature.operandTypes;
+            List<TypeMirror> specializedTypes = instruction.signature.operandTypes;
+
+            for (int i = 0; i < genericTypes.size(); i++) {
+                if (ElementUtils.typeEquals(genericTypes.get(i), specializedTypes.get(i))) {
+                    continue;
+                }
+                if (!model.isBoxingEliminated(specializedTypes.get(i))) {
+                    /*
+                     * We need to double check all specialized types are actually boxing eliminated
+                     * otherwise this would lead to hard to detect deopt loops.
+                     */
+                    throw new AssertionError("Invalid quickening signature " + instruction);
+                }
+            }
+        }
     }
 
     private static void parseDefaultUncachedThreshold(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, DSLExpressionResolver resolver) {

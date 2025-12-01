@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,7 +42,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.Uninterruptible;
@@ -54,10 +55,14 @@ import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.debug.DebuggerEventsFeature;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -86,13 +91,13 @@ public class InterpreterFeature implements InternalFeature {
     private AnalysisMethod leaveStub;
 
     static boolean executableByInterpreter(AnalysisMethod m) {
-        if (AnnotationAccess.getAnnotation(m, CFunction.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, CFunction.class) != null) {
             return false;
         }
-        if (AnnotationAccess.getAnnotation(m, CEntryPoint.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, CEntryPoint.class) != null) {
             return false;
         }
-        Uninterruptible uninterruptible = AnnotationAccess.getAnnotation(m, Uninterruptible.class);
+        Uninterruptible uninterruptible = AnnotationUtil.getAnnotation(m, Uninterruptible.class);
         if (uninterruptible != null) {
             if (uninterruptible.mayBeInlined() && !uninterruptible.callerMustBe()) {
                 /*
@@ -108,7 +113,7 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     public static boolean callableByInterpreter(ResolvedJavaMethod m, MetaAccessProvider metaAccess) {
-        if (AnnotationAccess.getAnnotation(m, Fold.class) != null) {
+        if (AnnotationUtil.getAnnotation(m, Fold.class) != null) {
             /*
              * GR-55052: For now @Fold methods are considered not callable. The problem is that such
              * methods are reachability cut-offs, so we would need to roll our own reachability
@@ -198,25 +203,37 @@ public class InterpreterFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
         BuildTimeInterpreterUniverse.freshSingletonInstance();
-        AnalysisMethod interpreterRoot = accessImpl.getMetaAccess().lookupJavaType(Interpreter.Root.class).getDeclaredMethods(false)[0];
+        AnalysisMetaAccess metaAccess = accessImpl.getMetaAccess();
 
-        accessImpl.registerAsRoot(interpreterRoot, true, "interpreter main loop");
+        AnalysisType interpreterRootType = metaAccess.lookupJavaType(Interpreter.Root.class);
+        AnalysisMethod interpreterRoot = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, interpreterRootType, "executeBodyFromBCI",
+                        InterpreterFrame.class, InterpreterResolvedJavaMethod.class, int.class, int.class, boolean.class);
+
         LocalVariableTable interpreterVariableTable = interpreterRoot.getLocalVariableTable();
-        int interpretedMethodSlot = findLocalSlotByName("method", interpreterVariableTable.getLocalsAt(0)); // parameter
+        int interpreterMethodSlot = findLocalSlotByName("method", interpreterVariableTable.getLocalsAt(0)); // parameter
         int interpreterFrameSlot = findLocalSlotByName("frame", interpreterVariableTable.getLocalsAt(0)); // parameter
         // Local variable, search all locals.
         int bciSlot = findLocalSlotByName("curBCI", interpreterVariableTable.getLocals());
 
-        ImageSingletons.add(InterpreterSupport.class, new InterpreterSupportImpl(bciSlot, interpretedMethodSlot, interpreterFrameSlot));
+        AnalysisType intrinsicRootType = metaAccess.lookupJavaType(Interpreter.IntrinsicRoot.class);
+        AnalysisMethod intrinsicRoot = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, intrinsicRootType, "execute",
+                        InterpreterFrame.class, InterpreterResolvedJavaMethod.class, SignaturePolymorphicIntrinsic.class, boolean.class);
+
+        LocalVariableTable intrinsicVariableTable = intrinsicRoot.getLocalVariableTable();
+        int intrinsicMethodSlot = findLocalSlotByName("method", intrinsicVariableTable.getLocalsAt(0)); // parameter
+        int intrinsicFrameSlot = findLocalSlotByName("frame", intrinsicVariableTable.getLocalsAt(0)); // parameter
+
+        ImageSingletons.add(InterpreterSupport.class, new InterpreterSupportImpl(bciSlot, interpreterMethodSlot, interpreterFrameSlot, intrinsicMethodSlot, intrinsicFrameSlot));
         ImageSingletons.add(InterpreterDirectivesSupport.class, new InterpreterDirectivesSupportImpl());
         ImageSingletons.add(InterpreterMethodPointerHolder.class, new InterpreterMethodPointerHolder());
 
         // Locals must be available at runtime to retrieve BCI, interpreted method and interpreter
         // frame.
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(interpreterRoot);
+        SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(intrinsicRoot);
 
         Method leaveMethod = ReflectionUtil.lookupMethod(InterpreterStubSection.class, "leaveInterpreterStub", CFunctionPointer.class, Pointer.class, long.class, long.class);
-        leaveStub = accessImpl.getMetaAccess().lookupJavaMethod(leaveMethod);
+        leaveStub = metaAccess.lookupJavaMethod(leaveMethod);
         accessImpl.registerAsRoot(leaveStub, true, "low level entry point");
     }
 

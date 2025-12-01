@@ -35,16 +35,24 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ProfileData;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
@@ -54,7 +62,9 @@ import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
-
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -179,6 +189,80 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
                 boundsCheck = graph().addOrUniqueWithInputs(boundsCheck);
                 FixedGuardNode fixedGuard = new FixedGuardNode(boundsCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateReprofile, false, getNodeSourcePosition());
                 graph().replaceFixedWithFixed(this, graph().add(fixedGuard));
+            }
+        }
+
+        // Try to simplify loads from constant arrays with the index being a conditional.
+        if (array() instanceof ConstantNode && index() instanceof ConditionalNode conditional) {
+            StructuredGraph graph = graph();
+            var trueVal = tryConstantFold(array(), conditional.trueValue(), tool.getMetaAccess(), tool.getConstantReflection());
+            var falseVal = tryConstantFold(array(), conditional.falseValue(), tool.getMetaAccess(), tool.getConstantReflection());
+
+            if (trueVal != null && falseVal != null) {
+                /*-
+                 * Both conditional inputs are constant.
+                 *
+                 *             cond  C1  C2
+                 *               |    |   |
+                 * Const(arr) Conditional
+                 *      |       /
+                 *     LoadIndexed
+                 *
+                 * Replace with:
+                 *
+                 * cond arr[C1] arr[C2]
+                 *  |    |     /
+                 * Conditional
+                 */
+                graph.replaceFixedWithFloating(this, graph.addOrUniqueWithInputs(ConditionalNode.create(conditional.condition(), trueVal, falseVal, NodeView.from(tool))));
+            } else if (trueVal != null || falseVal != null) {
+                /*-
+                 * Just one conditional input is constant.
+                 *
+                 *           cond  C1  var
+                 *             |    |   |
+                 * Const(arr) Conditional
+                 *      |       /
+                 *     LoadIndexed
+                 *
+                 * Replace with control flow:
+                 *  cond
+                 *     \
+                 *      if   arr  var
+                 *     /  \   |   /
+                 *    |  LoadIndexed-----------
+                 *     \  /                   |
+                 *     Merge -- Phi (arr[C1], . )
+                 */
+                boolean trueValConstant = trueVal != null;
+                var lastState = GraphUtil.findLastFrameState(this);
+                IfNode ifNode = graph.add(new IfNode(conditional.condition(), graph.add(new BeginNode()), graph.add(new BeginNode()), ProfileData.BranchProbabilityData.unknown()));
+                this.replaceAtPredecessor(ifNode);
+
+                var trueEnd = graph.add(new EndNode());
+                var falseEnd = graph.add(new EndNode());
+                graph.addAfterFixed(ifNode.trueSuccessor(), trueEnd);
+                graph.addAfterFixed(ifNode.falseSuccessor(), falseEnd);
+                var merge = graph.add(new MergeNode());
+                merge.addForwardEnd(trueEnd);
+                merge.addForwardEnd(falseEnd);
+
+                FrameState state = lastState == null ? null : lastState.duplicateWithVirtualState();
+                merge.setStateAfter(state);
+
+                var nonConstantIndex = trueValConstant ? conditional.falseValue() : conditional.trueValue();
+                var newLoad = graph.add(LoadIndexedNode.create(graph.getAssumptions(), array(), nonConstantIndex,
+                                getBoundsCheck(), elementKind(), tool.getMetaAccess(), tool.getConstantReflection()));
+                assert newLoad instanceof LoadIndexedNode : "Unexpectedly folding LoadField to: " + newLoad;
+                if (trueValConstant) {
+                    graph.addAfterFixed(ifNode.falseSuccessor(), (FixedNode) newLoad);
+                    falseVal = newLoad;
+                } else {
+                    graph.addAfterFixed(ifNode.trueSuccessor(), (FixedNode) newLoad);
+                    trueVal = newLoad;
+                }
+                this.replaceAtUsages(graph.addOrUniqueWithInputs((new ValuePhiNode(this.stamp, merge, trueVal, falseVal))));
+                graph.replaceFixed(this, merge);
             }
         }
     }

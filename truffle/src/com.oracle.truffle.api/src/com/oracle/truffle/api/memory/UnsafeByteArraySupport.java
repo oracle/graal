@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 
 package com.oracle.truffle.api.memory;
 
-import sun.misc.Unsafe;
-
 import java.lang.reflect.Field;
 import java.nio.ByteOrder;
 import java.security.AccessController;
@@ -50,18 +48,14 @@ import java.security.PrivilegedAction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
+import sun.misc.Unsafe;
+
 /**
  * Implementation of {@link ByteArraySupport} using {@link Unsafe}.
  * <p>
  * Bytes ordering is native endianness ({@link ByteOrder#nativeOrder}).
  */
 final class UnsafeByteArraySupport extends ByteArraySupport {
-    /**
-     * Partial evaluation does not constant-fold unaligned accesses, so in compiled code we
-     * decompose unaligned accesses into multiple aligned accesses that can be constant-folded. This
-     * optimization is only tested on little-endian platforms.
-     */
-    private static final boolean OPTIMIZED_UNALIGNED_SUPPORTED = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
     @SuppressWarnings("deprecation") private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
         @Override
@@ -204,13 +198,8 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
 
     @Override
     public short getShortUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
-        if (CompilerDirectives.inCompiledCode() && OPTIMIZED_UNALIGNED_SUPPORTED) {
-            if (byteOffset % Short.BYTES == 0) {
-                return getShort(buffer, byteOffset);
-            } else {
-                return (short) ((getByte(buffer, byteOffset) & 0xFF) |
-                                ((getByte(buffer, byteOffset + 1) & 0xFF) << Byte.SIZE));
-            }
+        if (CompilerDirectives.inCompiledCode()) {
+            return unsafeGetShortUnaligned(buffer, byteOffset);
         } else {
             return getShort(buffer, byteOffset);
         }
@@ -223,15 +212,8 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
 
     @Override
     public int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
-        if (CompilerDirectives.inCompiledCode() && OPTIMIZED_UNALIGNED_SUPPORTED) {
-            if (byteOffset % Integer.BYTES == 0) {
-                return getInt(buffer, byteOffset);
-            } else {
-                return (getByte(buffer, byteOffset) & 0xFF) |
-                                ((getByte(buffer, byteOffset + 1) & 0xFF) << Byte.SIZE) |
-                                ((getByte(buffer, byteOffset + 2) & 0xFF) << Byte.SIZE * 2) |
-                                ((getByte(buffer, byteOffset + 3) & 0xFF) << Byte.SIZE * 3);
-            }
+        if (CompilerDirectives.inCompiledCode()) {
+            return unsafeGetIntUnaligned(buffer, byteOffset);
         } else {
             return getInt(buffer, byteOffset);
         }
@@ -244,19 +226,8 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
 
     @Override
     public long getLongUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
-        if (CompilerDirectives.inCompiledCode() && OPTIMIZED_UNALIGNED_SUPPORTED) {
-            if (byteOffset % Long.BYTES == 0) {
-                return getLong(buffer, byteOffset);
-            } else {
-                return (getByte(buffer, byteOffset) & 0xFFL) |
-                                ((getByte(buffer, byteOffset + 1) & 0xFFL) << Byte.SIZE) |
-                                ((getByte(buffer, byteOffset + 2) & 0xFFL) << Byte.SIZE * 2) |
-                                ((getByte(buffer, byteOffset + 3) & 0xFFL) << Byte.SIZE * 3) |
-                                ((getByte(buffer, byteOffset + 4) & 0xFFL) << Byte.SIZE * 4) |
-                                ((getByte(buffer, byteOffset + 5) & 0xFFL) << Byte.SIZE * 5) |
-                                ((getByte(buffer, byteOffset + 6) & 0xFFL) << Byte.SIZE * 6) |
-                                ((getByte(buffer, byteOffset + 7) & 0xFFL) << Byte.SIZE * 7);
-            }
+        if (CompilerDirectives.inCompiledCode()) {
+            return unsafeGetLongUnaligned(buffer, byteOffset);
         } else {
             return getLong(buffer, byteOffset);
         }
@@ -541,5 +512,149 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
             }
         } while (!UNSAFE.compareAndSwapLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset, fullWord, x));
         return expected;
+    }
+
+    /**
+     * Intrinsic candidate.
+     *
+     * Partial evaluation does not constant-fold unaligned accesses, so in compiled code we
+     * decompose unaligned accesses into multiple aligned accesses that can be constant-folded.
+     */
+    private static short unsafeGetShortUnaligned(byte[] buffer, long byteOffset) {
+        if (byteOffset % Short.BYTES == 0) {
+            return UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+        } else {
+            return makeShort(UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 1));
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     *
+     * Partial evaluation does not constant-fold unaligned accesses, so in compiled code we
+     * decompose unaligned accesses into multiple aligned accesses that can be constant-folded.
+     */
+    private static int unsafeGetIntUnaligned(byte[] buffer, long byteOffset) {
+        if (byteOffset % Integer.BYTES == 0) {
+            return UNSAFE.getInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+        } else if (byteOffset % Short.BYTES == 0) {
+            return makeInt(UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + Short.BYTES));
+        } else {
+            return makeInt(UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 1),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 2),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 3));
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     *
+     * Partial evaluation does not constant-fold unaligned accesses, so in compiled code we
+     * decompose unaligned accesses into multiple aligned accesses that can be constant-folded.
+     */
+    private static long unsafeGetLongUnaligned(byte[] buffer, long byteOffset) {
+        if (byteOffset % Long.BYTES == 0) {
+            return UNSAFE.getLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+        } else if (byteOffset % Integer.BYTES == 0) {
+            return makeLong(UNSAFE.getInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 4));
+        } else if (byteOffset % Short.BYTES == 0) {
+            return makeLong(UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + Short.BYTES),
+                            UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + Short.BYTES * 2),
+                            UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + Short.BYTES * 3));
+        } else {
+            return makeLong(UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 1),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 2),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 3),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 4),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 5),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 6),
+                            UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset + 7));
+        }
+    }
+
+    private static long makeLong(byte i0, byte i1, byte i2, byte i3, byte i4, byte i5, byte i6, byte i7) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (i0 & 0xffL) |
+                            ((i1 & 0xffL) << Byte.SIZE) |
+                            ((i2 & 0xffL) << Byte.SIZE * 2) |
+                            ((i3 & 0xffL) << Byte.SIZE * 3) |
+                            ((i4 & 0xffL) << Byte.SIZE * 4) |
+                            ((i5 & 0xffL) << Byte.SIZE * 5) |
+                            ((i6 & 0xffL) << Byte.SIZE * 6) |
+                            ((i7 & 0xffL) << Byte.SIZE * 7);
+        } else {
+            return ((i0 & 0xffL) << Byte.SIZE * 7) |
+                            ((i1 & 0xffL) << Byte.SIZE * 6) |
+                            ((i2 & 0xffL) << Byte.SIZE * 5) |
+                            ((i3 & 0xffL) << Byte.SIZE * 4) |
+                            ((i4 & 0xffL) << Byte.SIZE * 3) |
+                            ((i5 & 0xffL) << Byte.SIZE * 2) |
+                            ((i6 & 0xffL) << Byte.SIZE) |
+                            (i7 & 0xffL);
+        }
+    }
+
+    private static long makeLong(short i0, short i1, short i2, short i3) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (i0 & 0xffffL) |
+                            ((i1 & 0xffffL) << Short.SIZE) |
+                            ((i2 & 0xffffL) << Short.SIZE * 2) |
+                            ((i3 & 0xffffL) << Short.SIZE * 3);
+        } else {
+            return ((i0 & 0xffffL) << Short.SIZE * 3) |
+                            ((i1 & 0xffffL) << Short.SIZE * 2) |
+                            ((i2 & 0xffffL) << Short.SIZE) |
+                            (i3 & 0xffffL);
+        }
+    }
+
+    private static long makeLong(int i0, int i1) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (i0 & 0xffffffffL) |
+                            ((i1 & 0xffffffffL) << Integer.SIZE);
+        } else {
+            return ((i0 & 0xffffffffL) << Integer.SIZE) |
+                            (i1 & 0xffffffffL);
+        }
+    }
+
+    private static int makeInt(short i0, short i1) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (i0 & 0xffff) |
+                            ((i1 & 0xffff) << Short.SIZE);
+        } else {
+            return ((i0 & 0xffff) << Short.SIZE) |
+                            (i1 & 0xffff);
+        }
+    }
+
+    private static int makeInt(byte i0, byte i1, byte i2, byte i3) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (i0 & 0xff) |
+                            ((i1 & 0xff) << Byte.SIZE) |
+                            ((i2 & 0xff) << Byte.SIZE * 2) |
+                            ((i3 & 0xff) << Byte.SIZE * 3);
+        } else {
+            return ((i0 & 0xff) << Byte.SIZE * 3) |
+                            ((i1 & 0xff) << Byte.SIZE * 2) |
+                            ((i2 & 0xff) << Byte.SIZE) |
+                            (i3 & 0xff);
+        }
+    }
+
+    private static short makeShort(byte i0, byte i1) {
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            return (short) ((i0 & 0xff) |
+                            (i1 & 0xff) << Byte.SIZE);
+        } else {
+            return (short) ((i0 & 0xff) << Byte.SIZE |
+                            (i1 & 0xff));
+        }
     }
 }

@@ -28,8 +28,8 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import java.lang.reflect.Field;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -97,19 +97,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class StaticFieldsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public interface HostedStaticFieldSupport {
+    public abstract static class HostedStaticFieldSupport {
 
         static HostedStaticFieldSupport singleton() {
             return ImageSingletons.lookup(HostedStaticFieldSupport.class);
         }
 
-        JavaConstant getStaticFieldsBaseConstant(int layerNum, boolean primitive, Function<Object, JavaConstant> toConstant);
+        protected abstract Object getStaticFieldBaseTransformation(int layerNum, boolean primitive);
 
-        FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
+        protected abstract FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph);
 
-        boolean isPrimitive(ResolvedJavaField field);
+        protected abstract boolean isPrimitive(ResolvedJavaField field);
 
-        int getInstalledLayerNum(ResolvedJavaField field);
+        protected abstract int getInstalledLayerNum(ResolvedJavaField field);
+
+        protected abstract ResolvedJavaField toResolvedField(Field field);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -137,11 +139,17 @@ public final class StaticFieldsSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static JavaConstant getStaticFieldsConstant(ResolvedJavaField field, Function<Object, JavaConstant> toConstant) {
+    public static Object getStaticFieldBaseTransformation(Field field) {
+        var hostedSupport = HostedStaticFieldSupport.singleton();
+        return getStaticFieldBaseTransformation(hostedSupport.toResolvedField(field));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Object getStaticFieldBaseTransformation(ResolvedJavaField field) {
         var hostedSupport = HostedStaticFieldSupport.singleton();
         boolean primitive = hostedSupport.isPrimitive(field);
         int layerNum = getInstalledLayerNum(field);
-        return hostedSupport.getStaticFieldsBaseConstant(layerNum, primitive, toConstant);
+        return hostedSupport.getStaticFieldBaseTransformation(layerNum, primitive);
     }
 
     public static int getInstalledLayerNum(ResolvedJavaField field) {
@@ -167,6 +175,7 @@ public final class StaticFieldsSupport {
 
     public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
         if (field instanceof SharedField sField) {
+            assert sField.getStaticFieldBaseForRuntimeLoadedClass() == null : "Static field support with static field base should be handled in lowering providers";
             boolean primitive = sField.getStorageKind().isPrimitive();
             return new StaticFieldResolvedBaseNode(primitive, sField.getInstalledLayerNum());
         } else {
@@ -195,7 +204,7 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseProxyNode(ValueNode staticFieldsArray) {
             super(TYPE, StampFactory.objectNonNull());
-            assert ImageLayerBuildingSupport.buildingImageLayer();
+            assert ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.useRistretto();
             this.staticFieldsArray = staticFieldsArray;
         }
 

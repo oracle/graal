@@ -41,6 +41,8 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.util.HostModuleUtil;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -54,16 +56,15 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
     private static final boolean isJavaNamingModulePresent;
 
     static {
-        Module thisModule = JNIRegistrationJavaNio.class.getModule();
-        var sctpModule = ModuleLayer.boot().findModule("jdk.sctp");
+        var sctpModule = ResolvedJavaModuleLayer.boot().findModule("jdk.sctp");
         if (sctpModule.isPresent()) {
-            thisModule.addReads(sctpModule.get());
+            HostModuleUtil.addReads(JNIRegistrationJavaNio.class, sctpModule.get());
         }
         isJdkSctpModulePresent = sctpModule.isPresent();
 
-        var namingModule = ModuleLayer.boot().findModule("java.naming");
+        var namingModule = ResolvedJavaModuleLayer.boot().findModule("java.naming");
         if (namingModule.isPresent()) {
-            thisModule.addReads(namingModule.get());
+            HostModuleUtil.addReads(JNIRegistrationJavaNio.class, namingModule.get());
         }
         isJavaNamingModulePresent = namingModule.isPresent();
     }

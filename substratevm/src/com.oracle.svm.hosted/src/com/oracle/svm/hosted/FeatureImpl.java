@@ -73,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
@@ -241,6 +242,23 @@ public class FeatureImpl {
 
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
+        }
+
+        public AnalysisType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            try {
+                return getMetaAccess().lookupJavaType(clazz);
+            } catch (AnalysisError.TypeNotFoundError e) {
+                // Type not found during analysis
+                return null;
+            }
+        }
+
+        public List<AnalysisType> findSubtypes(AnalysisType baseClass) {
+            return imageClassLoader.findSubclasses(baseClass.getJavaClass(), false).stream().map(getMetaAccess()::lookupJavaType).toList();
         }
 
         public boolean isReachable(Class<?> clazz) {
@@ -525,6 +543,7 @@ public class FeatureImpl {
                     case Class<?> clazz -> getMetaAccess().lookupJavaType(clazz);
                     case Field field -> getMetaAccess().lookupJavaField(field);
                     case Executable executable -> getMetaAccess().lookupJavaMethod(executable);
+                    case AnalysisElement ae -> ae;
                     default -> throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s",
                                     trigger.getClass().getTypeName());
                 };
@@ -614,7 +633,6 @@ public class FeatureImpl {
          * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
          */
         public void allowStableFieldFoldingBeforeAnalysis(Field field) {
-            VMError.guarantee(field.isAnnotationPresent(Stable.class), "This method should only be called for @Stable fields: %s", field);
             getHostVM().allowStableFieldFoldingBeforeAnalysis(getMetaAccess().lookupJavaField(field));
         }
     }

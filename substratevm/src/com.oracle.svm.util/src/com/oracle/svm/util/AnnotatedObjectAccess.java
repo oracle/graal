@@ -33,12 +33,13 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueParser;
 import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.annotation.ElementTypeMismatch;
 import jdk.graal.compiler.annotation.EnumElement;
@@ -46,11 +47,10 @@ import jdk.graal.compiler.annotation.MissingType;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashMap;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.AnnotationSupport;
 import sun.reflect.annotation.AnnotationType;
@@ -62,12 +62,6 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnnotatedObjectAccess {
-    private final Map<ResolvedJavaType, Map<ResolvedJavaType, AnnotationValue>> annotationCache = new ConcurrentHashMap<>();
-    private final Map<Annotated, Map<ResolvedJavaType, AnnotationValue>> declaredAnnotationCache = new ConcurrentHashMap<>();
-    private final Map<ResolvedJavaMethod, List<List<AnnotationValue>>> parameterAnnotationCache = new ConcurrentHashMap<>();
-    private final Map<Annotated, List<TypeAnnotationValue>> typeAnnotationCache = new ConcurrentHashMap<>();
-    private final Map<ResolvedJavaMethod, Object> annotationDefaultCache = new ConcurrentHashMap<>();
-    private final Map<AnnotationValue, Annotation> resolvedAnnotationsCache = new ConcurrentHashMap<>();
 
     /**
      * Gets the annotation of type {@code annotationType} from {@code element}.
@@ -88,9 +82,6 @@ public class AnnotatedObjectAccess {
         return null;
     }
 
-    /**
-     * Gets the annotation of type {@code annotationType} from {@code annotated}.
-     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static AnnotationValue toAnnotationValue(Annotation annotation) {
         ResolvedJavaType type = GraalAccess.lookupType(annotation.annotationType());
@@ -169,7 +160,7 @@ public class AnnotatedObjectAccess {
             }
             case AnnotationValue av -> {
                 Class<? extends Annotation> type = (Class<? extends Annotation>) OriginalClassProvider.getJavaClass(av.getAnnotationType());
-                return toAnnotation(av, type);
+                return toAnnotation0(av, type);
             }
             case List adList -> {
                 int length = adList.size();
@@ -247,6 +238,10 @@ public class AnnotatedObjectAccess {
      * Converts {@code annotationValue} to an instance of {@code type}.
      */
     private static <T extends Annotation> T toAnnotation(AnnotationValue annotationValue, Class<T> type) {
+        return annotationValue.toAnnotation(type, AnnotatedObjectAccess::toAnnotation0);
+    }
+
+    private static <T extends Annotation> T toAnnotation0(AnnotationValue annotationValue, Class<T> type) {
         AnnotationType annotationType = AnnotationType.getInstance(type);
         Map<String, Object> memberValues = new EconomicHashMap<>();
         for (var e : annotationType.members().entrySet()) {
@@ -271,36 +266,16 @@ public class AnnotatedObjectAccess {
         Map<ResolvedJavaType, AnnotationValue> annotationValues = getAnnotationValues(element, declaredOnly);
         AnnotationValue annotation = annotationValues.get(GraalAccess.lookupType(annotationType));
         if (annotation != null) {
-            return (T) resolvedAnnotationsCache.computeIfAbsent(annotation, value -> toAnnotation(value, annotationType));
+            return toAnnotation(annotation, annotationType);
         }
         return null;
-    }
-
-    private static String loaderName(ClassLoader loader) {
-        if (loader == null) {
-            return "null";
-        }
-        var loaderName = loader.getName();
-        if (loaderName == null || loaderName.isBlank()) {
-            return loader.getClass().getName();
-        } else {
-            return loaderName;
-        }
     }
 
     /**
      * Converts an {@link AnnotationValue} to an {@link Annotation} of type {@code annotationType}.
      */
     public <T extends Annotation> T asAnnotation(AnnotationValue annotationValue, Class<T> annotationType) {
-        T res = annotationType.cast(resolvedAnnotationsCache.computeIfAbsent(annotationValue, value -> toAnnotation(value, annotationType)));
-        Class<? extends Annotation> resType = res.annotationType();
-        if (!resType.equals(annotationType)) {
-
-            throw new IllegalArgumentException("Conversion failed: expected %s (loader: %s), got %s (loader: %s)".formatted(
-                            annotationType.getName(), loaderName(annotationType.getClassLoader()),
-                            resType.getName(), loaderName(resType.getClassLoader())));
-        }
-        return res;
+        return toAnnotation(annotationValue, annotationType);
     }
 
     /**
@@ -312,7 +287,10 @@ public class AnnotatedObjectAccess {
 
     protected boolean hasAnnotation(Annotated element, Class<? extends Annotation> annotationType) {
         try {
-            return getAnnotationValues(element, false).containsKey(GraalAccess.lookupType(annotationType));
+            // Checkstyle: allow direct annotation access
+            Inherited inherited = annotationType.getAnnotation(Inherited.class);
+            // Checkstyle: disallow direct annotation access
+            return getAnnotationValues(element, inherited == null).containsKey(GraalAccess.lookupType(annotationType));
         } catch (LinkageError e) {
             /*
              * Returning false essentially means that the element doesn't declare the
@@ -390,35 +368,28 @@ public class AnnotatedObjectAccess {
             return getDeclaredAnnotationValuesFromRoot(rootElement);
         }
 
-        Map<ResolvedJavaType, AnnotationValue> existing = annotationCache.get(clazz);
-        if (existing != null) {
-            return existing;
-        }
-
         /*
          * Inheritable annotations must be computed first to avoid recursively updating
          * annotationCache.
          */
         Map<ResolvedJavaType, AnnotationValue> inheritableAnnotations = getInheritableAnnotations(clazz);
-        return annotationCache.computeIfAbsent(clazz, element -> {
-            Map<ResolvedJavaType, AnnotationValue> declaredAnnotations = getDeclaredAnnotationValuesFromRoot(element);
-            Map<ResolvedJavaType, AnnotationValue> annotations = null;
-            if (inheritableAnnotations != null) {
-                for (var e : inheritableAnnotations.entrySet()) {
-                    if (!declaredAnnotations.containsKey(e.getKey())) {
-                        if (annotations == null) {
-                            annotations = new EconomicHashMap<>(declaredAnnotations);
-                        }
-                        annotations.put(e.getKey(), e.getValue());
+        Map<ResolvedJavaType, AnnotationValue> declaredAnnotations = getDeclaredAnnotationValuesFromRoot(rootElement);
+        Map<ResolvedJavaType, AnnotationValue> annotations = null;
+        if (inheritableAnnotations != null) {
+            for (var e : inheritableAnnotations.entrySet()) {
+                if (!declaredAnnotations.containsKey(e.getKey())) {
+                    if (annotations == null) {
+                        annotations = new EconomicHashMap<>(declaredAnnotations);
                     }
+                    annotations.put(e.getKey(), e.getValue());
                 }
             }
-            return annotations != null ? annotations : declaredAnnotations;
-        });
+        }
+        return annotations != null ? annotations : declaredAnnotations;
     }
 
-    private Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValuesFromRoot(Annotated rootElement) {
-        return declaredAnnotationCache.computeIfAbsent(rootElement, AnnotatedObjectAccess::parseDeclaredAnnotationValues);
+    private static Map<ResolvedJavaType, AnnotationValue> getDeclaredAnnotationValuesFromRoot(Annotated rootElement) {
+        return rootElement.getDeclaredAnnotationInfo(ANNOTATIONS_INFO_PARSER);
     }
 
     /**
@@ -426,40 +397,45 @@ public class AnnotatedObjectAccess {
      */
     public static final ResolvedJavaType ANNOTATION_FORMAT_ERROR_TYPE = GraalAccess.lookupType(Void.TYPE);
 
-    private static Map<ResolvedJavaType, AnnotationValue> parseDeclaredAnnotationValues(Annotated element) {
+    /**
+     * Annotation parser function stored as a singleton as recommended by
+     * {@link Annotated#getDeclaredAnnotationInfo(Function)}.
+     */
+    private static final Function<AnnotationsInfo, Map<ResolvedJavaType, AnnotationValue>> ANNOTATIONS_INFO_PARSER = info -> {
+        if (info == null) {
+            return Map.of();
+        }
+        ResolvedJavaType container = info.container();
         try {
-            return AnnotationValueSupport.getDeclaredAnnotationValues(element);
+            return AnnotationValueParser.parseAnnotations(info.bytes(), info.constPool(), container);
         } catch (AnnotationFormatError e) {
             return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(e));
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return Map.of(ANNOTATION_FORMAT_ERROR_TYPE, new AnnotationValue(new AnnotationFormatError(e)));
         }
-    }
+    };
 
     /**
-     * Gets the annotation values associated with the parameters of {@code element}.
+     * Gets the annotation values associated with the parameters of {@code method}.
      *
-     * @param element the annotated element to retrieve parameter annotation values from
+     * @param method the annotated method to retrieve parameter annotation values from
      * @return a list of lists, where each inner list contains the annotation values for a single
-     *         parameter of the annotated element, or an empty list if the element has no parameters
-     *         or no annotations
+     *         parameter of the annotated method, or null if the method has no annotated parameters
      */
-    public List<List<AnnotationValue>> getParameterAnnotationValues(Annotated element) {
-        Annotated root = unwrap(element, null);
-        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : List.of();
+    public List<List<AnnotationValue>> getParameterAnnotationValues(ResolvedJavaMethod method) {
+        Annotated root = unwrap(method, null);
+        return root != null ? getParameterAnnotationValuesFromRoot((ResolvedJavaMethod) root) : null;
     }
 
-    private List<List<AnnotationValue>> getParameterAnnotationValuesFromRoot(ResolvedJavaMethod rootElement) {
-        return parameterAnnotationCache.computeIfAbsent(rootElement, element -> {
-            try {
-                List<List<AnnotationValue>> parameterAnnotationValues = AnnotationValueSupport.getParameterAnnotationValues(element);
-                return parameterAnnotationValues == null ? List.of() : parameterAnnotationValues;
-            } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-                return List.of(List.of(new AnnotationValue(new AnnotationFormatError(e))));
-            } catch (AnnotationFormatError e) {
-                return List.of(List.of(new AnnotationValue(e)));
-            }
-        });
+    private static List<List<AnnotationValue>> getParameterAnnotationValuesFromRoot(ResolvedJavaMethod rootElement) {
+        try {
+            var parsed = AnnotationValueSupport.getParameterAnnotationValues(rootElement);
+            return parsed == null ? null : parsed.values();
+        } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
+            return List.of(List.of(new AnnotationValue(new AnnotationFormatError(e))));
+        } catch (AnnotationFormatError e) {
+            return List.of(List.of(new AnnotationValue(e)));
+        }
     }
 
     /**
@@ -473,21 +449,9 @@ public class AnnotatedObjectAccess {
         return root != null ? getTypeAnnotationValuesFromRoot(root) : List.of();
     }
 
-    private List<TypeAnnotationValue> getTypeAnnotationValuesFromRoot(Annotated rootElement) {
-        return typeAnnotationCache.computeIfAbsent(rootElement, AnnotatedObjectAccess::parseTypeAnnotationValues);
-    }
-
-    private static List<TypeAnnotationValue> parseTypeAnnotationValues(Annotated element) {
+    private static List<TypeAnnotationValue> getTypeAnnotationValuesFromRoot(Annotated rootElement) {
         try {
-            return switch (element) {
-                case ResolvedJavaType type -> AnnotationValueSupport.getTypeAnnotationValues(type);
-                case ResolvedJavaMethod method -> AnnotationValueSupport.getTypeAnnotationValues(method);
-                case ResolvedJavaField field -> AnnotationValueSupport.getTypeAnnotationValues(field);
-                case ResolvedJavaRecordComponent recordComponent ->
-                    AnnotationValueSupport.getTypeAnnotationValues(recordComponent);
-                default ->
-                    throw new AnnotatedObjectAccessError(element, "Unexpected annotated element type: " + element.getClass());
-            };
+            return AnnotationValueSupport.getTypeAnnotationValues(rootElement);
         } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
             return List.of(new TypeAnnotationValue(new AnnotationFormatError(e)));
         } catch (AnnotationFormatError e) {
@@ -502,19 +466,16 @@ public class AnnotatedObjectAccess {
      */
     public Object getAnnotationDefaultValue(Annotated method) {
         Annotated root = unwrap(method, null);
-        return root != null ? getAnnotationDefaultValueFromRoot((ResolvedJavaMethod) root) : null;
-    }
-
-    private Object getAnnotationDefaultValueFromRoot(ResolvedJavaMethod accessorMethod) {
-        return annotationDefaultCache.computeIfAbsent(accessorMethod, method -> {
-            try {
-                return AnnotationValueSupport.getAnnotationDefaultValue(method);
-            } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
-                return new AnnotationFormatError(e);
-            } catch (AnnotationFormatError e) {
-                return e;
-            }
-        });
+        if (root == null) {
+            return null;
+        }
+        try {
+            return AnnotationValueSupport.getAnnotationDefaultValue((ResolvedJavaMethod) root);
+        } catch (IllegalArgumentException | BufferUnderflowException | GenericSignatureFormatError e) {
+            return new AnnotationFormatError(e);
+        } catch (AnnotationFormatError e) {
+            return e;
+        }
     }
 
     private static Annotated unwrap(Annotated element, List<AnnotationValue> injectedAnnotationsCollector) {
@@ -522,7 +483,7 @@ public class AnnotatedObjectAccess {
         while (cur instanceof AnnotatedWrapper wrapper) {
             if (injectedAnnotationsCollector != null) {
                 List<AnnotationValue> injectedAnnotations = wrapper.getInjectedAnnotations();
-                if (injectedAnnotations != null) {
+                if (!injectedAnnotations.isEmpty()) {
                     injectedAnnotationsCollector.addAll(injectedAnnotations);
                 }
             }

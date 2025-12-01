@@ -28,6 +28,8 @@ package com.oracle.svm.hosted.webimage.wasm.phases;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.LabeledBlockGeneration;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierData;
 
+import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
+import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
@@ -51,6 +53,19 @@ public class WasmLabeledBlockGeneration extends LabeledBlockGeneration {
              * continue.
              */
             return true;
+        }
+
+        if (!WebImageWasmOptions.LegacyExceptions.getValue() && block.getEndNode() instanceof WithExceptionNode withExceptionNode) {
+            HIRBlock normSucc = stackifierData.getCfg().blockFor(withExceptionNode.next());
+            if (normSucc.equals(successor)) {
+                /*
+                 * With the new exception handling, we need an explicit labeled block when going
+                 * from the WithExceptionNode to its regular successor because in the Wasm code, the
+                 * successor does not appear directly after, the catch block does, and we would then
+                 * fall through to that.
+                 */
+                return true;
+            }
         }
 
         return false;

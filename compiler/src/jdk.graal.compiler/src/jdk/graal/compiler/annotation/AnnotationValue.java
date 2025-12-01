@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -374,5 +375,29 @@ public final class AnnotationValue {
             return error.hashCode();
         }
         return type.hashCode() ^ elements.hashCode();
+    }
+
+    /**
+     * Result of last call to {@link #toAnnotation}.
+     */
+    private volatile Annotation annotationCache;
+
+    /**
+     * Converts this to an {@link Annotation} of type {@code annotationType}, utilizing the provided
+     * converter function. The result is cached to improve performance by reducing redundant
+     * conversions.
+     *
+     * @param <T> the type of the annotation to be created
+     * @param annotationType the desired annotation type
+     * @param converter a function that does the conversion
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Annotation> T toAnnotation(Class<T> annotationType, BiFunction<AnnotationValue, Class<T>, T> converter) {
+        Annotation res = annotationCache;
+        if (res == null || res.annotationType() != annotationType) {
+            res = converter.apply(this, annotationType);
+            annotationCache = res;
+        }
+        return (T) res;
     }
 }

@@ -58,8 +58,8 @@ public abstract class JSValue {
     /**
      * Attempts to coerce a given value to the specified Java type.
      * <p>
-     * If the value is a {@link JSValue}, it will be converted using its {@code as(...)} method.
-     * Otherwise, the value is cast directly.
+     * If the value is a {@link JSValue}, it will be converted using {@link #as(Class)}. Otherwise,
+     * the value is cast directly.
      *
      * @param value the value to coerce, which may be a {@code JSValue} or a native Java object
      * @param cls the target Java class to coerce to
@@ -80,8 +80,16 @@ public abstract class JSValue {
      *
      * @see #isUndefined()
      */
+    public static boolean isUndefined(Object value) {
+        return value instanceof JSValue jsValue && jsValue.isUndefined();
+    }
+
+    /**
+     * Specialization of {@link #isUndefined(Object)} that avoids the type check for
+     * {@link JSValue}.
+     */
     public static boolean isUndefined(JSValue value) {
-        return value != null && value.isUndefined();
+        return value.isUndefined();
     }
 
     /**
@@ -171,6 +179,14 @@ public abstract class JSValue {
         throw classCastError("double[]");
     }
 
+    /**
+     * Coerces this JavaScript value to the requested Java type. See {@link JS.Coerce} for the
+     * JavaScript to Java coercion rules.
+     *
+     * @param cls The Java type to coerce to.
+     * @return The non-null coerced value of the requested type.
+     * @throws ClassCastException If this value cannot be coerced to the requested type.
+     */
     @SuppressWarnings("unchecked")
     public <T> T as(Class<T> cls) {
         if (cls.isAssignableFrom(this.getClass())) {

@@ -385,7 +385,7 @@ public final class HeapImpl extends Heap {
 
         @Override
         public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+            if (!access.isWritable(region) && !access.usesUnalignedChunks(region)) {
                 access.visitObjects(region, this);
             }
         }
@@ -676,7 +676,7 @@ public final class HeapImpl extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(SerialAndEpsilonGCOptions.getNullRegionSize()))) {
             log.string("points into the protected memory between the heap base and the image heap");
             return true;
         }
@@ -764,24 +764,25 @@ public final class HeapImpl extends Heap {
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            if (info.isInReadOnlyRegularPartition(ptr)) {
-                log.string("points into the image heap (read-only)");
+        for (ImageHeapInfo imageHeap : HeapImpl.getImageHeapInfos()) {
+            /* Check from most-specific to least-specific. */
+            if (imageHeap.isInAlignedReadOnlyRelocatable(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only relocatables)");
                 return true;
-            } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
-                log.string("points into the image heap (read-only relocatables)");
+            } else if (imageHeap.isInAlignedReadOnly(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only)");
                 return true;
-            } else if (info.isInWritablePatchedPartition(ptr)) {
-                log.string("points into the image heap (writable patched)");
+            } else if (imageHeap.isInAlignedWritablePatched(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable patched)");
                 return true;
-            } else if (info.isInWritableRegularPartition(ptr)) {
-                log.string("points into the image heap (writable)");
+            } else if (imageHeap.isInAlignedWritable(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable)");
                 return true;
-            } else if (info.isInWritableHugePartition(ptr)) {
-                log.string("points into the image heap (writable huge)");
+            } else if (imageHeap.isInUnalignedWritable(ptr)) {
+                log.string("points into the image heap (unaligned chunk, writable)");
                 return true;
-            } else if (info.isInReadOnlyHugePartition(ptr)) {
-                log.string("points into the image heap (read-only huge)");
+            } else if (imageHeap.isInUnalignedReadOnly(ptr)) {
+                log.string("points into the image heap (unaligned chunk, read-only)");
                 return true;
             }
         }
@@ -933,7 +934,7 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Image heap boundaries:").indent(true);
+            log.string("Image heap:").indent(true);
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 info.print(log);
             }
@@ -942,7 +943,7 @@ public final class HeapImpl extends Heap {
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxHeapInfo != null) {
-                    log.string("Auxiliary image heap boundaries:").indent(true);
+                    log.string("Auxiliary image heap:").indent(true);
                     auxHeapInfo.print(log);
                     log.indent(false);
                 }

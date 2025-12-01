@@ -42,6 +42,7 @@ package com.oracle.truffle.api.object;
 
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -157,5 +158,13 @@ final class FieldInfo extends DynamicObjectFieldLocation implements Comparable<F
     private IllegalArgumentException illegalReceiver(DynamicObject store) {
         CompilerAsserts.neverPartOfCompilation();
         return new IllegalArgumentException("Invalid receiver type (expected " + getDeclaringClass() + ", was " + (store == null ? null : store.getClass()) + ")");
+    }
+
+    DynamicObject unsafeReceiverCast(DynamicObject store) {
+        if (ObjectStorageOptions.ReceiverCheck) {
+            return Objects.requireNonNull(tclass.cast(store));
+        } else {
+            return store;
+        }
     }
 }

@@ -26,25 +26,40 @@
 
 package com.oracle.graal.pointsto.standalone.meta;
 
+import java.util.Objects;
+import java.util.concurrent.ForkJoinPool;
+
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
+public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider {
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider original;
+    private final AnalysisField commonPoolField;
+    private final JavaConstant commonPoolSubstitution;
 
-    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider original) {
+    public StandaloneConstantReflectionProvider(AnalysisMetaAccess aMetaAccess, AnalysisUniverse universe, ConstantReflectionProvider original,
+                    SnippetReflectionProvider originalSnippetReflection) {
         this.universe = universe;
         this.original = original;
+        commonPoolField = aMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ForkJoinPool.class, "common"));
+        commonPoolSubstitution = originalSnippetReflection.forObject(new ForkJoinPool());
     }
 
     @Override
@@ -54,7 +69,33 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
 
     @Override
     public Integer readArrayLength(JavaConstant array) {
+        if (array instanceof ImageHeapConstant) {
+            if (array instanceof ImageHeapArray) {
+                return ((ImageHeapArray) array).getLength();
+            }
+            return null;
+        }
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return null;
+        }
         return original.readArrayLength(array);
+    }
+
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
+            return null;
+        } else if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+
+        ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            return imageHeapConstant.getIdentityHashCode();
+        }
+        Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, constant));
+        return System.identityHashCode(hostedObject);
     }
 
     @Override
@@ -63,16 +104,20 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
     }
 
     @Override
-    public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        ResolvedJavaField wrappedField = ((AnalysisField) field).getWrapped();
-        JavaConstant ret = universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(wrappedField, receiver));
-        if (ret == null) {
-            ret = wrappedField.getConstantValue();
-            if (ret == null) {
-                ret = JavaConstant.defaultForKind(wrappedField.getJavaKind());
-            }
+    public final JavaConstant readFieldValue(ResolvedJavaField f, JavaConstant receiver) {
+        AnalysisField field = (AnalysisField) f;
+
+        field.beforeFieldValueAccess();
+
+        if (field.equals(commonPoolField)) {
+            /*
+             * Replace the common pool value from the hosted heap with a new object. The common pool
+             * is used during analysis, so it can expose analysis metadata to the analysis itself,
+             * i.e., the analysis engine analyzing itself.
+             */
+            return commonPoolSubstitution;
         }
-        return ret;
+        return universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(field.wrapped, receiver));
     }
 
     @Override

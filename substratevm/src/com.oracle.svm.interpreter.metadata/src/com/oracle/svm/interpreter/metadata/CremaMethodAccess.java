@@ -24,15 +24,22 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.List;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Signature;
 import com.oracle.svm.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.espresso.shared.meta.MethodAccess;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -68,15 +75,39 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
         return InterpreterUnresolvedSignature.create(returnType, parameters);
     }
 
-    static Symbol<Signature> toSymbol(InterpreterUnresolvedSignature jvmciSignature, SignatureSymbols signatures) {
+    static InterpreterResolvedJavaMethod toJVMCI(Executable executable) {
+        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(executable.getDeclaringClass()).getInterpreterType();
+        Symbol<Name> name;
+        if (executable instanceof Constructor<?>) {
+            name = ParserSymbols.ParserNames._init_;
+        } else {
+            /*
+             * Since we are looking for a method that already exists in the system, we expect the
+             * symbols to already exist for the name here as well as for the signature below. As a
+             * result we just perform a lookup instead of getOrCreate.
+             */
+            name = SymbolsSupport.getNames().lookup(executable.getName());
+        }
+        // hidden classes and SVM stable proxy name contain a `.`, replace with a `+`
         StringBuilder sb = new StringBuilder();
         sb.append('(');
-        for (int i = 0; i < jvmciSignature.getParameterCount(false); i++) {
-            sb.append(jvmciSignature.getParameterType(i, null).getName());
+        for (Class<?> type : executable.getParameterTypes()) {
+            sb.append(type.descriptorString().replace('.', '+'));
         }
         sb.append(')');
-        sb.append(jvmciSignature.getReturnType(null).getName());
-        return signatures.getOrCreateValidSignature(ByteSequence.create(sb.toString()));
+        if (executable instanceof Method method) {
+            sb.append(method.getReturnType().descriptorString().replace('.', '+'));
+        } else {
+            assert executable instanceof Constructor;
+            sb.append('V');
+        }
+        Symbol<Signature> signature = SymbolsSupport.getSignatures().lookupValidSignature(sb.toString());
+        try {
+            return holder.lookupMethod(name, signature);
+        } catch (LookupSuccessInvocationFailure e) {
+            // GR-70938
+            return e.getResult();
+        }
     }
 
     static JavaType toJavaType(Symbol<Type> typeSymbol) {

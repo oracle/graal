@@ -26,9 +26,14 @@
 package com.oracle.svm.hosted;
 
 import java.net.URL;
-import java.security.CodeSource;
 
 import com.oracle.svm.core.util.ByteFormattingUtil;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.ResolvedJavaModule;
+import com.oracle.svm.util.ResolvedJavaPackage;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class ProgressReporterUtils {
 
@@ -106,7 +111,7 @@ final class ProgressReporterUtils {
         return sb.toString();
     }
 
-    static String moduleNamePrefix(Module javaModule) {
+    static String moduleNamePrefix(ResolvedJavaModule javaModule) {
         if (!javaModule.isNamed()) {
             return "";
         }
@@ -122,18 +127,15 @@ final class ProgressReporterUtils {
         return moduleName;
     }
 
-    record BreakDownClassifier(Package javaPackage, Module javaModule, String location) {
-        static BreakDownClassifier of(Class<?> clazz) {
-            return new BreakDownClassifier(clazz.getPackage(), clazz.getModule(), sourcePath(clazz));
+    record BreakDownClassifier(ResolvedJavaPackage javaPackage, ResolvedJavaModule javaModule, String location) {
+        static BreakDownClassifier of(HostedType type) {
+            return new BreakDownClassifier(JVMCIReflectionUtil.getPackage(type), JVMCIReflectionUtil.getModule(type), sourcePath(type));
         }
 
-        private static String sourcePath(Class<?> clazz) {
-            CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
-            if (codeSource != null) {
-                URL sourceLocation = codeSource.getLocation();
-                if (sourceLocation != null && !"jrt".equals(sourceLocation.getProtocol())) {
-                    return sourceLocation.getPath();
-                }
+        private static String sourcePath(ResolvedJavaType type) {
+            URL sourceLocation = JVMCIReflectionUtil.getOrigin(type);
+            if (sourceLocation != null && !"jrt".equals(sourceLocation.getProtocol())) {
+                return sourceLocation.getPath();
             }
             return null;
         }

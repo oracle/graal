@@ -43,6 +43,7 @@ import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
@@ -106,8 +107,22 @@ public class LibGraalTruffleEntryPoints {
     @TruffleToLibGraal(Id.RegisterRuntime)
     public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, JObject truffleRuntime) {
         try (JNIMethodScope s = openScope(Id.RegisterRuntime, env)) {
+            throw new UnsupportedOperationException("Operation not supported on Graal compiler 25.1 and later");
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
+    }
+
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls3_registerRuntime", include = LibGraalFeature.IsEnabled.class)
+    @TruffleToLibGraal(Id.RegisterRuntime)
+    public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, JObject truffleRuntime,
+                    JObject javaInstrumentationActive) {
+        try (JNIMethodScope s = openScope(Id.RegisterRuntime, env)) {
             long truffleRuntimeWeakRef = JNIUtil.NewWeakGlobalRef(env, truffleRuntime, "TruffleCompilerRuntime").rawValue();
-            return LibGraalTruffleHostEnvironmentLookup.registerRuntime(truffleRuntimeWeakRef);
+            long activeAddress = JNIUtil.GetDirectBufferAddress(env, javaInstrumentationActive).rawValue();
+            return LibGraalTruffleHostEnvironmentLookup.registerRuntime(truffleRuntimeWeakRef, activeAddress);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return false;
@@ -120,8 +135,22 @@ public class LibGraalTruffleEntryPoints {
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress,
                     JObject truffleRuntime, JClass hsClassLoaderDelegate) {
         try (JNIMethodScope s = openScope(Id.InitializeRuntime, env)) {
+            throw new UnsupportedOperationException("Operation not supported on Graal compiler 25.1 and later");
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return 0L;
+        }
+    }
+
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls3_initializeRuntime", include = LibGraalFeature.IsEnabled.class)
+    @TruffleToLibGraal(Id.InitializeRuntime)
+    public static long initializeRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress,
+                    JObject truffleRuntime, JClass hsClassLoaderDelegate, JObject javaInstrumentationActive) {
+        try (JNIMethodScope s = openScope(Id.InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = HotSpotJVMCIRuntime.runtime().asResolvedJavaType(hsClassLoaderDelegate.rawValue());
-            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, hsClassLoaderDelegate);
+            CCharPointer activeAddress = (CCharPointer) JNIUtil.GetDirectBufferAddress(env, javaInstrumentationActive);
+            HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, hsClassLoaderDelegate, activeAddress);
             LibGraalSupportImpl.registerTruffleCompilerRuntime(hsTruffleRuntime);
             return LibGraalObjectHandles.create(hsTruffleRuntime);
         } catch (Throwable t) {

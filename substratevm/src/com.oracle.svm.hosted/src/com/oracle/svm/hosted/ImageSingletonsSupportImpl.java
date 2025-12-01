@@ -44,18 +44,21 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.layeredimagesingleton.SingletonAccessFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonAccess;
 import com.oracle.svm.core.traits.SingletonAccessSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKindSupplier;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
@@ -71,6 +74,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
     @Override
@@ -207,7 +211,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         static SingletonTraitMap getAnnotatedTraits(Class<?> singletonClass, AnnotationExtractor extractor, boolean layeredBuild) {
             SingletonTraitMap traitMap = SingletonTraitMap.create();
             if (extractor != null) {
-                SingletonTraits annotation = extractor.extractAnnotation(singletonClass, SingletonTraits.class, false);
+                SingletonTraits annotation = extractor.extractAnnotation(singletonClass, SingletonTraits.class);
 
                 if (annotation != null) {
                     if (annotation.access() != null) {
@@ -431,7 +435,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     traitMap.getTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND).ifPresent(trait -> {
                         var kind = SingletonLayeredInstallationKind.getInstallationKind(trait);
                         if (forbiddenInstallationKinds.contains(kind)) {
-                            if (SubstrateOptions.LayerOptionVerification.getValue()) {
+                            if (LayeredImageOptions.LayeredImageDiagnosticOptions.LayerOptionVerification.getValue()) {
                                 throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
                             }
                         }
@@ -630,7 +634,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
             SingletonInfo info = configObjects.computeIfAbsent(key, k -> {
 
-                SingletonTraits annotation = extractor.extractAnnotation(k, SingletonTraits.class, false);
+                SingletonTraits annotation = extractor.extractAnnotation(k, SingletonTraits.class);
                 if (annotation != null) {
                     if (annotation.layeredInstallationKind() != null) {
                         var installationKindSupplierClass = annotation.layeredInstallationKind();

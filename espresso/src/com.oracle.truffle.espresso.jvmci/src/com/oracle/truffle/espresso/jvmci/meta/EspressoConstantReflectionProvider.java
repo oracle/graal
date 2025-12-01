@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import java.util.Objects;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -35,7 +34,7 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class EspressoConstantReflectionProvider implements ConstantReflectionProvider {
+public final class EspressoConstantReflectionProvider implements ConstantReflectionProviderWithStaticsBase {
     private final EspressoMethodHandleAccessProvider methodHandleAccessProvider;
     private final EspressoMetaAccessProvider metaAccess;
 
@@ -296,5 +295,13 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
         return null;
     }
 
-    public native EspressoResolvedInstanceType getTypeForStaticBase(EspressoObjectConstant staticBase);
+    private native EspressoResolvedInstanceType getTypeForStaticBase(EspressoObjectConstant staticBase);
+
+    @Override
+    public AbstractEspressoResolvedInstanceType getTypeForStaticBase(JavaConstant staticBase) {
+        if (!(staticBase instanceof EspressoObjectConstant)) {
+            return null;
+        }
+        return getTypeForStaticBase((EspressoObjectConstant) staticBase);
+    }
 }

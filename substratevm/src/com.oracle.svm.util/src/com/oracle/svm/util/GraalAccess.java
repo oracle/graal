@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.runtime.JVMCI;
 
 /**
@@ -89,6 +93,23 @@ public final class GraalAccess {
     private static final Map<Field, ResolvedJavaField> fieldCache = new ConcurrentHashMap<>();
     private static final Map<RecordComponent, ResolvedJavaRecordComponent> recordCache = new ConcurrentHashMap<>();
 
+    /**
+     * Gets the {@link Annotated} equivalent value for element.
+     *
+     * @return {@code null} if element is a {@link Package} that has no annotations
+     */
+    public static Annotated toAnnotated(AnnotatedElement element) {
+        return switch (element) {
+            case Class<?> clazz -> lookupType(clazz);
+            case Method method -> lookupMethod(method);
+            case Constructor<?> cons -> lookupMethod(cons);
+            case Package pkg -> new ResolvedJavaPackageImpl(pkg);
+            case Field field -> lookupField(field);
+            case RecordComponent rc -> lookupRecordComponent(rc);
+            default -> throw new IllegalArgumentException(String.valueOf(element));
+        };
+    }
+
     public static ResolvedJavaType lookupType(Class<?> cls) {
         return typeCache.computeIfAbsent(cls, c -> originalProviders.getMetaAccess().lookupJavaType(cls));
     }
@@ -111,5 +132,9 @@ public final class GraalAccess {
 
     public static <T> T getGraalCapability(Class<T> clazz) {
         return graalRuntime.getCapability(clazz);
+    }
+
+    public static ResolvedJavaModule lookupModule(Module module) {
+        return new ResolvedJavaModuleImpl(module);
     }
 }

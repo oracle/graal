@@ -95,12 +95,12 @@ import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
@@ -580,9 +580,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static void handleNameConflict(String message) {
-        if (SubstrateOptions.AbortOnNameConflict.getValue()) {
+        if (LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnNameConflict.getValue()) {
             throw VMError.shouldNotReachHere(message);
-        } else {
+        } else if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogOnNameConflict.getValue()) {
             LogUtils.warning(message);
         }
     }

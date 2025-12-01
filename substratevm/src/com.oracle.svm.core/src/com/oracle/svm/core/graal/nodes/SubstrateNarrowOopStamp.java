@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.meta.CompressedNullConstant;
+
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
@@ -32,11 +36,6 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.CompressionNode.CompressionOp;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
-
-import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.CompressedNullConstant;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -59,9 +58,17 @@ public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider memoryAccessProvider, Constant base, long displacement) {
-        JavaConstant constant = ((SubstrateMemoryAccessProvider) memoryAccessProvider).readNarrowObjectConstant(base, displacement, getEncoding());
+        JavaConstant constant = readConstant0((SubstrateMemoryAccessProvider) memoryAccessProvider, base, displacement);
         assert constant == null || ((CompressibleConstant) constant).isCompressed();
         return constant;
+    }
+
+    private JavaConstant readConstant0(SubstrateMemoryAccessProvider memoryAccessProvider, Constant base, long displacement) {
+        try {
+            return memoryAccessProvider.readNarrowObjectConstant(base, displacement, getEncoding());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Override

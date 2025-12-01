@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter.Bindings;
@@ -54,6 +55,8 @@ public class BindingsTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testExplicit() {
+        Assume.assumeFalse(run.testTracer());
+
         BasicInterpreter node = parseNode("explicitBindings", b -> {
             b.beginRoot();
             b.beginReturn();
@@ -78,6 +81,7 @@ public class BindingsTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testImplicit() {
+        Assume.assumeFalse(run.testTracer());
         BasicInterpreter node = parseNode("explicitBindings", b -> {
             b.beginRoot();
             b.beginReturn();

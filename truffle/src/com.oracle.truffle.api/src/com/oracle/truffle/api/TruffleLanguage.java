@@ -1507,7 +1507,7 @@ public abstract class TruffleLanguage<C> {
      * this is the behavior of the object type that is being mapped to.
      * <p>
      * Every language view wrapper must return the current language as their associated
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. An
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguageId(Object) language}. An
      * {@link AssertionError} is thrown when a language view is requested if this contract is
      * violated.
      * <p>
@@ -1545,13 +1545,13 @@ public abstract class TruffleLanguage<C> {
      *     }
      *
      *     &#64;ExportMessage
-     *     boolean hasLanguage() {
+     *     boolean hasLanguageId() {
      *         return true;
      *     }
      *
      *     &#64;ExportMessage
-     *     Class&lt;? extends TruffleLanguage&lt;?&gt;&gt; getLanguage() {
-     *         return MyLanguage.class;
+     *     String getLanguageId() {
+     *         return MyLanguage.ID;
      *     }
      *
      *     &#64;ExportMessage
@@ -2284,9 +2284,10 @@ public abstract class TruffleLanguage<C> {
          * @param hostObject the host object to convert
          * @since 19.0
          */
+        @SuppressWarnings("static-method")
         public Object asGuestValue(Object hostObject) {
             try {
-                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject, polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

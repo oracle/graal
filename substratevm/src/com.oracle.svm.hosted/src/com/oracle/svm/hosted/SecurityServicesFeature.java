@@ -114,6 +114,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ResolvedJavaModuleLayer;
 import com.oracle.svm.util.TypeResult;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -205,20 +206,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
 
-        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+        if (ResolvedJavaModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServerFactory"));
         }
-        if (ModuleLayer.boot().findModule("java.xml.crypto").isPresent()) {
+        if (ResolvedJavaModuleLayer.boot().findModule("java.xml.crypto").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.TransformService"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.XMLSignatureFactory"));
             classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.keyinfo.KeyInfoFactory"));
         }
-        if (ModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
+        if (ResolvedJavaModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
         }
 
-        isMscapiModulePresent = ModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
+        isMscapiModulePresent = ResolvedJavaModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
 
         knownServices = Collections.unmodifiableList(classList);
     }

@@ -24,18 +24,21 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
@@ -49,7 +52,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFieldAccess {
+public class InterpreterResolvedJavaField extends InterpreterAnnotated implements ResolvedJavaField, CremaFieldAccess, ResolvedMember, SubstrateMetadata {
     public static final InterpreterResolvedJavaField[] EMPTY_ARRAY = new InterpreterResolvedJavaField[0];
 
     // Special offset values
@@ -81,6 +84,11 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
      * may still access them e.g. $assertionsDisabled.
      */
     @Platforms(Platform.HOSTED_ONLY.class) private boolean artificiallyReachable;
+
+    // TODO move to crema once GR-71517 is resolved
+    private volatile ResolvedJavaField ristrettoField;
+    private static final AtomicReferenceFieldUpdater<InterpreterResolvedJavaField, ResolvedJavaField> RISTRETTO_FIELD_UPDATER = AtomicReferenceFieldUpdater
+                    .newUpdater(InterpreterResolvedJavaField.class, ResolvedJavaField.class, "ristrettoField");
 
     protected InterpreterResolvedJavaField(
                     Symbol<Name> name, Symbol<Type> typeSymbol, int modifiers,
@@ -153,6 +161,27 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
         assert JavaConstant.NULL_POINTER.equals(constant) || constant instanceof PrimitiveConstant || constant instanceof ReferenceConstant<?>;
         this.offset = InterpreterResolvedJavaField.FIELD_UNMATERIALIZED;
         this.constantValue = constant;
+    }
+
+    public ResolvedJavaField getRistrettoField(Function<InterpreterResolvedJavaField, ResolvedJavaField> ristrettoFieldSupplier) {
+        if (this.ristrettoField != null) {
+            return this.ristrettoField;
+        }
+        /*
+         * We allow concurrent allocation of a ristretto field per interpreter field. Eventually
+         * however we CAS on the pointer in the interpreter representation, if another thread was
+         * faster return its field.
+         */
+        return getOrSetRistrettoField(ristrettoFieldSupplier.apply(this));
+    }
+
+    private ResolvedJavaField getOrSetRistrettoField(ResolvedJavaField newRistrettoField) {
+        if (RISTRETTO_FIELD_UPDATER.compareAndSet(this, null, newRistrettoField)) {
+            return newRistrettoField;
+        }
+        var field = this.ristrettoField;
+        assert field != null : "If CAS for null fails must have written a field already";
+        return field;
     }
 
     public final boolean isUnmaterializedConstant() {
@@ -321,22 +350,7 @@ public class InterpreterResolvedJavaField implements ResolvedJavaField, CremaFie
 
     @Override
     public final boolean isSynthetic() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw VMError.intentionallyUnimplemented();
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        throw VMError.intentionallyUnimplemented();
+        return (modifiers & Constants.ACC_SYNTHETIC) != 0;
     }
 
     // endregion Unimplemented methods

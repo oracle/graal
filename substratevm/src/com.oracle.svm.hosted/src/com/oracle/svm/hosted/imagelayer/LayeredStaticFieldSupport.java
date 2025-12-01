@@ -45,13 +45,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
@@ -109,7 +109,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
 
     /**
      * Keeps track of class filters (e.g.,
-     * {@link SubstrateOptions#ApplicationLayerInitializedClasses}) processing. All
+     * {@link LayeredImageOptions#ApplicationLayerInitializedClasses}) processing. All
      * {@link AnalysisType}s must be processed to ensure all needed app layer deferred fields are
      * registered.
      */
@@ -390,7 +390,7 @@ public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     public FloatingNode getAppLayerStaticFieldsBaseReplacement(boolean primitive, LoweringTool tool, StructuredGraph graph) {
         ImageHeapRelocatableConstant constant = primitive ? appLayerPrimitiveStaticFieldsBase : appLayerObjectStaticFieldsBase;
         assert constant != null;
-        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool.getMetaAccess(), constant);
+        return ImageHeapRelocatableConstantSupport.singleton().emitLoadConstant(graph, tool, constant);
     }
 
     public JavaConstant getAppLayerStaticFieldBaseConstant(boolean primitive) {
@@ -470,7 +470,7 @@ class LayeredStaticFieldSupportBaseLayerFeature implements InternalFeature {
 
         staticFieldSupport.objectArrayType = metaAccess.lookupJavaType(Object[].class);
         staticFieldSupport.byteArrayType = metaAccess.lookupJavaType(byte[].class);
-        staticFieldSupport.appLayerDeferredClassFilters = SubstrateOptions.ApplicationLayerInitializedClasses.getValue().valuesAsSet();
+        staticFieldSupport.appLayerDeferredClassFilters = LayeredImageOptions.ApplicationLayerInitializedClasses.getValue().valuesAsSet();
 
         /*
          * Register callback which will run for all created types.

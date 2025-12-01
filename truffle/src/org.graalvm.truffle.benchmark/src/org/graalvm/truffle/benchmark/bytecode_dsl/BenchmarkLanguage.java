@@ -66,9 +66,9 @@ public class BenchmarkLanguage extends TruffleLanguage<Object> {
         return new Object();
     }
 
-    public static BytecodeRootNodes<BytecodeDSLBenchmarkRootNode> createBytecodeDSLNodes(Class<? extends BytecodeDSLBenchmarkRootNode> interpreterClass,
-                    BenchmarkLanguage language, BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> builder) {
-        return BytecodeDSLBenchmarkRootNodeBuilder.invokeCreate(interpreterClass, language, BytecodeConfig.DEFAULT, builder);
+    public static BytecodeRootNodes<BytecodeDSLBenchmarkRootNode> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeBuilder.BytecodeVariant variant,
+                    BenchmarkLanguage language, BytecodeParser<BytecodeDSLBenchmarkRootNodeBuilder> parser) {
+        return variant.create(language, BytecodeConfig.DEFAULT, parser);
     }
 
     public static BaseBytecodeRootNode createBytecodeNodes(Class<? extends BaseBytecodeRootNode> interpreterClass,

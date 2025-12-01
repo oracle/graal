@@ -17,7 +17,7 @@ In the GraalVM family, this is similar to WebAssembly or the LLVM interpreter: w
 ### Does Java running on Truffle run on the HotSpot JVM too?
 
 Like other languages implemented with the [Truffle framework](../../../truffle/docs/README.md), it can run both as a native executable or on the HotSpot JVM.
-Running on the HotSpot JVM is currently only possible on Linux x64 and macOS x64.
+Running on the HotSpot JVM is currently only possible on Linux x64.
 We plan to extend this capability to other platforms.
 
 ### Does running Espresso require the HotSpot JVM?

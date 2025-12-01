@@ -343,6 +343,8 @@ def wasm_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags
         polybench_run(["--native", "interpreter/*.wasm"])
         polybench_run(["--jvm", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
         polybench_run(["--native", "simd/*.wasm", "--vm-args", "--add-modules=jdk.incubator.vector"])
+        polybench_run(["--jvm", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
+        polybench_run(["--native", "exceptions/*.wasm", "--experimental-options", "--wasm.Exceptions=true"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=metaspace-memory"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=application-memory"])
         polybench_run(["--jvm", "interpreter/*.wasm", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])

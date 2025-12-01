@@ -91,6 +91,7 @@ import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
@@ -107,6 +108,8 @@ import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -116,6 +119,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
 import jdk.internal.module.Resources;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class NativeImageClassLoaderSupport {
 
@@ -148,7 +153,7 @@ public final class NativeImageClassLoaderSupport {
 
     private Path layerFile;
 
-    private final IncludeSelectors layerSelectors = new IncludeSelectors(SubstrateOptions.LayerCreate);
+    private final IncludeSelectors layerSelectors = new IncludeSelectors(LayeredImageOptions.LayerCreate);
     private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
     private final IncludeSelectors dynamicAccessSelectors = new IncludeSelectors(SubstrateOptions.TrackDynamicAccess);
     private boolean includeConfigSealed;
@@ -207,15 +212,20 @@ public final class NativeImageClassLoaderSupport {
         return dynamicAccessSelectors.classpathEntries().isEmpty() && dynamicAccessSelectors.moduleNames().isEmpty() && dynamicAccessSelectors.packages().isEmpty();
     }
 
-    private final Set<Class<?>> classesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<ResolvedJavaType> classesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> classNamesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private LoadClassHandler loadClassHandler;
 
-    private Optional<LibGraalLoader> libGraalLoader;
+    /**
+     * Uninitialized value for {@link #libGraalLoader}.
+     */
+    private static final LibGraalLoader UninitializedLibGraalLoader = Map::of;
+
+    private LibGraalLoader libGraalLoader = UninitializedLibGraalLoader;
     private List<ClassLoader> classLoaders;
 
-    private final Set<Class<?>> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
+    private final Set<ResolvedJavaType> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
     private final Set<String> includedJavaPackages = ConcurrentHashMap.newKeySet();
 
     private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
@@ -223,7 +233,7 @@ public final class NativeImageClassLoaderSupport {
     private final Method implAddEnableNativeAccessToAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccessToAllUnnamed");
 
     @SuppressWarnings("this-escape")
-    protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
+    NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
         classes = EconomicMap.create();
         packages = EconomicMap.create();
@@ -361,8 +371,8 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public LibGraalLoader getLibGraalLoader() {
-        VMError.guarantee(libGraalLoader != null, "Invalid access to libGraalLoader before getting set up");
-        return libGraalLoader.orElse(null);
+        VMError.guarantee(libGraalLoader != UninitializedLibGraalLoader, "Invalid access to libGraalLoader before getting set up");
+        return libGraalLoader;
     }
 
     public List<ClassLoader> getClassLoaders() {
@@ -414,7 +424,7 @@ public final class NativeImageClassLoaderSupport {
             for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
                     var clazz = ((ClassLoader) loader).loadClass(fqn);
-                    imageClassLoader.handleClass(clazz);
+                    imageClassLoader.registerType(GraalAccess.lookupType(clazz));
                 } catch (ClassNotFoundException e) {
                     throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
                 }
@@ -715,20 +725,20 @@ public final class NativeImageClassLoaderSupport {
                 if (!LibGraalLoader.class.isAssignableFrom(loaderClass)) {
                     throw VMError.shouldNotReachHere("Class named by " + nameOption + " does not implement " + LibGraalLoader.class + '.');
                 }
-                libGraalLoader = Optional.of((LibGraalLoader) ReflectionUtil.newInstance(loaderClass));
-                classLoaders = List.of((ClassLoader) libGraalLoader.get(), getClassLoader());
+                libGraalLoader = (LibGraalLoader) ReflectionUtil.newInstance(loaderClass);
+                classLoaders = List.of((ClassLoader) libGraalLoader, getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere("Class named by " + nameOption + " could not be found.", e);
             }
         } else {
-            libGraalLoader = Optional.empty();
+            libGraalLoader = null;
             classLoaders = List.of(getClassLoader());
         }
     }
 
     public void allClassesLoaded() {
         if (loadClassHandler != null) {
-            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.includePackages, SubstrateOptions.LayerCreate);
+            loadClassHandler.validatePackageInclusionRequests(loadClassHandler.includePackages, LayeredImageOptions.LayerCreate);
             loadClassHandler.validatePackageInclusionRequests(loadClassHandler.preservePackages, SubstrateOptions.Preserve);
             loadClassHandler = null;
         }
@@ -920,9 +930,16 @@ public final class NativeImageClassLoaderSupport {
                     System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
-                var requiresInit = new HashSet<>(List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
-                                "org.graalvm.nativeimage", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
-                                "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
+                var requiresInit = new HashSet<>(List.of(
+                                "jdk.internal.vm.ci",
+                                "jdk.graal.compiler",
+                                "com.oracle.graal.graal_enterprise",
+                                "org.graalvm.nativeimage",
+                                "org.graalvm.truffle",
+                                "org.graalvm.truffle.runtime",
+                                "org.graalvm.truffle.compiler",
+                                "com.oracle.truffle.enterprise",
+                                "org.graalvm.jniutils",
                                 "org.graalvm.nativebridge"));
 
                 Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream()
@@ -1209,24 +1226,27 @@ public final class NativeImageClassLoaderSupport {
                 clazz = imageClassLoader.forName(className, module);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
-            } catch (Throwable t) {
+            } catch (LinkageError | ClassNotFoundException t) {
                 if (preserveReflectionMetadata) {
                     classNamesToPreserve.add(className);
                 }
-                ImageClassLoader.handleClassLoadingError(t);
+                LinkageError le = t instanceof LinkageError l ? l : (LinkageError) new NoClassDefFoundError(className).initCause(t);
+                ImageClassLoader.handleClassLoadingError(le, "resolving class %s in %s", className, module);
             }
 
+            MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
             if (clazz != null) {
-                String packageName = clazz.getPackageName();
+                ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
+                String packageName = JVMCIReflectionUtil.getPackageName(type);
                 includedJavaPackages.add(packageName);
                 if (includeUnconditionally || includePackages.shouldInclude(packageName)) {
-                    classesToIncludeUnconditionally.add(clazz);
+                    classesToIncludeUnconditionally.add(type);
                 }
                 if (classRequiresInit) {
-                    imageClassLoader.handleClass(clazz);
+                    imageClassLoader.registerType(type);
                 }
                 if (preserveReflectionMetadata || preservePackages.shouldInclude(packageName)) {
-                    classesToPreserve.add(clazz);
+                    classesToPreserve.add(type);
                 }
             }
             imageClassLoader.watchdog.recordActivity();
@@ -1306,14 +1326,16 @@ public final class NativeImageClassLoaderSupport {
         dynamicAccessSelectors.addModule(ALL_UNNAMED, origin);
     }
 
-    public Stream<Class<?>> getClassesToIncludeUnconditionally() {
+    public Stream<ResolvedJavaType> getClassesToIncludeUnconditionally() {
         return classesToIncludeUnconditionally.stream()
-                        .sorted(Comparator.comparing(Class::getTypeName));
+                        .sorted(Comparator.comparing(ResolvedJavaType::getName));
     }
 
-    public Stream<Class<?>> getClassesToPreserve() {
-        return classesToPreserve.stream()
-                        .sorted(Comparator.comparing(Class::getTypeName));
+    /**
+     * Gets the candidate types to {@linkplain SubstrateOptions#Preserve preserve}.
+     */
+    public Stream<ResolvedJavaType> getClassesToPreserve() {
+        return classesToPreserve.stream();
     }
 
     public class IncludeSelectors {

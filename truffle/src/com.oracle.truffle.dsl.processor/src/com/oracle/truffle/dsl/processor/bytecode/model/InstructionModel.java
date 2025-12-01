@@ -100,6 +100,7 @@ public final class InstructionModel implements PrettyPrintable {
         TAG_YIELD,
         TAG_YIELD_NULL,
         TAG_RESUME,
+        TRACE_INSTRUCTION,
         INVALIDATE;
 
         public boolean isLocalVariableAccess() {
@@ -294,7 +295,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     }
 
-    private short id = -1;
     private int byteLength = OPCODE_WIDTH;
     public final InstructionKind kind;
     public final String name;
@@ -407,23 +407,6 @@ public final class InstructionModel implements PrettyPrintable {
         return epilogExceptional.operation.instruction == this;
     }
 
-    public short getId() {
-        if (id == -1) {
-            throw new IllegalStateException("Id not yet assigned");
-        }
-        return id;
-    }
-
-    void setId(short id) {
-        if (id < 0) {
-            throw new IllegalArgumentException("Invalid id.");
-        }
-        if (this.id != -1) {
-            throw new IllegalStateException("Id already assigned ");
-        }
-        this.id = id;
-    }
-
     public List<InstructionModel> getFlattenedQuickenedInstructions() {
         if (quickenedInstructions.isEmpty()) {
             return quickenedInstructions;
@@ -531,8 +514,14 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
+    public boolean isTraceInstrumentation() {
+        return kind == InstructionKind.TRACE_INSTRUCTION;
+    }
+
     public boolean isInstrumentation() {
-        if (isTagInstrumentation()) {
+        if (isTraceInstrumentation()) {
+            return true;
+        } else if (isTagInstrumentation()) {
             return true;
         } else if (kind == InstructionKind.CUSTOM) {
             return operation.kind == OperationKind.CUSTOM_INSTRUMENTATION;
@@ -694,7 +683,6 @@ public final class InstructionModel implements PrettyPrintable {
 
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
-        b.append(getId());
         b.append(" : short");
         for (InstructionImmediate imm : immediates) {
             b.append(", ");
@@ -743,18 +731,22 @@ public final class InstructionModel implements PrettyPrintable {
         return true;
     }
 
-    public boolean needsBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+    /**
+     * Whether the instruction or any of its quickenings needs a child bci immediate in order to
+     * perform boxing elimination of the given operand.
+     */
+    public boolean needsChildBciForBoxingElimination(BytecodeDSLModel model, int valueIndex) {
         if (!model.usesBoxingElimination()) {
             return false;
         }
         if (signature.isVariadicParameter(valueIndex)) {
             return false;
         }
-        if (model.isBoxingEliminated(signature.getSpecializedType(valueIndex))) {
+        if (model.isBoxingEliminated(signature.getDynamicOperandType(valueIndex))) {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsBoxingElimination(model, valueIndex)) {
+            if (quickenedInstruction.needsChildBciForBoxingElimination(model, valueIndex)) {
                 return true;
             }
         }

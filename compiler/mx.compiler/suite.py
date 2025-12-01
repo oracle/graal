@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.58.9",
+  "mxversion": "7.65.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -36,6 +36,8 @@ suite = {
   "snippetsPattern" : ".*JavadocSnippets.*",
   "javac.lint.overrides": "-path",
 
+  "capture_suite_commit_info": True,
+
   "libraries" : {
 
     # ------------- Libraries -------------
@@ -60,9 +62,10 @@ suite = {
       "digest" : "sha512:40c505dd03ca0bb102f1091b89b90672126922f290bd8370eef9a7afc5d9c1e7b5db08c448a0948ef46bf57d850e166813e2d68bf7b1c88a46256d839b6b0201",
       "packedResource": True,
     },
+
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.22-6cb0d3acbb1.zip"],
-      "digest" : "sha512:8c4795fae203bfa84c40b041fe6d0f46a89bd8b975120d28aea9483eef1c1b63ab685716c1258387c12a255560904284fd0bf9aa947f2efabc4a629148000b5d",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-1.23-4543ff4a3e5.zip"],
+      "digest" : "sha512:2c779c8a01ab4cc7b77e1497ca97641799bb934309ac1306ae8383ab4efdd7af50bbd1bf55438c742e4159b581e69476a2dd8023af0f105433992a35454bdbf0",
       "packedResource": True,
     },
 
@@ -314,7 +317,57 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "21+",
+      "spotbugs": "false",
       "workingSets" : "Graal,HotSpot",
+    },
+
+    "com.oracle.graal.vmaccess": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "jdk.graal.compiler",
+      ],
+      "requires": [
+        "jdk.internal.vm.ci",
+      ],
+      "requiresConcealed": {
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+        "java.base": [
+          "jdk.internal.module",
+        ],
+      },
+      "javaCompliance": "21+",
+      "checkstyle" : "jdk.graal.compiler",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.graal.hostvmaccess": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "com.oracle.graal.vmaccess",
+      ],
+      "requires": [
+        "jdk.internal.vm.ci",
+      ],
+      "requiresConcealed": {
+        "java.base": [
+          "jdk.internal.access",
+          "jdk.internal.loader",
+          "jdk.internal.module",
+        ],
+        "jdk.internal.vm.ci": [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.runtime",
+          "jdk.vm.ci.code",
+        ],
+      },
+      "javaCompliance": "21+",
+      "checkstyle" : "jdk.graal.compiler",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "jdk.graal.compiler.microbenchmarks" : {
@@ -328,6 +381,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.meta.annotation",
           "jdk.vm.ci.code"
         ],
       },
@@ -398,6 +452,7 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "jacoco" : "exclude",
+      "spotbugs": "false",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -628,6 +683,83 @@ suite = {
         "artifactId" : "compiler-management",
         "tag": ["default", "public"],
       },
+    },
+
+    "VMACCESS": {
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.vmaccess",
+        "requires": [
+          "jdk.internal.vm.ci",
+          "jdk.graal.compiler",
+        ],
+        "exports": [
+          "com.oracle.graal.vmaccess",
+        ],
+        "requiresConcealed": {
+          "jdk.internal.vm.ci": [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.code",
+          ],
+          "jdk.graal.compiler": [
+            "jdk.graal.compiler.phases.util",
+          ]
+        },
+        "uses": [
+          "com.oracle.graal.vmaccess.VMAccess",
+        ],
+      },
+      "subDir": "src",
+      "dependencies": [
+        "com.oracle.graal.vmaccess",
+      ],
+      "distDependencies": [
+        "GRAAL",
+      ],
+      "useModulePath": True,
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "HOSTVMACCESS": {
+      "moduleInfo": {
+        "name": "jdk.graal.compiler.hostvmaccess",
+        "requires": [
+          "jdk.graal.compiler",
+          "jdk.graal.compiler.vmaccess",
+          "jdk.internal.vm.ci",
+        ],
+        "exports": [
+          "com.oracle.graal.hostvmaccess",
+        ],
+        "requiresConcealed": {
+          "java.base": [
+            "jdk.internal.access",
+            "jdk.internal.loader",
+            "jdk.internal.module",
+          ],
+          "jdk.internal.vm.ci": [
+            "jdk.vm.ci.meta",
+            "jdk.vm.ci.runtime",
+          ],
+          "jdk.graal.compiler": [
+            "jdk.graal.compiler.api.replacements",
+            "jdk.graal.compiler.api.runtime",
+            "jdk.graal.compiler.core.target",
+            "jdk.graal.compiler.phases.util",
+            "jdk.graal.compiler.runtime",
+          ]
+        },
+      },
+      "subDir": "src",
+      "dependencies": [
+        "com.oracle.graal.hostvmaccess",
+      ],
+      "distDependencies": [
+        "VMACCESS",
+      ],
+      "useModulePath": True,
+      "maven": False,
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "LIBGRAAL_LOADER" : {

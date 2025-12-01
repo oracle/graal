@@ -48,23 +48,13 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
 import com.oracle.graal.pointsto.util.AnalysisError;
-
-import jdk.graal.compiler.debug.DebugContext;
 
 public class StandaloneAnalysisFeatureImpl {
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
 
-        protected final StandaloneAnalysisFeatureManager featureManager;
-        protected final PointsToAnalyzer.ClassLoaderAccess classLoaderAccess;
-        protected final DebugContext debugContext;
-
-        FeatureAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, DebugContext debugContext) {
-            this.featureManager = featureManager;
-            this.classLoaderAccess = classLoaderAccess;
-            this.debugContext = debugContext;
+        FeatureAccessImpl() {
         }
 
         @Deprecated
@@ -94,8 +84,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         protected final BigBang bb;
 
-        AnalysisAccessBase(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
-            super(featureManager, classLoaderAccess, debugContext);
+        AnalysisAccessBase(BigBang bb) {
+            super();
             this.bb = bb;
         }
 
@@ -161,8 +151,8 @@ public class StandaloneAnalysisFeatureImpl {
 
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
-        public BeforeAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
-            super(featureManager, classLoaderAccess, bb, debugContext);
+        public BeforeAnalysisAccessImpl(BigBang bb) {
+            super(bb);
         }
 
         @Override
@@ -263,8 +253,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        public DuringAnalysisAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
-            super(featureManager, classLoaderAccess, bb, debugContext);
+        public DuringAnalysisAccessImpl(BigBang bb) {
+            super(bb);
         }
 
         @Override
@@ -283,8 +273,8 @@ public class StandaloneAnalysisFeatureImpl {
 
         private final Map<Class<? extends Feature>, Object> analysisResults = new HashMap<>();
 
-        public OnAnalysisExitAccessImpl(StandaloneAnalysisFeatureManager featureManager, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, BigBang bb, DebugContext debugContext) {
-            super(featureManager, classLoaderAccess, bb, debugContext);
+        public OnAnalysisExitAccessImpl(BigBang bb) {
+            super(bb);
         }
 
         public void setAnalysisResult(Class<? extends Feature> feature, Object result) {

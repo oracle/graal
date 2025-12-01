@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.64.0",
+  "mxversion": "7.67.0",
   "name" : "truffle",
   "version" : "25.1.0",
   "release" : False,
@@ -66,6 +66,7 @@ suite = {
       },
     ]
   },
+  "capture_suite_commit_info": False,
   "libraries" : {
 
     # ------------- Libraries -------------
@@ -289,8 +290,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:POLYGLOT",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
+        "com.oracle.truffle.api.bytecode",
         "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
@@ -483,14 +483,14 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_TCK_TESTS",
         "mx:JUNIT",
-        "mx:JMH_1_21",
       ],
       "requires" : [
+        "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "17+",
-      "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "javac.lint.overrides" : "none",
       "testProject" : True,
@@ -686,6 +686,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "API,Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -745,6 +746,8 @@ suite = {
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
         "TRUFFLE_RUNTIME",
+        "TRUFFLE_SL",
+        "TRUFFLE_TEST",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1193,7 +1196,6 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
-        "mx:JMH_1_21",
       ],
       "requires" : [
         "java.logging",
@@ -1201,7 +1203,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "testProject" : True,
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -2214,7 +2216,6 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
-        "mx:JMH_1_21"
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -2302,7 +2303,6 @@ suite = {
        "exclude" : [
          "mx:HAMCREST",
          "mx:JUNIT",
-         "mx:JMH_1_21",
          "VISUALVM-LIB-JFLUID-HEAP",
          "JIMFS",
          "GUAVA"
@@ -2334,6 +2334,8 @@ suite = {
          "TRUFFLE_API",
          "TRUFFLE_RUNTIME",
          "TRUFFLE_JCODINGS",
+         "TRUFFLE_SL",
+         "TRUFFLE_TEST",
         ],
        "testDistribution": True,
        "maven" : False,

@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.config;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -45,6 +48,7 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
 
@@ -52,6 +56,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
@@ -129,9 +134,15 @@ public final class ObjectLayout {
     }
 
     /** Tests if the given offset or address is aligned according to {@link #getAlignment()}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isAligned(final long value) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isAligned(long value) {
         return (value % getAlignment() == 0L);
+    }
+
+    /** Tests if the given offset or address is aligned according to {@link #getAlignment()}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isAligned(UnsignedWord value) {
+        return UnsignedUtils.isAMultiple(value, Word.unsigned(getAlignment()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -273,9 +284,17 @@ public final class ObjectLayout {
         return alignUp(size);
     }
 
+    public int getMinRuntimeHeapInstanceSize() {
+        return getMinInstanceSize(false);
+    }
+
     public int getMinImageHeapInstanceSize() {
+        return getMinInstanceSize(true);
+    }
+
+    private int getMinInstanceSize(boolean withOptionalIdHashField) {
         int unalignedSize = firstFieldOffset; // assumes no always-present "synthetic fields"
-        if (isIdentityHashFieldAtTypeSpecificOffset() || isIdentityHashFieldOptional()) {
+        if (isIdentityHashFieldAtTypeSpecificOffset() || (withOptionalIdHashField && isIdentityHashFieldOptional())) {
             int idHashOffset = NumUtil.roundUp(unalignedSize, Integer.BYTES);
             unalignedSize = idHashOffset + Integer.BYTES;
         }

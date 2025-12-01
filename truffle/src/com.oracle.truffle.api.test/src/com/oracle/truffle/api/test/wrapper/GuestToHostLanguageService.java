@@ -72,8 +72,7 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
-
+    public Object toGuestValue(Object node, Object hostValue, boolean asValue) {
         return hostValue;
     }
 

@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -48,18 +46,17 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.util.AnnotationUtil;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public abstract class AnalysisElement implements AnnotatedElement {
+public abstract class AnalysisElement extends AbstractAnnotated {
 
     protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisElement.class, Object.class, "trackAcrossLayers");
@@ -73,41 +70,13 @@ public abstract class AnalysisElement implements AnnotatedElement {
         this.enableTrackAcrossLayers = enableTrackAcrossLayers;
     }
 
-    public abstract AnnotatedElement getWrapped();
+    public abstract Annotated getWrapped();
 
     protected abstract AnalysisUniverse getUniverse();
 
-    public AnnotationsInfo getDeclaredAnnotationInfo() {
-        return ((Annotated) getWrapped()).getDeclaredAnnotationInfo();
-    }
-
-    public AnnotationsInfo getTypeAnnotationInfo() {
-        return ((Annotated) getWrapped()).getTypeAnnotationInfo();
-    }
-
     @Override
-    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return AnnotationUtil.isAnnotationPresent((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationUtil.getAnnotation((Annotated) getWrapped(), annotationClass);
-    }
-
-    @Override
-    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        throw GraalError.shouldNotReachHere("The getDeclaredAnnotation method is not supported");
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
-        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
+    public AnnotationsInfo getRawDeclaredAnnotationInfo() {
+        return getWrapped().getDeclaredAnnotationInfo(null);
     }
 
     /**
@@ -405,7 +374,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
             } else if (current instanceof ResolvedJavaField field) {
                 /*
-                 * In {@code AnalysisUniverse#lookupAllowUnresolved(JavaField)} we may register a
+                 * In AnalysisUniverse.lookupAllowUnresolved(JavaField) we may register a
                  * ResolvedJavaField as reason.
                  *
                  * We convert it to AnalysisField to print more information about why the field is

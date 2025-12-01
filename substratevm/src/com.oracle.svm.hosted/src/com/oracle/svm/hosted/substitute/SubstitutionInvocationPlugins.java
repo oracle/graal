@@ -33,17 +33,17 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class SubstitutionInvocationPlugins extends InvocationPlugins {
@@ -87,8 +87,8 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
     @Override
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
         if (Options.WarnMissingIntrinsic.getValue(options)) {
-            for (Class<?> annotationType : AnnotationAccess.getAnnotationTypes(targetMethod)) {
-                if (ClassUtil.getUnqualifiedName(annotationType).contains("IntrinsicCandidate")) {
+            for (ResolvedJavaType annotationType : AnnotationUtil.getDeclaredAnnotationValues(targetMethod).keySet()) {
+                if (annotationType.toJavaName(false).contains("IntrinsicCandidate")) {
                     String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(),
                                     targetMethod.getSignature().toMethodDescriptor());
                     synchronized (this) {
@@ -96,7 +96,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
                             missingIntrinsicMetrics = EconomicMap.create();
                             try {
                                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                                    if (missingIntrinsicMetrics.size() > 0) {
+                                    if (!missingIntrinsicMetrics.isEmpty()) {
                                         System.out.format("[Warning] Missing intrinsics found: %d%n", missingIntrinsicMetrics.size());
                                         List<Pair<String, Integer>> data = new ArrayList<>();
                                         final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();

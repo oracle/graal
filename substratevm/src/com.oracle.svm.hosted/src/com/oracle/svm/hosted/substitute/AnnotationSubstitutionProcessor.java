@@ -89,6 +89,8 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -97,6 +99,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * The main substitution processor for Native Image. The annotations supported by this processor
@@ -270,7 +273,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     public boolean isDeleted(Class<?> clazz) {
-        return deleteAnnotations.containsKey(metaAccess.lookupJavaType(clazz));
+        return isDeleted(metaAccess.lookupJavaType(clazz));
+    }
+
+    public boolean isDeleted(ResolvedJavaType type) {
+        return deleteAnnotations.containsKey(OriginalClassProvider.getOriginalType(type));
     }
 
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
@@ -724,29 +731,29 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private void handleSubstitutionClass(Class<?> annotatedClass, Class<?> originalClass) {
+    /**
+     *
+     * @param substituteClass a {@link Substitute} annotated class whose {@link TargetElement}
+     *            annotation denotes {@code originalClass}
+     */
+    private void handleSubstitutionClass(Class<?> substituteClass, Class<?> originalClass) {
         // Not sure what happens if the target class is in a hierarchy - so prohibit that for now.
-        guarantee(annotatedClass.isInterface() == originalClass.isInterface(), "if original is interface, target must also be interface: %s", annotatedClass);
+        guarantee(substituteClass.isInterface() == originalClass.isInterface(), "if original is interface, target must also be interface: %s", substituteClass);
         guarantee(originalClass.getSuperclass() == Object.class || originalClass.isInterface(), "target class must inherit directly from Object: %s", originalClass);
 
-        boolean keepOriginalElements = lookupAnnotation(annotatedClass, KeepOriginal.class) != null;
+        boolean keepOriginalElements = lookupAnnotation(substituteClass, KeepOriginal.class) != null;
         ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
-        ResolvedJavaType annotated = metaAccess.lookupJavaType(annotatedClass);
+        ResolvedJavaType substitute = metaAccess.lookupJavaType(substituteClass);
 
-        SubstitutionType substitution = new SubstitutionType(original, annotated, true);
-        register(typeSubstitutions, annotated, original, substitution);
+        SubstitutionType substitution = new SubstitutionType(original, substitute, true);
+        register(typeSubstitutions, substitute, original, substitution);
 
-        for (int i = 1; i <= SUBSTITUTE_ARRAY_DIMENSIONS; i++) {
-            original = original.getArrayClass();
-            annotated = annotated.getArrayClass();
-            SubstitutionType arrayTypeSubstitution = new SubstitutionType(original, annotated, true);
-            register(typeSubstitutions, annotated, original, arrayTypeSubstitution);
-        }
+        registerArrayTypes(original, substitute);
 
-        for (Method m : annotatedClass.getDeclaredMethods()) {
+        for (Method m : substituteClass.getDeclaredMethods()) {
             handleAnnotatedMethodInSubstitutionClass(m, originalClass);
         }
-        for (Constructor<?> c : annotatedClass.getDeclaredConstructors()) {
+        for (Constructor<?> c : substituteClass.getDeclaredConstructors()) {
             handleAnnotatedMethodInSubstitutionClass(c, originalClass);
         }
         for (Method m : originalClass.getDeclaredMethods()) {
@@ -756,9 +763,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             handleOriginalMethodInSubstitutionClass(c, keepOriginalElements);
         }
 
-        for (Field f : annotatedClass.getDeclaredFields()) {
+        for (Field f : substituteClass.getDeclaredFields()) {
             ResolvedJavaField field = metaAccess.lookupJavaField(f);
-            ResolvedJavaField alias = fieldValueRecomputation(annotatedClass, field, field, f);
+            ResolvedJavaField alias = fieldValueRecomputation(substituteClass, field, field, f);
             if (!alias.equals(field)) {
                 ResolvedJavaField originalField = findOriginalField(f, originalClass, true);
                 guarantee(originalField == null || !(alias.isFinal() && !originalField.isFinal()), "a non-final field cannot be redeclared as final through substitution: %s", field);
@@ -767,8 +774,26 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 handleAnnotatedFieldInSubstitutionClass(f, originalClass);
             }
         }
-        for (Field f : originalClass.getDeclaredFields()) {
-            handleOriginalFieldInSubstitutionClass(f, keepOriginalElements, substitution);
+
+        for (ResolvedJavaField field : JVMCIReflectionUtil.getAllFields(original)) {
+            handleOriginalFieldInSubstitutionClass(field, keepOriginalElements, substitution);
+        }
+    }
+
+    /**
+     * Registers the array types for element type {@code original} up to
+     * {@link #SUBSTITUTE_ARRAY_DIMENSIONS} dimensions.
+     *
+     * @param substitute the substitute class for {@code original}
+     */
+    private void registerArrayTypes(ResolvedJavaType original, ResolvedJavaType substitute) {
+        ResolvedJavaType originalArray = original;
+        ResolvedJavaType substituteArray = substitute;
+        for (int i = 1; i <= SUBSTITUTE_ARRAY_DIMENSIONS; i++) {
+            originalArray = originalArray.getArrayClass();
+            substituteArray = substituteArray.getArrayClass();
+            SubstitutionType arrayTypeSubstitution = new SubstitutionType(originalArray, substituteArray, true);
+            register(typeSubstitutions, substituteArray, originalArray, arrayTypeSubstitution);
         }
     }
 
@@ -856,8 +881,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private void handleOriginalFieldInSubstitutionClass(Field f, boolean keepOriginalElements, SubstitutionType substitution) {
-        ResolvedJavaField field = metaAccess.lookupJavaField(f);
+    private void handleOriginalFieldInSubstitutionClass(ResolvedJavaField field, boolean keepOriginalElements, SubstitutionType substitution) {
         if (!fieldSubstitutions.containsKey(field)) {
             if (keepOriginalElements || field.isSynthetic()) {
                 register(fieldSubstitutions, null, field, field);
@@ -960,12 +984,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    public static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
+    public static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, Object context) {
         if (targetElementAnnotation == null) {
             return true;
         }
 
-        return SVMHost.evaluateOnlyWith(targetElementAnnotation.onlyWith(), annotatedElement.toString(), originalClass);
+        return SVMHost.evaluateOnlyWith(targetElementAnnotation.onlyWith(), context.toString(), originalClass);
     }
 
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
@@ -1232,11 +1256,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return AnnotationAccess.getAnnotation(element, annotationClass);
     }
 
-    protected static String deleteErrorMessage(AnnotatedElement element, Delete deleteAnnotation, boolean hosted) {
+    protected static String deleteErrorMessage(Annotated element, Delete deleteAnnotation, boolean hosted) {
         return deleteErrorMessage(element, deleteAnnotation.value(), hosted);
     }
 
-    public static String deleteErrorMessage(AnnotatedElement element, String message, boolean hosted) {
+    public static String deleteErrorMessage(Annotated element, String message, boolean hosted) {
         StringBuilder result = new StringBuilder();
         result.append("Unsupported ");
         if (element instanceof ResolvedJavaField) {

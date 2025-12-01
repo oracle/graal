@@ -38,15 +38,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  darwin_amd64: self.common + graal_common.darwin_amd64 + {
-    environment+: {
-      // for compatibility with macOS Big Sur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
-    },
-    capabilities+: ['ram32gb'],
-  },
-
   darwin_aarch64: self.common + graal_common.darwin_aarch64 + {
+    // Needs at least Xcode 14 (~= Ventura) to avoid incompabilities around selector stubs, see GR-71205
+    capabilities+: ['!darwin_bigsur', '!darwin_monterey'],
     environment+: {
       // for compatibility with macOS Big Sur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
@@ -132,19 +126,18 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
   linux_amd64_21:    self.espresso_jdk_21 + graal_common.labsjdkLatest + self.espresso_jdk_21_llvm + self.linux_amd64,
-  darwin_amd64_21:   self.espresso_jdk_21 + graal_common.labsjdkLatest + self.espresso_jdk_21_llvm + self.darwin_amd64,
   linux_aarch64_21:  self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.linux_aarch64,
   darwin_aarch64_21: self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
   windows_21:        self.espresso_jdk_21 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
   linux_amd64_25:    self.espresso_jdk_25 + graal_common.labsjdkLatest + self.espresso_jdk_25_llvm + self.linux_amd64,
-  darwin_amd64_25:   self.espresso_jdk_25 + graal_common.labsjdkLatest + self.espresso_jdk_25_llvm + self.darwin_amd64,
   linux_aarch64_25:  self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.linux_aarch64,
   darwin_aarch64_25: self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.darwin_aarch64,
   windows_25:        self.espresso_jdk_25 + graal_common.labsjdkLatest                             + self.windows + devkits["windows-jdk-latest"],
 
   linux_amd64_latest:                       graal_common.labsjdkLatest + self.espresso_jdkLatest_llvm + self.linux_amd64,
   linux_aarch64_latest:                     graal_common.labsjdkLatest                                + self.linux_aarch64,
+  darwin_aarch64_latest:                    graal_common.labsjdkLatest                                + self.darwin_aarch64,
 
   linux_amd64_graalvm21: self.espresso_jdk_21 + graal_common.graalvmee21 + self.espresso_jdk_21_llvm  + self.linux_amd64,
 
@@ -158,38 +151,30 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk21_tier3_darwin_aarch64    : self.tier3         + self.darwin_aarch64_21,
   jdk21_tier4_linux_amd64       : self.tier4         + self.linux_amd64_21,
   jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
-  jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
   jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
   jdk21_daily_linux_aarch64     : self.daily         + self.linux_aarch64_21,
-  jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
   jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
   jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
   jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
   graalvm21_daily_bench_linux   : self.dailyBench    + self.linux_amd64_graalvm21 + self.x52,
-  jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
   jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
   jdk21_weekly_linux_aarch64    : self.weekly        + self.linux_aarch64_21,
-  jdk21_weekly_darwin_amd64     : self.weekly        + self.darwin_amd64_21,
   jdk21_weekly_darwin_aarch64   : self.weekly        + self.darwin_aarch64_21,
   jdk21_weekly_windows_amd64    : self.weekly        + self.windows_21,
   jdk21_monthly_linux_amd64     : self.monthly       + self.linux_amd64_21,
   jdk21_monthly_linux_aarch64   : self.monthly       + self.linux_aarch64_21,
-  jdk21_monthly_darwin_amd64    : self.monthly       + self.darwin_amd64_21,
   jdk21_monthly_darwin_aarch64  : self.monthly       + self.darwin_aarch64_21,
   jdk21_monthly_windows_amd64   : self.monthly       + self.windows_21,
   jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
   graalvm21_weekly_bench_linux  : self.weeklyBench    + self.linux_amd64_graalvm21 + self.x52,
-  jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
   jdk21_monthly_bench_linux     : self.monthlyBench  + self.linux_amd64_21 + self.x52,
   graalvm21_monthly_bench_linux : self.monthlyBench    + self.linux_amd64_graalvm21 + self.x52,
   jdk21_on_demand_linux         : self.onDemand      + self.linux_amd64_21,
-  jdk21_on_demand_darwin        : self.onDemand      + self.darwin_amd64_21,
   jdk21_on_demand_windows       : self.onDemand      + self.windows_21,
   jdk21_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_21 + self.x52,
-  jdk21_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_21,
   jdk21_on_demand_bench_windows : self.onDemandBench + self.windows_21,
 
   jdk25_tier1_linux_amd64       : self.tier1         + self.linux_amd64_25,
@@ -201,7 +186,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk25_tier4_linux_aarch64     : self.tier4         + self.linux_aarch64_25,
   jdk25_daily_linux_amd64       : self.daily         + self.linux_amd64_25,
   jdk25_daily_linux_aarch64     : self.daily         + self.linux_aarch64_25,
-  jdk25_daily_darwin_amd64      : self.daily         + self.darwin_amd64_25,
   jdk25_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_25,
   jdk25_daily_windows_amd64     : self.daily         + self.windows_25,
   jdk25_weekly_linux_amd64      : self.weekly        + self.linux_amd64_25,
@@ -215,13 +199,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk25_monthly_darwin_aarch64  : self.monthly       + self.darwin_aarch64_25,
   jdk25_monthly_windows_amd64   : self.monthly       + self.windows_25,
 
-  jdkLatest_tier1_linux_amd64   : self.tier1         + self.linux_amd64_latest,
-  jdkLatest_tier2_linux_amd64   : self.tier2         + self.linux_amd64_latest,
-  jdkLatest_tier3_linux_amd64   : self.tier3         + self.linux_amd64_latest,
-  jdkLatest_daily_linux_amd64   : self.daily         + self.linux_amd64_latest,
-  jdkLatest_daily_linux_aarch64 : self.daily         + self.linux_aarch64_latest,
-  jdkLatest_weekly_linux_amd64  : self.weekly        + self.linux_amd64_latest,
-  jdkLatest_weekly_linux_aarch64: self.weekly        + self.linux_aarch64_latest,
+  jdkLatest_tier1_linux_amd64    : self.tier1         + self.linux_amd64_latest,
+  jdkLatest_tier2_linux_amd64    : self.tier2         + self.linux_amd64_latest,
+  jdkLatest_tier3_linux_amd64    : self.tier3         + self.linux_amd64_latest,
+  jdkLatest_daily_linux_amd64    : self.daily         + self.linux_amd64_latest,
+  jdkLatest_daily_linux_aarch64  : self.daily         + self.linux_aarch64_latest,
+  jdkLatest_daily_darwin_aarch64 : self.daily         + self.darwin_aarch64_latest,
+  jdkLatest_weekly_linux_amd64   : self.weekly        + self.linux_amd64_latest,
+  jdkLatest_weekly_linux_aarch64 : self.weekly        + self.linux_aarch64_latest,
 
   // shared snippets
   eclipse: graal_common.deps.eclipse,

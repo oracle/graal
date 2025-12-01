@@ -361,13 +361,20 @@ public final class BytecodeStream {
         return "unknown variable-length bytecode: " + opcode;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void patchAppendixCPI(byte[] code, int curBCI, int appendixCPI) {
+    /**
+     * Reads the 2-byte extra CPI for the current invokedynamic instruction, reading each byte with
+     * volatile semantics. Note that this does not read the 2 bytes atomically.
+     */
+    public static char readIndyExtraCPIVolatile(byte[] code, int curBCI) {
+        return (char) ((ByteUtils.volatileBeU1(code, curBCI + 3) << 8) | ByteUtils.volatileBeU1(code, curBCI + 4));
+    }
+
+    public static void patchIndyExtraCPI(byte[] code, int curBCI, int extraCPI) {
         int opcode = opcode(code, curBCI);
         switch (opcode) {
             case INVOKEDYNAMIC:
-                code[curBCI + 3] = (byte) ((appendixCPI >> 8) & 0xFF);
-                code[curBCI + 4] = (byte) (appendixCPI & 0xFF);
+                code[curBCI + 3] = (byte) ((extraCPI >> 8) & 0xFF);
+                code[curBCI + 4] = (byte) (extraCPI & 0xFF);
                 break;
             default:
                 throw VMError.shouldNotReachHereAtRuntime();

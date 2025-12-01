@@ -141,9 +141,9 @@ GraalVM 25 introduces the `-H:Preserve` option. This lets you instruct the `nati
 You can use `-H:Preserve` in the following ways:
 
 * `-H:Preserve=all`: preserves all elements from the entire JDK and classpath. This creates larger images but ensures all code is included, which can help resolve missing metadata issues.
-* `-H:Preserve=module=<module>`: preserves all elements from a given module
+* `-H:Preserve=module=<module>`: preserves all elements from a given module.
 * `-H:Preserve=module=ALL-UNNAMED`: preserves all elements from the classpath (provided with `-cp`).
-* `-H:Preserve=package=<package>`: preserves all elements from a given package
+* `-H:Preserve=package=<package>`: preserves all elements from a given package. You can use `*` to include all subpackages, for example: `-H:Preserve=package=com.my.pkg.*,package=com.another.pkg.*`. Note that only the `*` wildcard is supported; other regex patterns are not allowed.
 * `-H:Preserve=path=<cp-entry>`: preserves all elements from a given class-path entry
 * You can combine any of the previous uses by separating them with a comma (`,`). For example: `-H:Preserve=path=<cp-entry>,module=<module>,module=<module2>,package=<package>`
 

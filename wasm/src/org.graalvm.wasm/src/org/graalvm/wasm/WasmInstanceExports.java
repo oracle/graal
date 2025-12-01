@@ -80,7 +80,7 @@ public final class WasmInstanceExports implements TruffleObject {
         }
         final Integer tableIndex = symbolTable.exportedTables().get(member);
         if (tableIndex != null) {
-            return instance.store().tables().table(instance.tableAddress(tableIndex));
+            return instance.table(tableIndex);
         }
         final Integer memoryIndex = symbolTable.exportedMemories().get(member);
         if (memoryIndex != null) {

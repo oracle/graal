@@ -807,7 +807,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
             if (callerCallTarget.frameDescriptorEquals(parentFrameDescriptor)) {
                 callerCallNode.forceInlining();
-                callerCallTarget.callAndLoopCount += this.callAndLoopCount;
+                int oldLoopCallCount = callerCallTarget.callAndLoopCount;
+                int newLoopCallCount = oldLoopCallCount + this.callAndLoopCount;
+                callerCallTarget.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
                 return;
             }
             currentSingleCallNode = callerCallTarget.singleCallNode;
@@ -882,11 +884,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             assert !validate || OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
 
             OptimizedRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
-            if (engine.callTargetStatistics) {
-                this.initializedTimestamp = System.nanoTime();
-            } else {
-                this.initializedTimestamp = 0L;
-            }
+            this.initializedTimestamp = System.nanoTime();
             initialized = true;
         }
     }
@@ -1364,6 +1362,12 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return initializedTimestamp;
     }
 
+    final void setInitializedTimestamp(long timestamp) {
+        if (initialized) {
+            initializedTimestamp = timestamp;
+        }
+    }
+
     public final Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
         OptimizedTruffleRuntimeListener.addASTSizeProperty(this, properties);
@@ -1728,6 +1732,14 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         specializeException(value);
+        /*
+         * If the target throws an exception, we can't leave the return profile uninitialized,
+         * because it is needed for direct calls on SVM. If the return profile stays null, it causes
+         * a deopt of the caller for direct C2C and C2I calls to the target with the uninitialized
+         * return profile. If the callee keeps throwing an exception, the deopt can be repeated
+         * unlimited number of times thus causing a deopt cycle for the caller.
+         */
+        getInitializedReturnProfile();
         return value;
     }
 

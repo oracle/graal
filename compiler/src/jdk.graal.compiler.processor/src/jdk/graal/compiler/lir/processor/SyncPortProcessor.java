@@ -195,6 +195,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                             String oldUrl = String.format(urlFormat, user, repo, commit, path, lineStart, lineEnd);
                             assert !oldUrl.contains("+");
                             assert !newUrl.contains("+");
+                            // Parfait_ALLOW xss-injection
                             dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", oldUrl, newUrl, sha1);
                         }
                     }
@@ -277,6 +278,7 @@ public class SyncPortProcessor extends AbstractProcessor {
             // will be different from hashing the whole file.
             in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).map(String::getBytes).forEach(md::update);
         }
+        // Parfait_ALLOW missing-crypto-step
         return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
@@ -308,6 +310,7 @@ public class SyncPortProcessor extends AbstractProcessor {
             }
 
             try (PrintWriter out = new PrintWriter(dirName + "/" + fileName + ".tmp")) {
+                // Parfait_ALLOW xss-injection
                 out.print(content);
                 out.print('\n');
             }
@@ -348,6 +351,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                     // Set https.protocols explicitly to avoid handshake failure
                     System.setProperty("https.protocols", "TLSv1.2");
                     TypeElement tSyncPort = getTypeElement(SYNC_PORT_CLASS_NAME);
+                    // Parfait_ALLOW weak-hash
                     MessageDigest md = MessageDigest.getInstance("SHA-1");
 
                     Proxy proxy = Proxy.NO_PROXY;

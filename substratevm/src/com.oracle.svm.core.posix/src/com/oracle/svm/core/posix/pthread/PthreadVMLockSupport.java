@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.pthread;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -47,18 +47,27 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class PthreadVMLockSupport extends VMLockSupport {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     protected VMMutex replaceVMMutex(VMMutex source) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            throw VMError.shouldNotReachHere("A VM mutex is added in an extension layer, which is unsupported", source);
+        }
         return new PthreadVMMutex(source.getName());
     }
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     protected VMCondition replaceVMCondition(VMCondition source) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            throw VMError.shouldNotReachHere("A VM condition is added in an extension layer, which is unsupported", source);
+        }
         return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
     }
 

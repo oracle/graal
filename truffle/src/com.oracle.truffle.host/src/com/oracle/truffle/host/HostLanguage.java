@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -62,7 +63,10 @@ import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 /*
  * Java host language implementation.
  */
+@Bind.DefaultExpression("get($node)")
 final class HostLanguage extends TruffleLanguage<HostContext> {
+
+    static final String ID = "host";
 
     @CompilationFinal HostClassCache hostClassCache; // effectively final
     final AbstractHostAccess access;
@@ -155,7 +159,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         if (value instanceof TruffleObject) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
             try {
-                assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
+                assert !lib.hasLanguageId(value) || !HostLanguage.ID.equals(lib.getLanguageId(value));
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }

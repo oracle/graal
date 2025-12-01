@@ -204,14 +204,14 @@ abstract class Obsolescence {
     protected static boolean isLocationEquivalent(Location thisLoc, Location otherLoc) {
         if (thisLoc instanceof IntLocation) {
             return (otherLoc instanceof IntLocation);
-        } else if (thisLoc instanceof DoubleLocation) {
-            return (otherLoc instanceof DoubleLocation && ((DoubleLocation) thisLoc).isImplicitCastIntToDouble() && ((DoubleLocation) otherLoc).isImplicitCastIntToDouble());
-        } else if (thisLoc instanceof LongLocation) {
-            return (otherLoc instanceof LongLocation && ((LongLocation) thisLoc).isImplicitCastIntToLong() && ((LongLocation) otherLoc).isImplicitCastIntToLong());
+        } else if (thisLoc instanceof DoubleLocation thisDoubleLoc) {
+            return (otherLoc instanceof DoubleLocation otherDoubleLoc &&
+                            thisDoubleLoc.isImplicitCastIntToDouble() == otherDoubleLoc.isImplicitCastIntToDouble());
+        } else if (thisLoc instanceof LongLocation thisLongLoc) {
+            return (otherLoc instanceof LongLocation otherLongLoc &&
+                            thisLongLoc.isImplicitCastIntToLong() == otherLongLoc.isImplicitCastIntToLong());
         } else if (thisLoc instanceof ObjectLocation) {
-            return (otherLoc instanceof ObjectLocation &&
-                            ((ObjectLocation) thisLoc).getType() == ((ObjectLocation) otherLoc).getType() &&
-                            ((ObjectLocation) thisLoc).isNonNull() == ((ObjectLocation) otherLoc).isNonNull());
+            return otherLoc instanceof ObjectLocation;
         } else if (thisLoc.isValue()) {
             return thisLoc.equals(otherLoc);
         } else {
@@ -226,16 +226,9 @@ abstract class Obsolescence {
             return (source instanceof DoubleLocation || (layout.isAllowedIntToDouble() && source instanceof IntLocation));
         } else if (destination instanceof LongLocation) {
             return (source instanceof LongLocation || (layout.isAllowedIntToLong() && source instanceof IntLocation));
-        } else if (destination instanceof ObjectLocation dstObjLoc) {
-            if (source instanceof ObjectLocation) {
-                return (dstObjLoc.getType() == Object.class || dstObjLoc.getType().isAssignableFrom(((ObjectLocation) source).getType())) &&
-                                (!dstObjLoc.isNonNull() || ((ObjectLocation) source).isNonNull());
-            } else if (source instanceof ExtLocations.TypedLocation) {
-                // Untyped object location is assignable from any primitive type location
-                return dstObjLoc.getType() == Object.class;
-            } else {
-                return false;
-            }
+        } else if (destination instanceof ObjectLocation) {
+            // Object location is assignable from any object or primitive type location
+            return true;
         } else if (destination.isValue()) {
             return destination.equals(source);
         } else {

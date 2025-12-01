@@ -24,18 +24,14 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import org.graalvm.nativeimage.AnnotationAccess;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.util.AnnotatedWrapper;
 import com.oracle.svm.util.AnnotationUtil;
@@ -55,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.annotation.Annotated;
+import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
 public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper, AnnotatedWrapper {
 
@@ -70,6 +67,16 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     public ResolvedJavaMethod getOriginal() {
         return original;
+    }
+
+    @Override
+    public AnnotationsInfo getParameterAnnotationInfo() {
+        return getOriginal().getParameterAnnotationInfo();
+    }
+
+    @Override
+    public AnnotationsInfo getAnnotationDefaultInfo() {
+        return getOriginal().getAnnotationDefaultInfo();
     }
 
     public ResolvedJavaMethod getAnnotated() {
@@ -203,11 +210,6 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }
@@ -234,7 +236,11 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public String toString() {
-        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + Arrays.toString(AnnotationAccess.getAnnotationTypes(annotated)) + ">";
+        var extra = injectedAnnotations.stream() //
+                        .map(AnnotationValue::getAnnotationType) //
+                        .map(ResolvedJavaType::toClassName) //
+                        .collect(Collectors.joining(", "));
+        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + extra + ">";
     }
 
     @Override

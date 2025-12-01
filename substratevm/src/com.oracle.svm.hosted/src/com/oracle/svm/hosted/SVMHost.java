@@ -50,7 +50,6 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -151,6 +150,7 @@ import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -185,6 +185,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class SVMHost extends HostVM {
@@ -247,7 +248,12 @@ public class SVMHost extends HostVM {
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
-    private Set<ResolvedJavaField> sharedLayerExcludedFields;
+    private final Set<ResolvedJavaField> sharedLayerExcludedFields;
+    /**
+     * Some modules contain native methods that should never be in the image, as they are either
+     * hosted only, or currently unsupported in layered images.
+     */
+    protected final Set<Module> sharedLayerForbiddenModules;
     private final ResolvedJavaType optionKeyType;
     private final ResolvedJavaType featureType;
 
@@ -260,12 +266,6 @@ public class SVMHost extends HostVM {
 
     private final boolean trackDynamicAccess;
     private DynamicAccessDetectionSupport dynamicAccessDetectionSupport = null;
-
-    /**
-     * Some modules contain native methods that should never be in the image, as they are either
-     * hosted only, or currently unsupported in layered images.
-     */
-    private final Set<Module> forbiddenModules = new HashSet<>();
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -298,7 +298,11 @@ public class SVMHost extends HostVM {
         }
         layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
         if (buildingSharedLayer) {
-            initializeSharedLayerExcludedFields();
+            sharedLayerExcludedFields = initializeSharedLayerExcludedFields();
+            sharedLayerForbiddenModules = initializeSharedLayerForbiddenModules();
+        } else {
+            sharedLayerExcludedFields = null;
+            sharedLayerForbiddenModules = null;
         }
         layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
@@ -846,8 +850,7 @@ public class SVMHost extends HostVM {
 
         if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             for (Node n : graph.getNodes()) {
-                if (n instanceof StaticDeoptimizingNode) {
-                    StaticDeoptimizingNode node = (StaticDeoptimizingNode) n;
+                if (n instanceof StaticDeoptimizingNode node) {
 
                     if (node.getReason() == DeoptimizationReason.JavaSubroutineMismatch) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, "The bytecodes of the method " + method.format("%H.%n(%p)") +
@@ -957,47 +960,12 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean platformSupported(AnnotatedElement element) {
-        if (element instanceof ResolvedJavaType javaType) {
-            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-            ResolvedJavaType enclosingType;
-            try {
-                enclosingType = javaType.getEnclosingType();
-            } catch (LinkageError e) {
-                enclosingType = null;
-            }
-            if (enclosingType != null && !platformSupported(enclosingType)) {
-                return false;
-            }
-        }
-        if (element instanceof Class<?> clazz) {
-            Package p = clazz.getPackage();
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-            Class<?> enclosingClass;
-            try {
-                enclosingClass = clazz.getEnclosingClass();
-            } catch (LinkageError e) {
-                enclosingClass = null;
-            }
-            if (enclosingClass != null && !platformSupported(enclosingClass)) {
-                return false;
-            }
-        }
+        return platformSupported(GraalAccess.toAnnotated(element));
+    }
 
-        Platforms platformsAnnotation = AnnotationAccess.getAnnotation(element, Platforms.class);
-        if (platform == null || platformsAnnotation == null) {
-            return true;
-        }
-        for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
-            if (platformGroup.isInstance(platform)) {
-                return true;
-            }
-        }
-        return false;
+    @Override
+    public boolean platformSupported(Annotated element) {
+        return loader.isPlatformSupported(element, platform) == ImageClassLoader.PlatformSupportResult.YES;
     }
 
     /**
@@ -1015,41 +983,60 @@ public class SVMHost extends HostVM {
         return originalMetaAccess.lookupJavaField(ReflectionUtil.lookupField(declaringClass, fieldName));
     }
 
-    private void initializeSharedLayerExcludedFields() {
-        sharedLayerExcludedFields = new HashSet<>();
+    private Set<ResolvedJavaField> initializeSharedLayerExcludedFields() {
+        Set<ResolvedJavaField> excludedFields = new HashSet<>();
+
         /*
          * These fields need to be folded as they are used in snippets, and they must be accessed
          * without producing reads with side effects.
          */
-
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "layoutEncoding"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numClassTypes"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "numIterableInterfaceTypes"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashParam"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "openTypeWorldInterfaceHashTable"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "interfaceID"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeIDDepth"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "typeID"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "monitorOffset"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "hubType"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "companion"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "arrayHub"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHubCompanion.class, "additionalFlags"));
 
         /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
+        excludedFields.add(lookupOriginalDeclaredField(DynamicHub.class, "identityHashOffset"));
 
         /*
          * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
          * ThreadLocalAllocation.regularTLAB which is accessed with
          * FastThreadLocalBytes.getSizeSupplier
          */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
+        excludedFields.add(lookupOriginalDeclaredField(VMThreadLocalInfo.class, "sizeSupplier"));
         /* This field cannot be written to (see documentation) */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
+        excludedFields.add(lookupOriginalDeclaredField(Counter.Group.class, "enabled"));
         /* This field can contain a reference to a Thread, which is not allowed in the heap */
-        sharedLayerExcludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
+        excludedFields.add(lookupOriginalDeclaredField(NativeLibraries.class, "nativeLibraryLockMap"));
+
+        return excludedFields;
+    }
+
+    protected Set<Module> initializeSharedLayerForbiddenModules() {
+        Set<Module> forbiddenModules = new HashSet<>();
+        forbiddenModules.add(JVMCI.class.getModule());
+        addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
+        addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
+        addForbiddenModule(forbiddenModules, "com.oracle.truffle.polyglot.JDKSupport");
+        addForbiddenModule(forbiddenModules, "com.oracle.truffle.runtime.hotspot.libgraal.LibGraal");
+        return forbiddenModules;
+    }
+
+    protected static void addForbiddenModule(Set<Module> sharedLayerForbiddenModules, String className) {
+        Class<?> clazz = ReflectionUtil.lookupClass(true, className);
+        if (clazz != null) {
+            sharedLayerForbiddenModules.add(clazz.getModule());
+        }
     }
 
     /** If it's not one of the known builder types it must be an original VM type. */
@@ -1445,12 +1432,24 @@ public class SVMHost extends HostVM {
      * as the field will get folded before/during analysis only in some builds when the
      * initialization happened fast enough, resulting in unstable number of reachable methods and
      * unstable decisions of the simulation of class initializers.
+     * <p>
+     * This method can be applied only if the following conditions are met:
+     * <ol>
+     * <li>The declaring class of the field should be explicitly registered for <i>build time
+     * initialization</i>.</li>
+     * <li>The field should be annotated with {@link Stable}.</li>
+     * </ol>
      *
      * @see #stableFieldsToFoldBeforeAnalysis
      * @see SimulateClassInitializerSupport
      */
     public void allowStableFieldFoldingBeforeAnalysis(AnalysisField field) {
-        stableFieldsToFoldBeforeAnalysis.add(field);
+        String fieldFormat = field.format("%H.%n");
+        VMError.guarantee(classInitializationSupport.shouldInitializeAtBuildTime(field.getDeclaringClass()),
+                        "Only fields of classes explicitly configured for build time initialization are allowed: %s.", fieldFormat);
+        VMError.guarantee(AnnotationValueSupport.getAnnotationValue(field.getWrapped(), Stable.class) != null, "This method should only be called for fields annotated with @Stable: %s.",
+                        fieldFormat);
+        VMError.guarantee(stableFieldsToFoldBeforeAnalysis.add(field), "Field %s is already registered.", fieldFormat);
     }
 
     @Override
@@ -1549,26 +1548,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Set<Module> getForbiddenModules() {
-        if (forbiddenModules.isEmpty()) {
-            forbiddenModules.add(JVMCI.class.getModule());
-            Class<?> llvm = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
-            if (llvm != null) {
-                forbiddenModules.add(llvm.getModule());
-            }
-            Class<?> javacpp = ReflectionUtil.lookupClass(true, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
-            if (javacpp != null) {
-                forbiddenModules.add(javacpp.getModule());
-            }
-            Class<?> truffle = ReflectionUtil.lookupClass(true, "com.oracle.truffle.polyglot.JDKSupport");
-            if (truffle != null) {
-                forbiddenModules.add(truffle.getModule());
-            }
-            Class<?> libGraal = ReflectionUtil.lookupClass(true, "com.oracle.truffle.runtime.hotspot.libgraal.LibGraal");
-            if (libGraal != null) {
-                forbiddenModules.add(libGraal.getModule());
-            }
-        }
-        return forbiddenModules;
+    public Set<Module> getSharedLayerForbiddenModules() {
+        return sharedLayerForbiddenModules;
     }
 }

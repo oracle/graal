@@ -41,14 +41,17 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 
+import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -110,18 +113,19 @@ public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableCon
     }
 
     @Override
-    FloatingNode emitLoadConstant(StructuredGraph graph, MetaAccessProvider metaAccess, ImageHeapRelocatableConstant constant) {
+    FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant) {
         /*
          * We need to load the appropriate spot from the array storing all image heap relocatable
          * constants referenced from the text section.
          */
         long arrayOffset = ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, getAssignedIndex(constant));
         var array = getImageHeapRelocatableConstantsArray();
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
         var address = new OffsetAddressNode(ConstantNode.forConstant(array, metaAccess, graph), ConstantNode.forLong(arrayOffset));
 
         var compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
         var compressedStamp = SubstrateNarrowOopStamp.compressed((AbstractObjectStamp) StampFactory.forConstant(constant, metaAccess), compressEncoding);
-        var read = new FloatingReadNode(address, NamedLocationIdentity.FINAL_LOCATION, graph.start(), compressedStamp);
+        ValueNode read = FloatingReadNode.createRead(graph, address, NamedLocationIdentity.FINAL_LOCATION, compressedStamp, null, BarrierType.NONE, tool.lastFixedNode());
         return SubstrateCompressionNode.uncompress(graph, graph.addOrUniqueWithInputs(read), compressEncoding);
     }
 }

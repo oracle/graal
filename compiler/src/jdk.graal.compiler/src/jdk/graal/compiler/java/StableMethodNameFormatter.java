@@ -29,16 +29,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Formats method names so that different compilations of a method can be correlated. If the method
- * is a lambda, creates a stable name for the lambda by hashing all the invokes in the lambda
- * similarly to {@link LambdaUtils}.
+ * Formats method names so that different compilations of a method can be correlated. If the
+ * method's holder is a hidden class, the formatter creates a stable name for the holder.
  */
 public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, String> {
 
@@ -53,19 +49,16 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     public static final String MULTI_METHOD_KEY_SEPARATOR = "%%";
 
     /**
-     * A pattern that matches the unstable part of the name of a lambda method that is replaced.
+     * The prefix of the unqualified name part of a hidden class name returned by
+     * {@link Class#getName()}, as defined by <a href="https://openjdk.org/jeps/371">JEP 371</a>.
      */
-    private static final Pattern LAMBDA_METHOD_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/0x[0-9a-f]+");
-
-    private static final Pattern MH_METHOD_PATTERN = Pattern.compile("LambdaForm\\$[A-Z]*MH.0x[0-9a-f]+");
+    private static final String UNQUALIFIED_NAME_PREFIX = "/0x";
 
     /**
-     * The part of a lambda method classname that is kept in the stable method name, so that it is
-     * still clear that it is a lambda method.
+     * A pattern matching the unqualified name part of a hidden class returned by
+     * {@link Class#getName()}, as defined by <a href="https://openjdk.org/jeps/371">JEP 371</a>.
      */
-    private static final String LAMBDA_PREFIX = "$$Lambda$";
-
-    private static final String MH_PREFIX = "LambdaForm$";
+    private static final Pattern UNQUALIFIED_NAME_PATTERN = Pattern.compile("/0x[0-9a-f]+");
 
     /**
      * The format of the methods passed to {@link ResolvedJavaMethod#format(String)}.
@@ -73,31 +66,17 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     public static final String METHOD_FORMAT = "%H.%n(%p)";
 
     /**
-     * The format of the invoked methods passed to {@link ResolvedJavaMethod#format(String)}, which
-     * is {@link Digest#digest hashed} later.
-     */
-    private static final String INVOKED_METHOD_FORMAT = "%H.%n(%P)%R";
-
-    private final boolean considerMH;
-
-    /**
      * Cached stable method names.
      */
-    private final EconomicMap<ResolvedJavaMethod, String> methodName = EconomicMap.create(Equivalence.IDENTITY);
-
-    public StableMethodNameFormatter(boolean considerMH) {
-        this.considerMH = considerMH;
-    }
+    private final EconomicMap<ResolvedJavaMethod, String> methodName = EconomicMap.create();
 
     /**
-     * Returns a stable method name. If the argument is not a lambda,
-     * {@link ResolvedJavaMethod#format(String) the formatted method name} can be taken directly. If
-     * the argument is a lambda, then the numbers just after the substring {@code $$Lambda$} are
-     * replaced with a hash of invokes similarly to {@link LambdaUtils}. Results are cached
-     * (compared by identity of the method).
+     * Returns a stable method name, caching the result. If the method's holder is a hidden class
+     * (i.e., lambda proxy, method handle), the unqualified name is replaced with a stable
+     * {@link LambdaUtils#getSignature}.
      *
      * @param method the method to be formatted
-     * @return a stable method name.
+     * @return a stable method name
      */
     @Override
     public String apply(ResolvedJavaMethod method) {
@@ -111,52 +90,21 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
     }
 
     /**
-     * Find a stable method for a method that could be lambda (without using the cache).
+     * Returns a stable method name.
      *
-     * @see #apply(ResolvedJavaMethod)
      * @param method the method to be formatted
      * @return a stable method name
      */
-    private String findMethodName(ResolvedJavaMethod method) {
-        if (LambdaUtils.isLambdaType(method.getDeclaringClass())) {
-            return findStableLambdaMethodName(method);
+    public static String findMethodName(ResolvedJavaMethod method) {
+        String name = method.format(METHOD_FORMAT);
+        Matcher matcher = UNQUALIFIED_NAME_PATTERN.matcher(name);
+        if (matcher.find()) {
+            String signature = LambdaUtils.getSignature(method.getDeclaringClass());
+            if (signature == null) {
+                return name;
+            }
+            return name.substring(0, matcher.start()) + UNQUALIFIED_NAME_PREFIX + signature + name.substring(matcher.end());
         }
-        if (considerMH && isMethodHandle(method.getDeclaringClass())) {
-            return findStableMHName(method);
-        }
-        return method.format(METHOD_FORMAT);
-    }
-
-    public static boolean isMethodHandle(ResolvedJavaType declaringClass) {
-        String typeName = declaringClass.getName();
-        if (typeName.contains(MH_PREFIX)) {
-            return MH_METHOD_PATTERN.matcher(typeName).find();
-        }
-        return false;
-    }
-
-    @SuppressWarnings("try")
-    private static String findStableMHName(ResolvedJavaMethod method) {
-        String lambdaName = method.format(METHOD_FORMAT);
-        Matcher matcher = MH_METHOD_PATTERN.matcher(lambdaName);
-        StringBuilder sb = new StringBuilder();
-        LambdaUtils.findInvokedMethods(method).forEach((targetMethod) -> sb.append(targetMethod.format(INVOKED_METHOD_FORMAT)));
-        return matcher.replaceFirst(Matcher.quoteReplacement(MH_PREFIX + Digest.digest(sb.toString())));
-    }
-
-    /**
-     * Find a stable method name for a lambda method by replacing the numbers just after the
-     * substring {@code $$Lambda$} with a hash of invokes similarly to {@link LambdaUtils}.
-     *
-     * @param method a lambda method to be formatted
-     * @return a stable method name
-     */
-    @SuppressWarnings("try")
-    private static String findStableLambdaMethodName(ResolvedJavaMethod method) {
-        String lambdaName = method.format(METHOD_FORMAT);
-        Matcher matcher = LAMBDA_METHOD_PATTERN.matcher(lambdaName);
-        StringBuilder sb = new StringBuilder();
-        LambdaUtils.findInvokedMethods(method).forEach((targetMethod) -> sb.append(targetMethod.format(INVOKED_METHOD_FORMAT)));
-        return matcher.replaceFirst(Matcher.quoteReplacement(LAMBDA_PREFIX + Digest.digest(sb.toString())));
+        return name;
     }
 }

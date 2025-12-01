@@ -161,7 +161,10 @@ public final class ModuleSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String packageName) {
-        access.giveAccess(accessingModule, declaringModule, packageName);
+    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String... packageNames) {
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
+        for (String packageName : packages) {
+            access.giveAccess(accessingModule, declaringModule, packageName);
+        }
     }
 }

@@ -117,13 +117,14 @@ public class RecordedOperationPersistence {
      * @param compilerConfiguration the name of the compiler configuration
      * @param isLibgraal {@code true} if the recorded compilation executed on libgraal
      * @param platform the platform of the system
+     * @param properties the system property map
      * @param linkages the recorded foreign call linkages
-     * @param finalGraph the final canonical graph or {@code null} if not available
+     * @param product the product of the recorded compilation task
      * @param operations the recorded operations and their results
      */
     public record RecordedCompilationUnit(HotSpotCompilationRequest request, String compilerConfiguration,
-                    boolean isLibgraal, Platform platform, RecordedForeignCallLinkages linkages, String finalGraph,
-                    List<OperationRecorder.RecordedOperation> operations) {
+                    boolean isLibgraal, Platform platform, Map<String, String> properties, RecordedForeignCallLinkages linkages,
+                    CompilationTaskProduct product, List<OperationRecorder.RecordedOperation> operations) {
     }
 
     /**
@@ -207,6 +208,7 @@ public class RecordedOperationPersistence {
                             // Needed to deserialize array component types
                             HotSpotResolvedJavaMethod.class, HotSpotResolvedJavaField.class, HotSpotResolvedObjectType.class,
                             Object.class, ExceptionHandler.class, TriState.class, AllocatableValue.class, Value.class,
+                            ResolvedJavaMethod.class,
                             // Needed to deserialize Field objects
                             String.class,
             };
@@ -1437,6 +1439,7 @@ public class RecordedOperationPersistence {
             objectBuilder.append("archName", unit.platform.archName());
             objectBuilder.append("compilerConfiguration", unit.compilerConfiguration);
             objectBuilder.append("isLibgraal", unit.isLibgraal);
+            objectBuilder.append("properties", unit.properties);
             objectBuilder.append("entryBCI", unit.request.getEntryBCI());
             objectBuilder.append("compileId", unit.request.getId());
             try (JsonBuilder.ArrayBuilder arrayBuilder = objectBuilder.append("operations").array()) {
@@ -1445,7 +1448,11 @@ public class RecordedOperationPersistence {
                 }
             }
             serializer.serialize(unit.linkages, objectBuilder.append("linkages"), RecordedForeignCallLinkagesSerializer.TAG);
-            objectBuilder.append("finalGraph", unit.finalGraph);
+            CompilationTaskProduct product = unit.product;
+            if (product instanceof CompilationTaskProduct.CompilationTaskArtifacts artifacts) {
+                product = artifacts.asRecordedArtifacts();
+            }
+            serializer.serialize(product, objectBuilder.append("product"));
         }
 
         @SuppressWarnings("unchecked")
@@ -1457,6 +1464,14 @@ public class RecordedOperationPersistence {
             Platform platform = new Platform(osName, archName);
             String compilerConfiguration = (String) json.get("compilerConfiguration");
             boolean isLibgraal = (boolean) json.get("isLibgraal");
+            EconomicMap<String, Object> propertyMap = ((EconomicMap<String, Object>) json.get("properties"));
+            Map<String, String> properties = new EconomicHashMap<>();
+            if (propertyMap != null) {
+                var propertyCursor = ((EconomicMap<String, Object>) json.get("properties")).getEntries();
+                while (propertyCursor.advance()) {
+                    properties.put(propertyCursor.getKey(), (String) propertyCursor.getValue());
+                }
+            }
             int entryBCI = (int) json.get("entryBCI");
             int compileId = (int) json.get("compileId");
             List<Object> list = (List<Object>) json.get("operations");
@@ -1465,8 +1480,19 @@ public class RecordedOperationPersistence {
                 operations.add((OperationRecorder.RecordedOperation) deserializer.deserialize(object, proxyFactory, OperationSerializer.TAG));
             }
             RecordedForeignCallLinkages linkages = (RecordedForeignCallLinkages) deserializer.deserialize(json.get("linkages"), proxyFactory, RecordedForeignCallLinkagesSerializer.TAG);
-            String finalGraph = (String) json.get("finalGraph");
-            return new RecordedCompilationUnit(new HotSpotCompilationRequest(method, entryBCI, 0, compileId), compilerConfiguration, isLibgraal, platform, linkages, finalGraph, operations);
+            CompilationTaskProduct product;
+            if (json.containsKey("finalGraph")) {
+                // Compatibility with replay files from a previous compiler version.
+                String finalGraph = (String) json.get("finalGraph");
+                if (finalGraph == null) {
+                    product = CompilationTaskProduct.CompilationTaskException.UNKNOWN;
+                } else {
+                    product = new CompilationTaskProduct.RecordedCompilationTaskArtifacts(finalGraph);
+                }
+            } else {
+                product = (CompilationTaskProduct) deserializer.deserialize(json.get("product"), proxyFactory);
+            }
+            return new RecordedCompilationUnit(new HotSpotCompilationRequest(method, entryBCI, 0, compileId), compilerConfiguration, isLibgraal, platform, properties, linkages, product, operations);
         }
     }
 
@@ -1837,6 +1863,56 @@ public class RecordedOperationPersistence {
         }
     }
 
+    private static final class CompilationTaskExceptionSerializer implements ObjectSerializer {
+        @Override
+        public Class<?> clazz() {
+            return CompilationTaskProduct.CompilationTaskException.class;
+        }
+
+        @Override
+        public String tag() {
+            return "taskException";
+        }
+
+        @Override
+        public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
+            var product = (CompilationTaskProduct.CompilationTaskException) instance;
+            objectBuilder.append("className", product.className());
+            objectBuilder.append("stackTrace", product.stackTrace());
+        }
+
+        @Override
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
+            String className = (String) json.get("className");
+            String stackTrace = (String) json.get("stackTrace");
+            return new CompilationTaskProduct.CompilationTaskException(className, stackTrace);
+        }
+    }
+
+    private static final class RecordedCompilationTaskArtifactsSerializer implements ObjectSerializer {
+        @Override
+        public Class<?> clazz() {
+            return CompilationTaskProduct.RecordedCompilationTaskArtifacts.class;
+        }
+
+        @Override
+        public String tag() {
+            return "taskArtifacts";
+        }
+
+        @Override
+        public void serialize(Object instance, JsonBuilder.ObjectBuilder objectBuilder, RecursiveSerializer serializer) throws IOException {
+            var product = (CompilationTaskProduct.RecordedCompilationTaskArtifacts) instance;
+            objectBuilder.append("finalGraph", product.finalGraph());
+        }
+
+        @Override
+        public Object deserialize(EconomicMap<String, Object> json, RecursiveDeserializer deserializer, ProxyFactory proxyFactory) {
+            String finalGraph = (String) json.get("finalGraph");
+            return new CompilationTaskProduct.RecordedCompilationTaskArtifacts(finalGraph);
+        }
+    }
+
     private final EconomicMap<String, ObjectSerializer> tagSerializers;
 
     private final EconomicMap<Class<?>, ObjectSerializer> exactClassSerializers;
@@ -1906,6 +1982,8 @@ public class RecordedOperationPersistence {
         addSerializer(new RegisterConfigSerializer(hostPlatform, hostTarget));
         addSerializer(new ExceptionHandlerSerializer());
         addSerializer(new ThrowableSerializer());
+        addSerializer(new CompilationTaskExceptionSerializer());
+        addSerializer(new RecordedCompilationTaskArtifactsSerializer());
     }
 
     private void addSerializer(ObjectSerializer serializer) {

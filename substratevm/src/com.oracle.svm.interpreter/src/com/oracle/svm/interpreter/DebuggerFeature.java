@@ -199,18 +199,18 @@ public class DebuggerFeature implements InternalFeature {
         AnalysisMetaAccess metaAccess = accessImpl.getMetaAccess();
 
         AnalysisType aInterpreterStubSection = metaAccess.lookupJavaType(InterpreterStubSection.class);
-        enterInterpreterMethod = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, aInterpreterStubSection, "enterMethodInterpreterStub", int.class, Pointer.class);
+        enterInterpreterMethod = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, aInterpreterStubSection, "enterMethodInterpreterStub", int.class, Pointer.class);
         accessImpl.registerAsRoot(enterInterpreterMethod, true, "stub for interpreter");
 
         // Holds references that must be kept alive in the image heap.
         AnalysisType aDebuggerSupport = metaAccess.lookupJavaType(DebuggerSupport.class);
-        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getDeclaredField(aDebuggerSupport, "referencesInImage"),
+        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(aDebuggerSupport, "referencesInImage"),
                         "Holds references that must be kept alive in the image heap.");
-        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getDeclaredField(aDebuggerSupport, "methodPointersInImage"),
+        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(aDebuggerSupport, "methodPointersInImage"),
                         "Holds references that must be kept alive in the image heap.");
 
         AnalysisType aSystem = metaAccess.lookupJavaType(System.class);
-        accessImpl.registerAsRoot((AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(metaAccess, aSystem, "arraycopy", Object.class, int.class, Object.class, int.class, int.class),
+        accessImpl.registerAsRoot((AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, aSystem, "arraycopy", Object.class, int.class, Object.class, int.class, int.class),
                         true, "Allow interpreting methods that call System.arraycopy");
 
         registerStringConcatenation(accessImpl);
@@ -221,7 +221,7 @@ public class DebuggerFeature implements InternalFeature {
         // consider DualPivotQuicksort.java:268, int.class is not needed if the sort helper
         // is inlined, therefore it's not needed. Still needed for interpreter execution.
         AnalysisType aInteger = metaAccess.lookupJavaType(Integer.class);
-        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getDeclaredField(aInteger, "TYPE"), "Read by the interpreter");
+        accessImpl.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(aInteger, "TYPE"), "Read by the interpreter");
 
         methodsProcessedDuringAnalysis = new HashSet<>();
 
@@ -496,7 +496,7 @@ public class DebuggerFeature implements InternalFeature {
 
         iUniverse.purgeUnreachable(hMetaAccess);
 
-        AnalysisField vtableHolderField = (AnalysisField) JVMCIReflectionUtil.getDeclaredField(aMetaAccess.lookupJavaType(InterpreterResolvedObjectType.class), "vtableHolder");
+        AnalysisField vtableHolderField = (AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(aMetaAccess.lookupJavaType(InterpreterResolvedObjectType.class), "vtableHolder");
         ScanReason reason = new OtherReason("Manual rescan triggered before compilation from " + DebuggerFeature.class);
         for (HostedType hostedType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hostedType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField, reason));
@@ -505,7 +505,7 @@ public class DebuggerFeature implements InternalFeature {
         // Allow methods that call System.arraycopy to be interpreted.
 
         HostedType systemClass = hMetaAccess.lookupJavaType(System.class);
-        AnalysisMethod arraycopy = (AnalysisMethod) JVMCIReflectionUtil.getDeclaredMethod(aMetaAccess,
+        AnalysisMethod arraycopy = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(aMetaAccess,
                         systemClass.getWrapped(), "arraycopy", Object.class, int.class, Object.class, int.class, int.class);
         SubstrateCompilationDirectives.singleton().registerForcedCompilation(arraycopy);
     }

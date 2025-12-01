@@ -149,6 +149,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData;
     }
 
+    /** Only relevant for object data, as snapshotting doesn't happen eagerly there. */
     public void ensureReaderInstalled() {
         if (constantData.hostedValuesReader != null) {
             constantData.hostedValuesReader.ensureDone();

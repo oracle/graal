@@ -181,8 +181,8 @@ public abstract class StrengthenGraphs {
             }
         }
         ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
-        imageBuildStats.insert("instancefield_neverNull").addAndGet(neverNull);
-        imageBuildStats.insert("instancefield_canBeNull").addAndGet(canBeNull);
+        imageBuildStats.createCounter("instancefield_neverNull").addAndGet(neverNull);
+        imageBuildStats.createCounter("instancefield_canBeNull").addAndGet(canBeNull);
     }
 
     @SuppressWarnings("try")
@@ -392,7 +392,7 @@ final class StrengthenGraphsCounters {
 
         ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
         for (Counter counter : Counter.values()) {
-            values[counter.ordinal()] = imageBuildStats.insert(location + "_" + counter.name());
+            values[counter.ordinal()] = imageBuildStats.createCounter(counter.name(), location);
         }
     }
 

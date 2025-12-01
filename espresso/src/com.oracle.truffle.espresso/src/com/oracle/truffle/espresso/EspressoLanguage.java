@@ -71,6 +71,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.ffi.NoNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFIStaticLibNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -148,6 +149,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
     @CompilationFinal private boolean internalJvmciEnabled;
+    @CompilationFinal private boolean externalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
     @CompilationFinal private boolean enableNetworking;
     @CompilationFinal private boolean continuum;
@@ -252,6 +254,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
         internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
+        externalJvmciEnabled = env.getOptions().get(EspressoOptions.ExposeJVMCIHelper);
         continuum = env.getOptions().get(EspressoOptions.Continuum);
         maxStackTraceDepth = env.getOptions().get(EspressoOptions.MaxJavaStackTraceDepth);
 
@@ -266,8 +269,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             case compact -> new CompactGuestFieldOffsetStrategy();
             case graal -> new GraalGuestFieldOffsetStrategy();
         };
-        this.useEspressoLibs = env.getOptions().get(EspressoOptions.UseEspressoLibs);
         this.nativeBackendId = setNativeBackendId(env);
+        this.useEspressoLibs = setUseEspressoLibs(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -345,6 +348,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
                 if (OS.getCurrent() == OS.Linux) {
                     nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
+                } else if (OS.getCurrent() == OS.Darwin) {
+                    nativeBackend = NFIStaticLibNativeAccess.Provider.ID;
                 } else {
                     nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
@@ -353,6 +358,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
             }
         }
         return nativeBackend;
+    }
+
+    private boolean setUseEspressoLibs(final TruffleLanguage.Env env) {
+        // For no-native we turn on espressoLibs by default
+        boolean flagSet = env.getOptions().hasBeenSet(EspressoOptions.UseEspressoLibs);
+        boolean userFlag = env.getOptions().get(EspressoOptions.UseEspressoLibs);
+        if (nativeBackendId.equals(NoNativeAccess.Provider.ID)) {
+            if (flagSet && !userFlag) {
+                throw EspressoError.fatal("You should not set UseEspressoLibs to false with no-native backend!");
+            }
+            return true;
+        } else {
+            return userFlag;
+        }
     }
 
     @Override
@@ -384,6 +403,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.ExposeJVMCIHelper) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Continuum) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
@@ -623,8 +643,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return internalJvmciEnabled;
     }
 
+    public boolean isExternalJVMCIEnabled() {
+        return externalJvmciEnabled;
+    }
+
     public boolean isJVMCIEnabled() {
-        return internalJvmciEnabled;
+        return internalJvmciEnabled || externalJvmciEnabled;
     }
 
     public boolean useTRegex() {
