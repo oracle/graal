@@ -504,6 +504,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             }
             HostedType hType = hUniverse.lookup(aType);
 
+            sType.clearNameCache();
+
             if (hType.getSingleImplementor() != null) {
                 sType.setSingleImplementor(hType.getSingleImplementor().getHub());
             }
@@ -572,12 +574,18 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             access.registerAsImmutable(fieldLocationIdentity);
         }
         for (SubstrateType type : types.values()) {
-            access.registerAsImmutable(type);
             access.registerAsImmutable(type.getRawAllInstanceFields());
         }
         for (SubstrateSignature signature : signatures.values()) {
             access.registerAsImmutable(signature);
-            access.registerAsImmutable(signature.getRawParameterTypes());
+
+            /* SubstrateTypes are not registered as immutable since they cache their name. */
+            Object parameterType = signature.getRawParameterTypes();
+            if (parameterType instanceof SubstrateType[]) {
+                access.registerAsImmutable(parameterType);
+            } else {
+                assert parameterType == null || (parameterType instanceof SubstrateType) : parameterType;
+            }
         }
     }
 }

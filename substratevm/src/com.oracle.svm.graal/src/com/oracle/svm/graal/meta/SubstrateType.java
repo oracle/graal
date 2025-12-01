@@ -32,12 +32,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.svm.util.RuntimeAnnotated;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -45,6 +45,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
+import com.oracle.svm.util.RuntimeAnnotated;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -67,18 +68,27 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
      * If it is not known if the type has an instance field (because the type metadata was created
      * at image runtime), it is null.
      */
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
     SubstrateField[] rawAllInstanceFields;
 
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
     protected DynamicHub uniqueConcreteImplementation;
 
-    @UnknownObjectField(availability = AfterAnalysis.class, canBeNull = true)//
-    protected SubstrateType[] permittedSubclasses;
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private SubstrateType[] permittedSubclasses;
+
+    /**
+     * Cache used to save the results of {@link #getName()}. Note, to reduce the image size, this
+     * cache is cleared before the object is installed in the image heap via
+     * {@link #clearNameCache()}.
+     */
+    @UnknownObjectField(availability = AfterCompilation.class, canBeNull = true)//
+    private String nameCache;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
         this.kind = kind;
         this.hub = hub;
+        nameCache = MetaUtil.toInternalName(hub.getName());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -128,9 +138,18 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
         return hub;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void clearNameCache() {
+        nameCache = null;
+    }
+
     @Override
     public String getName() {
-        return MetaUtil.toInternalName(hub.getName());
+        assert !(SubstrateUtil.HOSTED && nameCache == null) : "nameCache used after being cleared";
+        if (nameCache == null) {
+            nameCache = MetaUtil.toInternalName(hub.getName());
+        }
+        return nameCache;
     }
 
     @Override
@@ -329,6 +348,7 @@ public class SubstrateType implements SharedType, RuntimeAnnotated {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public List<? extends SubstrateType> getPermittedSubclasses() {
         Class<?>[] hubPermittedSubclasses = hub.getPermittedSubclasses();
         if (hubPermittedSubclasses == null) {

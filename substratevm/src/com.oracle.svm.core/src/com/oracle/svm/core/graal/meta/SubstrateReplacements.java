@@ -49,6 +49,7 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
@@ -171,7 +172,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
      * as immutable.
      */
     private static boolean isImmutable(Object o) {
-        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription) && !(o instanceof ImageCodeInfo);
+        boolean mutableType = o instanceof SubstrateForeignCallLinkage ||
+                        o instanceof SubstrateTargetDescription ||
+                        o instanceof SharedType ||
+                        o instanceof ImageCodeInfo;
+        return !mutableType;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
