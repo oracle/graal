@@ -33,6 +33,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This suite is intended to run on every graph prior to partial evaluation. It is not optional, as
@@ -44,10 +45,10 @@ public final class PrePartialEvaluationSuite extends PhaseSuite<Providers> {
 
     @SuppressWarnings("this-escape")
     public PrePartialEvaluationSuite(OptionValues optionValues, KnownTruffleTypes truffleTypes, Providers providers, CanonicalizerPhase canonicalizer,
-                    Function<ResolvedJavaMethod, StructuredGraph> graphLookup) {
+                    Function<ResolvedJavaMethod, StructuredGraph> graphLookup, Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
         // only if Truffle is installed we can apply these phases.
-        appendPhase(new TruffleEarlyInliningPhase(optionValues, canonicalizer, truffleTypes, providers, graphLookup));
-        appendPhase(new TruffleEarlyEscapeAnalysisPhase(canonicalizer, optionValues, truffleTypes));
+        appendPhase(new TruffleEarlyInliningPhase(optionValues, canonicalizer, truffleTypes, providers, graphLookup, unwrapType));
+        appendPhase(new TruffleEarlyEscapeAnalysisPhase(canonicalizer, optionValues, truffleTypes, unwrapType));
 
     }
 
