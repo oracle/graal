@@ -423,7 +423,7 @@ public class RuntimeCompiledMethodSupport {
         }
     }
 
-    public static abstract class RuntimeCompilationGraphDecoder extends GraphDecoder {
+    public abstract static class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
         protected final ImageHeapScanner heapScanner;
 
