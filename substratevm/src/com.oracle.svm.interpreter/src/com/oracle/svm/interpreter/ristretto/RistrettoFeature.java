@@ -63,9 +63,6 @@ import jdk.graal.compiler.phases.util.Providers;
 @AutomaticallyRegisteredFeature
 public final class RistrettoFeature implements InternalFeature {
 
-    public RistrettoFeature() {
-    }
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.useRistretto();

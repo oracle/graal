@@ -55,6 +55,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
@@ -204,13 +205,11 @@ public class RuntimeCompiledMethodSupport {
     }
 
     protected RuntimeCompilationGraphEncoder createGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
-        return new RuntimeCompilationGraphEncoder(architecture, heapScanner) {
-        };
+        return new RuntimeCompilationGraphEncoder(architecture, heapScanner);
     }
 
     protected RuntimeCompilationGraphDecoder createDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
-        return new RuntimeCompilationGraphDecoder(architecture, graph, heapScanner) {
-        };
+        return new RuntimeCompilationGraphDecoder(architecture, graph, heapScanner);
     }
 
     @SuppressWarnings("unused")
@@ -345,7 +344,7 @@ public class RuntimeCompiledMethodSupport {
         }
 
         HeapBreakdownProvider.singleton().setGraphEncodingByteLength(compilationState.graphEncoder.getEncoding().length);
-        com.oracle.svm.graal.RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
+        RuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
                         compilationState.graphEncoder.getNodeClasses());
 
         compilationState.objectReplacer.setMethodsImplementations(hUniverse);
@@ -401,7 +400,7 @@ public class RuntimeCompiledMethodSupport {
      * SubstrateReplacements#snippetObjects which are then scanned.
      */
     @SuppressWarnings("javadoc")
-    public abstract static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+    public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
         public static final NodeClassMap RUNTIME_NODE_CLASS_MAP = new NodeClassMap();
 
         protected final ImageHeapScanner heapScanner;
@@ -425,7 +424,7 @@ public class RuntimeCompiledMethodSupport {
         }
     }
 
-    public abstract static class RuntimeCompilationGraphDecoder extends GraphDecoder {
+    public static class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
         protected final ImageHeapScanner heapScanner;
 
