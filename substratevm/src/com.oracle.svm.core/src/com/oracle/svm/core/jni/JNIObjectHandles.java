@@ -283,6 +283,11 @@ public final class JNIObjectHandles {
     static long computeCurrentGlobalHandleCount() {
         return JNIGlobalHandles.computeCurrentCount();
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void scanGlobalHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
+        JNIGlobalHandles.scanAllHandleBuckets(callback);
+    }
 }
 
 /**
@@ -431,6 +436,12 @@ final class JNIGlobalHandles {
 
     public static long computeCurrentCount() {
         return strongGlobalHandles.computeCurrentCount() + weakGlobalHandles.computeCurrentCount();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void scanAllHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
+        strongGlobalHandles.scanAllBuckets(callback);
+        weakGlobalHandles.scanAllBuckets(callback);
     }
 }
 

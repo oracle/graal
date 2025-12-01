@@ -31,6 +31,9 @@ import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.handles.ObjectHandlesImpl;
+import com.oracle.svm.core.jni.JNIObjectHandles;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -39,6 +42,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -110,7 +114,6 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.VMError;
-
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
@@ -136,6 +139,7 @@ public final class GCImpl implements GC {
     private boolean completeCollection = false;
     private UnsignedWord collectionEpoch = Word.zero();
     private long lastWholeHeapExaminedNanos = -1;
+    private final GlobalHandlesBucketCallback globalHandlesCallback = new GlobalHandlesBucketCallback(greyToBlackObjRefVisitor);;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
@@ -643,6 +647,29 @@ public final class GCImpl implements GC {
         }
     }
 
+    static final class GlobalHandlesBucketCallback implements ObjectHandlesImpl.BucketCallback {
+
+        private final GreyToBlackObjRefVisitor visitor;
+
+        @Uninterruptible(reason = "Construct callback with visitor")
+        GlobalHandlesBucketCallback(GreyToBlackObjRefVisitor visitor) {
+            this.visitor = visitor;
+        }
+
+        @Override
+        @Uninterruptible(reason = "Construct callback with visitor")
+        public void visitBucket(Pointer bucketAddress, int count) {
+            visitor.visitObjectReferences(
+                    bucketAddress,
+                    false,
+                    ConfigurationValues.getTarget().wordSize,
+                    null,
+                    count
+            );
+        }
+    }
+
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void scanFromRoots() {
         Timer scanFromRootsTimer = timers.scanFromRoots.start();
@@ -674,6 +701,7 @@ public final class GCImpl implements GC {
             try {
                 blackenStackRoots();
                 blackenThreadLocals();
+                JNIObjectHandles.scanGlobalHandleBuckets(globalHandlesCallback);
                 blackenImageHeapRoots();
                 blackenMetaspace();
             } finally {
@@ -738,6 +766,7 @@ public final class GCImpl implements GC {
                 blackenDirtyCardRoots();
                 blackenStackRoots();
                 blackenThreadLocals();
+                JNIObjectHandles.scanGlobalHandleBuckets(globalHandlesCallback);
                 blackenDirtyImageHeapRoots();
                 blackenMetaspace();
             } finally {
