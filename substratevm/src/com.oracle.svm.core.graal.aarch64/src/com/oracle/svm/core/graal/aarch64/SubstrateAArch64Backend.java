@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.pltgot.GOTAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
@@ -513,9 +514,11 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     protected class SubstrateAArch64LIRGenerator extends AArch64LIRGenerator implements SubstrateLIRGenerator {
+        private final PLTGOTConfiguration pltGotConfiguration;
 
         public SubstrateAArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
             super(lirKindTool, arithmeticLIRGen, null, moveFactory, providers, lirGenRes);
+            this.pltGotConfiguration = PLTGOTConfiguration.isEnabled() ? PLTGOTConfiguration.singleton() : null;
         }
 
         @Override
@@ -542,42 +545,59 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             return targetMethod == null || !((SharedMethod) targetMethod).hasCalleeSavedRegisters();
         }
 
-        @Override
         protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
-            if (!shouldEmitOnlyIndirectCalls()) {
-                return null;
-            }
-
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+
+            if (shouldEmitPLTGOTCall(targetMethod)) {
+                return getGOTEntryAddress(targetMethod);
+            }
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
             Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getImageCodeOffset()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
-            int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = KnownOffsets.singleton().getImageCodeInfoCodeStartOffset();
-            Value codeStartField = AArch64AddressValue.makeAddress(wordKind, size, asAllocatable(codeInfo), codeStartFieldOffset);
+            Value codeStartField = AArch64AddressValue.makeAddress(wordKind, wordBits, asAllocatable(codeInfo), codeStartFieldOffset);
             Value codeStart = getArithmetic().emitLoad(wordKind, codeStartField, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);
         }
 
         @Override
-        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
             Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
-            if (shouldEmitOnlyIndirectCalls()) {
+            if (shouldEmitIndirectCall(targetMethod)) {
                 RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
+                Value targetAddress = emitIndirectForeignCallAddress(linkage);
                 emitMove(targetRegister, targetAddress);
                 Value[] multipleResults = Value.NO_VALUES;
                 append(new SubstrateAArch64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
                                 getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null, multipleResults));
             } else {
-                assert targetAddress == null;
                 append(new SubstrateAArch64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
                                 getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
             }
+        }
+
+        private Variable getGOTEntryAddress(SharedMethod callee) {
+            assert pltGotConfiguration != null : "Foreign call through the GOT table is only possible if the PLT/GOT is enabled.";
+            LIRKind wordKind = getLIRKindTool().getWordKind();
+            var heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue(wordKind);
+            var heapBaseOffset = GOTAccess.getGotEntryOffsetFromHeapRegister(pltGotConfiguration.getMethodGotEntry(callee));
+            int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            Value gotEntryAddress = AArch64AddressValue.makeAddress(wordKind, wordBits, heapBase, heapBaseOffset);
+            return getArithmetic().emitLoad(wordKind, gotEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+        }
+
+        private boolean shouldEmitIndirectCall(SharedMethod callee) {
+            return shouldEmitOnlyIndirectCalls() || shouldEmitPLTGOTCall(callee);
+        }
+
+        private boolean shouldEmitPLTGOTCall(SharedMethod callee) {
+            return pltGotConfiguration != null && pltGotConfiguration.shouldCallViaPLTGOT(getResult().getMethod(), callee);
         }
 
         /**
@@ -1441,7 +1461,6 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             }
             return super.emitReverseBytes(input);
         }
-
     }
 
     @Override

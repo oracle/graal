@@ -47,6 +47,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.pltgot.GOTAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -625,9 +626,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     }
 
     protected class SubstrateAMD64LIRGenerator extends AMD64LIRGenerator implements SubstrateLIRGenerator {
+        private final PLTGOTConfiguration pltGotConfiguration;
 
         public SubstrateAMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
             super(lirKindTool, arithmeticLIRGen, null, moveFactory, providers, lirGenRes);
+            this.pltGotConfiguration = PLTGOTConfiguration.isEnabled() ? PLTGOTConfiguration.singleton() : null;
         }
 
         @Override
@@ -681,10 +684,14 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return targetMethod == null || !((SharedMethod) targetMethod).hasCalleeSavedRegisters();
         }
 
-        @Override
         protected Value emitIndirectForeignCallAddress(ForeignCallLinkage linkage) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+
+            if (shouldEmitPLTGOTCall(targetMethod)) {
+                return getGOTEntryAddress(targetMethod);
+            }
+
             if (SubstrateUtil.HOSTED && targetMethod.forceIndirectCall()) {
                 DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
                 if (dynamicImageLayerInfo.isMethodCompilationDelayed(targetMethod)) {
@@ -703,9 +710,6 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                     return getArithmetic().emitAdd(basePointerAddress, codeOffsetInSection, false);
                 }
             }
-            if (!shouldEmitOnlyIndirectCalls()) {
-                return null;
-            }
             Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getImageCodeOffset()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), KnownOffsets.singleton().getImageCodeInfoCodeStartOffset());
@@ -714,22 +718,39 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
 
         @Override
-        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
             Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
             vzeroupperBeforeCall(this, arguments, info, targetMethod);
-            if (shouldEmitOnlyIndirectCalls() || targetMethod.forceIndirectCall()) {
+            if (shouldEmitIndirectCall(targetMethod)) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
+                Value targetAddress = emitIndirectForeignCallAddress(linkage);
                 emitMove(targetRegister, targetAddress); // targetAddress is a CFunctionPointer
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
                                 Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {
-                assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
                                 Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
             }
+        }
+
+        private Variable getGOTEntryAddress(SharedMethod callee) {
+            assert pltGotConfiguration != null : "Foreign call through the GOT table is only possible if the PLT/GOT is enabled.";
+            LIRKind wordKind = getLIRKindTool().getWordKind();
+            var heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue(wordKind);
+            var heapBaseOffset = GOTAccess.getGotEntryOffsetFromHeapRegister(pltGotConfiguration.getMethodGotEntry(callee));
+            Value gotEntryAddress = new AMD64AddressValue(wordKind, heapBase, heapBaseOffset);
+            return getArithmetic().emitLoad(wordKind, gotEntryAddress, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+        }
+
+        private boolean shouldEmitIndirectCall(SharedMethod callee) {
+            return shouldEmitOnlyIndirectCalls() || callee.forceIndirectCall() || shouldEmitPLTGOTCall(callee);
+        }
+
+        private boolean shouldEmitPLTGOTCall(SharedMethod callee) {
+            return pltGotConfiguration != null && pltGotConfiguration.shouldCallViaPLTGOT(getResult().getMethod(), callee);
         }
 
         /**
