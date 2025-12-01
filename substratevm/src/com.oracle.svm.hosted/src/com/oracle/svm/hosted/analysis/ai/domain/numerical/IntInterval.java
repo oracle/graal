@@ -192,13 +192,6 @@ public final class IntInterval implements AbstractDomain<IntInterval> {
         return "[" + lo + ", " + hi + "]";
     }
 
-    public long getLowerBound() {
-        return lowerBound;
-    }
-
-    public long getUpperBound() {
-        return upperBound;
-    }
 
     private static long safeAdd(long a, long b) {
         if (a == POS_INF || b == POS_INF) return POS_INF;

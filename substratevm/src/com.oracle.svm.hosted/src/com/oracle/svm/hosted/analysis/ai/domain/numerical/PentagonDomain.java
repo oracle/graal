@@ -109,13 +109,13 @@ public class PentagonDomain<Variable> implements AbstractDomain<PentagonDomain<V
                     if (yInterval.isBot()) continue;
 
                     // If x < y then x's upper bound must be less than y's lower bound
-                    if (xInterval.getUpperBound() >= yInterval.getLowerBound()) {
-                        long newXUpper = Math.min(xInterval.getUpperBound(), yInterval.getLowerBound() - 1);
-                        long newYLower = Math.max(yInterval.getLowerBound(), xInterval.getUpperBound() + 1);
+                    if (xInterval.getUpper() >= yInterval.getLower()) {
+                        long newXUpper = Math.min(xInterval.getUpper(), yInterval.getLower() - 1);
+                        long newYLower = Math.max(yInterval.getLower(), xInterval.getUpper() + 1);
 
                         // Only create new interval if it would be valid
-                        if (xInterval.getLowerBound() <= newXUpper) {
-                            IntInterval newXInterval = new IntInterval(xInterval.getLowerBound(), newXUpper);
+                        if (xInterval.getLower() <= newXUpper) {
+                            IntInterval newXInterval = new IntInterval(xInterval.getLower(), newXUpper);
                             intervals.put(x, newXInterval);
                             changed = true;
                         } else {
@@ -125,8 +125,8 @@ public class PentagonDomain<Variable> implements AbstractDomain<PentagonDomain<V
                             break; // No need to continue with this variable
                         }
 
-                        if (newYLower <= yInterval.getUpperBound()) {
-                            IntInterval newYInterval = new IntInterval(newYLower, yInterval.getUpperBound());
+                        if (newYLower <= yInterval.getUpper()) {
+                            IntInterval newYInterval = new IntInterval(newYLower, yInterval.getUpper());
                             intervals.put(y, newYInterval);
                         } else {
                             // Cannot satisfy constraint - set to bottom
@@ -326,7 +326,7 @@ public class PentagonDomain<Variable> implements AbstractDomain<PentagonDomain<V
             Set<Variable> ys = entry.getValue();
             ys.removeIf(y -> {
                 IntInterval yInterval = getInterval(y);
-                return xInterval.getUpperBound() >= yInterval.getLowerBound(); // contradiction
+                return xInterval.getUpper() >= yInterval.getLower(); // contradiction
             });
 
             return ys.isEmpty();

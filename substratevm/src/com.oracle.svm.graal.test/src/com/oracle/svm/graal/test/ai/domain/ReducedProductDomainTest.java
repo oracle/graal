@@ -49,8 +49,8 @@ public class ReducedProductDomainTest {
                         SignDomain signDomain = (SignDomain) domains.get(1);
 
                         // Refine interval based on sign
-                        long lowerBound = intervalDomain.getLowerBound();
-                        long upperBound = intervalDomain.getUpperBound();
+                        long lowerBound = intervalDomain.getLower();
+                        long upperBound = intervalDomain.getUpper();
                         boolean changed = false;
 
                         if (signDomain.getState() == Sign.POS) {
@@ -78,12 +78,16 @@ public class ReducedProductDomainTest {
                         }
 
                         // Refine sign based on interval
-                        if (intervalDomain.getLowerBound() > 0) {
+                        if (intervalDomain.getLower() > 0) {
                             signDomain.setState(Sign.POS);
-                        } else if (intervalDomain.getUpperBound() < 0) {
+                        } else if (intervalDomain.getUpper() < 0) {
                             signDomain.setState(Sign.NEG);
-                        } else if (intervalDomain.getLowerBound() == 0 && intervalDomain.getUpperBound() == 0) {
-                            signDomain.setState(Sign.ZERO);
+                        } else {
+                            if (intervalDomain.getLower() == 0) {
+                                if (intervalDomain.getUpper() == 0) {
+                                    signDomain.setState(Sign.ZERO);
+                                }
+                            }
                         }
                     })
                     .build();
@@ -98,8 +102,8 @@ public class ReducedProductDomainTest {
         IntervalSignDomain domain = IntervalSignDomain.create(interval, sign);
 
         // Since sign is positive, interval should be refined to [1, 10]
-        Assert.assertEquals(1, domain.getInterval().getLowerBound());
-        Assert.assertEquals(10, domain.getInterval().getUpperBound());
+        Assert.assertEquals(1, domain.getInterval().getLower());
+        Assert.assertEquals(10, domain.getInterval().getUpper());
     }
 
     @Test
@@ -137,13 +141,13 @@ public class ReducedProductDomainTest {
         domain1.meetWith(domain2);
 
         // Meeting [-5,10] and [-10,7] should result in [-5,7]
-        Assert.assertEquals(1, domain1.getInterval().getLowerBound());
-        Assert.assertEquals(7, domain1.getInterval().getUpperBound());
+        Assert.assertEquals(1, domain1.getInterval().getLower());
+        Assert.assertEquals(7, domain1.getInterval().getUpper());
 
         // Meeting TOP and POS should result in POS
         // Additionally, the reducer should refine the interval to [1,7]
         Assert.assertEquals(Sign.POS, domain1.getSign().getState());
-        Assert.assertEquals(1, domain1.getInterval().getLowerBound());
+        Assert.assertEquals(1, domain1.getInterval().getLower());
     }
 
     @Test
@@ -160,7 +164,7 @@ public class ReducedProductDomainTest {
         domain = IntervalSignDomain.create(new IntInterval(-10, 10), new SignDomain(Sign.ZERO));
 
         // Sign ZERO should refine interval to [0,0]
-        Assert.assertEquals(0, domain.getInterval().getLowerBound());
-        Assert.assertEquals(0, domain.getInterval().getUpperBound());
+        Assert.assertEquals(0, domain.getInterval().getLower());
+        Assert.assertEquals(0, domain.getInterval().getUpper());
     }
 }

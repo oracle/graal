@@ -42,8 +42,8 @@ public final class IntervalSignReducedProductDomain extends ReducedProductDomain
                     SignDomain signDomain = (SignDomain) domains.get(1);
 
                     // Refine interval based on sign
-                    long lowerBound = intervalDomain.getLowerBound();
-                    long upperBound = intervalDomain.getUpperBound();
+                    long lowerBound = intervalDomain.getLower();
+                    long upperBound = intervalDomain.getUpper();
                     boolean changed = false;
 
                     if (signDomain.getState() == Sign.POS) {
@@ -71,12 +71,16 @@ public final class IntervalSignReducedProductDomain extends ReducedProductDomain
                     }
 
                     // Refine sign based on interval
-                    if (intervalDomain.getLowerBound() > 0) {
+                    if (intervalDomain.getLower() > 0) {
                         signDomain.setState(Sign.POS);
-                    } else if (intervalDomain.getUpperBound() < 0) {
+                    } else if (intervalDomain.getUpper() < 0) {
                         signDomain.setState(Sign.NEG);
-                    } else if (intervalDomain.getLowerBound() == 0 && intervalDomain.getUpperBound() == 0) {
-                        signDomain.setState(Sign.ZERO);
+                    } else {
+                        if (intervalDomain.getLower() == 0) {
+                            if (intervalDomain.getUpper() == 0) {
+                                signDomain.setState(Sign.ZERO);
+                            }
+                        }
                     }
                 })
                 .build();

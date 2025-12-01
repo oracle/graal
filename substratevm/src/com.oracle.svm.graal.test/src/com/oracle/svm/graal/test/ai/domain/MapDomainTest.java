@@ -177,7 +177,7 @@ public class MapDomainTest {
     public void testUpdate() {
         TestMapDomain<String, IntInterval> mapDomain = new TestMapDomain<>(new IntInterval());
         mapDomain.put("x", new IntInterval(1, 5));
-        mapDomain.update(interval -> new IntInterval(interval.getLowerBound() + 1, interval.getUpperBound() + 1), "x");
+        mapDomain.update(interval -> new IntInterval(interval.getLower() + 1, interval.getUpper() + 1), "x");
         Assert.assertEquals(new IntInterval(2, 6), mapDomain.get("x"));
     }
 

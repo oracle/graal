@@ -23,7 +23,8 @@ import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationExcepti
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-// FIXME: THE CONSTANT STAMP APPLIER HAS SOME INTERNAL MISTAKE THAT COMPLETELY FUCKS UP THE NATIVE IMAGE ONCE IT IS BUILT, INVESITGATE
+// FIXME: THE CONSTANT STAMP APPLIER HAS SOME INTERNAL MISTAKE THAT
+//  COMPLETELY FUCKS UP THE NATIVE IMAGE ONCE IT IS BUILT, INVESITGATE
 /**
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
