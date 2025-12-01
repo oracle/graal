@@ -403,6 +403,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
         }
         ImageSingletons.add(RuntimeCompilationSupport.class, new RuntimeCompilationSupport());
+        /*
+         * Check if there is already a RuntimeCompiledMethodSupport registered. If so a dependent
+         * feature like for example Truffle installed specific hooks for runtime compilation. Else
+         * fall back to the default support.
+         */
         if (!ImageSingletons.contains(RuntimeCompiledMethodSupport.class)) {
             ImageSingletons.add(RuntimeCompiledMethodSupport.class, new RuntimeCompiledMethodSupport());
         }
