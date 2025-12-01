@@ -102,8 +102,6 @@ class JMHDistTruffleBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNative
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHDistTruffleBenchmarkSuite, self).extraVmArgs()
-        # org.graalvm.truffle.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
-        extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         # org.graalvm.truffle.compiler.benchmark.* needs OptimizedTruffleRuntime
         extraVmArgs.append('--add-exports=org.graalvm.truffle.runtime/com.oracle.truffle.runtime=ALL-UNNAMED')
         return extraVmArgs

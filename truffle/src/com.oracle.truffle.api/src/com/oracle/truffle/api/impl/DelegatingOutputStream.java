@@ -48,7 +48,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream.OutputStreamList;
 /**
  * An {@link OutputStream} that can be dispatched to other output streams.
  */
-public final class DelegatingOutputStream extends OutputStream {
+final class DelegatingOutputStream extends OutputStream {
 
     private final OutputStream out;
     private final DispatchOutputStream delegate;
