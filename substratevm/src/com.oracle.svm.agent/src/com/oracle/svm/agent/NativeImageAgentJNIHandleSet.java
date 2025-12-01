@@ -42,6 +42,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
 
+    final JNIObjectHandle javaLangReflectMember;
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
     private JNIMethodId javaLangReflectExecutableGetParameterTypes = WordFactory.nullPointer();
@@ -122,6 +123,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIObjectHandle javaLangConstantDirectMethodHandleDesc = WordFactory.nullPointer();
     private JNIMethodId javaLangInvokeMethodHandleDescribeConstable = WordFactory.nullPointer();
+    final JNIObjectHandle javaLangInvokeMethodHandles;
+    final JNIMethodId javaLangInvokeMethodHandlesReflectAs;
     private JNIMethodId javaLangConstantDirectMethodHandleDescRefKind = WordFactory.nullPointer();
     private JNIMethodId javaLangConstantDirectMethodHandleDescOwner = WordFactory.nullPointer();
     private JNIMethodId javaLangConstantDirectMethodHandleDescMethodName = WordFactory.nullPointer();
@@ -135,7 +138,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
 
-        JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
+        javaLangReflectMember = newClassGlobalRef(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
         javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
 
@@ -161,6 +164,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
         javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
+
+        javaLangInvokeMethodHandles = newClassGlobalRef(env, "java/lang/invoke/MethodHandles");
+        javaLangInvokeMethodHandlesReflectAs = getMethodId(env, javaLangInvokeMethodHandles, "reflectAs", "(Ljava/lang/Class;Ljava/lang/invoke/MethodHandle;)Ljava/lang/reflect/Member;", true);
 
         JNIObjectHandle javaLangModule = findClass(env, "java/lang/Module");
         javaLangModuleGetName = getMethodId(env, javaLangModule, "getName", "()Ljava/lang/String;", false);
