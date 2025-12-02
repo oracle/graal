@@ -568,15 +568,6 @@ public abstract class JSConversion {
             return JSNumber.of(c);
         }
 
-        // Step 7: check if the object is a primitive array.
-        Class<?> cls = x.getClass();
-        if (cls.isArray() && cls.getComponentType().isPrimitive()) {
-            // Note: in this case, x is also a valid JavaScript object, because Java primitive
-            // arrays are encoded as JavaScript typed arrays.
-            // TODO GR-60603 This is not the case for the WasmGC backend
-            return createJSObject(x);
-        }
-
         // No coercion rule applies, return the original object.
         return x;
     }
