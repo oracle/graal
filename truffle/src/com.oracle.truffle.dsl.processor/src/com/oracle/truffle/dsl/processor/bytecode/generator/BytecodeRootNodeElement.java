@@ -1895,10 +1895,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return "execute" + instruction.getQualifiedQuickeningName();
     }
 
-    private static int getStackEffect(InstructionModel instr) {
-        return (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
-    }
-
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
         b.startTryBlock();
         r.run();
@@ -2234,7 +2230,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     record InstructionGroup(int stackEffect, int instructionLength) {
         InstructionGroup(InstructionModel instr) {
-            this(getStackEffect(instr), instr.getInstructionLength());
+            this(instr.getStackEffect(), instr.getInstructionLength());
         }
     }
 
@@ -6222,7 +6218,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     // If this operation has a converter, convert the value.
                     if (shortCircuitModel.convertsOperands()) {
-                        if (shortCircuitModel.duplicatesOperandOnStack()) {
+                        /**
+                         * If the operation doesn't produce a boolean, it must DUP the operand so it
+                         * can pass it to the converter and also produce it as a result.
+                         */
+                        if (!shortCircuitModel.producesBoolean()) {
                             buildEmitInstruction(b, null, model.dupInstruction);
                         }
                         buildEmitBooleanConverterInstruction(b, op.instruction);
@@ -6849,7 +6849,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            buildEmitInstructionStackEffect(b, null, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
+            buildEmitInstructionWithStackEffect(b, null, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
 
             b.end().startElseBlock();
 
@@ -6865,7 +6865,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            buildEmitInstructionStackEffect(b, null, model.loadVariadicInstruction, "-stackCount",
+            buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-stackCount",
                             createLoadVariadicArguments("offset + count - stackCount", "(short)(stackCount)", "(short)mergeCount"));
 
             if (model.hasVariadicReturn) {
@@ -6889,7 +6889,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("length++");
                 b.end().startElseBlock();
                 b.lineComment("range not continuous");
-                buildEmitInstructionStackEffect(b, null, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                buildEmitInstruction(b, null, model.splatVariadicInstruction, "offset + prev", "length");
                 b.statement("length = 1");
                 b.end();
                 b.statement("prev = index");
@@ -6898,7 +6898,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startIf().string("length > 0").end().startBlock();
                 b.lineComment("emit last range");
                 b.statement("assert prev != -1");
-                buildEmitInstructionStackEffect(b, null, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                buildEmitInstruction(b, null, model.splatVariadicInstruction, "offset + prev", "length");
                 b.end();
 
                 b.end(); // dynamicArguments != null
@@ -6927,7 +6927,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
-            buildEmitInstructionStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
+            buildEmitInstructionWithStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
                             createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
             b.startReturn().string("createVariadicOffset + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset()).end();
             b.end().startElseBlock();
@@ -6937,7 +6937,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else {
                 offset = "count - VARIADIC_STACK_LIMIT";
             }
-            buildEmitInstructionStackEffect(b, null, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT", createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
+            buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT", createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
             b.startReturn().string("-1").end();
             b.end();
 
@@ -6998,53 +6998,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, String localName, InstructionModel instr, String... arguments) {
-            int stackEffect = switch (instr.kind) {
-                case BRANCH, BRANCH_BACKWARD, //
-                                TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> {
-                    yield 0;
-                }
-                case CREATE_VARIADIC, EMPTY_VARIADIC -> {
-                    yield 1;
-                }
-                case LOAD_VARIADIC, SPLAT_VARIADIC -> {
-                    /*
-                     * NB: These instructions *do* have stack effects. However, they are only used
-                     * by doEmitVariadic, which does stack height computations itself. Use 0 so we
-                     * don't update the stack height when emitting their instructions.
-                     */
-                    yield 0;
-                }
-                case DUP, LOAD_ARGUMENT, LOAD_CONSTANT, LOAD_NULL, LOAD_LOCAL, LOAD_EXCEPTION -> 1;
-                case RETURN, THROW, BRANCH_FALSE, POP, STORE_LOCAL, MERGE_CONDITIONAL -> -1;
-                case STORE_LOCAL_MATERIALIZED -> -2;
-                case CUSTOM -> getStackEffect(instr);
-                case CUSTOM_SHORT_CIRCUIT -> {
-                    /*
-                     * NB: This code is a little confusing, because the stack height actually
-                     * depends on whether the short circuit operation continues.
-                     *
-                     * What we track here is the stack height for the instruction immediately after
-                     * this one (the one executed when we "continue" the short circuit operation).
-                     * The code we generate carefully ensures that each path branching to the "end"
-                     * leaves a single value on the stack.
-                     */
-                    ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
-                    if (shortCircuitInstruction.duplicatesOperandOnStack()) {
-                        // Consume the boolean value and pop the DUP'd original value.
-                        yield -2;
-                    } else {
-                        // Consume the boolean value.
-                        yield -1;
-                    }
-                }
-                default -> throw new UnsupportedOperationException();
-            };
-
-            buildEmitInstructionStackEffect(b, localName, instr, String.valueOf(stackEffect), arguments);
+            buildEmitInstructionWithStackEffect(b, localName, instr, String.valueOf(instr.getStackEffect()), arguments);
         }
 
-        private void buildEmitInstructionStackEffect(CodeTreeBuilder b, String localName, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
+        private void buildEmitInstructionWithStackEffect(CodeTreeBuilder b, String localName, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
             CodeExecutableElement doEmitInstruction = rootStackElement.ensureDoEmitInstructionCreated(instr);
             if (localName != null) {
                 b.startDeclaration(type(int.class), localName);
@@ -15855,7 +15812,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startStatement().string("bci += ").string(instr.getInstructionLength()).end();
                     }
 
-                    emitCustomStackEffect(b, getStackEffect(instr));
+                    emitCustomStackEffect(b, instr.getStackEffect());
                     break;
             }
             b.statement("break");
@@ -18266,7 +18223,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             List<CodeVariableElement> extraParams = createExtraParameters();
             boolean isCustomYield = instr.operation.kind == OperationKind.CUSTOM_YIELD;
             // Since an instruction produces at most one value, stackEffect is at most 1.
-            int stackEffect = getStackEffect(instr);
+            int stackEffect = instr.getStackEffect();
 
             if (isStoreBciBeforeExecute(model, tier, instr)) {
                 storeBciInFrame(b);

@@ -800,4 +800,10 @@ public final class InstructionModel implements PrettyPrintable {
         return true;
     }
 
+    public int getStackEffect() {
+        return switch (kind) {
+            case LOAD_VARIADIC, CREATE_VARIADIC -> throw new IllegalArgumentException("Variadic instruction " + this + " does not have a fixed stack effect.");
+            default -> (signature.isVoid ? 0 : 1) - signature.dynamicOperandCount;
+        };
+    }
 }

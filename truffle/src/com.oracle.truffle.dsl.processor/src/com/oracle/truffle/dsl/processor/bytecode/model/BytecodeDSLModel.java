@@ -418,7 +418,21 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        Signature signature = signature(shortCircuitModel.producesBoolean() ? boolean.class : Object.class, boolean.class, boolean.class);
+
+        /*
+         * NB: This signature reflects the stack effect when the short circuit instruction continues
+         * to the next operand (and not when it skips to the end). The code we generate carefully
+         * ensures that each path branching to the "end" leaves a single value on the stack.
+         */
+        Class<?>[] argumentTypes;
+        if (shortCircuitModel.producesBoolean()) {
+            // Consume the boolean value.
+            argumentTypes = new Class<?>[]{boolean.class};
+        } else {
+            // Consume the boolean value and pop the DUP'd original value.
+            argumentTypes = new Class<?>[]{Object.class, boolean.class};
+        }
+        Signature signature = signature(void.class, argumentTypes);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 
