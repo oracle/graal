@@ -25,12 +25,6 @@
 
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalDouble;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalFloat;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalInt;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalLong;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -68,6 +62,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -228,14 +223,14 @@ public abstract class InterpreterStubSection {
         var kind = SubstrateCallingConventionKind.Java.toType(true);
         CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(kind, returnType, signature.toParameterTypes(thisType), stubSection.valueKindFactory);
 
-        InterpreterFrame frame = EspressoFrame.allocate(interpreterMethod.getMaxLocals(), interpreterMethod.getMaxStackSize(), new Object[0]);
+        Object[] args = new Object[count + (interpreterMethod.hasReceiver() ? 1 : 0)];
 
         int interpSlot = 0;
         int gpIdx = 0;
         int fpIdx = 0;
         if (interpreterMethod.hasReceiver()) {
             Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(callingConvention.getArgument(gpIdx), enterData, gpIdx))).toObject();
-            setLocalObject(frame, 0, receiver);
+            args[interpSlot] = receiver;
             gpIdx++;
             interpSlot++;
         }
@@ -258,15 +253,15 @@ public abstract class InterpreterStubSection {
 
             switch (argKind) {
                 // @formatter:off
-                case Boolean: setLocalInt(frame, interpSlot,  (arg & 0xff) != 0 ? 1 : 0); break;
-                case Byte:    setLocalInt(frame, interpSlot, (byte) arg); break;
-                case Short:   setLocalInt(frame, interpSlot, (short) arg); break;
-                case Char:    setLocalInt(frame, interpSlot, (char) arg); break;
-                case Int:     setLocalInt(frame, interpSlot, (int) arg); break;
-                case Long:    setLocalLong(frame, interpSlot, arg); interpSlot++; break;
-                case Float:   setLocalFloat(frame, interpSlot, Float.intBitsToFloat((int) arg)); break;
-                case Double:  setLocalDouble(frame, interpSlot, Double.longBitsToDouble(arg)); interpSlot++; break;
-                case Object:  setLocalObject(frame, interpSlot, ((Pointer) Word.pointer(arg)).toObject()); break;
+                case Boolean: args[interpSlot] = (arg & 0xff) != 0; break;
+                case Byte:    args[interpSlot] = (byte) arg; break;
+                case Short:   args[interpSlot] = (short) arg; break;
+                case Char:    args[interpSlot] = (char) arg; break;
+                case Int:     args[interpSlot] = (int) arg; break;
+                case Long:    args[interpSlot] = arg; break;
+                case Float:   args[interpSlot] = Float.intBitsToFloat((int) arg); break;
+                case Double:  args[interpSlot] = Double.longBitsToDouble(arg); break;
+                case Object:  args[interpSlot] = ((Pointer) Word.pointer(arg)).toObject(); break;
                 // @formatter:on
                 default:
                     throw VMError.shouldNotReachHereAtRuntime();
@@ -274,7 +269,15 @@ public abstract class InterpreterStubSection {
             interpSlot++;
         }
 
-        Object retVal = Interpreter.execute(interpreterMethod, frame);
+        Object retVal;
+        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+            /* A JIT compiled version is available, execute this one instead */
+            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+            retVal = leaveInterpreter(entryPoint, interpreterMethod, accessingClass, args);
+        } else {
+            retVal = Interpreter.execute(interpreterMethod, args);
+        }
 
         switch (returnType.getJavaKind()) {
             case Boolean:

@@ -29,15 +29,12 @@ import java.io.PrintStream;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -48,12 +45,8 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoGraphBuilderPhase;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
@@ -72,7 +65,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -143,42 +135,6 @@ public class RistrettoUtils {
 
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
-    }
-
-    public static int installInCremaVTable(InstalledCode code, RistrettoMethod rMethod) {
-        RistrettoType rType = (RistrettoType) rMethod.getDeclaringClass();
-        InterpreterResolvedJavaType iType = rType.getInterpreterType();
-        for (var declaredMethod : iType.getDeclaredMethods()) {
-            if (declaredMethod.equals(rMethod.getInterpreterMethod())) {
-                long vTableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
-                long vTableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
-
-                int vTableIndex = declaredMethod.getVTableIndex();
-                long offset = vTableBaseOffset + vTableIndex * vTableEntrySize;
-                DynamicHub hub = DynamicHub.fromClass(iType.getJavaClass());
-                WordBase entry = Word.pointer(code.getEntryPoint());
-
-                final DynamicHub effectiveHub = hub;
-                final int effectiveOffset = Math.toIntExact(offset);
-                final WordBase oldEntry = Word.objectToUntrackedPointer(hub).readWord(Math.toIntExact(offset));
-
-                Word.objectToUntrackedPointer(hub).writeWord(effectiveOffset, entry);
-
-                if (RistrettoCompilationManager.TestingBackdoor.recordUninstallTasks()) {
-                    RistrettoCompilationManager.TestingBackdoor.recordUninstallTask(new Runnable() {
-                        @Override
-                        public void run() {
-                            RistrettoProfileSupport.trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "Running uninstall of %s%n", rMethod);
-                            // write back the old values
-                            Word.objectToUntrackedPointer(effectiveHub).writeWord(effectiveOffset, oldEntry);
-                        }
-                    });
-                }
-
-                return vTableIndex;
-            }
-        }
-        return -1;
     }
 
     public static InstalledCode compileAndInstall(SubstrateMethod method) {

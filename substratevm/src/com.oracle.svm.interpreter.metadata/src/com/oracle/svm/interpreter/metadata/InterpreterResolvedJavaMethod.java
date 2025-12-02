@@ -312,6 +312,10 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
                         exceptionHandlers, lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
     }
 
+    public ResolvedJavaMethod getRistrettoMethod() {
+        return this.ristrettoMethod;
+    }
+
     public ResolvedJavaMethod getRistrettoMethod(Function<InterpreterResolvedJavaMethod, ResolvedJavaMethod> ristrettoMethodSupplier) {
         if (this.ristrettoMethod != null) {
             return this.ristrettoMethod;
