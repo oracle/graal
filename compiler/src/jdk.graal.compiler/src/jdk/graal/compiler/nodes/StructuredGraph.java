@@ -691,13 +691,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Notifies this graph of an inlining decision for {@code invoke}.
+     * Notifies this graph of an inlining decision for {@code invokable}.
      *
      * An inlining decision can be either positive or negative. A positive inlining decision must be
      * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
      * and the {@link InliningLog} of the inlined graph must be provided.
      *
-     * @param invoke the invocation to which the inlining decision pertains
+     * @param invokable the invocation to which the inlining decision pertains
      * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
      * @param phase name of the phase doing the inlining
      * @param replacements the node replacement map used by inlining, ignored if
@@ -709,19 +709,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param inlineeMethod the actual method considered for inlining
      * @param reason format string that along with {@code args} provides the reason for decision
      */
-    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
+    public void notifyInliningDecision(Invokable invokable, boolean positive, String phase, EconomicMap<Node, Node> replacements,
                     InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, ResolvedJavaMethod inlineeMethod,
                     String reason, Object... args) {
         if (inliningLog != null) {
-            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
+            inliningLog.addDecision(invokable, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
         }
         if (positive && calleeOptimizationLog != null && optimizationLog.isStructuredOptimizationLogEnabled()) {
-            FixedNode invokeNode = invoke.asFixedNodeOrNull();
+            FixedNode invokeNode = invokable.asFixedNodeOrNull();
             optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
-            getDebug().notifyInlining(invoke.getContextMethod(), inlineeMethod, positive, message, invoke.bci());
+            getDebug().notifyInlining(invokable.getContextMethod(), inlineeMethod, positive, message, invokable.bci());
+        }
+        if (positive && invokable instanceof Invoke invoke) {
+            InliningIDEReporting.reportInlining(invoke.asNode().getNodeSourcePosition(), invokable.getTargetMethod(), phase);
         }
     }
 
