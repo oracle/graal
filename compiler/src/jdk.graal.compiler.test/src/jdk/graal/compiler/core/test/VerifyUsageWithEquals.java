@@ -105,6 +105,10 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
                 return true;
             }
         }
+        if (cls.getModule().isNamed() && "jdk.graal.compiler.vmaccess".equals(cls.getModule().getName())) {
+            // interfaces in vmaccess are also trusted
+            return true;
+        }
         return false;
     }
 
