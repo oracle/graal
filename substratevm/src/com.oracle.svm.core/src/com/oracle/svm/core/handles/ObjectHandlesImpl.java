@@ -190,6 +190,9 @@ public final class ObjectHandlesImpl implements ObjectHandles {
             synchronized (this) {
                 if (buckets[0].isNull()) {
                     Pointer p = NullableNativeMemory.calloc(capacities[0] * wordSize(), NmtCategory.JNI);
+                    for (int i = 0; i < capacities[0]; i++) {
+                        writeSlot(p, i, null);
+                    }
                     buckets[0] = p;
                 }
             }
@@ -239,6 +242,9 @@ public final class ObjectHandlesImpl implements ObjectHandles {
                         }
 
                         Pointer newBucket = NullableNativeMemory.calloc(newBucketCapacity * wordSize(), NmtCategory.JNI);
+                        for (int i = 0; i < capacities[newBucketIndex]; i++) {
+                            writeSlot(newBucket, i, null);
+                        }
                         writeSlot(newBucket, 0, obj);
 
                         synchronized (this) {
