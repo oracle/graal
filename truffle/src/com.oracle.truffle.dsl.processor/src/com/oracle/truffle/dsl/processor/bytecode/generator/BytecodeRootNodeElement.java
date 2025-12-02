@@ -14287,7 +14287,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     this.add(createSetLocalValueImpl());
                     this.add(createSpecializeSlotTag());
                     this.add(createGetCachedLocalTag());
-                    this.add(createSetCachedLocalTag());
                 }
                 this.add(createGetCachedLocalTagInternal());
                 this.add(createSetCachedLocalTagInternal());
@@ -14754,29 +14753,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startThrow().startNew(types.UnexpectedResultException).string("value").end().end();
                 }
             }
-
-            return ex;
-        }
-
-        private CodeExecutableElement createSetCachedLocalTag() {
-            if (!model.usesBoxingElimination() || !tier.isCached()) {
-                throw new AssertionError("Not supported.");
-            }
-
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setCachedLocalTag");
-            ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            ex.addParameter(new CodeVariableElement(type(byte.class), "tag"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.declaration(arrayOf(type(byte.class)), "localTags", readLocalTagsFastPath());
-            b.startIf().string("localIndex < 0 || localIndex >= localTags.length").end().startBlock();
-            emitThrowIllegalArgumentException(b, "Invalid local offset");
-            b.end();
-            b.startStatement().startCall("setCachedLocalTagInternal");
-            b.string("localTags");
-            b.string("localIndex");
-            b.string("tag");
-            b.end(2);
 
             return ex;
         }
