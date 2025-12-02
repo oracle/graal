@@ -4,7 +4,6 @@ package jdk.graal.compiler.lir.alloc.verifier;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.Variable;
-import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
@@ -16,10 +15,12 @@ public class RAVInstruction {
     public static class Base {
         protected LIRInstruction lirInstruction;
         protected List<VirtualMove> virtualMoveList;
+        protected List<VirtualMove> speculativeMoveList;
 
         public Base(LIRInstruction lirInstruction) {
             this.lirInstruction = lirInstruction;
             this.virtualMoveList = new LinkedList<>();
+            this.speculativeMoveList = new LinkedList<>();
         }
 
         public LIRInstruction getLIRInstruction() {
@@ -32,6 +33,14 @@ public class RAVInstruction {
 
         public List<VirtualMove> getVirtualMoveList() {
             return virtualMoveList;
+        }
+
+        public void addSpeculativeMove(VirtualMove virtualMove) {
+            this.speculativeMoveList.add(virtualMove);
+        }
+
+        public List<VirtualMove> getSpeculativeMoveList() {
+            return speculativeMoveList;
         }
     }
 

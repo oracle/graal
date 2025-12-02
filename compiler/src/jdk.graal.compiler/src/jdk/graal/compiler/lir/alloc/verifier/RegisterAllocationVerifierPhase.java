@@ -1,6 +1,5 @@
 package jdk.graal.compiler.lir.alloc.verifier;
 
-import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.GraalError;
@@ -21,9 +20,11 @@ import jdk.vm.ci.code.TargetDescription;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class RegisterAllocationVerifierPhase extends AllocationPhase {
     public static class Options {
@@ -95,6 +96,13 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
     }
 
     protected BlockMap<List<RAVInstruction.Base>> getVerifierInstructions(LIR lir) {
+        Set<LIRInstruction> presentInstructions = new HashSet<>();
+        for (var blockId : lir.getBlocks()) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            presentInstructions.addAll(instructions);
+        }
+
         BlockMap<List<RAVInstruction.Base>> blockInstructions = new BlockMap<>(lir.getControlFlowGraph());
         var preallocMap = preallocPhaseRAVerifier.getPreallocMap();
         for (var blockId : lir.getBlocks()) {
@@ -122,6 +130,16 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                 instruction.forEachAlive(opRAVInstr.alive.copyCurrentProc);
 
                 instructionList.add(opRAVInstr);
+                var speculativeMoves = opRAVInstr.getSpeculativeMoveList();
+
+                if (!speculativeMoves.isEmpty()) {
+                    for (var speculativeMove : speculativeMoves) {
+                        if (!presentInstructions.contains(speculativeMove.getLIRInstruction())) {
+                            instructionList.add(speculativeMove);
+                        }
+                    }
+                }
+
                 var virtualMoves = opRAVInstr.getVirtualMoveList();
                 instructionList.addAll(virtualMoves);
             }
@@ -168,6 +186,21 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
                         continue; // No need to store virtual move here, it is stored into previous instruction.
                     }
 
+                    if (this.isSpeculativeMove(instruction)) {
+                        // Speculative moves are in form ry = MOVE vx, which could be removed if variable
+                        // ends up being allocated to the same register as ry. If it was removed
+                        // we need to re-add it because it holds important information about where value of
+                        // this variable is placed - for label resolution after the label.
+                        assert previousInstr != null;
+
+                        var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
+                        var variable = (Variable) valueMov.getInput();
+                        var register = (RegisterValue) valueMov.getResult();
+
+                        var virtualMove = new RAVInstruction.VirtualMove(instruction, variable, register);
+                        previousInstr.addSpeculativeMove(virtualMove);
+                    }
+
                     var opRAVInstr = new RAVInstruction.Op(instruction);
 
                     instruction.forEachInput(opRAVInstr.uses.copyOriginalProc);
@@ -199,6 +232,15 @@ public class RegisterAllocationVerifierPhase extends AllocationPhase {
             var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
             var input = valueMov.getInput();
             return (input instanceof RegisterValue || input instanceof StackSlot) && valueMov.getResult() instanceof Variable;
+        }
+
+        protected boolean isSpeculativeMove(LIRInstruction instruction) {
+            if (!instruction.isValueMoveOp()) {
+                return false;
+            }
+
+            var valueMov = StandardOp.ValueMoveOp.asValueMoveOp(instruction);
+            return valueMov.getResult() instanceof RegisterValue && valueMov.getInput() instanceof Variable;
         }
     }
 }

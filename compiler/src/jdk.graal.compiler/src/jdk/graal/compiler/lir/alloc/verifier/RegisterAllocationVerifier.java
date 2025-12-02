@@ -22,6 +22,7 @@ public final class RegisterAllocationVerifier {
     public BlockMap<List<RAVInstruction.Base>> blockInstructions;
     public BlockMap<VerifierState> blockStates; // Current states
     public BlockMap<VerifierState> blockEntryStates; // State on entry to block
+    public Map<Variable, RAVInstruction.Op> labelMap;
     public LIR lir;
 
     public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
@@ -33,6 +34,7 @@ public final class RegisterAllocationVerifier {
         this.blockEntryStates.put(this.lir.getControlFlowGraph().getStartBlock(), new VerifierState());
 
         this.blockStates = new BlockMap<>(cfg);
+        this.labelMap = new HashMap<>();
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -43,6 +45,94 @@ public final class RegisterAllocationVerifier {
             }
         }
         return true;
+    }
+
+    private void mapLabelVariableFromUsage(
+            // @formatter:off
+            Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap,
+            Variable variable, RegisterValue register)
+            // @formatter:on
+    {
+        var variableLabelInstr = this.labelMap.get(variable);
+        if (variableLabelInstr == null) {
+            return;
+        }
+
+        for (int j = 0; j < variableLabelInstr.dests.count; j++) {
+            if (variableLabelInstr.dests.orig[j].equals(variable)) {
+                variableLabelInstr.dests.curr[j] = register;
+                this.labelMap.remove(variable);
+
+                // Need to iterate over predecessors and fill jumps as well
+                var labelBlock = labelToBlockMap.get(variableLabelInstr);
+                for (int k = 0; k < labelBlock.getPredecessorCount(); k++) {
+                    var pred = labelBlock.getPredecessorAt(k);
+                    var jumpOp = (RAVInstruction.Op) this.blockInstructions.get(pred).getLast();
+                    jumpOp.alive.curr[j] = variable;
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves label variable registers by finding where they are used.
+     */
+    private void resolveLabelsFromUsage() {
+        Queue<BasicBlock<?>> worklist = new LinkedList<>();
+        worklist.add(this.lir.getControlFlowGraph().getStartBlock());
+
+        Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap = new HashMap<>();
+
+        Set<Integer> visited = new HashSet<>();
+        while (!worklist.isEmpty()) {
+            var block = worklist.poll();
+            visited.add(block.getId());
+
+            var instructions = this.blockInstructions.get(block);
+            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
+            for (int i = 0; i < labelInstr.dests.count; i++) {
+                if (labelInstr.dests.curr[i] == null) {
+                    Variable variable = (Variable) labelInstr.dests.orig[i];
+                    this.labelMap.put(variable, labelInstr);
+                    labelToBlockMap.put(labelInstr, block);
+                }
+            }
+
+            for (var instruction : instructions) {
+                switch (instruction) {
+                    case RAVInstruction.VirtualMove move -> {
+                        if (move.variableOrConstant instanceof Variable variable && move.location instanceof RegisterValue register) {
+                            this.mapLabelVariableFromUsage(labelToBlockMap, variable, register);
+                        }
+                    }
+                    case RAVInstruction.Op op -> {
+                        for (int i = 0; i < op.uses.count; i++) {
+                            if (op.uses.orig[i] instanceof Variable variable && op.uses.curr[i] instanceof RegisterValue register) {
+                                this.mapLabelVariableFromUsage(labelToBlockMap, variable, register);
+                            }
+                        }
+                    }
+                    default -> {
+                    }
+                }
+            }
+
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                var succ = block.getSuccessorAt(i);
+                if (visited.contains(succ.getId())) {
+                    continue;
+                }
+                // TODO: save path from label to usage and determine if value was spilled, reloaded, moved, etc...
+                worklist.add(succ);
+            }
+        }
+
+        if (!this.labelMap.isEmpty()) {
+            // Maybe throwing is not the best way to do things, if variable is unused, we do not care
+            // which register is used, but if in other case we haven't determined the register
+            // And it is used somewhere, we need to mark the error with message that we could not determine it.
+            throw new GraalError("Was not able to determine all label registers.");
+        }
     }
 
     /**
@@ -167,6 +257,7 @@ public final class RegisterAllocationVerifier {
     }
 
     public boolean run() {
+        this.resolveLabelsFromUsage();
         this.calculateEntryBlocks();
         return this.verifyInstructionInputs();
     }
