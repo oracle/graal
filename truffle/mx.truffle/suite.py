@@ -1798,6 +1798,7 @@ suite = {
           "com.oracle.truffle.api.memory",
           "com.oracle.truffle.api.io",
           "com.oracle.truffle.api.frame",
+          "com.oracle.truffle.api.impl",
           "com.oracle.truffle.api",
           "com.oracle.truffle.api.instrumentation",
           "com.oracle.truffle.api.dsl",
@@ -1818,7 +1819,6 @@ suite = {
           "com.oracle.truffle.api.strings.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           "com.oracle.truffle.object.enterprise to com.oracle.truffle.enterprise",
           # GR-64984: Exports to com.oracle.truffle.enterprise are only needed for jdk21.
@@ -1839,20 +1839,6 @@ suite = {
         ],
       },
 
-      "moduleInfo:closed" : {
-        # This is the module descriptor for the Truffle API modular jar deployed via maven.
-        # It exports all the Truffle API packages to the language that get loaded through Truffle at runtime.
-        "exports" : [
-          # Unqualified exports
-          "com.oracle.truffle.api.provider",
-          "com.oracle.truffle.api.instrumentation.provider",
-          "com.oracle.truffle.api.library.provider",
-          # Qualified exports
-          "com.oracle.truffle.api* to org.graalvm.locator, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
-          "com.oracle.truffle.object to org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-        ],
-      },
       "subDir" : "src",
       "javaCompliance" : "17+",
       "dependencies" : [
