@@ -167,8 +167,12 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)
     public static RuntimeException fatalErrorNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
-        Log.log().string("ip: ").zhex(ip).string(", sp: ").zhex(sp).string(", ");
-        CodeInfoAccess.log(info, Log.log()).newline();
+        Log.log().string("ip: ").zhex(ip).string(", sp: ").zhex(sp).string(", code info: ");
+        if (info.isNull()) {
+            Log.log().string("null");
+        } else {
+            CodeInfoAccess.printCodeInfo(Log.log(), info, true);
+        }
         throw VMError.shouldNotReachHere("No reference map information found");
     }
 
