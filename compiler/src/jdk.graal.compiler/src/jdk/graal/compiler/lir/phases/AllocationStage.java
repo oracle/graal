@@ -42,7 +42,7 @@ public class AllocationStage extends LIRPhaseSuite<AllocationPhase.AllocationCon
 
         // For now, verify before stack allocator
         if (RegisterAllocationVerifierPhase.Options.EnableRAVerifier.getValue(options)) {
-            var raPhase = new RegisterAllocationVerifierPhase();
+            var raPhase = new RegisterAllocationVerifierPhase(options);
 
             prependPhase(raPhase.getPreAllocPhase());
             appendPhase(raPhase);

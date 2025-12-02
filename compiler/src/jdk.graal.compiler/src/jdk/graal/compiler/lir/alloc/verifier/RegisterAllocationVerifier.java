@@ -24,8 +24,9 @@ public final class RegisterAllocationVerifier {
     public BlockMap<VerifierState> blockEntryStates; // State on entry to block
     public Map<Variable, RAVInstruction.Op> labelMap;
     public LIR lir;
+    public PhiResolution phiResolution;
 
-    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions) {
+    public RegisterAllocationVerifier(LIR lir, BlockMap<List<RAVInstruction.Base>> blockInstructions, PhiResolution phiResolution) {
         this.lir = lir;
 
         var cfg = lir.getControlFlowGraph();
@@ -35,6 +36,8 @@ public final class RegisterAllocationVerifier {
 
         this.blockStates = new BlockMap<>(cfg);
         this.labelMap = new HashMap<>();
+
+        this.phiResolution = phiResolution;
     }
 
     private boolean doPrecessorsHaveStates(BasicBlock<?> block) {
@@ -180,6 +183,45 @@ public final class RegisterAllocationVerifier {
     }
 
     /**
+     * Resolve phi registers from this jump point, can only be done if
+     * the phi variables/constants only have one location.
+     *
+     * <p>
+     * This way we can handle phi arguments before we reach said block.
+     * But cannot really be done for loops, if their initial values
+     * are the same and there are multiple ones.
+     * </p>
+     *
+     * @param block From whom we are jumping from
+     */
+    private void resolvePhiFromJump(BasicBlock<?> block) {
+        var state = this.blockStates.get(block);
+        var jumpInstr = (RAVInstruction.Op) this.blockInstructions.get(block).getLast();
+        for (int i = 0; i < jumpInstr.alive.count; i++) {
+            if (jumpInstr.alive.curr[i] != null) {
+                continue;
+            }
+
+            var inputValue = jumpInstr.alive.orig[i];
+            if (inputValue instanceof Variable || inputValue instanceof ConstantValue) {
+                // Does not work for constants if there is more of them
+                var locations = state.registerValues.getValueLocations(inputValue);
+                if (locations.size() == 1) {
+                    var register = locations.stream().findFirst().get();
+                    jumpInstr.alive.curr[i] = register;
+                }
+
+                for (int j = 0; j < block.getSuccessorCount(); j++) {
+                    var succ = block.getSuccessorAt(j);
+                    var labelInstr = (RAVInstruction.Op) this.blockInstructions.get(succ).getFirst();
+
+                    labelInstr.dests.curr[i] = jumpInstr.alive.curr[i];
+                }
+            }
+        }
+    }
+
+    /**
      * For every block, we need to calculate its entry state
      * which is a combination of states of blocks that are its
      * predecessors, merged into a state we use to verify
@@ -194,13 +236,6 @@ public final class RegisterAllocationVerifier {
             var block = worklist.poll();
             var instructions = this.blockInstructions.get(block);
 
-            var labelInstr = (RAVInstruction.Op) instructions.getFirst();
-            var changedLabelArgs = false;
-            if (labelInstr.hasMissingDefinitions() && this.doPrecessorsHaveStates(block)) {
-                this.resolveVariableLocationsForPhi(block, labelInstr);
-                changedLabelArgs = true;
-            }
-
             // Create new entry state for successor blocks out of current block state
             var state = new VerifierState(this.blockEntryStates.get(block));
             for (var instr : instructions) {
@@ -208,11 +243,15 @@ public final class RegisterAllocationVerifier {
             }
             this.blockStates.put(block, state);
 
+            if (this.phiResolution == PhiResolution.FromJump) {
+                this.resolvePhiFromJump(block);
+            }
+
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
 
                 VerifierState succState;
-                if (this.blockEntryStates.get(succ) == null || changedLabelArgs) {
+                if (this.blockEntryStates.get(succ) == null) {
                     succState = new VerifierState();
 
                     // Either there's no state because it was not yet processed first part of the condition
@@ -257,7 +296,9 @@ public final class RegisterAllocationVerifier {
     }
 
     public boolean run() {
-        this.resolveLabelsFromUsage();
+        if (this.phiResolution == PhiResolution.FromUsage) {
+            this.resolveLabelsFromUsage();
+        }
         this.calculateEntryBlocks();
         return this.verifyInstructionInputs();
     }
@@ -442,23 +483,23 @@ public final class RegisterAllocationVerifier {
     }
 
     public static class ConflictedAllocationState extends AllocationState {
-        protected List<Value> conflictedValues;
+        protected Set<Value> conflictedValues;
 
         public ConflictedAllocationState(Value value1, Value value2) {
-            this.conflictedValues = new LinkedList<>();
+            this.conflictedValues = new HashSet<>();
             this.conflictedValues.add(value1);
             this.conflictedValues.add(value2);
         }
 
-        private ConflictedAllocationState(List<Value> conflictedValues) {
-            this.conflictedValues = new LinkedList<>(conflictedValues);
+        private ConflictedAllocationState(Set<Value> conflictedValues) {
+            this.conflictedValues = new HashSet<>(conflictedValues);
         }
 
         public void addConflictedValue(Value value) {
             this.conflictedValues.add(value);
         }
 
-        public List<Value> getConflictedValues() {
+        public Set<Value> getConflictedValues() {
             return this.conflictedValues;
         }
 
