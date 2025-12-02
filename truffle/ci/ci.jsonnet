@@ -154,6 +154,14 @@
     ],
   },
 
+  local jmh_compiler_benchmark_test = bench_common + {
+      name:  self.name_prefix + 'truffle-test-compiler-benchmarks-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
+      run+: [
+        self.mx_prefix + ["benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+        self.mx_prefix + ["benchmark", "truffle:*", "--", "--jvm", "native-image", "--jvm-config", "default", "--", "org.graalvm.truffle.compiler.benchmark", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1", "-prof", "org.graalvm.truffle.compiler.benchmark.CompilationTimingsProfiler"],
+      ],
+  },
+
   local jmh_benchmark_daily = bench_common + {
     name: self.name_prefix + 'truffle-jmh-daily-' + self.truffle_jdk_name + '-' + self.os + '-' + self.arch,
     notify_groups:: ["truffle_bench"],
@@ -263,6 +271,7 @@
 
     # Truffle Benchmarks
     [linux_amd64  + tier3  + jdk_latest_labs + jmh_benchmark_test],
+    [linux_amd64  + tier3  + jdk_latest_graalvm_ce + jmh_compiler_benchmark_test],
     [bench_hw.x52 + bench  + jdk_latest_labs + jmh_benchmark],
     [bench_hw.x52 + bench_daily + jdk_latest_graalvm_ce + jmh_benchmark_daily],
   ]),
