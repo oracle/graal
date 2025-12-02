@@ -46,7 +46,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -192,7 +191,6 @@ import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import jdk.graal.compiler.replacements.nodes.LateLoweredNode;
 import jdk.graal.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
-import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -2045,7 +2043,7 @@ public class SnippetTemplate {
                         MemoryKill replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
                             assert mayRemoveLocation || LocationIdentity.any().equals(location) ||
-                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
+                                            info.isPrivateLocation(location) : "Snippet " + info.method.format("%h.%n") +
                                                             " contains access to the non-private location " +
                                                             location + ", but replacee doesn't access this location." + map.getLocations();
                         } else {
