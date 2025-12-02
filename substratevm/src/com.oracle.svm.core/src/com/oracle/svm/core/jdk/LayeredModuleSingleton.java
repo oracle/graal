@@ -48,12 +48,37 @@ public abstract class LayeredModuleSingleton {
     public static final String ALL_UNNAMED_MODULE_NAME = "native-image-all-unnamed";
     public static final String EVERYONE_MODULE_NAME = "native-image-everyone";
 
+    /**
+     * Map containing all the {@code Module#openPackages} values for each module. The key is the
+     * module name and the value is the corresponding {@code Module#openPackages}. The name of the
+     * module is used instead of the Module object because the hashcode of the Module object is not
+     * consistent across layers. This is ensured by
+     * {@link LayeredModuleSingleton#setPackages(ResolvedJavaModule, EconomicMap, Map, String)}}.
+     */
     protected final EconomicMap<String, Map<String, Set<String>>> moduleOpenPackages;
+
+    /**
+     * See {@link LayeredModuleSingleton#moduleOpenPackages}.
+     */
     protected final EconomicMap<String, Map<String, Set<String>>> moduleExportedPackages;
 
+    /**
+     * Keeps track of all the modules whose {@code Module#openPackages} and
+     * {@code Module#exportedPackages} are set by
+     * {@link LayeredModuleSingleton#setExportedPackages(ResolvedJavaModule, Map)} and
+     * {@link LayeredModuleSingleton#setOpenPackages(ResolvedJavaModule, Map)}. This also allows to
+     * ensure each module has a different name.
+     */
     private final EconomicMap<String, ResolvedJavaModule> nameToModule = EconomicMap.create();
 
+    /**
+     * The value of {@code Module.EVERYONE_MODULE}.
+     */
     private ResolvedJavaModule everyoneModule;
+
+    /**
+     * The value of {@code Module.ALL_UNNAMED_MODULE}.
+     */
     private ResolvedJavaModule allUnnamedModule;
 
     public LayeredModuleSingleton() {
@@ -82,6 +107,10 @@ public abstract class LayeredModuleSingleton {
         return moduleExportedPackages.get(module.getName());
     }
 
+    /**
+     * Returns all the modules whose {@code Module#openPackages} and {@code Module#exportedPackages}
+     * are set.
+     */
     public Iterable<ResolvedJavaModule> getModules() {
         return nameToModule.getValues();
     }
@@ -114,6 +143,10 @@ public abstract class LayeredModuleSingleton {
             Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), _ -> new HashSet<>());
             modules.addAll(entry.getValue().stream().map(GraalAccess::lookupModule).map(ResolvedJavaModule::getName).toList());
             modules.remove(null);
+            /*
+             * ALL_UNNAMED_MODULE and EVERYONE_MODULE don't have a name, so they need a special
+             * marker to track them.
+             */
             if (entry.getValue().contains(OriginalModuleProvider.getJavaModule(allUnnamedModule))) {
                 modules.add(ALL_UNNAMED_MODULE_NAME);
             }
