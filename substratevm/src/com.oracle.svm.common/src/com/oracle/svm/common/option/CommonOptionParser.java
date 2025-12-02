@@ -38,6 +38,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -179,9 +180,9 @@ public class CommonOptionParser {
         }
     }
 
-    public static OptionParseResult parseOption(EconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
+    public static OptionParseResult parseOption(UnmodifiableEconomicMap<String, OptionDescriptor> options, Predicate<OptionKey<?>> isHosted, String option, EconomicMap<OptionKey<?>, Object> valuesMap,
                     String optionPrefix, BooleanOptionFormat booleanOptionFormat) throws UnsupportedOptionClassException {
-        if (option.length() == 0) {
+        if (option.isEmpty()) {
             return OptionParseResult.error("Option name must be specified");
         }
 
@@ -478,7 +479,7 @@ public class CommonOptionParser {
         }
     }
 
-    public static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
+    public static void printFlags(Predicate<OptionDescriptor> filter, UnmodifiableEconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
         List<OptionDescriptor> sortedDescriptors = new ArrayList<>();
         for (OptionDescriptor option : options.getValues()) {
             if (filter.test(option)) {
