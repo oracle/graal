@@ -283,8 +283,12 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
     @Override
     public final InterpreterResolvedJavaMethod lookupVTableEntry(int vtableIndex) {
-        assert getVtable() != null;
-        return getVtable()[vtableIndex];
+        InterpreterResolvedJavaMethod[] vtable = getVtable();
+        assert vtable != null;
+        if (vtableIndex >= vtable.length) {
+            return null;
+        }
+        return vtable[vtableIndex];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
