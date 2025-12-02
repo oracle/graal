@@ -645,12 +645,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return wrapped.isCloneableWithAllocation();
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
-    }
-
     @Override
     public ResolvedJavaType unwrapTowardsOriginalType() {
         return wrapped;

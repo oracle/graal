@@ -1441,12 +1441,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return isCloneableWithAllocation;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
-    }
-
     @Override
     public AnalysisUniverse getUniverse() {
         return universe;

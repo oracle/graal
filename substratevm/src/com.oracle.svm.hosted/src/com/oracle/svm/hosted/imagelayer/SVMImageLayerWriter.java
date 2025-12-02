@@ -187,8 +187,8 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.NodeClassMap;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
@@ -848,8 +848,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         AnalysisError.guarantee(type.isTrackedAcrossLayers(), "Type %s from constant %s should have been marked as trackedAcrossLayers, but was not", type, imageHeapConstant);
         builder.setTypeId(type.getId());
 
-        IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
-        int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);
+        ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
+        int identityHashCode = constantReflection.identityHashCode(imageHeapConstant);
         builder.setIdentityHashCode(identityHashCode);
 
         switch (imageHeapConstant) {

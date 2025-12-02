@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import java.util.Objects;
+
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.espresso.jvmci.meta.AbstractEspressoResolvedInstanceType;
@@ -211,6 +213,22 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             throw new IllegalArgumentException("expected an espresso object type, got a " + type.getClass());
         }
         return new KlassConstant(espressoType);
+    }
+
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+        if (!(constant instanceof EspressoExternalObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
+        return objectConstant.guestHashCode();
     }
 
     @Override

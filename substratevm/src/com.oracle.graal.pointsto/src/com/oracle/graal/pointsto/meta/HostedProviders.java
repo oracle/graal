@@ -29,7 +29,6 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -47,10 +46,9 @@ public class HostedProviders extends Providers {
 
     public HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    WordTypes wordTypes, PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider,
-                    IdentityHashCodeProvider identityHashCodeProvider) {
+                    WordTypes wordTypes, PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
         super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
-                        snippetReflection, wordTypes, loopsDataProvider, identityHashCodeProvider);
+                        snippetReflection, wordTypes, loopsDataProvider);
     }
 
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
@@ -65,20 +63,20 @@ public class HostedProviders extends Providers {
     public HostedProviders copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(), getIdentityHashCodeProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
     }
 
     @Override
     public HostedProviders copyWith(ConstantFieldProvider substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(), getIdentityHashCodeProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
     }
 
     @Override
     public HostedProviders copyWith(Replacements substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution, getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(), getIdentityHashCodeProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
     }
 }

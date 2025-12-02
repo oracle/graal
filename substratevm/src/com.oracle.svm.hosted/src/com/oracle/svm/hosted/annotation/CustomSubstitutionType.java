@@ -145,12 +145,6 @@ public abstract class CustomSubstitutionType implements ResolvedJavaType, Origin
         return original.isAssignableFrom(other);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
-    }
-
     @Override
     public boolean isJavaLangObject() {
         return original.isJavaLangObject();

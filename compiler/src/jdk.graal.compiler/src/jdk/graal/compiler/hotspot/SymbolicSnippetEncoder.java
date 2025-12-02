@@ -362,7 +362,7 @@ public class SymbolicSnippetEncoder {
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                         originalProvider.getRegisters(), originalProvider.getSnippetReflection(), originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig(),
-                        originalProvider.getIdentityHashCodeProvider(), originalProvider.getReplayCompilationSupport());
+                        originalProvider.getReplayCompilationSupport());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -646,6 +646,11 @@ public class SymbolicSnippetEncoder {
         @Override
         public Constant asObjectHub(ResolvedJavaType type) {
             return constantReflection.asObjectHub(type);
+        }
+
+        @Override
+        public Integer identityHashCode(JavaConstant constant) {
+            return constantReflection.identityHashCode(constant);
         }
     }
 

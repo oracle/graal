@@ -2228,7 +2228,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
         ResolvedJavaType callingClass = method.getDeclaringClass();
-        callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
             args[0] = emitIncompatibleClassChangeCheck(args[0], callingClass);
         }
@@ -2244,12 +2243,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
         }
         return append(PiNode.create(object, StampFactory.object(checkedTypeRef, true), guardingNode));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static ResolvedJavaType getHostClass(ResolvedJavaType type) {
-        ResolvedJavaType hostClass = type.getHostClass();
-        return hostClass != null ? hostClass : type;
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {

@@ -1379,8 +1379,7 @@ public class NativeImageGenerator {
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
 
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
-                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider(),
-                        aConstantReflection);
+                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         SubstrateReplacements aReplacements = new SubstrateReplacements(aProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());

@@ -283,6 +283,23 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
         return new KlassConstant((EspressoResolvedObjectType) type);
     }
 
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+        if (!(constant instanceof EspressoObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
+        Object unwrapped = unwrap(objectConstant);
+        return System.identityHashCode(unwrapped);
+    }
+
     public JavaConstant forObject(Object object) {
         return wrap(object);
     }

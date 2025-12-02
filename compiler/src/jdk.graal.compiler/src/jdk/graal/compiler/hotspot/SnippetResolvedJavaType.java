@@ -174,12 +174,6 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         throw new NoClassDefFoundError();
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        throw new UnsupportedOperationException();
-    }
-
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj instanceof SnippetObjectConstant) {

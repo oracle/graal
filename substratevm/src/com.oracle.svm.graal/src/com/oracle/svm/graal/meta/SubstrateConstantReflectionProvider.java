@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal.meta;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
@@ -55,9 +57,11 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
 
     @Override
     public Integer identityHashCode(JavaConstant constant) {
-        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
-            return null;
-        } else if (constant.isNull()) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
         }

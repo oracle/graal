@@ -70,7 +70,6 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -265,7 +264,7 @@ public class SubstrateGraalUtils {
         VMError.guarantee(hostedConstant.getJavaKind().isObject() && !hostedConstant.isDefaultForKind() && !(hostedConstant instanceof ImageHeapConstant),
                         "Expected to find host object JavaConstant, found %s", hostedConstant);
         Object hostedObject = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, hostedConstant);
-        return SubstrateObjectConstant.forObject(hostedObject, ((IdentityHashCodeProvider) constantReflection).identityHashCode(heapConstant));
+        return SubstrateObjectConstant.forObject(hostedObject, constantReflection.identityHashCode(heapConstant));
     }
 
     /**

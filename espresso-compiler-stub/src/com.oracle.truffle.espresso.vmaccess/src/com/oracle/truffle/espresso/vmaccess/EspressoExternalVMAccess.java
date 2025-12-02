@@ -45,7 +45,6 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -143,10 +142,9 @@ final class EspressoExternalVMAccess implements VMAccess {
         SnippetReflectionProvider snippetReflection = new EspressoExternalSnippetReflectionProvider();
         WordTypes wordTypes = new WordTypes(metaAccess, target.wordJavaKind);
         LoopsDataProvider loopsDataProvider = new LoopsDataProviderImpl();
-        IdentityHashCodeProvider identityHashCodeProvider = new EspressoExternalIdentityHashCodeProvider();
         Providers newProviders = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls,
                         lowerer, null, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, snippetReflection,
-                        wordTypes, loopsDataProvider, identityHashCodeProvider);
+                        wordTypes, loopsDataProvider);
         Replacements replacements = new DummyReplacements(newProviders);
         return (Providers) replacements.getProviders();
     }
