@@ -62,6 +62,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -269,7 +270,7 @@ public abstract class InterpreterStubSection {
         }
 
         Object retVal;
-        com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
             /* A JIT compiled version is available, execute this one instead */
             CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
