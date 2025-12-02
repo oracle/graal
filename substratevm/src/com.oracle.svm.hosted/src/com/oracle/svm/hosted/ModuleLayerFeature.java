@@ -200,6 +200,12 @@ public class ModuleLayerFeature implements InternalFeature {
 
         access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
         access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceImplLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.jarModuleReaderJfField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.jarModuleReaderUriField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReference1ValFileStringField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReference1ValUriField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.loadedModuleClassCodeSourceURLField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.loadedModuleClassURIField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
     }
 
     /**
@@ -785,6 +791,12 @@ public class ModuleLayerFeature implements InternalFeature {
         private final Field moduleLayerModulesField;
         private final Field moduleReferenceLocationField;
         private final Field moduleReferenceImplLocationField;
+        private final Field jarModuleReaderJfField;
+        private final Field jarModuleReaderUriField;
+        private final Field moduleReference1ValFileStringField;
+        private final Field moduleReference1ValUriField;
+        private final Field loadedModuleClassCodeSourceURLField;
+        private final Field loadedModuleClassURIField;
         private final Set<String> nativeAccessEnabled;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
@@ -855,6 +867,16 @@ public class ModuleLayerFeature implements InternalFeature {
                 moduleLayerModulesField = ReflectionUtil.lookupField(ModuleLayer.class, "modules");
                 moduleReferenceLocationField = ReflectionUtil.lookupField(ModuleReference.class, "location");
                 moduleReferenceImplLocationField = ReflectionUtil.lookupField(ModuleReferenceImpl.class, "location");
+                Class<?> jarModuleReaderClass = ReflectionUtil.lookupClass("jdk.internal.module.ModuleReferences$JarModuleReader");
+                jarModuleReaderJfField = ReflectionUtil.lookupField(jarModuleReaderClass, "jf");
+                jarModuleReaderUriField = ReflectionUtil.lookupField(jarModuleReaderClass, "uri");
+                /* Supplier<ModuleReader> in ModuleReferences.newJarModule() captures dirs. */
+                Class<?> moduleReference1Class = ReflectionUtil.lookupClass("jdk.internal.module.ModuleReferences$1");
+                moduleReference1ValFileStringField = ReflectionUtil.lookupField(moduleReference1Class, "val$fileString");
+                moduleReference1ValUriField = ReflectionUtil.lookupField(moduleReference1Class, "val$uri");
+                Class<?> loadedModuleClass = ReflectionUtil.lookupClass("jdk.internal.loader.BuiltinClassLoader$LoadedModule");
+                loadedModuleClassCodeSourceURLField = ReflectionUtil.lookupField(loadedModuleClass, "codeSourceURL");
+                loadedModuleClassURIField = ReflectionUtil.lookupField(loadedModuleClass, "uri");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
