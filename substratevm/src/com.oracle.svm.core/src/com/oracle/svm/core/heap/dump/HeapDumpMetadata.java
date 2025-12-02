@@ -38,6 +38,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
@@ -45,6 +47,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.TypeIDs;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -121,6 +124,21 @@ public class HeapDumpMetadata {
 
     public static HeapDumpMetadata singleton() {
         return ImageSingletons.lookup(HeapDumpMetadata.class);
+    }
+
+    /**
+     * When using layered images we must ensure that metadata has been encoded for all layers.
+     */
+    public static boolean isMetadataAvailable() {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            for (var encodedData : HeapDumpEncodedData.layeredSingletons()) {
+                if (encodedData.data == null) {
+                    return false;
+                }
+            }
+        }
+        return VMInspectionOptions.hasHeapDumpSupport();
     }
 
     public boolean initialize() {

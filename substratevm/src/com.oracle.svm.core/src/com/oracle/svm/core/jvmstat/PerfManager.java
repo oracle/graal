@@ -45,6 +45,10 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -54,6 +58,7 @@ import jdk.graal.compiler.word.Word;
 /**
  * Used to create and manage performance data entries.
  */
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class PerfManager {
     private final ArrayList<PerfDataHolder> perfDataHolders;
     private final ArrayList<MutablePerfDataEntry> mutablePerfDataEntries;
