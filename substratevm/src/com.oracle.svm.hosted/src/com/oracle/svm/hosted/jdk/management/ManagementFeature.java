@@ -75,6 +75,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -186,7 +187,8 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(ManagementFeature::registerMBeanServerFactoryNewBuilder, method(access, "javax.management.MBeanServerFactory", "newBuilder", Class.class));
-        access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
+        access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass,
+                        method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
 
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             assert verifyMemoryManagerBeans();
@@ -266,8 +268,8 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
          * Registering the one-dimensional array classes capture the common use cases.
          */
         for (String className : OpenType.ALLOWED_CLASSNAMES_LIST) {
-            RuntimeReflection.register(clazz(access, className));
-            RuntimeReflection.register(clazz(access, "[L" + className + ";"));
+            JVMCIRuntimeReflection.register(type(access, className));
+            JVMCIRuntimeReflection.register(type(access, "[L" + className + ";"));
         }
     }
 

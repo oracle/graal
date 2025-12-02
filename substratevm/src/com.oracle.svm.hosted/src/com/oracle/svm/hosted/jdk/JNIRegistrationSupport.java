@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -68,6 +69,7 @@ import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -125,8 +127,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         if (isWindows()) {
-            var optSunMSCAPIClass = optionalClazz(access, "sun.security.mscapi.SunMSCAPI");
-            isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && access.isReachable(optSunMSCAPIClass.get());
+            AfterAnalysisAccessImpl afterAnalysisAccessImpl = (AfterAnalysisAccessImpl) access;
+            var optSunMSCAPIClass = optionalType(access, "sun.security.mscapi.SunMSCAPI").map(AnalysisType.class::cast);
+            isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && afterAnalysisAccessImpl.isReachable(optSunMSCAPIClass.get());
         }
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             for (String library : jniRegistrationSupportSingleton.prevLayerRegisteredLibraries) {
