@@ -383,6 +383,82 @@ class JSConversion extends Conversion {
         javaValue = this.javaScriptToJava(javaScriptValue);
         return this.javaToJavaScript(javaValue.$t["org.graalvm.webimage.api.JSValue"].$m["as"](javaValue, typeHub));
     }
+
+    getArrayLength(javaArray) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["lengthOf"](javaArray);
+    }
+
+    loadBooleanArrayElement(javaArray, idx) {
+        return !!javaArray[idx];
+    }
+
+    loadByteArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadShortArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadCharArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadIntArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadFloatArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadLongArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadDoubleArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    loadObjectArrayElement(javaArray, idx) {
+        return javaArray[idx];
+    }
+
+    storeBooleanArrayElement(javaArray, idx, jsBoolean) {
+        javaArray[idx] = jsBoolean ? 1 : 0;
+    }
+
+    storeByteArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeShortArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeCharArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeIntArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeFloatArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeLongArrayElement(javaArray, idx, jsBigInt) {
+        javaArray[idx] = jsBigInt;
+    }
+
+    storeDoubleArrayElement(javaArray, idx, jsNumber) {
+        javaArray[idx] = jsNumber;
+    }
+
+    storeObjectArrayElement(javaArray, idx, javaObjectValue) {
+        javaArray[idx] = javaObjectValue;
+    }
 }
 
 // Java Proxies

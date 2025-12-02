@@ -55,7 +55,7 @@ public class CoercionConversionTest {
                     "102030405060", "bigint",
                     "9876543210", "bigint",
                     "freestyla", "string",
-                    "1,2,3,4,5", "object",
+                    "[Java Proxy: int[]]", "function",
                     "Tuple(x=3, y=4)", "function",
                     // Return-value coercion tests.
                     "true",
@@ -122,11 +122,11 @@ public class CoercionConversionTest {
         log("freestyla");
         typeof("rock da microphone");
 
+        // All other types are not coerced, and are exposed as Java Proxies.
         int[] ints = new int[]{1, 2, 3, 4, 5};
         logToString(ints);
         typeof(ints);
 
-        // All other types are not coerced, and are exposed as Java Proxies.
         log(new Tuple(3, 4));
         typeof(new Tuple(3, 4));
     }

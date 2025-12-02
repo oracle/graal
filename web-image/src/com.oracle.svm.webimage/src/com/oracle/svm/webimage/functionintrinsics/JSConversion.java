@@ -25,6 +25,7 @@
 
 package com.oracle.svm.webimage.functionintrinsics;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.math.BigInteger;
 
@@ -410,11 +411,13 @@ public abstract class JSConversion {
 
     /**
      * Returns the length of the specified array.
-     *
+     * <p>
      * This method is intended to be called from JavaScript.
      */
-    public static int lengthOf(Object[] array) {
-        return array.length;
+    @WasmExport("convert.arraylength")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static int lengthOf(Object array) {
+        return Array.getLength(array);
     }
 
     /**
