@@ -702,7 +702,7 @@ public class NativeImageGenerator {
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
-                        FeatureImpl.AfterAbstractImageCreationAccessImpl access = new FeatureImpl.AfterAbstractImageCreationAccessImpl(featureHandler, loader, debug, image,
+                        FeatureImpl.AfterAbstractImageCreationAccessImpl access = new FeatureImpl.AfterAbstractImageCreationAccessImpl(featureHandler, loader, hMetaAccess, debug, image,
                                         runtimeConfiguration.getBackendForNormalMethod());
                         featureHandler.forEachGraalFeature(feature -> feature.afterAbstractImageCreation(access));
 
@@ -750,7 +750,7 @@ public class NativeImageGenerator {
                     return;
                 }
 
-                AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
+                AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), hMetaAccess, debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
                 try {
                     // size changes during linking and afterConfig phase
@@ -977,7 +977,7 @@ public class NativeImageGenerator {
                 /* Init the BuildPhaseProvider before any features need it. */
                 BuildPhaseProvider.init();
 
-                featureHandler.registerFeatures(loader, debug);
+                featureHandler.registerFeatures(loader, originalMetaAccess, debug);
                 BuildPhaseProvider.markFeatureRegistrationFinished();
 
                 loader.initBuilderModules();
