@@ -41,6 +41,7 @@ import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LayerVerifiedOption;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -83,6 +84,7 @@ public final class VMInspectionOptions {
                     ", or '" + MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME)//
+    @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(

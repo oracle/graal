@@ -44,6 +44,10 @@ import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.word.Word;
 
@@ -55,6 +59,7 @@ import jdk.graal.compiler.word.Word;
  * performance data counter (i.e., we read the counter value, increment it, and write it back to the
  * same memory location).
  */
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class PerfMemory {
     private static final CGlobalData<Pointer> PERF_DATA_ISOLATE = CGlobalDataFactory.createWord();
 

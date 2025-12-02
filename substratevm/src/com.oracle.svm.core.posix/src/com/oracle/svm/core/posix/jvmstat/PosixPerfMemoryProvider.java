@@ -40,7 +40,6 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
 
 import java.nio.ByteBuffer;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -55,6 +54,7 @@ import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.jvmstat.PerfManager;
@@ -74,15 +74,23 @@ import com.oracle.svm.core.posix.headers.Mman;
 import com.oracle.svm.core.posix.headers.PosixFile;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
  * this code so that it can be executed during the isolate startup (i.e., in uninterruptible code),
  * see GR-40601.
  */
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class PosixPerfMemoryProvider implements PerfMemoryProvider {
     private static final String PERFDATA_NAME = "hsperfdata";
 
@@ -539,9 +547,13 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            return false;
+        }
         return VMInspectionOptions.hasJvmstatSupport() && PerfDataMemoryMappedFile.getValue();
     }
 

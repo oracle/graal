@@ -32,6 +32,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class PerfDataSupportImpl implements PerfDataSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     PerfDataSupportImpl() {

@@ -29,7 +29,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
 import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -68,7 +70,8 @@ public class OutOfMemoryUtil {
             return;
         }
 
-        if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue() &&
+                        (!ImageLayerBuildingSupport.buildingImageLayer() || HeapDumpMetadata.isLayeredMetadataAvailable())) {
             HeapDumping.singleton().dumpHeapOnOutOfMemoryError();
         }
 
