@@ -654,7 +654,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
-        b.append(" : short");
+        b.append("opcode : short");
         for (InstructionImmediate imm : immediates) {
             b.append(", ");
             b.append(imm.name);
