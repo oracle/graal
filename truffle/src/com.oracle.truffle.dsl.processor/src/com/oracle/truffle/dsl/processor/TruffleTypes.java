@@ -246,6 +246,10 @@ public class TruffleTypes {
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
     public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
 
+    // impl
+    public static final String FrameWithoutBoxing_Name = "com.oracle.truffle.api.impl.FrameWithoutBoxing";
+    public final DeclaredType FrameWithoutBoxing = c.getDeclaredType(FrameWithoutBoxing_Name);
+
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
     public static final String Bind_DefaultExpression_Name = "com.oracle.truffle.api.dsl.Bind.DefaultExpression";

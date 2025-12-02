@@ -110,7 +110,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     public List<? extends VariableElement> additionalArguments() {
         List<CodeVariableElement> result = new ArrayList<>();
         if (model.hasYieldOperation()) {
-            result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$stackFrame"));
+            result.add(new CodeVariableElement(context.getTypes().FrameWithoutBoxing, "$stackFrame"));
         }
         result.add(new CodeVariableElement(nodeType, "$bytecode"));
         result.add(new CodeVariableElement(context.getType(byte[].class), "$bc"));
