@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "7.65.0",
+  "mxversion": "7.68.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -194,10 +194,6 @@ suite = {
         "jdk.graal.compiler.jtt",
         "jdk.graal.compiler.truffle.test",
       ],
-      # Direct reference to jdk.vm.ci.meta.annotation and
-      # jdk.vm.ci.meta.ResolvedJavaRecordComponent causes
-      # spotbugs analysis to fail with "missing class" error.
-      "spotbugs": "false",
     },
 
     "jdk.graal.compiler.processor" : {
@@ -317,7 +313,6 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "21+",
-      "spotbugs": "false",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -395,7 +390,6 @@ suite = {
       "forceJavac": True,
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
-      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
@@ -413,7 +407,6 @@ suite = {
       "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
-      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "jacoco" : "exclude",
       "testProject" : True,
@@ -456,7 +449,6 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "jacoco" : "exclude",
-      "spotbugs": "false",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -512,10 +504,6 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-
-      # Direct reference to jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope
-      # causes spotbugs analysis to fail with "missing class" error.
-      "spotbugs": "false",
     },
 
     "jdk.graal.compiler.libgraal.loader" : {
@@ -534,7 +522,6 @@ suite = {
           "jdk.internal.jimage",
         ],
       },
-      "spotbugs": "false",
       "jacoco" : "exclude",
     },
   },
