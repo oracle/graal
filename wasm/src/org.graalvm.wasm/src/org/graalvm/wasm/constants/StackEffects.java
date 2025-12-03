@@ -63,6 +63,13 @@ public final class StackEffects {
     @CompilationFinal(dimensions = 1) private static final byte[] vectorOpStackEffects = new byte[256];
 
     static {
+        // unused, because stack effect is variable
+        aggregateOpStackEffects[Bytecode.STRUCT_NEW] = UNREACHABLE;
+        aggregateOpStackEffects[Bytecode.STRUCT_NEW_DEFAULT] = PUSH_1;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET_S] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_GET_U] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.STRUCT_SET] = POP_2;
         aggregateOpStackEffects[Bytecode.REF_TEST_NON_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_TEST_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_CAST_NON_NULL] = NO_EFFECT;
@@ -93,21 +100,21 @@ public final class StackEffects {
         miscOpStackEffects[Bytecode.TABLE_GROW] = POP_1;
         miscOpStackEffects[Bytecode.TABLE_SIZE] = PUSH_1;
         miscOpStackEffects[Bytecode.TABLE_FILL] = POP_3;
-        miscOpStackEffects[Bytecode.THROW] = UNREACHABLE; // unused, because stack effect is
-                                                          // followed by throw
-        miscOpStackEffects[Bytecode.THROW_REF] = UNREACHABLE; // unused, because stack effect is
-                                                              // followed by throw
+        // unused, because stack effect is followed by throw
+        miscOpStackEffects[Bytecode.THROW] = UNREACHABLE;
+        // unused, because stack effect is followed by throw
+        miscOpStackEffects[Bytecode.THROW_REF] = UNREACHABLE;
         miscOpStackEffects[Bytecode.TABLE_GET] = NO_EFFECT;
         miscOpStackEffects[Bytecode.TABLE_SET] = POP_2;
         miscOpStackEffects[Bytecode.REF_AS_NON_NULL] = NO_EFFECT;
-        miscOpStackEffects[Bytecode.BR_ON_NULL_U8] = UNREACHABLE; // unused, because stack effect is
-                                                                  // dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NULL_I32] = UNREACHABLE; // unused, because stack effect
-                                                                   // is dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_U8] = UNREACHABLE; // unused, because stack
-                                                                      // effect is dynamic
-        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_I32] = UNREACHABLE; // unused, because stack
-                                                                       // effect is dynamic
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NULL_U8] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NULL_I32] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_U8] = UNREACHABLE;
+        // unused, because stack effect is dynamic
+        miscOpStackEffects[Bytecode.BR_ON_NON_NULL_I32] = UNREACHABLE;
 
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD] = NO_EFFECT;
         vectorOpStackEffects[Bytecode.VECTOR_V128_LOAD8X8_S] = NO_EFFECT;

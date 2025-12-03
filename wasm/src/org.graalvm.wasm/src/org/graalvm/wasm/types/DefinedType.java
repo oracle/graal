@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmHeapObject;
+import org.graalvm.wasm.struct.WasmStructAccess;
 
 import java.util.Objects;
 
@@ -69,6 +70,7 @@ public final class DefinedType implements HeapType {
     private final boolean recursiveReference;
 
     @CompilerDirectives.CompilationFinal private int typeEquivalenceClass;
+    @CompilerDirectives.CompilationFinal private WasmStructAccess structAccess;
 
     private DefinedType(int subTypeIndex, boolean recursiveReference) {
         this.subTypeIndex = subTypeIndex;
@@ -93,6 +95,14 @@ public final class DefinedType implements HeapType {
         return typeEquivalenceClass;
     }
 
+    public void setStructAccess(WasmStructAccess structAccess) {
+        this.structAccess = structAccess;
+    }
+
+    public WasmStructAccess structAccess() {
+        return structAccess;
+    }
+
     public boolean isFinal() {
         return recursiveTypes.subTypes()[subTypeIndex].isFinal();
     }
@@ -105,14 +115,19 @@ public final class DefinedType implements HeapType {
         return recursiveTypes.subTypes()[subTypeIndex].compositeType();
     }
 
+    public StructType asStructType() {
+        assert isStructType();
+        return (StructType) expand();
+    }
+
     public FunctionType asFunctionType() {
         assert isFunctionType();
         return (FunctionType) expand();
     }
 
     @Override
-    public Kind kind() {
-        return Kind.DefinedType;
+    public HeapKind heapKind() {
+        return HeapKind.DefinedType;
     }
 
     @Override

@@ -45,6 +45,7 @@ import org.graalvm.wasm.WasmType;
 import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.types.AbstractHeapType;
+import org.graalvm.wasm.types.HeapType;
 import org.graalvm.wasm.types.NumberType;
 import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.types.VectorType;
@@ -114,20 +115,23 @@ public enum ValueType {
     }
 
     public static ValueType fromClosedValueType(org.graalvm.wasm.types.ValueType closedValueType) {
-        return switch (closedValueType.kind()) {
-            case Number -> fromValue(((NumberType) closedValueType).value());
-            case Vector -> fromValue(((VectorType) closedValueType).value());
+        return switch (closedValueType.valueKind()) {
+            case Number -> switch ((NumberType) closedValueType) {
+                case I32 -> i32;
+                case I64 -> i64;
+                case F32 -> f32;
+                case F64 -> f64;
+            };
+            case Vector -> v128;
             case Reference -> {
-                ReferenceType referenceType = (ReferenceType) closedValueType;
-                yield switch (referenceType.heapType().kind()) {
-                    case Abstract -> {
-                        AbstractHeapType abstractHeapType = (AbstractHeapType) referenceType.heapType();
-                        yield switch (abstractHeapType.value()) {
-                            case WasmType.FUNC_HEAPTYPE -> anyfunc;
-                            case WasmType.EXTERNREF_TYPE -> externref;
-                            default -> throw WasmJsApiException.invalidValueType(closedValueType);
-                        };
-                    }
+                HeapType heapType = ((ReferenceType) closedValueType).heapType();
+                yield switch (heapType.heapKind()) {
+                    case Abstract -> switch ((AbstractHeapType) heapType) {
+                        case FUNC -> anyfunc;
+                        case EXTERN -> externref;
+                        case EXN -> exnref;
+                        default -> throw WasmJsApiException.invalidValueType(closedValueType);
+                    };
                     default -> throw WasmJsApiException.invalidValueType(closedValueType);
                 };
             }

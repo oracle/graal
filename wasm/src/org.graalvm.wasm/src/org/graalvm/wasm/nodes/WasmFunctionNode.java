@@ -90,6 +90,9 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.struct.WasmStructAccess;
+import org.graalvm.wasm.types.DefinedType;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -106,7 +109,7 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.types.DefinedType;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
@@ -1536,8 +1539,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final int aggregateOpcode = rawPeekU8(bytecode, offset);
                         offset++;
                         CompilerAsserts.partialEvaluationConstant(aggregateOpcode);
-                        offset = executeAggregate(instance, frame, offset, stackPointer, aggregateOpcode);
-                        stackPointer += StackEffects.getAggregateOpStackEffect(aggregateOpcode);
+                        switch (aggregateOpcode) {
+                            case Bytecode.STRUCT_NEW: {
+                                final int structTypeIdx = rawPeekI32(bytecode, offset);
+                                offset += 4;
+
+                                WasmStructAccess structAccess = module.structTypeAccess(structTypeIdx);
+                                int numFields = module.structTypeFieldCount(structTypeIdx);
+
+                                WasmStruct struct = structAccess.shape().getFactory().create(module.closedTypeAt(structTypeIdx));
+                                popStructFields(frame, structTypeIdx, struct, structAccess, numFields, stackPointer);
+                                stackPointer -= numFields;
+                                WasmFrame.pushReference(frame, stackPointer++, struct);
+                                break;
+                            }
+                            default: {
+                                offset = executeAggregate(instance, frame, offset, stackPointer, aggregateOpcode);
+                                stackPointer += StackEffects.getAggregateOpStackEffect(aggregateOpcode);
+                                break;
+                            }
+                        }
                         break;
                     }
                     case Bytecode.MISC: {
@@ -2129,6 +2150,78 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
         CompilerAsserts.partialEvaluationConstant(aggregateOpcode);
         switch (aggregateOpcode) {
+            case Bytecode.STRUCT_NEW_DEFAULT: {
+                final int structTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                WasmStruct struct = module.structTypeAccess(structTypeIdx).shape().getFactory().create(module.closedTypeAt(structTypeIdx));
+                WasmFrame.pushReference(frame, stackPointer, struct);
+                stackPointer += 1;
+                break;
+            }
+            case Bytecode.STRUCT_GET:
+            case Bytecode.STRUCT_GET_S:
+            case Bytecode.STRUCT_GET_U: {
+                final int structTypeIdx = rawPeekI32(bytecode, offset);
+                final int fieldIdx = rawPeekI32(bytecode, offset + 4);
+                offset += 8;
+
+                StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
+                int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                CompilerAsserts.partialEvaluationConstant(fieldType);
+
+                Object struct = WasmFrame.popReference(frame, stackPointer - 1);
+                if (struct == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_STRUCTURE_REFERENCE, this);
+                }
+                switch (fieldType) {
+                    case WasmType.I8_TYPE ->
+                        WasmFrame.pushInt(frame, stackPointer - 1, aggregateOpcode == Bytecode.STRUCT_GET_S ? property.getByte(struct) : Byte.toUnsignedInt(property.getByte(struct)));
+                    case WasmType.I16_TYPE ->
+                        WasmFrame.pushInt(frame, stackPointer - 1, aggregateOpcode == Bytecode.STRUCT_GET_S ? property.getShort(struct) : Short.toUnsignedInt(property.getShort(struct)));
+                    case WasmType.I32_TYPE -> WasmFrame.pushInt(frame, stackPointer - 1, property.getInt(struct));
+                    case WasmType.I64_TYPE -> WasmFrame.pushLong(frame, stackPointer - 1, property.getLong(struct));
+                    case WasmType.F32_TYPE -> WasmFrame.pushFloat(frame, stackPointer - 1, property.getFloat(struct));
+                    case WasmType.F64_TYPE -> WasmFrame.pushDouble(frame, stackPointer - 1, property.getDouble(struct));
+                    case WasmType.V128_TYPE -> WasmFrame.pushVector128(frame, stackPointer - 1, vector128Ops().fromVector128((Vector128) property.getObject(struct)));
+                    default -> {
+                        assert WasmType.isReferenceType(fieldType);
+                        WasmFrame.pushReference(frame, stackPointer - 1, property.getObject(struct));
+                    }
+                }
+                break;
+            }
+            case Bytecode.STRUCT_SET: {
+                final int structTypeIdx = rawPeekI32(bytecode, offset);
+                final int fieldIdx = rawPeekI32(bytecode, offset + 4);
+                offset += 8;
+
+                StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
+                int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                CompilerAsserts.partialEvaluationConstant(fieldType);
+
+                Object struct = WasmFrame.popReference(frame, stackPointer - 2);
+                if (struct == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_STRUCTURE_REFERENCE, this);
+                }
+                switch (fieldType) {
+                    case WasmType.I8_TYPE -> property.setByte(struct, (byte) WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I16_TYPE -> property.setShort(struct, (short) WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I32_TYPE -> property.setInt(struct, WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I64_TYPE -> property.setLong(struct, WasmFrame.popLong(frame, stackPointer - 1));
+                    case WasmType.F32_TYPE -> property.setFloat(struct, WasmFrame.popFloat(frame, stackPointer - 1));
+                    case WasmType.F64_TYPE -> property.setDouble(struct, WasmFrame.popDouble(frame, stackPointer - 1));
+                    case WasmType.V128_TYPE -> property.setObject(struct, vector128Ops().toVector128(WasmFrame.popVector128(frame, stackPointer - 1)));
+                    default -> {
+                        assert WasmType.isReferenceType(fieldType);
+                        property.setObject(struct, WasmFrame.popReference(frame, stackPointer - 1));
+                    }
+                }
+                stackPointer -= 2;
+                break;
+            }
             case Bytecode.REF_TEST_NON_NULL:
             case Bytecode.REF_TEST_NULL: {
                 final boolean nullable = aggregateOpcode == Bytecode.REF_TEST_NULL;
@@ -4765,6 +4858,33 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 }
             }
             stackPointer++;
+        }
+    }
+
+    @ExplodeLoop
+    private void popStructFields(VirtualFrame frame, int structTypeIndex, WasmStruct struct, WasmStructAccess structAccess, int numFields, int stackPointerOffset) {
+        CompilerAsserts.partialEvaluationConstant(structTypeIndex);
+        CompilerAsserts.partialEvaluationConstant(structAccess);
+        CompilerAsserts.partialEvaluationConstant(numFields);
+        CompilerAsserts.partialEvaluationConstant(stackPointerOffset);
+        int stackPointer = stackPointerOffset;
+        for (int fieldIndex = numFields - 1; fieldIndex >= 0; fieldIndex--) {
+            int fieldType = module.structTypeFieldTypeAt(structTypeIndex, fieldIndex);
+            CompilerAsserts.partialEvaluationConstant(fieldType);
+            StaticProperty property = structAccess.properties()[fieldIndex];
+            switch (fieldType) {
+                case WasmType.I8_TYPE -> property.setByte(struct, (byte) WasmFrame.popInt(frame, --stackPointer));
+                case WasmType.I16_TYPE -> property.setShort(struct, (short) WasmFrame.popInt(frame, --stackPointer));
+                case WasmType.I32_TYPE -> property.setInt(struct, WasmFrame.popInt(frame, --stackPointer));
+                case WasmType.I64_TYPE -> property.setLong(struct, WasmFrame.popLong(frame, --stackPointer));
+                case WasmType.F32_TYPE -> property.setFloat(struct, WasmFrame.popFloat(frame, --stackPointer));
+                case WasmType.F64_TYPE -> property.setDouble(struct, WasmFrame.popDouble(frame, --stackPointer));
+                case WasmType.V128_TYPE -> property.setObject(struct, vector128Ops().toVector128(WasmFrame.popVector128(frame, --stackPointer)));
+                default -> {
+                    assert WasmType.isReferenceType(fieldType);
+                    property.setObject(struct, WasmFrame.popReference(frame, --stackPointer));
+                }
+            }
         }
     }
 

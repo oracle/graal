@@ -38,68 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.types;
+package org.graalvm.wasm.struct;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.staticobject.StaticShape;
 
-import java.util.Arrays;
-
-public record StructType(
-                @CompilerDirectives.CompilationFinal(dimensions = 1) FieldType[] fieldTypes) implements CompositeType {
-
-    @Override
-    public CompositeKind compositeKind() {
-        return CompositeKind.Struct;
-    }
-
-    @Override
-    public boolean isSubtypeOf(HeapType thatHeapType) {
-        if (thatHeapType == AbstractHeapType.STRUCT || thatHeapType == AbstractHeapType.EQ || thatHeapType == AbstractHeapType.ANY) {
-            return true;
-        }
-        if (!(thatHeapType instanceof DefinedType thatDefinedType && thatDefinedType.expand() instanceof StructType that)) {
-            return false;
-        }
-        if (this.fieldTypes.length < that.fieldTypes.length) {
-            return false;
-        }
-        for (int i = 0; i < that.fieldTypes.length; i++) {
-            if (!this.fieldTypes[i].isSubtypeOf(that.fieldTypes[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public void unroll(RecursiveTypes recursiveTypes) {
-        for (FieldType fieldType : fieldTypes) {
-            fieldType.unroll(recursiveTypes);
-        }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof StructType that && Arrays.equals(this.fieldTypes, that.fieldTypes);
-    }
-
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(fieldTypes);
-    }
-
-    @Override
-    public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        StringBuilder sb = new StringBuilder();
-        sb.append("(struct");
-        for (int i = 0; i < fieldTypes.length; i++) {
-            sb.append(" (field ");
-            sb.append(fieldTypes[i]);
-            sb.append(")");
-        }
-        sb.append(")");
-        return sb.toString();
-    }
+public record WasmStructAccess(StaticShape<WasmStructFactory> shape,
+                @CompilerDirectives.CompilationFinal(dimensions = 1) StaticProperty[] properties) {
 }

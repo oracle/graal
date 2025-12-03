@@ -63,6 +63,12 @@ import org.graalvm.wasm.memory.WasmMemoryFactory;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.staticobject.StaticShape;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.struct.WasmStructAccess;
+import org.graalvm.wasm.struct.WasmStructFactory;
 import org.graalvm.wasm.types.AbstractHeapType;
 import org.graalvm.wasm.types.ArrayType;
 import org.graalvm.wasm.types.CompositeType;
@@ -220,6 +226,8 @@ public abstract class SymbolTable {
      * </code>
      */
     @CompilationFinal(dimensions = 1) private int[] superTypes;
+
+    @CompilationFinal(dimensions = 1) private WasmStructAccess[] structAccesses;
 
     @CompilationFinal private int typeDataSize;
     @CompilationFinal private int typeCount;
@@ -431,6 +439,7 @@ public abstract class SymbolTable {
         this.closedTypes = new DefinedType[INITIAL_TYPE_SIZE];
         this.superTypes = new int[INITIAL_TYPE_SIZE];
         Arrays.fill(superTypes, NO_SUPERTYPE);
+        this.structAccesses = new WasmStructAccess[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
         this.importedSymbols = new ArrayList<>();
@@ -518,6 +527,7 @@ public abstract class SymbolTable {
             closedTypes = Arrays.copyOf(closedTypes, newLength);
             superTypes = Arrays.copyOf(superTypes, newLength);
             Arrays.fill(superTypes, oldLength, newLength, NO_SUPERTYPE);
+            structAccesses = Arrays.copyOf(structAccesses, newLength);
         }
     }
 
@@ -622,13 +632,25 @@ public abstract class SymbolTable {
         return new ArrayType(fieldType);
     }
 
-    StructType finishStructType(int structTypeIdx, int recursiveTypeGroupStart) {
+    StructType finishStructType(int structTypeIdx, int recursiveTypeGroupStart, WasmLanguage language) {
+        StaticShape.Builder shapeBuilder = StaticShape.newBuilder(language);
         FieldType[] fieldTypes = new FieldType[structTypeFieldCount(structTypeIdx)];
+        StaticProperty[] properties = new StaticProperty[structTypeFieldCount(structTypeIdx)];
         for (int i = 0; i < fieldTypes.length; i++) {
             StorageType storageType = closedStorageTypeOf(structTypeFieldTypeAt(structTypeIdx, i), recursiveTypeGroupStart);
             byte mutability = structTypeFieldMutabilityAt(structTypeIdx, i);
             fieldTypes[i] = new FieldType(storageType, mutability);
+            properties[i] = new DefaultStaticProperty(Integer.toString(i));
+            shapeBuilder.property(properties[i], fieldTypes[i].javaClass(), mutability == Mutability.CONSTANT);
         }
+        StaticShape<WasmStructFactory> shape;
+        if (hasSuperType(structTypeIdx) && isStructType(superType(structTypeIdx))) {
+            WasmStructAccess superTypeAccess = structTypeAccess(superType(structTypeIdx));
+            shape = shapeBuilder.build(superTypeAccess.shape());
+        } else {
+            shape = shapeBuilder.build(WasmStruct.class, WasmStructFactory.class);
+        }
+        structAccesses[structTypeIdx] = new WasmStructAccess(shape, properties);
         return new StructType(fieldTypes);
     }
 
@@ -668,7 +690,7 @@ public abstract class SymbolTable {
         for (int typeIndex = recursiveTypeGroupStart; typeIndex < typeCount; typeIndex++) {
             CompositeType compositeType = switch (typeKind(typeIndex)) {
                 case ARRAY_KIND -> finishArrayType(typeIndex, recursiveTypeGroupStart);
-                case STRUCT_KIND -> finishStructType(typeIndex, recursiveTypeGroupStart);
+                case STRUCT_KIND -> finishStructType(typeIndex, recursiveTypeGroupStart, language);
                 case FUNCTION_KIND -> finishFunctionType(typeIndex, recursiveTypeGroupStart);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
@@ -690,6 +712,9 @@ public abstract class SymbolTable {
             DefinedType type = DefinedType.makeTopLevelType(recursiveTypes, typeIndex - recursiveTypeGroupStart);
             int equivalenceClass = language.equivalenceClassFor(type);
             type.setTypeEquivalenceClass(equivalenceClass);
+            if (isStructType(typeIndex)) {
+                type.setStructAccess(structTypeAccess(typeIndex));
+            }
             closedTypes[typeIndex] = type;
         }
         for (int subTypeIndex = 0; subTypeIndex < subTypes.length; subTypeIndex++) {
@@ -812,24 +837,33 @@ public abstract class SymbolTable {
 
     public int structTypeFieldTypeAt(int typeIndex, int fieldIndex) {
         assert isStructType(typeIndex);
+        assert fieldIndex < structTypeFieldCount(typeIndex);
         int typeOffset = typeOffsets[typeIndex];
         return typeData[typeOffset + 1 + 2 * fieldIndex];
     }
 
     public byte structTypeFieldMutabilityAt(int typeIndex, int fieldIndex) {
         assert isStructType(typeIndex);
+        assert fieldIndex < structTypeFieldCount(typeIndex);
         int typeOffset = typeOffsets[typeIndex];
         return (byte) typeData[typeOffset + 1 + 2 * fieldIndex + 1];
     }
 
+    public WasmStructAccess structTypeAccess(int typeIndex) {
+        assert isStructType(typeIndex);
+        return structAccesses[typeIndex];
+    }
+
     public int functionTypeParamTypeAt(int typeIndex, int paramIndex) {
         assert isFunctionType(typeIndex);
+        assert paramIndex < functionTypeParamCount(typeIndex);
         int typeOffset = typeOffsets[typeIndex];
         return typeData[typeOffset + 2 + paramIndex];
     }
 
     public int functionTypeResultTypeAt(int typeIndex, int resultIndex) {
         assert isFunctionType(typeIndex);
+        assert resultIndex < functionTypeResultCount(typeIndex);
         int typeOffset = typeOffsets[typeIndex];
         int paramCount = typeData[typeOffset];
         return typeData[typeOffset + 2 + paramCount + resultIndex];

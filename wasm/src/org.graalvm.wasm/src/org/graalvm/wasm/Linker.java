@@ -96,6 +96,10 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.struct.WasmStruct;
+import org.graalvm.wasm.struct.WasmStructAccess;
+import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.ValueType;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -103,8 +107,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import org.graalvm.wasm.types.FunctionType;
-import org.graalvm.wasm.types.ValueType;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 
 public class Linker {
     public enum LinkState {
@@ -617,12 +620,6 @@ public class Linker {
                     stack.add(value);
                     break;
                 }
-                case Bytecode.VECTOR_V128_CONST: {
-                    Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
-                    offset += 16;
-                    stack.add(value);
-                    break;
-                }
                 case Bytecode.REF_NULL:
                     stack.add(WasmConstant.NULL);
                     break;
@@ -661,6 +658,69 @@ public class Linker {
                     stack.add(result);
                     break;
                 }
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.STRUCT_NEW: {
+                            final int structTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            WasmStructAccess structAccess = symtab.structTypeAccess(structTypeIdx);
+
+                            WasmStruct struct = structAccess.shape().getFactory().create(symtab.closedTypeAt(structTypeIdx));
+                            for (int fieldIndex = symtab.structTypeFieldCount(structTypeIdx) - 1; fieldIndex >= 0; fieldIndex--) {
+                                int fieldType = symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex);
+                                StaticProperty property = structAccess.properties()[fieldIndex];
+                                Object fieldValue = stack.removeLast();
+                                switch (fieldType) {
+                                    case WasmType.I8_TYPE -> property.setByte(struct, (byte) (int) fieldValue);
+                                    case WasmType.I16_TYPE -> property.setShort(struct, (short) (int) fieldValue);
+                                    case WasmType.I32_TYPE -> property.setInt(struct, (int) fieldValue);
+                                    case WasmType.I64_TYPE -> property.setLong(struct, (long) fieldValue);
+                                    case WasmType.F32_TYPE -> property.setFloat(struct, (float) fieldValue);
+                                    case WasmType.F64_TYPE -> property.setDouble(struct, (double) fieldValue);
+                                    case WasmType.V128_TYPE -> property.setObject(struct, fieldValue);
+                                    default -> {
+                                        assert WasmType.isReferenceType(fieldType);
+                                        property.setObject(struct, fieldValue);
+                                    }
+                                }
+                            }
+                            stack.add(struct);
+                            break;
+                        }
+                        case Bytecode.STRUCT_NEW_DEFAULT: {
+                            final int structTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+
+                            WasmStruct struct = symtab.structTypeAccess(structTypeIdx).shape().getFactory().create(symtab.closedTypeAt(structTypeIdx));
+                            stack.add(struct);
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
+                            break;
+                    }
+                    break;
+                case Bytecode.VECTOR:
+                    int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST: {
+                            Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
+                            offset += 16;
+                            stack.add(value);
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
+                    break;
                 default:
                     fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
@@ -701,9 +761,6 @@ public class Linker {
                 case Bytecode.F64_CONST:
                     offset += 8;
                     break;
-                case Bytecode.VECTOR_V128_CONST:
-                    offset += 16;
-                    break;
                 case Bytecode.REF_FUNC:
                     final int functionIndex = rawPeekI32(bytecode, offset);
                     final WasmFunction function = instance.symbolTable().function(functionIndex);
@@ -719,6 +776,32 @@ public class Linker {
                 case Bytecode.I64_ADD:
                 case Bytecode.I64_SUB:
                 case Bytecode.I64_MUL:
+                    break;
+                case Bytecode.AGGREGATE:
+                    int aggregateOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (aggregateOpcode) {
+                        case Bytecode.STRUCT_NEW:
+                        case Bytecode.STRUCT_NEW_DEFAULT: {
+                            offset += 4;
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
+                            break;
+                    }
+                    break;
+                case Bytecode.VECTOR:
+                    int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST:
+                            offset += 16;
+                            break;
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
                     break;
                 default:
                     fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);

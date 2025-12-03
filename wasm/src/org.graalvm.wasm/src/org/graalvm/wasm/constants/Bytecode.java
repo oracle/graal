@@ -343,6 +343,12 @@ public class Bytecode {
     public static final int NOTIFY = 0xFF;
 
     // Aggregate opcodes
+    public static final int STRUCT_NEW = 0x00;
+    public static final int STRUCT_NEW_DEFAULT = 0x01;
+    public static final int STRUCT_GET = 0x02;
+    public static final int STRUCT_GET_S = 0x03;
+    public static final int STRUCT_GET_U = 0x04;
+    public static final int STRUCT_SET = 0x05;
     public static final int REF_TEST_NON_NULL = 0x14;
     public static final int REF_TEST_NULL = 0x15;
     public static final int REF_CAST_NON_NULL = 0x16;

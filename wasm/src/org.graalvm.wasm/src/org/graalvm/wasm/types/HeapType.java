@@ -43,12 +43,12 @@ package org.graalvm.wasm.types;
 public sealed interface HeapType permits AbstractHeapType, DefinedType {
 
     // This is a workaround until we can use pattern matching in JDK 21+.
-    enum Kind {
+    enum HeapKind {
         Abstract,
         DefinedType
     }
 
-    Kind kind();
+    HeapKind heapKind();
 
     boolean isSubtypeOf(HeapType that);
 

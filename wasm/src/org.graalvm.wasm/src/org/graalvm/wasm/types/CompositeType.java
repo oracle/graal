@@ -42,13 +42,14 @@ package org.graalvm.wasm.types;
 
 public sealed interface CompositeType permits ArrayType, StructType, FunctionType {
 
-    enum Kind {
+    // This is a workaround until we can use pattern matching in JDK 21+.
+    enum CompositeKind {
         Array,
         Struct,
         Function
     }
 
-    Kind kind();
+    CompositeKind compositeKind();
 
     boolean isSubtypeOf(HeapType that);
 

@@ -60,13 +60,18 @@ public record ReferenceType(boolean nullable, HeapType heapType) implements Valu
     }
 
     @Override
+    public Class<?> javaClass() {
+        return Object.class;
+    }
+
+    @Override
     public boolean matchesValue(Object value) {
         return nullable() && value == WasmConstant.NULL || heapType().matchesValue(value);
     }
 
     @Override
-    public Kind kind() {
-        return Kind.Reference;
+    public ValueKind valueKind() {
+        return ValueKind.Reference;
     }
 
     @Override

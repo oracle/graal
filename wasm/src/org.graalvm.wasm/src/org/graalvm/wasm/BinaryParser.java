@@ -1808,6 +1808,51 @@ public class BinaryParser extends BinaryStreamParser {
                 int aggregateOpcode = readUnsignedInt32();
                 state.addAggregateFlag();
                 switch (aggregateOpcode) {
+                    case Instructions.STRUCT_NEW: {
+                        int structTypeIdx = readStructTypeIndex();
+                        for (int fieldIdx = module.structTypeFieldCount(structTypeIdx) - 1; fieldIdx >= 0; fieldIdx--) {
+                            state.popChecked(WasmType.unpack(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx)));
+                        }
+                        state.push(WasmType.withNullable(false, structTypeIdx));
+                        state.addInstruction(Bytecode.STRUCT_NEW, structTypeIdx);
+                        break;
+                    }
+                    case Instructions.STRUCT_NEW_DEFAULT: {
+                        int structTypeIdx = readStructTypeIndex();
+                        for (int fieldIdx = module.structTypeFieldCount(structTypeIdx) - 1; fieldIdx >= 0; fieldIdx--) {
+                            if (!WasmType.hasDefaultValue(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx))) {
+                                Assert.fail(Failure.TYPE_MISMATCH, "struct.new_default: field %d of struct type %d has non-defaultable type %s", fieldIdx, structTypeIdx,
+                                                WasmType.toString(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx)));
+                            }
+                        }
+                        state.push(WasmType.withNullable(false, structTypeIdx));
+                        state.addInstruction(Bytecode.STRUCT_NEW_DEFAULT, structTypeIdx);
+                        break;
+                    }
+                    case Instructions.STRUCT_GET:
+                    case Instructions.STRUCT_GET_S:
+                    case Instructions.STRUCT_GET_U: {
+                        int structTypeIdx = readStructTypeIndex();
+                        int fieldIdx = readUnsignedInt32();
+                        Assert.assertUnsignedIntLess(fieldIdx, module.structTypeFieldCount(structTypeIdx), Failure.INVALID_FIELD_INDEX);
+                        int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                        Assert.assertTrue(aggregateOpcode == Instructions.STRUCT_GET != WasmType.isPackedType(fieldType), Failure.INVALID_STRUCT_GETTER_SIGNEDNESS);
+                        state.popChecked(WasmType.withNullable(true, structTypeIdx));
+                        state.push(WasmType.unpack(fieldType));
+                        state.addInstruction(aggregateOpcode, structTypeIdx, fieldIdx);
+                        break;
+                    }
+                    case Instructions.STRUCT_SET: {
+                        int structTypeIdx = readStructTypeIndex();
+                        int fieldIdx = readUnsignedInt32();
+                        Assert.assertUnsignedIntLess(fieldIdx, module.structTypeFieldCount(structTypeIdx), Failure.INVALID_FIELD_INDEX);
+                        Assert.assertTrue(module.structTypeFieldMutabilityAt(structTypeIdx, fieldIdx) == Mutability.MUTABLE, Failure.FIELD_IS_IMMUTABLE);
+                        int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                        state.popChecked(WasmType.unpack(fieldType));
+                        state.popChecked(WasmType.withNullable(true, structTypeIdx));
+                        state.addInstruction(Bytecode.STRUCT_SET, structTypeIdx, fieldIdx);
+                        break;
+                    }
                     case Instructions.REF_TEST_NON_NULL:
                     case Instructions.REF_TEST_NULL: {
                         int expectedHeapType = readHeapType();
@@ -2897,6 +2942,41 @@ public class BinaryParser extends BinaryStreamParser {
                         });
                     }
                     break;
+                case Instructions.AGGREGATE:
+                    checkGCSupport(opcode);
+                    int aggregateOpcode = read1() & 0xFF;
+                    state.addAggregateFlag();
+                    switch (aggregateOpcode) {
+                        case Instructions.STRUCT_NEW: {
+                            int structTypeIdx = readStructTypeIndex();
+                            for (int fieldIdx = module.structTypeFieldCount(structTypeIdx) - 1; fieldIdx >= 0; fieldIdx--) {
+                                state.popChecked(WasmType.unpack(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx)));
+                            }
+                            state.push(WasmType.withNullable(false, structTypeIdx));
+                            state.addInstruction(Bytecode.STRUCT_NEW, structTypeIdx);
+                            // We cannot cache computed struct values because they are mutable
+                            calculable = false;
+                            break;
+                        }
+                        case Instructions.STRUCT_NEW_DEFAULT: {
+                            int structTypeIdx = readStructTypeIndex();
+                            for (int fieldIdx = module.structTypeFieldCount(structTypeIdx) - 1; fieldIdx >= 0; fieldIdx--) {
+                                if (!WasmType.hasDefaultValue(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx))) {
+                                    Assert.fail(Failure.TYPE_MISMATCH, "struct.new_default: field %d of struct type %d has non-defaultable type %s", fieldIdx, structTypeIdx,
+                                                    WasmType.toString(module.structTypeFieldTypeAt(structTypeIdx, fieldIdx)));
+                                }
+                            }
+                            state.push(WasmType.withNullable(false, structTypeIdx));
+                            state.addInstruction(Bytecode.STRUCT_NEW_DEFAULT, structTypeIdx);
+                            // We cannot cache computed struct values because they are mutable
+                            calculable = false;
+                            break;
+                        }
+                        default:
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
+                            break;
+                    }
+                    break;
                 case Instructions.VECTOR:
                     checkSIMDSupport();
                     int vectorOpcode = read1() & 0xFF;
@@ -3478,6 +3558,18 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     /**
+     * Checks if the given type is a struct type.
+     *
+     * @param typeIndex The type index.
+     * @throws WasmException If the given type is not a struct type.
+     */
+    public void checkIsStructType(int typeIndex) {
+        if (!module.isStructType(typeIndex)) {
+            throw ValidationErrors.createExpectedStructType(typeIndex);
+        }
+    }
+
+    /**
      * Checks if the given type is a function type.
      *
      * @param typeIndex The type index.
@@ -3508,6 +3600,12 @@ public class BinaryParser extends BinaryStreamParser {
     private int readTypeIndex() {
         final int typeIndex = readUnsignedInt32();
         checkTypeExists(typeIndex);
+        return typeIndex;
+    }
+
+    private int readStructTypeIndex() {
+        final int typeIndex = readTypeIndex();
+        checkIsStructType(typeIndex);
         return typeIndex;
     }
 
