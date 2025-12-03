@@ -63,6 +63,6 @@ class SubstrateCompilationMXBean implements CompilationMXBean {
 
     @Override
     public long getTotalCompilationTime() {
-        return 0;
+        throw new UnsupportedOperationException("Compilation time monitoring is not supported.");
     }
 }
