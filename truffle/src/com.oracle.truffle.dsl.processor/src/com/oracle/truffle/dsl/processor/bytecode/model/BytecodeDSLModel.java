@@ -62,6 +62,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
@@ -171,7 +172,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public CustomOperationModel epilogReturn = null;
     public CustomOperationModel epilogExceptional = null;
 
-    public InstructionModel nullInstruction;
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
     public InstructionModel returnInstruction;
@@ -298,8 +298,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName) {
+        return operation(kind, name, javadoc, builderName, false);
+    }
+
+    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, boolean optionalBuilltin) {
         if (operations.containsKey(name)) {
-            addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+            if (optionalBuilltin) {
+                addSuppressableWarning(TruffleSuppressedWarnings.HIDE_BUILTIN, "Custom operation with name %s conflicts with a built-in operation with the same name. " +
+                                "The built-in operation will not be generated. ", name);
+            } else {
+                addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+            }
             return null;
         }
         OperationModel op = new OperationModel(this, operationId++, kind, name, builderName, javadoc);
@@ -475,7 +484,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this);
+        BytecodeDSLBuiltins.addBuiltinsOnFinalize(this, types);
 
         LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
         for (var entry : instructions.entrySet()) {

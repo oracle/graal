@@ -4221,7 +4221,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.declaration(operationStack.asType(), "parentScope", "getCurrentScope()");
                     }
                     break;
-                case STORE_LOCAL: /* LOAD_LOCAL handled by createEmit */
+                case STORE_LOCAL: /* LOAD_LOCAL, CLEAR_LOCAL handled by createEmit */
                 case STORE_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL_MATERIALIZED:
                     emitValidateLocalScope(b, operation);
@@ -4515,6 +4515,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case STORE_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL:
+                case CLEAR_LOCAL:
                     values.put(operationFields.local, "(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
                     break;
                 case IF_THEN:
@@ -4984,7 +4985,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     if (model.enableBlockScoping) {
                         // local table entries are emitted at the end of the block.
-                        createEndLocalsBlock(b, operation);
+                        emitEndBlockScope(b, operation);
                     }
 
                     break;
@@ -5127,7 +5128,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             });
         }
 
-        private void createEndLocalsBlock(CodeTreeBuilder b, OperationModel operation) {
+        private void emitEndBlockScope(CodeTreeBuilder b, OperationModel operation) {
             b.startIf().string(operationStack.read(operation, operationFields.numLocals), " > 0").end().startBlock();
 
             b.statement("state.maxLocals = Math.max(state.maxLocals, ", operationStack.read(operation, operationFields.frameOffset), " + ",
@@ -5247,7 +5248,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(2);
 
             if (model.enableBlockScoping) {
-                createEndLocalsBlock(b, rootOperation);
+                emitEndBlockScope(b, rootOperation);
             }
 
             for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
@@ -5674,6 +5675,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     }
                     yield immediates.toArray(String[]::new);
                 }
+                case CLEAR_LOCAL -> new String[]{"((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex"};
                 case STORE_LOCAL_MATERIALIZED -> {
                     List<String> immediates = new ArrayList<>();
                     immediates.add(operationStack.read(operation, operationFields.local) + ".frameIndex");
@@ -5937,7 +5939,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startStatement().startCall("beforeChild").end(2);
 
-            if (operation.kind == OperationKind.LOAD_LOCAL) {
+            if (operation.kind == OperationKind.LOAD_LOCAL || operation.kind == OperationKind.CLEAR_LOCAL) {
                 emitValidateLocalScope(b, operation);
             }
 
@@ -8642,6 +8644,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         if (model.usesBoxingElimination()) {
                             fields.add(childBci);
                         }
+                        break;
+                    case CLEAR_LOCAL:
+                        fields.add(local); // init
                         break;
                     case IF_THEN:
                         fields.add(thenReachable); // init
