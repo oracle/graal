@@ -45,17 +45,17 @@
   ])),
 
   local weekly_aarch64_forks_builds = std.flattenArrays([
-    bc.generate_fork_builds(c.weekly + hw.a12c + jdk + cc.libgraal + suite, subdir='compiler')
+    bc.generate_fork_builds(c.weekly + hw.hr350a + jdk + cc.libgraal + suite, subdir='compiler')
   for jdk in cc.product_jdks
   for suite in bench.groups.weekly_forks_suites
   ]),
 
   local aarch64_builds = [
-    c.daily + hw.a12c + jdk + cc.libgraal + suite,
+    c.daily + hw.hr350a + jdk + cc.libgraal + suite,
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
   ] + [
-    c.monthly + hw.a12c + jdk + cc.libgraal + bench.specjbb2015,
+    c.monthly + hw.hr350a + jdk + cc.libgraal + bench.specjbb2015,
   for jdk in cc.product_jdks
   ],
 
