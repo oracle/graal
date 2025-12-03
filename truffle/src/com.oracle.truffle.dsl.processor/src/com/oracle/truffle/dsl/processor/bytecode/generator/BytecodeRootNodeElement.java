@@ -145,7 +145,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
@@ -200,9 +199,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private final TypeMirror bytecodeBuilderType;
     private final TypeMirror parserType;
 
-    // Singleton field for an empty array.
-    private final CodeVariableElement emptyObjectArray;
-
     // Singleton fields for accessing arrays and the frame.
     private final CodeVariableElement fastAccess;
     private final CodeVariableElement byteArraySupport;
@@ -252,7 +248,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         setSuperClass(model.getTemplateType().asType());
         addField(this, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
 
-        this.emptyObjectArray = addField(this, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
+        addField(this, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         this.fastAccess = addField(this, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
         this.fastAccess.setInit(createFastAccessFieldInitializer(model.allowUnsafe));
         this.byteArraySupport = addField(this, Set.of(PRIVATE, STATIC, FINAL), types.ByteArraySupport, "BYTES");
@@ -308,14 +304,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
         this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "buildIndex"));
         this.add(createBytecodeUpdater());
-
-        CodeTreeBuilder frameType = this.add(
-                        new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(Class.class, new WildcardTypeMirror(types.VirtualFrame, null)), "FRAME_TYPE")).createInitBuilder();
-        frameType.startStaticCall(types.Truffle, "getRuntime").end().startCall(".createVirtualFrame");
-        frameType.string(emptyObjectArray.getSimpleName().toString());
-        frameType.startGroup().startStaticCall(types.FrameDescriptor, "newBuilder").end().startCall(".build").end().end();
-        frameType.end(); // call
-        frameType.string(".getClass()");
 
         // Define the interpreter implementations.
         BytecodeNodeElement cachedBytecodeNode = this.add(new BytecodeNodeElement(InterpreterTier.CACHED));
@@ -633,9 +621,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.string("bytecode");
         b.string("0"); // bci
         b.string("maxLocals"); // sp
-        b.string("frame");
+        b.startGroup().cast(types.FrameWithoutBoxing).string("frame").end();
         if (model.hasYieldOperation()) {
-            b.string("frame");
+            b.startGroup().cast(types.FrameWithoutBoxing).string("frame").end();
             b.string("null");
         }
 
@@ -770,7 +758,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         ex.addParameter(new CodeVariableElement(abstractBytecodeNode.asType(), "bc"));
         ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
         ex.addParameter(new CodeVariableElement(type(int.class), "sp"));
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
         if (model.hasYieldOperation()) {
             /**
              * When an {@link BytecodeRootNode} is suspended, its frame gets materialized. Resuming
@@ -783,7 +771,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              * In regular calls, localFrame is the same as frame, but when a node is suspended and
              * resumed, it will be the materialized frame used for local accesses.
              */
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             /**
              * When we resume, this parameter is non-null and is included so that the root node can
              * be patched when the interpreter transitions to cached.
@@ -1876,7 +1864,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
              */
             skipStateChecks = specializations.size() == 1;
         }
-        return factory.createExecuteMethod(el, executable, specializations, skipStateChecks && instruction.isQuickening());
+        CodeExecutableElement element = factory.createExecuteMethod(el, executable, specializations, skipStateChecks && instruction.isQuickening());
+        element.findParameter("frameValue").setType(types.FrameWithoutBoxing);
+        return element;
     }
 
     CodeExecutableElement lookupExpectMethod(TypeMirror currentType, TypeMirror targetType) {
@@ -12563,9 +12553,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             continueAt = add(new CodeExecutableElement(Set.of(ABSTRACT), type(long.class), "continueAt"));
             continueAt.addParameter(new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"));
-            continueAt.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            continueAt.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             if (model.hasYieldOperation()) {
-                continueAt.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+                continueAt.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             }
             continueAt.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
@@ -14368,20 +14358,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.getBuilder();
 
             if (model.hasYieldOperation()) {
-                b.declaration(types.VirtualFrame, "localFrame");
+                b.declaration(types.FrameWithoutBoxing, "localFrame");
                 b.startIf().string(decodeUseContinuationFrame("target")).string(" /* use continuation frame */").end().startBlock();
                 b.startAssign("localFrame");
-                b.cast(types.MaterializedFrame);
+                b.cast(types.FrameWithoutBoxing);
                 startGetFrame(b, "frame", type(Object.class), false).string(COROUTINE_FRAME_INDEX).end();
                 b.end();
                 b.end().startElseBlock();
-                b.statement("localFrame = frame");
+                b.startAssign("localFrame").cast(types.FrameWithoutBoxing).string("frame").end();
                 b.end();
             }
 
             b.startReturn().startCall("continueAt");
             b.string("getRoot()");
-            b.string("frame");
+            b.startGroup().cast(types.FrameWithoutBoxing).string("frame").end();
             if (model.hasYieldOperation()) {
                 b.string("localFrame");
                 b.string(clearUseContinuationFrame("target"));
@@ -15521,9 +15511,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             GeneratorUtils.addOverride(ex);
             ex.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
             ex.addParameter(new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"));
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame_"));
+            ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame_"));
             if (model.hasYieldOperation()) {
-                ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame_"));
+                ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame_"));
             }
             ex.addParameter(new CodeVariableElement(type(long.class), "startState"));
 
@@ -15537,9 +15527,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 return;
             }
 
-            b.startDeclaration(types.VirtualFrame, "frame").startCall("ACCESS.uncheckedCast").string("frame_").string("FRAME_TYPE").end().end();
+            b.startDeclaration(types.FrameWithoutBoxing, "frame").startCall("ACCESS.uncheckedCast").string("frame_").typeLiteral(types.FrameWithoutBoxing).end().end();
             if (model.hasYieldOperation()) {
-                b.startDeclaration(types.VirtualFrame, "localFrame").startCall("ACCESS.uncheckedCast").string("localFrame_").string("FRAME_TYPE").end().end();
+                b.startDeclaration(types.FrameWithoutBoxing, "localFrame").startCall("ACCESS.uncheckedCast").string("localFrame_").typeLiteral(types.FrameWithoutBoxing).end().end();
             }
 
             if (tier.isUncached()) {
@@ -15875,9 +15865,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             String methodName = "handle" + firstLetterUpperCase(instr.getInternalName());
             method = this.add(new CodeExecutableElement(Set.of(PRIVATE), type(returnBci ? int.class : void.class), methodName));
 
-            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             if (model.hasYieldOperation()) {
-                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+                method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             }
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
@@ -16162,9 +16152,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
                             returnType, name);
-            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             if (model.hasYieldOperation()) {
-                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+                method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             }
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
@@ -16934,7 +16924,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 if (materialized) {
                     localsFrame = "materializedFrame";
-                    b.declaration(types.VirtualFrame, "materializedFrame", "((VirtualFrame) " + uncheckedGetFrameObject("sp - 2)"));
+                    b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+                    b.cast(types.FrameWithoutBoxing).string(uncheckedGetFrameObject("sp - 2"));
+                    b.end();
                 }
 
                 boolean generic = ElementUtils.typeEquals(type(Object.class), inputType);
@@ -17077,7 +17069,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 if (materialized) {
                     localsFrame = "materializedFrame";
-                    b.declaration(types.VirtualFrame, "materializedFrame", "((VirtualFrame) " + uncheckedGetFrameObject("sp - 2)"));
+                    b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+                    b.cast(types.FrameWithoutBoxing).string(uncheckedGetFrameObject("sp - 2"));
+                    b.end();
                 }
 
                 boolean needsLocalTags = localAccessNeedsLocalTags(instr);
@@ -17227,7 +17221,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                 if (materialized) {
                     localsFrame = "materializedFrame";
-                    b.declaration(types.VirtualFrame, "materializedFrame", "((VirtualFrame) " + uncheckedGetFrameObject("sp - 1)"));
+                    b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+                    b.cast(types.FrameWithoutBoxing).string(uncheckedGetFrameObject("sp - 1"));
+                    b.end();
                 }
 
                 final TypeMirror inputType = instr.signature.returnType;
@@ -17279,7 +17275,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 if (materialized) {
                     localsFrame = "materializedFrame";
-                    b.declaration(types.VirtualFrame, "materializedFrame", "((VirtualFrame) " + uncheckedGetFrameObject("sp - 1)"));
+                    b.startDeclaration(types.FrameWithoutBoxing, "materializedFrame");
+                    b.cast(types.FrameWithoutBoxing).string(uncheckedGetFrameObject("sp - 1"));
+                    b.end();
                 }
 
                 boolean needsLocalTags = localAccessNeedsLocalTags(instr);
@@ -17774,7 +17772,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             Set.of(PRIVATE),
                             type(long.class), "resolveControlFlowException",
                             new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"),
-                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(types.FrameWithoutBoxing, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(types.ControlFlowException, "cfe"));
 
@@ -17795,7 +17793,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             Set.of(PRIVATE),
                             type(Throwable.class), "resolveThrowable",
                             new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"),
-                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(types.FrameWithoutBoxing, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(Throwable.class), "throwable"));
 
@@ -17916,9 +17914,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             type(void.class), "doEpilogExceptional");
 
             method.addParameter(new CodeVariableElement(BytecodeRootNodeElement.this.asType(), "$root"));
-            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             if (model.hasYieldOperation()) {
-                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+                method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             }
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
@@ -17941,7 +17939,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
                             type(Object.class), "doTagExceptional",
-                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(types.FrameWithoutBoxing, "frame"),
                             new CodeVariableElement(tagNode.asType(), "node"),
                             new CodeVariableElement(type(int.class), "nodeId"),
                             new CodeVariableElement(type(byte[].class), "bc"),
@@ -17983,9 +17981,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             Set.of(PRIVATE),
                             type(Object.class), "reportLoopCount");
 
-            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             if (model.hasYieldOperation()) {
-                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+                method.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "localFrame"));
             }
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
@@ -18110,7 +18108,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
          */
         private CodeExecutableElement createLoadConstantCompiled() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "loadConstantCompiled");
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             ex.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "sp"));
@@ -18510,9 +18508,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createExecute() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "execute", new String[]{"frame"});
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "execute", new String[]{"frame_"});
 
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startDeclaration(types.FrameWithoutBoxing, "frame").cast(types.FrameWithoutBoxing).string("frame_").end();
 
             b.declaration(types.BytecodeLocation, "bytecodeLocation", "location");
             b.startDeclaration(abstractBytecodeNode.asType(), "bytecodeNode");
@@ -18530,14 +18530,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             emitThrowIllegalArgumentException(b, "Expected 2 arguments: (parentFrame, inputValue)");
             b.end();
 
-            b.declaration(types.MaterializedFrame, "parentFrame", "(MaterializedFrame) args[0]");
+            b.startDeclaration(types.FrameWithoutBoxing, "parentFrame");
+            b.cast(types.FrameWithoutBoxing).string("args[0]");
+            b.end();
             b.declaration(type(Object.class), "inputValue", "args[1]");
 
             b.startIf().string("parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()").end().startBlock();
             emitThrowIllegalArgumentException(b, "Invalid continuation parent frame passed");
-            b.end();
-            b.startIf().string("parentFrame.getClass() != FRAME_TYPE").end().startBlock();
-            emitThrowIllegalArgumentException(b, "Unsupported frame type. Only default frames are supported for continuations.");
             b.end();
 
             b.startIf().string("root.maxLocals < sp - 1").end().startBlock();
@@ -18610,7 +18609,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createCreateContinuation() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.ContinuationResult, "createContinuation");
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
             ex.addParameter(new CodeVariableElement(type(Object.class), "result"));
             CodeTreeBuilder b = ex.createBuilder();
 
