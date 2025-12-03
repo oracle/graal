@@ -80,7 +80,8 @@ public class FutureDefaultsOptions {
 
     private static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS = "run-time-initialize-security-providers";
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
-    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS);
+    private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
@@ -88,6 +89,7 @@ public class FutureDefaultsOptions {
     public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS +
                     ")";
     public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
+    public static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_RESOURCE_BUNDLES + ")";
     private static final String DEFAULT_NAME = "<default-value>";
     public static final String SYSTEM_PROPERTY_PREFIX = ImageInfo.PROPERTY_NATIVE_IMAGE_PREFIX + OPTION_NAME + ".";
 
@@ -173,7 +175,7 @@ public class FutureDefaultsOptions {
             if (value.equals(ALL_NAME)) {
                 futureDefaults.addAll(ALL_FUTURE_DEFAULTS);
             } else if (value.equals(RUN_TIME_INITIALIZE_JDK)) {
-                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS));
+                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
             } else {
                 futureDefaults.add(value);
             }
@@ -220,5 +222,12 @@ public class FutureDefaultsOptions {
      */
     public static boolean fileSystemProvidersInitializedAtRunTime() {
         return getFutureDefaults().contains(RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS);
+    }
+
+    /**
+     * @see FutureDefaultsOptions#FutureDefaults
+     */
+    public static boolean resourceBundlesInitializedAtRunTime() {
+        return getFutureDefaults().contains(RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
     }
 }
