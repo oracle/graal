@@ -62,6 +62,10 @@ public record FieldType(StorageType storageType, byte mutability) {
         storageType.unroll(recursiveTypes);
     }
 
+    public Class<?> javaClass() {
+        return storageType.javaClass();
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj instanceof FieldType that && this.storageType.equals(that.storageType) && this.mutability == that.mutability;

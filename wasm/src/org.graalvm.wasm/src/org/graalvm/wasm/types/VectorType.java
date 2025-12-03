@@ -58,8 +58,8 @@ public enum VectorType implements ValueType {
     }
 
     @Override
-    public Kind kind() {
-        return Kind.Vector;
+    public ValueKind valueKind() {
+        return ValueKind.Vector;
     }
 
     @Override
@@ -70,6 +70,11 @@ public enum VectorType implements ValueType {
     @Override
     public boolean isSubtypeOf(StorageType that) {
         return this == that;
+    }
+
+    @Override
+    public Class<?> javaClass() {
+        return Vector128.class;
     }
 
     @Override

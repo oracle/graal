@@ -110,6 +110,9 @@ public enum Failure {
     UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
     UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
     UNKNOWN_TAG(Type.INVALID, "unknown tag"),
+    INVALID_FIELD_INDEX(Type.INVALID, "invalid field index"),
+    INVALID_STRUCT_GETTER_SIGNEDNESS(Type.INVALID, "struct.get_s and struct.get_u must be used for fields of packed types"),
+    FIELD_IS_IMMUTABLE(Type.INVALID, "field is immutable"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
@@ -148,9 +151,11 @@ public enum Failure {
     INDIRECT_CALL_TYPE_MISMATCH(Type.TRAP, "indirect call type mismatch"),
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
+    CAST(Type.TRAP, "cast"),
 
     NULL_REFERENCE(Type.TRAP, "null reference"),
     NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
+    NULL_STRUCTURE_REFERENCE(Type.TRAP, "null structure reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
@@ -171,8 +176,7 @@ public enum Failure {
     NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data"),
 
     INVALID_LANE_INDEX(Type.INVALID, "invalid lane index"),
-    INVALID_CATCH_CLAUSE_LABEL(Type.INVALID, "invalid catch clause label"),
-    CAST(Type.TRAP, "cast");
+    INVALID_CATCH_CLAUSE_LABEL(Type.INVALID, "invalid catch clause label");
 
     public enum Type {
         TRAP("trap"),

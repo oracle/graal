@@ -94,14 +94,20 @@ public abstract class BytecodeParser {
             if (module.globalExternal(i)) {
                 final WasmGlobal global = instance.externalGlobal(i);
                 try {
-                    InteropLibrary interop = InteropLibrary.getUncached(global);
-                    if (!global.isMutable()) {
-                        if (!Objects.equals(interop.readMember(global, WasmGlobal.VALUE_MEMBER), initValue)) {
-                            throw CompilerDirectives.shouldNotReachHere("Value of immutable global is not equal to init value");
+                    switch (global.getClosedType().valueKind()) {
+                        case Number, Vector -> {
+                            InteropLibrary interop = InteropLibrary.getUncached(global);
+                            if (!global.isMutable()) {
+                                if (!Objects.equals(interop.readMember(global, WasmGlobal.VALUE_MEMBER), initValue)) {
+                                    throw CompilerDirectives.shouldNotReachHere("Value of immutable global is not equal to init value");
+                                }
+                                continue;
+                            }
+                            interop.writeMember(global, WasmGlobal.VALUE_MEMBER, initValue);
                         }
-                        continue;
+                        // reset structs and arrays, even if the global is immutable
+                        case Reference -> global.storeReference(initValue);
                     }
-                    interop.writeMember(global, WasmGlobal.VALUE_MEMBER, initValue);
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
@@ -797,11 +803,20 @@ public abstract class BytecodeParser {
                     int aggregateOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (aggregateOpcode) {
+                        case Bytecode.STRUCT_NEW:
+                        case Bytecode.STRUCT_NEW_DEFAULT:
                         case Bytecode.REF_TEST_NON_NULL:
                         case Bytecode.REF_TEST_NULL:
                         case Bytecode.REF_CAST_NON_NULL:
                         case Bytecode.REF_CAST_NULL: {
                             offset += 4;
+                            break;
+                        }
+                        case Bytecode.STRUCT_GET:
+                        case Bytecode.STRUCT_GET_S:
+                        case Bytecode.STRUCT_GET_U:
+                        case Bytecode.STRUCT_SET: {
+                            offset += 8;
                             break;
                         }
                         default:

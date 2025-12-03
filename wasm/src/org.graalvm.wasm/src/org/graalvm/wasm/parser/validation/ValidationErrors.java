@@ -106,6 +106,11 @@ public class ValidationErrors {
     }
 
     @TruffleBoundary
+    public static WasmException createExpectedStructType(int typeIndex) {
+        return WasmException.format(Failure.TYPE_MISMATCH, "Type %d is not a struct type", typeIndex);
+    }
+
+    @TruffleBoundary
     public static WasmException createExpectedFunctionType(int typeIndex) {
         return WasmException.format(Failure.TYPE_MISMATCH, "Type %d is not a function type", typeIndex);
     }

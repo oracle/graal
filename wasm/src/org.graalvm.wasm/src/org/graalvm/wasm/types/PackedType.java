@@ -46,8 +46,21 @@ public enum PackedType implements StorageType {
     I16;
 
     @Override
+    public StorageKind storageKind() {
+        return StorageKind.Packed;
+    }
+
+    @Override
     public boolean isSubtypeOf(StorageType that) {
         return this == that;
+    }
+
+    @Override
+    public Class<?> javaClass() {
+        return switch (this) {
+            case I8 -> byte.class;
+            case I16 -> short.class;
+        };
     }
 
     @Override

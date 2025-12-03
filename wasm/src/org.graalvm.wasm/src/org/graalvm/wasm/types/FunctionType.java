@@ -49,8 +49,8 @@ public record FunctionType(@CompilerDirectives.CompilationFinal(dimensions = 1) 
                 @CompilerDirectives.CompilationFinal(dimensions = 1) ValueType[] resultTypes) implements CompositeType {
 
     @Override
-    public Kind kind() {
-        return Kind.Function;
+    public CompositeKind compositeKind() {
+        return CompositeKind.Function;
     }
 
     @Override

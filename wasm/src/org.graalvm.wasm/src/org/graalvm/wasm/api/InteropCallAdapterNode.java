@@ -44,7 +44,6 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -169,17 +168,13 @@ public final class InteropCallAdapterNode extends RootNode {
 
     private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, ValueType[] resultTypes, int i) {
         final ValueType resultType = resultTypes[i];
-        return switch (resultType.kind()) {
-            case Number -> {
-                NumberType numberType = (NumberType) resultType;
-                yield switch (numberType.value()) {
-                    case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
-                    case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
-                    case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
-                    case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-                    default -> throw CompilerDirectives.shouldNotReachHere();
-                };
-            }
+        return switch (resultType.valueKind()) {
+            case Number -> switch ((NumberType) resultType) {
+                case I32 -> (int) primitiveMultiValueStack[i];
+                case I64 -> primitiveMultiValueStack[i];
+                case F32 -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+                case F64 -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
+            };
             case Vector, Reference -> {
                 Object obj = objectMultiValueStack[i];
                 objectMultiValueStack[i] = null;

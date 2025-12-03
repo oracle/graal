@@ -53,13 +53,18 @@ package org.graalvm.wasm.types;
 public sealed interface ValueType extends StorageType permits NumberType, VectorType, ReferenceType {
 
     // This is a workaround until we can use pattern matching in JDK 21+.
-    enum Kind {
+    enum ValueKind {
         Number,
         Vector,
         Reference
     }
 
-    Kind kind();
+    ValueKind valueKind();
+
+    @Override
+    default StorageKind storageKind() {
+        return StorageKind.Value;
+    }
 
     boolean isSubtypeOf(ValueType that);
 

@@ -45,8 +45,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 public record ArrayType(FieldType fieldType) implements CompositeType {
 
     @Override
-    public Kind kind() {
-        return Kind.Array;
+    public CompositeKind compositeKind() {
+        return CompositeKind.Array;
     }
 
     @Override

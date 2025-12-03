@@ -60,8 +60,8 @@ public enum NumberType implements ValueType {
     }
 
     @Override
-    public Kind kind() {
-        return Kind.Number;
+    public ValueKind valueKind() {
+        return ValueKind.Number;
     }
 
     @Override
@@ -72,6 +72,16 @@ public enum NumberType implements ValueType {
     @Override
     public boolean isSubtypeOf(StorageType that) {
         return this == that;
+    }
+
+    @Override
+    public Class<?> javaClass() {
+        return switch (this) {
+            case I32 -> int.class;
+            case I64 -> long.class;
+            case F32 -> float.class;
+            case F64 -> double.class;
+        };
     }
 
     @Override
