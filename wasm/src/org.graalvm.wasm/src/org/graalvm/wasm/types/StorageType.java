@@ -40,9 +40,19 @@
  */
 package org.graalvm.wasm.types;
 
-public interface StorageType {
+public sealed interface StorageType permits ValueType, PackedType {
+
+    // This is a workaround until we can use pattern matching in JDK 21+.
+    enum StorageKind {
+        Value,
+        Packed
+    }
+
+    StorageKind storageKind();
 
     boolean isSubtypeOf(StorageType that);
+
+    Class<?> javaClass();
 
     default void unroll(@SuppressWarnings("unused") RecursiveTypes recursiveTypes) {
     }

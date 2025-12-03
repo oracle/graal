@@ -45,6 +45,7 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmHeapObject;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.WasmRuntimeException;
+import org.graalvm.wasm.struct.WasmStruct;
 
 public enum AbstractHeapType implements HeapType {
 
@@ -72,8 +73,8 @@ public enum AbstractHeapType implements HeapType {
     }
 
     @Override
-    public Kind kind() {
-        return Kind.Abstract;
+    public HeapKind heapKind() {
+        return HeapKind.Abstract;
     }
 
     @Override
@@ -118,7 +119,7 @@ public enum AbstractHeapType implements HeapType {
             case ANY -> val instanceof WasmHeapObject;
             case EQ -> throw CompilerDirectives.shouldNotReachHere("TODO");
             case I31 -> throw CompilerDirectives.shouldNotReachHere("TODO");
-            case STRUCT -> throw CompilerDirectives.shouldNotReachHere("TODO");
+            case STRUCT -> val instanceof WasmStruct;
             case ARRAY -> throw CompilerDirectives.shouldNotReachHere("TODO");
             case EXN -> val instanceof WasmRuntimeException;
         };

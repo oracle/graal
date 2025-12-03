@@ -336,6 +336,23 @@ public class WasmType implements TruffleObject {
         return !(isReferenceType(type) && !isNullable(type));
     }
 
+    /**
+     * Maps the {@code storageType} to a value type that can hold its value on the operand stack.
+     *
+     * @param storageType a {@link #isPackedType packed type}, a value type or {@link WasmType#BOT
+     *            bottom}
+     * @return a value type that can hold the value of {@code storageType}
+     */
+    public static int unpack(int storageType) {
+        if (storageType == BOT) {
+            return BOT;
+        } else if (isPackedType(storageType)) {
+            return I32_TYPE;
+        } else {
+            return storageType;
+        }
+    }
+
     public static int getCommonValueType(int[] types) {
         int type = 0;
         for (int resultType : types) {
