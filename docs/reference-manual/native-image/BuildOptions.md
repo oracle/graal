@@ -21,10 +21,10 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 
 Native Image options can also be categorized as **hosted** or **runtime** options:
 
-- **Hosted options**: to configure the build process and set default values for runtime behavior. These options use the prefix `-H:`. For example, `-H:MaxHeapSize=2g` sets the default maximum heap size for the native executable.
-- **Runtime options**: to provide explicit values when building the native binary, using the prefix `-R:`. At runtime, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
+- **Hosted options**: to configure the build process and set default values for run-time behavior. These options use the prefix `-H:`. For example, `-H:MaxHeapSize=2g` sets the default maximum heap size for the native executable.
+- **Runtime options**: to provide explicit values when building the native binary, using the prefix `-R:`. At run time, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
 
-You can use `-H:` options at build time to configure both build-time behavior and run time defaults. For most use cases, `-H:` options are sufficient and you typically do not need to distinguish between build-time and run time configuration.
+You can use `-H:` options at build time to configure both build-time behavior and run-time defaults. For most use cases, `-H:` options are sufficient and you typically do not need to distinguish between build-time and run-time configuration.
 
 For more information describing how to define and use these options, read the [`com.oracle.svm.core.option`](https://github.com/oracle/graal/tree/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/option) package documentation.
 
