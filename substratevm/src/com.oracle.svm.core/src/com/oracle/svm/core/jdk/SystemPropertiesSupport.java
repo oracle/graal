@@ -84,6 +84,8 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "line.separator",
                     "path.separator",
                     "file.separator",
+                    /* Platform Unicode byte order. */
+                    "sun.io.unicode.encoding",
                     /* For our convenience for now. */
                     "file.encoding",
                     "sun.jnu.encoding",
