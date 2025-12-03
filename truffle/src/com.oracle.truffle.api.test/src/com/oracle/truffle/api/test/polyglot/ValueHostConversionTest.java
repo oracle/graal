@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
 import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
@@ -163,7 +162,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
         assertTrue(value.isHostObject());
         assertSame(obj, context.asValue(value.as(Object.class)).asHostObject());
-        assertUnsupported(value, HOST_OBJECT, MEMBERS, STATIC_RECEIVER);
+        assertUnsupported(value, HOST_OBJECT, MEMBERS);
     }
 
     /**
@@ -259,7 +258,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
-        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META, STATIC_RECEIVER);
+        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
     }
 
     @Test
@@ -317,8 +316,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(record.hasMember("wait"));
         assertTrue(record.hasMember("notifyAll"));
 
-        assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT, STATIC_RECEIVER);
-        assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META, STATIC_RECEIVER);
+        assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
     }
 
     @Test

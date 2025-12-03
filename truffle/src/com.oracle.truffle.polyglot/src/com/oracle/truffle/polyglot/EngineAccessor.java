@@ -1582,7 +1582,7 @@ final class EngineAccessor extends Accessor {
         @TruffleBoundary
         public boolean isHostSymbol(Object obj) {
             InteropLibrary interop = InteropLibrary.getUncached(obj);
-            return interop.isHostObject(obj) && !interop.isNull(obj) && !interop.hasStaticReceiver(obj);
+            return interop.isHostObject(obj) && interop.isScope(obj);
         }
 
         @Override

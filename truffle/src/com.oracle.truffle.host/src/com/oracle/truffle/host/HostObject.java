@@ -3277,10 +3277,14 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMetaObject() {
         return isClass();
+    }
+
+    @ExportMessage
+    boolean isScope() {
+        return isStaticClass();
     }
 
     @ExportMessage
@@ -3415,25 +3419,19 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean hasStaticReceiver() {
-        return obj != null && !isStaticClass();
+    boolean hasStaticScope() {
+        return isMetaObject();
     }
 
     @ExportMessage
-    Object getStaticReceiver(
+    Object getStaticScope(
                     @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
-        if (!hasStaticReceiver()) {
+        if (!hasStaticScope()) {
             error.enter(node);
             throw UnsupportedMessageException.create();
         }
-        Class<?> clz;
-        if (isClass()) {
-            clz = (Class<?>) obj;
-        } else {
-            clz = obj.getClass();
-        }
-        return HostObject.forStaticClass(clz, context);
+        return HostObject.forStaticClass((Class<?>) obj, context);
     }
 
     boolean isStaticClass() {

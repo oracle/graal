@@ -63,7 +63,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-71887: Bytecode DSL: Added a `ClearLocal` operation for fast clearing of local values.
 * GR-71402: Added `InteropLibrary#hasHostObject` and `InteropLibrary#getHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
 * GR-71402: Added `InteropLibrary#isHostObject` and `InteropLibrary#asHostObject` for accessing the Java host-object representation of a Truffle guest object. Deprecated `Env#isHostObject`, `Env#isHostException`, `Env#isHostFunction`, `Env#isHostSymbol`, `Env#asHostObject`, and `Env#asHostException` in favor of the new InteropLibrary messages.
-* GR-71402: Added `InteropLibrary#hasStaticReceiver` and `InteropLibrary#getStaticReceiver` returning the static receiver for given object.
+* GR-71402: Added `InteropLibrary#hasStaticScope` and `InteropLibrary#getStaticScope` returning the static scope representing static or class-level members associated with the given meta object.
 
 
 ## Version 25.0
