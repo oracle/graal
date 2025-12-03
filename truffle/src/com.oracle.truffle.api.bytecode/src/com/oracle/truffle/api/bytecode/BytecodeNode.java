@@ -220,8 +220,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
-     *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
-     *            constant.
+     *            Bind}("$bytecodeIndex") annotation.
      * @since 24.2
      */
     public abstract SourceSection getSourceLocation(int bytecodeIndex);
@@ -237,8 +236,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
      *            {@link BytecodeLocation#getBytecodeIndex()} or using @{@link Bind
-     *            Bind}("$bytecodeIndex") annotation. The value must be a partial evaluation
-     *            constant.
+     *            Bind}("$bytecodeIndex") annotation.
      * @since 24.2
      */
     public abstract SourceSection[] getSourceLocations(int bytecodeIndex);
@@ -278,6 +276,7 @@ public abstract class BytecodeNode extends Node {
      * @return the source location, or null if a location could not be found
      * @since 24.2
      */
+    @TruffleBoundary
     public final SourceSection getSourceLocation(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {
@@ -296,6 +295,7 @@ public abstract class BytecodeNode extends Node {
      * @return the source locations, or null if they could not be found
      * @since 24.2
      */
+    @TruffleBoundary
     public final SourceSection[] getSourceLocations(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {
@@ -723,6 +723,7 @@ public abstract class BytecodeNode extends Node {
      */
     @ExplodeLoop
     public final void copyLocalValues(int bytecodeIndex, Frame source, Frame destination, int localOffset, int localCount) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         CompilerAsserts.partialEvaluationConstant(localOffset);
         CompilerAsserts.partialEvaluationConstant(localCount);
         if (localCount < 0) {
@@ -1257,6 +1258,7 @@ public abstract class BytecodeNode extends Node {
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
+    @TruffleBoundary
     public static Object[] getLocalValues(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
@@ -1278,6 +1280,7 @@ public abstract class BytecodeNode extends Node {
      *         {@link BytecodeRootNode}
      * @since 24.2
      */
+    @TruffleBoundary
     public static Object[] getLocalNames(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
@@ -1297,6 +1300,7 @@ public abstract class BytecodeNode extends Node {
      * @return whether the locals could be set with the information available in the frame instance
      * @since 24.2
      */
+    @TruffleBoundary
     public static boolean setLocalValues(FrameInstance frameInstance, Object[] values) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
@@ -1359,12 +1363,13 @@ public abstract class BytecodeNode extends Node {
     /**
      * Gets the bytecode location for a given Node, if it can be found in the parent chain.
      *
-     * @param node the node
+     * @param node the node, which must be a partial evaluation constant.
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.2
      */
     @ExplodeLoop
     public static BytecodeNode get(Node node) {
+        CompilerAsserts.partialEvaluationConstant(node);
         for (Node currentNode = node; currentNode != null; currentNode = currentNode.getParent()) {
             if (currentNode instanceof BytecodeNode bytecodeNode) {
                 return bytecodeNode;
@@ -1381,6 +1386,7 @@ public abstract class BytecodeNode extends Node {
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.2
      */
+    @TruffleBoundary
     public static BytecodeNode get(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         if (location == null) {

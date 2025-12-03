@@ -14007,6 +14007,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetSourceLocation() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocation", new String[]{"bci"}, new TypeMirror[]{type(int.class)});
             ex.getModifiers().add(FINAL);
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
@@ -14032,6 +14033,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetSourceLocations() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocations", new String[]{"bci"}, new TypeMirror[]{type(int.class)});
             ex.getModifiers().add(FINAL);
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
