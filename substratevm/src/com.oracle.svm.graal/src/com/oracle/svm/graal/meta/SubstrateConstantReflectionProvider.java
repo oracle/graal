@@ -36,6 +36,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
@@ -56,7 +57,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     }
 
     @Override
-    public Integer identityHashCode(JavaConstant constant) {
+    public int identityHashCode(JavaConstant constant) {
         JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
         if (kind != JavaKind.Object) {
             throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
@@ -65,7 +66,15 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
         }
-        return ((SubstrateObjectConstant) constant).getIdentityHashCode();
+        if (constant instanceof SubstrateObjectConstant sConstant) {
+            return sConstant.getIdentityHashCode();
+        }
+        throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+    }
+
+    @Override
+    public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+        throw VMError.unsupportedFeature("Injecting identity hash code not supported at Native Image runtime");
     }
 
     @Override

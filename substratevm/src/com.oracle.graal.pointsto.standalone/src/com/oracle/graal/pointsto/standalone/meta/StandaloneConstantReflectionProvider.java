@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -81,7 +82,7 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
     }
 
     @Override
-    public Integer identityHashCode(JavaConstant constant) {
+    public int identityHashCode(JavaConstant constant) {
         JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
         if (kind != JavaKind.Object) {
             throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
@@ -98,6 +99,11 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
         }
         Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, constant));
         return System.identityHashCode(hostedObject);
+    }
+
+    @Override
+    public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+        throw GraalError.unimplemented("makeIdentityHashCode");
     }
 
     @Override

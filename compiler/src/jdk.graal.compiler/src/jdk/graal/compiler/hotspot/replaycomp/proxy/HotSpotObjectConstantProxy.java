@@ -56,6 +56,14 @@ public final class HotSpotObjectConstantProxy extends HotSpotConstantProxy imple
         return (int) handle(getIdentityHashCodeMethod, getIdentityHashCodeInvokable);
     }
 
+    private static final SymbolicMethod makeIdentityHashCodeMethod = method("makeIdentityHashCode", int.class);
+    private static final InvokableMethod makeIdentityHashCodeInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).makeIdentityHashCode((int) args[0]);
+
+    @Override
+    public int makeIdentityHashCode(int requestedValue) {
+        return (int) handle(makeIdentityHashCodeMethod, makeIdentityHashCodeInvokable, requestedValue);
+    }
+
     private static final SymbolicMethod getCallSiteTargetMethod = method("getCallSiteTarget");
     private static final InvokableMethod getCallSiteTargetInvokable = (receiver, args) -> ((HotSpotObjectConstant) receiver).getCallSiteTarget();
 

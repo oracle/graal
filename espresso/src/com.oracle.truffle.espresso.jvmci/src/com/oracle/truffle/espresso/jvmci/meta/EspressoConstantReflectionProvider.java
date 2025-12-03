@@ -284,7 +284,7 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
     }
 
     @Override
-    public Integer identityHashCode(JavaConstant constant) {
+    public int identityHashCode(JavaConstant constant) {
         JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
         if (kind != JavaKind.Object) {
             throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
@@ -298,6 +298,11 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
         }
         Object unwrapped = unwrap(objectConstant);
         return System.identityHashCode(unwrapped);
+    }
+
+    @Override
+    public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+        throw JVMCIError.unimplemented();
     }
 
     public JavaConstant forObject(Object object) {
