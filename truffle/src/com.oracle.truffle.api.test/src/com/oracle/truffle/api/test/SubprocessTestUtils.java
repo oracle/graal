@@ -56,10 +56,12 @@ import java.lang.management.LockInfo;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -102,6 +104,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.Description;
+import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.model.Statement;
 
 /**
@@ -207,10 +210,31 @@ public final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
+    private static String findParametersFormat(Class<?> testClass) {
+        for (Method method : testClass.getDeclaredMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            Parameters parameters = method.getAnnotation(Parameters.class);
+            if (parameters != null) {
+                return parameters.name();
+            }
+        }
+        return null;
+    }
+
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart,
+                    List<Object> parameterizedBy) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
+        if (parameterizedBy != null) {
+            String parametersFormat = findParametersFormat(testMethod.getDeclaringClass());
+            if (parametersFormat != null) {
+                String parametersName = MessageFormat.format(parametersFormat, parameterizedBy.toArray());
+                testName = String.format("%s[%s]", testName, parametersName);
+            }
+        }
         Subprocess subprocess = javaHelper(
                         configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
@@ -488,6 +512,7 @@ public final class SubprocessTestUtils {
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
         private boolean removeOptimizedRuntimeOptions;
+        private List<Object> parameterizedBy = List.of();
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -566,11 +591,27 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        /**
+         * Associates the JUnit parameterized test arguments with this subprocess invocation.
+         * <p>
+         * When running a {@code @RunWith(Parameterized.class)} test, each test instance is
+         * constructed with a specific set of parameter values. These values determine the test
+         * case's display name (as configured via {@code @Parameters(name = ...)}).
+         * <p>
+         * By calling {@link #parameterizedBy(Object...)}, you provide the same set of parameter
+         * values to the {@code SubprocessTestUtils} infrastructure so that the subprocess execution
+         * reflects the parameterization of the current test.
+         */
+        public Builder parameterizedBy(Object... parameters) {
+            this.parameterizedBy = List.of(parameters);
+            return this;
+        }
+
         public void run() throws IOException, InterruptedException {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart, parameterizedBy);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);

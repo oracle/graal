@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -34,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -110,49 +112,51 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void test() {
-        runTest("testBasicInlining");
-        runTest("testDominatedDeopt");
-        runTest("testTruffleBoundary");
-        runTest("testPropagateDeopt");
-        runTest("testPropagateDeoptTwoLevels");
-        runTest("testRecursive");
-        runTest("testNotExplorable");
-        runTest("testBecomesDirectAfterInline");
-        runTest("testVirtualCall");
-        runTest("testInInterpreter1");
-        runTest("testInInterpreter2");
-        runTest("testInInterpreter3");
-        runTest("testInInterpreter4");
-        runTest("testInInterpreter5");
-        runTest("testInInterpreter6");
-        runTest("testInInterpreter7");
-        runTest("testInInterpreter8");
-        runTest("testInInterpreter9");
-        runTest("testInInterpreter10");
-        runTest("testInInterpreter11");
-        runTest("testInInterpreter12");
-        runTest("testExplorationDepth0");
-        runTest("testExplorationDepth1");
-        runTest("testExplorationDepth2");
-        runTest("testExplorationDepth0Fail");
-        runTest("testExplorationDepth1Fail");
-        runTest("testExplorationDepth2Fail");
-        runTest("testBytecodeSwitchtoBytecodeSwitch");
-        runTest("testInliningCutoff");
-        runTest("testNonDirectCalls");
-        runTest("testConstantFolding");
-        runTest("testDirectIntrinsics");
-        runTest("testIndirectIntrinsics");
-        runTest("testCountingConditionProfile");
-        runTest("testInterpreterCaller");
-        runTest("testIndirectThrow");
-        runTest("testThrow");
-        runTest("testRangeCheck");
-        runTest("testImplicitCast");
-        runTest("testNativeCall");
-        runTest("testBCDSLPrologIfVersion");
-        runTest("testInliningRoot");
+    public void test() throws IOException, InterruptedException {
+        SubprocessTestUtils.newBuilder(HostInliningTest.class, () -> {
+            runTest("testBasicInlining");
+            runTest("testDominatedDeopt");
+            runTest("testTruffleBoundary");
+            runTest("testPropagateDeopt");
+            runTest("testPropagateDeoptTwoLevels");
+            runTest("testRecursive");
+            runTest("testNotExplorable");
+            runTest("testBecomesDirectAfterInline");
+            runTest("testVirtualCall");
+            runTest("testInInterpreter1");
+            runTest("testInInterpreter2");
+            runTest("testInInterpreter3");
+            runTest("testInInterpreter4");
+            runTest("testInInterpreter5");
+            runTest("testInInterpreter6");
+            runTest("testInInterpreter7");
+            runTest("testInInterpreter8");
+            runTest("testInInterpreter9");
+            runTest("testInInterpreter10");
+            runTest("testInInterpreter11");
+            runTest("testInInterpreter12");
+            runTest("testExplorationDepth0");
+            runTest("testExplorationDepth1");
+            runTest("testExplorationDepth2");
+            runTest("testExplorationDepth0Fail");
+            runTest("testExplorationDepth1Fail");
+            runTest("testExplorationDepth2Fail");
+            runTest("testBytecodeSwitchtoBytecodeSwitch");
+            runTest("testInliningCutoff");
+            runTest("testNonDirectCalls");
+            runTest("testConstantFolding");
+            runTest("testDirectIntrinsics");
+            runTest("testIndirectIntrinsics");
+            runTest("testCountingConditionProfile");
+            runTest("testInterpreterCaller");
+            runTest("testIndirectThrow");
+            runTest("testThrow");
+            runTest("testRangeCheck");
+            runTest("testImplicitCast");
+            runTest("testNativeCall");
+            runTest("testBCDSLPrologIfVersion");
+            runTest("testInliningRoot");
+        }).parameterizedBy(run).run();
     }
 
     /*
