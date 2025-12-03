@@ -1137,11 +1137,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean removeMember(Object context, Object receiver, String key);
 
-        public boolean hasStaticReceiver(Object context, Object receiver) {
+        public boolean hasStaticScope(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Object getStaticReceiver(Object context, Object receiver);
+        public abstract Object getStaticScope(Object context, Object receiver);
 
         public boolean canExecute(Object context, Object receiver) {
             return false;

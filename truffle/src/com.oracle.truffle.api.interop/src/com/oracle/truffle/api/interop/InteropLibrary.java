@@ -141,7 +141,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
- * <li>{@link #hasStaticReceiver(Object receiver) static receiver}
+ * <li>{@link #hasStaticScope(Object receiver) static scope}
  * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasBufferElements(Object) buffer elements}
@@ -964,54 +964,59 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns {@code true} if the given receiver provides a {@linkplain #getStaticReceiver(Object)
-     * static receiver}. A static receiver represents the static or class-level members associated
-     * with the receiver's type, such as static fields or methods.
+     * Returns {@code true} if the given receiver is a {@linkplain #isMetaObject(Object) meta
+     * object} that provides a {@linkplain #getStaticScope(Object) static scope}. A static scope
+     * represents the static or class-level members associated with the receiver's type, such as
+     * static fields or methods.
      * <p>
      * Invoking this message must not cause any observable side effects.
      * <p>
+     * Only {@link #isMetaObject(Object) meta objects} are permitted to expose a static scope, for
+     * all non-meta objects this method must return {@code false}.
+     * <p>
      * By default, this method returns {@code false}.
      *
-     * @see #getStaticReceiver(Object)
+     * @see #getStaticScope(Object)
+     * @see #isMetaObject(Object)
      * @since 25.1
      */
-    @Abstract(ifExported = {"getStaticReceiver"})
-    public boolean hasStaticReceiver(Object receiver) {
+    @Abstract(ifExported = {"getStaticScope"})
+    public boolean hasStaticScope(Object receiver) {
         return false;
     }
 
     /**
-     * Returns the static receiver associated with the given receiver. A static receiver is an
-     * object that exposes static members, members whose values or behaviors are independent of any
-     * particular instance of the receiver. If the {@code receiver} is a
-     * {@link #isMetaObject(Object) metaobject}, its static receiver is the same object that would
-     * be returned for an instance of the type represented by that metaobject, it exposes the static
-     * members of the represented type rather than static members of the metaobject itself.
+     * Returns the static scope associated with the given receiver. The receiver must be a
+     * {@linkplain #isMetaObject(Object) meta object}. A static scope is an object that exposes
+     * static members, members whose values or behaviors are independent of any particular instance
+     * of the receiver.
      * <p>
-     * The static receiver typically serves as an artificial or meta-level object that provides
-     * access to instance-independent members declared by the receiver's type or meta object. The
-     * returned object can be used as the receiver for interop messages such as
-     * {@link #readMember(Object, String) readMember}, {@link #writeMember(Object, String, Object)
-     * writeMember}, and {@link #invokeMember(Object, String, Object...) invokeMember} when
-     * accessing static members.
+     * The static scope typically serves as an artificial or meta-level object that provides access
+     * to instance-independent members declared by the meta object. The returned object can be used
+     * as the receiver for interop messages such as {@link #readMember(Object, String) readMember},
+     * {@link #writeMember(Object, String, Object) writeMember}, and
+     * {@link #invokeMember(Object, String, Object...) invokeMember} when accessing static members.
      * <p>
-     * The returned static receiver is always expected to provide {@link #hasMembers(Object)
-     * members}, representing the receiver's static context.
+     * The returned static scope is always expected to be a {@link #isScope(Object) scope} and
+     * provide {@link #hasMembers(Object) members}, representing the receiver's static context.
      * <p>
      * <b>Examples:</b>
      * <ul>
-     * <li>In Java, the static receiver would expose static fields and methods of a class.</li>
-     * <li>In Python, the static receiver would expose class-level variables and methods,
-     * effectively corresponding to the members provided by the Python metaobject.</li>
+     * <li>In Java, the static scope exposes static fields and methods of a class.</li>
+     * <li>In Python, the static scope exposes class-level attributes and methods, effectively
+     * corresponding to the members provided by the Python metaobject.</li>
      * </ul>
      *
      * @throws UnsupportedMessageException if and only if the receiver does not
-     *             {@linkplain #hasStaticReceiver(Object) have a static receiver}
-     * @see #hasStaticReceiver(Object)
+     *             {@linkplain #hasStaticScope(Object) have a static scope}
+     * @see #hasStaticScope(Object)
+     * @see #isMetaObject(Object)
+     * @see #isScope(Object)
+     * @see #hasMembers(Object)
      * @since 25.1
      */
-    @Abstract(ifExported = {"hasStaticReceiver"})
-    public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+    @Abstract(ifExported = {"hasStaticScope"})
+    public Object getStaticScope(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2683,7 +2688,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @since 20.1
      */
-    @Abstract(ifExported = {"getMetaQualifiedName", "getMetaSimpleName", "isMetaInstance"})
+    @Abstract(ifExported = {"getMetaQualifiedName", "getMetaSimpleName", "isMetaInstance", "hasStaticScope"})
     public boolean isMetaObject(Object receiver) {
         return false;
     }
@@ -2994,7 +2999,7 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>true</code> if the value represents a scope object, else <code>false</code>.
      * The scope object contains variables as {@link #getMembers(Object) members} and has a
      * {@link InteropLibrary#toDisplayString(Object, boolean) scope display name}. It needs to be
-     * associated with a {@link #getLanguage(Object) language}. The scope may return a
+     * associated with a {@link #getLanguageId(Object) language}. The scope may return a
      * {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the range of
      * the scope in the source code. The scope may have {@link #hasScopeParent(Object) parent
      * scopes}.
@@ -3015,7 +3020,7 @@ public abstract class InteropLibrary extends Library {
      * also {@link #hasMembers(Object)} and {@link #toDisplayString(Object, boolean)} must be
      * implemented and {@link #hasSourceLocation(Object)} is recommended.
      *
-     * @see #getLanguage(Object)
+     * @see #getLanguageId(Object)
      * @see #getMembers(Object)
      * @see #hasScopeParent(Object)
      * @since 20.3
@@ -3959,24 +3964,54 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean hasStaticReceiver(Object receiver) {
+        public boolean hasStaticScope(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasStaticScope(receiver);
+            }
             assert preCondition(receiver);
-            boolean result = delegate.hasStaticReceiver(receiver);
+            boolean result = delegate.hasStaticScope(receiver);
+            if (result) {
+                assert UNCACHED.isMetaObject(receiver) : violationPost(receiver, result);
+                assert assertHasStaticScope(receiver);
+            } else {
+                assert assertHasNoStaticScope(receiver);
+            }
             assert validProtocolReturn(receiver, result);
             return result;
         }
 
+        private boolean assertHasStaticScope(Object receiver) {
+            try {
+                delegate.getStaticScope(receiver);
+            } catch (InteropException e) {
+                assert false : violationInvariant(receiver);
+            }
+            return true;
+        }
+
+        private boolean assertHasNoStaticScope(Object receiver) {
+            try {
+                delegate.getStaticScope(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+                // Falls to return true
+            }
+            return true;
+        }
+
         @Override
-        public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+        public Object getStaticScope(Object receiver) throws UnsupportedMessageException {
             if (CompilerDirectives.inCompiledCode()) {
-                return delegate.getStaticReceiver(receiver);
+                return delegate.getStaticScope(receiver);
             }
             assert preCondition(receiver);
-            boolean hadStaticReceiver = delegate.hasStaticReceiver(receiver);
+            boolean hadStaticReceiver = delegate.hasStaticScope(receiver);
             try {
-                Object result = delegate.getStaticReceiver(receiver);
+                Object result = delegate.getStaticScope(receiver);
                 assert hadStaticReceiver || isMultiThreaded(receiver) : violationInvariant(receiver);
                 assert validInteropReturn(receiver, result);
+                assert UNCACHED.isMetaObject(receiver) : violationPost(receiver, result);
+                assert UNCACHED.isScope(result) : violationPost(receiver, result);
                 assert UNCACHED.hasMembers(result) : violationPost(receiver, result);
                 return result;
             } catch (InteropException e) {
@@ -5639,17 +5674,21 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isHostObject(receiver);
             if (result) {
-                try {
-                    delegate.asHostObject(receiver);
-                } catch (InteropException e) {
-                    assert e instanceof HeapIsolationException : violationInvariant(receiver);
-                } catch (Exception e) {
-                }
+                assert assertHasHostObject(receiver);
             } else {
                 assert assertHasNoHostObject(receiver);
             }
             assert validProtocolReturn(receiver, result);
             return result;
+        }
+
+        private boolean assertHasHostObject(Object receiver) {
+            try {
+                delegate.asHostObject(receiver);
+            } catch (InteropException e) {
+                assert e instanceof HeapIsolationException : violationInvariant(receiver);
+            }
+            return true;
         }
 
         private boolean assertHasNoHostObject(Object receiver) {

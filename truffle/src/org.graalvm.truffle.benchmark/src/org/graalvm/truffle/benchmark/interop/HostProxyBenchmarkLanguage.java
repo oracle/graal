@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -109,11 +110,16 @@ public class HostProxyBenchmarkLanguage extends TruffleLanguage<Env> {
             Object receiver = args[0];
             String messageName = InteropLibrary.getUncached().asString(args[1]);
             Object arg1 = args[2];
-            if (!env.isHostObject(arg1)) {
+            InteropLibrary hostObjects = InteropLibrary.getUncached(arg1);
+            if (!hostObjects.isHostObject(arg1)) {
                 throw new InteropBenchmarkException("Invalid arguments. Interop message name and arguments with receiver as host Object[].");
             }
-            Object[] hostArguments = (Object[]) env.asHostObject(arg1);
-            return new ExecuteInteropExecutable(receiver, messageName, hostArguments);
+            try {
+                Object[] hostArguments = (Object[]) hostObjects.asHostObject(arg1);
+                return new ExecuteInteropExecutable(receiver, messageName, hostArguments);
+            } catch (HeapIsolationException e) {
+                throw new InteropBenchmarkException("Invalid arguments. Host object cannot be unboxed because it was allocated in an isolated heap.");
+            }
         }
 
     }

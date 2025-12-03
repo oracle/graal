@@ -58,7 +58,6 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
@@ -289,10 +288,6 @@ public class ValueAssert {
                     }
 
                     break;
-                case STATIC_RECEIVER:
-                    assertFalse(value.hasStaticReceiver());
-                    assertFails(value::getStaticReceiver, UnsupportedOperationException.class);
-                    break;
                 case EXECUTABLE:
                     assertFalse(value.toString(), value.canExecute());
                     assertFails(() -> value.execute(), UnsupportedOperationException.class);
@@ -464,6 +459,8 @@ public class ValueAssert {
                     assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
                     assertFalse(value.hasMetaParents());
                     assertFails(() -> value.getMetaParents(), UnsupportedOperationException.class);
+                    assertFalse(value.hasStaticScope());
+                    assertFails(() -> value.getStaticScope(), UnsupportedOperationException.class);
                     break;
                 case ITERABLE:
                     assertFalse(value.hasIterator());
@@ -667,10 +664,6 @@ public class ValueAssert {
                         assertEquals(value.toString(), value.as(Map.class).toString());
                     }
                     break;
-                case STATIC_RECEIVER:
-                    assertTrue(msg, value.hasStaticReceiver());
-                    assertNotNull(value.getStaticReceiver());
-                    break;
                 case NATIVE:
                     assertTrue(msg, value.isNativePointer());
                     value.asNativePointer();
@@ -750,6 +743,23 @@ public class ValueAssert {
                     } else {
                         try {
                             value.getMetaParents();
+                            fail("should have thrown");
+                        } catch (PolyglotException expected) {
+                            throw new AssertionError(expected);
+                        } catch (UnsupportedOperationException expected) {
+                            // caught expected exception
+                        }
+                    }
+                    if (value.hasStaticScope()) {
+                        Value staticScope = value.getStaticScope();
+                        assertTrue(staticScope.hasMembers());
+                        for (String key : staticScope.getMemberKeys()) {
+                            Value staticMember = staticScope.getMember(key);
+                            assertValueImpl(staticMember, depth + 1, hasHostAccess, detectSupportedTypes(staticMember));
+                        }
+                    } else {
+                        try {
+                            value.getStaticScope();
                             fail("should have thrown");
                         } catch (PolyglotException expected) {
                             throw new AssertionError(expected);
@@ -1169,9 +1179,6 @@ public class ValueAssert {
         if (value.hasMembers()) {
             valueTypes.add(MEMBERS);
         }
-        if (value.hasStaticReceiver()) {
-            valueTypes.add(STATIC_RECEIVER);
-        }
         if (value.hasArrayElements()) {
             valueTypes.add(ARRAY_ELEMENTS);
         }
@@ -1242,8 +1249,7 @@ public class ValueAssert {
         META,
         ITERABLE,
         ITERATOR,
-        HASH,
-        STATIC_RECEIVER
+        HASH
     }
 
 }

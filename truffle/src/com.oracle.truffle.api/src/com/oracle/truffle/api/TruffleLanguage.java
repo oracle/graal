@@ -2419,8 +2419,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @see #lookupHostSymbol(String)
          * @since 19.0
-         * @deprecated Use
-         *             {@code interopLibrary.isHostObject(obj) && !interopLibrary.isNull(obj) && !interopLibrary.hasStaticReceiver(obj)}.
+         * @deprecated Use {@code interopLibrary.isHostObject(obj) && interopLibrary.isScope(obj)}.
          */
         @Deprecated(since = "25.1")
         @SuppressWarnings("static-method")

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_RECEIVER;
 import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
@@ -246,14 +245,14 @@ public class ValueAPITest {
 
     @Test
     public void testDatesTimesZonesAndDuration() {
-        assertValueInContexts(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, STATIC_RECEIVER);
-        assertValueInContexts(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION, STATIC_RECEIVER);
+        assertValueInContexts(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE);
+        assertValueInContexts(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE);
+        assertValueInContexts(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE);
+        assertValueInContexts(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE);
+        assertValueInContexts(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValueInContexts(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE);
+        assertValueInContexts(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValueInContexts(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION);
 
         assertValueInContexts(context.asValue(ProxyDate.from(LocalDate.now())), DATE, PROXY_OBJECT);
         assertValueInContexts(context.asValue(ProxyTime.from(LocalTime.now())), TIME, PROXY_OBJECT);
@@ -388,7 +387,6 @@ public class ValueAPITest {
             List<Trait> expectedTraits = new ArrayList<>();
             expectedTraits.add(MEMBERS);
             expectedTraits.add(HOST_OBJECT);
-            expectedTraits.add(STATIC_RECEIVER);
 
             if (value.getClass() == BigInteger.class) {
                 expectedTraits.add(NUMBER);
@@ -453,7 +451,7 @@ public class ValueAPITest {
     @Test
     public void testArrays() {
         for (Object array : ARRAYS) {
-            assertValueInContexts(context.asValue(array), ARRAY_ELEMENTS, ITERABLE, HOST_OBJECT, MEMBERS, STATIC_RECEIVER);
+            assertValueInContexts(context.asValue(array), ARRAY_ELEMENTS, ITERABLE, HOST_OBJECT, MEMBERS);
         }
     }
 
@@ -517,8 +515,8 @@ public class ValueAPITest {
         for (final ByteBuffer buffer : testBuffers) {
             final Value value = context.asValue(buffer);
 
-            assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS, STATIC_RECEIVER);
-            assertValueInContexts(createDelegateInteropWrapper(context, value), BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS, STATIC_RECEIVER);
+            assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
+            assertValueInContexts(createDelegateInteropWrapper(context, value), BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
         }
     }
 
@@ -2328,8 +2326,8 @@ public class ValueAPITest {
     @Test
     public void testHostException() {
         Value exceptionValue = context.asValue(new RuntimeException("expected"));
-        assertValueInContexts(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION, STATIC_RECEIVER);
-        assertValueInContexts(createDelegateInteropWrapper(context, exceptionValue), HOST_OBJECT, MEMBERS, EXCEPTION, STATIC_RECEIVER);
+        assertValueInContexts(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION);
+        assertValueInContexts(createDelegateInteropWrapper(context, exceptionValue), HOST_OBJECT, MEMBERS, EXCEPTION);
         try {
             exceptionValue.throwException();
             fail("should have thrown");
