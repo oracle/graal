@@ -921,7 +921,7 @@ public final class InterpreterToVM {
             retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
         } else {
             try {
-                retObj = Interpreter.execute(targetMethod, calleeArgs, forceStayInInterpreter);
+                retObj = InterpreterStubSection.potentialCallJITMethod(targetMethod, calleeArgs, forceStayInInterpreter);
             } catch (Throwable e) {
                 // Exceptions coming from calls are valid, semantic Java exceptions.
                 throw SemanticJavaException.raise(e);

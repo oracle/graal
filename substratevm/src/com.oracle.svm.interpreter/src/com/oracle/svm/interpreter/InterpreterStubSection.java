@@ -409,18 +409,7 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
-        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
-        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
-            /*
-             * A JIT compiled version is available, execute this one instead. This could be more
-             * optimized, see GR-71160.
-             */
-
-            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
-            return leaveInterpreter(entryPoint, interpreterMethod, args);
-        } else {
-            return Interpreter.execute(interpreterMethod, args);
-        }
+	return potentialCallJITMethod(interpreterMethod, args);
     }
 
     @Uninterruptible(reason = "Raw object pointer.")
@@ -572,6 +561,21 @@ public abstract class InterpreterStubSection {
             if (InterpreterOptions.InterpreterBackdoor.getValue() && stressEnterStub) {
                 Heap.getHeap().getGC().collectCompletely(GCCause.UnitTest);
             }
+        }
+    }
+
+    public static Object potentialCallJITMethod(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
+        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+            /*
+             * A JIT compiled version is available, execute this one instead. This could be more
+             * optimized, see GR-71160.
+             */
+
+            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+            return leaveInterpreter(entryPoint, interpreterMethod, args);
+        } else {
+            return Interpreter.execute(interpreterMethod, args);
         }
     }
 }
