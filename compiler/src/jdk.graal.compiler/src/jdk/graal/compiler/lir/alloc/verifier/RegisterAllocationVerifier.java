@@ -71,7 +71,7 @@ public final class RegisterAllocationVerifier {
                 for (int k = 0; k < labelBlock.getPredecessorCount(); k++) {
                     var pred = labelBlock.getPredecessorAt(k);
                     var jumpOp = (RAVInstruction.Op) this.blockInstructions.get(pred).getLast();
-                    jumpOp.alive.curr[j] = variable;
+                    jumpOp.alive.curr[j] = register;
                 }
             }
         }
@@ -357,12 +357,17 @@ public final class RegisterAllocationVerifier {
                     state = this.spillSlotValues.get(curr);
                 }
 
+                if (!orig.getValueKind().equals(curr.getValueKind())) {
+                   return false; // Kind do not match
+                }
+
                 if (state.isConflicted() || state.isUnknown()) {
                     return false;
                 }
 
                 if (state instanceof ValueAllocationState valAllocState) {
                     if (!valAllocState.value.equals(orig)) {
+                        // Kind sizes should be checked here as well.
                         return false;
                     }
 
@@ -377,19 +382,12 @@ public final class RegisterAllocationVerifier {
 
         protected boolean checkAliveConstraint(RAVInstruction.Op instruction) {
             for (int i = 0; i < instruction.alive.count; i++) {
-                for (int j = 0; j < instruction.temp.count; j++) { // Cannot be a temp
+                for (int j = 0; j < instruction.temp.count; j++) {
                     if (instruction.alive.curr[i].equals(instruction.temp.curr[j])) {
                         return false;
                     }
                 }
 
-                for (int j = 0; j < instruction.uses.count; j++) { // Cannot be a use
-                    if (instruction.alive.curr[i].equals(instruction.uses.curr[j])) {
-                        return false;
-                    }
-                }
-
-                // I don't think it can be a destination either
                 for (int j = 0; j < instruction.dests.count; j++) {
                     if (instruction.alive.curr[i].equals(instruction.dests.curr[j])) {
                         return false;
@@ -406,19 +404,23 @@ public final class RegisterAllocationVerifier {
                     return false;
                 }
 
-                // if (!checkInputs(op.alive)) {
-                //     // TODO: need to differentiate between alive and use
-                //     // Also, alive cannot be in temp or use, need to enforce this constraint.
-                //     return false;
-                // }
+                if (!checkInputs(op.alive)) {
+                     return false;
+                }
 
-                // if (!checkInputs(op.temp)) {
-                //     // Memory or registers get passed here and they aren't overwritten by the allocator
-                //     // so checking here comes down to see if arguments are equal.
-                //     // TODO: mark values in registers and stack slots here as dead, so they cannot be used after
-                //     // allocation
-                //     return false;
-                // }
+                for (int i = 0; i < op.temp.count; i++) {
+                    var curr = op.temp.curr[i];
+                    var orig = op.temp.orig[i];
+
+                    if (!curr.getValueKind().equals(orig.getValueKind())) {
+                        // Make sure the assigned register has the correct kind for temp.
+                        return false;
+                    }
+                }
+
+                if (!this.checkAliveConstraint(op)) {
+                    return false;
+                }
             }
 
             return true;
@@ -442,6 +444,11 @@ public final class RegisterAllocationVerifier {
 
                         Value variable = op.dests.orig[i];
                         this.registerValues.put(op.dests.curr[i], new ValueAllocationState(variable));
+                    }
+
+                    for (int i = 0; i < op.temp.count; i++) {
+                        // We cannot believe the contents of registers used as temp, thus we need to reset.
+                        this.registerValues.put(op.temp.curr[i], UnknownAllocationState.INSTANCE);
                     }
                 }
                 case RAVInstruction.Spill spill ->
@@ -627,6 +634,11 @@ public final class RegisterAllocationVerifier {
         }
 
         @Override
+        public AllocationState put(K key, AllocationState value) {
+            return super.put(key, value);
+        }
+
+        @Override
         public AllocationState get(Object key) {
             var value = super.get(key);
             if (value == null) {
@@ -676,6 +688,14 @@ public final class RegisterAllocationVerifier {
             }
 
             return changed;
+        }
+
+        // TODO: we need to not use size of the work for the hash map for registers at least
+        private String getCorrectKeyString(Value value) {
+            return switch (value) {
+                case RegisterValue reg -> reg.getRegister().toString();
+                default -> value.toString();
+            };
         }
     }
 }
