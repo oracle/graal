@@ -28,12 +28,18 @@ import static jdk.graal.compiler.bytecode.Bytecodes.END;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.PauseNode;
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * Stores interpreter profiling data collected during the execution of a single
@@ -88,7 +94,7 @@ public final class MethodProfile {
                 allProfiles.add(new BranchProfile(bci));
             }
             if (Bytecodes.isTypeProfiled(opcode)) {
-                // TODO GR-71567
+                allProfiles.add(new TypeProfile(bci));
             }
             // TODO GR-71799 - backedge / goto profiles
             stream.next();
@@ -133,8 +139,16 @@ public final class MethodProfile {
         }
     }
 
+    public JavaTypeProfile getTypeProfile(int bci) {
+        return ((TypeProfile) getAtBCI(bci, TypeProfile.class)).toTypeProfile();
+    }
+
     public double getBranchTakenProbability(int bci) {
         return ((BranchProfile) getAtBCI(bci, BranchProfile.class)).takenProfile();
+    }
+
+    public void profileType(int bci, ResolvedJavaType type) {
+        ((TypeProfile) getAtBCI(bci, TypeProfile.class)).incrementType(type);
     }
 
     /**
@@ -243,4 +257,138 @@ public final class MethodProfile {
         }
     }
 
+    public static class TypeProfile extends CountingProfile {
+        /**
+         * All types that are profiled per type.
+         */
+        private final ResolvedJavaType[] types;
+
+        /**
+         * All counts per type - each index represents the number of times {@code types[i]} was seen
+         * during profiling.
+         */
+        private final long[] counts;
+        private long notRecordedCount;
+        private int nextFreeSlot;
+
+        // value of state is 0 if the state is READING, else it holds the id of the currently
+        // writing thread
+        private volatile long state;
+
+        private static final int READING_STATE = 0;
+        private static final int WRITING_STATE = 1;
+
+        public static final AtomicLongFieldUpdater<TypeProfile> PROFILING_STATE_UPDATER = AtomicLongFieldUpdater.newUpdater(TypeProfile.class, "state");
+
+        public TypeProfile(int bci) {
+            super(bci);
+            final int typeProfileWidth = InterpreterProfilingOptions.JITProfileTypeProfileWidth.getValue();
+            types = new ResolvedJavaType[typeProfileWidth];
+            counts = new long[typeProfileWidth];
+        }
+
+        public double notRecordedProbability() {
+            return (double) notRecordedCount / (double) counter;
+        }
+
+        public double getProbabilty(ResolvedJavaType type) {
+            for (int i = 0; i < types.length; i++) {
+                ResolvedJavaType t = types[i];
+                System.out.printf("Checking if %s equals %s%n?", t, type);
+                if (t.equals(type)) {
+                    return (double) counts[i] / (double) counter;
+                }
+            }
+            return -1;
+        }
+
+        public void incrementType(ResolvedJavaType type) {
+            counter++;
+            // check if the type was already recorded, in which case we update the counts in a racy
+            // fashion
+            for (int i = 0; i < types.length && i < nextFreeSlot; i++) {
+                if (types[i].equals(type)) {
+                    counts[i]++;
+                    return;
+                }
+            }
+            if (nextFreeSlot >= types.length) {
+                // all types saturated, racy update to not recorded
+                notRecordedCount++;
+                return;
+            }
+            addTypeAndIncrement(type);
+        }
+
+        private void addTypeAndIncrement(ResolvedJavaType type) {
+            final long currentThreadId = Thread.currentThread().threadId();
+            // we are adding a new type to the profile, we have to perform this under a heavy lock
+            while (true) {
+                if (!PROFILING_STATE_UPDATER.compareAndSet(this, 0, currentThreadId)) {
+                    // try to acquire the state lock, spin if this fails until we are allowed to
+                    PauseNode.pause();
+                } else {
+                    // we got the "lock" to write the profile
+                    break;
+                }
+            }
+            /*
+             * in the meantime its possible another thread already saturated the list of profiles,
+             * in this case we have to add to the remaining ones
+             */
+            if (nextFreeSlot >= types.length) {
+                notRecordedCount++;
+                return;
+            }
+            types[nextFreeSlot] = type;
+            counts[nextFreeSlot]++;
+            nextFreeSlot++;
+
+            if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
+                return;
+            } else {
+                throw GraalError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profiel udpate");
+            }
+        }
+
+        private boolean hasFreeSlots() {
+            return nextFreeSlot < types.length;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder(128);
+            sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(counter);
+            int limit = Math.min(nextFreeSlot, types.length);
+            sb.append(", types=[");
+            for (int i = 0; i < limit; i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                ResolvedJavaType t = types[i];
+                long c = counts[i];
+                sb.append(t.getName()).append(':').append(c);
+            }
+            sb.append(']');
+            // Include notRecordedCount if saturated or if there were any drops
+            if (limit >= types.length) {
+                sb.append(", saturated=true");
+            } else {
+                sb.append(", freeSlots=").append(types.length - limit);
+            }
+            if (notRecordedCount > 0) {
+                sb.append(", notRecorded=").append(notRecordedCount);
+            }
+            sb.append('}');
+            return sb.toString();
+        }
+
+        public JavaTypeProfile toTypeProfile() {
+            JavaTypeProfile.ProfiledType[] types = new JavaTypeProfile.ProfiledType[this.types.length];
+            for (int i = 0; i < types.length; i++) {
+                types[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbabilty(this.types[i]));
+            }
+            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedProbability(), types);
+        }
+    }
 }

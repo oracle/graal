@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.interpreter.ristretto.profile;
 
+import com.oracle.svm.interpreter.metadata.profile.InterpreterProfilingOptions;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
-import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -51,7 +51,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public JavaTypeProfile getTypeProfile(int bci) {
-        return null;
+        return methodProfile.getTypeProfile(bci);
     }
 
     @Override
@@ -118,7 +118,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
         /*
          * Either maturity was explicitly requested or we follow regular ergonomics.
          */
-        return methodProfile.isMature() || methodProfile.getProfileEntryCount() > RistrettoRuntimeOptions.JITProfileMatureInvocationThreshold.getValue();
+        return methodProfile.isMature() || methodProfile.getProfileEntryCount() > InterpreterProfilingOptions.JITProfileMatureInvocationThreshold.getValue();
     }
 
     @Override

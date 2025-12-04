@@ -22,28 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter.ristretto;
+package com.oracle.svm.interpreter.metadata.profile;
 
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
 import jdk.graal.compiler.options.Option;
 
-public class RistrettoRuntimeOptions {
-    @Option(help = "Use the Graal JIT compiler at runtime to compile bytecodes.")//
-    public static final RuntimeOptionKey<Boolean> JITEnableCompilation = new RuntimeOptionKey<>(true);
+public final class InterpreterProfilingOptions {
 
-    @Option(help = "Number of invocations before compilation is triggered on a method.")//
-    public static final RuntimeOptionKey<Integer> JITCompilerInvocationThreshold = new RuntimeOptionKey<>(1000);
+    @Option(help = "Number of invocations before profiling considers a method profile to be mature.")//
+    public static final RuntimeOptionKey<Integer> JITProfileMatureInvocationThreshold = new RuntimeOptionKey<>(1000);
 
-    @Option(help = "Number of threads to use for Graal JIT compilation.")//
-    public static final RuntimeOptionKey<Integer> JITCompilerThreadCount = new RuntimeOptionKey<>(1);
-
-    @Option(help = "Trace decisions about when to compile what.")//
-    public static final RuntimeOptionKey<Boolean> JITTraceCompilationQueuing = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Trace counter values during profiling.")//
-    public static final RuntimeOptionKey<Boolean> JITTraceProfilingIncrements = new RuntimeOptionKey<>(false);
-
-    @Option(help = "Trace compilation events.")//
-    public static final RuntimeOptionKey<Boolean> JITTraceCompilation = new RuntimeOptionKey<>(false);
+    @Option(help = "Number of types to record per type profile.")//
+    public static final RuntimeOptionKey<Integer> JITProfileTypeProfileWidth = new RuntimeOptionKey<>(4);
 }
