@@ -60,6 +60,7 @@ import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalvm_continuations_IdentityHashCodes;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
@@ -92,6 +93,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.GET_SOURCE_FILENAME,
                         InvokeMember.ESPRESSO_SINGLE_IMPLEMENTOR,
                         InvokeMember.TO_GUEST_STRING,
+                        InvokeMember.MAKE_IDENTITY_HASH_CODE,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -134,6 +136,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String GET_SOURCE_FILENAME = "getSourceFileName";
         static final String ESPRESSO_SINGLE_IMPLEMENTOR = "espressoSingleImplementor";
         static final String TO_GUEST_STRING = "toGuestString";
+        static final String MAKE_IDENTITY_HASH_CODE = "makeIdentityHashCode";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -192,11 +195,11 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         @Specialization(guards = "LOOKUP_INSTANCE_TYPE.equals(member)")
         static Object lookupInstanceType(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
-                        @CachedLibrary(limit = "2") InteropLibrary stringInterop,
-                        @CachedLibrary(limit = "2") InteropLibrary booleanInterop,
-                        @Cached @Exclusive InlinedBranchProfile typeError,
-                        @Cached @Exclusive InlinedBranchProfile arityError,
-                        @Cached @Exclusive InlinedBranchProfile valueError) throws ArityException, UnsupportedTypeException {
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary stringInterop,
+                        @CachedLibrary(limit = "1") @Exclusive InteropLibrary booleanInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError,
+                        @Cached @Shared InlinedBranchProfile valueError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
             assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
             if (arguments.length != 3) {
@@ -304,11 +307,11 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             if (!(arguments[0] instanceof ObjectKlass selfKlass)) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an instance type");
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as first argument");
             }
             if (!(arguments[1] instanceof ObjectKlass otherKlass)) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an instance type");
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as second argument");
             }
             return selfKlass.isAssignableFrom(otherKlass);
         }
@@ -375,10 +378,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static Object getAnnotationData(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
                         @Cached @Shared InlinedBranchProfile typeError,
-                        @Cached @Shared InlinedBranchProfile arityError
-        // @Cached("create(meta.java_nio_ByteBuffer_wrap.getCallTargetForceInit())") DirectCallNode
-        // wrap
-        ) throws ArityException, UnsupportedTypeException {
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
             assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
             if (arguments.length != 1) {
@@ -425,11 +425,11 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             }
             if (!(arguments[0] instanceof ObjectKlass klass1)) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an instance type");
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as first argument");
             }
             if (!(arguments[1] instanceof ObjectKlass klass2)) {
                 typeError.enter(node);
-                throw UnsupportedTypeException.create(arguments, "Expected an instance type");
+                throw UnsupportedTypeException.create(arguments, "Expected an instance type as second argument");
             }
             return klass1.getDefiningClassLoader() == klass2.getDefiningClassLoader();
         }
@@ -503,7 +503,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         @Specialization(guards = "TO_GUEST_STRING.equals(member)")
         static Object toGuestString(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
                         @Bind Node node,
-                        @CachedLibrary(limit = "1") InteropLibrary library,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary stringInterop,
                         @Cached @Shared InlinedBranchProfile typeError,
                         @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
             assert receiver != null;
@@ -513,13 +513,39 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                 throw ArityException.create(1, 1, arguments.length);
             }
             try {
-                String string = library.asString(arguments[0]);
+                String string = stringInterop.asString(arguments[0]);
                 EspressoContext context = EspressoContext.get(node);
                 return context.getMeta().toGuestString(string);
             } catch (UnsupportedMessageException e) {
                 typeError.enter(node);
                 throw UnsupportedTypeException.create(arguments, "Expected an string");
             }
+        }
+
+        @Specialization(guards = "MAKE_IDENTITY_HASH_CODE.equals(member)")
+        static Object makeIdentityHashCode(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Exclusive InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof StaticObject o)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso object as first argument");
+            }
+            int requestedValue;
+            try {
+                requestedValue = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                throw UnsupportedTypeException.create(arguments, "Expected an int as second argument");
+            }
+            Meta meta = EspressoContext.get(node).getMeta();
+            return Target_org_graalvm_continuations_IdentityHashCodes.setHashCode(o, requestedValue, meta, meta.getLanguage());
         }
 
         @Fallback
