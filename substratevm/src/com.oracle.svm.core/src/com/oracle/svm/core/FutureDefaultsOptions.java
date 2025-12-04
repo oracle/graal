@@ -24,6 +24,18 @@
  */
 package com.oracle.svm.core;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -33,20 +45,10 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.StringUtil;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Enables the --future-defaults=value flag that is used for evolution of Native Image semantics.
@@ -83,13 +85,14 @@ public class FutureDefaultsOptions {
     private static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS = "run-time-initialize-file-system-providers";
     private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
     private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
-    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
+    private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_SECURITY_PROVIDERS,
+                    RUN_TIME_INITIALIZE_RESOURCE_BUNDLES);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
 
     public static final String RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + CLASS_FOR_NAME_RESPECTS_CLASS_LOADER +
-            ")";
+                    ")";
     public static final String RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_SECURITY_PROVIDERS + ")";
     public static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON = "Initialize JDK classes at run time (--" + OPTION_NAME + " includes " + RUN_TIME_INITIALIZE_RESOURCE_BUNDLES + ")";
     private static final String DEFAULT_NAME = "<default-value>";
@@ -109,7 +112,7 @@ public class FutureDefaultsOptions {
     @APIOption(name = OPTION_NAME, defaultValue = DEFAULT_NAME) //
     @Option(help = "file:doc-files/FutureDefaultsHelp.txt", type = OptionType.User) //
     static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> FutureDefaults = new HostedOptionKey<>(
-            AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter()) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
             super.onValueUpdate(values, oldValue, newValue);
@@ -123,7 +126,7 @@ public class FutureDefaultsOptions {
     private static String getOptionHelpText() {
         Objects.requireNonNull(FutureDefaultsOptions.FutureDefaults.getDescriptor(), "This must be called after the options are processed.");
         return FutureDefaultsOptions.FutureDefaults.getDescriptor().getHelp().stream()
-                .collect(Collectors.joining(System.lineSeparator()));
+                        .collect(Collectors.joining(System.lineSeparator()));
     }
 
     private static void verifyOptionDescription() {
@@ -157,35 +160,35 @@ public class FutureDefaultsOptions {
             String value = valueWithOrigin.value();
             if (DEFAULT_NAME.equals(value)) {
                 throw UserError.abort("The '%s' from %s is forbidden. It can only contain: %s.%n%nUsage:%n%n%s",
-                        SubstrateOptionsParser.commandArgument(FutureDefaults, DEFAULT_NAME),
-                        valueWithOrigin.origin(),
-                        futureDefaultsAllValues(),
-                        getOptionHelpText());
+                                SubstrateOptionsParser.commandArgument(FutureDefaults, DEFAULT_NAME),
+                                valueWithOrigin.origin(),
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
             if (RETIRED_FUTURE_DEFAULTS.contains(value)) {
                 LogUtils.warning("The '%s' option from %s contains the value '%s' which is enabled by default in this GraalVM release (%s) and can be removed.",
-                        SubstrateOptionsParser.commandArgument(FutureDefaults, value),
-                        valueWithOrigin.origin(),
-                        value,
-                        VM.getVersion());
+                                SubstrateOptionsParser.commandArgument(FutureDefaults, value),
+                                valueWithOrigin.origin(),
+                                value,
+                                VM.getVersion());
                 return;
             }
 
             if (!getAllValues().contains(value)) {
                 throw UserError.abort("The '%s' option from %s contains invalid value '%s'. It can only contain: %s.%n%nUsage:%n%n%s",
-                        SubstrateOptionsParser.commandArgument(FutureDefaults, value),
-                        valueWithOrigin.origin(),
-                        value,
-                        futureDefaultsAllValues(),
-                        getOptionHelpText());
+                                SubstrateOptionsParser.commandArgument(FutureDefaults, value),
+                                valueWithOrigin.origin(),
+                                value,
+                                futureDefaultsAllValues(),
+                                getOptionHelpText());
             }
 
             if (value.equals(NONE_NAME)) {
                 if (!valueWithOrigin.origin().commandLineLike()) {
                     throw UserError.abort("The '%s' option can only be used from the command line. Detected usage from %s.",
-                            SubstrateOptionsParser.commandArgument(FutureDefaults, NONE_NAME),
-                            valueWithOrigin.origin());
+                                    SubstrateOptionsParser.commandArgument(FutureDefaults, NONE_NAME),
+                                    valueWithOrigin.origin());
                 }
                 futureDefaults.clear();
             }
