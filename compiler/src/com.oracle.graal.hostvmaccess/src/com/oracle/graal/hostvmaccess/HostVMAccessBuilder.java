@@ -28,8 +28,8 @@ import java.io.File;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,11 +39,11 @@ import com.oracle.graal.vmaccess.ModuleSupport;
 import com.oracle.graal.vmaccess.VMAccess;
 
 public final class HostVMAccessBuilder implements VMAccess.Builder {
-    private List<String> classpath;
-    private List<String> modulepath;
-    private List<String> addModules;
+    private List<String> classpath = List.of();
+    private List<String> modulepath = List.of();
+    private List<String> addModules = List.of();
     private boolean enableAssertions;
-    private Map<String, String> systemProperties;
+    private Map<String, String> systemProperties = new LinkedHashMap<>();
 
     @Override
     public String getVMAccessName() {
@@ -82,11 +82,6 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public VMAccess.Builder systemProperty(String name, String value) {
-        if (systemProperties == null) {
-            // Checkstyle: stop stable iteration order check
-            systemProperties = new HashMap<>();
-            // Checkstyle: resume stable iteration order check
-        }
         systemProperties.put(name, value);
         return this;
     }

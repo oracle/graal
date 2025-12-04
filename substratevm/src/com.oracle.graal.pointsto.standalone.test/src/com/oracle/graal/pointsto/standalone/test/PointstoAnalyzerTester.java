@@ -151,12 +151,7 @@ public class PointstoAnalyzerTester {
      *            analysis is supposed to fail.
      */
     public void runAnalysisAndAssert(boolean expectPass) {
-        /*
-         * Use the same class loader that has loaded the test classes to prevent from loading the
-         * same classes twice and having to convert between them.
-         */
-        PointsToAnalyzer.HostClassLoaderAccess classLoaderAccess = new PointsToAnalyzer.HostClassLoaderAccess(testClass.getClassLoader());
-        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments, classLoaderAccess);
+        PointsToAnalyzer pointstoAnalyzer = PointsToAnalyzer.createAnalyzer(arguments);
         UnsupportedFeatureException unsupportedFeatureException = null;
         try {
             try {
