@@ -119,7 +119,7 @@
     local contains(arr, item_as_substr) = std.length(std.findSubstr(item_as_substr, arr)) > 0,
     # Useful to distribute the benchmark load between two machine types, but always stay consistent for the same benchmark suite
     # This guarantees comparability of results, whatever the platform/context, for each suite
-    hr350a_or_osprey(suite=null):: if suite != null && std.count([contains(s, suite) for s in ["barista", "renaissance", "dacapo", "scala-dacapo"]], true) > 0 then self.osprey else self.hr350a,
+    hr350a_or_osprey(suite=null):: if suite != null && std.count([contains(s, suite) for s in ["barista", "renaissance"]], true) > 0 then self.osprey else self.hr350a,
   },
 
   hwloc_cmd(cmd, num_threads, node, hyperthreading, max_threads_per_node)::
