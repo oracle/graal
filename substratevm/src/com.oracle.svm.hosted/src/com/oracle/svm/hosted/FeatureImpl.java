@@ -103,6 +103,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -110,6 +111,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SuppressWarnings("deprecation")
@@ -637,6 +639,16 @@ public class FeatureImpl {
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Registers a field value transformer for the provided field. See the JavaDoc of
+         * {@link FieldValueTransformer} for details.
+         *
+         * @since 22.3
+         */
+        public void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer) {
+            FieldValueInterceptionSupport.singleton().registerJVMCIFieldValueTransformer(field, transformer);
         }
 
         /**

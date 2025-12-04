@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
@@ -62,10 +63,12 @@ import com.oracle.svm.hosted.substitute.FieldValueTransformation;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GraalAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -126,6 +129,55 @@ public final class FieldValueInterceptionSupport {
      */
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
         registerFieldValueTransformer(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+    }
+
+    /**
+     * Wraps a {@link JVMCIFieldValueTransformer} in an {@link FieldValueTransformer}. Eventually,
+     * this should be reversed, i.e., {@link FieldValueTransformer} should be wrapped in
+     * {@link JVMCIFieldValueTransformer} (GR-71666).
+     */
+    public static final class FallbackFieldValueTransformer implements FieldValueTransformer {
+        private final JVMCIFieldValueTransformer jvmciFieldValueTransformer;
+
+        public FallbackFieldValueTransformer(JVMCIFieldValueTransformer jvmciFieldValueTransformer) {
+            this.jvmciFieldValueTransformer = jvmciFieldValueTransformer;
+        }
+
+        @Override
+        public Object transform(Object reflectionReceiver, Object reflectionOriginalValue) {
+            SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
+            JavaConstant receiver = reflectionReceiver == null ? null : originalSnippetReflection.forObject(reflectionReceiver);
+            JavaConstant originalValue = reflectionOriginalValue == null ? null : originalSnippetReflection.forObject(reflectionOriginalValue);
+            return new JavaConstantWrapper(Objects.requireNonNull(jvmciFieldValueTransformer.transform(receiver, originalValue),
+                            "JVMCIFieldValueTransformer must not return `null`. Use `JavaConstant.NULL_POINTER`instead"));
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return jvmciFieldValueTransformer.isAvailable();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass())
+                return false;
+
+            FallbackFieldValueTransformer that = (FallbackFieldValueTransformer) o;
+            return Objects.equals(jvmciFieldValueTransformer, that.jvmciFieldValueTransformer);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(jvmciFieldValueTransformer);
+        }
+    }
+
+    /**
+     * Register a field value transformer for the provided field. There can only be one transformer
+     * per field, if there is already a transformation in place, a {@link UserError} is reported.
+     */
+    public void registerJVMCIFieldValueTransformer(ResolvedJavaField resolvedJavaField, JVMCIFieldValueTransformer transformer) {
+        registerFieldValueTransformer(resolvedJavaField, new FallbackFieldValueTransformer(transformer));
     }
 
     public void registerFieldValueTransformer(ResolvedJavaField oField, FieldValueTransformer transformer) {

@@ -90,6 +90,7 @@ import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
@@ -1047,6 +1048,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
 
+        // GR-71666: Change variable to JVMCIFieldValueTransformer
         var newTransformer = switch (kind) {
             case None, Manual -> null;
             case Reset -> ConstantValueFieldValueTransformer.defaultValueForField(original);
@@ -1078,7 +1080,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 new ArrayIndexShiftFieldValueTransformer(targetClass, original.getType().getJavaKind());
             case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original, targetClass);
             case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetClass);
-            case Custom -> (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+            case Custom -> {
+                if (JVMCIFieldValueTransformer.class.isAssignableFrom(targetClass)) {
+                    var jvmciFieldValueTransformer = (JVMCIFieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                    yield new FieldValueInterceptionSupport.FallbackFieldValueTransformer(jvmciFieldValueTransformer);
+                } else {
+                    yield (FieldValueTransformer) ReflectionUtil.newInstance(targetClass);
+                }
+            }
         };
 
         if (newTransformer != null) {
