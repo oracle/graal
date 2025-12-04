@@ -857,6 +857,7 @@ public final class SubprocessTestUtils {
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
             if (!finishedOnTime) {
+                printError("Subprocess %d did not finish within the specified timeout: %s.", process.pid(), timeout);
                 dumpThreads(process.toHandle());
                 process.destroyForcibly().waitFor();
             }
@@ -999,11 +1000,12 @@ public final class SubprocessTestUtils {
                         CompositeData[] result = (CompositeData[]) mbeanConnection.invoke(new ObjectName("java.lang:type=Threading"), "dumpAllThreads",
                                         new Object[]{true, true}, new String[]{boolean.class.getName(), boolean.class.getName()});
                         StringWriter messageBuilder = new StringWriter();
-                        PrintWriter out = new PrintWriter(new StringWriter());
-                        out.printf("%nDumping subprocess threads on timeout%n");
+                        PrintWriter out = new PrintWriter(messageBuilder);
+                        out.printf("Dumping subprocess threads on timeout%n");
                         for (CompositeData element : result) {
                             dumpThread(ThreadInfo.from(element), out);
                         }
+                        out.flush();
                         printError(messageBuilder.toString());
                     }
                 } finally {
