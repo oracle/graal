@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -483,6 +482,9 @@ public final class ClassForNameSupport {
     }
 
     public static boolean isRegisteredClass(String className) {
+        if (!ClassNameSupport.isValidReflectionName(className)) {
+            return true;
+        }
         if (respectClassLoader()) {
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(className);
             if (dynamicAccessMetadata == null) {
