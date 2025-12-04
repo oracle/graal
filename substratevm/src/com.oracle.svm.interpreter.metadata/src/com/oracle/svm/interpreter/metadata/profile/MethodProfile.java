@@ -141,23 +141,22 @@ public final class MethodProfile {
      * @return null if there's no prof
      */
     private InterpreterProfile getAtBCI(int bci, Class<? extends InterpreterProfile> clazz) {
-        InterpreterProfile lastUsedProfile = profiles[lastIndex];
-        if (lastUsedProfile == null || lastUsedProfile.getBci() != bci || lastUsedProfile.getClass() != clazz) {
-            // search for the correct profile
-            for (int i = 0; i < profiles.length; i++) {
-                InterpreterProfile profile = profiles[i];
-                // make sure lastUsedProfile == null if we did not find a match
-                if (profile.getBci() == bci && profile.getClass() == clazz) {
-                    lastUsedProfile = profile;
-                    lastIndex = i;
-                    break;
-                } else {
-                    lastUsedProfile = null;
-                }
+        int lastIndexLocal = lastIndex;
+        for (int i = lastIndexLocal; i < profiles.length; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getBci() == bci && profile.getClass() == clazz) {
+                lastIndex = i;
+                return profile;
             }
         }
-        // found, probably the last entry used it as well
-        return lastUsedProfile;
+        for (int i = 0; i < lastIndexLocal; i++) {
+            InterpreterProfile profile = profiles[i];
+            if (profile.getBci() == bci && profile.getClass() == clazz) {
+                lastIndex = i;
+                return profile;
+            }
+        }
+        return null;
     }
 
     public static class TestingBackdoor {
