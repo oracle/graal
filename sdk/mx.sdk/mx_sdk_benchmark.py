@@ -1965,6 +1965,9 @@ class PolyBenchStagingVm(StageAwareGraalVm):
             self.bmSuite.benchmark_output_dir(bm_exec_context().get("benchmark"), args),
             self.bmSuite.get_full_image_name(self.bmSuite.get_base_image_name(), bm_exec_context().get("vm").config_name())
         )
+        if self.language == "Python":
+            # C-extension-module micros would break if they did not have 'graalpython' somewhere in the path
+            output_dir = output_dir / "graalpython"
         self.staged_program_file_path = output_dir / file_name
         self.staged_program_file_path.parent.mkdir(parents=True, exist_ok=True)
         self.staging_args = args + [

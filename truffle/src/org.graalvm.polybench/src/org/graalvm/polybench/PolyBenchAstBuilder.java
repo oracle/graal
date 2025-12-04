@@ -137,10 +137,16 @@ public class PolyBenchAstBuilder {
             elseBranch = elseBranchBuilder.build();
         }
         builder.append(new Stat.If(new Expr.Reference.Ident("warmup"), thenBranch, elseBranch));
-        // Get the average value
-        builder.append(Decl.Variable.of("avgValue"));
-        builder.append(new Stat.Assign(new Expr.Reference.Ident("avgValue"),
-                        Expr.FunctionCall.of(new Expr.Reference.CompoundReference(new Expr.Reference.Ident("configMetric"), new Expr.Reference.Ident("reportAfterAll")))));
+        // If there were iterations, calculate the average value
+        // The original code in PolyBenchLauncher does not have to make this check because
+        // division by zero does not throw an exception in Java.
+        builder.append(new Decl.Variable("avgValue", new Expr.Atom.Null()));
+        try (Stat.Block.Builder thenBranchBuilder = new Stat.Block.Builder(null)) {
+            thenBranchBuilder.append(new Stat.Assign(new Expr.Reference.Ident("avgValue"),
+                            Expr.FunctionCall.of(new Expr.Reference.CompoundReference(new Expr.Reference.Ident("configMetric"), new Expr.Reference.Ident("reportAfterAll")))));
+            thenBranch = thenBranchBuilder.build();
+        }
+        builder.append(new Stat.If(new Expr.BinaryOp(new Expr.Reference.Ident("iterations"), new Expr.Atom.Int(0), Operator.GREATER_THAN), thenBranch, null));
         // if (avgValue != null)
         try (Stat.Block.Builder thenBranchBuilder = new Stat.Block.Builder(null)) {
             // Log average value
