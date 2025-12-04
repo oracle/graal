@@ -2518,7 +2518,7 @@ public abstract class InteropLibrary extends Library {
      * @see #toDisplayString(Object)
      * @since 25.1
      */
-    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"isScope", "hasLanguage"}, replacementOf = "hasLanguage(Object)", replacementMethod = "hasLanguageLegacy")
+    @Abstract(ifExported = {"getLanguageId"}, ifExportedAsWarning = {"hasLanguage"}, replacementOf = "hasLanguage(Object)", replacementMethod = "hasLanguageLegacy")
     public boolean hasLanguageId(Object receiver) {
         if (!hasLanguage(receiver)) {
             return false;
@@ -2649,7 +2649,7 @@ public abstract class InteropLibrary extends Library {
      * @see TruffleLanguage#getLanguageView(Object, Object)
      * @since 20.1
      */
-    @Abstract(ifExported = {"hasLanguageId", "getLanguageId", "hasLanguage", "getLanguage", "isScope"})
+    @Abstract(ifExported = {"hasLanguageId", "getLanguageId", "hasLanguage", "getLanguage"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
         if (allowSideEffects) {
@@ -2997,12 +2997,10 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if the value represents a scope object, else <code>false</code>.
-     * The scope object contains variables as {@link #getMembers(Object) members} and has a
-     * {@link InteropLibrary#toDisplayString(Object, boolean) scope display name}. It needs to be
-     * associated with a {@link #getLanguageId(Object) language}. The scope may return a
-     * {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the range of
-     * the scope in the source code. The scope may have {@link #hasScopeParent(Object) parent
-     * scopes}.
+     * The scope object contains variables as {@link #getMembers(Object) members}. The scope may
+     * return a {@link InteropLibrary#getSourceLocation(Object) source location} that indicates the
+     * range of the scope in the source code. The scope may have {@link #hasScopeParent(Object)
+     * parent scopes}.
      * <p>
      * The {@link #getMembers(Object) members} of a scope represent all visible flattened variables,
      * including all parent scopes, if any. The variables of the current scope must be listed first
@@ -3017,10 +3015,9 @@ public abstract class InteropLibrary extends Library {
      * member elements providing the same {@link #asString(Object) name}.
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
-     * also {@link #hasMembers(Object)} and {@link #toDisplayString(Object, boolean)} must be
-     * implemented and {@link #hasSourceLocation(Object)} is recommended.
+     * also {@link #hasMembers(Object)} must be implemented and {@link #hasSourceLocation(Object)}
+     * is recommended.
      *
-     * @see #getLanguageId(Object)
      * @see #getMembers(Object)
      * @see #hasScopeParent(Object)
      * @since 20.3
