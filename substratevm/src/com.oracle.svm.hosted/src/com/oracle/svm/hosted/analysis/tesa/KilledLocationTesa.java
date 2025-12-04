@@ -32,7 +32,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.hosted.analysis.tesa.effect.LocationEffect;
 import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.graph.Node;
@@ -65,6 +64,7 @@ public class KilledLocationTesa extends AbstractTesa<LocationEffect> {
     protected LocationEffect computeInitialState(AnalysisMethod method, StructuredGraph graph) {
         LocationEffect location = noEffect();
         for (Node node : graph.getNodes()) {
+            assert !(node instanceof SafepointNode) : KilledLocationTesa.class.getSimpleName() + " does not support safepoints.";
             if (!isSupportedNode(node)) {
                 return anyEffect();
             }
@@ -99,23 +99,6 @@ public class KilledLocationTesa extends AbstractTesa<LocationEffect> {
             case MultiMemoryKill multi -> multi.getKilledLocationIdentities();
             default -> new LocationIdentity[]{LocationIdentity.any()};
         };
-    }
-
-    @Override
-    protected void onOptimizableMethodDiscovered(HostedMethod method, LocationEffect state, StructuredGraph graph) {
-        assert checkNoSafepointNodes(method, state, graph);
-    }
-
-    /**
-     * Methods containing {@link SafepointNode} can kill multiple locations, which we do not track
-     * precisely at the moment. To guarantee correctness, we verify that only methods without
-     * safepoints have more precise killed location than {@code any}.
-     */
-    private static boolean checkNoSafepointNodes(HostedMethod method, LocationEffect state, StructuredGraph graph) {
-        for (Node node : graph.getNodes()) {
-            AnalysisError.guarantee(!(node instanceof SafepointNode), "Method %s has a safepoint node in its graph, but its killed location is not any: %s", method.getQualifiedName(), state);
-        }
-        return true;
     }
 
     @Override

@@ -233,7 +233,6 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
     public void applyResults(TesaEngine engine, HostedUniverse universe, HostedMethod method, StructuredGraph graph) {
         var state = getState(method.wrapped);
         if (hasOptimizationPotential(state)) {
-            onOptimizableMethodDiscovered(method, state, graph);
             optimizableMethodsCounter.incrementAndGet();
         }
         for (Node node : graph.getNodes()) {
@@ -245,15 +244,6 @@ public abstract class AbstractTesa<T extends TesaEffect<T>> {
                 }
             }
         }
-    }
-
-    /**
-     * Hook for subclasses to perform any postprocessing or correctness checks for methods found as
-     * optimizable.
-     */
-    @SuppressWarnings("unused")
-    protected void onOptimizableMethodDiscovered(HostedMethod method, T state, StructuredGraph graph) {
-
     }
 
     /**
