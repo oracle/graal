@@ -23,7 +23,6 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     packages+: if (self.os == 'windows') then graal_common.devkits[std.join('', ["windows-jdk", if (self.jdk_name == 'jdk-latest') then 'Latest' else std.toString(self.jdk_version)])].packages else {} // we can remove self.jdk_version == 23 and add a hidden field isLatest and use it
   }),
   local sulong = task_spec(graal_common.deps.sulong),
-  local truffleruby = task_spec(graal_common.deps.truffleruby),
   local graalpy = task_spec(graal_common.deps.graalpy),
   local graalnodejs = task_spec(graal_common.deps.graalnodejs),
   local fastr = task_spec(graal_common.deps.fastr),

@@ -286,18 +286,6 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    truffleruby:: {
-      packages+: (if self.os == "linux" && self.arch == "amd64" then {
-        ruby: "==3.2.2", # Newer version, also used for benchmarking
-      } else if (self.os == "windows") then
-        error('truffleruby is not supported on windows')
-      else {
-        ruby: "==3.0.2",
-      }) + (if self.os == "linux" then {
-        libyaml: "==0.2.5",
-      } else {}),
-    },
-
     graalnodejs:: {
       local this = self,
       packages+: if self.os == "linux" then {

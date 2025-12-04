@@ -139,7 +139,6 @@ _languages_meta_distributions = [
     'graal-js:JS_POM',
     'graalpython:PYTHON_POM',
     'sulong:LLVM_NATIVE_POM',
-    'truffleruby:RUBY_POM',
     'wasm:WASM_POM',
 ]
 

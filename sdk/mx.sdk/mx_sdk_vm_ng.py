@@ -1112,7 +1112,6 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
         mapping = {
             'graal-js': 'js',
             'graal-nodejs': 'nodejs',
-            'truffleruby': 'ruby',
             'graalpython': 'python',
         }
         if not language_id and suite.name in mapping:
@@ -1159,7 +1158,7 @@ class DeliverableStandaloneArchive(DeliverableArchiveSuper):
             }
         }
         self.standalone_dir_dist = standalone_dir_dist
-        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' } if suite.name != 'truffleruby' else {}
+        maven = { 'groupId': 'org.graalvm', 'tag': 'standalone' }
 
         assert theLicense is None, "the 'license' attribute is ignored for DeliverableStandaloneArchive"
         theLicense = ['GFTC' if is_enterprise() else 'UPL']
