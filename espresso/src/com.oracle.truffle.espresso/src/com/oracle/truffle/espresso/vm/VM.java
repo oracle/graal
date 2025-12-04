@@ -561,7 +561,7 @@ public final class VM extends NativeEnv {
                 }
             }
         }
-        if (meta.getLanguage().isContinuumEnabled()) {
+        if (language.canSetCustomIdentityHashCode()) {
             return Target_org_graalvm_continuations_IdentityHashCodes.getIHashCode(object, meta, language);
         }
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));

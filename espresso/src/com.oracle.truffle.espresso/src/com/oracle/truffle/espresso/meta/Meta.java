@@ -107,7 +107,11 @@ public final class Meta extends ContextAccessImpl
         // Object and Class (+ Class fields) must be initialized before all other classes in order
         // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Types.java_lang_Object);
-        HIDDEN_SYSTEM_IHASHCODE = context.getLanguage().isContinuumEnabled() ? java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE) : null;
+        if (context.getLanguage().canSetCustomIdentityHashCode()) {
+            HIDDEN_SYSTEM_IHASHCODE = java_lang_Object.requireHiddenField(Names.HIDDEN_SYSTEM_IHASHCODE);
+        } else {
+            HIDDEN_SYSTEM_IHASHCODE = null;
+        }
         // Cloneable must be loaded before Serializable.
         java_lang_Cloneable = knownKlass(Types.java_lang_Cloneable);
         java_lang_Class = knownKlass(Types.java_lang_Class);
@@ -1339,8 +1343,7 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_lang_Object;
     public final ArrayKlass java_lang_Object_array;
     /*
-     * Though only used when Continuum is enabled, the hashcode is used during VM initialization, so
-     * it cannot be put in the ContinuumSupport object.
+     * This is used by Continuum and JVMCI. This is used during VM initialization.
      */
     public final Field HIDDEN_SYSTEM_IHASHCODE;
 

@@ -551,9 +551,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     public StaticProperty getArrayHashCodeProperty() {
-        if (!continuum) {
+        if (!canSetCustomIdentityHashCode()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Accessing array hash code property without continuum set up.");
+            throw EspressoError.shouldNotReachHere("Accessing array hash code property without continuum or JVMCI set up.");
         }
         return arrayHashCodeProperty;
     }
@@ -567,10 +567,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
         StaticShape.Builder builder = StaticShape.newBuilder(this).property(arrayProperty, Object.class, true);
-        if (continuum) {
+        if (canSetCustomIdentityHashCode()) {
             builder.property(arrayHashCodeProperty, int.class, false);
         }
         return builder.build(StaticObject.class, StaticObjectFactory.class);
+    }
+
+    public boolean canSetCustomIdentityHashCode() {
+        return isContinuumEnabled() || isJVMCIEnabled();
     }
 
     public StaticProperty getForeignProperty() {

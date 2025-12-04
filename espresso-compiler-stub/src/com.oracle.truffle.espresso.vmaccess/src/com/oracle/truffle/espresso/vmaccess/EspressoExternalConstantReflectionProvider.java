@@ -227,7 +227,20 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
 
     @Override
     public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
-        throw JVMCIError.unimplemented();
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
+            throw new NullPointerException();
+        }
+        if (!(constant instanceof EspressoExternalObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
+        if (requestedValue <= 0) {
+            throw new IllegalArgumentException("hashcode must be > 0");
+        }
+        return access.invokeJVMCIHelper("makeIdentityHashCode", objectConstant.getValue(), requestedValue).asInt();
     }
 
     @Override
