@@ -220,7 +220,7 @@ public class RistrettoUtils {
                         // parsing
                         graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                                         .profileProvider(profileProvider).compilationId(compilationId).build();
-                        if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
+                        if (!RistrettoOptions.getJITUseDeoptimization()) {
                             // TODO GR-71501 - deoptimization support for ristretto
                             graph.getGraphState().configureExplicitExceptionsNoDeopt();
                         }
@@ -264,7 +264,7 @@ public class RistrettoUtils {
         Replacements runtimeReplacements = runtimeProviders.getReplacements();
         GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(gbp);
-        if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
+        if (!RistrettoOptions.getJITUseDeoptimization()) {
             gpc = gpc.withBytecodeExceptionMode(GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll);
         }
         HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.NONE);

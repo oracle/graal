@@ -29,7 +29,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
-public class RistrettoHostedOptions {
+public class RistrettoOptions {
     @Option(help = "Use deoptimization for runtime compiled code optimizations.")//
     public static final RuntimeOptionKey<Boolean> JITUseDeoptimization = new RuntimeOptionKey<>(false);
 
