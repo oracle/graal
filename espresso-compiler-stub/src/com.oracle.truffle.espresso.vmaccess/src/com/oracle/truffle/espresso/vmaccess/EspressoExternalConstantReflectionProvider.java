@@ -63,7 +63,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
         throw JVMCIError.unimplemented();
     }
 
-    private static Class<?> safeGetClass(Object o) {
+    static Class<?> safeGetClass(Object o) {
         if (o == null) {
             return null;
         }
@@ -80,7 +80,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             throw new IllegalArgumentException("expected an espresso field, got a " + safeGetClass(field));
         }
         Value receiverValue;
-        if (field.isStatic()) {
+        if (espressoField.isStatic()) {
             EspressoExternalResolvedInstanceType declaringClass = (EspressoExternalResolvedInstanceType) espressoField.getDeclaringClass();
             if (!declaringClass.isInitialized()) {
                 return null;
@@ -92,13 +92,7 @@ final class EspressoExternalConstantReflectionProvider implements ConstantReflec
             }
             receiverValue = espressoReceiver.getValue();
         }
-        Value value;
-        if (field.isPublic()) {
-            // use a full descriptor with the type?
-            value = receiverValue.getMember(espressoField.getName());
-        } else {
-            throw JVMCIError.unimplemented();
-        }
+        Value value = espressoField.readValue(receiverValue);
         return asJavaConstant(value, espressoField.getJavaKind(), access);
     }
 
