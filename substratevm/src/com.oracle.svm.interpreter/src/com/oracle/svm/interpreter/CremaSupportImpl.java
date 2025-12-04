@@ -315,11 +315,15 @@ public class CremaSupportImpl implements CremaSupport {
         // number of interfaces which are not covered by hashing and need to be iterated
         short numIterableInterfaces = typeCheckData.numIterableInterfaces();
 
+        // Compute fields layout
+        InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) superHub.getInterpreterType();
+        FieldLayout fieldLayout = FieldLayout.build(parsed.getFields(), superType.getAfterFieldsOffset());
+
         int afterFieldsOffset;
         if (isInterface) {
             afterFieldsOffset = 0;
         } else {
-            afterFieldsOffset = dispatchTable.afterFieldsOffset();
+            afterFieldsOffset = fieldLayout.afterInstanceFieldsOffset();
         }
 
         /* Allocate DynamicHub. */
@@ -329,11 +333,10 @@ public class CremaSupportImpl implements CremaSupport {
                         typeID, interfaceID,
                         hasClassInitializer(parsed), numClassTypes, typeIDDepth, numIterableInterfaces, openTypeWorldTypeCheckSlots, openTypeWorldInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         hubNumVTableEntries,
-                        dispatchTable.getDeclaredInstanceReferenceFieldOffsets(), afterFieldsOffset, isValueBased, info);
+                        fieldLayout.getReferenceFieldsOffsets(), afterFieldsOffset, isValueBased, info);
 
         /* Allocate Crema type. */
-        assert superHub == DynamicHub.fromClass(dispatchTable.superType());
-        InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) superHub.getInterpreterType();
+        assert superHub == DynamicHub.fromClass(superClass);
         InterpreterResolvedObjectType[] interfaces = getInterpreterInterfaces(hub);
 
         InterpreterResolvedJavaType componentType = null;
@@ -342,14 +345,13 @@ public class CremaSupportImpl implements CremaSupport {
             componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
         }
         CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(
-                        dispatchTable.getParserKlass(),
+                        parsed,
                         hub.getModifiers(),
                         componentType, superType, interfaces,
                         DynamicHub.toClass(hub),
-                        dispatchTable.layout.getStaticReferenceFieldCount(), dispatchTable.layout.getStaticPrimitiveFieldSize());
+                        fieldLayout.getStaticReferenceFieldCount(), fieldLayout.getStaticPrimitiveFieldSize());
 
-        ParserKlass parserKlass = dispatchTable.partialType.parserKlass;
-        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parserKlass));
+        thisType.setConstantPool(new RuntimeInterpreterConstantPool(thisType, parsed));
 
         dispatchTable.registerClass(thisType);
 
@@ -365,16 +367,16 @@ public class CremaSupportImpl implements CremaSupport {
         thisType.setDeclaredMethods(dispatchTable.declaredMethods());
 
         // Fields
-        ParserField[] fields = dispatchTable.getParserKlass().getFields();
+        ParserField[] fields = parsed.getFields();
         CremaResolvedJavaFieldImpl[] declaredFields = fields.length == 0 ? CremaResolvedJavaFieldImpl.EMPTY_ARRAY : new CremaResolvedJavaFieldImpl[fields.length];
         for (int j = 0; j < fields.length; j++) {
             ParserField f = fields[j];
-            declaredFields[j] = CremaResolvedJavaFieldImpl.createAtRuntime(thisType, f, dispatchTable.layout.getOffset(j));
+            declaredFields[j] = CremaResolvedJavaFieldImpl.createAtRuntime(thisType, f, fieldLayout.getOffset(j));
         }
-        thisType.setAfterFieldsOffset(dispatchTable.layout().afterInstanceFieldsOffset());
+        thisType.setAfterFieldsOffset(fieldLayout.afterInstanceFieldsOffset());
         thisType.setDeclaredFields(declaredFields);
 
-        initStaticFields(thisType, dispatchTable.getParserKlass().getFields());
+        initStaticFields(thisType, parsed.getFields());
 
         // Done
         hub.setInterpreterType(thisType);
@@ -685,7 +687,6 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     static final class CremaPartialType implements PartialType<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
-        private final Class<?> superClass;
         private final ParserKlass parserKlass;
         private final List<CremaPartialMethod> declared;
         private final List<InterpreterResolvedJavaMethod> parentTable;
@@ -695,7 +696,6 @@ public class CremaSupportImpl implements CremaSupport {
 
         @SuppressWarnings("this-escape")
         CremaPartialType(ParserKlass parsed, Class<?> superClass, Class<?>[] superInterfaces) {
-            this.superClass = superClass;
             this.parserKlass = parsed;
             parentTable = computeParentTable(superClass);
 
@@ -837,11 +837,9 @@ public class CremaSupportImpl implements CremaSupport {
 
     private abstract static class AbstractCremaDispatchTable {
         protected final CremaPartialType partialType;
-        private final FieldLayout layout;
 
         AbstractCremaDispatchTable(CremaPartialType partialType) {
             this.partialType = partialType;
-            this.layout = FieldLayout.build(getParserKlass().getFields(), getSuperResolvedType().getAfterFieldsOffset());
         }
 
         public abstract int vtableLength();
@@ -850,30 +848,6 @@ public class CremaSupportImpl implements CremaSupport {
 
         public final void registerClass(InterpreterResolvedObjectType thisType) {
             partialType.thisJavaType = thisType;
-        }
-
-        public int afterFieldsOffset() {
-            return layout.afterInstanceFieldsOffset();
-        }
-
-        public int[] getDeclaredInstanceReferenceFieldOffsets() {
-            return layout().getReferenceFieldsOffsets();
-        }
-
-        public final ParserKlass getParserKlass() {
-            return partialType.parserKlass;
-        }
-
-        public final FieldLayout layout() {
-            return layout;
-        }
-
-        public final Class<?> superType() {
-            return partialType.superClass;
-        }
-
-        public final InterpreterResolvedObjectType getSuperResolvedType() {
-            return (InterpreterResolvedObjectType) DynamicHub.fromClass(superType()).getInterpreterType();
         }
 
         public final InterpreterResolvedJavaMethod[] declaredMethods() {
