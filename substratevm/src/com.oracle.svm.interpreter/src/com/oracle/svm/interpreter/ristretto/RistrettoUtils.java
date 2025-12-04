@@ -220,6 +220,10 @@ public class RistrettoUtils {
                         // parsing
                         graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                                         .profileProvider(profileProvider).compilationId(compilationId).build();
+                        if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
+                            // TODO GR-71501 - deoptimization support for ristretto
+                            graph.getGraphState().configureExplicitExceptionsNoDeopt();
+                        }
                         assert graph != null;
                         suites = RuntimeCompilationSupport.getMatchingSuitesForGraph(graph);
                         parseFromBytecode(graph, runtimeConfig);
@@ -260,7 +264,10 @@ public class RistrettoUtils {
         Replacements runtimeReplacements = runtimeProviders.getReplacements();
         GraphBuilderConfiguration.Plugins gbp = runtimeReplacements.getGraphBuilderPlugins();
         GraphBuilderConfiguration gpc = GraphBuilderConfiguration.getDefault(gbp);
-        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
+        if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
+            gpc = gpc.withBytecodeExceptionMode(GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll);
+        }
+        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.NONE);
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
