@@ -132,7 +132,7 @@ When running on OpenJDK, the following Maven dependencies must be declared to us
 </dependency>
 <dependency>
     <groupId>org.graalvm.tools</groupId>
-    <artifactId>chromeinspector</artifactId>
+    <artifactId>chromeinspector-tool</artifactId>
     <version>${graalvm.polyglot.version}</version>
 </dependency>
 ```
