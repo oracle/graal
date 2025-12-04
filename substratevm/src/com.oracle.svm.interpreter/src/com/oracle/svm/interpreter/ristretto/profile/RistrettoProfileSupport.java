@@ -162,9 +162,7 @@ public class RistrettoProfileSupport {
         }
 
         // this point is only reached for state=INIT_VAL|INITIALIZING|NEVER_COMPILED
-        while (true) {
-            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
-
+        do {
             /*
              * TODO GR-71597 A note on interpreter performance. Code is abstracted in methods here
              * to ensure better readability. However, for performance we should ensure inlining
@@ -200,7 +198,8 @@ public class RistrettoProfileSupport {
                 default:
                     throw GraalError.shouldNotReachHere("Unknown state " + oldState);
             }
-        }
+            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
+        } while (true);
     }
 
     private static void methodEntryNeverCompiledCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod, int oldState) {
