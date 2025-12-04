@@ -405,12 +405,14 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
-        SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
-        if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
-            foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
-        } else {
-            throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+        if (ForeignFunctionsRuntime.areFunctionCallsSupported()) {
+            FeatureImpl.BeforeCompilationAccessImpl a = (FeatureImpl.BeforeCompilationAccessImpl) access;
+            SubstrateBackend b = a.getRuntimeConfiguration().getBackendForNormalMethod();
+            if (b instanceof SubstrateBackendWithAssembler<?> bAsm) {
+                foreignFunctionsRuntime.generateTrampolineTemplate(bAsm);
+            } else {
+                throw VMError.shouldNotReachHere("Support for the Foreign Function and Memory API needs a backend with an assembler, it is not available with backend %s", b.getClass());
+            }
         }
     }
 
@@ -670,8 +672,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
 
-        AbiUtils.singleton().checkLibrarySupport();
-
         accessSupport.setAnalysisAccess(a);
 
         for (String simpleName : VAR_HANDLE_SEGMENT_ACCESSORS) {
@@ -697,8 +697,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
 
-        access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
-                        "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        if (ForeignFunctionsRuntime.isLibcSupported()) {
+            access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
+                            "Runtime support, registered in " + ForeignFunctionsFeature.class);
+        }
 
         /*
          * Even if there is no instance of MemorySessionImpl, we will kill the field location of

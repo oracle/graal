@@ -1499,12 +1499,7 @@ public class SubstrateOptions {
 
     @Fold
     public static boolean isForeignAPIEnabled() {
-        /*
-         * FFM API should be enabled by default only if running on a supported and tested platform.
-         * However, if the option is explicitly enabled, we still return 'true'.
-         */
-        return SubstrateOptions.ForeignAPISupport.getValue() &&
-                        (SubstrateOptions.ForeignAPISupport.hasBeenSet() || Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class));
+        return SubstrateOptions.ForeignAPISupport.getValue();
     }
 
     @Option(help = "Support for intrinsics from the Java Vector API", type = Expert) //
@@ -1523,9 +1518,17 @@ public class SubstrateOptions {
 
     @Fold
     public static boolean isSharedArenaSupportEnabled() {
-        // GR-65162: Shared arenas cannot be used together with Vector API support
-        return isForeignAPIEnabled() && SubstrateOptions.SharedArenaSupport.getValue() &&
-                        (SubstrateOptions.SharedArenaSupport.hasBeenSet() || !VectorAPIEnabled.getValue());
+        if (!isForeignAPIEnabled() || !SubstrateOptions.SharedArenaSupport.getValue()) {
+            return false;
+        }
+        if (SubstrateOptions.SharedArenaSupport.hasBeenSet()) {
+            return true;
+        }
+        if (VectorAPIEnabled.getValue()) {
+            // GR-65162: Shared arenas cannot be used together with Vector API support
+            return false;
+        }
+        return Platform.includedIn(PLATFORM_JNI.class) && Platform.includedIn(NATIVE_ONLY.class);
     }
 
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
