@@ -43,10 +43,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * It is subsequently read by compilation consumers, typically wrapped in a {@link ProfilingInfo}
  * object.
  * <p>
- * **Thread Safety and Mutability:** Because multiple interpreter threads update the profiles
- * concurrently, the data within this object is **highly volatile**. Any profile-related information
- * returned by methods of this class can change significantly and rapidly over time. Consumers must
- * be aware of this mutability when reading and acting upon the profiling data.
+ * <b>Thread Safety and Mutability:</b> Because multiple interpreter threads update the profiles
+ * concurrently, the data within this object is <b>highly volatile</b>. Any profile-related
+ * information returned by methods of this class can change significantly and rapidly over time.
+ * Consumers must be aware of this mutability when reading and acting upon the profiling data.
  */
 public final class MethodProfile {
 

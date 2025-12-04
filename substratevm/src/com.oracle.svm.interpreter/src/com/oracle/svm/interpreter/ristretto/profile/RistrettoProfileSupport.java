@@ -66,57 +66,48 @@ public class RistrettoProfileSupport {
         assert iMethod instanceof CremaResolvedJavaMethodImpl;
         final RistrettoMethod rMethod = RistrettoMethod.create(iMethod);
 
-        int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
-        if (!RistrettoCompileStateMachine.shouldEnterProfiling(oldState)) {
-            // no need to keep profiling this code, we are done
-            trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Should not enter profiling for method %s because of state %s%n", iMethod,
-                            RistrettoCompileStateMachine.toString(oldState));
-            return;
-        }
+        final int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
 
-        // this point is only reached for state=INIT_VAL|INITIALIZING|NEVER_COMPILED
-        while (true) {
-            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
-
-            switch (oldState) {
-                /*
-                 * Profile has not been initialized yet for this method, given we are profiling a
-                 * branch we must have profiled the method entry already, thus this is a hard error.
-                 */
-                case RistrettoConstants.COMPILE_STATE_INIT_VAL: {
-                    throw GraalError.shouldNotReachHere(String.format("Reached a method without an initialized profile when trying to profile a branch. " +
-                                    "This must not happen. Every profile must be created and initially written when profiling the entry of a method in the interpreter. " +
-                                    "Method=%s", rMethod));
-                }
-                case RistrettoConstants.COMPILE_STATE_SUBMITTED:
-                case RistrettoConstants.COMPILE_STATE_COMPILED: {
-                    profileSkipCase(iMethod, rMethod);
-                    return;
-                }
-                case RistrettoConstants.COMPILE_STATE_NEVER_COMPILED: {
-
-                    MethodProfile methodProfile = rMethod.getProfile();
-                    trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
-                                    RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
-                    /*
-                     * We write without any synchronization to the branch profile value at the cost
-                     * of lost updates.
-                     */
-                    methodProfile.profileBranch(bci, taken);
-
-                    // we only increment (and submit if applicable) once, thus return now
-                    return;
-                }
-                case RistrettoConstants.COMPILE_STATE_INITIALIZING: {
-                    // another thread is initializing the compilation data, do a few more spins
-                    // until that is done and then go on
-                    break;
-                }
-                default:
-                    throw GraalError.shouldNotReachHere("Unknown state " + oldState);
+        switch (oldState) {
+            /*
+             * Profile has not been initialized yet for this method, given we are profiling a branch
+             * we must have profiled the method entry already, thus this is a hard error.
+             */
+            case RistrettoConstants.COMPILE_STATE_INIT_VAL: {
+                throw GraalError.shouldNotReachHere(String.format("Reached a method without an initialized profile when trying to profile a branch. " +
+                                "This must not happen. Every profile must be created and initially written when profiling the entry of a method in the interpreter. " +
+                                "Method=%s", rMethod));
             }
+            case RistrettoConstants.COMPILE_STATE_SUBMITTED:
+            case RistrettoConstants.COMPILE_STATE_COMPILED: {
+                profileSkipCase(iMethod, rMethod);
+                return;
+            }
+            case RistrettoConstants.COMPILE_STATE_NEVER_COMPILED: {
+                profileBranch(iMethod, bci, taken, rMethod);
+                return;
+            }
+            case RistrettoConstants.COMPILE_STATE_INITIALIZING: {
+                /*
+                 * Another thread is initializing the compilation data, given we are only profiling
+                 * a branch we can avoid losing a few branch profile updates.
+                 */
+                return;
+            }
+            default:
+                throw GraalError.shouldNotReachHere("Unknown state " + oldState);
         }
+    }
 
+    private static void profileBranch(InterpreterResolvedJavaMethod iMethod, int bci, boolean taken, RistrettoMethod rMethod) {
+        MethodProfile methodProfile = rMethod.getProfile();
+        trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
+                        RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
+        /*
+         * We write without any synchronization to the branch profile value at the cost of lost
+         * updates.
+         */
+        methodProfile.profileBranch(bci, taken);
     }
 
     /**
@@ -155,7 +146,6 @@ public class RistrettoProfileSupport {
         if (!RistrettoProfileSupport.isEnabled()) {
             return;
         }
-
         if (!RistrettoRuntimeOptions.JITEnableCompilation.getValue()) {
             return;
         }
@@ -180,11 +170,12 @@ public class RistrettoProfileSupport {
              * to ensure better readability. However, for performance we should ensure inlining
              * happens on most of the frequently executed cases here.
              */
-
             switch (oldState) {
-                // profile has not been initialized yet for this method, do so by switching to
-                // INITIALIZING and then wait, if another thread went to initializing in the
-                // meantime we are done
+                /*
+                 * profile has not been initialized yet for this method, do so by switching to
+                 * INITIALIZING and then wait, if another thread went to initializing in the
+                 * meantime we are done
+                 */
                 case RistrettoConstants.COMPILE_STATE_INIT_VAL: {
                     methodEntryInitCase(iMethod, rMethod);
                     break;
@@ -200,8 +191,10 @@ public class RistrettoProfileSupport {
                     return;
                 }
                 case RistrettoConstants.COMPILE_STATE_INITIALIZING: {
-                    // another thread is initializing the compilation data, do a few more spins
-                    // until that is done and then go on
+                    /*
+                     * another thread is initializing the compilation data, do a few more spins
+                     * until that is done and then go on
+                     */
                     break;
                 }
                 default:
