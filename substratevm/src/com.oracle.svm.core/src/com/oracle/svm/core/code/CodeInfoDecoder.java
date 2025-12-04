@@ -668,12 +668,18 @@ public final class CodeInfoDecoder {
         private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
         private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private final FrameInfoState state = new FrameInfoState();
+        private final FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator;
 
         private CodeInfo info;
         private FrameInfoQueryResult result;
         private boolean canDecode;
 
         public FrameInfoCursor() {
+            this(DummyValueInfoAllocator.SINGLETON);
+        }
+
+        public FrameInfoCursor(FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator) {
+            this.valueInfoAllocator = valueInfoAllocator;
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -706,14 +712,18 @@ public final class CodeInfoDecoder {
         /**
          * Returns the information for the current frame.
          *
-         * Please note there is no caller and no value information present in the
+         * Please note there is no caller and (almost) no value information present in the
          * {@link FrameInfoQueryResult} object (i.e., the methods
-         * {@link FrameInfoQueryResult#getCaller()}, {@link FrameInfoQueryResult#getValueInfos()},
-         * and {@link FrameInfoQueryResult#getVirtualObjects()} will return {@code null}).
+         * {@link FrameInfoQueryResult#getCaller()} and
+         * {@link FrameInfoQueryResult#getVirtualObjects()} will return {@code null},
+         * {@link FrameInfoQueryResult#getValueInfos()} might return {@code null} and will not
+         * contain decoded constants).
          *
          * Every {@link FrameInfoCursor} object uses only a single {@link FrameInfoQueryResult}
          * object internally. Therefore, the values of that object are overwritten when
-         * {@link #advance()} is called to move to the next frame.
+         * {@link #advance()} is called to move to the next frame. This is also true for
+         * {@link FrameInfoQueryResult.ValueInfo} array and objects from
+         * {@link FrameInfoQueryResult#getValueInfos()}.
          */
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public FrameInfoQueryResult get() {
@@ -729,7 +739,7 @@ public final class CodeInfoDecoder {
             singleShotFrameInfoQueryResultAllocator.reload();
             int entryFlags = loadEntryFlags(info, state.entryOffset);
             boolean isDeoptEntry = extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4;
-            result = FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, singleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator.SINGLETON,
+            result = FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, singleShotFrameInfoQueryResultAllocator, valueInfoAllocator,
                             FrameInfoDecoder.SubstrateConstantAccess, state);
             if (result == null) {
                 /* No more entries. */
@@ -804,8 +814,89 @@ public final class CodeInfoDecoder {
         }
     }
 
-    private static final class DummyValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
-        static final DummyValueInfoAllocator SINGLETON = new DummyValueInfoAllocator();
+    /**
+     * This limited implementation of {@code FrameInfoDecoder.ValueInfoAllocator} doesn't need to
+     * allocate anything at runtime but only supports a limited number of
+     * {@link FrameInfoQueryResult.ValueInfo} objects (20).
+     * <p>
+     * Those objects are re-used so they should not be held onto cross calls to
+     * {@link #newValueInfoArray}.
+     * <p>
+     * Constants are not {@linkplain #decodeConstant decoded} so
+     * {@link FrameInfoQueryResult.ValueInfo#getValue()} will return {@code null}.
+     * <p>
+     * {@link #newValueInfoArrayArray} always returns null (this is currently only used for virtual
+     * objects).
+     */
+    public static final class SingleShotValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
+        private static final int NUM_PREALLOCATED_VALUE_INFO = 20;
+        /**
+         * The pre-allocated array to be returned by {@code #newValueInfoArray}.
+         */
+        private final FrameInfoQueryResult.ValueInfo[] valueInfos;
+        /**
+         * The pre-allocated objects to be returned by {@code #newValueInfo}.
+         */
+        private final FrameInfoQueryResult.ValueInfo[] preAllocatedValueInfos;
+        private int nextPreAllocatedValueInfo;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public SingleShotValueInfoAllocator() {
+            valueInfos = new FrameInfoQueryResult.ValueInfo[NUM_PREALLOCATED_VALUE_INFO];
+            preAllocatedValueInfos = new FrameInfoQueryResult.ValueInfo[valueInfos.length];
+            for (int i = 0; i < preAllocatedValueInfos.length; i++) {
+                preAllocatedValueInfos[i] = new FrameInfoQueryResult.ValueInfo();
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private void reset() {
+            for (int i = 0, len = valueInfos.length; i < len; i++) {
+                valueInfos[i] = null;
+            }
+            nextPreAllocatedValueInfo = 0;
+            /*
+             * The is no need to eagerly clear the elements of preAllocatedValueInfos: they do not
+             * hold onto objects since constants are not decoded. They are cleared when returned by
+             * newValueInfo.
+             */
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo[] newValueInfoArray(int len) {
+            if (len > valueInfos.length) {
+                return null;
+            }
+            reset();
+            return valueInfos;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo newValueInfo() {
+            if (nextPreAllocatedValueInfo < preAllocatedValueInfos.length) {
+                FrameInfoQueryResult.ValueInfo valueInfo = preAllocatedValueInfos[nextPreAllocatedValueInfo++];
+                valueInfo.clear();
+                return valueInfo;
+            }
+            return null;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public FrameInfoQueryResult.ValueInfo[][] newValueInfoArrayArray(int len) {
+            return null;
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void decodeConstant(FrameInfoQueryResult.ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants, ConstantAccess constantAccess) {
+        }
+    }
+
+    public static final class DummyValueInfoAllocator implements FrameInfoDecoder.ValueInfoAllocator {
+        public static final DummyValueInfoAllocator SINGLETON = new DummyValueInfoAllocator();
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private DummyValueInfoAllocator() {
