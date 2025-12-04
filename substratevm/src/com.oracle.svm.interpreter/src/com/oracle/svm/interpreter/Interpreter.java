@@ -269,6 +269,7 @@ import java.lang.invoke.MethodType;
 import java.util.Objects;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -746,7 +747,7 @@ public final class Interpreter {
                         case BALOAD: // fall through
                         case CALOAD: // fall through
                         case SALOAD: // fall through
-                        case AALOAD: arrayLoad(frame, top, curOpcode); break;
+                        case AALOAD: arrayLoad(frame,methodProfile,curBCI,  top, curOpcode); break;
 
                         case ISTORE: setLocalInt(frame, BytecodeStream.readLocalIndex1(code, curBCI), popInt(frame, top - 1)); break;
                         case LSTORE: setLocalLong(frame, BytecodeStream.readLocalIndex1(code, curBCI), popLong(frame, top - 1)); break;
@@ -786,7 +787,7 @@ public final class Interpreter {
                         case AASTORE: // fall through
                         case BASTORE: // fall through
                         case CASTORE: // fall through
-                        case SASTORE: arrayStore(frame, top, curOpcode); break;
+                        case SASTORE: arrayStore(frame,methodProfile,curBCI, top, curOpcode); break;
 
                         case POP2:
                             clear(frame, top - 1);
@@ -1069,7 +1070,7 @@ public final class Interpreter {
                             }
 
                             try {
-                                top += invoke(frame, method, code, top, curBCI, curOpcode, forceStayInInterpreter, preferStayInInterpreter);
+                                top += invoke(frame, methodProfile, method, code, top, curBCI, curOpcode, forceStayInInterpreter, preferStayInInterpreter);
                             } finally {
                                 SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
                                 if (newSteppingControl != null) {
@@ -1096,12 +1097,21 @@ public final class Interpreter {
                             Object receiver = peekObject(frame, top - 1);
                             // Resolve type iff receiver != null.
                             if (receiver != null) {
+                                if (methodProfile != null) {
+                                    ResolvedJavaType storedType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+                                    methodProfile.profileType(curBCI, storedType);
+                                }
                                 InterpreterToVM.checkCast(receiver, resolveType(method, CHECKCAST, BytecodeStream.readCPI2(code, curBCI)));
                             }
                             break;
                         }
                         case INSTANCEOF : {
                             Object receiver = popObject(frame, top - 1);
+                            if (methodProfile != null&&receiver!=null) {
+                                // TODO profile nullSeen
+                                ResolvedJavaType storedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+                                methodProfile.profileType(curBCI, storedType);
+                            }
                             // Resolve type iff receiver != null.
                             putInt(frame, top - 1, (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(method, INSTANCEOF, BytecodeStream.readCPI2(code, curBCI)))) ? 1 : 0);
                             break;
@@ -1255,7 +1265,7 @@ public final class Interpreter {
         };
     }
 
-    private static void arrayLoad(InterpreterFrame frame, int top, int loadOpcode) {
+    private static void arrayLoad(InterpreterFrame frame, MethodProfile methodProfile, int bci, int top, int loadOpcode) {
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
         int index = popInt(frame, top - 1);
         Object array = nullCheck(popObject(frame, top - 2));
@@ -1267,12 +1277,19 @@ public final class Interpreter {
             case FALOAD -> putFloat(frame, top - 2, InterpreterToVM.getArrayFloat(index, (float[]) array));
             case LALOAD -> putLong(frame, top - 2, InterpreterToVM.getArrayLong(index, (long[]) array));
             case DALOAD -> putDouble(frame, top - 2, InterpreterToVM.getArrayDouble(index, (double[]) array));
-            case AALOAD -> putObject(frame, top - 2, InterpreterToVM.getArrayObject(index, (Object[]) array));
+            case AALOAD -> {
+                Object o = InterpreterToVM.getArrayObject(index, (Object[]) array);
+                if (methodProfile != null) {
+                    ResolvedJavaType storedType = DynamicHub.fromClass(o.getClass()).getInterpreterType();
+                    methodProfile.profileType(bci, storedType);
+                }
+                putObject(frame, top - 2, o);
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
-    private static void arrayStore(InterpreterFrame frame, int top, int storeOpcode) {
+    private static void arrayStore(InterpreterFrame frame, MethodProfile methodProfile, int bci, int top, int storeOpcode) {
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
         int offset = (storeOpcode == LASTORE || storeOpcode == DASTORE) ? 2 : 1;
         int index = popInt(frame, top - 1 - offset);
@@ -1285,7 +1302,14 @@ public final class Interpreter {
             case FASTORE -> InterpreterToVM.setArrayFloat(popFloat(frame, top - 1), index, (float[]) array);
             case LASTORE -> InterpreterToVM.setArrayLong(popLong(frame, top - 1), index, (long[]) array);
             case DASTORE -> InterpreterToVM.setArrayDouble(popDouble(frame, top - 1), index, (double[]) array);
-            case AASTORE -> InterpreterToVM.setArrayObject(popObject(frame, top - 1), index, (Object[]) array);
+            case AASTORE -> {
+                Object o = popObject(frame, top - 1);
+                if (methodProfile != null) {
+                    ResolvedJavaType storedType = DynamicHub.fromClass(o.getClass()).getInterpreterType();
+                    methodProfile.profileType(bci, storedType);
+                }
+                InterpreterToVM.setArrayObject(o, index, (Object[]) array);
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         }
     }
@@ -1398,7 +1422,8 @@ public final class Interpreter {
         return method.getConstantPool();
     }
 
-    private static int invoke(InterpreterFrame callerFrame, InterpreterResolvedJavaMethod method, byte[] code, int top, int curBCI, int opcode, boolean forceStayInInterpreter,
+    private static int invoke(InterpreterFrame callerFrame, MethodProfile methodProfile, InterpreterResolvedJavaMethod method, byte[] code, int top, int curBCI, int opcode,
+                    boolean forceStayInInterpreter,
                     boolean preferStayInInterpreter) {
         int invokeTop = top;
 
@@ -1481,6 +1506,12 @@ public final class Interpreter {
         if (!seedMethod.isStatic()) {
             nullCheck(calleeArgs[0]);
         }
+        if (methodProfile != null) {
+            Object receiver = calleeArgs[0];
+            ResolvedJavaType storedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+            methodProfile.profileType(curBCI, storedType);
+        }
+
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);
 
         retStackEffect += EspressoFrame.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
