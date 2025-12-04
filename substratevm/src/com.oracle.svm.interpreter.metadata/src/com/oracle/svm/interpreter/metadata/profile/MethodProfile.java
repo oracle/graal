@@ -50,6 +50,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class MethodProfile {
 
+    /**
+     * Artificial byte code index for the method entry profile.
+     */
+    private static final int JVMCI_METHOD_ENTRY_BCI = -1;
+
     private final InterpreterProfile[] profiles;
 
     /**
@@ -240,10 +245,5 @@ public final class MethodProfile {
             return "{BranchProfile:bci=" + bci + ", takenCounter=" + takenCounter + ", counter=" + counter + "}";
         }
     }
-
-    /**
-     * Artificial byte code index for the method entry profile.
-     */
-    private static final int JVMCI_METHOD_ENTRY_BCI = -1;
 
 }
