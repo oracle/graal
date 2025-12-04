@@ -36,9 +36,19 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Abstract base representation of profile data for crema per method.
+ * Stores interpreter profiling data collected during the execution of a single
+ * {@link ResolvedJavaMethod}.
+ * <p>
+ * The data is written concurrently by multiple Crema interpreter threads during method execution.
+ * It is subsequently read by compilation consumers, typically wrapped in a {@link ProfilingInfo}
+ * object.
+ * <p>
+ * **Thread Safety and Mutability:** Because multiple interpreter threads update the profiles
+ * concurrently, the data within this object is **highly volatile**. Any profile-related information
+ * returned by methods of this class can change significantly and rapidly over time. Consumers must
+ * be aware of this mutability when reading and acting upon the profiling data.
  */
-public final class MethodProfilingData {
+public final class MethodProfile {
 
     private final InterpreterProfile[] profiles;
 
@@ -51,16 +61,11 @@ public final class MethodProfilingData {
     private final ResolvedJavaMethod method;
 
     /**
-     * Testing override for {@link ProfilingInfo#isMature()}.
-     * <p>
-     * Normally, maturity is derived ergonomically from the collected profiles (for example, the
-     * method-entry invocation count) by consumers of this container. When this flag is set to true,
-     * consumers may treat the profiling information as mature regardless of the collected counts.
-     * Defaults to false.
+     * See {@link #isMature()}.
      */
     private boolean isMature;
 
-    public MethodProfilingData(ResolvedJavaMethod method) {
+    public MethodProfile(ResolvedJavaMethod method) {
         this.method = method;
         this.profiles = buildProfiles(method);
     }
@@ -94,10 +99,10 @@ public final class MethodProfilingData {
     }
 
     /**
-     * Similar semantic as {@link ProfilingInfo#isMature()} except this method does not perform an
+     * Similar semantics as {@link ProfilingInfo#isMature()} except this method does not perform an
      * ergonomic decision. A profile is only mature if it was explicitly set with
      * {@link #setMature(boolean)}. Normally this is done by test code for example. Users of this
-     * {@link MethodProfilingData} can combine this with real ergonomics.
+     * {@link MethodProfile} can combine this with real ergonomics.
      * 
      * @return true if an explicit maturity override has been set on this profiling data; false
      *         otherwise
@@ -156,7 +161,7 @@ public final class MethodProfilingData {
     }
 
     public static class TestingBackdoor {
-        public static List<InterpreterProfile> profilesAtBCI(MethodProfilingData methodProfile, int bci) {
+        public static List<InterpreterProfile> profilesAtBCI(MethodProfile methodProfile, int bci) {
             ArrayList<InterpreterProfile> profiles = new ArrayList<>();
             for (int i = 0; i < methodProfile.profiles.length; i++) {
                 InterpreterProfile profile = methodProfile.profiles[i];

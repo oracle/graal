@@ -29,7 +29,7 @@ import java.util.function.Function;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.profile.MethodProfilingData;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 
@@ -64,7 +64,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      * under heavy synchronization. Never written again. If a ristretto method is GCed profile is
      * lost.
      */
-    private MethodProfilingData profile;
+    private MethodProfile profile;
     /**
      * State-machine for compilation handling of this crema method. Every methods starts in a
      * NEVER_COMPILED state and than can cycle through different states.
@@ -98,16 +98,17 @@ public final class RistrettoMethod extends SubstrateMethod {
         return (RistrettoMethod) interpreterMethod.getRistrettoMethod(RISTRETTO_METHOD_FUNCTION);
     }
 
-    public MethodProfilingData getProfile() {
+    public MethodProfile getProfile() {
         if (profile == null) {
             /*
-             * Allocate the profile per method once. Note that out of test scenarios this is never
-             * done and thus the heavy locking code below is normally not run.
+             * Allocate the profile once per method. Apart from test scenarios the profile is never
+             * set to null again. Thus, the heavy locking code below is normally not run in a fast
+             * path.
              */
             synchronized (this) {
                 if (profile == null) {
                     MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
-                    profile = new MethodProfilingData(this);
+                    profile = new MethodProfile(this);
                 }
             }
         }

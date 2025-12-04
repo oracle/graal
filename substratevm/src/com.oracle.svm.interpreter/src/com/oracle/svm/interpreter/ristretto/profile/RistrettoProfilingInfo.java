@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.ristretto.profile;
 
-import com.oracle.svm.interpreter.metadata.profile.MethodProfilingData;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -35,10 +35,10 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
 
 public class RistrettoProfilingInfo implements ProfilingInfo {
-    private final MethodProfilingData methodProfilingData;
+    private final MethodProfile methodProfile;
 
-    public RistrettoProfilingInfo(MethodProfilingData methodProfilingData) {
-        this.methodProfilingData = methodProfilingData;
+    public RistrettoProfilingInfo(MethodProfile methodProfile) {
+        this.methodProfile = methodProfile;
     }
 
     @Override
@@ -58,9 +58,9 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public double getBranchTakenProbability(int bci) {
-        final double takenProfile = methodProfilingData.getBranchTakenProbability(bci);
-        assert !Double.isNaN(takenProfile) && !Double.isNaN(takenProfile) : Assertions.errorMessage("Must have sane value", takenProfile, methodProfilingData.getMethod(),
-                        MethodProfilingData.TestingBackdoor.profilesAtBCI(methodProfilingData, bci));
+        final double takenProfile = methodProfile.getBranchTakenProbability(bci);
+        assert !Double.isNaN(takenProfile) && !Double.isNaN(takenProfile) : Assertions.errorMessage("Must have sane value", takenProfile, methodProfile.getMethod(),
+                        MethodProfile.TestingBackdoor.profilesAtBCI(methodProfile, bci));
         return takenProfile;
     }
 
@@ -94,7 +94,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
         /*
          * Either maturity was explicitly requested or we follow regular ergonomics.
          */
-        return methodProfilingData.isMature() || methodProfilingData.getProfileEntryCount() > RistrettoRuntimeOptions.JITProfileMatureInvocationThreshold.getValue();
+        return methodProfile.isMature() || methodProfile.getProfileEntryCount() > RistrettoRuntimeOptions.JITProfileMatureInvocationThreshold.getValue();
     }
 
     @Override
@@ -104,7 +104,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public void setMature() {
-        // Do nothing
+        methodProfile.setMature(true);
     }
 
     @Override
