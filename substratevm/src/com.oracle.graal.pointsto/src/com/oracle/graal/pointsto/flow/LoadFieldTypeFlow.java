@@ -146,16 +146,17 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            /*
-             * Nothing needs to change for open world analysis: we want to link all field flows when
-             * the receiver saturates.
-             */
-            if (!isSaturated()) {
+            if (bb.isClosed(field.getDeclaringClass())) {
                 /*
-                 * When the receiver flow saturates start observing the flow of the field declaring
-                 * type, unless the load is already saturated.
+                 * If the field declaring class is closed and the receiver flow saturates start
+                 * observing the flow of the declaring class, unless the load is already saturated.
                  */
-                replaceObservedWith(bb, field.getDeclaringClass());
+                if (!isSaturated()) {
+                    replaceObservedWith(bb, field.getDeclaringClass());
+                }
+            } else {
+                /* If the field declaring class is open simply propagate the saturation. */
+                onSaturated(bb);
             }
         }
 

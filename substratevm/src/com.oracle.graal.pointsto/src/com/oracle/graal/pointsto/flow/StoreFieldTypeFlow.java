@@ -177,10 +177,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            /*
-             * Nothing needs to change for open world analysis: we want to link all field flows when
-             * the receiver saturates.
-             */
+            assert bb.isClosed(field);
             /*
              * When receiver flow saturates swap in the saturated store type flow. When the store
              * itself saturates it propagates the saturation state to the uses/observers and unlinks

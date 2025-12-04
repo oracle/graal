@@ -135,7 +135,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
-        classInclusionPolicy.setBigBang(this);
+        if (classInclusionPolicy != null) {
+            classInclusionPolicy.setBigBang(this);
+        }
         this.classInclusionPolicy = classInclusionPolicy;
     }
 

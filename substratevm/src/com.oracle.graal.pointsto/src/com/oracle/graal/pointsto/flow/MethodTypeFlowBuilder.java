@@ -2030,17 +2030,28 @@ public class MethodTypeFlowBuilder {
             TypeFlowBuilder<?> loadFieldBuilder;
             if (field.isStatic()) {
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadStaticFieldTypeFlow.class, () -> {
+                    processOpenWorldField(field);
                     FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
-                    LoadStaticFieldTypeFlow loadFieldFLow = new LoadStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, fieldFlow);
-                    flowsGraph.addNodeFlow(node, loadFieldFLow);
-                    return loadFieldFLow;
+                    LoadStaticFieldTypeFlow loadFieldFlow = new LoadStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, fieldFlow);
+                    flowsGraph.addNodeFlow(node, loadFieldFlow);
+                    return loadFieldFlow;
                 });
             } else {
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadInstanceFieldTypeFlow.class, () -> {
-                    LoadInstanceFieldTypeFlow loadFieldFLow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
-                    flowsGraph.addNodeFlow(node, loadFieldFLow);
-                    return loadFieldFLow;
+                    LoadInstanceFieldTypeFlow loadFieldFlow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
+                    processOpenWorldField(field);
+                    if (!bb.isClosed(loadFieldFlow.field().getDeclaringClass())) {
+                        /*
+                         * If the field declaring type is open then the receiver object state of a
+                         * load may be empty/incomplete. Saturate the load, assuming there are
+                         * unseen writes in the open world.
+                         */
+                        loadFieldFlow.enableFlow(bb);
+                        loadFieldFlow.onSaturated(bb);
+                    }
+                    flowsGraph.addNodeFlow(node, loadFieldFlow);
+                    return loadFieldFlow;
                 });
                 loadFieldBuilder.addObserverDependency(objectBuilder);
             }
@@ -2049,8 +2060,27 @@ public class MethodTypeFlowBuilder {
         }
     }
 
+    private void processOpenWorldField(PointsToAnalysisField field) {
+        if (!bb.isClosed(field)) {
+            /*
+             * Open fields can be written from the open world and may contain state not seen by the
+             * analysis. This is equivalent with assuming any of their input is saturated.
+             */
+            field.getInitialFlow().onInputSaturated(bb, null);
+        }
+    }
+
     protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+
+        if (!bb.isClosed(field)) {
+            /*
+             * Open fields can be written from the open world and may contain state not seen by the
+             * analysis. We don't track their writes, instead we eagerly saturate their loads (See
+             * processLoadField).
+             */
+            return;
+        }
 
         if (bb.isSupportedJavaKind(newValueKind)) {
             TypeFlowBuilder<?> valueBuilder = state.lookupOrAny(newValue, newValueKind);
@@ -2121,7 +2151,6 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeLoad(ValueNode node, ValueNode object, TypeFlowsOfNodes state) {
         /* All unsafe accessed primitive fields are always saturated. */
         if (node.getStackKind() == JavaKind.Object) {
-            TypeFlowBuilder<?> objectBuilder = state.lookup(object);
 
             TypeFlowBuilder<?> loadBuilder;
             if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
@@ -2137,6 +2166,7 @@ public class MethodTypeFlowBuilder {
                     return preSaturated;
                 });
             } else {
+                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 /*
                  * Use the Object type as a conservative approximation for both the receiver object
                  * type and the loaded values type.
@@ -2146,9 +2176,9 @@ public class MethodTypeFlowBuilder {
                     flowsGraph.addMiscEntryFlow(loadTypeFlow);
                     return loadTypeFlow;
                 });
+                loadBuilder.addObserverDependency(objectBuilder);
             }
 
-            loadBuilder.addObserverDependency(objectBuilder);
             state.add(node, loadBuilder);
         }
     }

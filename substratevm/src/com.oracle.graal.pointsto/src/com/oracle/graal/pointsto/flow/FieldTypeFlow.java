@@ -66,20 +66,26 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
 
     @Override
     public boolean canSaturate(PointsToAnalysis bb) {
-        /* Fields declared with a closed type don't saturate, they track all input types. */
+        /*
+         * Fields with a closed declared type don't saturate; when their input saturates they are
+         * injected their declared type, and they track all its instantiated subtypes.
+         */
         return !bb.isClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
+        /* The field input, which is usually a field-store, is saturated. */
         if (bb.isClosed(declaredType)) {
             /*
-             * When a field store is saturated conservatively assume that the field state can
-             * contain any subtype of its declared type or any primitive value for primitive fields.
+             * If the field's declared type is closed, conservatively assume that the field state
+             * can contain any subtype of its declared type or any primitive value for primitive
+             * fields. Even if a store is not visible to the analysis, i.e., it is from the
+             * open-world, the complete hierarchy of the field's declared type is visible.
              */
-            declaredType.getTypeFlow(bb, true).addUse(bb, this);
+            source.injectDeclaredType();
         } else {
-            /* Propagate saturation stamp through the field flow. */
+            /* Otherwise, propagate saturation stamp through the field flow. */
             super.onInputSaturated(bb, input);
         }
     }
