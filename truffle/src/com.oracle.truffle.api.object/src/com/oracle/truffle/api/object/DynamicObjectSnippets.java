@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -366,6 +367,21 @@ class DynamicObjectSnippets implements TruffleObject {
     // @end region = "com.oracle.truffle.api.object.DynamicObjectSnippets.SetShapeFlags"
 
     @GenerateCached(false)
+    // @start region = "com.oracle.truffle.api.object.DynamicObjectSnippets.AddShapeFlags"
+    abstract static class FreezeNode extends Node {
+        static final int FROZEN = 1;
+
+        abstract void execute(DynamicObject receiver);
+
+        @Specialization
+        static void freeze(DynamicObject receiver,
+                        @Cached DynamicObject.SetShapeFlagsNode setShapeFlagsNode) {
+            setShapeFlagsNode.executeAdd(receiver, FROZEN);
+        }
+    }
+    // @end region = "com.oracle.truffle.api.object.DynamicObjectSnippets.AddShapeFlags"
+
+    @GenerateCached(false)
     abstract static class GetUnboxedNode extends Node {
 
         abstract int executeInt(DynamicObject receiver, Object key) throws UnexpectedResultException;
@@ -384,4 +400,30 @@ class DynamicObjectSnippets implements TruffleObject {
             return getNode.execute(receiver, key, NULL_VALUE);
         }
     }
+
+    abstract static class ExprNode extends Node {
+        abstract Object execute();
+    }
+
+    @GenerateCached(false)
+    // @start region = "com.oracle.truffle.api.object.DynamicObjectSnippets.PutAll"
+    abstract static class ObjectInitializerNode extends Node {
+        @CompilationFinal private Shape initialShape;
+        @CompilationFinal(dimensions = 1) private Object[] keys;
+        @Children private ExprNode[] valueNodes;
+
+        abstract void execute();
+
+        @ExplodeLoop
+        @Specialization
+        void doDefault(@Cached DynamicObject.PutAllNode putAllNode) {
+            var receiver = new MyDynamicObjectSubclass(initialShape);
+            var values = new Object[keys.length];
+            for (int i = 0; i < keys.length; i++) {
+                values[i] = valueNodes[i].execute();
+            }
+            putAllNode.execute(receiver, keys, values);
+        }
+    }
+    // @end region = "com.oracle.truffle.api.object.DynamicObjectSnippets.PutAll"
 }

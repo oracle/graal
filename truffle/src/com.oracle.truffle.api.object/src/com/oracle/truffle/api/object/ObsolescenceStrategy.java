@@ -233,7 +233,7 @@ abstract class ObsolescenceStrategy {
 
     static Shape defineProperty(Shape oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
         if (existing == null) {
-            return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
+            return ensureValid(defineNewProperty(oldShape, key, value, propertyFlags, putFlags));
         } else {
             if (existing.getFlags() == propertyFlags) {
                 if (existing.getLocation().canStore(value)) {
@@ -248,20 +248,37 @@ abstract class ObsolescenceStrategy {
     }
 
     private static Shape defineNewProperty(Shape oldShape, Object key, Object value, int propertyFlags, int putFlags) {
-        if (!Flags.isConstant(putFlags)) {
+        Property property;
+        AddPropertyTransition addTransition;
+        if (Flags.isConstant(putFlags)) {
+            Location location = createLocationForValue(oldShape, value, putFlags);
+            property = Property.create(key, location, propertyFlags);
+            addTransition = new AddPropertyTransition(property, location);
+        } else {
+            property = null;
             Class<?> locationType = detectLocationType(value);
-            if (locationType != null) {
-                AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
-                Shape cachedShape = oldShape.queryTransition(addTransition);
-                if (cachedShape != null) {
-                    return ensureValid(cachedShape);
-                }
-            }
+            addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
         }
 
-        Location location = createLocationForValue(oldShape, value, putFlags);
-        Property property = Property.create(key, location, propertyFlags);
-        return addProperty(oldShape, property);
+        oldShape.onPropertyTransition(addTransition);
+        Shape cachedShape = oldShape.queryTransition(addTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        if (property == null) {
+            Location location = createLocationForValue(oldShape, value, putFlags);
+            property = Property.create(key, location, propertyFlags);
+            addTransition = newAddPropertyTransition(property);
+        }
+
+        Shape newShape = addPropertyTransition(oldShape, property, addTransition);
+
+        Property actualProperty = newShape.getLastProperty();
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, property);
+
+        return newShape;
     }
 
     private static Class<?> detectLocationType(Object value) {
@@ -371,29 +388,31 @@ abstract class ObsolescenceStrategy {
         return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    static Shape addProperty(Shape shape, Property property) {
-        return addProperty(shape, property, true);
+    static Shape addProperty(Shape shape, Property property, boolean ensureValid) {
+        Shape newShape = addPropertyInner(shape, property);
+        return ensureValid ? ensureValid(newShape) : newShape;
     }
 
-    private static Shape addProperty(Shape shape, Property property, boolean ensureValid) {
-        Shape newShape = addPropertyInner(shape, property);
+    private static Shape addPropertyInner(Shape shape, Property property) {
+        AddPropertyTransition addTransition = newAddPropertyTransition(property);
+        shape.onPropertyTransition(addTransition);
+        Shape cachedShape = shape.queryTransition(addTransition);
+        Shape newShape;
+        if (cachedShape != null) {
+            newShape = cachedShape;
+        } else {
+            newShape = addPropertyTransition(shape, property, addTransition);
+        }
 
         Property actualProperty = newShape.getLastProperty();
         // Ensure the actual property location is of the same type or more general.
         ensureSameTypeOrMoreGeneral(actualProperty, property);
 
-        return ensureValid ? ensureValid(newShape) : newShape;
+        return newShape;
     }
 
-    private static Shape addPropertyInner(Shape shape, Property property) {
+    private static Shape addPropertyTransition(Shape shape, Property property, AddPropertyTransition addTransition) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
-
-        AddPropertyTransition addTransition = newAddPropertyTransition(property);
-        shape.onPropertyTransition(addTransition);
-        Shape cachedShape = shape.queryTransition(addTransition);
-        if (cachedShape != null) {
-            return cachedShape;
-        }
 
         Shape oldShape = ensureSpace(shape, property.getLocation());
 

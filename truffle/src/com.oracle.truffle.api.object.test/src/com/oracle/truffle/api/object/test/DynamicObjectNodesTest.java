@@ -43,10 +43,10 @@ package com.oracle.truffle.api.object.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -130,6 +130,13 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         return switch (run) {
             case CACHED -> DynamicObject.PutConstantNode.create();
             case UNCACHED -> DynamicObject.PutConstantNode.getUncached();
+        };
+    }
+
+    private DynamicObject.PutAllNode createPutAllNode() {
+        return switch (run) {
+            case CACHED -> DynamicObject.PutAllNode.create();
+            case UNCACHED -> DynamicObject.PutAllNode.getUncached();
         };
     }
 
@@ -232,13 +239,6 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
     }
 
     private DynamicObject.GetPropertyNode createGetPropertyNode() {
-        return switch (run) {
-            case CACHED -> DynamicObject.GetPropertyNode.create();
-            case UNCACHED -> DynamicObject.GetPropertyNode.getUncached();
-        };
-    }
-
-    private DynamicObject.GetPropertyNode createGetPropertyNodeForKey(@SuppressWarnings("unused") Object k) {
         return switch (run) {
             case CACHED -> DynamicObject.GetPropertyNode.create();
             case UNCACHED -> DynamicObject.GetPropertyNode.getUncached();
@@ -686,17 +686,17 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, flags));
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b10));
         assertFalse(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
-        addShapeFlags(getShapeFlagsNode, setShapeFlagsNode, o1, 0b1);
+        setShapeFlagsNode.executeAdd(o1, 0b1);
         assertTrue(hasShapeFlags(getShapeFlagsNode, o1, 0b11));
         assertEquals(flags | 0b1, getShapeFlagsNode.execute(o1));
+        setShapeFlagsNode.executeRemove(o1, 0b1);
+        assertEquals(flags, getShapeFlagsNode.execute(o1));
+        setShapeFlagsNode.executeRemoveAndAdd(o1, 0b1111, 0b0101);
+        assertEquals(0b100101, getShapeFlagsNode.execute(o1));
     }
 
     static boolean hasShapeFlags(DynamicObject.GetShapeFlagsNode getShapeFlagsNode, DynamicObject obj, int flags) {
         return (getShapeFlagsNode.execute(obj) & flags) == flags;
-    }
-
-    static boolean addShapeFlags(DynamicObject.GetShapeFlagsNode getShapeFlagsNode, DynamicObject.SetShapeFlagsNode setShapeFlagsNode, DynamicObject obj, int flags) {
-        return setShapeFlagsNode.execute(obj, (getShapeFlagsNode.execute(obj) | flags));
     }
 
     @Test
@@ -728,20 +728,21 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
         DynamicObject.SetPropertyFlagsNode setPropertyFlagsNode = createSetPropertyFlagsNodeForKey(k1);
         DynamicObject.GetPropertyFlagsNode getPropertyFlagsNode = createGetPropertyFlagsNodeForKey(k1);
-        DynamicObject.GetPropertyNode getPropertyNode = createGetPropertyNodeForKey(k1);
 
         DynamicObject o1 = createEmpty();
         uncachedPut(o1, k1, v1, 0);
         assertTrue(setPropertyFlagsNode.execute(o1, k1, f1));
         assertEquals(f1, getPropertyFlagsNode.execute(o1, k1, -1));
         assertEquals(f1, uncachedGetProperty(o1, k1).getFlags());
-        assertTrue(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o1, k1, f -> f | f2));
+        assertTrue(setPropertyFlagsNode.executeAdd(o1, k1, f2));
         assertEquals(f3, getPropertyFlagsNode.execute(o1, k1, -1));
+        assertFalse(setPropertyFlagsNode.executeAdd(o1, k1, f2));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
 
         Shape before = o1.getShape();
-        assertTrue(setPropertyFlagsNode.execute(o1, k1, f3));
-        assertFalse(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o1, k1, f -> f | f2));
+        assertFalse(setPropertyFlagsNode.execute(o1, k1, f3));
+        assertFalse(setPropertyFlagsNode.executeAdd(o1, k1, f2));
+        assertFalse(setPropertyFlagsNode.executeRemove(o1, k1, 0x100));
         assertEquals(f3, getPropertyFlagsNode.execute(o1, k1, -1));
         assertEquals(f3, uncachedGetProperty(o1, k1).getFlags());
         assertSame(before, o1.getShape());
@@ -750,29 +751,19 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         uncachedPut(o2, k1, v2, 0);
         assertTrue(setPropertyFlagsNode.execute(o2, k1, f1));
         assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
-        assertTrue(updatePropertyFlags(getPropertyNode, setPropertyFlagsNode, o2, k1, f -> f | f2));
+        assertTrue(setPropertyFlagsNode.executeAdd(o2, k1, f2));
         assertEquals(f3, getPropertyFlagsNode.execute(o2, k1, -1));
         assertSame(o1.getShape(), o2.getShape());
+        assertTrue(setPropertyFlagsNode.executeRemove(o2, k1, f1));
+        assertEquals(f2, getPropertyFlagsNode.execute(o2, k1, -1));
+        assertTrue(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f3, f1));
+        assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
+        assertFalse(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f1, f1));
+        assertFalse(setPropertyFlagsNode.executeRemoveAndAdd(o2, k1, f3, f1));
+        assertEquals(f1, getPropertyFlagsNode.execute(o2, k1, -1));
 
         DynamicObject o3 = createEmpty();
         assertFalse(setPropertyFlagsNode.execute(o3, k1, f1));
-    }
-
-    private static boolean updatePropertyFlags(DynamicObject.GetPropertyNode getPropertyNode,
-                    DynamicObject.SetPropertyFlagsNode setPropertyFlagsNode,
-                    DynamicObject obj,
-                    String key,
-                    IntUnaryOperator updateFunction) {
-        Property property = getPropertyNode.execute(obj, key);
-        if (property == null) {
-            return false;
-        }
-        int oldFlags = property.getFlags();
-        int newFlags = updateFunction.applyAsInt(oldFlags);
-        if (oldFlags == newFlags) {
-            return false;
-        }
-        return setPropertyFlagsNode.execute(obj, key, newFlags);
     }
 
     @Test
@@ -827,10 +818,18 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         Shape emptyShape = o1.getShape();
         uncachedPut(o1, "key1", v1, 0);
         uncachedPut(o1, "key2", v2, 0);
+        Shape nonEmptyShape = o1.getShape();
         resetShapeNode.execute(o1, emptyShape);
         assertSame(emptyShape, o1.getShape());
 
-        assumeTrue("new layout only", isNewLayout());
+        try {
+            resetShapeNode.execute(o1, nonEmptyShape);
+            fail("should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // expected
+            assertSame(emptyShape, o1.getShape());
+        }
+
         int flags = 0xf;
         DynamicObject o2 = createEmpty();
         Shape newEmptyShape = Shape.newBuilder().shapeFlags(flags).build();
@@ -971,9 +970,7 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         assertEquals(v1, uncachedGet(o1, k1));
 
         putNode.executeWithFlags(o1, k1, v2, flags);
-        if (isNewLayout()) {
-            assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
-        }
+        assertFalse(o1.getShape().getProperty(k1).getLocation().isConstant());
         assertEquals(flags, o1.getShape().getProperty(k1).getFlags());
         assertEquals(v2, uncachedGet(o1, k1));
     }
@@ -1012,6 +1009,46 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         updateAllFlags(o3, 3);
         var getNode = createGetNode();
         assertEquals(1, getNode.execute(o3, "k13", null));
+    }
+
+    @Test
+    public void testPutAll() {
+        DynamicObject o1 = createEmpty();
+        DynamicObject o2 = createEmpty();
+        DynamicObject o3 = createEmpty();
+        DynamicObject o4 = createEmpty();
+        String k1 = "key1";
+        String k2 = "key2";
+        String k3 = "key3";
+        String k4 = "key4";
+        int v1 = 42;
+        int v2 = 43;
+        String v3 = "asdf";
+        String v4 = "qwer";
+        String[] keys = {k1, k2, k3};
+        Object[] values1 = {v1, v2, v3};
+        Object[] values2 = {v1, v4, v3};
+        uncachedPutAll(o1, keys, values1);
+        DynamicObject.PutAllNode putAllNode = createPutAllNode();
+        putAllNode.execute(o2, keys, values1);
+        assertSame(o1.getShape(), o2.getShape());
+        putAllNode.execute(o3, keys, values1);
+        putAllNode.execute(o3, keys, values2);
+        putAllNode.execute(o4, keys, values1);
+        String[] keys4 = {k4};
+        DynamicObject.PutAllNode putAllNode4 = createPutAllNode();
+        putAllNode4.executeIfPresent(o3, keys4, new Object[]{v4});
+        assertFalse(uncachedContainsKey(o3, k4));
+        assertNull(uncachedGet(o4, k4));
+        putAllNode4.executeIfAbsent(o4, keys4, new Object[]{v4});
+        assertTrue(uncachedContainsKey(o4, k4));
+        assertEquals(v4, uncachedGet(o4, k4));
+        for (int i = 0; i < keys.length; i++) {
+            assertEquals(values1[i], uncachedGet(o1, keys[i]));
+            assertEquals(values1[i], uncachedGet(o2, keys[i]));
+            assertEquals(values2[i], uncachedGet(o3, keys[i]));
+            assertEquals(values1[i], uncachedGet(o4, keys[i]));
+        }
     }
 
     private void fillObjectWithProperties(DynamicObject obj, boolean b) {
@@ -1078,6 +1115,14 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
         return DynamicObject.GetPropertyFlagsNode.getUncached().execute(obj, key, defaultValue);
     }
 
+    private static boolean uncachedContainsKey(DynamicObject obj, Object key) {
+        return DynamicObject.ContainsKeyNode.getUncached().execute(obj, key);
+    }
+
+    private static void uncachedPutAll(DynamicObject obj, Object[] keys, Object[] values) {
+        DynamicObject.PutAllNode.getUncached().execute(obj, keys, values);
+    }
+
     private static Object newObjectType() {
         return new Object() {
         };
@@ -1085,10 +1130,6 @@ public class DynamicObjectNodesTest extends AbstractPolyglotTest {
 
     private static List<Object> getKeyList(DynamicObject obj) {
         return Arrays.asList(DynamicObject.GetKeyArrayNode.getUncached().execute(obj));
-    }
-
-    private static boolean isNewLayout() {
-        return true;
     }
 
     @GenerateInline(false)
