@@ -31,14 +31,18 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -1097,17 +1101,25 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
 
     // endregion jdwp-specific
     private static final KeysArray<String> ALL_MEMBERS;
-    private static final Set<String> ALL_MEMBERS_SET;
+    private static final Set<String> READABLE_MEMBERS_SET;
+    private static final Set<String> INVOCABLE_MEMBERS_SET;
 
     static {
-        String[] members = {
+        String[] readableMembers = {
                         ReadMember.FLAGS,
                         ReadMember.OFFSET,
                         ReadMember.NAME,
                         ReadMember.TYPE,
         };
-        ALL_MEMBERS = new KeysArray<>(members);
-        ALL_MEMBERS_SET = Set.of(members);
+        String[] invocableMembers = {
+                        InvokeMember.READ,
+        };
+        READABLE_MEMBERS_SET = Set.of(readableMembers);
+        INVOCABLE_MEMBERS_SET = Set.of(invocableMembers);
+        String[] allMembers = new String[readableMembers.length + invocableMembers.length];
+        System.arraycopy(readableMembers, 0, allMembers, 0, readableMembers.length);
+        System.arraycopy(invocableMembers, 0, allMembers, readableMembers.length, invocableMembers.length);
+        ALL_MEMBERS = new KeysArray<>(allMembers);
     }
 
     @ExportMessage
@@ -1150,10 +1162,51 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
     }
 
     @ExportMessage
+    abstract static class InvokeMember {
+        static final String READ = "read";
+
+        @Specialization(guards = "READ.equals(member)")
+        static Object read(Field field, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @Cached InlinedBranchProfile typeError,
+                        @Cached InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert field != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 1) {
+                arityError.enter(node);
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            StaticObject receiver;
+            if (field.isStatic()) {
+                receiver = field.getDeclaringKlass().getStatics();
+            } else if (arguments[0] instanceof StaticObject providedReceiver) {
+                receiver = providedReceiver;
+            } else {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso object");
+            }
+            return field.get(receiver);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object doUnknown(Field receiver, String member, Object[] arguments) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
+        }
+    }
+
+    @ExportMessage
     @TruffleBoundary
     @SuppressWarnings("static-method")
     public boolean isMemberReadable(String member) {
-        return ALL_MEMBERS_SET.contains(member);
+        return READABLE_MEMBERS_SET.contains(member);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("static-method")
+    public boolean isMemberInvocable(String member) {
+        return INVOCABLE_MEMBERS_SET.contains(member);
     }
 
     @ExportMessage
