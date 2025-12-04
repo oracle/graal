@@ -33,7 +33,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.profile.InterpreterProfileContainer;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfilingData;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoFeature;
 import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
@@ -95,7 +95,7 @@ public class RistrettoProfileSupport {
                 }
                 case RistrettoConstants.COMPILE_STATE_NEVER_COMPILED: {
 
-                    InterpreterProfileContainer methodProfile = rMethod.getProfile();
+                    MethodProfilingData methodProfile = rMethod.getProfile();
                     trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
                                     RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
                     /*
@@ -211,7 +211,7 @@ public class RistrettoProfileSupport {
     }
 
     private static void methodEntryNeverCompiledCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod, int oldState) {
-        InterpreterProfileContainer methodProfile = rMethod.getProfile();
+        MethodProfilingData methodProfile = rMethod.getProfile();
         trace(RistrettoRuntimeOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
         /*

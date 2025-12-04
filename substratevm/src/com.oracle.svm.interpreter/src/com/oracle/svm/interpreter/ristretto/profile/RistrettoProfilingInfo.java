@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.interpreter.ristretto.profile;
 
-import com.oracle.svm.interpreter.metadata.profile.InterpreterProfileContainer;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfilingData;
 import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -35,10 +35,10 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
 
 public class RistrettoProfilingInfo implements ProfilingInfo {
-    private final InterpreterProfileContainer interpreterProfileContainer;
+    private final MethodProfilingData methodProfilingData;
 
-    public RistrettoProfilingInfo(InterpreterProfileContainer interpreterProfileContainer) {
-        this.interpreterProfileContainer = interpreterProfileContainer;
+    public RistrettoProfilingInfo(MethodProfilingData methodProfilingData) {
+        this.methodProfilingData = methodProfilingData;
     }
 
     @Override
@@ -58,9 +58,9 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public double getBranchTakenProbability(int bci) {
-        final double takenProfile = interpreterProfileContainer.getBranchTakenProbability(bci);
-        assert !Double.isNaN(takenProfile) && !Double.isNaN(takenProfile) : Assertions.errorMessage("Must have sane value", takenProfile, interpreterProfileContainer.getMethod(),
-                        InterpreterProfileContainer.TestingBackdoor.profilesAtBCI(interpreterProfileContainer, bci));
+        final double takenProfile = methodProfilingData.getBranchTakenProbability(bci);
+        assert !Double.isNaN(takenProfile) && !Double.isNaN(takenProfile) : Assertions.errorMessage("Must have sane value", takenProfile, methodProfilingData.getMethod(),
+                        MethodProfilingData.TestingBackdoor.profilesAtBCI(methodProfilingData, bci));
         return takenProfile;
     }
 
@@ -94,12 +94,12 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
         /*
          * Either maturity was explicitly requested or we follow regular ergonomics.
          */
-        return interpreterProfileContainer.isMature() || interpreterProfileContainer.getProfileEntryCount() > RistrettoRuntimeOptions.JITProfileMatureInvocationThreshold.getValue();
+        return methodProfilingData.isMature() || methodProfilingData.getProfileEntryCount() > RistrettoRuntimeOptions.JITProfileMatureInvocationThreshold.getValue();
     }
 
     @Override
     public String toString() {
-        return "DefaultProfilingInfo<" + this.toString(null, "; ") + ">";
+        return "RistrettoProfilingInfo<" + this.toString(null, "; ") + ">";
     }
 
     @Override
