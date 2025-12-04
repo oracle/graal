@@ -74,7 +74,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
-    protected final LocationIdentity identity;
+    /**
+     * The location killed by the invoke. Typically, it will be {@link LocationIdentity#any()}, but
+     * an interprocedural analysis can provide more precise location.
+     */
+    protected LocationIdentity killedLocationIdentity;
     private boolean isInOOMETry;
     private boolean sideEffect;
 
@@ -82,21 +86,21 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
     }
 
-    public InvokeNode(CallTargetNode callTarget, int bci, LocationIdentity identity) {
-        this(callTarget, bci, callTarget.returnStamp().getTrustedStamp(), identity);
+    public InvokeNode(CallTargetNode callTarget, int bci, LocationIdentity killedLocationIdentity) {
+        this(callTarget, bci, callTarget.returnStamp().getTrustedStamp(), killedLocationIdentity);
     }
 
     public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
         this(callTarget, bci, stamp, LocationIdentity.any());
     }
 
-    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp, LocationIdentity identity) {
+    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp, LocationIdentity killedLocationIdentity) {
         super(TYPE, stamp);
         this.callTarget = callTarget;
         this.bci = bci;
         this.polymorphic = false;
         this.inlineControl = InlineControl.Normal;
-        this.identity = identity;
+        this.killedLocationIdentity = killedLocationIdentity;
         this.sideEffect = super.hasSideEffect();
     }
 
@@ -146,7 +150,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return identity;
+        return killedLocationIdentity;
+    }
+
+    public void setKilledLocationIdentity(LocationIdentity identity) {
+        this.killedLocationIdentity = identity;
     }
 
     @Override
