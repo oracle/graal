@@ -29,7 +29,7 @@
     run+: [
       self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
     ],
-    timelimit: "30:00",
+    timelimit: "1:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
