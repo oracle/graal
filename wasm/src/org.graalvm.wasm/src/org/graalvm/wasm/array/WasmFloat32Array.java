@@ -38,19 +38,71 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.array;
 
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.wasm.types.DefinedType;
+import org.graalvm.wasm.types.NumberType;
 
-public abstract class WasmHeapObject {
+import java.util.Arrays;
 
-    private final DefinedType type;
+public final class WasmFloat32Array extends WasmArray {
 
-    protected WasmHeapObject(DefinedType type) {
-        this.type = type;
+    private final float[] array;
+
+    public WasmFloat32Array(DefinedType type, float[] array) {
+        super(type, array.length);
+        assert type.asArrayType().fieldType().storageType() == NumberType.F32;
+        this.array = array;
     }
 
-    public final DefinedType type() {
-        return type;
+    public WasmFloat32Array(DefinedType type, int length, float initialValue) {
+        this(type, new float[length]);
+        fill(0, length, initialValue);
+    }
+
+    public WasmFloat32Array(DefinedType type, int length) {
+        this(type, new float[length]);
+    }
+
+    public WasmFloat32Array(DefinedType type, int length, byte[] source, int srcOffset) {
+        this(type, new float[length]);
+        initialize(source, srcOffset, 0, length);
+    }
+
+    public float get(int index) {
+        return array[index];
+    }
+
+    public void set(int index, float value) {
+        array[index] = value;
+    }
+
+    public void copyFrom(WasmFloat32Array src, int srcOffset, int dstOffset, int length) {
+        System.arraycopy(src.array, srcOffset, this.array, dstOffset, length);
+    }
+
+    public void fill(int offset, int length, float value) {
+        Arrays.fill(array, offset, offset + length, value);
+    }
+
+    public void initialize(byte[] source, int srcOffset, int dstOffset, int length) {
+        for (int i = 0; i < length; i++) {
+            array[dstOffset + i] = byteArraySupport.getFloat(source, srcOffset + (i << 2));
+        }
+    }
+
+    @Override
+    public Object getObj(int index) {
+        return array[index];
+    }
+
+    @Override
+    public void setObj(int index, Object value) throws UnsupportedTypeException {
+        if (value instanceof Float floatValue) {
+            array[index] = floatValue;
+        } else {
+            throw UnsupportedTypeException.create(new Object[]{value});
+        }
     }
 }

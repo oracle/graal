@@ -793,23 +793,18 @@ public class BytecodeSuite {
     }
 
     @Test
-    public void testElemNull() {
-        test(RuntimeBytecodeGen::addElemNull, new byte[]{0x10});
-    }
-
-    @Test
     public void testElemMinFunctionIndex() {
         test(b -> b.addElemFunctionIndex(0), new byte[]{0x00});
     }
 
     @Test
     public void testElemMaxInlineFunctionIndex() {
-        test(b -> b.addElemFunctionIndex(15), new byte[]{0x0F});
+        test(b -> b.addElemFunctionIndex(31), new byte[]{0x1F});
     }
 
     @Test
     public void testElemMinU8FunctionIndex() {
-        test(b -> b.addElemFunctionIndex(16), new byte[]{0x20, 0x10});
+        test(b -> b.addElemFunctionIndex(32), new byte[]{0x20, 0x20});
     }
 
     @Test
@@ -830,11 +825,6 @@ public class BytecodeSuite {
     @Test
     public void testElemMinI32FunctionIndex() {
         test(b -> b.addElemFunctionIndex(65536), new byte[]{0x60, 0x00, 0x00, 0x01, 0x00});
-    }
-
-    @Test
-    public void testElemGlobalIndex() {
-        test(b -> b.addElemGlobalIndex(256), new byte[]{(byte) 0xC0, 0x00, 0x01});
     }
 
     @Test

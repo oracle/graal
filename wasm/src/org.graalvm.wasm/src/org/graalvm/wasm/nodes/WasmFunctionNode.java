@@ -71,7 +71,7 @@ import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmHeapObject;
+import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmMath;
@@ -81,6 +81,15 @@ import org.graalvm.wasm.WasmTag;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.Vector128Ops;
+import org.graalvm.wasm.array.WasmArray;
+import org.graalvm.wasm.array.WasmFloat32Array;
+import org.graalvm.wasm.array.WasmFloat64Array;
+import org.graalvm.wasm.array.WasmInt16Array;
+import org.graalvm.wasm.array.WasmInt32Array;
+import org.graalvm.wasm.array.WasmInt64Array;
+import org.graalvm.wasm.array.WasmInt8Array;
+import org.graalvm.wasm.array.WasmRefArray;
+import org.graalvm.wasm.array.WasmVec128Array;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
@@ -1544,13 +1553,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 final int structTypeIdx = rawPeekI32(bytecode, offset);
                                 offset += 4;
 
-                                WasmStructAccess structAccess = module.structTypeAccess(structTypeIdx);
-                                int numFields = module.structTypeFieldCount(structTypeIdx);
+                                final WasmStructAccess structAccess = module.structTypeAccess(structTypeIdx);
+                                final int numFields = module.structTypeFieldCount(structTypeIdx);
 
                                 WasmStruct struct = structAccess.shape().getFactory().create(module.closedTypeAt(structTypeIdx));
                                 popStructFields(frame, structTypeIdx, struct, structAccess, numFields, stackPointer);
                                 stackPointer -= numFields;
                                 WasmFrame.pushReference(frame, stackPointer++, struct);
+                                break;
+                            }
+                            case Bytecode.ARRAY_NEW_FIXED: {
+                                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                                final int length = rawPeekI32(bytecode, offset + 4);
+                                offset += 8;
+
+                                final DefinedType arrayType = module.closedTypeAt(arrayTypeIdx);
+                                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+
+                                WasmArray array = popArrayElements(frame, arrayType, elemType, length, stackPointer);
+                                stackPointer -= length;
+                                WasmFrame.pushReference(frame, stackPointer++, array);
                                 break;
                             }
                             default: {
@@ -2143,7 +2165,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         memory_fill(instance, n, val, dst, memoryIndex);
     }
 
-    @SuppressWarnings("unused") // TODO: remove this after filling out this method
     private int executeAggregate(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int aggregateOpcode) {
         int offset = startingOffset;
         int stackPointer = startingStackPointer;
@@ -2166,8 +2187,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 final int fieldIdx = rawPeekI32(bytecode, offset + 4);
                 offset += 8;
 
-                StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
-                int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                final StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
+                final int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
                 CompilerAsserts.partialEvaluationConstant(fieldType);
 
                 Object struct = WasmFrame.popReference(frame, stackPointer - 1);
@@ -2197,8 +2218,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 final int fieldIdx = rawPeekI32(bytecode, offset + 4);
                 offset += 8;
 
-                StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
-                int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
+                final StaticProperty property = module.structTypeAccess(structTypeIdx).properties()[fieldIdx];
+                final int fieldType = module.structTypeFieldTypeAt(structTypeIdx, fieldIdx);
                 CompilerAsserts.partialEvaluationConstant(fieldType);
 
                 Object struct = WasmFrame.popReference(frame, stackPointer - 2);
@@ -2220,6 +2241,365 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     }
                 }
                 stackPointer -= 2;
+                break;
+            }
+            case Bytecode.ARRAY_NEW: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final DefinedType arrayType = module.closedTypeAt(arrayTypeIdx);
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                WasmArray array = switch (elemType) {
+                    case WasmType.I8_TYPE -> {
+                        byte initialValue = (byte) WasmFrame.popInt(frame, stackPointer - 2);
+                        yield new WasmInt8Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.I16_TYPE -> {
+                        short initialValue = (short) WasmFrame.popInt(frame, stackPointer - 2);
+                        yield new WasmInt16Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.I32_TYPE -> {
+                        int initialValue = WasmFrame.popInt(frame, stackPointer - 2);
+                        yield new WasmInt32Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.I64_TYPE -> {
+                        long initialValue = WasmFrame.popLong(frame, stackPointer - 2);
+                        yield new WasmInt64Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.F32_TYPE -> {
+                        float initialValue = WasmFrame.popFloat(frame, stackPointer - 2);
+                        yield new WasmFloat32Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.F64_TYPE -> {
+                        double initialValue = WasmFrame.popDouble(frame, stackPointer - 2);
+                        yield new WasmFloat64Array(arrayType, length, initialValue);
+                    }
+                    case WasmType.V128_TYPE -> {
+                        V128 initialValue = WasmFrame.popVector128(frame, stackPointer - 2);
+                        yield new WasmVec128Array(arrayType, length, initialValue, vector128Ops());
+                    }
+                    default -> {
+                        Object initialValue = WasmFrame.popReference(frame, stackPointer - 2);
+                        yield new WasmRefArray(arrayType, length, initialValue);
+                    }
+                };
+                WasmFrame.pushReference(frame, stackPointer - 2, array);
+                stackPointer -= 1;
+                break;
+            }
+            case Bytecode.ARRAY_NEW_DEFAULT: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final DefinedType arrayType = module.closedTypeAt(arrayTypeIdx);
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                WasmArray array = switch (elemType) {
+                    case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length);
+                    case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length);
+                    case WasmType.I32_TYPE -> new WasmInt32Array(arrayType, length);
+                    case WasmType.I64_TYPE -> new WasmInt64Array(arrayType, length);
+                    case WasmType.F32_TYPE -> new WasmFloat32Array(arrayType, length);
+                    case WasmType.F64_TYPE -> new WasmFloat64Array(arrayType, length);
+                    case WasmType.V128_TYPE -> new WasmVec128Array(arrayType, length);
+                    default -> new WasmRefArray(arrayType, length);
+                };
+                WasmFrame.pushReference(frame, stackPointer - 1, array);
+                break;
+            }
+            case Bytecode.ARRAY_NEW_DATA: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                final int dataIdx = rawPeekI32(bytecode, offset + 4);
+                offset += 8;
+
+                final DefinedType arrayType = module.closedTypeAt(arrayTypeIdx);
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+                final int dataOffset = instance.dataInstanceOffset(dataIdx);
+                final int dataLength = instance.dataInstanceLength(dataIdx);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int source = WasmFrame.popInt(frame, stackPointer - 2);
+                if (checkOutOfBounds(source, length * WasmType.storageByteSize(elemType), dataLength)) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                }
+                WasmArray array = switch (elemType) {
+                    case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.I32_TYPE -> new WasmInt32Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.I64_TYPE -> new WasmInt64Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.F32_TYPE -> new WasmFloat32Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.F64_TYPE -> new WasmFloat64Array(arrayType, length, bytecode, dataOffset + source);
+                    case WasmType.V128_TYPE -> new WasmVec128Array(arrayType, length, bytecode, dataOffset + source);
+                    default -> throw CompilerDirectives.shouldNotReachHere("array with ref element type used in array.new_data");
+                };
+                WasmFrame.pushReference(frame, stackPointer - 2, array);
+                stackPointer -= 1;
+                break;
+            }
+            case Bytecode.ARRAY_NEW_ELEM: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                final int elemIdx = rawPeekI32(bytecode, offset + 4);
+                offset += 8;
+
+                final DefinedType arrayType = module.closedTypeAt(arrayTypeIdx);
+                final Object[] elemInstance = instance.elemInstance(elemIdx);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int source = WasmFrame.popInt(frame, stackPointer - 2);
+                if (checkOutOfBounds(source, length, elemInstance == null ? 0 : elemInstance.length)) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+                }
+                WasmRefArray array = length == 0 ? new WasmRefArray(arrayType, 0) : new WasmRefArray(arrayType, length, elemInstance, source);
+                WasmFrame.pushReference(frame, stackPointer - 2, array);
+                stackPointer -= 1;
+                break;
+            }
+            case Bytecode.ARRAY_GET:
+            case Bytecode.ARRAY_GET_S:
+            case Bytecode.ARRAY_GET_U: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int index = WasmFrame.popInt(frame, stackPointer - 1);
+                Object array = WasmFrame.popReference(frame, stackPointer - 2);
+
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(index, ((WasmArray) array).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                switch (elemType) {
+                    case WasmType.I8_TYPE -> {
+                        byte packedValue = ((WasmInt8Array) array).get(index);
+                        int unpackedValue = aggregateOpcode == Bytecode.ARRAY_GET_S ? packedValue : Byte.toUnsignedInt(packedValue);
+                        WasmFrame.pushInt(frame, stackPointer - 2, unpackedValue);
+                    }
+                    case WasmType.I16_TYPE -> {
+                        short packedValue = ((WasmInt16Array) array).get(index);
+                        int unpackedValue = aggregateOpcode == Bytecode.ARRAY_GET_S ? packedValue : Short.toUnsignedInt(packedValue);
+                        WasmFrame.pushInt(frame, stackPointer - 2, unpackedValue);
+                    }
+                    case WasmType.I32_TYPE -> WasmFrame.pushInt(frame, stackPointer - 2, ((WasmInt32Array) array).get(index));
+                    case WasmType.I64_TYPE -> WasmFrame.pushLong(frame, stackPointer - 2, ((WasmInt64Array) array).get(index));
+                    case WasmType.F32_TYPE -> WasmFrame.pushFloat(frame, stackPointer - 2, ((WasmFloat32Array) array).get(index));
+                    case WasmType.F64_TYPE -> WasmFrame.pushDouble(frame, stackPointer - 2, ((WasmFloat64Array) array).get(index));
+                    case WasmType.V128_TYPE -> WasmFrame.pushVector128(frame, stackPointer - 2, ((WasmVec128Array) array).get(index, vector128Ops()));
+                    default -> WasmFrame.pushReference(frame, stackPointer - 2, ((WasmRefArray) array).get(index));
+                }
+                stackPointer -= 1;
+                break;
+            }
+            case Bytecode.ARRAY_SET: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int index = WasmFrame.popInt(frame, stackPointer - 2);
+                Object array = WasmFrame.popReference(frame, stackPointer - 3);
+
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(index, ((WasmArray) array).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                switch (elemType) {
+                    case WasmType.I8_TYPE -> ((WasmInt8Array) array).set(index, (byte) WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I16_TYPE -> ((WasmInt16Array) array).set(index, (short) WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I32_TYPE -> ((WasmInt32Array) array).set(index, WasmFrame.popInt(frame, stackPointer - 1));
+                    case WasmType.I64_TYPE -> ((WasmInt64Array) array).set(index, WasmFrame.popLong(frame, stackPointer - 1));
+                    case WasmType.F32_TYPE -> ((WasmFloat32Array) array).set(index, WasmFrame.popFloat(frame, stackPointer - 1));
+                    case WasmType.F64_TYPE -> ((WasmFloat64Array) array).set(index, WasmFrame.popDouble(frame, stackPointer - 1));
+                    case WasmType.V128_TYPE -> ((WasmVec128Array) array).set(index, WasmFrame.popVector128(frame, stackPointer - 1), vector128Ops());
+                    default -> ((WasmRefArray) array).set(index, WasmFrame.popReference(frame, stackPointer - 1));
+                }
+                stackPointer -= 3;
+                break;
+            }
+            case Bytecode.ARRAY_LEN: {
+                Object array = WasmFrame.popReference(frame, stackPointer - 1);
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                WasmFrame.pushInt(frame, stackPointer - 1, ((WasmArray) array).length());
+                break;
+            }
+            case Bytecode.ARRAY_FILL: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int destination = WasmFrame.popInt(frame, stackPointer - 3);
+                Object array = WasmFrame.popReference(frame, stackPointer - 4);
+
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(destination, length, ((WasmArray) array).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                switch (elemType) {
+                    case WasmType.I8_TYPE -> {
+                        byte fillValue = (byte) WasmFrame.popInt(frame, stackPointer - 2);
+                        ((WasmInt8Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.I16_TYPE -> {
+                        short fillValue = (short) WasmFrame.popInt(frame, stackPointer - 2);
+                        ((WasmInt16Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.I32_TYPE -> {
+                        int fillValue = WasmFrame.popInt(frame, stackPointer - 2);
+                        ((WasmInt32Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.I64_TYPE -> {
+                        long fillValue = WasmFrame.popLong(frame, stackPointer - 2);
+                        ((WasmInt64Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.F32_TYPE -> {
+                        float fillValue = WasmFrame.popFloat(frame, stackPointer - 2);
+                        ((WasmFloat32Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.F64_TYPE -> {
+                        double fillValue = WasmFrame.popDouble(frame, stackPointer - 2);
+                        ((WasmFloat64Array) array).fill(destination, length, fillValue);
+                    }
+                    case WasmType.V128_TYPE -> {
+                        V128 fillValue = WasmFrame.popVector128(frame, stackPointer - 2);
+                        ((WasmVec128Array) array).fill(destination, length, fillValue, vector128Ops());
+                    }
+                    default -> {
+                        Object fillValue = WasmFrame.popReference(frame, stackPointer - 2);
+                        ((WasmRefArray) array).fill(destination, length, fillValue);
+                    }
+                }
+                stackPointer -= 4;
+                break;
+            }
+            case Bytecode.ARRAY_COPY: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int source = WasmFrame.popInt(frame, stackPointer - 2);
+                Object srcArray = WasmFrame.popReference(frame, stackPointer - 3);
+                int destination = WasmFrame.popInt(frame, stackPointer - 4);
+                Object dstArray = WasmFrame.popReference(frame, stackPointer - 5);
+
+                if (srcArray == WasmConstant.NULL || dstArray == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(destination, length, ((WasmArray) dstArray).length()) || checkOutOfBounds(source, length, ((WasmArray) srcArray).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                switch (elemType) {
+                    case WasmType.I8_TYPE -> ((WasmInt8Array) dstArray).copyFrom((WasmInt8Array) srcArray, source, destination, length);
+                    case WasmType.I16_TYPE -> ((WasmInt16Array) dstArray).copyFrom((WasmInt16Array) srcArray, source, destination, length);
+                    case WasmType.I32_TYPE -> ((WasmInt32Array) dstArray).copyFrom((WasmInt32Array) srcArray, source, destination, length);
+                    case WasmType.I64_TYPE -> ((WasmInt64Array) dstArray).copyFrom((WasmInt64Array) srcArray, source, destination, length);
+                    case WasmType.F32_TYPE -> ((WasmFloat32Array) dstArray).copyFrom((WasmFloat32Array) srcArray, source, destination, length);
+                    case WasmType.F64_TYPE -> ((WasmFloat64Array) dstArray).copyFrom((WasmFloat64Array) srcArray, source, destination, length);
+                    case WasmType.V128_TYPE -> ((WasmVec128Array) dstArray).copyFrom((WasmVec128Array) srcArray, source, destination, length);
+                    default -> ((WasmRefArray) dstArray).copyFrom((WasmRefArray) srcArray, source, destination, length);
+                }
+                stackPointer -= 5;
+                break;
+            }
+            case Bytecode.ARRAY_INIT_DATA: {
+                final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                final int dataIdx = rawPeekI32(bytecode, offset + 4);
+                offset += 8;
+
+                final int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                CompilerAsserts.partialEvaluationConstant(elemType);
+                final int dataOffset = instance.dataInstanceOffset(dataIdx);
+                final int dataLength = instance.dataInstanceLength(dataIdx);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int source = WasmFrame.popInt(frame, stackPointer - 2);
+                int destination = WasmFrame.popInt(frame, stackPointer - 3);
+                Object array = WasmFrame.popReference(frame, stackPointer - 4);
+
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(destination, length, ((WasmArray) array).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                if (checkOutOfBounds(source, length * WasmType.storageByteSize(elemType), dataLength)) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                }
+                switch (elemType) {
+                    case WasmType.I8_TYPE -> ((WasmInt8Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.I16_TYPE -> ((WasmInt16Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.I32_TYPE -> ((WasmInt32Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.I64_TYPE -> ((WasmInt64Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.F32_TYPE -> ((WasmFloat32Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.F64_TYPE -> ((WasmFloat64Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    case WasmType.V128_TYPE -> ((WasmVec128Array) array).initialize(bytecode, dataOffset + source, destination, length);
+                    default -> throw CompilerDirectives.shouldNotReachHere("array with ref element type used in array.init_data");
+                }
+                stackPointer -= 4;
+                break;
+            }
+            case Bytecode.ARRAY_INIT_ELEM: {
+                final int elemIdx = rawPeekI32(bytecode, offset);
+                offset += 4;
+
+                final Object[] elemInstance = instance.elemInstance(elemIdx);
+
+                int length = WasmFrame.popInt(frame, stackPointer - 1);
+                int source = WasmFrame.popInt(frame, stackPointer - 2);
+                int destination = WasmFrame.popInt(frame, stackPointer - 3);
+                Object array = WasmFrame.popReference(frame, stackPointer - 4);
+
+                if (array == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_ARRAY_REFERENCE, this);
+                }
+                if (checkOutOfBounds(destination, length, ((WasmArray) array).length())) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_ARRAY_ACCESS);
+                }
+                if (checkOutOfBounds(source, length, elemInstance == null ? 0 : elemInstance.length)) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+                }
+                if (length > 0) {
+                    ((WasmRefArray) array).initialize(elemInstance, source, destination, length);
+                }
+                stackPointer -= 4;
                 break;
             }
             case Bytecode.REF_TEST_NON_NULL:
@@ -4775,6 +5155,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     // Checkstyle: resume method name check
 
+    private static boolean checkOutOfBounds(int offset, int size) {
+        return offset < 0 || offset >= size;
+    }
+
     private static boolean checkOutOfBounds(int offset, int length, int size) {
         return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
     }
@@ -4862,6 +5246,72 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @ExplodeLoop
+    private WasmArray popArrayElements(VirtualFrame frame, DefinedType arrayType, int elemType, int length, int stackPointerOffset) {
+        CompilerAsserts.partialEvaluationConstant(elemType);
+        CompilerAsserts.partialEvaluationConstant(length);
+        CompilerAsserts.partialEvaluationConstant(stackPointerOffset);
+        int stackPointer = stackPointerOffset;
+        switch (elemType) {
+            case WasmType.I8_TYPE: {
+                byte[] fixedArray = new byte[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = (byte) WasmFrame.popInt(frame, --stackPointer);
+                }
+                return new WasmInt8Array(arrayType, fixedArray);
+            }
+            case WasmType.I16_TYPE: {
+                short[] fixedArray = new short[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = (short) WasmFrame.popInt(frame, --stackPointer);
+                }
+                return new WasmInt16Array(arrayType, fixedArray);
+            }
+            case WasmType.I32_TYPE: {
+                int[] fixedArray = new int[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = WasmFrame.popInt(frame, --stackPointer);
+                }
+                return new WasmInt32Array(arrayType, fixedArray);
+            }
+            case WasmType.I64_TYPE: {
+                long[] fixedArray = new long[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = WasmFrame.popLong(frame, --stackPointer);
+                }
+                return new WasmInt64Array(arrayType, fixedArray);
+            }
+            case WasmType.F32_TYPE: {
+                float[] fixedArray = new float[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = WasmFrame.popFloat(frame, --stackPointer);
+                }
+                return new WasmFloat32Array(arrayType, fixedArray);
+            }
+            case WasmType.F64_TYPE: {
+                double[] fixedArray = new double[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = WasmFrame.popDouble(frame, --stackPointer);
+                }
+                return new WasmFloat64Array(arrayType, fixedArray);
+            }
+            case WasmType.V128_TYPE: {
+                byte[] fixedArray = new byte[length << 4];
+                for (int i = length - 1; i >= 0; i--) {
+                    vector128Ops().intoArray(WasmFrame.popVector128(frame, --stackPointer), fixedArray, i << 4);
+                }
+                return new WasmVec128Array(arrayType, fixedArray);
+            }
+            default: {
+                Object[] fixedArray = new Object[length];
+                for (int i = length - 1; i >= 0; i--) {
+                    fixedArray[i] = WasmFrame.popReference(frame, --stackPointer);
+                }
+                return new WasmRefArray(arrayType, fixedArray);
+            }
+        }
+    }
+
+    @ExplodeLoop
     private void popStructFields(VirtualFrame frame, int structTypeIndex, WasmStruct struct, WasmStructAccess structAccess, int numFields, int stackPointerOffset) {
         CompilerAsserts.partialEvaluationConstant(structTypeIndex);
         CompilerAsserts.partialEvaluationConstant(structAccess);
@@ -4890,7 +5340,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     private boolean runTimeTypeCheck(int expectedHeapType, Object object) {
         if (WasmType.isConcreteReferenceType(expectedHeapType)) {
-            return object instanceof WasmHeapObject heapObject && runTimeConcreteTypeCheck(expectedHeapType, heapObject);
+            return object instanceof WasmTypedHeapObject heapObject && runTimeConcreteTypeCheck(expectedHeapType, heapObject);
         } else {
             return module.closedHeapTypeOf(expectedHeapType).matchesValue(object);
         }
@@ -4900,7 +5350,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
      * This is an optimized version of {@link DefinedType#isSubtypeOf(DefinedType)} that makes use
      * of the type equivalence classes that are constructed after linking.
      */
-    private boolean runTimeConcreteTypeCheck(int expectedTypeIndex, WasmHeapObject heapObject) {
+    private boolean runTimeConcreteTypeCheck(int expectedTypeIndex, WasmTypedHeapObject heapObject) {
         DefinedType expectedType = module.closedTypeAt(expectedTypeIndex);
         DefinedType actualType = heapObject.type();
         if (actualType.typeEquivalenceClass() == expectedType.typeEquivalenceClass()) {

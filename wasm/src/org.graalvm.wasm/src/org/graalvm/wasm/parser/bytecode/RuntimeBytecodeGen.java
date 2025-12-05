@@ -810,19 +810,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a null entry to the data of an elem segment.
-     */
-    public void addElemNull() {
-        add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG);
-    }
-
-    /**
      * Adds a function index entry to the data of an elem segment.
      * 
      * @param functionIndex The function index of the element in the elem segment
      */
     public void addElemFunctionIndex(int functionIndex) {
-        if (functionIndex >= 0 && functionIndex <= 15) {
+        if (functionIndex >= 0 && functionIndex <= BytecodeBitEncoding.ELEM_ITEM_MAX_INLINE_VALUE) {
             add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | functionIndex);
         } else if (fitsIntoUnsignedByte(functionIndex)) {
             add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
@@ -837,23 +830,25 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a global index entry to the data of an elem segment.
+     * Adds a bytecode entry to the data of an elem segment.
      * 
-     * @param globalIndex The global index of the element in the elem segment
+     * @param elementBytecode The bytecode of the element expression in the elem segment
      */
-    public void addElemGlobalIndex(int globalIndex) {
-        if (globalIndex >= 0 && globalIndex <= 15) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | globalIndex);
-        } else if (fitsIntoUnsignedByte(globalIndex)) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
-            add1(globalIndex);
-        } else if (fitsIntoUnsignedShort(globalIndex)) {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
-            add2(globalIndex);
+    public void addElemBytecode(byte[] elementBytecode) {
+        int elementBytecodeLength = elementBytecode.length;
+        if (elementBytecodeLength >= 0 && elementBytecodeLength <= BytecodeBitEncoding.ELEM_ITEM_MAX_INLINE_VALUE) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | elementBytecodeLength);
+        } else if (fitsIntoUnsignedByte(elementBytecodeLength)) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
+            add1(elementBytecodeLength);
+        } else if (fitsIntoUnsignedShort(elementBytecodeLength)) {
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
+            add2(elementBytecodeLength);
         } else {
-            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
-            add4(globalIndex);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
+            add4(elementBytecodeLength);
         }
+        addBytes(elementBytecode, 0, elementBytecodeLength);
     }
 
     /**

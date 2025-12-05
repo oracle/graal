@@ -85,9 +85,6 @@ import static org.graalvm.wasm.WasmType.STRUCT_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_BLOCK_TYPE;
 import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
-import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_REF_FUNC_ENTRY_PREFIX;
-import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX;
-import static org.graalvm.wasm.constants.BytecodeBitEncoding.ELEM_ITEM_REF_NULL_ENTRY_PREFIX;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
@@ -451,9 +448,11 @@ public class BinaryParser extends BinaryStreamParser {
                     offset++;
                     int superTypeCount = readLength();
                     if (superTypeCount == 1) {
-                        module.registerSuperType(typeIndex, readTypeIndex());
+                        int superTypeIndex = readTypeIndex();
+                        module.registerSuperType(typeIndex, superTypeIndex);
+                        module.limits().checkSubtypeDepth(module.superTypeDepth(typeIndex));
                     } else if (superTypeCount > 1) {
-                        fail(Failure.SUB_TYPE, "Only one supertype admissible in subtype definitions");
+                        fail(Failure.SUB_TYPE, "Only one super type admissible in sub type definitions");
                     }
                 }
                 switch (read1()) {
@@ -565,10 +564,10 @@ public class BinaryParser extends BinaryStreamParser {
                 offset += 2;
                 elemType = readRefType();
                 readTableLimits(multiResult);
-                Pair<Object, byte[]> initExpression = readConstantExpression(elemType, endOffset);
-                initValue = initExpression.getLeft();
+                ConstantExpression<Object> initExpression = readConstantExpression(elemType, endOffset);
+                initValue = initExpression.constantValue();
                 // Drop the initializer bytecode if we can eval the initializer during parsing
-                initBytecode = initValue == null ? initExpression.getRight() : null;
+                initBytecode = initValue == null ? initExpression.bytecode() : null;
             } else {
                 elemType = readRefType();
                 readTableLimits(multiResult);
@@ -1626,8 +1625,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.DATA_DROP: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        final int dataIndex = readUnsignedInt32();
-                        module.checkDataSegmentIndex(dataIndex);
+                        final int dataIndex = readDataSegmentIndex();
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.DATA_DROP, dataIndex);
                         break;
@@ -1714,8 +1712,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.ELEM_DROP: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        final int elementIndex = readUnsignedInt32();
-                        module.checkElemIndex(elementIndex);
+                        final int elementIndex = readElemSegmentIndex();
                         state.addMiscFlag();
                         state.addInstruction(Bytecode.ELEM_DROP, elementIndex);
                         break;
@@ -1851,6 +1848,129 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(WasmType.unpack(fieldType));
                         state.popChecked(WasmType.withNullable(true, structTypeIdx));
                         state.addInstruction(Bytecode.STRUCT_SET, structTypeIdx, fieldIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_NEW: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx)));
+                        state.push(WasmType.withNullable(false, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_NEW, arrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_NEW_DEFAULT: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        state.popChecked(I32_TYPE);
+                        state.push(WasmType.withNullable(false, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_NEW_DEFAULT, arrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_NEW_FIXED: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int length = readUnsignedInt32();
+                        module.limits().checkArrayNewFixedLength(length);
+                        int unpackedElementType = WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx));
+                        for (int i = 0; i < length; i++) {
+                            state.popChecked(unpackedElementType);
+                        }
+                        state.push(WasmType.withNullable(false, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_NEW_FIXED, arrayTypeIdx, length);
+                        break;
+                    }
+                    case Instructions.ARRAY_NEW_DATA: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int dataIdx = readDataSegmentIndex();
+                        int unpackedElementType = WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx));
+                        Assert.assertTrue(WasmType.isNumberType(unpackedElementType) || WasmType.isVectorType(unpackedElementType), Failure.ARRAY_TYPE_IS_NOT_NUMERIC_OR_VECTOR);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.push(WasmType.withNullable(false, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_NEW_DATA, arrayTypeIdx, dataIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_NEW_ELEM: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int elemIdx = readElemSegmentIndex();
+                        module.checkElemType(elemIdx, module.arrayTypeElemType(arrayTypeIdx));
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.push(WasmType.withNullable(false, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_NEW_ELEM, arrayTypeIdx, elemIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_GET:
+                    case Instructions.ARRAY_GET_S:
+                    case Instructions.ARRAY_GET_U: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int elemType = module.arrayTypeElemType(arrayTypeIdx);
+                        Assert.assertTrue(aggregateOpcode == Instructions.ARRAY_GET != WasmType.isPackedType(elemType), Failure.INVALID_ARRAY_GETTER_SIGNEDNESS);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, arrayTypeIdx));
+                        state.push(WasmType.unpack(elemType));
+                        state.addInstruction(aggregateOpcode, arrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_SET: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        Assert.assertTrue(module.arrayTypeMutability(arrayTypeIdx) == Mutability.MUTABLE, Failure.ARRAY_IS_IMMUTABLE);
+                        state.popChecked(WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx)));
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_SET, arrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_LEN: {
+                        state.popChecked(WasmType.withNullable(true, ARRAY_HEAPTYPE));
+                        state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.ARRAY_LEN);
+                        break;
+                    }
+                    case Instructions.ARRAY_FILL: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        Assert.assertTrue(module.arrayTypeMutability(arrayTypeIdx) == Mutability.MUTABLE, Failure.ARRAY_IS_IMMUTABLE);
+                        state.popChecked(WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx)));
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_FILL, arrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_COPY: {
+                        int dstArrayTypeIdx = readArrayTypeIndex();
+                        int srcArrayTypeIdx = readArrayTypeIndex();
+                        Assert.assertTrue(module.matchesType(module.arrayTypeElemType(dstArrayTypeIdx), module.arrayTypeElemType(srcArrayTypeIdx)), Failure.ARRAY_TYPES_DO_NOT_MATCH);
+                        Assert.assertTrue(module.arrayTypeMutability(dstArrayTypeIdx) == Mutability.MUTABLE, Failure.ARRAY_IS_IMMUTABLE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, srcArrayTypeIdx));
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, dstArrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_COPY, dstArrayTypeIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_INIT_DATA: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int dataIdx = readDataSegmentIndex();
+                        int unpackedElementType = WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx));
+                        Assert.assertTrue(WasmType.isNumberType(unpackedElementType) || WasmType.isVectorType(unpackedElementType), Failure.ARRAY_TYPE_IS_NOT_NUMERIC_OR_VECTOR);
+                        Assert.assertTrue(module.arrayTypeMutability(arrayTypeIdx) == Mutability.MUTABLE, Failure.ARRAY_IS_IMMUTABLE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_INIT_DATA, arrayTypeIdx, dataIdx);
+                        break;
+                    }
+                    case Instructions.ARRAY_INIT_ELEM: {
+                        int arrayTypeIdx = readArrayTypeIndex();
+                        int elemIdx = readElemSegmentIndex();
+                        module.checkElemType(elemIdx, module.arrayTypeElemType(arrayTypeIdx));
+                        Assert.assertTrue(module.arrayTypeMutability(arrayTypeIdx) == Mutability.MUTABLE, Failure.ARRAY_IS_IMMUTABLE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(I32_TYPE);
+                        state.popChecked(WasmType.withNullable(true, arrayTypeIdx));
+                        state.addInstruction(Bytecode.ARRAY_INIT_ELEM, elemIdx);
                         break;
                     }
                     case Instructions.REF_TEST_NON_NULL:
@@ -2800,28 +2920,33 @@ public class BinaryParser extends BinaryStreamParser {
         return handlers;
     }
 
-    private Pair<Integer, byte[]> readOffsetExpression(int endOffset) {
+    private ConstantExpression<Integer> readOffsetExpression(int endOffset) {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, endOffset);
-        if (result.getRight() == null) {
-            return Pair.create((int) result.getLeft(), null);
+        ConstantExpression<Object> constExpr = readConstantExpression(I32_TYPE, endOffset);
+        if (constExpr.constantValue() == null) {
+            return new ConstantExpression<>(-1, constExpr.bytecode());
         } else {
-            return Pair.create(-1, result.getRight());
+            // drop the bytecode if we have a constant value
+            return new ConstantExpression<>((Integer) constExpr.constantValue(), null);
         }
     }
 
-    private Pair<Long, byte[]> readLongOffsetExpression(int endOffset) {
-        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, endOffset);
-        if (result.getRight() == null) {
-            return Pair.create((long) result.getLeft(), null);
+    private ConstantExpression<Long> readLongOffsetExpression(int endOffset) {
+        ConstantExpression<Object> constExpr = readConstantExpression(I64_TYPE, endOffset);
+        if (constExpr.constantValue() == null) {
+            return new ConstantExpression<>(-1L, constExpr.bytecode());
         } else {
-            return Pair.create(-1L, result.getRight());
+            // drop the bytecode if we have a constant value
+            return new ConstantExpression<>((Long) constExpr.constantValue(), null);
         }
     }
 
-    private Pair<Object, byte[]> readConstantExpression(int resultType, int endOffset) {
+    private record ConstantExpression<T>(T constantValue, byte[] bytecode) {
+    }
+
+    private ConstantExpression<Object> readConstantExpression(int resultType, int endOffset) {
         // Read the constant expression.
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
@@ -2972,6 +3097,39 @@ public class BinaryParser extends BinaryStreamParser {
                             calculable = false;
                             break;
                         }
+                        case Instructions.ARRAY_NEW: {
+                            int arrayTypeIdx = readArrayTypeIndex();
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx)));
+                            state.push(WasmType.withNullable(false, arrayTypeIdx));
+                            state.addInstruction(Bytecode.ARRAY_NEW, arrayTypeIdx);
+                            // We cannot cache computed array values because they are mutable
+                            calculable = false;
+                            break;
+                        }
+                        case Instructions.ARRAY_NEW_DEFAULT: {
+                            int arrayTypeIdx = readArrayTypeIndex();
+                            state.popChecked(I32_TYPE);
+                            state.push(WasmType.withNullable(false, arrayTypeIdx));
+                            state.addInstruction(Bytecode.ARRAY_NEW_DEFAULT, arrayTypeIdx);
+                            // We cannot cache computed array values because they are mutable
+                            calculable = false;
+                            break;
+                        }
+                        case Instructions.ARRAY_NEW_FIXED: {
+                            int arrayTypeIdx = readArrayTypeIndex();
+                            int length = readUnsignedInt32();
+                            module.limits().checkArrayNewFixedLength(length);
+                            int unpackedElementType = WasmType.unpack(module.arrayTypeElemType(arrayTypeIdx));
+                            for (int i = 0; i < length; i++) {
+                                state.popChecked(unpackedElementType);
+                            }
+                            state.push(WasmType.withNullable(false, arrayTypeIdx));
+                            state.addInstruction(Bytecode.ARRAY_NEW_FIXED, arrayTypeIdx, length);
+                            // We cannot cache computed array values because they are mutable
+                            calculable = false;
+                            break;
+                        }
                         default:
                             fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
                             break;
@@ -3006,23 +3164,19 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertTrue(opcode == Instructions.END, Failure.UNEXPECTED_END);
         assertIntEqual(state.valueStackSize(), 1, Failure.TYPE_MISMATCH, "Unexpected number of results on stack at constant expression end");
         state.exit(multiValue);
-        if (calculable) {
-            return Pair.create(stack.removeLast(), null);
-        } else {
-            return Pair.create(null, bytecode.toArray());
-        }
+        return new ConstantExpression<>(calculable ? stack.removeLast() : null, bytecode.toArray());
     }
 
-    private long[] readFunctionIndices(int elemType) {
+    private Object[] readFunctionIndices(int elemType) {
         final int functionIndexCount = readLength();
-        final long[] functionIndices = new long[functionIndexCount];
+        final Object[] functionIndices = new Object[functionIndexCount];
         for (int index = 0; index != functionIndexCount; index++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int functionIndex = readDeclaredFunctionIndex();
             module.addFunctionReference(functionIndex);
             final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
             Assert.assertTrue(module.matchesType(elemType, functionReferenceType), Failure.TYPE_MISMATCH);
-            functionIndices[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
+            functionIndices[index] = functionIndex;
         }
         return functionIndices;
     }
@@ -3034,62 +3188,12 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private long[] readElemExpressions(int elemType) {
+    private Object[] readElemExpressions(int elemType, int endOffset) {
         final int expressionCount = readLength();
-        final long[] elements = new long[expressionCount];
+        final Object[] elements = new Object[expressionCount];
         for (int index = 0; index != expressionCount; index++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            int opcode = read1() & 0xFF;
-            switch (opcode) {
-                case Instructions.I32_CONST:
-                case Instructions.I64_CONST:
-                case Instructions.F32_CONST:
-                case Instructions.F64_CONST:
-                    throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
-                case Instructions.I32_ADD:
-                case Instructions.I32_SUB:
-                case Instructions.I32_MUL:
-                case Instructions.I64_ADD:
-                case Instructions.I64_SUB:
-                case Instructions.I64_MUL:
-                    if (wasmContext.getContextOptions().supportExtendedConstExpressions()) {
-                        throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
-                    } else {
-                        throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
-                    }
-                case Instructions.REF_NULL:
-                    final int heapType = readHeapType();
-                    final int nullableReferenceType = WasmType.withNullable(true, heapType);
-                    Assert.assertTrue(module.matchesType(elemType, nullableReferenceType), "Invalid ref.null type: 0x%02X", Failure.TYPE_MISMATCH);
-                    elements[index] = ((long) ELEM_ITEM_REF_NULL_ENTRY_PREFIX << 32);
-                    break;
-                case Instructions.REF_FUNC:
-                    final int functionIndex = readDeclaredFunctionIndex();
-                    module.addFunctionReference(functionIndex);
-                    final int functionReferenceType = WasmType.withNullable(false, module.function(functionIndex).typeIndex());
-                    Assert.assertTrue(module.matchesType(elemType, functionReferenceType), "Invalid element type: 0x%02X", Failure.TYPE_MISMATCH);
-                    elements[index] = ((long) ELEM_ITEM_REF_FUNC_ENTRY_PREFIX << 32) | functionIndex;
-                    break;
-                case Instructions.GLOBAL_GET:
-                    final int globalIndex = readGlobalIndex();
-                    assertIntEqual(module.globalMutability(globalIndex), Mutability.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
-                    final int valueType = module.globalValueType(globalIndex);
-                    Assert.assertTrue(module.matchesType(elemType, valueType), Failure.TYPE_MISMATCH);
-                    elements[index] = ((long) ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX << 32) | globalIndex;
-                    break;
-                case Instructions.VECTOR:
-                    checkSIMDSupport();
-                    int vectorOpcode = read1() & 0xFF;
-                    switch (vectorOpcode) {
-                        case Instructions.VECTOR_V128_CONST:
-                            throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X 0x%02X", opcode, vectorOpcode);
-                        default:
-                            throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
-                    }
-                default:
-                    throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
-            }
-            readEnd();
+            elements[index] = readConstantExpression(elemType, endOffset).bytecode();
         }
         return elements;
     }
@@ -3102,7 +3206,7 @@ public class BinaryParser extends BinaryStreamParser {
             int mode;
             final int currentOffsetAddress;
             final byte[] currentOffsetBytecode;
-            final long[] elements;
+            final Object[] elements;
             final int tableIndex;
             final int elemType;
             if (bulkMemoryAndRefTypes) {
@@ -3117,9 +3221,9 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         tableIndex = 0;
                     }
-                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
-                    currentOffsetAddress = offsetExpression.getLeft();
-                    currentOffsetBytecode = offsetExpression.getRight();
+                    ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                    currentOffsetAddress = offsetExpression.constantValue();
+                    currentOffsetBytecode = offsetExpression.bytecode();
                 } else {
                     mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
                     tableIndex = 0;
@@ -3132,7 +3236,7 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         elemType = FUNCREF_TYPE;
                     }
-                    elements = readElemExpressions(elemType);
+                    elements = readElemExpressions(elemType, endOffset);
                 } else {
                     if (useType) {
                         checkElemKind();
@@ -3145,9 +3249,9 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 tableIndex = readTableIndex();
-                Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
-                currentOffsetAddress = offsetExpression.getLeft();
-                currentOffsetBytecode = offsetExpression.getRight();
+                ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                currentOffsetAddress = offsetExpression.constantValue();
+                currentOffsetBytecode = offsetExpression.bytecode();
                 elemType = FUNCREF_TYPE;
                 elements = readFunctionIndices(elemType);
             }
@@ -3170,28 +3274,14 @@ public class BinaryParser extends BinaryStreamParser {
                     store.linker().resolvePassiveElemSegment(store, instance, currentElemSegmentId, bytecodeOffset, elementCount);
                 });
             }
-            for (long element : elements) {
-                final int initType = (int) (element >> 32);
-                switch (initType) {
-                    case ELEM_ITEM_REF_NULL_ENTRY_PREFIX:
-                        bytecode.addElemNull();
-                        break;
-                    case ELEM_ITEM_REF_FUNC_ENTRY_PREFIX:
-                        final int functionIndex = (int) element;
-                        bytecode.addElemFunctionIndex(functionIndex);
-                        break;
-                    case ELEM_ITEM_GLOBAL_GET_ENTRY_PREFIX:
-                        final int globalIndex = (int) element;
-                        bytecode.addElemGlobalIndex(globalIndex);
-                        break;
+            for (Object element : elements) {
+                if (element instanceof Integer functionIndex) {
+                    bytecode.addElemFunctionIndex(functionIndex);
+                } else {
+                    bytecode.addElemBytecode((byte[]) element);
                 }
             }
         }
-    }
-
-    private void readEnd() {
-        final byte instruction = read1();
-        assertByteEqual(instruction, (byte) Instructions.END, Failure.TYPE_MISMATCH);
     }
 
     private void readStartSection() {
@@ -3269,9 +3359,9 @@ public class BinaryParser extends BinaryStreamParser {
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            Pair<Object, byte[]> initExpression = readConstantExpression(type, endOffset);
-            final Object initValue = initExpression.getLeft();
-            final byte[] initBytecode = initExpression.getRight();
+            ConstantExpression<Object> initExpression = readConstantExpression(type, endOffset);
+            final Object initValue = initExpression.constantValue();
+            final byte[] initBytecode = initExpression.constantValue() == null ? initExpression.bytecode() : null;
             final boolean isInitialized = initBytecode == null;
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
@@ -3316,13 +3406,13 @@ public class BinaryParser extends BinaryStreamParser {
                 if (mode == SegmentMode.ACTIVE) {
                     checkMemoryIndex(memoryIndex);
                     if (module.memoryHasIndexType64(memoryIndex)) {
-                        Pair<Long, byte[]> offsetExpression = readLongOffsetExpression(endOffset);
-                        offsetAddress = offsetExpression.getLeft();
-                        offsetBytecode = offsetExpression.getRight();
+                        ConstantExpression<Long> offsetExpression = readLongOffsetExpression(endOffset);
+                        offsetAddress = offsetExpression.constantValue();
+                        offsetBytecode = offsetExpression.bytecode();
                     } else {
-                        Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
-                        offsetAddress = offsetExpression.getLeft();
-                        offsetBytecode = offsetExpression.getRight();
+                        ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                        offsetAddress = offsetExpression.constantValue();
+                        offsetBytecode = offsetExpression.bytecode();
                     }
                 } else {
                     offsetAddress = -1;
@@ -3337,13 +3427,13 @@ public class BinaryParser extends BinaryStreamParser {
                     memoryIndex = 0;
                 }
                 if (module.memoryHasIndexType64(memoryIndex)) {
-                    Pair<Long, byte[]> offsetExpression = readLongOffsetExpression(endOffset);
-                    offsetAddress = offsetExpression.getLeft();
-                    offsetBytecode = offsetExpression.getRight();
+                    ConstantExpression<Long> offsetExpression = readLongOffsetExpression(endOffset);
+                    offsetAddress = offsetExpression.constantValue();
+                    offsetBytecode = offsetExpression.bytecode();
                 } else {
-                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression(endOffset);
-                    offsetAddress = offsetExpression.getLeft();
-                    offsetBytecode = offsetExpression.getRight();
+                    ConstantExpression<Integer> offsetExpression = readOffsetExpression(endOffset);
+                    offsetAddress = offsetExpression.constantValue();
+                    offsetBytecode = offsetExpression.bytecode();
                 }
             }
 
@@ -3385,6 +3475,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readStructType(int structTypeIdx) {
         int fieldCount = readLength();
+        module.limits().checkStructFieldCount(fieldCount);
         module.registerStructType(structTypeIdx, fieldCount);
         for (int fieldIdx = 0; fieldIdx < fieldCount; fieldIdx++) {
             int fieldType = readStorageType();
@@ -3563,6 +3654,18 @@ public class BinaryParser extends BinaryStreamParser {
      * @param typeIndex The type index.
      * @throws WasmException If the given type is not a struct type.
      */
+    public void checkIsArrayType(int typeIndex) {
+        if (!module.isArrayType(typeIndex)) {
+            throw ValidationErrors.createExpectedArrayType(typeIndex);
+        }
+    }
+
+    /**
+     * Checks if the given type is a struct type.
+     *
+     * @param typeIndex The type index.
+     * @throws WasmException If the given type is not a struct type.
+     */
     public void checkIsStructType(int typeIndex) {
         if (!module.isStructType(typeIndex)) {
             throw ValidationErrors.createExpectedStructType(typeIndex);
@@ -3600,6 +3703,12 @@ public class BinaryParser extends BinaryStreamParser {
     private int readTypeIndex() {
         final int typeIndex = readUnsignedInt32();
         checkTypeExists(typeIndex);
+        return typeIndex;
+    }
+
+    private int readArrayTypeIndex() {
+        final int typeIndex = readTypeIndex();
+        checkIsArrayType(typeIndex);
         return typeIndex;
     }
 
@@ -3643,6 +3752,18 @@ public class BinaryParser extends BinaryStreamParser {
     private int readGlobalIndex() {
         final int index = readUnsignedInt32();
         assertUnsignedIntLess(index, module.symbolTable().numGlobals(), Failure.UNKNOWN_GLOBAL);
+        return index;
+    }
+
+    private int readDataSegmentIndex() {
+        final int index = readUnsignedInt32();
+        module.checkDataSegmentIndex(index);
+        return index;
+    }
+
+    private int readElemSegmentIndex() {
+        final int index = readUnsignedInt32();
+        module.checkElemIndex(index);
         return index;
     }
 

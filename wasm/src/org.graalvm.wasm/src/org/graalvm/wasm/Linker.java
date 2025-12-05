@@ -88,6 +88,15 @@ import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.array.WasmArray;
+import org.graalvm.wasm.array.WasmFloat32Array;
+import org.graalvm.wasm.array.WasmFloat64Array;
+import org.graalvm.wasm.array.WasmInt16Array;
+import org.graalvm.wasm.array.WasmInt32Array;
+import org.graalvm.wasm.array.WasmInt64Array;
+import org.graalvm.wasm.array.WasmInt8Array;
+import org.graalvm.wasm.array.WasmRefArray;
+import org.graalvm.wasm.array.WasmVec128Array;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.Mutability;
@@ -98,6 +107,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.struct.WasmStructAccess;
+import org.graalvm.wasm.types.DefinedType;
 import org.graalvm.wasm.types.FunctionType;
 import org.graalvm.wasm.types.ValueType;
 
@@ -566,9 +576,13 @@ public class Linker {
     }
 
     public static Object evalConstantExpression(WasmInstance instance, byte[] bytecode) {
-        int offset = 0;
+        return evalConstantExpression(instance, bytecode, 0, bytecode.length);
+    }
+
+    public static Object evalConstantExpression(WasmInstance instance, byte[] bytecode, int start, int end) {
+        int offset = start;
         List<Object> stack = new ArrayList<>();
-        while (offset < bytecode.length) {
+        while (offset < end) {
             int opcode = rawPeekU8(bytecode, offset);
             offset++;
             switch (opcode) {
@@ -701,6 +715,145 @@ public class Linker {
                             stack.add(struct);
                             break;
                         }
+                        case Bytecode.ARRAY_NEW: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            int length = (int) stack.removeLast();
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> {
+                                    byte initialValue = (byte) (int) stack.removeLast();
+                                    yield new WasmInt8Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I16_TYPE -> {
+                                    short initialValue = (short) (int) stack.removeLast();
+                                    yield new WasmInt16Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I32_TYPE -> {
+                                    int initialValue = (int) stack.removeLast();
+                                    yield new WasmInt32Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.I64_TYPE -> {
+                                    long initialValue = (long) stack.removeLast();
+                                    yield new WasmInt64Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.F32_TYPE -> {
+                                    float initialValue = (float) stack.removeLast();
+                                    yield new WasmFloat32Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.F64_TYPE -> {
+                                    double initialValue = (double) stack.removeLast();
+                                    yield new WasmFloat64Array(arrayType, length, initialValue);
+                                }
+                                case WasmType.V128_TYPE -> {
+                                    Vector128 initialValue = (Vector128) stack.removeLast();
+                                    yield new WasmVec128Array(arrayType, length, initialValue);
+                                }
+                                default -> {
+                                    Object initialValue = stack.removeLast();
+                                    yield new WasmRefArray(arrayType, length, initialValue);
+                                }
+                            };
+                            stack.add(array);
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_DEFAULT: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            offset += 4;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            int length = (int) stack.removeLast();
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> new WasmInt8Array(arrayType, length);
+                                case WasmType.I16_TYPE -> new WasmInt16Array(arrayType, length);
+                                case WasmType.I32_TYPE -> new WasmInt32Array(arrayType, length);
+                                case WasmType.I64_TYPE -> new WasmInt64Array(arrayType, length);
+                                case WasmType.F32_TYPE -> new WasmFloat32Array(arrayType, length);
+                                case WasmType.F64_TYPE -> new WasmFloat64Array(arrayType, length);
+                                case WasmType.V128_TYPE -> new WasmVec128Array(arrayType, length);
+                                default -> new WasmRefArray(arrayType, length);
+                            };
+                            stack.add(array);
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_FIXED: {
+                            final int arrayTypeIdx = rawPeekI32(bytecode, offset);
+                            final int length = rawPeekI32(bytecode, offset + 4);
+                            offset += 8;
+
+                            SymbolTable symtab = instance.symbolTable();
+                            DefinedType arrayType = symtab.closedTypeAt(arrayTypeIdx);
+                            int elemType = symtab.arrayTypeElemType(arrayTypeIdx);
+
+                            WasmArray array = switch (elemType) {
+                                case WasmType.I8_TYPE -> {
+                                    byte[] fixedArray = new byte[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (byte) (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt8Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I16_TYPE -> {
+                                    short[] fixedArray = new short[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (short) (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt16Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I32_TYPE -> {
+                                    int[] fixedArray = new int[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (int) stack.removeLast();
+                                    }
+                                    yield new WasmInt32Array(arrayType, fixedArray);
+                                }
+                                case WasmType.I64_TYPE -> {
+                                    long[] fixedArray = new long[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (long) stack.removeLast();
+                                    }
+                                    yield new WasmInt64Array(arrayType, fixedArray);
+                                }
+                                case WasmType.F32_TYPE -> {
+                                    float[] fixedArray = new float[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (float) stack.removeLast();
+                                    }
+                                    yield new WasmFloat32Array(arrayType, fixedArray);
+                                }
+                                case WasmType.F64_TYPE -> {
+                                    double[] fixedArray = new double[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = (double) stack.removeLast();
+                                    }
+                                    yield new WasmFloat64Array(arrayType, fixedArray);
+                                }
+                                case WasmType.V128_TYPE -> {
+                                    byte[] fixedArray = new byte[length << 4];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        Vector128 vec = (Vector128) stack.removeLast();
+                                        System.arraycopy(vec.getBytes(), 0, fixedArray, i << 4, 4);
+                                    }
+                                    yield new WasmVec128Array(arrayType, fixedArray);
+                                }
+                                default -> {
+                                    Object[] fixedArray = new Object[length];
+                                    for (int i = length - 1; i >= 0; i--) {
+                                        fixedArray[i] = stack.removeLast();
+                                    }
+                                    yield new WasmRefArray(arrayType, fixedArray);
+                                }
+                            };
+                            stack.add(array);
+                            break;
+                        }
                         default:
                             fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
                             break;
@@ -731,9 +884,13 @@ public class Linker {
     }
 
     private static List<Sym> dependenciesOfConstantExpression(WasmInstance instance, byte[] bytecode) {
+        return dependenciesOfConstantExpression(instance, bytecode, 0, bytecode.length);
+    }
+
+    private static List<Sym> dependenciesOfConstantExpression(WasmInstance instance, byte[] bytecode, int start, int end) {
         List<Sym> dependencies = new ArrayList<>();
-        int offset = 0;
-        while (offset < bytecode.length) {
+        int offset = start;
+        while (offset < end) {
             int opcode = rawPeekU8(bytecode, offset);
             offset++;
             switch (opcode) {
@@ -782,8 +939,14 @@ public class Linker {
                     offset++;
                     switch (aggregateOpcode) {
                         case Bytecode.STRUCT_NEW:
-                        case Bytecode.STRUCT_NEW_DEFAULT: {
+                        case Bytecode.STRUCT_NEW_DEFAULT:
+                        case Bytecode.ARRAY_NEW:
+                        case Bytecode.ARRAY_NEW_DEFAULT: {
                             offset += 4;
+                            break;
+                        }
+                        case Bytecode.ARRAY_NEW_FIXED: {
+                            offset += 8;
                             break;
                         }
                         default:
@@ -941,25 +1104,21 @@ public class Linker {
             elementOffset++;
             final int type = opcode & BytecodeBitEncoding.ELEM_ITEM_TYPE_MASK;
             final int length = opcode & BytecodeBitEncoding.ELEM_ITEM_LENGTH_MASK;
-            if ((opcode & BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG) != 0) {
-                // null constant
-                continue;
-            }
-            final int index;
+            final int value;
             switch (length) {
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE:
-                    index = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
+                    value = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8:
-                    index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16:
-                    index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32:
-                    index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
@@ -967,13 +1126,17 @@ public class Linker {
             }
             if (type == BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
-                final WasmFunction function = instance.module().function(index);
+                final int functionIndex = value;
+                final WasmFunction function = instance.module().function(functionIndex);
                 if (function.importDescriptor() != null) {
                     dependencies.add(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()));
                 }
             } else {
-                // global index
-                dependencies.add(new InitializeGlobalSym(instance.name(), index));
+                // bytecode
+                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE;
+                final int elementBytecodeLength = value;
+                dependencies.addAll(dependenciesOfConstantExpression(instance, bytecode, elementOffset, elementOffset + elementBytecodeLength));
+                elementOffset += elementBytecodeLength;
             }
         }
     }
@@ -987,26 +1150,21 @@ public class Linker {
             elementOffset++;
             final int type = opcode & BytecodeBitEncoding.ELEM_ITEM_TYPE_MASK;
             final int length = opcode & BytecodeBitEncoding.ELEM_ITEM_LENGTH_MASK;
-            if ((opcode & BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG) != 0) {
-                // null constant
-                elemItems[elementIndex] = WasmConstant.NULL;
-                continue;
-            }
-            final int index;
+            final int value;
             switch (length) {
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE:
-                    index = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
+                    value = opcode & BytecodeBitEncoding.ELEM_ITEM_INLINE_VALUE;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8:
-                    index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16:
-                    index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
                 case BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32:
-                    index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
+                    value = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
@@ -1014,11 +1172,15 @@ public class Linker {
             }
             if (type == BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
-                final WasmFunction function = instance.module().function(index);
+                final int functionIndex = value;
+                final WasmFunction function = instance.module().function(functionIndex);
                 elemItems[elementIndex] = instance.functionInstance(function);
             } else {
-                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX;
-                elemItems[elementIndex] = instance.globals().loadAsReference(instance.module().globalAddress(index));
+                // bytecode
+                assert type == BytecodeBitEncoding.ELEM_ITEM_TYPE_BYTECODE;
+                final int elementBytecodeLength = value;
+                elemItems[elementIndex] = Linker.evalConstantExpression(instance, bytecode, elementOffset, elementOffset + elementBytecodeLength);
+                elementOffset += elementBytecodeLength;
             }
         }
         return elemItems;

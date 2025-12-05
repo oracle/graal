@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -351,6 +352,23 @@ public class WasmType implements TruffleObject {
         } else {
             return storageType;
         }
+    }
+
+    /**
+     * Returns the size in bytes that is occupied by a value of type {@code storageType}.
+     *
+     * @param storageType a {@link #isPackedType packed type} or a value type
+     */
+    public static int storageByteSize(int storageType) {
+        assert isPackedType(storageType) || isNumberType(storageType) || isVectorType(storageType);
+        return switch (storageType) {
+            case I8_TYPE -> 1;
+            case I16_TYPE -> 2;
+            case I32_TYPE, F32_TYPE -> 4;
+            case I64_TYPE, F64_TYPE -> 8;
+            case V128_TYPE -> 16;
+            default -> throw CompilerDirectives.shouldNotReachHere("storageByteSize of reference type");
+        };
     }
 
     public static int getCommonValueType(int[] types) {

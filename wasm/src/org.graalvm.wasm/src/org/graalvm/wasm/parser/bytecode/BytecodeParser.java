@@ -803,19 +803,35 @@ public abstract class BytecodeParser {
                     int aggregateOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (aggregateOpcode) {
+                        case Bytecode.ARRAY_LEN: {
+                            break;
+                        }
                         case Bytecode.STRUCT_NEW:
                         case Bytecode.STRUCT_NEW_DEFAULT:
+                        case Bytecode.ARRAY_NEW:
+                        case Bytecode.ARRAY_NEW_DEFAULT:
+                        case Bytecode.ARRAY_GET:
+                        case Bytecode.ARRAY_GET_S:
+                        case Bytecode.ARRAY_GET_U:
+                        case Bytecode.ARRAY_SET:
+                        case Bytecode.ARRAY_FILL:
                         case Bytecode.REF_TEST_NON_NULL:
                         case Bytecode.REF_TEST_NULL:
                         case Bytecode.REF_CAST_NON_NULL:
-                        case Bytecode.REF_CAST_NULL: {
+                        case Bytecode.REF_CAST_NULL:
+                        case Bytecode.ARRAY_COPY:
+                        case Bytecode.ARRAY_INIT_ELEM: {
                             offset += 4;
                             break;
                         }
                         case Bytecode.STRUCT_GET:
                         case Bytecode.STRUCT_GET_S:
                         case Bytecode.STRUCT_GET_U:
-                        case Bytecode.STRUCT_SET: {
+                        case Bytecode.STRUCT_SET:
+                        case Bytecode.ARRAY_NEW_FIXED:
+                        case Bytecode.ARRAY_NEW_DATA:
+                        case Bytecode.ARRAY_NEW_ELEM:
+                        case Bytecode.ARRAY_INIT_DATA: {
                             offset += 8;
                             break;
                         }

@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 
 @ExportLibrary(InteropLibrary.class)
-public final class WasmFunctionInstance extends WasmHeapObject implements TruffleObject, EmbedderDataHolder {
+public final class WasmFunctionInstance extends WasmTypedHeapObject implements TruffleObject, EmbedderDataHolder {
 
     private final WasmContext context;
     private final WasmInstance moduleInstance;

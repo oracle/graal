@@ -42,13 +42,12 @@ package org.graalvm.wasm.struct;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import org.graalvm.wasm.WasmHeapObject;
+import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.types.DefinedType;
@@ -58,7 +57,7 @@ import org.graalvm.wasm.types.StorageType;
 import org.graalvm.wasm.types.ValueType;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmStruct extends WasmHeapObject implements TruffleObject {
+public class WasmStruct extends WasmTypedHeapObject {
 
     public WasmStruct(DefinedType type) {
         super(type);

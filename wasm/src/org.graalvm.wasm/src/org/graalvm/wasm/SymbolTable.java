@@ -226,6 +226,7 @@ public abstract class SymbolTable {
      * </code>
      */
     @CompilationFinal(dimensions = 1) private int[] superTypes;
+    private int[] superTypeDepth;
 
     @CompilationFinal(dimensions = 1) private WasmStructAccess[] structAccesses;
 
@@ -439,6 +440,7 @@ public abstract class SymbolTable {
         this.closedTypes = new DefinedType[INITIAL_TYPE_SIZE];
         this.superTypes = new int[INITIAL_TYPE_SIZE];
         Arrays.fill(superTypes, NO_SUPERTYPE);
+        this.superTypeDepth = new int[INITIAL_TYPE_SIZE];
         this.structAccesses = new WasmStructAccess[INITIAL_TYPE_SIZE];
         this.typeDataSize = 0;
         this.typeCount = 0;
@@ -527,6 +529,7 @@ public abstract class SymbolTable {
             closedTypes = Arrays.copyOf(closedTypes, newLength);
             superTypes = Arrays.copyOf(superTypes, newLength);
             Arrays.fill(superTypes, oldLength, newLength, NO_SUPERTYPE);
+            superTypeDepth = Arrays.copyOf(superTypeDepth, newLength);
             structAccesses = Arrays.copyOf(structAccesses, newLength);
         }
     }
@@ -556,6 +559,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         ensureTypeCapacity(typeIdx);
         superTypes[typeIdx] = superTypes[typeIdx] & ~SUPERTYPE_MASK | superTypeIdx;
+        superTypeDepth[typeIdx] = superTypeDepth[superTypeIdx] + 1;
     }
 
     public boolean hasSuperType(int typeIdx) {
@@ -565,6 +569,11 @@ public abstract class SymbolTable {
     public int superType(int typeIdx) {
         assert hasSuperType(typeIdx);
         return superTypes[typeIdx] & SUPERTYPE_MASK;
+    }
+
+    public int superTypeDepth(int typeIdx) {
+        checkNotParsed();
+        return superTypeDepth[typeIdx];
     }
 
     void registerArrayType(int typeIdx, int elemType, byte mutability) {
@@ -1011,6 +1020,14 @@ public abstract class SymbolTable {
     }
 
     /**
+     * A version of {@link #closedTypeOf(int)} that also handles storage types
+     * ({@link WasmType#I8_TYPE} and {@link WasmType#I16_TYPE}).
+     */
+    public StorageType closedStorageTypeOf(int type) {
+        return closedStorageTypeOf(type, Integer.MAX_VALUE);
+    }
+
+    /**
      * A version of {@link #closedTypeOf(int, int)} that also handles storage types
      * ({@link WasmType#I8_TYPE} and {@link WasmType#I16_TYPE}).
      */
@@ -1065,8 +1082,8 @@ public abstract class SymbolTable {
                 return false;
             }
         }
-        ValueType closedExpectedType = closedTypeOf(expectedType);
-        ValueType closedActualType = closedTypeOf(actualType);
+        StorageType closedExpectedType = closedStorageTypeOf(expectedType);
+        StorageType closedActualType = closedStorageTypeOf(actualType);
         return closedExpectedType.equals(closedActualType) || closedActualType.isSubtypeOf(closedExpectedType);
     }
 
