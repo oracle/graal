@@ -787,12 +787,10 @@ class ProxyHandler {
 
         const proxyHandlerThis = this;
         const asProperty = function (tpe) {
-            // Note: this will be bound to the Proxy object.
+            // Note: 'this' will usually be bound to the Proxy object.
             return conversion.coerceJavaProxyToJavaScriptType(proxyHandlerThis, this, tpe);
         };
-        if (!("$as" in this._methods)) {
-            this._methods["$as"] = asProperty;
-        }
+        this._methods["$as"] = asProperty;
         this._methods[runtime.symbol.javaScriptCoerceAs] = asProperty;
 
         const vmProperty = vm;

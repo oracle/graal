@@ -395,11 +395,6 @@ class JSProxyHandler extends ProxyHandler {
         return this.javaHub[runtime.symbol.jsClass]?.[runtime.symbol.classMeta];
     }
 
-    _getSingleAbstractMethod(javaScriptJavaProxy) {
-        const javaThis = javaScriptJavaProxy[runtime.symbol.javaNative];
-        return javaThis.constructor[runtime.symbol.classMeta].singleAbstractMethod;
-    }
-
     _createInstance(hub) {
         const javaScriptConstructor = hub[runtime.symbol.jsClass];
         return new javaScriptConstructor();
