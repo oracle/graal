@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.TriState;
 
 public class RistrettoProfilingInfo implements ProfilingInfo {
     private final MethodProfile methodProfile;
+    private static final double PROB_DELTA = 1e-6;
 
     public RistrettoProfilingInfo(MethodProfile methodProfile) {
         this.methodProfile = methodProfile;
@@ -58,10 +59,28 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public double getBranchTakenProbability(int bci) {
-        final double takenProfile = methodProfile.getBranchTakenProbability(bci);
-        assert !Double.isNaN(takenProfile) && !Double.isNaN(takenProfile) : Assertions.errorMessage("Must have sane value", takenProfile, methodProfile.getMethod(),
+        double recordedProbability = methodProfile.getBranchTakenProbability(bci);
+
+        assert !Double.isNaN(recordedProbability) && !Double.isInfinite(recordedProbability) : Assertions.errorMessage("Invalid recorded branch probability", recordedProbability,
+                        methodProfile.getMethod(), MethodProfile.TestingBackdoor.profilesAtBCI(methodProfile, bci));
+
+        // at runtime if assertions are disabled fall back to unknown probability
+        if (Double.isNaN(recordedProbability) || Double.isInfinite(recordedProbability)) {
+            recordedProbability = 0.5D;
+        }
+
+        // ensure profile is in an expected range (modulo a small delta)
+        assert recordedProbability >= 0D - PROB_DELTA && recordedProbability <= 1D + PROB_DELTA : Assertions.errorMessage("Must be within [0,1] bounds modulo a small delta but is ",
+                        recordedProbability);
+
+        // Clamp to [0, 1]
+        double clamped = Math.max(0.0, Math.min(1.0, recordedProbability));
+
+        // Verify the invariant
+        assert clamped >= 0.0 && clamped <= 1.0 : Assertions.errorMessage("Branch probability out of [0,1]", clamped, methodProfile.getMethod(),
                         MethodProfile.TestingBackdoor.profilesAtBCI(methodProfile, bci));
-        return takenProfile;
+
+        return clamped;
     }
 
     @Override
