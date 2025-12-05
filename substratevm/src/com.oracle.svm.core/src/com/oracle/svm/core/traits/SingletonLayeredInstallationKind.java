@@ -90,7 +90,39 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * called before the analysis phase (i.e. these image singletons cannot be added at a later
          * point).
          */
-        MULTI_LAYER(EmptyMetadata.class);
+        MULTI_LAYER(EmptyMetadata.class),
+
+        /**
+         * Used as a marker to indicate this singleton's behavior should be made layer-aware in the
+         * future.
+         *
+         * <p>
+         * In detail, a duplicable singleton can have multiple instances of the object installed in
+         * the Image Heap (at most one per a layer). The specific instance referred to from a given
+         * piece of code is dependent on the layer in which the code was installed in.
+         *
+         * <p>
+         * It is expected that either the installed objects (1) have no instance fields or (2) have
+         * instance fields which have been made layer-aware through other means (e.g. using a
+         * layered ImageHeapMap).
+         *
+         * <p>
+         * A different version of this singleton can be installed in each layer. If a given layer X
+         * generates compiled code referring to an independent singleton with key K, then it will
+         * refer to the singleton installed in the layer X and the singleton will be installed in
+         * layer X's image heap. If a later layer Y generates compiled code referring to the same
+         * singleton key K, it will not be linked to the same singleton as installed in layer X, but
+         * instead will refer to the singleton installed in layer Y that will be installed in layer
+         * Y's image heap.
+         *
+         * <p>
+         * Note this is a temporary marker and eventually all instances of this trait should be
+         * removed. This trait should only be used when there is not a correctness issue with
+         * installing multiple instances of the singleton. Instead, the trait indicates there is
+         * merely a performance/memory overhead due to having multiple copies of this singleton
+         * installed (via different layers) within the image heap.
+         */
+        DUPLICABLE(EmptyMetadata.class);
 
         InstallationKind(Class<?> metadataClass) {
             this.metadataClass = metadataClass;
@@ -147,6 +179,16 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         @Override
         public SingletonTrait getLayeredInstallationKindTrait() {
             return MULTI_LAYER;
+        }
+    }
+
+    public static final SingletonTrait DUPLICABLE_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.DUPLICABLE, EmptyMetadata.EMPTY));
+
+    public static final class Duplicable extends SingletonLayeredInstallationKindSupplier {
+        @Override
+        public SingletonTrait getLayeredInstallationKindTrait() {
+            return DUPLICABLE_TRAIT;
         }
     }
 }
