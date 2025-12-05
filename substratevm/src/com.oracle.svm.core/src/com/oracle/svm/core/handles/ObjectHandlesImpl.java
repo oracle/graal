@@ -25,12 +25,10 @@
 package com.oracle.svm.core.handles;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -38,9 +36,6 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.config.ConfigurationValues;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.WordFactory;
-
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 
 /**
  * This class implements {@link ObjectHandle word}-sized integer handles that refer to Java objects.
@@ -112,7 +107,11 @@ public final class ObjectHandlesImpl implements ObjectHandles {
             if (bucket.isNull()) {
                 continue;
             }
-            callback.visitBucket(bucket, capacities[i]);
+            int cap = capacities[i];
+            if (cap == 0) {
+                continue;
+            }
+            callback.visitBucket(bucket, cap);
         }
     }
 
@@ -242,11 +241,10 @@ public final class ObjectHandlesImpl implements ObjectHandles {
                         }
 
                         Pointer newBucket = NullableNativeMemory.calloc(newBucketCapacity * wordSize(), NmtCategory.JNI);
-                        for (int i = 0; i < capacities[newBucketIndex]; i++) {
+                        for (int i = 0; i < newBucketCapacity; i++) {
                             writeSlot(newBucket, i, null);
                         }
                         writeSlot(newBucket, 0, obj);
-
                         synchronized (this) {
                             if (buckets[newBucketIndex].isNull()) {
                                 buckets[newBucketIndex] = newBucket;
