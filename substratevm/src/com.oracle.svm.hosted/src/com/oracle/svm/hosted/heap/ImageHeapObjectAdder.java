@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -44,7 +43,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
  * analysis, and it has been added to the shadow heap, e.g., by triggering a shadow heap re-scan.
  */
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ImageHeapObjectAdder {
     private final EconomicSet<BiConsumer<NativeImageHeap, HostedUniverse>> objectAdders = EconomicSet.create();
     private boolean sealed = false;

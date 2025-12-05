@@ -37,7 +37,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -45,7 +44,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import org.graalvm.word.impl.BarrieredAccess;
 import org.graalvm.word.impl.ObjectAccess;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class ReferenceAccessImpl implements ReferenceAccess {
 
     @Platforms(Platform.HOSTED_ONLY.class)

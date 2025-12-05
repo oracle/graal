@@ -44,7 +44,6 @@ import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -89,7 +88,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Like {@link Hybrid} objects, DynamicHubs have an instance {@link HubType}, but a
  * {@link LayoutEncoding} like an array (see the javadoc for {@link Hybrid}).
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = DynamicHubLayout.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = DynamicHubLayout.LayeredCallbacks.class)
 public class DynamicHubLayout {
 
     private final ObjectLayout layout;

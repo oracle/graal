@@ -55,7 +55,7 @@ public enum SingletonTraitKind {
      *
      * <p>
      * In cases where this SingletonTrait is not defined the singleton will have the equivalent
-     * behavior as {@link SingletonLayeredInstallationKind.Independent}.
+     * behavior as {@link NotInstalled}.
      */
     LAYERED_INSTALLATION_KIND(SingletonLayeredInstallationKind.class),
 

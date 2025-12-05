@@ -59,7 +59,6 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -82,7 +81,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * layer.
  */
 @AutomaticallyRegisteredImageSingleton(value = LayeredClassInitialization.class, onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredStaticFieldSupport.LayeredCallbacks.class)
 public class LayeredStaticFieldSupport extends LayeredClassInitialization {
     /**
      * In the initial layer, this refers to fields which must wait until the app layer to be

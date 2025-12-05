@@ -42,7 +42,6 @@ import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.Duplicable;
 import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -58,8 +57,7 @@ import jdk.vm.ci.code.Architecture;
  * singleton. It is currently too strict, as different CPUFeatures are allowed in different layers,
  * but at runtime, all the CPUFeatures used during all builds need to be supported.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = CPUFeatureAccessImpl.LayeredCallbacks.class, layeredInstallationKind = Independent.class, other = {Duplicable.class,
-                PartiallyLayerAware.class})
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = CPUFeatureAccessImpl.LayeredCallbacks.class, other = {Duplicable.class, PartiallyLayerAware.class})
 public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)

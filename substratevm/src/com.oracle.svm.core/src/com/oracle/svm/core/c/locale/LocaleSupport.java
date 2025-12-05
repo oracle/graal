@@ -46,7 +46,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -71,7 +70,7 @@ import org.graalvm.word.impl.Word;
  * Note that the JavaDoc of {@link java.util.Locale} explains commonly used terms such as script,
  * display, format, variant, and extensions.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocaleSupport.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocaleSupport.LayeredCallbacks.class)
 @AutomaticallyRegisteredImageSingleton
 public class LocaleSupport {
     private static final String LOCALE = "locale";

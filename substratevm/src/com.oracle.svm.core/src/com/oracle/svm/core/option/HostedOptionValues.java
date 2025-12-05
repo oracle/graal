@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.options.OptionKey;
@@ -40,7 +39,7 @@ import jdk.graal.compiler.options.OptionValues;
  *
  * @see com.oracle.svm.core.option
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HostedOptionValues extends OptionValues {
 
     public HostedOptionValues(EconomicMap<OptionKey<?>, Object> values) {

@@ -53,7 +53,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -333,7 +332,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     record TypeCheckInfo(boolean installed, int typeID, int interfaceID, int numClassTypes, int numInterfaceTypes, int[] typecheckSlots) {
     }
 
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayerTypeCheckInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayerTypeCheckInfo.LayeredCallbacks.class)
     private static final class LayerTypeCheckInfo {
         final int maxTypeID;
         final int maxInterfaceID;

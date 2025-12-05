@@ -37,7 +37,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.core.traits.SingletonTraits;
 
@@ -81,7 +80,7 @@ public class ImageCodeInfoStorage {
 }
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 class ImageCodeInfoStorageFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

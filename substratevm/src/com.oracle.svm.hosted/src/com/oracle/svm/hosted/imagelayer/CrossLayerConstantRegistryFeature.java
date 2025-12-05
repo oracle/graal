@@ -52,7 +52,6 @@ import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -69,7 +68,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class CrossLayerConstantRegistryFeature implements InternalFeature, CrossLayerConstantRegistry {
     static final int INVALID = -1;
     static final int NULL_CONSTANT_ID = -1;
@@ -418,7 +417,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
 
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ImageLayerIdTrackingSingleton.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ImageLayerIdTrackingSingleton.LayeredCallbacks.class)
 class ImageLayerIdTrackingSingleton {
     private final Map<String, TrackingInfo> keyToTrackingInfoMap = new HashMap<>();
     final Map<String, List<Integer>> futureKeyToPatchingOffsetsMap = new ConcurrentHashMap<>();

@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.AnnotatedObjectAccess;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -53,7 +52,7 @@ import jdk.graal.compiler.annotation.AnnotationValue;
  * never be used during Native Image generation because it initializes all annotation classes and
  * their dependencies.
  */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SubstrateAnnotationExtractor extends AnnotatedObjectAccess implements AnnotationExtractor {
 
     @Override

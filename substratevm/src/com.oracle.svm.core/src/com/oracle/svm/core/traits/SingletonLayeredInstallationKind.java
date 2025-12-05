@@ -33,20 +33,15 @@ import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * {@link SingletonTrait} which describes how this singleton acts in layered builds.
+ * {@link SingletonTrait} which describes how this singleton is installed in layered builds at run
+ * time.
  */
 public record SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
     public enum InstallationKind {
         /**
-         * A different version of this singleton can be installed in each layer. If a given layer X
-         * generates compiled code referring to an independent singleton with key K, then it will
-         * refer to the singleton installed in the layer X and the singleton will be installed in
-         * layer X's image heap. If a later layer Y generates compiled code referring to the same
-         * singleton key K, it will not be linked to the same singleton as installed in layer X, but
-         * instead will refer to the singleton installed in layer Y that will be installed in layer
-         * Y's image heap.
+         * This singleton is not installed at run time and compiled code should never refer to it.
          */
-        INDEPENDENT(EmptyMetadata.class),
+        UNAVAILABLE_AT_RUNTIME(EmptyMetadata.class),
 
         /**
          * This singleton can only be installed in the initial layer. All references to this
@@ -115,13 +110,13 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
     }
 
-    static final SingletonTrait INDEPENDENT_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
-                    new SingletonLayeredInstallationKind(InstallationKind.INDEPENDENT, EmptyMetadata.EMPTY));
+    static final SingletonTrait UNAVAILABLE_AT_RUNTIME_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.UNAVAILABLE_AT_RUNTIME, EmptyMetadata.EMPTY));
 
-    public static final class Independent extends SingletonLayeredInstallationKindSupplier {
+    public static final class UnavailableAtRuntime extends SingletonLayeredInstallationKindSupplier {
         @Override
         public SingletonTrait getLayeredInstallationKindTrait() {
-            return INDEPENDENT_TRAIT;
+            return UNAVAILABLE_AT_RUNTIME_TRAIT;
         }
     }
 

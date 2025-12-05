@@ -39,7 +39,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -49,7 +48,7 @@ import com.oracle.svm.core.traits.SingletonTraits;
  * example, when they might be accessed via JNI.
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MaterializedConstantFields.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = MaterializedConstantFields.LayeredCallbacks.class)
 public class MaterializedConstantFields implements InternalFeature {
     private final Set<Integer> fields = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private boolean sealed = false;

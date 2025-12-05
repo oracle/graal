@@ -34,12 +34,11 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.webimage.wasm.gc.MemoryLayout;
 import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, other = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
 @Platforms(WebImageWasmLMPlatform.class)
 final class WebImageWasmLMStackOverflowSupport implements StackOverflowCheck.PlatformSupport {

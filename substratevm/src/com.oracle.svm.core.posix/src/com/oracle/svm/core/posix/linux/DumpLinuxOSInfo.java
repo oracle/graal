@@ -42,7 +42,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -107,7 +106,7 @@ class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class)
 @AutomaticallyRegisteredFeature
 class DumpLinuxOSInfoFeature implements InternalFeature {
     @Override

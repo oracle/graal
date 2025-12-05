@@ -49,7 +49,6 @@ import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -85,7 +84,7 @@ import jdk.internal.loader.ClassLoaders;
  * system class loader to have new packages registered.
  */
 @AutomaticallyRegisteredImageSingleton
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedClassLoaderPackageManagement.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedClassLoaderPackageManagement.LayeredCallbacks.class)
 public class HostedClassLoaderPackageManagement {
 
     private static final String APP_KEY = "AppPackageNames";

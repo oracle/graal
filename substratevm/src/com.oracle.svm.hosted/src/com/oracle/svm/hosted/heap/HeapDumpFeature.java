@@ -62,7 +62,6 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -288,7 +287,7 @@ public class HeapDumpFeature implements InternalFeature {
 }
 
 @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredHeapDumpEncodedTypesTracker.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredHeapDumpEncodedTypesTracker.LayeredCallbacks.class)
 class LayeredHeapDumpEncodedTypesTracker {
     private List<String> encodedFieldNames;
     private final List<String> priorFieldNames;

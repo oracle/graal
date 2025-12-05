@@ -66,7 +66,6 @@ import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -78,7 +77,7 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 /** See {@link ManagementSupport} for documentation. */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ManagementFeature.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = ManagementFeature.LayeredCallbacks.class)
 public final class ManagementFeature extends JNIRegistrationUtil implements InternalFeature {
     private static final int EMPTY_ID = -1;
     private static final int TO_PROCESS = -2;

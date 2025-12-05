@@ -55,7 +55,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTrait;
 import com.oracle.svm.core.traits.SingletonTraitKind;
 import com.oracle.svm.core.traits.SingletonTraits;
@@ -66,7 +65,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedMethodNameFactory.MethodNameInfo;
 
 @AutomaticallyRegisteredImageSingleton(value = DynamicImageLayerInfo.class, onlyWith = BuildingImageLayerPredicate.class)
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedDynamicLayerInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedDynamicLayerInfo.LayeredCallbacks.class)
 public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
     private final CGlobalData<PointerBase> cGlobalData;
     private final EconomicSet<String> priorLayerMethodSymbols = EconomicSet.create();
