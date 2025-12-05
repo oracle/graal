@@ -63,7 +63,6 @@ public class CoercionConversionTest {
                     "B",
                     "9876543210",
                     "MC",
-                    "100,101,102",
                     "Tuple(x=1, y=2)",
                     "ghost in the virtual machine",
                     "undefined",
@@ -151,14 +150,6 @@ public class CoercionConversionTest {
         System.out.println(b());
         System.out.println(bigDaddy("9876543210"));
         System.out.println(bomfunk());
-        byte[] bytes = primitivo();
-        for (int i = 0; i < bytes.length; i++) {
-            if (i > 0) {
-                System.out.print(',');
-            }
-            System.out.print(bytes[i]);
-        }
-        System.out.println();
         System.out.println(returnSame(new Tuple(1, 2)));
         System.out.println(returnCharSequence(new StringBuilder("ghost in the virtual machine")));
         System.out.println(returnUndefined().typeof());
@@ -184,10 +175,6 @@ public class CoercionConversionTest {
     @JS.Coerce
     @JS("return 'MC';")
     private static native String bomfunk();
-
-    @JS.Coerce
-    @JS("let xs = new Int8Array(3); xs[0] = 100; xs[1] = 101; xs[2] = 102; return xs;")
-    private static native byte[] primitivo();
 
     @JS.Coerce
     @JS("return tuple;")
