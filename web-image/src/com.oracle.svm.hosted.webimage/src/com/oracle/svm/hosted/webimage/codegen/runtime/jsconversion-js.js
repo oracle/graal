@@ -270,11 +270,27 @@ class JSConversion extends Conversion {
         return isA(true, obj, hub);
     }
 
-    getOrCreateProxyHandler(constructor) {
-        if (!constructor.hasOwnProperty(runtime.symbol.javaProxyHandler)) {
-            constructor[runtime.symbol.javaProxyHandler] = new JSProxyHandler(constructor);
+    getHub(obj) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getClass"](obj);
+    }
+
+    getSupertype(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getSuperclass"](hub);
+    }
+
+    getComponentHub(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getComponentType"](hub);
+    }
+
+    getTypeNameAsJavaString(hub) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getClassName"](hub);
+    }
+
+    getOrCreateProxyHandler(hub) {
+        if (!hub.hasOwnProperty(runtime.symbol.javaProxyHandler)) {
+            hub[runtime.symbol.javaProxyHandler] = new JSProxyHandler(hub);
         }
-        return constructor[runtime.symbol.javaProxyHandler];
+        return hub[runtime.symbol.javaProxyHandler];
     }
 
     _getProxyHandlerArg(obj) {
@@ -375,23 +391,14 @@ class JSConversion extends Conversion {
  * Handler for JavaScript Proxies that wrap Java objects.
  */
 class JSProxyHandler extends ProxyHandler {
-    constructor(javaScriptConstructor) {
-        super();
-        this.javaScriptConstructor = javaScriptConstructor;
-    }
-
     _getClassMetadata() {
-        return this.javaScriptConstructor[runtime.symbol.classMeta];
-    }
-
-    _getClassName() {
-        return this.javaScriptConstructor.name;
+        return this.javaHub[runtime.symbol.jsClass]?.[runtime.symbol.classMeta];
     }
 
     _linkMethodPrototype() {
-        if (this.javaScriptConstructor !== $t["java.lang.Object"]) {
-            const parentConstructor = Object.getPrototypeOf(this.javaScriptConstructor);
-            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentConstructor);
+        const supertype = conversion.getSupertype(this.javaHub);
+        if (supertype !== null) {
+            const parentProxyHandler = conversion.getOrCreateProxyHandler(supertype);
             Object.setPrototypeOf(this._getMethods(), parentProxyHandler._getMethods());
         }
     }

@@ -357,7 +357,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         // We use the ProxyHandler's overload resolution.
         buffer.emitConstDeclPrefix("handler");
         buffer.emitText("conversion.getOrCreateProxyHandler(");
-        tool.genTypeName(type);
+        buffer.emitText(codeGenTool.getJSProviders().typeControl().requestHubName(type));
         buffer.emitText(");");
         buffer.emitNewLine();
         buffer.emitText("handler._getJavaConstructorMethod()(this, ...args);");
@@ -417,7 +417,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitScopeBegin();
         codeGenTool.genResolvedConstDeclPrefix("handler");
         buffer.emitText("conversion.getOrCreateProxyHandler(");
-        codeGenTool.genTypeName(type);
+        buffer.emitText(codeGenTool.getJSProviders().typeControl().requestHubName(type));
         buffer.emitText(");");
         buffer.emitNewLine();
         buffer.emitText("return handler.");

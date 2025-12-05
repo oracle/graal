@@ -26,8 +26,8 @@
 package com.oracle.svm.webimage.wasmgc;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.webimage.api.ThrownFromJavaScript;
 import org.graalvm.webimage.api.JSValue;
+import org.graalvm.webimage.api.ThrownFromJavaScript;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
@@ -45,16 +45,6 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 public class WasmGCJSConversion extends JSConversion {
     public static final WasmForeignCallDescriptor SET_JS_NATIVE = new WasmForeignCallDescriptor("setJSNative", void.class, new Class<?>[]{JSValue.class, WasmExtern.class});
     public static final WasmForeignCallDescriptor EXTRACT_JS_NATIVE = new WasmForeignCallDescriptor("extractJSNative", WasmExtern.class, new Class<?>[]{JSValue.class});
-
-    @WasmExport(value = "object.getclass", comment = "Get Class from object")
-    public static Class<?> getClass(Object o) {
-        return o.getClass();
-    }
-
-    @WasmExport(value = "class.getname", comment = "Get fully qualified class name")
-    public static String getClassName(Class<?> clazz) {
-        return clazz.getName();
-    }
 
     @WasmExport(value = "conversion.classfromencoding", comment = "Lookup class instance from metadata encoding")
     public static Class<?> classFromEncoding(String encoding) {
@@ -82,13 +72,6 @@ public class WasmGCJSConversion extends JSConversion {
     @WasmExport(value = "class.isjavalangclass", comment = "Checks whether the given class is Class.class")
     public static boolean isJavaLangClass(Class<?> clazz) {
         return clazz == Class.class;
-    }
-
-    @WasmExport(value = "class.superclass", comment = "Gets superclass of given non-primitive non-object class")
-    public static Class<?> getSuperClass(Class<?> clazz) {
-        assert !clazz.isPrimitive() : "Cannot get superclass of primitive class: " + clazz;
-        assert clazz != Object.class : "Cannot get superclass of java.lang.Object";
-        return clazz.getSuperclass();
     }
 
     @WasmExport(value = "class.getboxedhub", comment = "Boxed class for given primitive class")

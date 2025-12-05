@@ -359,6 +359,45 @@ class Conversion {
     }
 
     /**
+     * @return {*} The result of obj.getClass()
+     */
+    getHub(obj) {
+        throw new Error("Unimplemented: Conversion.getHub");
+    }
+
+    /**
+     * Returns the supertype of the type represented by the given hub or null
+     * if and only if the hub represents java.lang.Object.
+     *
+     * This function must only be called with instance or array classes (no
+     * primitive or interface classes).
+     */
+    getSupertype(hub) {
+        throw new Error("Unimplemented: Conversion.getSupertype");
+    }
+
+    /**
+     * @return {*|null} The component type of the given hub, or null if the hub does not represent an array type.
+     */
+    getComponentHub(hub) {
+        throw new Error("Unimplemented: Conversion.getComponentHub");
+    }
+
+    /**
+     * Returns hub.getTypeName().
+     */
+    getTypeNameAsJavaString(hub) {
+        throw new Error("Unimplemented: Conversion.getTypeNameAsJavaString");
+    }
+
+    /**
+     * Returns hub.getTypeName() as a JS string.
+     */
+    getTypeName(hub) {
+        return conversion.extractJavaScriptString(this.getTypeNameAsJavaString(hub));
+    }
+
+    /**
      * Copies own fields from source to destination.
      *
      * Existing fields in the destination are overwritten.
@@ -382,16 +421,8 @@ class Conversion {
     /**
      * Obtains or creates the proxy handler for the given Java class
      */
-    getOrCreateProxyHandler(arg) {
+    getOrCreateProxyHandler(hub) {
         throw new Error("Unimplemented: Conversion.getOrCreateProxyHandler");
-    }
-
-    /**
-     * For proxying the given object returns value that should be passed to
-     * getOrCreateProxyHandler.
-     */
-    _getProxyHandlerArg(obj) {
-        throw new Error("Unimplemented: Conversion._getProxyHandlerArg");
     }
 
     /**
@@ -401,7 +432,7 @@ class Conversion {
      * @return {*} The proxy around the Java object
      */
     toProxy(obj) {
-        let proxyHandler = this.getOrCreateProxyHandler(this._getProxyHandlerArg(obj));
+        let proxyHandler = this.getOrCreateProxyHandler(this.getHub(obj));
         // The wrapper is a temporary object that allows having the non-identifier name of the target function.
         // We declare the property as a function, to ensure that it is constructable, so that the Proxy handler's construct method is callable.
         let targetWrapper = {
@@ -564,14 +595,20 @@ class Conversion {
  * objects respectively, but no coercion is done.
  */
 class ProxyHandler {
-    constructor() {
+    constructor(javaHub) {
+        if (javaHub === null || javaHub === undefined) {
+            throw new Error("Got undefined or null javaHub");
+        }
         this._initialized = false;
         this._methods = {};
         this._staticMethods = {};
         this._javaConstructorMethod = null;
+        this.javaHub = javaHub;
+        this.componentHub = conversion.getComponentHub(javaHub);
+        this.isArray = this.componentHub !== null;
     }
 
-    ensureInitialized() {
+    _ensureInitialized() {
         if (!this._initialized) {
             this._initialized = true;
             // Function properties derived from accessible Java methods.
@@ -582,17 +619,17 @@ class ProxyHandler {
     }
 
     _getMethods() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._methods;
     }
 
     _getStaticMethods() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._staticMethods;
     }
 
     _getJavaConstructorMethod() {
-        this.ensureInitialized();
+        this._ensureInitialized();
         return this._javaConstructorMethod;
     }
 
@@ -615,7 +652,7 @@ class ProxyHandler {
      * String that can be printed as part of the toString and valueOf functions.
      */
     _getClassName() {
-        throw new Error("Unimplemented: ProxyHandler._getClassName");
+        return conversion.getTypeName(this.javaHub);
     }
 
     /**
@@ -938,7 +975,7 @@ class ProxyHandler {
         // This proxy handler is for java.lang.Class while javaThis is a
         // java.lang.Class instance for some object type for which we want to
         // lookup the constructor.
-        const instanceProxyHandler = conversion.getOrCreateProxyHandler(conversion._getProxyHandlerArg(javaInstance));
+        const instanceProxyHandler = conversion.getOrCreateProxyHandler(conversion.getHub(javaInstance));
         const javaConstructorMethod = instanceProxyHandler._getJavaConstructorMethod();
         // Convert the Java instance to JS (usually creates a proxy)
         const javaScriptInstance = conversion.javaToJavaScript(javaInstance);

@@ -209,15 +209,27 @@ class WasmGCConversion extends Conversion {
         return getExport("object.isinstance")(obj, hub);
     }
 
-    getOrCreateProxyHandler(clazz) {
-        if (!this.proxyHandlers.has(clazz)) {
-            this.proxyHandlers.set(clazz, new WasmGCProxyHandler(clazz));
-        }
-        return this.proxyHandlers.get(clazz);
+    getHub(obj) {
+        return getExport("object.getclass")(obj);
     }
 
-    _getProxyHandlerArg(obj) {
-        return getExport("object.getclass")(obj);
+    getSupertype(hub) {
+        return getExport("class.superclass")(hub);
+    }
+
+    getComponentHub(hub) {
+        return getExport("class.componenttype")(hub);
+    }
+
+    getTypeNameAsJavaString(hub) {
+        return getExport("class.getname")(hub);
+    }
+
+    getOrCreateProxyHandler(hub) {
+        if (!this.proxyHandlers.has(hub)) {
+            this.proxyHandlers.set(hub, new WasmGCProxyHandler(hub));
+        }
+        return this.proxyHandlers.get(hub);
     }
 
     javaToJavaScript(x) {
@@ -273,11 +285,6 @@ const METADATA_SEPARATOR = " ";
 class WasmGCProxyHandler extends ProxyHandler {
     #classMetadata = null;
 
-    constructor(clazz) {
-        super();
-        this.clazz = clazz;
-    }
-
     #lookupClass(name) {
         const clazz = getExport("conversion.classfromencoding")(toJavaString(name));
         if (!clazz) {
@@ -302,7 +309,7 @@ class WasmGCProxyHandler extends ProxyHandler {
             }
             const classId = parts[0];
 
-            if (this.#lookupClass(classId) == this.clazz) {
+            if (this.#lookupClass(classId) == this.javaHub) {
                 const methodName = parts[1];
                 const returnTypeId = parts[2];
                 const argTypeIds = parts.slice(3);
@@ -358,14 +365,10 @@ class WasmGCProxyHandler extends ProxyHandler {
         return methodTable;
     }
 
-    _getClassName() {
-        return conversion.extractJavaScriptString(getExport("class.getname")(this.clazz));
-    }
-
     _linkMethodPrototype() {
         // Link the prototype chain of the superclass' proxy handler, to include super methods.
-        if (!getExport("class.isjavalangobject")(this.clazz)) {
-            const parentClass = getExport("class.superclass")(this.clazz);
+        const parentClass = conversion.getSupertype(this.javaHub);
+        if (parentClass !== null) {
             const parentProxyHandler = conversion.getOrCreateProxyHandler(parentClass);
             Object.setPrototypeOf(this._getMethods(), parentProxyHandler._getMethods());
         }

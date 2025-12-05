@@ -105,6 +105,32 @@ public abstract class JSConversion {
         return JavaKind.Object.ordinal();
     }
 
+    @WasmExport(value = "object.getclass", comment = "Get Class from object")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getClass(Object o) {
+        return o.getClass();
+    }
+
+    @WasmExport(value = "class.superclass", comment = "Gets superclass of given non-primitive non-object class")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getSuperclass(Class<?> clazz) {
+        Class<?> superclass = clazz.getSuperclass();
+        assert superclass != null || clazz == Object.class : "Cannot get superclass of " + clazz + ". Only instance and array classes are allowed";
+        return superclass;
+    }
+
+    @WasmExport(value = "class.componenttype", comment = "The component type of the array class")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static Class<?> getComponentType(Class<?> clazz) {
+        return clazz.getComponentType();
+    }
+
+    @WasmExport(value = "class.getname", comment = "Get fully qualified class name")
+    @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+    public static String getClassName(Class<?> clazz) {
+        return clazz.getTypeName();
+    }
+
     // Creation of JSValue objects
 
     /**
