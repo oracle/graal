@@ -161,7 +161,7 @@ final class HostProxy implements TruffleObject {
                     @Bind Node node,
                     @Shared @Cached InlinedExactClassProfile proxyType,
                     @Shared @Cached(inline = true) ToGuestValueNode toGuest,
-                    @Exclusive @Cached HostToValuesNode toGuestValues,
+                    @Shared @Cached HostToValuesNode toGuestValues,
                     @Shared @Cached InlinedBranchProfile errorProfile,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         Object p = proxyType.profile(node, this.proxy);

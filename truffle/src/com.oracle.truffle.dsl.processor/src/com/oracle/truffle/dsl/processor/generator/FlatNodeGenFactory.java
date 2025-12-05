@@ -199,7 +199,6 @@ public class FlatNodeGenFactory {
     private final boolean primaryNode;
     private final Map<CacheExpression, String> sharedCaches;
     private final Map<CacheExpression, CacheExpression> sharedCacheKey;
-    private final ParentInlineData parentInlineAccess;
     private final Map<ExecutableElement, Function<Call, DSLExpression>> substitutions = new LinkedHashMap<>();
     private final StaticConstants constants;
     private NodeConstants nodeConstants;
@@ -238,7 +237,6 @@ public class FlatNodeGenFactory {
         this.primaryNode = stateSharingNodes.iterator().next() == node;
         this.sharedCaches = sharedCaches;
         this.sharedCacheKey = computeSharedCacheKeys(stateSharingNodes, sharedCaches);
-        this.parentInlineAccess = computeParentInlineAccess();
         this.state = createNodeState();
         this.multiState = state.activeState;
         this.allMultiState = state.allState;
@@ -382,14 +380,7 @@ public class FlatNodeGenFactory {
     }
 
     private String createStaticInlinedCacheName(SpecializationData specialization, CacheExpression cache) {
-        String baseName;
-        String sharedName = sharedCaches.get(cache);
-        if (sharedName != null && specialization != null && hasCacheParentAccess(cache)) {
-            baseName = specialization.getId() + "_" + sharedName;
-        } else {
-            baseName = createFieldName(specialization, cache);
-        }
-        return "INLINED_" + ElementUtils.createConstantName(baseName);
+        return "INLINED_" + ElementUtils.createConstantName(createFieldName(specialization, cache));
     }
 
     private String createFieldName(SpecializationData specialization, CacheExpression cache) {
@@ -501,68 +492,6 @@ public class FlatNodeGenFactory {
         return foundCaches;
     }
 
-    private boolean hasCacheParentAccess(CacheExpression cache) {
-        return parentInlineAccess.foundSharedParentAccess.contains(cache);
-    }
-
-    private boolean hasSharedCacheDirectAccess(CacheExpression cache) {
-        return parentInlineAccess.foundSharedDirectAccess.contains(cache);
-    }
-
-    private static final class ParentInlineData {
-
-        final Set<CacheExpression> foundSharedParentAccess = new LinkedHashSet<>();
-        final Set<CacheExpression> foundSharedDirectAccess = new LinkedHashSet<>();
-
-    }
-
-    private ParentInlineData computeParentInlineAccess() {
-        ParentInlineData data = new ParentInlineData();
-        for (NodeData n : this.sharingNodes) {
-            for (SpecializationData specialization : n.getReachableSpecializations()) {
-                // shared caches are not supported with multiple instances at the moment
-                boolean parentInlinedAccess = useParentInlinedAccess(specialization);
-                for (CacheExpression cache : specialization.getCaches()) {
-                    if (sharedCaches.containsKey(cache) && cache.getInlinedNode() != null) {
-                        if (parentInlinedAccess) {
-                            data.foundSharedParentAccess.add(cache);
-                        } else {
-                            data.foundSharedDirectAccess.add(lookupSharedCacheKey(cache));
-                        }
-                    }
-                }
-            }
-        }
-        return data;
-    }
-
-    /**
-     * This is needed if a specialization contains both shared and non-shared inlined elements and
-     * at the same time requires a specialization class. So in order to pass in a single node into
-     * the specialization to access inlined nodes, the shared inlined nodes must use a special field
-     * with a configured parent class.
-     */
-    private static boolean useParentInlinedAccess(SpecializationData specialization) {
-        if (!useSpecializationClass(specialization)) {
-            return false;
-        }
-        boolean hasSharedInlined = false;
-        boolean hasSpecializationClassInlined = false;
-        for (CacheExpression cache : specialization.getCaches()) {
-            if (cache.getInlinedNode() != null) {
-                if (canCacheBeStoredInSpecialializationClass(cache)) {
-                    hasSpecializationClassInlined = true;
-                } else if (cache.getSharedGroup() != null) {
-                    hasSharedInlined = true;
-                }
-            }
-            if (hasSharedInlined && hasSpecializationClassInlined) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static boolean isLayoutBenefittingFromNeverDefault(SpecializationData specialization) {
         if (specialization.hasMultipleInstances()) {
             return false;
@@ -598,7 +527,7 @@ public class FlatNodeGenFactory {
                 if (cache.isEncodedEnum()) {
                     continue;
                 }
-                if (!canCacheBeStoredInSpecialializationClass(cache)) {
+                if (!canCacheBeStoredInSpecializationClass(specialization, cache)) {
                     continue;
                 }
                 if (!cache.isNeverDefault()) {
@@ -634,7 +563,7 @@ public class FlatNodeGenFactory {
         int fieldsSize = 0;
         int stateBits = 0;
         for (CacheExpression cache : specialization.getCaches()) {
-            if (!canCacheBeStoredInSpecialializationClass(cache)) {
+            if (!canCacheBeStoredInSpecializationClass(specialization, cache)) {
                 continue;
             }
             if (cache.getInlinedNode() != null) {
@@ -681,12 +610,29 @@ public class FlatNodeGenFactory {
 
     }
 
-    static boolean canCacheBeStoredInSpecialializationClass(CacheExpression cache) {
+    public static boolean canCacheBeStoredInSpecializationClass(SpecializationData specialization, CacheExpression cache) {
         if (cache.isBind()) {
             return false;
         } else if (cache.isAlwaysInitialized()) {
             return false;
-        } else if (cache.getSharedGroup() != null) {
+        } else if (specialization != null && !specialization.hasMultipleInstances() && cache.getInlinedNode() != null && (!specialization.isNodeBound() || !specialization.isStatic())) {
+            for (CacheExpression otherCache : specialization.getCaches()) {
+                if (otherCache.getDisabledSharingGroup() != null) {
+                    /*
+                     * If either node is not bound or the specialization is not static, then this
+                     * likely means that the specialization uses "this" as an inline context, so we
+                     * need to be conservative with introducing a specialization class as a result
+                     * of the disabled specialization, as this would break existing implementations.
+                     *
+                     * This case is hopefully rare and in future version of the DSL strongly
+                     * enforced to no longer be the case.
+                     */
+                    return false;
+                }
+            }
+            // fall-through to other checks intended
+        }
+        if (cache.getSharedGroup() != null) {
             return false;
         } else if (cache.isEagerInitialize()) {
             return false;
@@ -922,10 +868,6 @@ public class FlatNodeGenFactory {
                         continue;
                     }
 
-                    if (!hasSharedCacheDirectAccess(cache)) {
-                        continue;
-                    }
-
                     inlined.addOptional(createCacheInlinedField(builder, null, null, cache));
                 }
             }
@@ -943,7 +885,7 @@ public class FlatNodeGenFactory {
                         continue;
                     }
 
-                    if (sharedCaches.containsKey(cache) && !hasCacheParentAccess(cache)) {
+                    if (sharedCaches.containsKey(cache)) {
                         // already generated
                         continue;
                     }
@@ -1082,7 +1024,6 @@ public class FlatNodeGenFactory {
         final Parameter parameter = cache.getParameter();
         final String fieldName = createLocalCachedInlinedName(specialization, cache);
 
-        // for state access we need use the shared cache
         boolean needsInlineTarget = needsInlineTarget(specialization, cache);
 
         CodeTreeBuilder b = init.create();
@@ -1141,7 +1082,7 @@ public class FlatNodeGenFactory {
                 }
             } else {
                 String inlinedFieldName = createCachedInlinedFieldName(specialization, cache, field);
-                if (specialization != null && useSpecializationClass(specialization) && cache.getSharedGroup() == null) {
+                if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecializationClass(specialization, cache)) {
                     CodeTypeElement specializationDataClass = specializationClasses.get(specialization);
                     CodeTreeBuilder helper = b.create();
 
@@ -1207,8 +1148,8 @@ public class FlatNodeGenFactory {
      * initializing it in the generated Inlined class constructor.
      */
     private boolean needsInlineTarget(SpecializationData specialization, CacheExpression cache) {
-        if (cache.getSharedGroup() != null) {
-            // shared cache -> never in data class
+        if (!canCacheBeStoredInSpecializationClass(specialization, cache)) {
+            // never in data class
             return true;
         }
         for (InlineFieldData field : cache.getInlinedNode().getFields()) {
@@ -1225,12 +1166,7 @@ public class FlatNodeGenFactory {
     }
 
     private String createLocalCachedInlinedName(SpecializationData specialization, CacheExpression cache) {
-        String sharedName = sharedCaches.get(cache);
-        if (sharedName != null && specialization != null && hasCacheParentAccess(cache)) {
-            return specialization.getId().toLowerCase() + "_" + sharedName + "_";
-        } else {
-            return createFieldName(specialization, cache);
-        }
+        return createFieldName(specialization, cache);
     }
 
     private String createCachedInlinedFieldName(SpecializationData specialization, CacheExpression cache, InlineFieldData field) {
@@ -1774,7 +1710,7 @@ public class FlatNodeGenFactory {
                     continue;
                 }
                 expressions.add(fieldName);
-                createCachedFieldsImpl(nodeElements, nodeElements, null, null, cache, true);
+                createCachedFieldsImpl(nodeElements, nodeElements, null, null, cache);
             }
         }
 
@@ -1785,11 +1721,11 @@ public class FlatNodeGenFactory {
             List<Element> specializationClassElements = useSpecializationClass ? new ArrayList<>() : nodeElements;
             for (CacheExpression cache : specialization.getCaches()) {
                 boolean shared = sharedCaches.containsKey(cache);
-                if (shared && !hasCacheParentAccess(cache)) {
+                if (shared) {
                     continue;
                 }
                 createCachedFieldsImpl(nodeElements, specializationClassElements,
-                                specialization, specializationState, cache, !shared);
+                                specialization, specializationState, cache);
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
@@ -2044,8 +1980,7 @@ public class FlatNodeGenFactory {
                     List<Element> specializationClassElements,
                     SpecializationData specialization,
                     MultiStateBitSet specializationState,
-                    CacheExpression cache,
-                    boolean generateInlinedFields) {
+                    CacheExpression cache) {
         if (cache.isAlwaysInitialized()) {
             return;
         } else if (cache.isEncodedEnum()) {
@@ -2053,12 +1988,6 @@ public class FlatNodeGenFactory {
         }
         CacheExpression sharedCache = lookupSharedCacheKey(cache);
         InlinedNodeData inline = sharedCache.getInlinedNode();
-        /*
-         * Handles corner case where we try to avoid generating shared cached fields if we are
-         * always using parent access cache for a shared cache.
-         */
-        boolean generateCachedFields = specialization != null || !hasCacheParentAccess(cache) || hasSharedCacheDirectAccess(lookupSharedCacheKey(cache));
-
         if (inline != null) {
             Parameter parameter = cache.getParameter();
             String fieldName = createStaticInlinedCacheName(specialization, cache);
@@ -2073,17 +2002,14 @@ public class FlatNodeGenFactory {
             for (InlineFieldData field : inline.getFields()) {
                 builder.startGroup();
                 if (field.isState()) {
-                    if (generateCachedFields) {
-                        BitSet specializationBitSet = findInlinedState(specializationState, field);
-                        CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
-                        BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
-                        String updaterFieldName = updaterField.getName();
-                        builder.startCall(updaterFieldName, "subUpdater");
-                        builder.string(String.valueOf(range.offset));
-                        builder.string(String.valueOf(range.length));
-                        builder.end();
-
-                    }
+                    BitSet specializationBitSet = findInlinedState(specializationState, field);
+                    CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
+                    BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
+                    String updaterFieldName = updaterField.getName();
+                    builder.startCall(updaterFieldName, "subUpdater");
+                    builder.string(String.valueOf(range.offset));
+                    builder.string(String.valueOf(range.length));
+                    builder.end();
                 } else {
                     /*
                      * All other fields need fields to get inlined. We do not support specialization
@@ -2093,36 +2019,34 @@ public class FlatNodeGenFactory {
 
                     TypeMirror type = field.getType();
 
-                    if (generateInlinedFields) {
-                        CodeVariableElement inlinedCacheField;
-                        if (isAssignable(type, types().Node)) {
-                            inlinedCacheField = createNodeField(Modifier.PRIVATE, types.Node, inlinedFieldName, types().Node_Child);
-                        } else if (isAssignable(type, types().NodeInterface)) {
-                            inlinedCacheField = createNodeField(Modifier.PRIVATE, types.NodeInterface, inlinedFieldName, types().Node_Child);
-                        } else if (isNodeArray(type)) {
-                            inlinedCacheField = createNodeField(Modifier.PRIVATE, new ArrayCodeTypeMirror(types.Node), inlinedFieldName, types().Node_Children);
-                        } else {
-                            inlinedCacheField = createNodeField(Modifier.PRIVATE, type, inlinedFieldName, null);
-                            addCompilationFinalAnnotation(inlinedCacheField, field.getDimensions());
-                        }
-                        if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
-                            specializationClassElements.add(inlinedCacheField);
-                        } else {
-                            nodeElements.add(inlinedCacheField);
-                        }
-                        GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
-
-                        CodeTreeBuilder javadoc = inlinedCacheField.createDocBuilder();
-                        javadoc.startJavadoc();
-                        addSourceDoc(javadoc, specialization, cache, field);
-                        javadoc.end();
-
-                        // never directly used, so will produce a warning.
-                        GeneratorUtils.mergeSuppressWarnings(inlinedCacheField, "unused");
+                    CodeVariableElement inlinedCacheField;
+                    if (isAssignable(type, types().Node)) {
+                        inlinedCacheField = createNodeField(Modifier.PRIVATE, types.Node, inlinedFieldName, types().Node_Child);
+                    } else if (isAssignable(type, types().NodeInterface)) {
+                        inlinedCacheField = createNodeField(Modifier.PRIVATE, types.NodeInterface, inlinedFieldName, types().Node_Child);
+                    } else if (isNodeArray(type)) {
+                        inlinedCacheField = createNodeField(Modifier.PRIVATE, new ArrayCodeTypeMirror(types.Node), inlinedFieldName, types().Node_Children);
+                    } else {
+                        inlinedCacheField = createNodeField(Modifier.PRIVATE, type, inlinedFieldName, null);
+                        addCompilationFinalAnnotation(inlinedCacheField, field.getDimensions());
                     }
+                    if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecializationClass(specialization, cache)) {
+                        specializationClassElements.add(inlinedCacheField);
+                    } else {
+                        nodeElements.add(inlinedCacheField);
+                    }
+                    GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
+
+                    CodeTreeBuilder javadoc = inlinedCacheField.createDocBuilder();
+                    javadoc.startJavadoc();
+                    addSourceDoc(javadoc, specialization, cache, field);
+                    javadoc.end();
+
+                    // never directly used, so will produce a warning.
+                    GeneratorUtils.mergeSuppressWarnings(inlinedCacheField, "unused");
 
                     builder.startStaticCall(field.getFieldType(), "create");
-                    if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
+                    if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecializationClass(specialization, cache)) {
                         builder.tree(createLookupNodeType(createSpecializationClassReferenceType(specialization), specializationClassElements));
                     } else {
                         builder.startStaticCall(context.getType(MethodHandles.class), "lookup").end();
@@ -2147,9 +2071,7 @@ public class FlatNodeGenFactory {
             addSourceDoc(javadoc, specialization, cache, null);
             javadoc.end();
 
-            if (generateCachedFields) {
-                nodeConstants.updaterReferences.putIfAbsent(fieldName, cachedField);
-            }
+            nodeConstants.updaterReferences.putIfAbsent(fieldName, cachedField);
         } else {
             Parameter parameter = cache.getParameter();
             String fieldName = createFieldName(specialization, cache);
@@ -2325,7 +2247,7 @@ public class FlatNodeGenFactory {
                  */
                 return true;
             }
-            if (!canCacheBeStoredInSpecialializationClass(cache)) {
+            if (!canCacheBeStoredInSpecializationClass(specialization, cache)) {
                 continue;
             }
             TypeMirror type = cache.getParameter().getType();
@@ -4582,7 +4504,7 @@ public class FlatNodeGenFactory {
             if (useSpecializationClass) {
                 outer: for (GuardExpression guard : specialization.getGuards()) {
                     for (CacheExpression cache : specialization.getBoundCaches(guard.getExpression(), true)) {
-                        if (canCacheBeStoredInSpecialializationClass(cache)) {
+                        if (canCacheBeStoredInSpecializationClass(specialization, cache)) {
                             cachedTriples.add(new IfTriple(loadSpecializationClass(frameState, specialization, false), null, null));
                             break outer;
                         }
@@ -6999,18 +6921,16 @@ public class FlatNodeGenFactory {
         if (!specializationClassIsNode(specialization)) {
             return false;
         }
-        if (useParentInlinedAccess(specialization)) {
-            // we always need to pass the target node if that happens.
-            return true;
-        } else if (hasSharedInlinedCache(specialization)) {
+        if (hasSharedInlinedCache(specialization)) {
             return false;
         }
         if (specialization.hasMultipleInstances()) {
             return true;
         }
 
+        // inlined node stored in a specialization data class
         for (CacheExpression cache : specialization.getCaches()) {
-            if (cache.getSharedGroup() == null && cache.getInlinedNode() != null) {
+            if (cache.getInlinedNode() != null && canCacheBeStoredInSpecializationClass(specialization, cache)) {
                 return true;
             }
         }
@@ -7018,14 +6938,12 @@ public class FlatNodeGenFactory {
     }
 
     private static boolean hasSharedInlinedCache(SpecializationData specialization) {
-        boolean hasSharedInlined = false;
         for (CacheExpression cache : specialization.getCaches()) {
-            if (cache.getInlinedNode() != null && !canCacheBeStoredInSpecialializationClass(cache) && cache.getSharedGroup() != null) {
-                hasSharedInlined = true;
-                break;
+            if (cache.getInlinedNode() != null && !canCacheBeStoredInSpecializationClass(specialization, cache) && cache.getSharedGroup() != null) {
+                return true;
             }
         }
-        return hasSharedInlined;
+        return false;
     }
 
     private CodeTree createSpecializationFieldAccess(FrameState frameState, SpecializationData specialization, boolean useSpecializationClass, boolean useSpecializationClassLocal, String fieldName,

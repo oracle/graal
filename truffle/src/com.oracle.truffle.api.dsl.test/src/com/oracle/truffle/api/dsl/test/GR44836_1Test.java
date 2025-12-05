@@ -113,6 +113,7 @@ public class GR44836_1Test {
                         // we need an inlined inner node that is not shared
                         @Cached InnerInlinedNode errorProfile,
                         // we need an inlined inner node that is shared
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached OuterOuterInlinedNode node) {
             innerCached0.execute();
             innerCached1.execute();
@@ -155,6 +156,7 @@ public class GR44836_1Test {
                         // we need an inlined inner node that is not shared
                         @Cached InnerInlinedNode errorProfile,
                         // we need an inlined inner node that is shared
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached OuterInlinedNode node) {
             innerCached0.execute();
             innerCached1.execute();
@@ -197,6 +199,7 @@ public class GR44836_1Test {
                         // we need an inlined inner node that is not shared
                         @Exclusive @Cached InnerInlinedNode errorProfile,
                         // we need an inlined inner node that is shared
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InlinableNode node) {
             innerCached0.execute();
             innerCached1.execute();
@@ -235,6 +238,7 @@ public class GR44836_1Test {
                         // we need an inlined inner node that is not shared
                         @Exclusive @Cached InnerInlinedNode errorProfile,
                         // we need an inlined inner node that is shared
+                        @ExpectError("Combining @Shared and @Exclusive for inlined caches within one @Specialization is not supported.%")//
                         @Shared @Cached InnerInlinedNode raiseNode) {
             innerCached0.execute();
             innerCached1.execute();
