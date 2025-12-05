@@ -110,8 +110,8 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     public void testThread() throws InteropException {
         TruffleObject threadClass = (TruffleObject) env.lookupHostSymbol("java.lang.Thread");
         Object result = INTEROP.instantiate(threadClass, new TestExecutable());
-        assertTrue(env.isHostObject(result));
-        Object thread = env.asHostObject(result);
+        assertTrue(INTEROP.isHostObject(result));
+        Object thread = INTEROP.asHostObject(result);
         assertTrue(thread instanceof Thread);
     }
 

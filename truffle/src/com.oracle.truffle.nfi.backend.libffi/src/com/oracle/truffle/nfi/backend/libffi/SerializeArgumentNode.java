@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -628,17 +629,20 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
-        final boolean isHostObject(Object value) {
-            return LibFFIContext.get(this).env.isHostObject(value);
+        final Object asHostObject(Object value, InteropLibrary interop) throws UnsupportedTypeException {
+            try {
+                return interop.asHostObject(value);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            } catch (HeapIsolationException e) {
+                throw UnsupportedTypeException.create(new Object[]{value});
+            }
         }
 
-        final Object asHostObject(Object value) {
-            return LibFFIContext.get(this).env.asHostObject(value);
-        }
-
-        @Specialization(guards = {"isHostObject(value)", "tag != null"})
+        @Specialization(guards = {"interop.isHostObject(value)", "tag != null"}, limit = "3")
         void doHostObject(@SuppressWarnings("unused") Object value, NativeArgumentBuffer buffer,
-                        @Bind("asHostObject(value)") Object hostObject,
+                        @CachedLibrary("value") InteropLibrary interop,
+                        @Bind("asHostObject(value, interop)") Object hostObject,
                         @Bind("getTypeTag.execute(hostObject)") TypeTag tag) {
             buffer.putObject(tag, hostObject, type.size);
         }

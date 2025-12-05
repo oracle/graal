@@ -1034,31 +1034,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
-        public abstract boolean isHostValue(Object value);
-
-        public abstract Object unboxHostObject(Object hostValue);
-
         public abstract Object unboxProxyObject(Object hostValue);
-
-        public abstract Throwable unboxHostException(Throwable hostValue);
 
         public abstract Object toHostObject(Object context, Object value);
 
         public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
 
-        public abstract boolean isHostException(Object exception);
-
-        public abstract boolean isHostFunction(Object obj);
-
-        public abstract boolean isHostObject(Object obj);
-
-        public abstract boolean isHostSymbol(Object obj);
-
         public abstract Object createHostAdapter(Object hostContextObject, Object[] types, Object classOverrides);
 
         public abstract boolean isHostProxy(Object value);
-
-        public abstract Error toHostResourceError(Throwable hostException);
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
@@ -1152,6 +1136,12 @@ public abstract class AbstractPolyglotImpl {
         public abstract void putMember(Object context, Object receiver, String key, Object member);
 
         public abstract boolean removeMember(Object context, Object receiver, String key);
+
+        public boolean hasStaticScope(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract Object getStaticScope(Object context, Object receiver);
 
         public boolean canExecute(Object context, Object receiver) {
             return false;
