@@ -60,6 +60,9 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
     @Override
     public double getBranchTakenProbability(int bci) {
         double recordedProbability = methodProfile.getBranchTakenProbability(bci);
+        if (recordedProbability == -1D) {
+            return -1D;
+        }
 
         assert !Double.isNaN(recordedProbability) && !Double.isInfinite(recordedProbability) : Assertions.errorMessage("Invalid recorded branch probability", recordedProbability,
                         methodProfile.getMethod(), MethodProfile.TestingBackdoor.profilesAtBCI(methodProfile, bci));
