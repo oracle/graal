@@ -258,9 +258,9 @@ class WasmGCConversion extends Conversion {
         switch (tpe) {
             case "boolean":
                 // Due to Java booleans being numbers, the double-negation is necessary.
-                return !!this.#unwrapExtern(getExport("convert.coerce.boolean")(o));
+                return !!getExport("convert.coerce.boolean")(o);
             case "number":
-                return this.#unwrapExtern(getExport("convert.coerce.number")(o));
+                return getExport("convert.coerce.number")(o);
             case "bigint":
                 const bs = this.#unwrapExtern(getExport("convert.coerce.bigint")(o));
                 return BigInt(bs);
