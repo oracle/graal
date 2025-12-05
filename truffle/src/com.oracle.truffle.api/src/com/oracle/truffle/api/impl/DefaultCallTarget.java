@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
  * {@link RootNode#getCallTarget()} to get the {@link RootCallTarget} of a root node.
  */
-public final class DefaultCallTarget implements RootCallTarget {
+final class DefaultCallTarget implements RootCallTarget {
 
     public static final String CALL_BOUNDARY_METHOD = "call";
     private final RootNode rootNode;
@@ -78,6 +78,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         return rootNode.toString();
     }
 
+    @Override
     public RootNode getRootNode() {
         return rootNode;
     }
