@@ -56,6 +56,8 @@ public final class StackEffects {
     private static final byte POP_1 = -1;
     private static final byte POP_2 = -2;
     private static final byte POP_3 = -3;
+    private static final byte POP_4 = -4;
+    private static final byte POP_5 = -5;
     private static final byte UNREACHABLE = Byte.MIN_VALUE;
 
     @CompilationFinal(dimensions = 1) private static final byte[] aggregateOpStackEffects = new byte[256];
@@ -70,6 +72,21 @@ public final class StackEffects {
         aggregateOpStackEffects[Bytecode.STRUCT_GET_S] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.STRUCT_GET_U] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.STRUCT_SET] = POP_2;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_DEFAULT] = NO_EFFECT;
+        // unused, because stack effect is variable
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_FIXED] = UNREACHABLE;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_DATA] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_NEW_ELEM] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET_S] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_GET_U] = POP_1;
+        aggregateOpStackEffects[Bytecode.ARRAY_SET] = POP_3;
+        aggregateOpStackEffects[Bytecode.ARRAY_LEN] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.ARRAY_FILL] = POP_4;
+        aggregateOpStackEffects[Bytecode.ARRAY_COPY] = POP_5;
+        aggregateOpStackEffects[Bytecode.ARRAY_INIT_DATA] = POP_4;
+        aggregateOpStackEffects[Bytecode.ARRAY_INIT_ELEM] = POP_4;
         aggregateOpStackEffects[Bytecode.REF_TEST_NON_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_TEST_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_CAST_NON_NULL] = NO_EFFECT;

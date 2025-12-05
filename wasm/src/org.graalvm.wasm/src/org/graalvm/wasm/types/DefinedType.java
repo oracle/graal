@@ -43,7 +43,7 @@ package org.graalvm.wasm.types;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.WasmHeapObject;
+import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.struct.WasmStructAccess;
 
 import java.util.Objects;
@@ -115,6 +115,11 @@ public final class DefinedType implements HeapType {
         return recursiveTypes.subTypes()[subTypeIndex].compositeType();
     }
 
+    public ArrayType asArrayType() {
+        assert isArrayType();
+        return (ArrayType) expand();
+    }
+
     public StructType asStructType() {
         assert isStructType();
         return (StructType) expand();
@@ -167,7 +172,7 @@ public final class DefinedType implements HeapType {
 
     @Override
     public boolean matchesValue(Object value) {
-        return value instanceof WasmHeapObject heapValue && heapValue.type().isSubtypeOf(this);
+        return value instanceof WasmTypedHeapObject heapValue && heapValue.type().isSubtypeOf(this);
     }
 
     @Override

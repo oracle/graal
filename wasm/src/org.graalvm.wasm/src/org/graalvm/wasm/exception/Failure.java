@@ -113,10 +113,16 @@ public enum Failure {
     INVALID_FIELD_INDEX(Type.INVALID, "invalid field index"),
     INVALID_STRUCT_GETTER_SIGNEDNESS(Type.INVALID, "struct.get_s and struct.get_u must be used for fields of packed types"),
     FIELD_IS_IMMUTABLE(Type.INVALID, "field is immutable"),
+    TOO_MANY_STRUCT_FIELDS(Type.INVALID, "too many struct fields"),
+    ARRAY_TYPE_IS_NOT_NUMERIC_OR_VECTOR(Type.INVALID, "array type is not numeric or vector"),
+    INVALID_ARRAY_GETTER_SIGNEDNESS(Type.INVALID, "array.get_s and array.get_u must be used for arrays of packed types"),
+    ARRAY_IS_IMMUTABLE(Type.INVALID, "array is immutable"),
+    ARRAY_TYPES_DO_NOT_MATCH(Type.INVALID, "array types do not match"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
+    SUB_TYPE_DEPTH_LIMIT_EXCEEDED(Type.INVALID, "sub type depth exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
     TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
     MEMORY_COUNT_LIMIT_EXCEEDED(Type.INVALID, "memory count exceeds limit"),
@@ -129,6 +135,7 @@ public enum Failure {
     PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
     RESULT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "result values count exceeds limit"),
     TAG_COUNT_LIMIT_EXCEEDED(Type.INVALID, "tag count exceeds limit"),
+    ARRAY_NEW_FIXED_LIMIT_EXCEEDED(Type.INVALID, "array.new_fixed length exceeds limit"),
 
     // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
@@ -156,7 +163,9 @@ public enum Failure {
     NULL_REFERENCE(Type.TRAP, "null reference"),
     NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
     NULL_STRUCTURE_REFERENCE(Type.TRAP, "null structure reference"),
+    NULL_ARRAY_REFERENCE(Type.TRAP, "null array reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
+    OUT_OF_BOUNDS_ARRAY_ACCESS(Type.TRAP, "out of bounds array access"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),

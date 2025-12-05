@@ -308,7 +308,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Invalid constant expression for table elem expression:"));
+                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Expected result types [funcref], but got [i32]"));
             }
         });
     }
