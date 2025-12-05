@@ -394,7 +394,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public HostedManagement(HostedImageLayerBuildingSupport support, AnnotationExtractor extractor) {
             this.configObjects = new ConcurrentHashMap<>();
             this.singletonToTraitMap = new ConcurrentIdentityHashMap<>();
-            forbiddenInstallationKinds = EnumSet.of(SingletonLayeredInstallationKind.InstallationKind.DISALLOWED);
+            forbiddenInstallationKinds = EnumSet.noneOf(SingletonLayeredInstallationKind.InstallationKind.class);
             if (support != null) {
                 this.layeredBuild = support.buildingImageLayer;
                 this.extensionLayerBuild = support.buildingImageLayer && !support.buildingInitialLayer;
@@ -439,6 +439,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                                 throw VMError.shouldNotReachHere("Singleton with installation kind %s can no longer be added: %s", kind, value);
                             }
                         }
+                    });
+                    traitMap.getTrait(SingletonTraitKind.DISALLOWED).ifPresent(_ -> {
+                        throw VMError.shouldNotReachHere("Singleton with %s trait should never be added to a layered build", SingletonTraitKind.DISALLOWED);
                     });
                 }
                 /*

@@ -38,11 +38,6 @@ import com.oracle.svm.core.util.VMError;
 public record SingletonLayeredInstallationKind(InstallationKind kind, Object metadata) {
     public enum InstallationKind {
         /**
-         * This singleton cannot be installed in a layered build.
-         */
-        DISALLOWED(EmptyMetadata.class),
-
-        /**
          * A different version of this singleton can be installed in each layer. If a given layer X
          * generates compiled code referring to an independent singleton with key K, then it will
          * refer to the singleton installed in the layer X and the singleton will be installed in
@@ -118,16 +113,6 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
     public static InstallationKind getInstallationKind(SingletonTrait trait) {
         VMError.guarantee(trait.kind() == SingletonTraitKind.LAYERED_INSTALLATION_KIND);
         return ((SingletonLayeredInstallationKind) trait.metadata()).kind;
-    }
-
-    static final SingletonTrait DISALLOWED_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
-                    new SingletonLayeredInstallationKind(InstallationKind.DISALLOWED, EmptyMetadata.EMPTY));
-
-    public static final class Disallowed extends SingletonLayeredInstallationKindSupplier {
-        @Override
-        public SingletonTrait getLayeredInstallationKindTrait() {
-            return DISALLOWED_TRAIT;
-        }
     }
 
     static final SingletonTrait INDEPENDENT_TRAIT = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,

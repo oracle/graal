@@ -33,14 +33,15 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import org.graalvm.word.impl.Word;
 
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 @AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
 class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 

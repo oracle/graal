@@ -62,9 +62,9 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
@@ -78,7 +78,7 @@ import jdk.graal.compiler.options.OptionStability;
  * reachability metadata, and then the run-time option {@link Options#TraceMetadata} enables
  * tracing.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 public final class MetadataTracer {
 
     public static class Options {

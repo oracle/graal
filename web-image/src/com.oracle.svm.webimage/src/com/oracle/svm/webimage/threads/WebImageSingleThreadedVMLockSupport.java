@@ -34,8 +34,9 @@ import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -44,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
  * environments. No real locking is necessary.
  */
 @AutomaticallyRegisteredImageSingleton(VMLockSupport.class)
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 final class WebImageSingleThreadedVMLockSupport extends VMLockSupport {
     @Override
     protected VMMutex replaceVMMutex(VMMutex source) {

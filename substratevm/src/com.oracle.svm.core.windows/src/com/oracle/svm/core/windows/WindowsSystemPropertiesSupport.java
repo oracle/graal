@@ -47,8 +47,9 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
@@ -62,7 +63,7 @@ import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import org.graalvm.word.impl.Word;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /* Null-terminated wide-character string constants. */
@@ -401,7 +402,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override

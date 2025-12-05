@@ -136,4 +136,13 @@ public class BuiltinTraits {
             return PARTIALLY_LAYER_AWARE;
         }
     }
+
+    public static final SingletonTrait DISALLOWED_TRAIT = new SingletonTrait(SingletonTraitKind.DISALLOWED, EmptyMetadata.EMPTY);
+
+    public static final class Disallowed extends SingletonTraitsSupplier {
+        @Override
+        public SingletonTrait getTrait() {
+            return DISALLOWED_TRAIT;
+        }
+    }
 }

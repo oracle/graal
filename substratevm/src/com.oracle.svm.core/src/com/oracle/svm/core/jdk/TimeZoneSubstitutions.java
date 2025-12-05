@@ -51,9 +51,9 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
@@ -121,7 +121,7 @@ final class Target_java_util_TimeZone {
 /**
  * Holds time zone mapping data.
  */
-@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 final class TimeZoneSupport {
     final byte[] tzMappingsContent;
 

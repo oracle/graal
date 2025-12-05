@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -45,12 +45,13 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import org.graalvm.word.impl.Word;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
@@ -138,7 +139,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     }
 }
 
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 @AutomaticallyRegisteredFeature
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override

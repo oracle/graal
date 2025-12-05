@@ -37,8 +37,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
@@ -46,7 +47,7 @@ import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.riscv64.RISCV64;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 public class RISCV64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)

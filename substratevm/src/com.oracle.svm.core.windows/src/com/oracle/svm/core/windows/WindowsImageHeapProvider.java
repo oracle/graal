@@ -49,8 +49,9 @@ import com.oracle.svm.core.os.AbstractCopyingImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.Disallowed;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
-import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -65,7 +66,7 @@ import org.graalvm.word.impl.Word;
  * An image heap provider for Windows that creates image heaps that are copy-on-write clones of the
  * loaded image heap.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Disallowed.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class, other = Disallowed.class)
 public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")

@@ -85,7 +85,12 @@ public enum SingletonTraitKind {
     /**
      * Used as a marker to indicate the singleton is not yet fully compatible with layered images.
      */
-    PARTIALLY_LAYER_AWARE(EmptyMetadata.class);
+    PARTIALLY_LAYER_AWARE(EmptyMetadata.class),
+
+    /**
+     * Used as a marker to indicate the singleton is not allowed to be used with layered images.
+     */
+    DISALLOWED(EmptyMetadata.class);
 
     private final Class<?> metadataClass;
 
@@ -104,7 +109,7 @@ public enum SingletonTraitKind {
     public boolean isInConfiguration(boolean layeredBuild) {
         return switch (this) {
             case ACCESS -> true;
-            case LAYERED_CALLBACKS, DUPLICABLE, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE -> layeredBuild;
+            case LAYERED_CALLBACKS, DUPLICABLE, LAYERED_INSTALLATION_KIND, PARTIALLY_LAYER_AWARE, DISALLOWED -> layeredBuild;
         };
     }
 
