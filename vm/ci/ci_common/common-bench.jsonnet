@@ -227,32 +227,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       notify_groups +: ['espresso'],
     }
   ] + [
-    # TruffleRuby polybench jobs
-    self.polybench_vm_gate('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ],
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'ruby:gate']),
-      ],
-      notify_groups +: ['ruby'],
-    },
-    self.polybench_vm_daily('linux', 'amd64', 'ruby') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ],
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'ruby:benchmark']),
-      ],
-      notify_groups +: ['ruby'],
-    }
-  ] + [
     # GraalPy polybench jobs
     self.polybench_vm_gate('linux', 'amd64', 'python') + {
       setup+: [
@@ -343,29 +317,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ] + $.build_polybenchmarks,
       run+: [
         self.polybench_wrap(['mx', '--dy', 'graalpython,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-python:benchmark']),
-      ],
-    },
-
-    self.polybench_vm_gate('linux', 'amd64', 'ruby', name='polybenchmarks') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ] + $.build_polybenchmarks,
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-ruby:gate']),
-      ],
-    },
-    self.polybench_vm_daily('linux', 'amd64', 'ruby', 'polybenchmarks') + common.deps.truffleruby + {
-      environment+: {
-        RUBY_BENCHMARKS: 'true',
-      },
-      setup+: [
-        ['mx', '--dy', 'truffleruby', 'build']
-      ] + $.build_polybenchmarks,
-      run+: [
-        self.polybench_wrap(['mx', '--dy', 'truffleruby,polybenchmarks', '--java-home', '${POLYBENCH_JVM}', 'polybench', '--suite', 'polybenchmarks-ruby:benchmark']),
       ],
     },
   ],
