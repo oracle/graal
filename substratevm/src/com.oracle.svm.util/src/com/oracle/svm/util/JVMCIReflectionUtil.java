@@ -422,4 +422,11 @@ public final class JVMCIReflectionUtil {
         }
         return GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field, null);
     }
+
+    /**
+     * @see ReflectionUtil#newInstance
+     */
+    public static JavaConstant newInstance(ResolvedJavaType type) {
+        return JVMCIReflectionUtilFallback.newInstance(type);
+    }
 }

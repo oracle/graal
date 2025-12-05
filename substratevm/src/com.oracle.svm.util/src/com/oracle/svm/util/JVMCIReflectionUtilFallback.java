@@ -34,6 +34,7 @@ import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
 import com.oracle.graal.vmaccess.ResolvedJavaPackage;
 
 import jdk.internal.loader.BootLoader;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -70,5 +71,9 @@ final class JVMCIReflectionUtilFallback {
 
     public static ResolvedJavaModuleLayer bootModuleLayer() {
         return new ResolvedJavaModuleLayerImpl(ModuleLayer.boot());
+    }
+
+    public static JavaConstant newInstance(ResolvedJavaType type) {
+        return GraalAccess.getOriginalSnippetReflection().forObject(ReflectionUtil.newInstance(OriginalClassProvider.getJavaClass(type)));
     }
 }
