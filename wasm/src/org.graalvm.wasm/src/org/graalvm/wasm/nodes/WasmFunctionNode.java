@@ -451,7 +451,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final int size = rawPeekU8(bytecode, offset);
                         final int counterOffset = offset + 1;
 
-                        if (CompilerDirectives.inInterpreter()) {
+                        if (HostCompilerDirectives.inInterpreterFastPath()) {
                             if (index < 0 || index >= size) {
                                 // If unsigned index is larger or equal to the table size use the
                                 // default (last) index.
@@ -493,7 +493,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         final int size = rawPeekI32(bytecode, offset);
                         final int counterOffset = offset + 4;
 
-                        if (CompilerDirectives.inInterpreter()) {
+                        if (HostCompilerDirectives.inInterpreterFastPath()) {
                             if (index < 0 || index >= size) {
                                 // If unsigned index is larger or equal to the table size use the
                                 // default (last) index.
