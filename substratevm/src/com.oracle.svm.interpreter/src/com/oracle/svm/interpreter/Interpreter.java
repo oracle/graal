@@ -291,6 +291,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -622,7 +623,7 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-            RistrettoProfileSupport.profileMethodCall(method);
+            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodCall(method);
 
             int curBCI = startBCI;
             int top = startTop;
@@ -886,12 +887,16 @@ public final class Interpreter {
                         case IFGT: // fall through
                         case IFLE:
                             if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, true);
+                                }
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             } else {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, false);
+                                }
                             }
                             break;
 
@@ -902,36 +907,48 @@ public final class Interpreter {
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
                             if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, true);
+                                }
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             } else {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, false);
+                                }
                             }
                             break;
 
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
                             if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, true);
+                                }
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             } else {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, false);
+                                }
                             }
                             break;
 
                         case IFNULL: // fall through
                         case IFNONNULL:
                             if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, true);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, true);
+                                }
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
                             } else {
-                                RistrettoProfileSupport.profileIfBranch(method, curBCI, false);
+                                if (methodProfile != null) {
+                                    methodProfile.profileBranch(curBCI, false);
+                                }
                             }
                             break;
 
