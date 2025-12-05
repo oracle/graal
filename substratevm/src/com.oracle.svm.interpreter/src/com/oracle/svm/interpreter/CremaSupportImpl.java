@@ -746,7 +746,9 @@ public class CremaSupportImpl implements CremaSupport {
         @Override
         public boolean sameRuntimePackage(InterpreterResolvedJavaType otherType) {
             // GR-62339 runtime packages
-            return false;
+            ByteSequence thisRuntimePackage = TypeSymbols.getRuntimePackage(parserKlass.getType());
+            Symbol<Name> thatRuntimePackage = otherType.getSymbolicRuntimePackage();
+            return thisRuntimePackage.equals(thatRuntimePackage);
         }
 
         @Override
