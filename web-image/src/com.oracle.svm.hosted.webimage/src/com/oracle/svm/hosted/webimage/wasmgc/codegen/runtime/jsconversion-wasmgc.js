@@ -80,15 +80,6 @@ class WasmGCConversion extends Conversion {
         return charArrayToString(proxyCharArray(getExport("string.tochars")(jlstring)));
     }
 
-    extractJavaScriptArray(jarray) {
-        const length = getExport("array.length")(jarray);
-        const jsarray = new Array(length);
-        for (let i = 0; i < length; i++) {
-            jsarray[i] = this.javaToJavaScript(getExport("array.object.read")(jarray, i));
-        }
-        return jsarray;
-    }
-
     createJavaBoolean(x) {
         return getExport("box.boolean")(x);
     }

@@ -80,17 +80,6 @@ class Conversion {
         throw new Error("Unimplemented: Conversion.extractJavaScriptString");
     }
 
-    /**
-     * Converts a Java array to a JavaScript array that contains JavaScript values
-     * that correspond to the Java values of the input array.
-     *
-     * @param jarray A Java array
-     * @returns {*} The resulting JavaScript array
-     */
-    extractJavaScriptArray(jarray) {
-        throw new Error("Unimplemented: Conversion.extractJavaScriptArray");
-    }
-
     // JavaScript-to-Java conversions (standard Java classes)
 
     /**

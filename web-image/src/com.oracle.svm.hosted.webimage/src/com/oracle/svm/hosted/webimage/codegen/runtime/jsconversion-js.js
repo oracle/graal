@@ -78,24 +78,6 @@ class JSConversion extends Conversion {
         return jlstring.toJSString();
     }
 
-    /**
-     * Converts a Java array to a JavaScript array that contains JavaScript values
-     * that correspond to the Java values of the input array.
-     *
-     * @param jarray A Java array
-     * @returns {*} The resulting JavaScript array
-     */
-    extractJavaScriptArray(jarray) {
-        const length = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["lengthOf"](jarray);
-        const jsarray = new Array(length);
-        for (let i = 0; i < length; i++) {
-            jsarray[i] = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["javaToJavaScript"](
-                jarray[i]
-            );
-        }
-        return jsarray;
-    }
-
     // JavaScript-to-Java conversions (standard Java classes)
 
     /**

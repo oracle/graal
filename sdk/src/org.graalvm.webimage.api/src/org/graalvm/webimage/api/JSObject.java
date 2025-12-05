@@ -457,7 +457,7 @@ public class JSObject extends JSValue {
      *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
-    @JS("return this.apply(this, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
+    @JS("return this.apply(this, [...args]);")
     public native Object invoke(Object... args);
 
     /**
@@ -469,7 +469,7 @@ public class JSObject extends JSValue {
      *            underlying JavaScript function
      * @return The result of the JavaScript function, converted to the corresponding Java value
      */
-    @JS("return this.apply(thisArg, conversion.extractJavaScriptArray(args[runtime.symbol.javaNative]));")
+    @JS("return this.apply(thisArg, [...args]);")
     public native Object call(Object thisArg, Object... args);
 
     @JS("return conversion.coerceToFacadeClass(this, cls);")
