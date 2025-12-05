@@ -158,15 +158,6 @@ public class WasmGCJSConversion extends JSConversion {
 
     @Override
     public void setJavaScriptNativeImpl(JSValue self, Object jsNative) {
-        if (jsNative.getClass().isArray()) {
-            /*
-             * TODO GR-60603 Deal with coercion rules for arrays. The JS backend and the existing
-             * conversion code assumes that Java arrays are also JS objects, which they're not in
-             * WasmGC.
-             */
-            throw VMError.unsupportedFeature("Cannot coerce arrays: " + jsNative.getClass().getTypeName());
-        }
-
         assert jsNative instanceof WasmExtern : "Tried to store non-JS value in " + self.getClass() + ": " + jsNative.getClass();
         setJSNative0(SET_JS_NATIVE, self, (WasmExtern) jsNative);
     }

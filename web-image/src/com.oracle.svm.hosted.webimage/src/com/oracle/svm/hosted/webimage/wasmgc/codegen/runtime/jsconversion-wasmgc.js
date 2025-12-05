@@ -276,6 +276,82 @@ class WasmGCConversion extends Conversion {
                 this.throwClassCastException(o, tpe);
         }
     }
+
+    getArrayLength(javaArray) {
+        return getExport("array.length")(javaArray);
+    }
+
+    loadBooleanArrayElement(javaArray, idx) {
+        return !!getExport("array.boolean.read")(javaArray, idx);
+    }
+
+    loadByteArrayElement(javaArray, idx) {
+        return getExport("array.byte.read")(javaArray, idx);
+    }
+
+    loadShortArrayElement(javaArray, idx) {
+        return getExport("array.short.read")(javaArray, idx);
+    }
+
+    loadCharArrayElement(javaArray, idx) {
+        return getExport("array.char.read")(javaArray, idx);
+    }
+
+    loadIntArrayElement(javaArray, idx) {
+        return getExport("array.int.read")(javaArray, idx);
+    }
+
+    loadFloatArrayElement(javaArray, idx) {
+        return getExport("array.float.read")(javaArray, idx);
+    }
+
+    loadLongArrayElement(javaArray, idx) {
+        return getExport("array.long.read")(javaArray, idx);
+    }
+
+    loadDoubleArrayElement(javaArray, idx) {
+        return getExport("array.double.read")(javaArray, idx);
+    }
+
+    loadObjectArrayElement(javaArray, idx) {
+        return getExport("array.object.read")(javaArray, idx);
+    }
+
+    storeBooleanArrayElement(javaArray, idx, jsBoolean) {
+        getExport("array.boolean.write")(javaArray, idx, jsBoolean ? 1 : 0);
+    }
+
+    storeByteArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.byte.write")(javaArray, idx, jsNumber);
+    }
+
+    storeShortArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.short.write")(javaArray, idx, jsNumber);
+    }
+
+    storeCharArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.char.write")(javaArray, idx, jsNumber);
+    }
+
+    storeIntArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.int.write")(javaArray, idx, jsNumber);
+    }
+
+    storeFloatArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.float.write")(javaArray, idx, jsNumber);
+    }
+
+    storeLongArrayElement(javaArray, idx, jsBigInt) {
+        getExport("array.long.write")(javaArray, idx, jsBigInt);
+    }
+
+    storeDoubleArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.double.write")(javaArray, idx, jsNumber);
+    }
+
+    storeObjectArrayElement(javaArray, idx, javaObjectValue) {
+        getExport("array.object.write")(javaArray, idx, javaObjectValue);
+    }
 }
 
 const METADATA_PREFIX = "META.";

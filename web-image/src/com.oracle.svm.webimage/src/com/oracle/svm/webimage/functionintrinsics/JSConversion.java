@@ -28,6 +28,7 @@ package com.oracle.svm.webimage.functionintrinsics;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.math.BigInteger;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -233,6 +234,10 @@ public abstract class JSConversion {
     public abstract void setJavaScriptNativeImpl(JSValue self, Object jsNative);
 
     public static void setJavaScriptNative(JSValue self, Object jsNative) {
+        if (jsNative == null || JSFunctionIntrinsics.isUndefined(jsNative)) {
+            throw VMError.shouldNotReachHere("null and undefined cannot be used as the jsNative value for " + self.getClass());
+        }
+        Objects.requireNonNull(jsNative, "Cannot use null as jsNative value");
         instance().setJavaScriptNativeImpl(self, jsNative);
     }
 
