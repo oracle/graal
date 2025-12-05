@@ -286,7 +286,7 @@ public final class JNIObjectHandles {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void scanGlobalHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
-        JNIGlobalHandles.scanAllHandleBuckets(callback);
+        JNIGlobalHandles.scanStrongHandleBuckets(callback);
     }
 }
 
@@ -390,32 +390,25 @@ final class JNIGlobalHandles {
     }
 
     static <T> T getObject(JNIObjectHandle handle) {
-        SignedWord handleValue = (Word) handle;
-        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) &&
-                        handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
+        if (!isInRange(handle)) {
+            throw new IllegalArgumentException("Invalid handle");
+        }
+        SignedWord h = (SignedWord) handle;
+        if (h.and(WEAK_HANDLE_FLAG).equal(Word.zero())) {
             return strongGlobalHandles.get(decode(handle));
+        } else {
+            return weakGlobalHandles.get(decode(handle));
         }
-
-        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) &&
-                        handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
-            return weakGlobalHandles.get(decode((handle)));
-        }
-
-        throw new IllegalArgumentException("Invalid handle");
     }
 
     static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
         SignedWord handleValue = (Word) handle;
-        if (handleValue.greaterOrEqual(STRONG_GLOBAL_RANGE_MIN) &&
-                        handleValue.lessOrEqual(STRONG_GLOBAL_RANGE_MAX)) {
+        if (!isInRange(handle)) return JNIObjectRefType.Invalid;
+        if ((handleValue.and(WEAK_HANDLE_FLAG).equal(Word.zero()))) {
             return JNIObjectRefType.Global;
-        }
-
-        if (handleValue.greaterOrEqual(WEAK_GLOBAL_RANGE_MIN) &&
-                        handleValue.lessOrEqual(WEAK_GLOBAL_RANGE_MAX)) {
+        } else {
             return JNIObjectRefType.WeakGlobal;
         }
-        return JNIObjectRefType.Invalid;
     }
 
     static JNIObjectHandle create(Object obj) {
@@ -439,8 +432,12 @@ final class JNIGlobalHandles {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void scanAllHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
+    public static void scanStrongHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
         strongGlobalHandles.scanAllBuckets(callback);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void scanWeakHandleBuckets(ObjectHandlesImpl.BucketCallback callback) {
         weakGlobalHandles.scanAllBuckets(callback);
     }
 }
