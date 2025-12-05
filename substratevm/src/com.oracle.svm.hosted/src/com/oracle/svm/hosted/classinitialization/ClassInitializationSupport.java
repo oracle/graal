@@ -61,6 +61,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -107,7 +108,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * build-time initialized class reference image heap values that were copied from the corresponding
  * fields in the hosting VM.
  */
-public class ClassInitializationSupport implements RuntimeClassInitializationSupport {
+public class ClassInitializationSupport implements JVMCIRuntimeClassInitializationSupport {
 
     /**
      * Setup for class initialization: configured through features and command line input. It
@@ -346,6 +347,12 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     @Override
+    public void initializeAtRunTime(ResolvedJavaType aType, String reason) {
+        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
+        initializeAtRunTime(OriginalClassProvider.getJavaClass(aType), reason);
+    }
+
+    @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         Class<?> clazz = loader.findClass(name).get();
@@ -355,6 +362,12 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         } else {
             classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, false);
         }
+    }
+
+    @Override
+    public void initializeAtBuildTime(ResolvedJavaType aType, String reason) {
+        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
+        initializeAtBuildTime(OriginalClassProvider.getJavaClass(aType), reason);
     }
 
     @Override

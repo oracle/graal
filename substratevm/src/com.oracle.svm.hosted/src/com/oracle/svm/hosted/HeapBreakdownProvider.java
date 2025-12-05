@@ -113,7 +113,7 @@ public class HeapBreakdownProvider {
     protected void calculate(BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
         allImageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
 
-        HostedMetaAccess metaAccess = access.getHostedMetaAccess();
+        HostedMetaAccess metaAccess = access.getMetaAccess();
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();

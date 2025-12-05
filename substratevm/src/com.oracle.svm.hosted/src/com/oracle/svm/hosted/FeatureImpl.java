@@ -98,6 +98,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.AnnotationUtil;
@@ -108,11 +109,12 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
 
-    public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
+    public abstract static class FeatureAccessImpl implements InternalFeature.InternalFeatureAccess {
 
         protected final FeatureHandler featureHandler;
         protected final ImageClassLoader imageClassLoader;
@@ -174,8 +176,25 @@ public class FeatureImpl {
     }
 
     public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements Feature.IsInConfigurationAccess {
-        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
+        private final MetaAccessProvider metaAccess;
+
+        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
+            this.metaAccess = metaAccess;
+        }
+
+        @Override
+        public ResolvedJavaType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            return getMetaAccess().lookupJavaType(clazz);
+        }
+
+        @Override
+        public MetaAccessProvider getMetaAccess() {
+            return metaAccess;
         }
     }
 
@@ -190,6 +209,7 @@ public class FeatureImpl {
             this.mainEntryPoint = mainEntryPoint;
         }
 
+        @Override
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
         }
@@ -221,6 +241,15 @@ public class FeatureImpl {
         public ForeignAccess getForeignAccess() {
             return ForeignAccessImpl.singleton();
         }
+
+        @Override
+        public ResolvedJavaType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            return getMetaAccess().lookupJavaType(clazz);
+        }
     }
 
     abstract static class AnalysisAccessBase extends FeatureAccessImpl {
@@ -240,10 +269,12 @@ public class FeatureImpl {
             return bb.getUniverse();
         }
 
+        @Override
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
         }
 
+        @Override
         public AnalysisType findTypeByName(String className) {
             Class<?> clazz = findClassByName(className);
             if (clazz == null) {
@@ -692,7 +723,31 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeUniverseBuildingAccessImpl extends FeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess {
+    public abstract static class HostedFeatureAccessImpl extends FeatureAccessImpl {
+
+        HostedFeatureAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
+        }
+
+        @Override
+        public abstract HostedMetaAccess getMetaAccess();
+
+        @Override
+        public HostedType findTypeByName(String className) {
+            Class<?> clazz = findClassByName(className);
+            if (clazz == null) {
+                return null;
+            }
+            try {
+                return getMetaAccess().lookupJavaType(clazz);
+            } catch (AnalysisError.TypeNotFoundError e) {
+                // Type not found during analysis
+                return null;
+            }
+        }
+    }
+
+    public static class BeforeUniverseBuildingAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeUniverseBuildingAccess {
         protected final HostedMetaAccess hMetaAccess;
 
         BeforeUniverseBuildingAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, HostedMetaAccess hMetaAccess) {
@@ -700,12 +755,13 @@ public class FeatureImpl {
             this.hMetaAccess = hMetaAccess;
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
     }
 
-    public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
+    public static class CompilationAccessImpl extends HostedFeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
@@ -748,6 +804,7 @@ public class FeatureImpl {
             heap.registerAsImmutable(root, includeObject);
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return (HostedMetaAccess) getProviders().getMetaAccess();
         }
@@ -825,7 +882,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
+    public static class AfterHeapLayoutAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
         protected final NativeImageHeap heap;
 
@@ -835,6 +892,7 @@ public class FeatureImpl {
             this.hMetaAccess = hMetaAccess;
         }
 
+        @Override
         public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
@@ -844,7 +902,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeImageWriteAccessImpl extends FeatureAccessImpl implements Feature.BeforeImageWriteAccess {
+    public static class BeforeImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.BeforeImageWriteAccess {
         private List<Function<LinkerInvocation, LinkerInvocation>> linkerInvocationTransformers = null;
 
         protected final String imageName;
@@ -887,7 +945,8 @@ public class FeatureImpl {
             return hUniverse;
         }
 
-        public HostedMetaAccess getHostedMetaAccess() {
+        @Override
+        public HostedMetaAccess getMetaAccess() {
             return hMetaAccess;
         }
 
@@ -906,15 +965,17 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
+    public static class AfterAbstractImageCreationAccessImpl extends HostedFeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
         protected final AbstractImage abstractImage;
         protected final SubstrateBackend substrateBackend;
+        private final HostedMetaAccess hMetaAccess;
 
-        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage,
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess, DebugContext debugContext, AbstractImage abstractImage,
                         SubstrateBackend substrateBackend) {
             super(featureHandler, imageClassLoader, debugContext);
             this.abstractImage = abstractImage;
             this.substrateBackend = substrateBackend;
+            this.hMetaAccess = hMetaAccess;
         }
 
         public AbstractImage getImage() {
@@ -924,22 +985,28 @@ public class FeatureImpl {
         public SubstrateBackend getSubstrateBackend() {
             return substrateBackend;
         }
+
+        @Override
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAccess;
+        }
     }
 
-    public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements Feature.AfterImageWriteAccess {
+    public static class AfterImageWriteAccessImpl extends HostedFeatureAccessImpl implements Feature.AfterImageWriteAccess {
         private final HostedUniverse hUniverse;
         protected final LinkerInvocation linkerInvocation;
         protected final Path tempDirectory;
         protected final NativeImageKind imageKind;
+        private final HostedMetaAccess hMetaAcces;
 
         AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, LinkerInvocation linkerInvocation, Path tempDirectory,
-                        NativeImageKind imageKind,
-                        DebugContext debugContext) {
+                        NativeImageKind imageKind, HostedMetaAccess hMetaAcces, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.hUniverse = hUniverse;
             this.linkerInvocation = linkerInvocation;
             this.tempDirectory = tempDirectory;
             this.imageKind = imageKind;
+            this.hMetaAcces = hMetaAcces;
         }
 
         public HostedUniverse getUniverse() {
@@ -965,6 +1032,11 @@ public class FeatureImpl {
 
         public List<String> getImageSymbols(boolean onlyGlobal) {
             return linkerInvocation.getImageSymbols(onlyGlobal);
+        }
+
+        @Override
+        public HostedMetaAccess getMetaAccess() {
+            return hMetaAcces;
         }
     }
 }

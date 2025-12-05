@@ -24,27 +24,28 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.feature.InternalFeature.InternalFeatureAccess;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Utility methods used by features that perform JNI registration.
@@ -72,52 +73,55 @@ public class JNIRegistrationUtil {
     }
 
     protected static void initializeAtRunTime(FeatureAccess access, String... classNames) {
-        RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        InternalFeatureAccess internalAccess = (InternalFeatureAccess) access;
+        JVMCIRuntimeClassInitializationSupport classInitSupport = JVMCIRuntimeClassInitializationSupport.singleton();
         for (String className : classNames) {
-            classInitSupport.initializeAtRunTime(clazz(access, className), "for JDK native code support via JNI");
+            classInitSupport.initializeAtRunTime(type(internalAccess, className), "for JDK native code support via JNI");
         }
     }
 
-    protected static Class<?> clazz(FeatureAccess access, String className) {
-        Class<?> classByName = access.findClassByName(className);
-        VMError.guarantee(classByName != null, "class %s not found", className);
-        return classByName;
+    protected static ResolvedJavaType type(FeatureAccess access, String className) {
+        ResolvedJavaType typeByName = ((InternalFeatureAccess) access).findTypeByName(className);
+        VMError.guarantee(typeByName != null, "class %s not found", className);
+        return typeByName;
     }
 
-    protected static Optional<Class<?>> optionalClazz(FeatureAccess access, String className) {
-        Class<?> classByName = access.findClassByName(className);
-        return Optional.ofNullable(classByName);
+    protected static Optional<? extends ResolvedJavaType> optionalType(FeatureAccess access, String className) {
+        ResolvedJavaType typeByName = ((InternalFeatureAccess) access).findTypeByName(className);
+        return Optional.ofNullable(typeByName);
     }
 
-    protected static Optional<Method> optionalMethod(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
-        return optionalClazz(access, className)
-                        .flatMap(clazz -> Optional.ofNullable(ReflectionUtil.lookupMethod(true, clazz, methodName, parameterTypes)));
+    protected static Optional<ResolvedJavaMethod> optionalMethod(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
+        InternalFeatureAccess internalAccess = (InternalFeatureAccess) access;
+        return optionalType(access, className)
+                        .flatMap(clazz -> Optional.ofNullable(JVMCIReflectionUtil.getUniqueDeclaredMethod(true, internalAccess.getMetaAccess(), clazz, methodName, parameterTypes)));
     }
 
-    protected static Method method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
-        return ReflectionUtil.lookupMethod(clazz(access, className), methodName, parameterTypes);
+    protected static ResolvedJavaMethod method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
+        return JVMCIReflectionUtil.getUniqueDeclaredMethod(((InternalFeatureAccess) access).getMetaAccess(), type(access, className), methodName, parameterTypes);
     }
 
-    protected static Constructor<?> constructor(FeatureAccess access, String className, Class<?>... parameterTypes) {
-        return ReflectionUtil.lookupConstructor(clazz(access, className), parameterTypes);
+    protected static ResolvedJavaMethod constructor(FeatureAccess access, String className, Class<?>... parameterTypes) {
+        return JVMCIReflectionUtil.getDeclaredConstructor(((InternalFeatureAccess) access).getMetaAccess(), type(access, className), parameterTypes);
     }
 
-    protected static Field[] fields(FeatureAccess access, String className, String... fieldNames) {
-        Class<?> clazz = clazz(access, className);
-        Field[] result = new Field[fieldNames.length];
+    protected static ResolvedJavaField[] fields(FeatureAccess access, String className, String... fieldNames) {
+        ResolvedJavaType type = type(access, className);
+        ResolvedJavaField[] result = new ResolvedJavaField[fieldNames.length];
         for (int i = 0; i < fieldNames.length; i++) {
-            result[i] = ReflectionUtil.lookupField(clazz, fieldNames[i]);
+            result[i] = JVMCIReflectionUtil.getUniqueDeclaredField(type, fieldNames[i]);
         }
         return result;
     }
 
     protected static void registerForThrowNew(FeatureAccess access, String... exceptionClassNames) {
+        InternalFeatureAccess internalAccess = (InternalFeatureAccess) access;
         for (String exceptionClassName : exceptionClassNames) {
-            RuntimeJNIAccess.register(clazz(access, exceptionClassName));
-            RuntimeJNIAccess.register(constructor(access, exceptionClassName, String.class));
+            JVMCIRuntimeJNIAccess.register(type(internalAccess, exceptionClassName));
+            JVMCIRuntimeJNIAccess.register(constructor(internalAccess, exceptionClassName, String.class));
 
-            RuntimeReflection.register(clazz(access, exceptionClassName));
-            RuntimeReflection.register(constructor(access, exceptionClassName, String.class));
+            JVMCIRuntimeReflection.register(type(internalAccess, exceptionClassName));
+            JVMCIRuntimeReflection.register(constructor(internalAccess, exceptionClassName, String.class));
         }
     }
 

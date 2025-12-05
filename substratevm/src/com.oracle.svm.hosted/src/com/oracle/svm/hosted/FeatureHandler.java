@@ -64,6 +64,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -115,8 +116,8 @@ public class FeatureHandler {
     }
 
     @SuppressWarnings("unchecked")
-    public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
-        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
+    public void registerFeatures(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, DebugContext debug) {
+        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, originalMetaAccess, debug);
 
         LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>();
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();

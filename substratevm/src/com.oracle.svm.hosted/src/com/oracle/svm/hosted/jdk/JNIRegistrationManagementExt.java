@@ -43,7 +43,7 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        access.registerReachabilityHandler(this::linkManagementExt, clazz(access, "com.sun.management.internal.OperatingSystemImpl"));
+        access.registerReachabilityHandler(this::linkManagementExt, type(access, "com.sun.management.internal.OperatingSystemImpl"));
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_management_internal_OperatingSystemImpl");
     }
 

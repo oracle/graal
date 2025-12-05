@@ -32,13 +32,13 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
@@ -56,8 +56,8 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
     private static void registerReflectionClasses(FeatureImpl.DuringAnalysisAccessImpl access, List<String> parserClasses) {
         for (String className : parserClasses) {
-            RuntimeReflection.register(clazz(access, className));
-            RuntimeReflection.register(constructor(access, className));
+            JVMCIRuntimeReflection.register(type(access, className));
+            JVMCIRuntimeReflection.register(constructor(access, className));
         }
     }
 

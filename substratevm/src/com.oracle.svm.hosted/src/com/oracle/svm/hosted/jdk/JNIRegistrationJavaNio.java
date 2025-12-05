@@ -30,8 +30,6 @@ import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -43,6 +41,8 @@ import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -102,10 +102,10 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         if (isPosix()) {
             registerForThrowNew(a, "sun.nio.fs.UnixException");
-            RuntimeJNIAccess.register(constructor(a, "sun.nio.fs.UnixException", int.class));
+            JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.fs.UnixException", int.class));
         } else if (isWindows()) {
             registerForThrowNew(a, "sun.nio.fs.WindowsException");
-            RuntimeJNIAccess.register(constructor(a, "sun.nio.fs.WindowsException", int.class));
+            JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.fs.WindowsException", int.class));
         }
 
         // JDK-8220738
@@ -132,77 +132,77 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
     }
 
     private static void registerNetInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "java.net.InetSocketAddress"));
-        RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "java.net.InetSocketAddress"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
     private static void registerUnixNativeDispatcherInit(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileAttributes"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.UnixFileAttributes"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
                         "st_mode", "st_ino", "st_dev", "st_rdev", "st_nlink", "st_uid", "st_gid", "st_size",
                         "st_atime_sec", "st_atime_nsec", "st_mtime_sec", "st_mtime_nsec", "st_ctime_sec", "st_ctime_nsec"));
         if (isDarwin() || isLinux()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
-            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
+            JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
+            JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "birthtime_available"));
         }
         if (isLinux()) {
-            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));
+            JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));
         }
 
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileStoreAttributes"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileStoreAttributes", "f_frsize", "f_blocks", "f_bfree", "f_bavail"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixMountEntry"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixMountEntry", "name", "dir", "fstype", "opts", "dev"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.UnixFileStoreAttributes"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileStoreAttributes", "f_frsize", "f_blocks", "f_bfree", "f_bavail"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.UnixMountEntry"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixMountEntry", "name", "dir", "fstype", "opts", "dev"));
 
         /*
          * Registrations shared between all OS-specific subclasses of UnixNativeDispatcher,
          * therefore we factor it out here.
          */
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixMountEntry"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixMountEntry", "name", "dir", "fstype", "opts"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.UnixMountEntry"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixMountEntry", "name", "dir", "fstype", "opts"));
 
     }
 
     private static void registerSctpChannelImplInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.MessageInfoImpl"));
-        RuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.MessageInfoImpl", int.class, SocketAddress.class, int.class, int.class, boolean.class, boolean.class, int.class));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.ResultContainer"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.ch.sctp.ResultContainer", "value", "type"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.SendFailed"));
-        RuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.SendFailed", int.class, SocketAddress.class, ByteBuffer.class, int.class, int.class));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.AssociationChange"));
-        RuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.AssociationChange", int.class, int.class, int.class, int.class));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.PeerAddrChange"));
-        RuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.PeerAddrChange", int.class, SocketAddress.class, int.class));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.sctp.Shutdown"));
-        RuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.Shutdown", int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.MessageInfoImpl"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.MessageInfoImpl", int.class, SocketAddress.class, int.class, int.class, boolean.class, boolean.class, int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.ResultContainer"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.ch.sctp.ResultContainer", "value", "type"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.SendFailed"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.SendFailed", int.class, SocketAddress.class, ByteBuffer.class, int.class, int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.AssociationChange"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.AssociationChange", int.class, int.class, int.class, int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.PeerAddrChange"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.PeerAddrChange", int.class, SocketAddress.class, int.class));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.sctp.Shutdown"));
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.nio.ch.sctp.Shutdown", int.class));
     }
 
     private static void registerWindowsNativeDispatcherInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$FirstFile"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$FirstFile", "handle", "name", "attributes"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$FirstStream"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$FirstStream", "handle", "name"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation", "fileSystemName", "volumeName", "volumeSerialNumber", "flags"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "freeBytesAvailable", "totalNumberOfBytes", "totalNumberOfFreeBytes"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$Account"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$Account", "domain", "name", "use"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation", "aceCount"));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus", "error", "bytesTransferred", "completionKey"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$FirstFile"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$FirstFile", "handle", "name", "attributes"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$FirstStream"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$FirstStream", "handle", "name"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation", "fileSystemName", "volumeName", "volumeSerialNumber", "flags"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "freeBytesAvailable", "totalNumberOfBytes", "totalNumberOfFreeBytes"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$Account"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$Account", "domain", "name", "use"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation", "aceCount"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus", "error", "bytesTransferred", "completionKey"));
     }
 
     private static void registerIocpInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.Iocp$CompletionStatus"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.ch.Iocp$CompletionStatus", "error", "bytesTransferred", "completionKey", "overlapped"));
+        JVMCIRuntimeJNIAccess.register(type(a, "sun.nio.ch.Iocp$CompletionStatus"));
+        JVMCIRuntimeJNIAccess.register(fields(a, "sun.nio.ch.Iocp$CompletionStatus", "error", "bytesTransferred", "completionKey", "overlapped"));
     }
 
     private static void registerConnectionCreateInetSocketAddress(DuringAnalysisAccess a) {
-        RuntimeReflection.register(clazz(a, "java.net.InetSocketAddress"));
-        RuntimeReflection.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
+        JVMCIRuntimeReflection.register(type(a, "java.net.InetSocketAddress"));
+        JVMCIRuntimeReflection.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 }

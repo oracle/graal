@@ -186,7 +186,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
          */
         constantCandidates.entrySet().stream().filter(e -> !(e.getValue() instanceof FutureConstantCandidateInfo)).forEach(entry -> {
             Object object = entry.getValue();
-            var optional = config.getHostedMetaAccess().optionalLookupJavaType(object.getClass());
+            var optional = config.getMetaAccess().optionalLookupJavaType(object.getClass());
             if (optional.isPresent()) {
                 var constant = (ImageHeapConstant) snippetReflection.forObject(object);
                 var objectInfo = heap.getConstantInfo(constant);
