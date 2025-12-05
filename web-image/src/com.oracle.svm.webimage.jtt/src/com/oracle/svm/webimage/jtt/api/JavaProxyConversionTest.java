@@ -77,7 +77,7 @@ public class JavaProxyConversionTest {
                     "JavaScript<boolean; true>",
                     "true",
                     "'true' cannot be coerced to a JavaScript 'function'.",
-                    "JavaScript<number; 121.0>",
+                    "JavaScript<number; 121>",
                     "121",
                     "'4141.0' cannot be coerced to a JavaScript 'string'.",
                     "JavaScript<bigint; 123456123456123456>",

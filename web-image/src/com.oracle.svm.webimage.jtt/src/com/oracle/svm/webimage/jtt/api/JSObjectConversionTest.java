@@ -32,7 +32,7 @@ import org.graalvm.webimage.api.JSObject;
 public class JSObjectConversionTest {
     public static final String[] OUTPUT = {
                     "JavaScript<object; [object Object]>", "[object Object]", "JavaScript<object; [object Object]>", "true", "true", "false",
-                    "JavaScript<function;", "JavaScript<function;", "5", "JavaScript<number; 5.0>", "JavaScript<number; 12.0>",
+                    "JavaScript<function;", "JavaScript<function;", "5", "JavaScript<number; 5>", "JavaScript<number; 12>",
                     "12",
                     "js value",
                     "Field type modified!",

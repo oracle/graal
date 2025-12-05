@@ -409,10 +409,6 @@ public class JSObject extends JSValue {
         return typeofString().asString();
     }
 
-    @Override
-    @JS("return conversion.toProxy(toJavaString(this.toString()));")
-    protected native String stringValue();
-
     /**
      * Returns the value of the key passed as the argument in the JavaScript object.
      *

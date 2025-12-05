@@ -105,7 +105,15 @@ public abstract class JSValue {
 
     public abstract String typeof();
 
-    protected abstract String stringValue();
+    /**
+     * Returns the JS string representation of this value (by calling the JS {@code toString} method
+     * on it) and {@code "undefined"} for the JS {@code undefined} value.
+     *
+     * @since 25.1
+     */
+    @JS.Coerce
+    @JS("return this?.toString()?? 'undefined';")
+    public final native String stringValue();
 
     public Boolean asBoolean() {
         throw classCastError("Boolean");
