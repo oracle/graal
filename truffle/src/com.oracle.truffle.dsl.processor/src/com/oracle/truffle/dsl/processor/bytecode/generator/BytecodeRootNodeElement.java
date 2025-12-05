@@ -1895,10 +1895,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return "execute" + instruction.getQualifiedQuickeningName();
     }
 
-    private static int getStackEffect(InstructionModel instr) {
-        return (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
-    }
-
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
         b.startTryBlock();
         r.run();
@@ -2234,7 +2230,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     record InstructionGroup(int stackEffect, int instructionLength) {
         InstructionGroup(InstructionModel instr) {
-            this(getStackEffect(instr), instr.getInstructionLength());
+            this(instr.getStackEffect(), instr.getInstructionLength());
         }
     }
 
@@ -6113,13 +6109,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end().end();
             }
 
-            List<InstructionImmediate> immediates = instruction.getExplicitImmediates();
+            List<InstructionImmediate> immediates = instruction.getImmediates();
             String[] args = new String[immediates.size()];
 
             int childBciIndex = 0;
             int constantIndex = 0;
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
+                if (immediate.dynamic()) {
+                    args[i] = ElementUtils.defaultValue(immediate.encoding().width().toType(context));
+                    continue;
+                }
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
                         if (customChildBci != null) {
@@ -6218,7 +6218,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     // If this operation has a converter, convert the value.
                     if (shortCircuitModel.convertsOperands()) {
-                        if (shortCircuitModel.duplicatesOperandOnStack()) {
+                        /**
+                         * If the operation doesn't produce a boolean, it must DUP the operand so it
+                         * can pass it to the converter and also produce it as a result.
+                         */
+                        if (!shortCircuitModel.producesBoolean()) {
                             buildEmitInstruction(b, null, model.dupInstruction);
                         }
                         buildEmitBooleanConverterInstruction(b, op.instruction);
@@ -6332,10 +6336,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
             InstructionModel booleanConverter = shortCircuitInstruction.shortCircuitModel.booleanConverterInstruction();
 
-            List<InstructionImmediate> immediates = booleanConverter.getExplicitImmediates();
+            List<InstructionImmediate> immediates = booleanConverter.getImmediates();
             String[] args = new String[immediates.size()];
             for (int i = 0; i < args.length; i++) {
                 InstructionImmediate immediate = immediates.get(i);
+                if (immediate.dynamic()) {
+                    args[i] = ElementUtils.defaultValue(immediate.encoding().width().toType(context));
+                    continue;
+                }
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
                         if (shortCircuitInstruction.shortCircuitModel.producesBoolean()) {
@@ -6841,7 +6849,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            buildEmitInstructionStackEffect(b, null, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
+            buildEmitInstructionWithStackEffect(b, null, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
 
             b.end().startElseBlock();
 
@@ -6857,7 +6865,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            buildEmitInstructionStackEffect(b, null, model.loadVariadicInstruction, "-stackCount",
+            buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-stackCount",
                             createLoadVariadicArguments("offset + count - stackCount", "(short)(stackCount)", "(short)mergeCount"));
 
             if (model.hasVariadicReturn) {
@@ -6881,7 +6889,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("length++");
                 b.end().startElseBlock();
                 b.lineComment("range not continuous");
-                buildEmitInstructionStackEffect(b, null, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                buildEmitInstruction(b, null, model.splatVariadicInstruction, "offset + prev", "length");
                 b.statement("length = 1");
                 b.end();
                 b.statement("prev = index");
@@ -6890,7 +6898,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startIf().string("length > 0").end().startBlock();
                 b.lineComment("emit last range");
                 b.statement("assert prev != -1");
-                buildEmitInstructionStackEffect(b, null, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                buildEmitInstruction(b, null, model.splatVariadicInstruction, "offset + prev", "length");
                 b.end();
 
                 b.end(); // dynamicArguments != null
@@ -6919,7 +6927,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
-            buildEmitInstructionStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
+            buildEmitInstructionWithStackEffect(b, "createVariadicOffset", model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1",
                             createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
             b.startReturn().string("createVariadicOffset + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset()).end();
             b.end().startElseBlock();
@@ -6929,7 +6937,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else {
                 offset = "count - VARIADIC_STACK_LIMIT";
             }
-            buildEmitInstructionStackEffect(b, null, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT", createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
+            buildEmitInstructionWithStackEffect(b, null, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT", createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
             b.startReturn().string("-1").end();
             b.end();
 
@@ -6990,53 +6998,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, String localName, InstructionModel instr, String... arguments) {
-            int stackEffect = switch (instr.kind) {
-                case BRANCH, BRANCH_BACKWARD, //
-                                TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL, //
-                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> {
-                    yield 0;
-                }
-                case CREATE_VARIADIC, EMPTY_VARIADIC -> {
-                    yield 1;
-                }
-                case LOAD_VARIADIC, SPLAT_VARIADIC -> {
-                    /*
-                     * NB: These instructions *do* have stack effects. However, they are only used
-                     * by doEmitVariadic, which does stack height computations itself. Use 0 so we
-                     * don't update the stack height when emitting their instructions.
-                     */
-                    yield 0;
-                }
-                case DUP, LOAD_ARGUMENT, LOAD_CONSTANT, LOAD_NULL, LOAD_LOCAL, LOAD_EXCEPTION -> 1;
-                case RETURN, THROW, BRANCH_FALSE, POP, STORE_LOCAL, MERGE_CONDITIONAL -> -1;
-                case STORE_LOCAL_MATERIALIZED -> -2;
-                case CUSTOM -> getStackEffect(instr);
-                case CUSTOM_SHORT_CIRCUIT -> {
-                    /*
-                     * NB: This code is a little confusing, because the stack height actually
-                     * depends on whether the short circuit operation continues.
-                     *
-                     * What we track here is the stack height for the instruction immediately after
-                     * this one (the one executed when we "continue" the short circuit operation).
-                     * The code we generate carefully ensures that each path branching to the "end"
-                     * leaves a single value on the stack.
-                     */
-                    ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
-                    if (shortCircuitInstruction.duplicatesOperandOnStack()) {
-                        // Consume the boolean value and pop the DUP'd original value.
-                        yield -2;
-                    } else {
-                        // Consume the boolean value.
-                        yield -1;
-                    }
-                }
-                default -> throw new UnsupportedOperationException();
-            };
-
-            buildEmitInstructionStackEffect(b, localName, instr, String.valueOf(stackEffect), arguments);
+            buildEmitInstructionWithStackEffect(b, localName, instr, String.valueOf(instr.getStackEffect()), arguments);
         }
 
-        private void buildEmitInstructionStackEffect(CodeTreeBuilder b, String localName, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
+        private void buildEmitInstructionWithStackEffect(CodeTreeBuilder b, String localName, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
             CodeExecutableElement doEmitInstruction = rootStackElement.ensureDoEmitInstructionCreated(instr);
             if (localName != null) {
                 b.startDeclaration(type(int.class), localName);
@@ -7047,9 +7012,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.tree(createInstructionConstant(instr));
             b.string(stackEffect);
             int argumentsLength = arguments != null ? arguments.length : 0;
-            if (argumentsLength != instr.getExplicitImmediates().size()) {
+            if (argumentsLength != instr.getImmediates().size()) {
                 throw new AssertionError(
-                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getExplicitImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
+                                "Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.getImmediates().size() + " but got " + argumentsLength + ". Immediates: " +
                                                 String.join(", ", arguments));
             }
 
@@ -8348,9 +8313,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 ex.addParameter(new CodeVariableElement(type(short.class), "instruction"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "stackEffect"));
 
-                int explicitImmediateIndex = 0;
-                for (InstructionImmediateEncoding immediate : encoding.getExplicitImmediateEncodings()) {
-                    ex.addParameter(new CodeVariableElement(immediate.width().toType(context), "data" + explicitImmediateIndex++));
+                List<CodeVariableElement> dataParams = new ArrayList<>();
+                for (int i = 0; i < encoding.immediates().size(); i++) {
+                    InstructionImmediateEncoding immediate = encoding.immediates().get(i);
+                    CodeVariableElement param = new CodeVariableElement(immediate.width().toType(context), "data" + i);
+                    dataParams.add(param);
+                    ex.addParameter(param);
                 }
 
                 CodeTreeBuilder b = ex.createBuilder();
@@ -8385,16 +8353,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.statement(writeInstruction("this.bc", "this.bci + 0", "instruction"));
 
-                explicitImmediateIndex = 0;
-                for (InstructionImmediateEncoding immediateEncoding : encoding.immediates()) {
-                    String data;
-                    if (immediateEncoding.explicit()) {
-                        data = "data" + explicitImmediateIndex++;
-                    } else {
-                        data = ElementUtils.defaultValue(immediateEncoding.width().toType(context));
-                    }
-
-                    b.statement(writeImmediate("this.bc", "this.bci", data, immediateEncoding));
+                for (int i = 0; i < encoding.immediates().size(); i++) {
+                    InstructionImmediateEncoding immediateEncoding = encoding.immediates().get(i);
+                    CodeVariableElement dataParam = dataParams.get(i);
+                    b.statement(writeImmediate("this.bc", "this.bci", dataParam.getName(), immediateEncoding));
                 }
 
                 b.statement("this.bci = newBci");
@@ -10778,7 +10740,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (instruction.nodeData != null && instruction.canUseNodeSingleton()) {
                 List<InstructionImmediate> immediates = new ArrayList<>(instruction.immediates);
-                immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE));
+                immediates.add(new InstructionImmediate(ImmediateKind.NODE_PROFILE, "node", InstructionImmediateEncoding.NONE, true, Optional.empty()));
                 return immediates;
             } else {
                 return instruction.immediates;
@@ -14045,6 +14007,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetSourceLocation() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocation", new String[]{"bci"}, new TypeMirror[]{type(int.class)});
             ex.getModifiers().add(FINAL);
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
@@ -14070,6 +14033,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private CodeExecutableElement createGetSourceLocations() {
             CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocations", new String[]{"bci"}, new TypeMirror[]{type(int.class)});
             ex.getModifiers().add(FINAL);
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
@@ -14325,7 +14289,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     this.add(createSetLocalValueImpl());
                     this.add(createSpecializeSlotTag());
                     this.add(createGetCachedLocalTag());
-                    this.add(createSetCachedLocalTag());
                 }
                 this.add(createGetCachedLocalTagInternal());
                 this.add(createSetCachedLocalTagInternal());
@@ -14792,29 +14755,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startThrow().startNew(types.UnexpectedResultException).string("value").end().end();
                 }
             }
-
-            return ex;
-        }
-
-        private CodeExecutableElement createSetCachedLocalTag() {
-            if (!model.usesBoxingElimination() || !tier.isCached()) {
-                throw new AssertionError("Not supported.");
-            }
-
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setCachedLocalTag");
-            ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-            ex.addParameter(new CodeVariableElement(type(byte.class), "tag"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.declaration(arrayOf(type(byte.class)), "localTags", readLocalTagsFastPath());
-            b.startIf().string("localIndex < 0 || localIndex >= localTags.length").end().startBlock();
-            emitThrowIllegalArgumentException(b, "Invalid local offset");
-            b.end();
-            b.startStatement().startCall("setCachedLocalTagInternal");
-            b.string("localTags");
-            b.string("localIndex");
-            b.string("tag");
-            b.end(2);
 
             return ex;
         }
@@ -15850,7 +15790,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startStatement().string("bci += ").string(instr.getInstructionLength()).end();
                     }
 
-                    emitCustomStackEffect(b, getStackEffect(instr));
+                    emitCustomStackEffect(b, instr.getStackEffect());
                     break;
             }
             b.statement("break");
@@ -18261,7 +18201,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             List<CodeVariableElement> extraParams = createExtraParameters();
             boolean isCustomYield = instr.operation.kind == OperationKind.CUSTOM_YIELD;
             // Since an instruction produces at most one value, stackEffect is at most 1.
-            int stackEffect = getStackEffect(instr);
+            int stackEffect = instr.getStackEffect();
 
             if (isStoreBciBeforeExecute(model, tier, instr)) {
                 storeBciInFrame(b);

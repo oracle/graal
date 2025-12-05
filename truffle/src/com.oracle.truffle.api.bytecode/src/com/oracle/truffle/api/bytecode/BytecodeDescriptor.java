@@ -214,7 +214,7 @@ public abstract class BytecodeDescriptor<R extends RootNode & BytecodeRootNode, 
     public abstract R cast(RootNode rootNode);
 
     /**
-     * Casts a {@link CallTarget} to the generated root node type {@code R}. Returns
+     * Casts a {@link CallTarget} to the specification root node type {@code R}. Returns
      * <code>null</code> if the given root is not compatible with this descriptor.
      *
      * @param target a call target, must not be <code>null</code>

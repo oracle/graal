@@ -2332,13 +2332,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endRoot();
         });
-
-        // TODO(GR-59372): Without default values, every local slot gets cleared on entry, which
-        // breaks compilation because the number of clears exceed PE's explode loop threshold. Using
-        // illegal default slots will solve this problem because the clears will be unnecessary.
-        if (run.getDefaultLocalValue() != null) {
-            assertEquals(42L, node.getCallTarget().call());
-        }
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
