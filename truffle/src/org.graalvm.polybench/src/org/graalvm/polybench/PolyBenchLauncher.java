@@ -403,7 +403,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 config.metric.afterLoad(config);
             }
             if (language.equals("wasm")) {
-                result = result.newInstance();
+                result = result.newInstance().getMember("exports");
             }
             return new EvalResult(language, source.getName(), source.hasBytes(), source.getLength(), result);
         }
@@ -495,8 +495,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Bench specific options :::");
             if (evalResult.value instanceof Value) {
                 Value value = (Value) evalResult.value;
-                if (evalResult.languageId.equals("wasm")) {
-                    value = value.getMember("exports");
+                Value setup = tryLookup(context, evalResult.languageId, value, "setup");
+                if (setup != null && setup.canExecute()) {
+                    setup.execute();
                 }
                 config.parseBenchSpecificDefaults(value);
                 config.metric.parseBenchSpecificOptions(value);
@@ -573,13 +574,29 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    private static Value tryLookup(Context context, String languageId, Value evalSourceValue, String memberName) {
+        // language-specific lookup
+        return switch (languageId) {
+            case "wasm" -> evalSourceValue.getMember(memberName);
+            default -> {
+                // first try the memberName directly
+                if (evalSourceValue.hasMember(memberName)) {
+                    yield evalSourceValue.getMember(memberName);
+                } else {
+                    // Fallback for other languages: Look for 'memberName' in global scope.
+                    yield context.getBindings(languageId).getMember(memberName);
+                }
+            }
+        };
+    }
+
     private Workload lookup(Context context, String languageId, Object evalSource, String memberName) {
         Value evalSourceValue = (Value) evalSource;
         Value result;
         // language-specific lookup
         switch (languageId) {
             case "wasm":
-                result = evalSourceValue.getMember("exports").getMember(memberName);
+                result = evalSourceValue.getMember(memberName);
                 break;
             case "java":
                 // Espresso doesn't provide methods as executable values.

@@ -229,9 +229,12 @@ public class PolyBenchAstBuilder {
 
             builder.append(new Expr.FunctionCall.LogCall(new Expr.Atom.String("::: Bench specific options :::")));
             if (evalResult.value instanceof Value value) {
-                if (evalResult.languageId.equals("wasm")) {
-                    value = value.getMember("exports");
+                // Execute "setup" function if it exists
+                try (Stat.Block.Builder thenBranchBuilder = new Stat.Block.Builder(null)) {
+                    thenBranchBuilder.append(new Expr.FunctionCall(new Expr.Reference.Ident("setup"), null));
+                    thenBranch = thenBranchBuilder.build();
                 }
+                builder.append(new Stat.If(new Expr.FunctionCall(new Expr.Reference.Ident("checkIfFunctionExists"), new Expr[]{new Expr.Atom.String("setup")}), thenBranch, null));
                 config.parseBenchSpecificDefaults(value);
                 builder.append(new Expr.FunctionCall(new Expr.Reference.CompoundReference(new Expr.Reference.Ident("configMetric"), new Expr.Reference.Ident("parseBenchSpecificOptions")), null));
             }
