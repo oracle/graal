@@ -64,11 +64,6 @@ public class WasmGCJSConversion extends JSConversion {
         return clazz.isAssignableFrom(o.getClass());
     }
 
-    @WasmExport(value = "class.isjavalangclass", comment = "Checks whether the given class is Class.class")
-    public static boolean isJavaLangClass(Class<?> clazz) {
-        return clazz == Class.class;
-    }
-
     @WasmExport(value = "class.getboxedhub", comment = "Boxed class for given primitive class")
     public static Class<?> getBoxedHub(Class<?> clazz) {
         if (clazz == Boolean.TYPE) {

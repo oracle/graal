@@ -426,13 +426,6 @@ public abstract class JSConversion {
     }
 
     /**
-     * Returns the hub of the specified object.
-     */
-    public static Class<?> hubOf(Object x) {
-        return x.getClass();
-    }
-
-    /**
      * Checks if the first class is the same as or the supertype of the second class.
      */
     public static boolean isSupertype(Class<?> x, Class<?> y) {

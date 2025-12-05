@@ -340,9 +340,12 @@ class Conversion {
     }
 
     isJavaLangClass(obj) {
-        throw new Error("Unimplemented: Conversion.isJavaLangClassHub");
+        throw new Error("Unimplemented: Conversion.isJavaLangClass");
     }
 
+    /**
+     * Checks if the given object is an instance of the given class. null values also return true.
+     */
     isInstance(obj, hub) {
         throw new Error("Unimplemented: Conversion.isInstance");
     }

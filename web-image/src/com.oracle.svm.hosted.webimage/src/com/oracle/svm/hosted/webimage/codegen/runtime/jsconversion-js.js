@@ -252,6 +252,10 @@ class JSConversion extends Conversion {
         return isA(true, obj, hub);
     }
 
+    isSupertype(supertype, subtype) {
+        return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["isSupertype"](supertype, subtype);
+    }
+
     getHub(obj) {
         return $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["getClass"](obj);
     }
@@ -342,7 +346,7 @@ class JSConversion extends Conversion {
             typeHub = runtime.hubs[type];
         } else if (typeof type === "object") {
             const javaType = type[runtime.symbol.javaNative];
-            if (javaType !== undefined && javaType.constructor === runtime.classHub) {
+            if (javaType !== undefined && this.isJavaLangClass(javaType)) {
                 typeHub = javaType;
             }
         }
@@ -354,8 +358,8 @@ class JSConversion extends Conversion {
         // Check if the current object is a Java Proxy, in which case no coercion is possible.
         let javaValue = javaScriptValue[runtime.symbol.javaNative];
         if (javaValue !== undefined) {
-            const valueHub = runtime.hubOf(javaValue);
-            if (runtime.isSupertype(typeHub, valueHub)) {
+            const valueHub = this.getHub(javaValue);
+            if (this.isSupertype(typeHub, valueHub)) {
                 return javaValue;
             } else {
                 throw new Error("Cannot coerce Java Proxy of type '" + valueHub + "' to the type '" + typeHub + "'");
@@ -460,11 +464,5 @@ class JSProxyHandler extends ProxyHandler {
 }
 
 const conversion = new JSConversion();
-
-runtime.classHub = $t["java.lang.Class"];
-
-runtime.hubOf = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["hubOf"];
-
-runtime.isSupertype = $t["com.oracle.svm.webimage.functionintrinsics.JSConversion"].$m["isSupertype"];
 
 vm.as = (...args) => conversion.coerceJavaScriptToJavaType(...args);
