@@ -365,15 +365,6 @@ class WasmGCProxyHandler extends ProxyHandler {
         return methodTable;
     }
 
-    _linkMethodPrototype() {
-        // Link the prototype chain of the superclass' proxy handler, to include super methods.
-        const parentClass = conversion.getSupertype(this.javaHub);
-        if (parentClass !== null) {
-            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentClass);
-            Object.setPrototypeOf(this._getMethods(), parentProxyHandler._getMethods());
-        }
-    }
-
     _createInstance(hub) {
         return getExport("unsafe.create")(hub);
     }

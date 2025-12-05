@@ -64,11 +64,6 @@ public class WasmGCJSConversion extends JSConversion {
         return clazz.isAssignableFrom(o.getClass());
     }
 
-    @WasmExport(value = "class.isjavalangobject", comment = "Checks whether the given class is Object.class")
-    public static boolean isJavaLangObject(Class<?> clazz) {
-        return clazz == Object.class;
-    }
-
     @WasmExport(value = "class.isjavalangclass", comment = "Checks whether the given class is Class.class")
     public static boolean isJavaLangClass(Class<?> clazz) {
         return clazz == Class.class;

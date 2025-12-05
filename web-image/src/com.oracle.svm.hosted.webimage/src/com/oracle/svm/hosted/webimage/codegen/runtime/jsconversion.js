@@ -600,7 +600,7 @@ class ProxyHandler {
             throw new Error("Got undefined or null javaHub");
         }
         this._initialized = false;
-        this._methods = {};
+        this._methods = null;
         this._staticMethods = {};
         this._javaConstructorMethod = null;
         this.javaHub = javaHub;
@@ -611,6 +611,7 @@ class ProxyHandler {
     _ensureInitialized() {
         if (!this._initialized) {
             this._initialized = true;
+            this._methods = this._createLinkedMethodsObject();
             // Function properties derived from accessible Java methods.
             this._createProxyMethods();
             // Default function properties.
@@ -656,10 +657,20 @@ class ProxyHandler {
     }
 
     /**
-     * Link the methods object to the prototype chain of the methods object of the superclass' proxy handler.
+     * Creates an empty object for the _methods field with the prototype being
+     * the _methods object from the superclass' proxy handler.
      */
-    _linkMethodPrototype() {
-        throw new Error("Unimplemented: ProxyHandler._linkMethodPrototype");
+    _createLinkedMethodsObject() {
+        // Link the prototype chain of the superclass' proxy handler, to include super methods.
+        const parentClass = conversion.getSupertype(this.javaHub);
+        if (parentClass === null) {
+            // This is the handler for java.lang.Object, no linking to supertype necessary.
+            return {};
+        } else {
+            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentClass);
+            // Link the prototype chain of the superclass' proxy handler, to include super methods.
+            return Object.create(parentProxyHandler._getMethods());
+        }
     }
 
     _createProxyMethods() {
@@ -707,8 +718,6 @@ class ProxyHandler {
                 );
             };
         }
-
-        this._linkMethodPrototype();
     }
 
     /**
@@ -969,6 +978,13 @@ class ProxyHandler {
                 "Cannot invoke the 'new' operator. The 'new' operator can only be used on Java Proxies that represent the 'java.lang.Class' type."
             );
         }
+
+        if (conversion.getComponentHub(javaThis) !== null) {
+            throw new TypeError(
+                "Cannot invoke the 'new' operator on a Java proxy that represents the 'java.lang.Class' instance for an array."
+            );
+        }
+
         // Allocate the Java object from Class instance
         const javaInstance = this._createInstance(javaThis);
         // Lookup constructor method of the target class.
