@@ -444,9 +444,11 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
+        var watchdog = DeadlockWatchdog.singleton();
         hUniverse.methods.values().parallelStream()
                         .forEach(method -> {
                             assert method.isOriginalMethod();
+                            watchdog.recordActivity();
                             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                                 HostedMethod hMethod = (HostedMethod) multiMethod;
                                 strengthenGraphs.applyResults(hMethod.getWrapped());

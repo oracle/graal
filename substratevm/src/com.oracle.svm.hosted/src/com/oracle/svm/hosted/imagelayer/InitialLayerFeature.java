@@ -40,6 +40,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.options.ModifiableOptionValues;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
 
@@ -74,4 +75,9 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
     }
 
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // GR-71504 automatically detect accesses to fields of application layer only singletons
+        access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(ModifiableOptionValues.class, "v"));
+    }
 }

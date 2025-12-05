@@ -107,13 +107,13 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
-        TlabOptionCache tlabOptionCache = new TlabOptionCache();
-        ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
-        tlabOptionCache.validateHostedOptionValues();
-
         if (ImageLayerBuildingSupport.firstImageBuild()) {
+            TlabOptionCache tlabOptionCache = new TlabOptionCache();
+            ImageSingletons.add(TlabOptionCache.class, tlabOptionCache);
+
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }
+        TlabOptionCache.validateHostedOptionValues();
 
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
@@ -156,7 +156,9 @@ class GenScavengeGCFeature implements InternalFeature {
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
 
-        TlabOptionCache.registerOptionValidations();
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            TlabOptionCache.registerOptionValidations();
+        }
     }
 
     private static ImageHeapInfo getCurrentLayerImageHeapInfo() {

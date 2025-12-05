@@ -194,6 +194,10 @@ public class HostedOptionParser implements HostedOptionProvider {
         return runtimeValues;
     }
 
+    public void clearRuntimeValues() {
+        runtimeValues.clear();
+    }
+
     public EconomicSet<String> getRuntimeOptionNames() {
         EconomicSet<String> res = EconomicSet.create(allRuntimeOptions.size());
         allRuntimeOptions.getKeys().forEach(res::add);
