@@ -58,7 +58,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -582,9 +581,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
         @Specialization
         static void generic(Node node, TruffleStringBuilderGeneric sb, int codepoint, int repeat, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
-                        @Cached @Exclusive InlinedConditionProfile supportedProfile,
-                        @Cached InlinedConditionProfile utf16FEProfile,
-                        @Cached InlinedConditionProfile utf32FEProfile,
+                        @Cached @Shared InlinedConditionProfile supportedProfile,
+                        @Cached @Shared InlinedConditionProfile utf16FEProfile,
+                        @Cached @Shared InlinedConditionProfile utf32FEProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             if (supportedProfile.profile(node, isAsciiBytesOrLatin1(sb.encoding))) {
@@ -747,7 +746,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         void doAppend(TruffleStringBuilderUTF32 sb, int value,
                         @Cached @Shared InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile,
+                        @Cached @Shared InlinedConditionProfile stride1Profile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             int len = NumberConversion.stringLengthInt(value);
@@ -866,7 +865,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         void doAppend(TruffleStringBuilderUTF32 sb, long value,
                         @Cached @Shared InlinedConditionProfile stride0Profile,
-                        @Cached @Exclusive InlinedConditionProfile stride1Profile,
+                        @Cached @Shared InlinedConditionProfile stride1Profile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             int len = NumberConversion.stringLengthLong(value);
@@ -1018,8 +1017,8 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderUTF16 sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1073,7 +1072,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderUTF32 sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached @Shared InlinedBranchProfile slowPathProfile,
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1125,10 +1124,10 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         static void append(Node node, TruffleStringBuilderGeneric sb, AbstractTruffleString a,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
+                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Shared InlinedBranchProfile errorProfile) {
             a.checkEncoding(sb.encoding);
             Object dataA = a.data();
             try {
@@ -1386,12 +1385,12 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Bind Node node,
                         @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared InlinedConditionProfile nativeProfileA,
-                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
-                        @Cached @Exclusive InlinedConditionProfile calcAttrsProfile,
-                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
+                        @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
+                        @Cached @Shared TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
+                        @Cached @Shared InlinedConditionProfile calcAttrsProfile,
+                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Shared InlinedBranchProfile errorProfile) {
             if (byteLength == 0) {
                 return;
             }
@@ -1655,7 +1654,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static TruffleString createString(Node node, TruffleStringBuilderUTF8 sb, boolean lazy,
                         @Cached @Shared InlinedConditionProfile calcAttributesProfile,
-                        @Cached @Exclusive InlinedConditionProfile brokenProfile) {
+                        @Cached @Shared InlinedConditionProfile brokenProfile) {
             if (sb.length == 0) {
                 return TruffleString.Encoding.UTF_8.getEmpty();
             }
@@ -1708,7 +1707,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static TruffleString createString(Node node, TruffleStringBuilderGeneric sb, boolean lazy,
                         @Cached @Shared InlinedConditionProfile calcAttributesProfile,
-                        @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode) {
+                        @Cached @Shared TStringInternalNodes.CalcStringAttributesNode calcAttributesNode) {
             if (sb.length == 0) {
                 return sb.encoding.getEmpty();
             }

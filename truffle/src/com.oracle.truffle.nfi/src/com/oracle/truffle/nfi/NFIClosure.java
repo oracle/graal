@@ -43,7 +43,7 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -87,7 +87,7 @@ final class NFIClosure implements TruffleObject {
         @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
                         @Bind Node node,
-                        @Shared @Cached InlinedBranchProfile exception,
+                        @Exclusive @Cached InlinedBranchProfile exception,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) {
             try {
@@ -104,7 +104,7 @@ final class NFIClosure implements TruffleObject {
         @Specialization(replaces = "doOptimizedDirect", guards = "receiver.signature.cachedState != null")
         static Object doOptimizedIndirect(NFIClosure receiver, Object[] args,
                         @Bind Node node,
-                        @Shared @Cached InlinedBranchProfile exception,
+                        @Exclusive @Cached InlinedBranchProfile exception,
                         @Cached IndirectCallNode call) {
             try {
                 return call.call(receiver.signature.cachedState.getPolymorphicClosureCall(), receiver.signature, receiver.executable, args);
@@ -119,7 +119,7 @@ final class NFIClosure implements TruffleObject {
         @Specialization(guards = "receiver.signature.cachedState == null")
         static Object doSlowPath(NFIClosure receiver, Object[] args,
                         @Bind Node node,
-                        @Shared @Cached InlinedBranchProfile exception,
+                        @Exclusive @Cached InlinedBranchProfile exception,
                         @Cached ConvertFromNativeNode convertArg,
                         @Cached ConvertToNativeNode convertRet,
                         @CachedLibrary("receiver.executable") InteropLibrary interop) {

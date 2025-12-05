@@ -1544,10 +1544,10 @@ final class TStringInternalNodes {
         @Specialization(guards = {"length > 0", "length != length(a) || a.isMutable()", "!lazy"})
         static TruffleString materializeSubstring(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
                         @SuppressWarnings("unused") boolean lazy,
-                        @Shared("attributes") @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Exclusive @Cached InlinedConditionProfile utf16Profile,
-                        @Exclusive @Cached InlinedConditionProfile utf32Profile,
-                        @Exclusive @Cached InlinedConditionProfile singleByteProfile) {
+                        @Shared @Cached CalcStringAttributesNode calcAttributesNode,
+                        @Shared @Cached InlinedConditionProfile utf16Profile,
+                        @Shared @Cached InlinedConditionProfile utf32Profile,
+                        @Shared @Cached InlinedConditionProfile singleByteProfile) {
             final long attrs;
             final int codeRange;
             final int stride;
@@ -1578,10 +1578,10 @@ final class TStringInternalNodes {
         @Specialization(guards = {"length > 0", "length != length(a)", "lazy"})
         static TruffleString createLazySubstring(Node node, TruffleString a, byte[] arrayA, long offsetA, int strideA, int codeRangeA, Encoding encoding, int fromIndex, int length,
                         @SuppressWarnings("unused") boolean lazy,
-                        @Shared("attributes") @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Exclusive @Cached InlinedConditionProfile stride1MustMaterializeProfile,
-                        @Exclusive @Cached InlinedConditionProfile stride2MustMaterializeProfile,
-                        @Exclusive @Cached InlinedConditionProfile singleByteProfile) {
+                        @Shared @Cached CalcStringAttributesNode calcAttributesNode,
+                        @Shared @Cached InlinedConditionProfile stride1MustMaterializeProfile,
+                        @Shared @Cached InlinedConditionProfile stride2MustMaterializeProfile,
+                        @Shared @Cached InlinedConditionProfile singleByteProfile) {
             long lazyOffset = offsetA + (fromIndex << strideA);
             long attrs = calcAttributesNode.execute(node, a, arrayA, offsetA, length, strideA, encoding, fromIndex, codeRangeA);
             int codeRange = StringAttributes.getCodeRange(attrs);
@@ -2532,9 +2532,9 @@ final class TStringInternalNodes {
         static TruffleString utf8Transcode(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, int strideA, int codePointLengthA, int codeRangeA, Encoding sourceEncoding,
                         @SuppressWarnings("unused") Encoding targetEncoding,
                         TranscodingErrorHandler errorHandler,
-                        @Cached @Shared("iteratorNextNode") TruffleStringIterator.InternalNextNode iteratorNextNode,
-                        @Cached InlinedConditionProfile brokenProfile,
-                        @Cached @Shared("outOfMemoryProfile") InlinedBranchProfile outOfMemoryProfile,
+                        @Cached @Shared TruffleStringIterator.InternalNextNode iteratorNextNode,
+                        @Cached @Shared InlinedConditionProfile brokenProfile,
+                        @Cached @Shared InlinedBranchProfile outOfMemoryProfile,
                         @Cached @Shared InlinedConditionProfile largeProfile) {
             return utf8Transcode(node, a, arrayA, offsetA, lengthA, strideA, codePointLengthA, codeRangeA, sourceEncoding, errorHandler, iteratorNextNode,
                             largeProfile.profile(node, isLarge(codePointLengthA)),

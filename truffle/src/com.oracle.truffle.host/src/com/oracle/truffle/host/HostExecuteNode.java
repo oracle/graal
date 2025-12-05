@@ -111,8 +111,8 @@ abstract class HostExecuteNode extends Node {
                     @Cached("createToHost(method.getParameterCount())") HostToTypeNode[] toJavaNodes,
                     @Exclusive @Cached ToGuestValueNode toGuest,
                     @Exclusive @Cached InlinedExactClassProfile receiverProfile,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
-                    @Shared("seenScope") @Cached InlinedBranchProfile seenDynamicScope,
+                    @Exclusive @Cached InlinedBranchProfile errorBranch,
+                    @Exclusive @Cached InlinedBranchProfile seenDynamicScope,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         int arity = cachedMethod.getParameterCount();
         if (args.length != arity) {
@@ -150,9 +150,9 @@ abstract class HostExecuteNode extends Node {
                     @Exclusive @Cached HostToTypeNode toJavaNode,
                     @Exclusive @Cached ToGuestValueNode toGuest,
                     @Exclusive @Cached InlinedExactClassProfile receiverProfile,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
-                    @Shared("seenScope") @Cached InlinedBranchProfile seenDynamicScope,
-                    @Shared @Cached InlinedBranchProfile seenVarArgs,
+                    @Exclusive @Cached InlinedBranchProfile errorBranch,
+                    @Exclusive @Cached InlinedBranchProfile seenDynamicScope,
+                    @Exclusive @Cached InlinedBranchProfile seenVarArgs,
                     @Exclusive @Cached HostTargetMappingNode varArgsMappingNode,
                     @Exclusive @CachedLibrary(limit = "3") InteropLibrary varArgsMappingInterop,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
@@ -265,9 +265,9 @@ abstract class HostExecuteNode extends Node {
                     @Cached("createArgTypesArray(args)") TypeCheckNode[] cachedArgTypes,
                     @Cached("selectOverload(node, method, args, hostContext, cachedArgTypes)") SingleMethod overload,
                     @Exclusive @Cached InlinedExactClassProfile receiverProfile,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
-                    @Shared("seenScope") @Cached InlinedBranchProfile seenVariableScope,
-                    @Shared @Cached InlinedBranchProfile seenVarArgs,
+                    @Exclusive @Cached InlinedBranchProfile errorBranch,
+                    @Exclusive @Cached InlinedBranchProfile seenVariableScope,
+                    @Exclusive @Cached InlinedBranchProfile seenVarArgs,
                     @Exclusive @Cached HostTargetMappingNode varArgsMappingNode,
                     @Exclusive @CachedLibrary(limit = "3") InteropLibrary varArgsMappingInterop,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {

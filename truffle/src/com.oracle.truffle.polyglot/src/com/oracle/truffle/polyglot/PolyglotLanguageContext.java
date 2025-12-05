@@ -1243,7 +1243,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @Specialization(replaces = {"doZero"}, guards = "args.length == toGuestValues.length", limit = "1")
         static Object[] doCached(Node node, Object[] args,
                         @Cached("createArray(args.length)") ToGuestValueNode[] toGuestValues,
-                        @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
+                        @Shared @Cached InlinedBranchProfile needsCopyProfile) {
             boolean needsCopy = needsCopyProfile.wasEntered(node);
             Object[] newArgs = needsCopy ? new Object[toGuestValues.length] : args;
             for (int i = 0; i < toGuestValues.length; i++) {
@@ -1267,8 +1267,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
          */
         @Specialization(replaces = {"doZero", "doCached"})
         static Object[] doGeneric(Node node, Object[] args,
-                        @Cached ToGuestValueNode toGuest,
-                        @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
+                        @Shared @Cached ToGuestValueNode toGuest,
+                        @Shared @Cached InlinedBranchProfile needsCopyProfile) {
 
             boolean needsCopy = needsCopyProfile.wasEntered(node);
             Object[] newArgs = needsCopy ? new Object[args.length] : args;

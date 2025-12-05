@@ -2503,8 +2503,8 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "a.isNative()")
         TruffleString nativeImmutable(TruffleString a, Encoding encoding, boolean cacheResult,
-                        @Cached InlinedConditionProfile cacheHit,
-                        @Shared("attributesNode") @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode attributesNode) {
+                        @Shared @Cached InlinedConditionProfile cacheHit,
+                        @Shared @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode attributesNode) {
             CompilerAsserts.partialEvaluationConstant(cacheResult);
             a.checkEncoding(encoding);
             TruffleString cur = a.next;
@@ -7138,8 +7138,8 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         static String doUTF16(TruffleString a,
                         @Bind Node node,
-                        @Cached @Exclusive InlinedConditionProfile managedProfileA,
-                        @Cached @Exclusive InlinedConditionProfile nativeProfileA,
+                        @Cached @Shared InlinedConditionProfile managedProfileA,
+                        @Cached @Shared InlinedConditionProfile nativeProfileA,
                         @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeWithMaterializationNode getPreciseCodeRangeNode,
                         @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode,
@@ -7211,7 +7211,7 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization
         static String doMutable(MutableTruffleString a,
                         @Bind Node node,
-                        @Cached @Exclusive InlinedConditionProfile managedProfileA,
+                        @Cached @Shared InlinedConditionProfile managedProfileA,
                         @Cached @Shared TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeWithMaterializationNode getPreciseCodeRangeNode,
                         @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode,
@@ -7614,7 +7614,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached @Exclusive InlinedConditionProfile cacheHit,
                         @Cached @Exclusive InlinedConditionProfile managedProfileA,
                         @Cached @Exclusive InlinedConditionProfile nativeProfileA,
-                        @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode) {
+                        @Cached @Exclusive TStringInternalNodes.TransCodeNode transCodeNode) {
             final boolean isCompatible;
             final int preciseCodeRangeA;
             if (isCompatibleProfile.profile(node, a.isCompatibleToIntl(targetEncoding))) {
@@ -7708,7 +7708,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached @Exclusive InlinedConditionProfile managedProfileA,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
-                        @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode,
+                        @Cached @Exclusive TStringInternalNodes.TransCodeNode transCodeNode,
                         @Cached @Exclusive InlinedConditionProfile isCompatibleProfile) {
             Encoding encodingA = Encoding.get(a.encoding());
             Object dataA = a.data();
