@@ -245,6 +245,8 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
                         .setInstruction(m.storeLocalInstruction);
+        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class))//
+                        .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
         if (m.enableMaterializedLocalAccesses) {
             m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized",
                             String.format("""
@@ -346,17 +348,16 @@ public class BytecodeDSLBuiltins {
 
         }
 
-        m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class));
-        m.clearLocalInstruction.addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
-
         m.sortInstructionsByKind();
     }
 
     /*
      * Invoked when instructions are being finalized. Allows to conditionally add builtin
-     * instructions depending on the almost final model.
+     * instructions/operations depending on the almost final model.
      */
-    public static void addBuiltinsOnFinalize(BytecodeDSLModel m) {
+    public static void addBuiltinsOnFinalize(BytecodeDSLModel m, TruffleTypes types) {
+        addBackwardCompatibleOperations(m, types);
+
         if (m.hasCustomVariadic) {
             m.loadVariadicInstruction = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic", m.signature(void.class, Object.class));
             m.createVariadicInstruction = m.instruction(InstructionKind.CREATE_VARIADIC, "create.variadic", m.signature(Object.class, Object.class));
@@ -418,6 +419,23 @@ public class BytecodeDSLBuiltins {
                 }
                 m.invalidateInstructions[i] = model;
             }
+        }
+    }
+
+    /**
+     * Built-in operations introduced after the initial release of the Bytecode DSL can potentially
+     * conflict with existing user-defined operations. We add such operations after parsing the
+     * specification only if an operation with the same name is not already defined.
+     */
+    private static void addBackwardCompatibleOperations(BytecodeDSLModel m, TruffleTypes types) {
+        OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
+                        ClearLocal clears {@code local} in the current frame.
+                        Until a value is written to the local, a subsequent LoadLocal %s.
+                        """, loadLocalUndefinedBehaviour(m)), "ClearLocal", true);
+        if (clearLocalOperation != null) {
+            clearLocalOperation.setVoid(true)//
+                            .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
+                            .setInstruction(m.clearLocalInstruction);
         }
     }
 
