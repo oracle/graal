@@ -103,14 +103,6 @@ public final class HotSpotResolvedObjectTypeProxy extends HotSpotResolvedJavaTyp
         return (int) handle(superCheckOffsetMethod, superCheckOffsetInvokable);
     }
 
-    private static final SymbolicMethod prototypeMarkWordMethod = method("prototypeMarkWord");
-    private static final InvokableMethod prototypeMarkWordInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).prototypeMarkWord();
-
-    @Override
-    public long prototypeMarkWord() {
-        return (long) handle(prototypeMarkWordMethod, prototypeMarkWordInvokable);
-    }
-
     private static final SymbolicMethod layoutHelperMethod = method("layoutHelper");
     private static final InvokableMethod layoutHelperInvokable = (receiver, args) -> ((HotSpotResolvedObjectType) receiver).layoutHelper();
 
