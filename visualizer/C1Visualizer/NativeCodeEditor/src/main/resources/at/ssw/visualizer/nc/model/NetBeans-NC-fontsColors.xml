@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fontscolors PUBLIC "-//NetBeans//DTD Editor Fonts and Colors settings 1.1//EN" "http://www.netbeans.org/dtds/EditorFontsColors-1_1.dtd">
+
+<fontscolors>
+    <fontcolor name="nc-other" default="nc-default"/>
+    <fontcolor name="nc-whitespace" default="nc-default"/>
+    <fontcolor name="nc-default" default="default"/>
+    <fontcolor name="nc-address" foreColor="0033CC" default="nc-default"/>
+    <fontcolor name="nc-instruction" foreColor="000099" default="nc-default">
+        <font style="bold"/>
+    </fontcolor>
+    <fontcolor name="nc-register" foreColor="008000" default="nc-default"/>
+    <fontcolor name="nc-block" foreColor="7F0055" default="nc-default">
+        <font style="bold"/>
+    </fontcolor>
+    <fontcolor name="nc-comment" foreColor="gray" default="nc-default">
+        <font style="italic"/>
+    </fontcolor>
+</fontscolors>

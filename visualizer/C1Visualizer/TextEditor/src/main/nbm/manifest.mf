@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.visualizer.texteditor
+OpenIDE-Module-Layer: at/ssw/visualizer/texteditor/layer.xml
+OpenIDE-Module-Localizing-Bundle: at/ssw/visualizer/texteditor/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

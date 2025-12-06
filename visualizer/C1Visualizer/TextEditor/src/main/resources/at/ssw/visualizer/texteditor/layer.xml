@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <attr name="Editors\Preferences\Defaults\org-netbeans-modules-editor-preferences-mac.xml\position" intvalue="200"/>
+    <attr name="Editors\Preferences\Defaults\org-netbeans-modules-editor-preferences.xml\position" intvalue="100"/>
+    <folder name="Editors">
+        <folder name="Preferences">
+            <folder name="Defaults">
+                <file name="at-ssw-visualizer-texteditor-preferences.xml" url="preferences.xml">
+                    <attr name="position" intvalue="300"/>
+                </file>
+            </folder>
+        </folder>
+        <!-- Workaround for GR-34833 / NETBEANS-6232   -->
+        <folder name="SideBar">
+            <file name="at-ssw-visualizer-texteditor-view-PaintBugWorkaroundBar.instance">
+                <attr name="location" stringvalue="west"/>
+                <!-- should be positioned after the current registrations, so they prevail -->
+                <attr name="position" intvalue="1000"/>
+                <attr name="instanceof" stringvalue="org.netbeans.spi.editor.SideBarFactory"/>
+                <attr name="instanceCreate" newvalue="at.ssw.visualizer.texteditor.view.PaintBugWorkaroundBar$Factory"/>
+            </file>
+        </folder>
+        <!-- End of workaround -->
+    </folder>
+</filesystem>
