@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-ir-view-ShowHIRViewAction.instance"/>
+            <file name="at-ssw-visualizer-ir-view-ShowStateViewAction.instance"/>
+            <file name="at-ssw-visualizer-ir-view-ShowLIRViewAction.instance"/>
+        </folder>
+    </folder>
+    <folder name="Menu">
+        <folder name="Window">                        
+            <file name="HIRViewAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-ir-view-ShowHIRViewAction.instance"/>
+                <attr name="position" intvalue="300"/>
+            </file>
+            <file name="StateViewAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-ir-view-ShowStateViewAction.instance"/>
+                <attr name="position" intvalue="400"/>
+            </file>
+            <file name="LIRViewAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-ir-view-ShowLIRViewAction.instance"/>
+                <attr name="position" intvalue="500"/>
+            </file>
+        </folder>
+    </folder>
+    <folder name="Windows2">
+        <folder name="Components">
+            <file name="HIRViewTopComponent.settings" url="HIRViewTopComponentSettings.xml"/>
+            <file name="StateViewTopComponent.settings" url="StateViewTopComponentSettings.xml"/>
+            <file name="LIRViewTopComponent.settings" url="LIRViewTopComponentSettings.xml"/>
+        </folder>
+        <folder name="Modes">
+            <folder name="bottomLeft">
+                <file name="HIRViewTopComponent.wstcref" url="HIRViewTopComponentWstcref.xml">
+                    <attr name="position" intvalue="100"/>
+                </file>
+                <file name="StateViewTopComponent.wstcref" url="StateViewTopComponentWstcref.xml">
+                    <attr name="position" intvalue="200"/>
+                </file>
+            </folder>
+            <folder name="bottomRight">
+                <file name="LIRViewTopComponent.wstcref" url="LIRViewTopComponentWstcref.xml">
+                    <attr name="position" intvalue="100"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

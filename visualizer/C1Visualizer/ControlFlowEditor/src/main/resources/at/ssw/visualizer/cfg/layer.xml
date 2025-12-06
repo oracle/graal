@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="OptionsDialog">
+        <file name="CFGOptions.instance">
+            <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.preferences.CFGOptionsCategory"/>
+            <attr name="position" intvalue="1"/>
+        </file>              
+    </folder>    
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="ShowCFGEditor.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ShowCFGEditorAction"/>
+            </file>
+        </folder>        
+        <folder name="View">      
+                <file name="BezierRouter.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.UseBezierRouterAction"/>
+                </file>
+                <file name="DirectRouter.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.UseDirectLineRouterAction"/>
+                </file>
+                <file name="HierarchicalNodeLayout.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.HierarchicalNodeLayoutAction"/>
+                </file>
+                <file name="HierarchicalCompoundLayout.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.HierarchicalCompoundLayoutAction"/>
+                </file>           
+                <file name="ShowEdges.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ShowEdgesAction"/>
+                </file>
+                <file name="HideEdges.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.HideEdgesAction"/>
+                </file>
+                <file name="Color.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ColorAction"/>
+                </file>    
+                <file name="Export.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ExportAction"/>
+                </file>    
+                <file name="Zoomin.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ZoominAction"/>
+                </file>
+                <file name="Zoomout.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ZoomoutAction"/>
+                </file>  
+                <file name="ShowAll.instance">
+                    <attr name="instanceClass" stringvalue="at.ssw.visualizer.cfg.action.ShowAllAction"/>
+                </file>  
+        </folder>
+    </folder>
+
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="ShowCFGEditor.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/ShowCFGEditor.instance"/>
+                <attr name="position" intvalue="1300"/>
+            </file>
+        </folder>
+    </folder> 
+    
+    <folder name="at-ssw-visualizer-actions-cfg">
+        <file name="ShowCFGEditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/ShowCFGEditor.instance"/>
+            <attr name="position" intvalue="300"/>
+        </file>
+    </folder>
+       
+</filesystem>

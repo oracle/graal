@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fontscolors PUBLIC "-//NetBeans//DTD Editor Fonts and Colors settings 1.1//EN" "http://www.netbeans.org/dtds/EditorFontsColors-1_1.dtd">
+
+<fontscolors>
+    <fontcolor name="block-search" foreColor="black" bgColor="ffe0e8f1"/>
+    <fontcolor name="code-folding" foreColor="ff666666"/>
+    <fontcolor name="code-folding-bar" foreColor="ff666666"/>
+    <fontcolor name="guarded" bgColor="ffDFDFDF"/>
+    <fontcolor name="highlight-caret-row" bgColor="ffE9EFF8"/>
+    <fontcolor name="highlight-search" foreColor="black" bgColor="ffFFB442"/>
+    <fontcolor name="inc-search" foreColor="black" bgColor="ffFFB442"/> <!-- ffff9900 -->
+    <fontcolor name="line-number" foreColor="black" bgColor="ffe9e8e2"/>
+    <fontcolor name="selection" bgColor="ffB0C5E3"/>
+    <fontcolor name="status-bar">
+        <font name="Monospaced" size="12" style="plain"/>
+    </fontcolor>
+    <fontcolor name="status-bar-bold" foreColor="white" bgColor="red">
+        <font name="Monospaced" size="12" style="plain"/>
+    </fontcolor>
+    <fontcolor name="caret-color-insert-mode" foreColor="black"/>
+    <fontcolor name="text-limit-line-color" foreColor="ffffebeb"/>
+    <fontcolor name="at-ssw-visualizer-highlight" bgColor="ffebeba3"/>
+</fontscolors>

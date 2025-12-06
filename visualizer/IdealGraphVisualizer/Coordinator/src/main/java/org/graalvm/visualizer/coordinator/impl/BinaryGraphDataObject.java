@@ -96,7 +96,6 @@ public class BinaryGraphDataObject extends MultiDataObject {
             return;
         }
         try {
-            Thread.dumpStack();
             FileImporter.asyncImportDocument(f.toPath(), true, true, null);
         } catch (IOException ex) {
             Exceptions.printStackTrace(

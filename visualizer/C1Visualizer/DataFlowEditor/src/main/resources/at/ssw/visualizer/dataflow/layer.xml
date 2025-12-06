@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.instance"/>
+        </folder>
+    </folder>
+    
+    <folder name="Loaders">
+        <folder name="application">
+            <folder name="x-compilation-cfg">
+                <folder name="Actions">
+                    <attr name="at-ssw-visualizer-ir-action-ShowIREditorAction.shadow/at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.shadow" boolvalue="true"/>
+                    <file name="at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.shadow">
+                        <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.instance"/>
+                    </file>
+                    <attr name="at-ssw-visualizer-dataflow-action-showDataFlowEditorAction.shadow/at-ssw-visualizer-ir-action-Separator.instance" boolvalue="true"/>
+                </folder>
+            </folder>
+        </folder>
+    </folder>
+    
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.instance"/>
+                <attr name="position" intvalue="1400"/>
+            </file>
+        </folder>
+    </folder>
+
+    <folder name="at-ssw-visualizer-actions-cfg">
+        <file name="ShowDataFlowEditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-dataflow-action-ShowDataFlowEditorAction.instance"/>
+            <attr name="position" intvalue="400"/>
+        </file>
+    </folder>
+</filesystem>

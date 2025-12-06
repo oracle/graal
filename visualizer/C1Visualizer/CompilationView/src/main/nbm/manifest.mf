@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.visualizer.compilation.view
+OpenIDE-Module-Layer: at/ssw/visualizer/compilation/view/layer.xml
+OpenIDE-Module-Localizing-Bundle: at/ssw/visualizer/compilation/view/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

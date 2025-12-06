@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fontscolors PUBLIC "-//NetBeans//DTD Editor Fonts and Colors settings 1.1//EN" "http://www.netbeans.org/dtds/EditorFontsColors-1_1.dtd">
+
+<fontscolors>
+    <fontcolor name="bc-other" default="bc-default"/>
+    <fontcolor name="bc-whitespace" default="bc-default"/>
+    <fontcolor name="bc-default" default="default"/>
+    <fontcolor name="bc-bci" foreColor="006600" default="bc-default"/>
+    <fontcolor name="bc-bytecode_description" foreColor="000099" default="bc-default">
+        <font style="bold"/>
+    </fontcolor>
+    <fontcolor name="bc-var_reference" foreColor="0033CC" default="bc-default"/>
+    <fontcolor name="bc-block" foreColor="7F0055" default="bc-default">
+        <font style="bold"/>
+    </fontcolor>
+</fontscolors>

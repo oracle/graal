@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fontscolors PUBLIC "-//NetBeans//DTD Editor Fonts and Colors settings 1.1//EN" "http://www.netbeans.org/dtds/EditorFontsColors-1_1.dtd">
+
+<fontscolors>
+    <fontcolor name="ir-default" default="default"/>
+    <fontcolor name="ir-block" foreColor="7F0055" default="ir-default">
+        <font style="bold"/>
+    </fontcolor>
+    <fontcolor name="ir-lir" foreColor="008000" default="ir-default"/>
+    <fontcolor name="ir-hir" foreColor="0000C0" default="ir-default"/>
+    <fontcolor name="ir-other" default="ir-default"/>
+    <fontcolor name="ir-whitespace" default="ir-default"/>
+</fontscolors>

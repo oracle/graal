@@ -1,0 +1,357 @@
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Date;
+import java.util.List;
+
+import at.ssw.visualizer.model.cfg.ControlFlowGraph;
+import at.ssw.visualizer.modelimpl.CompilationImpl;
+import at.ssw.visualizer.modelimpl.CompilationModelImpl;
+import at.ssw.visualizer.modelimpl.cfg.ControlFlowGraphImpl;
+import at.ssw.visualizer.modelimpl.cfg.IRInstructionImpl;
+import at.ssw.visualizer.modelimpl.cfg.StateImpl;
+import at.ssw.visualizer.modelimpl.cfg.StateEntryImpl;
+import at.ssw.visualizer.modelimpl.interval.IntervalListImpl;
+import at.ssw.visualizer.modelimpl.interval.RangeImpl;
+import at.ssw.visualizer.modelimpl.interval.UsePositionImpl;
+import at.ssw.visualizer.modelimpl.nc.NativeMethodImpl;
+import at.ssw.visualizer.modelimpl.bc.BytecodesImpl;
+
+COMPILER InputFile
+
+private CompilationModelImpl compilationModel;
+
+public void setCompilationModel(CompilationModelImpl compilationModel) {
+    this.compilationModel = compilationModel;
+}
+
+private String simpleName(String className) {
+    int index = className.lastIndexOf('.');
+    if (index < 0) {
+        return className;
+    }
+    return className.substring(index + 1);
+}
+
+private String shortName(String name) {
+    name = longName(name);
+    String params = "";
+
+    int openParam = name.indexOf('(');
+    if (openParam >= 0) {
+        int closeParam = name.indexOf(')', openParam);
+        if (closeParam >= 0) {
+            String[] parts = name.substring(openParam + 1, closeParam).split(", *");
+            for (int i = 0; i < parts.length; i++) {
+                if (!params.isEmpty()) {
+                    params += ",";
+                }
+                params += simpleName(parts[i]);
+            }
+            params = "(" + params + ")";
+        }
+        name = name.substring(0, openParam);
+    }
+
+    int methodPoint = name.lastIndexOf(".");
+    if (methodPoint < 0) {
+        return name + params;
+    }
+    int classPoint = name.lastIndexOf(".", methodPoint - 1);
+    if (classPoint < 0) {
+        return name + params;
+    }
+    return name.substring(classPoint + 1) + params;
+}
+
+private String longName(String name) {
+    return name.replace("::", ".");
+}
+
+CHARACTERS
+  identCh   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-|:*".
+  cr        = '\r'.
+  lf        = '\n'.
+
+TOKENS
+  ident     = identCh { identCh }.
+
+IGNORE cr + lf
+
+/*-------------------------------------------------------------------------*/
+
+PRODUCTIONS
+
+
+InputFile =                                     (.  CompilationHelper lastComp = null;
+                                                    ControlFlowGraphImpl lastCFG = null;
+                                                    IntervalListImpl lastIL = null; .)
+{
+    Compilation<out CompilationHelper curComp>  (.  if (lastComp != null) compilationModel.addCompilation(lastComp.resolve());
+                                                    lastComp = curComp; .)
+|
+    CFG<out lastCFG, lastComp>
+|
+    IntervalList<out lastIL, lastCFG>           (.  lastComp.elements.add(lastIL); .)
+|
+    NativeMethod<lastCFG>                       
+|
+    Bytecodes<lastCFG>                       
+}                                               (.  if (lastComp != null) compilationModel.addCompilation(lastComp.resolve()); .)
+                                                    
+.
+
+
+Compilation<out CompilationHelper helper> =     (.  helper = new CompilationHelper(); .)
+"begin_compilation"
+    "name" StringValue<out String name>         (.  helper.name = longName(name); helper.shortName = shortName(name); .)
+    "method" StringValue<out String method>     (.  helper.method = longName(method); .)
+    "date" DateValue<out helper.date>
+"end_compilation".
+
+
+
+CFG<out ControlFlowGraphImpl res, CompilationHelper lastComp> =  (.  CFGHelper helper = new CFGHelper(); .)
+"begin_cfg"
+    "name" StringValue<out String name>         (.  helper.name = longName(name); helper.shortName = shortName(name); .)
+    [
+        "id" IntegerValue<out helper.id>
+        "caller_id" IntegerValue<out helper.parentId>
+    ]
+    { 
+        BasicBlock<out BBHelper basicBlock>     (.  helper.add(basicBlock); .)
+    }                                           (.  res = helper.resolve(lastComp, this); .)
+"end_cfg".
+
+  
+BasicBlock<out BBHelper helper> =               (.  helper = new BBHelper(); .)     
+"begin_block"
+    "name" StringValue<out helper.name>
+    "from_bci" IntegerValue<out helper.fromBci>
+    "to_bci" IntegerValue<out helper.toBci>
+	
+    "predecessors" StringList<out helper.predecessors>
+    "successors" StringList<out helper.successors>
+    "xhandlers" StringList<out helper.xhandlers>
+    "flags" StringList<out helper.flags>
+	
+    [ "dominator" StringValue<out helper.dominator> ]
+    [ "loop_index" IntegerValue<out helper.loopIndex> ]
+    [ "loop_depth" IntegerValue<out helper.loopDepth> ]
+    [ "first_lir_id" IntegerValue<out helper.firstLirId> ]
+    [ "last_lir_id" IntegerValue<out helper.lastLirId> ]
+    [ "probability" DoubleValue<out helper.probability> ]
+
+    [ StateList<helper> ]
+    [ HIR<helper> ]
+    [ LIR<helper> ]
+    { IR<helper> }
+"end_block".
+
+
+StateList<BBHelper helper> =
+"begin_states"
+    {
+        "begin_stack"
+        State<out StateImpl state, "Operands">  (.  helper.states.add(state); .)
+        "end_stack"
+    |
+        "begin_locks"
+        State<out StateImpl state, "Locks">     (.  helper.states.add(state); .)
+        "end_locks"
+    |
+        "begin_locals"
+        State<out StateImpl state, "Locals">    (.  helper.states.add(state); .)
+        "end_locals"
+    }
+"end_states". 
+
+
+State<out StateImpl res, String kind> =         (.  String method = ""; ArrayList<StateEntryImpl> entries = new ArrayList<StateEntryImpl>(); .)
+    "size" IntegerValue<out int size>
+    [ "method" StringValue<out method> ]
+    {
+        StateEntry<out StateEntryImpl entry>    (.  entries.add(entry); .)
+    }                                           (.  res = new StateImpl(kind, size, longName(method), entries.toArray(new StateEntryImpl[entries.size()])); .)
+.
+
+StateEntry<out StateEntryImpl res> =            (.  String[] operands = null; String operand = null; .)
+    IntegerValue<out int index> 
+    HIRName<out String name>
+    [
+        "["                                     (.  ArrayList<String> operandsList = new ArrayList<String>(); .)
+        {
+            HIRName<out String opd>             (.  operandsList.add(opd); .)
+        }
+        "]"                                     (.  operands = operandsList.toArray(new String[operandsList.size()]); .)
+    ]
+    [
+        StringValue<out operand>                
+    ]                                           (.  res = new StateEntryImpl(index, name, operands, operand); .)
+.
+
+
+HIR<BBHelper helper> =
+"begin_HIR"
+    {
+        HIRInstruction<out IRInstructionImpl ins> (. helper.hirInstructions.add(ins); .)
+    }
+"end_HIR".
+
+
+HIRInstruction<out IRInstructionImpl res> =     (.  String pinned = ""; String operand = null; .)
+    [ 
+        "."                                     (.  pinned = "."; .)
+    ] 
+    IntegerValue<out int bci> 
+    IntegerValue<out int useCount>
+    [
+        StringValue<out operand>
+    ]
+    HIRName<out String name>
+    FreeValue<out String text>                  (.  res = new IRInstructionImpl(pinned, bci, useCount, name, text, operand); .)
+.
+
+HIRName<out String res> =
+    IdentValue<out res>                         (.  if (res.charAt(0) >= '0' && res.charAt(0) <= '9') { res = "v" + res; res = res.intern(); } .)
+.
+
+  
+LIR<BBHelper helper> =
+"begin_LIR"
+    {
+        LIROperation<out IRInstructionImpl op>   (.  helper.lirOperations.add(op); .)
+    }
+"end_LIR".
+
+
+LIROperation<out IRInstructionImpl res> =
+    IntegerValue<out int number> 
+    FreeValue<out String text>                  (.  res = new IRInstructionImpl(number, text); .)
+.
+
+IR<BBHelper helper> =
+"begin_IR"
+(
+    "HIR"
+    {
+        IRInstruction<out IRInstructionImpl op> (.  helper.hirInstructions.add(op); .)
+    }
+|
+    "LIR"
+    {
+        IRInstruction<out IRInstructionImpl op> (.  helper.lirOperations.add(op); .)
+    }
+)
+"end_IR".
+
+IRInstruction<out IRInstructionImpl res> =      (.  LinkedHashMap<String, String> data = new LinkedHashMap<String, String>(); .)
+    {
+        IdentValue<out String name>
+        FreeValue<out String value>             (.  data.put(name.intern(), value.intern()); .)
+    }
+    "<|@"                                       (.  res = new IRInstructionImpl(data); .)
+.
+
+
+
+IntervalList<out IntervalListImpl res, ControlFlowGraph controlFlowGraph> =   
+                                                (.  IntervalListHelper helper = new IntervalListHelper(); IntervalHelper interval; 
+                                                    if (controlFlowGraph == null) SemErr("must have CFG before intervals"); .)
+"begin_intervals"
+    "name" StringValue<out String name>         (.  helper.name = longName(name); helper.shortName = shortName(name); .)
+    {
+        Interval<out interval>                  (.  helper.add(interval); .)
+    }                                           (.  res = helper.resolve(this, controlFlowGraph); .)
+"end_intervals".
+
+
+Interval<out IntervalHelper helper> =           (.  helper = new IntervalHelper(); RangeImpl range; UsePositionImpl usePosition; .)     
+    IdentValue<out helper.regNum>
+    IdentValue<out helper.type>
+    [ StringValue<out helper.operand> ]
+    IdentValue<out helper.splitParent>
+    IdentValue<out helper.registerHint>
+  
+    Range<out range>                            (.  helper.ranges.add(range); .)
+    {
+        Range<out range>                        (.  helper.ranges.add(range); .)
+    }
+    {
+        UsePosition<out usePosition>            (.  helper.usePositions.add(usePosition); .)
+    }
+
+    StringValue<out helper.spillState>
+.
+
+
+Range<out RangeImpl res> =
+    "[" IntegerValue<out int from> 
+    "," IntegerValue<out int to> "["            (.  res = new RangeImpl(from, to); .)
+.
+
+
+UsePosition<out UsePositionImpl res> =
+    IntegerValue<out int position> 
+    IdentValue<out String kindStr>              (.  res = new UsePositionImpl(position, kindStr.charAt(0)); .)
+.
+
+
+NativeMethod<ControlFlowGraphImpl cfg> =
+"begin_nmethod"
+    NoTrimFreeValue<out String res>             (.  cfg.setNativeMethod(new NativeMethodImpl(cfg, res)); .)
+"end_nmethod"
+.
+
+
+Bytecodes<ControlFlowGraphImpl cfg> =
+"begin_bytecodes"
+    FreeValue<out String res>                   (.  cfg.setBytecodes(new BytecodesImpl(cfg, res)); .)
+"end_bytecodes"
+.
+
+
+StringList<out String[] res> =                  (.  ArrayList<String> list = new ArrayList<String>(); String item; .)
+    { 
+        StringValue<out item>                   (.  list.add(item); .)
+    }                                           (.  res = list.toArray(new String[list.size()]); .)
+.
+
+
+StringValue<out String res> =
+    "\""                                        (.  int beg = la.pos; .)
+    { ANY }                                     (.  res = scanner.buffer.GetString(beg, la.pos).trim().intern(); .)
+    "\""
+.
+
+
+IdentValue<out String res> =
+    ident                                       (.  res = t.val.trim().intern(); .)
+.
+
+
+IntegerValue<out int res> =                     (.  res = 0; .)
+    ident                                       (.  try { res = Integer.parseInt(t.val); } catch (NumberFormatException ex) { SemErr(t.val); } .)
+.
+
+
+DoubleValue<out double res> =                   (.  res = Double.NaN; .)
+    ident                                       (.  try { res = Double.longBitsToDouble(Long.parseLong(t.val)); } catch (NumberFormatException ex) { SemErr(t.val); } .)
+.
+
+
+DateValue<out Date res> =                       (.  res = null; .)
+    ident                                       (.  try { res = new Date(Long.parseLong(t.val)); } catch (NumberFormatException ex) { SemErr(t.val); } .)
+.
+
+
+FreeValue<out String res> =                     (.  int beg = la.pos; .)
+    { ANY }                                     (.  res = scanner.buffer.GetString(beg, la.pos).trim(); if (res.indexOf('\r') != -1) { res = res.replace("\r\n", "\n"); } res = res.intern(); .)
+    "<|@"
+.
+
+NoTrimFreeValue<out String res> =               (.  int beg = la.pos; .)
+    { ANY }                                     (.  res = scanner.buffer.GetString(beg, la.pos); if (res.indexOf('\r') != -1) { res = res.replace("\r\n", "\n"); } res = res.intern(); .)
+    "<|@"
+.
+
+END InputFile.

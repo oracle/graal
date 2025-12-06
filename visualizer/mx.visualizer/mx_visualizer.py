@@ -20,7 +20,6 @@
 # questions.
 
 import mx
-import mx_util
 import os
 import shutil
 from os.path import join, exists
@@ -29,6 +28,7 @@ import filecmp
 
 _suite = mx.suite('visualizer')
 igvDir = os.path.join(_suite.dir, 'IdealGraphVisualizer')
+c1vDir = os.path.join(_suite.dir, 'C1Visualizer')
 
 class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
     def __init__(self, suite, name, deps, workingSets, theLicense, mxLibs=None, **args):
@@ -44,11 +44,11 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
         if not hasattr(self, 'buildDependencies'):
             self.buildDependencies = []
         self.buildDependencies += self.mxLibs
-        self.output_dirs = ['idealgraphvisualizer'] if self.dist else []
+        self.output_dirs = [self.name.lower()] if self.dist else []
         # by default skip the unit tests in a build
         self.build_commands = ["package", "-DskipTests"]
-        self.subDir = args.get('subDir') or None
-        self.baseDir = os.path.join(self.dir, self.subDir or 'IdealGraphVisualizer')
+        self.subDir = args['subDir']
+        self.baseDir = os.path.join(self.dir, self.subDir)
 
     def is_test_project(self):
         return False
@@ -57,13 +57,13 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
         return []
 
     def classpath_repr(self, resolve=True):
-        src = os.path.join(self.dir, 'IdealGraphVisualizer', self.name, 'src')
+        src = os.path.join(self.dir, self.name, self.name, 'src')
         if not os.path.exists(src):
             mx.abort(f"Cannot find {src}")
         return src
 
     def output_dir(self, relative=False):
-        outdir = os.path.join(_suite.dir, 'IdealGraphVisualizer', 'application', 'target')
+        outdir = os.path.join(_suite.dir, self.name, 'application', 'target')
         return outdir
 
     def source_gen_dir(self):
@@ -84,7 +84,7 @@ class NetBeansProject(mx.ArchivableProject, mx.ClasspathDependency):
         return NetBeansBuildTask(self, args, None, None)
 
     def archive_prefix(self):
-        return 'igv'
+        return ''
 
     def annotation_processors(self):
         return []
@@ -116,33 +116,21 @@ class NetBeansBuildTask(mx.BuildTask):
         return None
 
     def build(self):
-        if self.subject.mxLibs:
-            libs_dir = os.path.join(self.subject.dir, self.subject.subDir or 'IdealGraphVisualizer', self.subject.name, 'lib')
-            mx_util.ensure_dir_exists(libs_dir)
-            for lib in self.subject.mxLibs:
-                lib_path = lib.classpath_repr(resolve=False)
-                link_name = os.path.join(libs_dir, os.path.basename(lib_path))
-                from_path = os.path.relpath(lib_path, os.path.dirname(link_name))
-                mx.log(f"Symlink {from_path}, {link_name}")
-                os.symlink(from_path, link_name)
-        mx.log('Symlinks must be copied!')
-
         env = os.environ.copy()
-        env["MAVEN_OPTS"] = "-Djava.awt.headless=true -Dpolyglot.engine.WarnInterpreterOnly=false"
+        env["MAVEN_OPTS"] = "-Djava.awt.headless=true -Dpolyglot.engine.WarnInterpreterOnly=false --enable-native-access=ALL-UNNAMED"
 
         mx.logv(f"Setting PATH to {os.environ['PATH']}")
-
         mx.log(f"Invoking maven for {' '.join(self.subject.build_commands)} for {self.subject.name} in {self.subject.baseDir}")
         run_maven(self.subject.build_commands, nonZeroIsFatal=True, cwd=self.subject.baseDir, env=env)
 
         for output_dir in self.subject.output_dirs:
-            os.chmod(os.path.join(self.subject.output_dir(), output_dir, 'bin', 'idealgraphvisualizer'), 0o755)
+            os.chmod(os.path.join(self.subject.output_dir(), output_dir, 'bin', self.subject.name.lower()), 0o755)
 
         mx.log(f'...finished build of {self.subject}')
 
     def clean(self, forBuild=False):
         if self.subject.mxLibs:
-            libs_dir = os.path.join(self.subject.dir, self.subject.subDir or 'IdealGraphVisualizer', self.subject.name, 'lib')
+            libs_dir = os.path.join(self.subject.dir, self.subject.subDir, self.subject.name, 'lib')
             for lib in self.subject.mxLibs:
                 lib_path = lib.classpath_repr(resolve=False)
                 link_name = os.path.join(libs_dir, os.path.basename(lib_path))
@@ -151,32 +139,47 @@ class NetBeansBuildTask(mx.BuildTask):
         if forBuild:
             return
         env = os.environ.copy()
-        env["MAVEN_OPTS"] = "-Djava.awt.headless=true"
-        run_maven(['clean', '--quiet'], resolve=False, nonZeroIsFatal=True, cwd=igvDir, env=env)
+        env["MAVEN_OPTS"] = "-Djava.awt.headless=true --enable-native-access=ALL-UNNAMED"
+        run_maven(['clean', '--quiet'], resolve=False, nonZeroIsFatal=True, cwd=os.path.join(_suite.dir, self.name), env=env)
 
 def run_maven(args, resolve=True, **kwargs):
     return mx.run(['mvn'] + args, **kwargs)
 
-@mx.command(_suite.name, 'igv')
-def igv(args):
-    """run the newly built Ideal Graph Visualizer"""
+def build_and_run_netbeans(title, name, args, launchDir):
     # force a build if it hasn't been built yet
-    if not os.path.exists(os.path.join(_suite.dir, 'IdealGraphVisualizer', 'application', 'target', 'idealgraphvisualizer')):
-        mx.build(['--dependencies', 'IGV'])
+    if not os.path.exists(os.path.join(_suite.dir, title, 'application', 'target', name)):
+        mx.build(['--dependencies', title.upper()])
 
     if mx.get_opts().verbose:
         args.append('-J-Dnetbeans.logger.console=true')
-    mx.run([join(igvDir, 'application', 'target', 'idealgraphvisualizer', 'bin', 'idealgraphvisualizer.exe' if mx.is_windows() else 'idealgraphvisualizer'), '--jdkhome', mx.get_jdk().home] + args)
+    mx.run([join(launchDir, 'application', 'target', name, 'bin', name + '.exe' if mx.is_windows() else name), '--jdkhome', mx.get_jdk().home] + args)
+
+
+@mx.command(_suite.name, 'igv')
+def igv(args):
+    """run the newly built Ideal Graph Visualizer"""
+    build_and_run_netbeans('IdealGraphVisualizer', 'idealgraphvisualizer', args, igvDir)
+
+@mx.command(_suite.name, 'c1visualizer')
+def c1visualizer(args):
+    """run the newly built C1Visualizer"""
+    build_and_run_netbeans('C1Visualizer', 'c1visualizer', args, c1vDir)
 
 @mx.command(_suite.name, 'unittest')
 def test(args):
     """Run Ideal Graph Visualizer unit tests"""
     run_maven(['package'], nonZeroIsFatal=True, cwd=igvDir)
+    # C1Visualizer current has no unit tests
 
-@mx.command(_suite.name, 'release')
-def release(args):
-    """Build a released version using mvn release:prepare"""
+@mx.command(_suite.name, 'releaseigv')
+def releaseigv(args):
+    """Build a released version of IdealGraphVisualizer using mvn release:prepare"""
     run_maven(['-B', 'release:clean', 'release:prepare'], nonZeroIsFatal=True, cwd=igvDir)
+
+@mx.command(_suite.name, 'releasec1v')
+def releasec1v(args):
+    """Build a released version of C1Visualizer using mvn release:prepare"""
+    run_maven(['-B', 'release:clean', 'release:prepare'], nonZeroIsFatal=True, cwd=c1vDir)
 
 @mx.command(_suite.name, 'verify-graal-graphio')
 def verify_graal_graphio(args):

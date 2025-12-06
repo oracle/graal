@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="ShowIntervalEditor.instance">
+                <attr name="instanceClass" stringvalue="at.ssw.visualizer.interval.ShowIntervalEditorAction"/>
+            </file>
+        </folder>
+    </folder>
+
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="ShowIntervalEditor.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/ShowIntervalEditor.instance"/>
+                <attr name="position" intvalue="1500"/>
+            </file>
+        </folder>
+    </folder>
+    
+    <folder name="at-ssw-visualizer-actions-intervals">
+        <file name="ShowIntervalEditor.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/ShowIntervalEditor.instance"/>
+            <attr name="position" intvalue="500"/>
+        </file>
+    </folder>
+</filesystem>
