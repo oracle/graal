@@ -854,6 +854,10 @@ public class Linker {
                             stack.add(array);
                             break;
                         }
+                        case Bytecode.REF_I31: {
+                            stack.add((int) stack.removeLast() & ~(1 << 31));
+                            break;
+                        }
                         default:
                             fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X 0x%02X", opcode, aggregateOpcode);
                             break;
@@ -938,6 +942,9 @@ public class Linker {
                     int aggregateOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (aggregateOpcode) {
+                        case Bytecode.REF_I31: {
+                            break;
+                        }
                         case Bytecode.STRUCT_NEW:
                         case Bytecode.STRUCT_NEW_DEFAULT:
                         case Bytecode.ARRAY_NEW:

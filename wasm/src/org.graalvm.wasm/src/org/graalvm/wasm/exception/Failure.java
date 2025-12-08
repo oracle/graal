@@ -158,12 +158,13 @@ public enum Failure {
     INDIRECT_CALL_TYPE_MISMATCH(Type.TRAP, "indirect call type mismatch"),
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
-    CAST(Type.TRAP, "cast"),
+    CAST_FAILURE(Type.TRAP, "cast failure"),
 
     NULL_REFERENCE(Type.TRAP, "null reference"),
     NULL_FUNCTION_REFERENCE(Type.TRAP, "null function reference"),
     NULL_STRUCTURE_REFERENCE(Type.TRAP, "null structure reference"),
     NULL_ARRAY_REFERENCE(Type.TRAP, "null array reference"),
+    NULL_I31_REFERENCE(Type.TRAP, "null i31 reference"),
     OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     OUT_OF_BOUNDS_ARRAY_ACCESS(Type.TRAP, "out of bounds array access"),
     // GraalWasm-specific:

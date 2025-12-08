@@ -369,8 +369,6 @@ public class Bytecode {
     public static final int REF_CAST_NULL = 0x17;
     public static final int BR_ON_CAST = 0x18;
     public static final int BR_ON_CAST_FAIL = 0x19;
-    public static final int ANY_CONVERT_EXTERN = 0x1A;
-    public static final int EXTERN_CONVERT_ANY = 0x1B;
     public static final int REF_I31 = 0x1C;
     public static final int I31_GET_S = 0x1D;
     public static final int I31_GET_U = 0x1E;
