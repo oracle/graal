@@ -150,6 +150,11 @@ class WebImageConfiguration:
     to add the Wasm codegen jars to builder's classpath, because that would make it produce a Wasm binary.
     """
 
+    suites: List[mx.Suite] = [_suite]
+    """
+    All Web Image suites.
+    """
+
     suite = None
     """Suite used to resolve the location of the web-image executable"""
 
@@ -160,6 +165,10 @@ class WebImageConfiguration:
     @classmethod
     def get_svm_wasm_component(cls) -> mx_sdk_vm.GraalVmComponent:
         return mx_sdk_vm.graalvm_component_by_name(cls.svm_wasm_component)
+
+    @classmethod
+    def get_all_suites(cls) -> List[mx.Suite]:
+        return cls.suites
 
     @classmethod
     def get_suite(cls) -> mx.Suite:
