@@ -41,22 +41,23 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.DefinedType;
 
 public final class WasmTag implements TruffleObject, EmbedderDataHolder {
     public static final class Attribute {
         public static final int EXCEPTION = 0;
     }
 
-    private final FunctionType type;
+    private final DefinedType type;
 
     private Object embedderData = WasmConstant.VOID;
 
-    public WasmTag(FunctionType type) {
+    public WasmTag(DefinedType type) {
+        assert type.isFunctionType() && type.asFunctionType().resultTypes().length == 0;
         this.type = type;
     }
 
-    public FunctionType type() {
+    public DefinedType type() {
         return type;
     }
 

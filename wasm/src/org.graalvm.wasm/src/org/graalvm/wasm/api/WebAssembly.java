@@ -580,7 +580,7 @@ public class WebAssembly extends Dictionary {
         assert attribute == WasmTag.Attribute.EXCEPTION;
         final int typeIndex = module.tagTypeIndex(tagIndex);
 
-        return FuncType.fromClosedFunctionType(module.closedFunctionTypeAt(typeIndex)).toString();
+        return FuncType.fromDefinedType(module.closedTypeAt(typeIndex)).toString();
     }
 
     private static Object memAlloc(Object[] args) {
@@ -870,7 +870,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static WasmTag tagAlloc(FuncType type) {
-        return new WasmTag(type.toClosedFunctionType());
+        return new WasmTag(type.toDefinedType());
     }
 
     public static Object tagType(Object[] args) {
@@ -878,7 +878,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        return tag.type().toString();
+        return FuncType.fromDefinedType(tag.type()).toString();
     }
 
     public WasmRuntimeException exnAlloc(Object[] args) {
@@ -886,7 +886,7 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTag tag)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be a wasm tag");
         }
-        final FuncType type = FuncType.fromClosedFunctionType(tag.type());
+        final FuncType type = FuncType.fromDefinedType(tag.type());
         final int paramCount = type.paramCount();
         checkArgumentCount(args, paramCount + 1);
         final Object[] fields = new Object[paramCount];

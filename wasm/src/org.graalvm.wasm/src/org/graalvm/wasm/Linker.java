@@ -108,7 +108,6 @@ import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.struct.WasmStructAccess;
 import org.graalvm.wasm.types.DefinedType;
-import org.graalvm.wasm.types.FunctionType;
 import org.graalvm.wasm.types.ValueType;
 
 import com.oracle.truffle.api.CallTarget;
@@ -511,7 +510,7 @@ public class Linker {
         });
     }
 
-    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, FunctionType type, ImportValueSupplier imports) {
+    void resolveTagImport(WasmStore store, WasmInstance instance, ImportDescriptor importDescriptor, int tagIndex, DefinedType type, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedTagName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
