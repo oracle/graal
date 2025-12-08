@@ -83,9 +83,13 @@ public class InterceptJSInvokeTypeFlow extends TypeFlow<BytecodePosition> {
         if (!isFlowEnabled()) {
             return;
         }
+        var state = getState();
+        if (state.isPrimitive()) {
+            return;
+        }
         // SAM metadata must be preserved if a functional interface implementation reaches the
         // callsite.
-        for (AnalysisObject object : getState().objects(bb)) {
+        for (AnalysisObject object : state.objects(bb)) {
             Optional<AnalysisMethod> sam = ReflectUtil.singleAbstractMethodForClass(bb.getMetaAccess(), object.type());
             if (sam.isPresent()) {
                 bb.addRootMethod(sam.get(), false, "SAM method to JS, registered in " + InterceptJSInvokeTypeFlow.class);
