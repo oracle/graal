@@ -322,7 +322,7 @@ public class ArrayProxyTest {
     }
 
     @JS.Coerce
-    @JS("return Error.isError(o);")
+    @JS("return o instanceof Error;")
     private static native boolean isError(Object o);
 
     @JS.Coerce
