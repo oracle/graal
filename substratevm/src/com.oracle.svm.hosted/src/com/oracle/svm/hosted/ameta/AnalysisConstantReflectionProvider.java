@@ -94,7 +94,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     @Override
-    public Integer identityHashCode(JavaConstant constant) {
+    public int identityHashCode(JavaConstant constant) {
         JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
         if (kind != JavaKind.Object) {
             throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
@@ -126,6 +126,11 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             hostedObject = hub.getHostedJavaClass();
         }
         return System.identityHashCode(hostedObject);
+    }
+
+    @Override
+    public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+        throw VMError.unimplemented("makeIdentityHashCode");
     }
 
     @Override

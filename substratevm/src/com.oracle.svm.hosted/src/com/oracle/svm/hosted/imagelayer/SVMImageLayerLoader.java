@@ -126,11 +126,11 @@ import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
-import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.shaded.org.capnproto.PrimitiveList;
 import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
@@ -151,6 +151,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -1828,10 +1829,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (object == null || identityHashCode == null) {
             return;
         }
-        boolean result = IdentityHashCodeUtil.injectIdentityHashCode(object, identityHashCode);
-        if (!result) {
+
+        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        JavaConstant constant = GraalAccess.getOriginalSnippetReflection().forObject(object);
+        int actualHashCode = constantReflection.makeIdentityHashCode(constant, identityHashCode);
+        if (actualHashCode != identityHashCode) {
             if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogHashCodeInjectionFailure.getValue()) {
-                LogUtils.warning("Object of type %s already had an hash code: %s", object.getClass(), object);
+                LogUtils.warning("Object of %s already has identity hash code %d when trying to set it to %d: %s",
+                                object.getClass(), actualHashCode, identityHashCode, object);
             }
         }
     }

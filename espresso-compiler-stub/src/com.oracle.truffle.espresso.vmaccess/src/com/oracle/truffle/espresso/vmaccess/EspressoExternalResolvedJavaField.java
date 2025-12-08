@@ -88,4 +88,7 @@ final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJa
         return fieldMirror.hashCode();
     }
 
+    public Value readValue(Value receiver) {
+        return fieldMirror.invokeMember("read", receiver);
+    }
 }
