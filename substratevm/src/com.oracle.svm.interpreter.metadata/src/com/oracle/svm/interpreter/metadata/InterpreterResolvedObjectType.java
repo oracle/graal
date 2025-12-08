@@ -160,12 +160,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     }
 
     @VisibleForSerialization
-    public static InterpreterResolvedObjectType create(ParserKlass parserKlass, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
-                    InterpreterResolvedObjectType[] interfaces, Class<?> javaClass, boolean isWordType) {
-        return new InterpreterResolvedObjectType(parserKlass.getType(), modifiers, componentType, superclass, interfaces, null, javaClass, isWordType);
-    }
-
-    @VisibleForSerialization
     public static InterpreterResolvedObjectType createWithOpaqueClass(String name, int modifiers, InterpreterResolvedJavaType componentType, InterpreterResolvedObjectType superclass,
                     InterpreterResolvedObjectType[] interfaces, InterpreterConstantPool constantPool,
                     JavaConstant clazzConstant,

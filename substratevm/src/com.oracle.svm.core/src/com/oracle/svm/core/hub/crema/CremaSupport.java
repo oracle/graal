@@ -63,6 +63,8 @@ public interface CremaSupport {
 
     DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName, Module module, ClassLoader classLoader, Class<?> superClass, Class<?>[] superInterfaces);
 
+    DynamicHub getOrCreateArrayHub(DynamicHub dynamicHub);
+
     /**
      * Creates a new instance of {@code type} without running any constructor yet. The caller should
      * make sure to run a constructor before publishing the result.

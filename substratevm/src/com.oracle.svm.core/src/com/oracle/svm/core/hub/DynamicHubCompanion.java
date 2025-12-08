@@ -54,12 +54,12 @@ import sun.reflect.generics.repository.ClassRepository;
  * improve sharing between isolates and processes, but could increase image size.
  */
 public final class DynamicHubCompanion {
-
     /** Field used for module information access at run-time. */
     final Module module;
 
     /**
-     * The hub for the superclass, or null if an interface or primitive type.
+     * The hub for the superclass, or null if an interface, a primitive type, or
+     * {@link java.lang.Object}.
      *
      * @see Class#getSuperclass()
      */
@@ -92,13 +92,13 @@ public final class DynamicHubCompanion {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterHostedUniverse.class) //
     @Stable byte additionalFlags;
 
+    //
     /**
      * The hub for an array of this type, or null if the array type has been determined as
      * uninstantiated by the static analysis. In layered builds, it is possible for this value to be
      * initially set to null and then updated in a subsequent layer.
      */
-    @LayeredFieldValue(transformer = ArrayHubTransformer.class) //
-    @Stable DynamicHub arrayHub;
+    @LayeredFieldValue(transformer = ArrayHubTransformer.class) @Stable DynamicHub arrayHub;
 
     /**
      * The interfaces that this class implements. Either null (no interfaces), a {@link DynamicHub}
@@ -196,6 +196,7 @@ public final class DynamicHubCompanion {
      * reachable in a later layer than the layer in which the companion is installed in. When this
      * happens we must update the companion's field to point to the newly installed value.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static class ArrayHubTransformer extends LayeredFieldValueTransformer<DynamicHubCompanion> {
         boolean appLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
 

@@ -90,6 +90,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 
 import com.oracle.svm.configure.ClassNameSupport;
@@ -123,6 +124,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -726,9 +728,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.openTypeWorldInterfaceHashParam = openTypeWorldInterfaceHashParam;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void setArrayHub(DynamicHub arrayHub) {
-        assert (companion.arrayHub == null || companion.arrayHub == arrayHub) && arrayHub != null;
+        assert (companion.arrayHub == null || companion.arrayHub == arrayHub) && arrayHub != null : companion.arrayHub + " - " + arrayHub;
         assert arrayHub.getComponentHub() == this;
         companion.arrayHub = arrayHub;
     }
@@ -739,7 +740,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         companion.interfacesEncoding = interfacesEncoding;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public Object getInterfacesEncoding() {
         return companion.interfacesEncoding;
     }
@@ -990,8 +990,29 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return componentType;
     }
 
+    /**
+     * Returns a hub for an array type whose component type is this hub.
+     * <p>
+     * This method should only be preferred to {@link #getOrCreateArrayHub()} when used at build
+     * time or in snippets. For reflective accesses {@link #arrayType()} can be used instead, in
+     * particular it should be used when reflection metadata validation should be performed.
+     * <p>
+     * If this returns {@code null}, in cases where runtime class loading is
+     * {@linkplain RuntimeClassLoading#isSupported supported}, {@link #getOrCreateArrayHub} can be
+     * used to create the array hub. In that case, the return value of {@link #getOrCreateArrayHub}
+     * must be used since this may in some cases continue to return {@code null}.
+     */
     public DynamicHub getArrayHub() {
         return companion.arrayHub;
+    }
+
+    public DynamicHub getOrCreateArrayHub() {
+        DynamicHub arrayHub = getArrayHub();
+        if (RuntimeClassLoading.isSupported() && arrayHub == null) {
+            arrayHub = CremaSupport.singleton().getOrCreateArrayHub(this);
+            assert arrayHub != null;
+        }
+        return arrayHub;
     }
 
     @AlwaysInline("GC performance")
@@ -2090,10 +2111,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceReflectionArrayType(toClass(this));
         }
-        if (companion.arrayHub == null || (throwMissingRegistrationErrors() && !ClassForNameSupport.isRegisteredClass(ClassNameSupport.getArrayReflectionName(getName())))) {
-            MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+        DynamicHub arrayHub = getArrayHub();
+        // this access is validated even if the array hub exists
+        if (RuntimeClassLoading.isSupported()) {
+            if (throwMissingRegistrationErrors() &&
+                            ClassLoadingSupport.singleton().followReflectionConfiguration() &&
+                            !ClassForNameSupport.isRegisteredClass(ClassNameSupport.getArrayReflectionName(getName()))) {
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+            }
+        } else {
+            if (arrayHub == null || (throwMissingRegistrationErrors() &&
+                            !ClassForNameSupport.isRegisteredClass(ClassNameSupport.getArrayReflectionName(getName())))) {
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+            }
         }
-        return companion.arrayHub;
+        if (RuntimeClassLoading.isSupported() && arrayHub == null) {
+            arrayHub = getOrCreateArrayHub();
+            assert arrayHub != null;
+        }
+        return arrayHub;
     }
 
     @KeepOriginal
@@ -2383,6 +2419,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.classInitializationInfo.isTypeReached(this);
     }
 
+    @AlwaysInline("Ensure branches are eliminated when it's not supported")
     public boolean isRuntimeLoaded() {
         return RuntimeClassLoading.isSupported() && getLayerId() == DynamicImageLayerInfo.CREMA_LAYER_ID;
     }
