@@ -485,7 +485,7 @@ public class ContextBuilderExtendAPITest extends AbstractPolyglotTest {
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
             try {
-                if (frameArguments.length == 1 && env.isHostObject(frameArguments[0])) {
+                if (frameArguments.length == 1 && interop.isHostObject(frameArguments[0])) {
                     return interop.invokeMember(frameArguments[0], "getName");
                 }
                 if (frameArguments.length == 1 && interop.isString(frameArguments[0]) && interop.asString(frameArguments[0]).equals("return-array")) {

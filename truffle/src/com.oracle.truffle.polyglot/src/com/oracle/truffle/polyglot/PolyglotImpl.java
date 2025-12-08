@@ -100,6 +100,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -928,22 +929,35 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotExceptionImpl suppressedImpl = null;
         PolyglotContextImpl.State localContextState = context.state;
         PolyglotImpl polyglot = context.engine.impl;
-        if (localContextState.isInvalidOrClosed()) {
-            exceptionImpl = new PolyglotExceptionImpl(polyglot, context.engine, localContextState, context.invalidResourceLimit, context.exitCode, languageContext, e, false, false);
-        } else {
-            try {
-                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, localContextState, false, 0,
-                                languageContext, e, true, entered);
-            } catch (Throwable t) {
-                /*
-                 * It is possible that we fail to produce a guest value or interop message failed.
-                 * We report the original exception without using interop messages. We also convert
-                 * the exception thrown from the PolyglotExceptionImpl constructor to a new
-                 * PolyglotException and add it to resulting exception suppressed exceptions.
-                 */
-                exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, e);
-                suppressedImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, t);
+        try {
+            if (localContextState.isInvalidOrClosed()) {
+                exceptionImpl = new PolyglotExceptionImpl(polyglot, context.engine, localContextState, context.invalidResourceLimit, context.exitCode, languageContext, e, false, false);
+            } else {
+                try {
+                    exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, localContextState, false, 0,
+                                    languageContext, e, true, entered);
+                } catch (Throwable t) {
+                    /*
+                     * It is possible that we fail to produce a guest value or interop message
+                     * failed. We report the original exception without using interop messages. We
+                     * also convert the exception thrown from the PolyglotExceptionImpl constructor
+                     * to a new PolyglotException and add it to resulting exception suppressed
+                     * exceptions.
+                     */
+                    exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, e);
+                    suppressedImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, t);
+                }
             }
+        } catch (CancelExecution cancelExecution) {
+            /*
+             * The interop protocol is used to create a PolyglotExceptionImpl. A polyglot isolate
+             * always attempts to enter a context before processing an interop message. If the
+             * context has been cancelled, the enter operation throws a CancelExecution exception
+             * that is propagated to PolyglotExceptionImpl constructor. In such cases, the
+             * CancelExecution exception is wrapped in a PolyglotException and rethrown to the
+             * embedder.
+             */
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, 0, cancelExecution);
         }
         APIAccess access = polyglot.getAPIAccess();
         RuntimeException polyglotException = access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, exceptionImpl, context.getContextAPIOrNull());

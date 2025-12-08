@@ -1032,6 +1032,30 @@ public abstract class DebugValue {
     }
 
     /**
+     * Returns a value that provides static members whose value is independent on a specific
+     * instance. Returns {@code null} when no static scope is available.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 25.1
+     */
+    public final DebugValue getStaticScope() {
+        if (!isReadable()) {
+            return null;
+        }
+        Object view = getLanguageView();
+        try {
+            if (INTEROP.hasStaticScope(view)) {
+                return new HeapValue(getSession(), resolveLanguage(), null, INTEROP.getStaticScope(view));
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return null;
+    }
+
+    /**
      * Provides properties representing an internal structure of this value. The returned collection
      * is not thread-safe. If the value is not {@link #isReadable() readable} then <code>null</code>
      * is returned.

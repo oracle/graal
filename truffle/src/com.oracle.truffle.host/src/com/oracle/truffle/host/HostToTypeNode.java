@@ -64,6 +64,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.Value;
 
@@ -183,9 +185,10 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
         }
-        HostLanguage language = HostLanguage.get(interop);
-        if (HostObject.isJavaInstance(language, targetType, value)) {
-            return HostObject.valueOf(language, value);
+
+        Object hostValue;
+        if ((hostValue = toJavaInstance(value, targetType, interop)) != null) {
+            return hostValue;
         }
 
         if (useCustomTargetTypes) {
@@ -201,6 +204,8 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
         }
+
+        HostLanguage language = HostLanguage.get(interop);
         if (targetType == language.valueClass && context != null) {
             return language.valueClass.isInstance(value) ? value : context.asValue(interop, value);
         } else if (interop.isNull(value)) {
@@ -269,7 +274,7 @@ abstract class HostToTypeNode extends Node {
                 return true;
             }
         }
-        if (HostObject.isJavaInstance(language, targetType, value)) {
+        if (toJavaInstance(value, targetType, interop) != null) {
             return true;
         }
 
@@ -317,7 +322,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (value instanceof TruffleObject) {
-            if (priority < HOST_PROXY && HostObject.isInstance(language, value)) {
+            if (priority < HOST_PROXY && interop.isHostObject(value)) {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
@@ -427,8 +432,9 @@ abstract class HostToTypeNode extends Node {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
-        if (HostObject.isJavaInstance(hostContext.language, targetType, value)) {
-            obj = HostObject.valueOf(hostContext.language, value);
+        Object hostObject = toJavaInstance(value, targetType, interop);
+        if (hostObject != null) {
+            obj = hostObject;
         } else if (targetType == Object.class) {
             obj = convertToObject(node, hostContext, value, interop);
         } else if (targetType == List.class || targetType == Collection.class) {
@@ -649,6 +655,22 @@ abstract class HostToTypeNode extends Node {
         }
         assert targetType.isInstance(obj);
         return targetType.cast(obj);
+    }
+
+    private static Object toJavaInstance(Object value, Class<?> targetType, InteropLibrary interop) {
+        if (interop.isHostObject(value)) {
+            try {
+                Object hostObject = interop.asHostObject(value);
+                if (hostObject != null && targetType.isInstance(hostObject)) {
+                    return hostObject;
+                }
+            } catch (HeapIsolationException e) {
+                return null;
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+        return null;
     }
 
     private static Object asPolyglotException(HostContext hostContext, Object value, InteropLibrary interop) {
