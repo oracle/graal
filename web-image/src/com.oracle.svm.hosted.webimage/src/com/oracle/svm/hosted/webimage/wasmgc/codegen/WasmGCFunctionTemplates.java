@@ -55,6 +55,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.wasm.types.WasmPrimitiveType;
 import com.oracle.svm.webimage.wasm.types.WasmUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
@@ -374,7 +375,7 @@ public class WasmGCFunctionTemplates {
         @Override
         protected String getFunctionName(HostedType type) {
             // TODO GR-41720 Ensure this is a valid Wasm name
-            return "struct." + type.getName() + ".create";
+            return "struct." + JVMCIReflectionUtil.getTypeName(type) + ".create";
         }
 
         @Override
