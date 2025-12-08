@@ -156,7 +156,7 @@ public final class WebImageNamingConvention implements NamingConvention {
 
         @Override
         public String identForType(ResolvedJavaType t) {
-            String name = t.getName();
+            String name = t.toClassName();
             /*
              * We prefix the reduced name with an underscore so that it can't conflict with one of
              * JavaScript's built-in objects.

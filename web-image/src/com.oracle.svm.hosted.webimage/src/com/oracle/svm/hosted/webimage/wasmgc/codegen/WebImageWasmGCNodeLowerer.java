@@ -394,7 +394,7 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         if (toIsSubtype && !wasmFromType.equals(wasmToType)) {
             original.setComment(masm.getNodeComment(node));
             Instruction cast = new Instruction.RefCast(original, (WasmRefType) util.typeForJavaType(wasmToType));
-            cast.setComment("Explicit downcast due to type mismatch, expected " + wasmToType.getName() + ", got " + wasmFromType.getName());
+            cast.setComment("Explicit downcast due to type mismatch, expected " + wasmToType.toClassName() + ", got " + wasmFromType.toClassName());
             return cast;
         }
 
