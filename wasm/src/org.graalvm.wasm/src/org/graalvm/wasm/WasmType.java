@@ -126,7 +126,7 @@ public class WasmType implements TruffleObject {
     /**
      * Reference Types.
      */
-    public static final int NOEXN_HEAPTYPE = -0x0b;
+    public static final int NOEXN_HEAPTYPE = -0x0c;
     public static final int NOFUNC_HEAPTYPE = -0x0d;
     public static final int NOEXTERN_HEAPTYPE = -0x0e;
     public static final int NONE_HEAPTYPE = -0x0f;

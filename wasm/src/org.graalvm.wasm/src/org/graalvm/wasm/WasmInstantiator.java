@@ -69,7 +69,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.DefinedType;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -203,7 +203,7 @@ public class WasmInstantiator {
         for (int i = 0; i < module.tagCount(); i++) {
             final int tagIndex = i;
             final int typeIndex = module.tagTypeIndex(tagIndex);
-            final FunctionType type = module.closedFunctionTypeAt(typeIndex);
+            final DefinedType type = module.closedTypeAt(typeIndex);
             final ImportDescriptor tagDescriptor = module.importedTag(tagIndex);
             if (tagDescriptor != null) {
                 linkActions.add((context, store, instance, imports) -> {

@@ -903,16 +903,6 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Convenience function for calling {@link #closedTypeAt(int)} when the defined type at index
-     * {@code typeIndex} is known to be a function type.
-     * 
-     * @see #closedTypeAt(int)
-     */
-    public FunctionType closedFunctionTypeAt(int typeIndex) {
-        return closedTypeAt(typeIndex).asFunctionType();
-    }
-
-    /**
      * Fetches the closed form of a type defined in this module at index {@code typeIndex}.
      * 
      * @param typeIndex index of a type defined in this module
@@ -1572,7 +1562,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         addTag(index, attribute, typeIndex);
         module().addLinkAction((context, store, instance, imports) -> {
-            final WasmTag tag = new WasmTag(closedFunctionTypeAt(typeIndex));
+            final WasmTag tag = new WasmTag(closedTypeAt(typeIndex));
             instance.setTag(index, tag);
         });
     }
@@ -1581,7 +1571,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         addTag(index, attribute, typeIndex);
         final ImportDescriptor importedTag = new ImportDescriptor(moduleName, tagName, ImportIdentifier.TAG, index, numImportedSymbols());
-        final FunctionType type = closedFunctionTypeAt(typeIndex);
+        final DefinedType type = closedTypeAt(typeIndex);
         importedTags.put(index, importedTag);
         importSymbol(importedTag);
         module().addLinkAction((context, store, instance, imports) -> {

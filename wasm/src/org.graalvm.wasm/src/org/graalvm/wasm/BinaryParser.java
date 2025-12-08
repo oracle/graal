@@ -3559,6 +3559,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     protected int readValueType() {
+        final int typeOffset = offset;
         final int type = readSignedInt32();
         return switch (type) {
             case I32_TYPE, I64_TYPE, F32_TYPE, F64_TYPE -> type;
@@ -3586,7 +3587,7 @@ public class BinaryParser extends BinaryStreamParser {
                 Assert.assertTrue(typedFunctionReferences, Failure.MALFORMED_VALUE_TYPE);
                 yield WasmType.withNullable(false, readHeapType());
             }
-            default -> throw Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", type);
+            default -> throw Assert.fail(Failure.MALFORMED_VALUE_TYPE, "Invalid value type: 0x%02X", peek1(data, typeOffset));
         };
     }
 
@@ -3870,8 +3871,8 @@ public class BinaryParser extends BinaryStreamParser {
                 yield heapType;
             }
             default -> {
-                checkTypeExists(heapType);
                 assertTrue(typedFunctionReferences, Failure.MALFORMED_HEAP_TYPE);
+                checkTypeExists(heapType);
                 yield heapType;
             }
         };
