@@ -27,6 +27,8 @@ package com.oracle.svm.hosted.webimage.codegen;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.webimage.codegen.heap.ConstantMap;
@@ -49,6 +51,10 @@ public class WebImageJSProviders extends WebImageProviders {
         this.typeControl = new WebImageTypeControl(hUniverse, this, new ConstantMap(this), WebImageNamingConvention.getInstance());
         this.objectInspector = new WebImageObjectInspector(this);
         this.classLoader = hUniverse.hostVM().getClassLoader();
+    }
+
+    public static WebImageJSProviders singleton() {
+        return (WebImageJSProviders) ImageSingletons.lookup(WebImageProviders.class);
     }
 
     public WebImageTypeControl typeControl() {

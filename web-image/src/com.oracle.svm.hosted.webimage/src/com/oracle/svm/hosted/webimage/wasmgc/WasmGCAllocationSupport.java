@@ -38,7 +38,6 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;
 import com.oracle.svm.hosted.webimage.wasmgc.snippets.WasmGCAllocationSnippets;
@@ -154,7 +153,7 @@ public class WasmGCAllocationSupport {
      * needs a {@link com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool} instance.
      */
     public static void preRegisterAllocationTemplates(WebImageWasmGCProviders providers) {
-        for (HostedType type : ((HostedMetaAccess) providers.getMetaAccess()).getUniverse().getTypes()) {
+        for (HostedType type : providers.getMetaAccess().getUniverse().getTypes()) {
             if (needsDynamicAllocationTemplate(type)) {
                 providers.knownIds().instanceCreateTemplate.requestFunctionId(type.getJavaClass());
             }

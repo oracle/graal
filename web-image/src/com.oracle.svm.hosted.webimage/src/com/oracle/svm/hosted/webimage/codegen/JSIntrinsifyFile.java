@@ -142,7 +142,7 @@ public class JSIntrinsifyFile {
                  */
                 tjs.emit = true;
                 Class<?> c = ReflectionUtil.lookupClass(false, tjs.name, providers.getClassLoader());
-                tjs.resolvedType = (HostedType) providers.getMetaAccess().lookupJavaType(c);
+                tjs.resolvedType = providers.getMetaAccess().lookupJavaType(c);
             } else if (js instanceof FieldIntrinsification fjs) {
                 HostedType type = fjs.precedingType.resolvedType;
 

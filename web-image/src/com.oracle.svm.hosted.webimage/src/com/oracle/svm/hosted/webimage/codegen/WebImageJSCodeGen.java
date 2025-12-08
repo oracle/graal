@@ -328,7 +328,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
             }
         }
 
-        HostedType jsObjectType = (HostedType) getProviders().getMetaAccess().lookupJavaType(JSObject.class);
+        HostedType jsObjectType = getProviders().getMetaAccess().lookupJavaType(JSObject.class);
         requestJSObjectSubclasses(jsObjectType);
     }
 

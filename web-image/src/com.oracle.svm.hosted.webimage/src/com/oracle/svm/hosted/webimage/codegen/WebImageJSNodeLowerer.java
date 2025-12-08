@@ -528,7 +528,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(BoxNode node) {
-        HostedMetaAccess metaAccess = (HostedMetaAccess) codeGenTool.getProviders().getMetaAccess();
+        HostedMetaAccess metaAccess = codeGenTool.getProviders().getMetaAccess();
 
         ResolvedVar resolvedVar = codeGenTool.getAllocatedVariable(node);
         if (resolvedVar == null) {
@@ -858,7 +858,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
 
     @Override
     protected void lower(UnboxNode node) {
-        HostedMetaAccess metaAccess = (HostedMetaAccess) codeGenTool.getProviders().getMetaAccess();
+        HostedMetaAccess metaAccess = codeGenTool.getProviders().getMetaAccess();
         Class<?> boxing = node.getBoxingKind().toBoxedJavaClass();
         ResolvedJavaField valueField = AbstractBoxingNode.getValueField(metaAccess.lookupJavaType(boxing));
 
@@ -1398,7 +1398,7 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
      * @see WebImageImplicitExceptionsFeature#getSupportMethodName(BytecodeExceptionNode.BytecodeExceptionKind)
      */
     protected void lowerBytecodeException(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, List<ValueNode> args) {
-        HostedType exceptionsType = (HostedType) codeGenTool.getProviders().getMetaAccess().lookupJavaType(ImplicitExceptions.class);
+        HostedType exceptionsType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(ImplicitExceptions.class);
         HostedMethod meth = WebImageProviders.findMethod(exceptionsType, WebImageImplicitExceptionsFeature.getSupportMethodName(exceptionKind));
         codeGenTool.genStaticCall(meth, Emitter.of(args));
     }

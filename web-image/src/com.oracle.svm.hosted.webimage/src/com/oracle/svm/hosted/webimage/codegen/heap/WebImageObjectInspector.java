@@ -94,7 +94,7 @@ public class WebImageObjectInspector extends ObjectInspector {
 
         assert !isFrozen() : "Object inspector already frozen";
 
-        HostedType type = (HostedType) providers.getMetaAccess().lookupJavaType(c);
+        HostedType type = providers.getMetaAccess().lookupJavaType(c);
 
         ObjectDefinition odef;
         if (type.isArray()) {
@@ -287,7 +287,7 @@ public class WebImageObjectInspector extends ObjectInspector {
                 }
 
                 boolean continueInspection = false;
-                Class<?> tc = ((HostedType) providers.getMetaAccess().lookupJavaType(valueConstant)).getJavaClass();
+                Class<?> tc = providers.getMetaAccess().lookupJavaType(valueConstant).getJavaClass();
                 // bailout on function ptrs
                 for (Class<?> interfaces : tc.getInterfaces()) {
                     if (interfaces.equals(CFunctionPointer.class)) {

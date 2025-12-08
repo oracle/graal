@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.Hybrid;
@@ -60,7 +59,6 @@ import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
@@ -91,6 +89,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -643,7 +642,7 @@ public class WasmGCHeapWriter {
         ObjectData data = getConstantInfo(constant);
 
         List<HostedField> staticFields = new ArrayList<>();
-        for (HostedField f : ((HostedMetaAccess) providers.getMetaAccess()).getUniverse().getFields()) {
+        for (HostedField f : providers.getMetaAccess().getUniverse().getFields()) {
             if (shouldGenerateStaticField(f) && f.getStorageKind().isPrimitive() == isPrimitive) {
                 staticFields.add(f);
             }
