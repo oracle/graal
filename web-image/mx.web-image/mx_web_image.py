@@ -475,7 +475,7 @@ mx_gate.add_gate_argument(
 )
 
 
-def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
+def get_launcher_flags(names: List[str], cp_suffix: str = None) -> List[str]:
     """
     This gathers all the flags (class path, module path, etc.) needed to compile the given names
     (distributions, projects) with web image.
@@ -492,7 +492,11 @@ def get_launcher_flags(names: [str], cp_suffix: str = None) -> [str]:
     return mx.get_runtime_jvm_args(names, cp_suffix=cp_suffix, exclude_names=builder_jars)
 
 
-class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
+class WebImageSpecTestConfig(mx_unittest.MxUnittestConfig):
+    """
+    "Unit test" config for running JTTTestSuite test suites, which compile Web Images as part of the test.
+    """
+
     def __init__(self):
         super().__init__("web-image")
 
@@ -535,7 +539,7 @@ class WebImageUnittestConfig(mx_unittest.MxUnittestConfig):
         return vm_args, main_class, main_class_args
 
 
-mx_unittest.register_unittest_config(WebImageUnittestConfig())
+mx_unittest.register_unittest_config(WebImageSpecTestConfig())
 
 
 class WebImageMacroBuilder(mx.ArchivableProject):
