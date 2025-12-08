@@ -44,7 +44,10 @@ package org.graalvm.wasm.api;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.types.DefinedType;
 import org.graalvm.wasm.types.FunctionType;
+import org.graalvm.wasm.types.RecursiveTypes;
+import org.graalvm.wasm.types.SubType;
 
 /**
  * Represents the type of functions and exceptions in the JS API.
@@ -84,7 +87,10 @@ public final class FuncType {
         }
     }
 
-    public static FuncType fromClosedFunctionType(FunctionType functionType) {
+    public static FuncType fromDefinedType(DefinedType definedType) {
+        assert definedType.isFunctionType();
+
+        final FunctionType functionType = definedType.asFunctionType();
         final org.graalvm.wasm.types.ValueType[] paramTypes = functionType.paramTypes();
         final org.graalvm.wasm.types.ValueType[] resultTypes = functionType.resultTypes();
 
@@ -116,7 +122,7 @@ public final class FuncType {
         return results.length;
     }
 
-    public FunctionType toClosedFunctionType() {
+    public DefinedType toDefinedType() {
         var paramTypes = new org.graalvm.wasm.types.ValueType[params.length];
         var resultTypes = new org.graalvm.wasm.types.ValueType[results.length];
 
@@ -126,7 +132,13 @@ public final class FuncType {
         for (int i = 0; i < resultTypes.length; i++) {
             resultTypes[i] = results[i].asClosedValueType();
         }
-        return new FunctionType(paramTypes, resultTypes);
+
+        FunctionType functionType = new FunctionType(paramTypes, resultTypes);
+        SubType subType = new SubType(true, null, functionType);
+        RecursiveTypes recursiveTypeGroup = new RecursiveTypes(new SubType[]{subType});
+        // This DefinedType will not have a typeEquivalence class. It will not need one, as it will
+        // never participate in runtime type checking.
+        return DefinedType.makeTopLevelType(recursiveTypeGroup, 0);
     }
 
     public String toString(StringBuilder b) {
