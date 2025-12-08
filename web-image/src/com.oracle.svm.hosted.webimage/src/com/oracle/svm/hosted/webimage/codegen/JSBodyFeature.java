@@ -43,7 +43,7 @@ import com.oracle.svm.hosted.webimage.codegen.oop.ClassWithMirrorLowerer;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethod;
 import com.oracle.svm.hosted.webimage.js.JSObjectAccessMethodSupport;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 
@@ -215,7 +215,7 @@ public final class JSBodyFeature implements InternalFeature {
         // Add helper classes.
         bigbang.addRootClass(Nothing.class, true, false);
 
-        bigbang.addRootMethod(ReflectionUtil.lookupMethod(JSValue.class, "as", Class.class), true, "JSValue.as, registered in " + JSBodyFeature.class);
+        bigbang.addRootMethod((AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, jsValueType, "as", Class.class), true, "JSValue.as, registered in " + JSBodyFeature.class);
     }
 
     @Override

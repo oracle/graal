@@ -36,6 +36,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
+import com.oracle.svm.hosted.webimage.codegen.JSIntrinsifyFile;
 import com.oracle.svm.hosted.webimage.js.JSBody;
 import com.oracle.svm.hosted.webimage.js.JSBodyWithExceptionNode;
 import com.oracle.svm.util.AnnotationUtil;
@@ -76,8 +77,33 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     private static final double HIGH_INSTANCEOF_PROBABILITY = 0.9999;
 
+    private final JSBody.JSCode jsCode;
+    private final boolean isJavaCall;
+    private final JSIntrinsifyFile.FileData fileData;
+
     public JSBodyStubMethod(ResolvedJavaMethod original) {
         super(original);
+        JavaScriptBody jsb = AnnotationUtil.getAnnotation(original, JavaScriptBody.class);
+        this.jsCode = new JSBody.JSCode(jsb.args(), jsb.body());
+        this.isJavaCall = jsb.javacall();
+        JSIntrinsifyFile.FileData data = new JSIntrinsifyFile.FileData(original.getName(), jsCode.getBody());
+        if (isJavaCall) {
+            JavaScriptBodyIntrinsification.collectJSBody(data);
+        }
+
+        this.fileData = data;
+    }
+
+    public JSBody.JSCode getJsCode() {
+        return jsCode;
+    }
+
+    public boolean isJavaCall() {
+        return isJavaCall;
+    }
+
+    public JSIntrinsifyFile.FileData getFileData() {
+        return fileData;
     }
 
     @Override
@@ -124,16 +150,10 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
         state.clearLocals();
         state.clearStack();
 
-        JSBody.JSCode jsCode;
-        JavaScriptBody javaScriptBody = AnnotationUtil.getAnnotation(method, JavaScriptBody.class);
-        assert javaScriptBody != null;
-        Function<CodeGenTool, String> codeSupplier;
-        if (javaScriptBody.javacall()) {
-            codeSupplier = x -> JavaScriptBodyIntrinsification.processJavaScriptBody(method.getName(), javaScriptBody.body(), (JSCodeGenTool) x).getProcessed();
-        } else {
-            codeSupplier = x -> javaScriptBody.body();
-        }
-        jsCode = new JSBody.JSCode(javaScriptBody.args(), javaScriptBody.body());
+        Function<CodeGenTool, String> codeSupplier = x -> {
+            JSIntrinsifyFile.process(fileData, ((JSCodeGenTool) x).getJSProviders(), JavaScriptBodyIntrinsification::intrinsifyMethod);
+            return fileData.getProcessed();
+        };
 
         ValueNode returnValue = createJSBody(method, kit, argNodes, returnStamp, jsCode, codeSupplier);
 

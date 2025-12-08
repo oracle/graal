@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.webimage;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -64,11 +63,9 @@ public class AnalysisUtil {
         for (JSIntrinsifyFile.JSIntrinsification i : data.intrinsics) {
             switch (i) {
                 case JSIntrinsifyFile.MethodIntrinsification mi -> {
-                    AnalysisType type = access.findTypeByName(mi.precedingType.name);
+                    AnalysisType type = mi.precedingType.analysisType;
 
-                    if (type == null) {
-                        continue;
-                    }
+                    GraalError.guarantee(type != null, "Found method intrinsification with uninitialized preceding type");
 
                     /*
                      * We need to register the method as accessed in this class and all subclasses
@@ -82,18 +79,20 @@ public class AnalysisUtil {
                     }
                 }
                 case JSIntrinsifyFile.TypeIntrinsification ti -> {
-                    AnalysisType t = access.findTypeByName(ti.name);
-                    if (t.registerAsReachable("is used by TypeIntrinsifications in Web Image")) {
+                    ti.analysisType = access.findTypeByName(ti.name);
+                    if (ti.analysisType.registerAsReachable("is used by TypeIntrinsifications in Web Image")) {
                         didRegister = true;
                     }
                 }
                 case JSIntrinsifyFile.FieldIntrinsification fi -> {
-                    AnalysisType t = access.findTypeByName(fi.precedingType.name);
+                    AnalysisType t = fi.precedingType.analysisType;
+
+                    GraalError.guarantee(t != null, "Found field intrinsification with uninitialized preceding type");
 
                     ResolvedJavaField[] instanceFields = t.getInstanceFields(false);
                     ResolvedJavaField[] staticFields = t.getStaticFields();
 
-                    List<ResolvedJavaField> fields = Stream.concat(Arrays.stream(instanceFields), Arrays.stream(staticFields)).collect(Collectors.toList());
+                    List<ResolvedJavaField> fields = Stream.concat(Arrays.stream(instanceFields), Arrays.stream(staticFields)).toList();
 
                     for (ResolvedJavaField field : fields) {
                         if (field.getName().equals(fi.name)) {
@@ -132,7 +131,7 @@ public class AnalysisUtil {
                 }
             }
         } else {
-            for (AnalysisMethod candidate : type.getDeclaredMethods()) {
+            for (AnalysisMethod candidate : type.getDeclaredMethods(false)) {
                 if (candidate.getName().equals(mi.name)) {
                     if (candidate.isAbstract() || candidate.isInvoked()) {
                         continue;

@@ -49,6 +49,7 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.JSCodeBuffer;
@@ -72,7 +73,7 @@ import com.oracle.svm.hosted.webimage.util.TypeControlGraphPrinter;
 import com.oracle.svm.hosted.webimage.util.metrics.CodeSizeCollector;
 import com.oracle.svm.hosted.webimage.util.metrics.ImageMetricsCollector;
 import com.oracle.svm.util.AnnotationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.hightiercodegen.CodeBuffer;
 import com.oracle.svm.webimage.hightiercodegen.Emitter;
 
@@ -429,7 +430,8 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         try (JSBenchmarkingCode.Timer t = benchmarkingCode.getTimer("Extra Definitions").start();
                         CodeSizeCollector sizeCollector = new CodeSizeCollector(ImageBreakdownMetricKeys.EXTRA_DEFINITIONS_SIZE, codeBuffer::codeSize);
                         Labeler.Injection injection = labeler.injectMetricLabel(codeBuffer, ImageBreakdownMetricKeys.EXTRA_DEFINITIONS_SIZE)) {
-            ResolvedJavaMethod stringCharConstructor = getProviders().getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupConstructor(String.class, char[].class));
+            HostedMetaAccess metaAccess = getProviders().getMetaAccess();
+            ResolvedJavaMethod stringCharConstructor = JVMCIReflectionUtil.getDeclaredConstructor(metaAccess, String.class, char[].class);
             JSSnippetWithEmitterSupport stringCharConstructorSnippet = JSSnippets.instantiateStringCharConstructor(Emitter.of(stringCharConstructor));
             codeGenTool.lower(stringCharConstructorSnippet);
             LowerableResources.lower(codeGenTool, LowerableResources.extra);

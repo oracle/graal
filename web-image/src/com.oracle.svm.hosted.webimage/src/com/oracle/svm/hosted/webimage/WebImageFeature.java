@@ -53,6 +53,8 @@ import org.graalvm.webimage.api.JSString;
 import org.graalvm.webimage.api.JSSymbol;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.ReflectionConfigurationParser;
@@ -96,6 +98,7 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.snippets.WebImageNonSnippetLowerings;
 import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
@@ -150,6 +153,7 @@ public class WebImageFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl a = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        AnalysisMetaAccess metaAccess = a.getMetaAccess();
         BigBang bigbang = a.getBigBang();
 
         // For DynamicNewArrayLowerer
@@ -164,12 +168,12 @@ public class WebImageFeature implements InternalFeature {
          * reachable through {@link com.oracle.svm.core.graal.snippets.CEntryPointSnippets}. We have
          * to make it reachable explicitly.
          */
-        Field codeStart = ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart");
-        a.registerAsAccessed(codeStart);
+        AnalysisField codeStart = (AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess.lookupJavaType(ImageCodeInfo.class), "codeStart");
+        a.registerAsAccessed(codeStart, "Required for KnownOffsetFeature, registered in" + WebImageFeature.class);
 
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.JS) {
             // Ensure that the long emulation gets lowered.
-            for (var m : a.getMetaAccess().lookupJavaType(Long64.class).getDeclaredMethods()) {
+            for (var m : metaAccess.lookupJavaType(Long64.class).getDeclaredMethods(false)) {
                 assert m.isStatic() : m;
                 a.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
             }

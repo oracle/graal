@@ -41,7 +41,6 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.phases.WebImageHostedGraphKit;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.annotation.JSRawCall;
 import com.oracle.svm.webimage.functionintrinsics.JSConversion;
 
@@ -166,7 +165,7 @@ public class JSStubMethod extends CustomSubstitutionMethod {
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.WASMGC) {
             exceptionHandler = null;
         } else {
-            exceptionHandler = kit.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(JSConversion.class, "handleJSError", Object.class));
+            exceptionHandler = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(kit.getMetaAccess(), JSConversion.class, "handleJSError", Object.class);
         }
 
         ValueNode returnValue = kit.createJSBody(jsCode, method, arguments, jsBodyStamp, state, bci, exceptionHandler).asNode();

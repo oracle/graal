@@ -69,7 +69,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
 import com.oracle.svm.webimage.wasm.WasmForeignCallDescriptor;
@@ -431,11 +431,12 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         assert newArray.getKnownElementKind() == JavaKind.Object : newArray.getKnownElementKind();
 
         WasmId.StructType hubTypeId = masm().getWasmProviders().util().getHubObjectId();
-        ResolvedJavaField hubCompanionField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "companion"));
+        MetaAccessProvider metaAccess = masm.getProviders().getMetaAccess();
+        ResolvedJavaField hubCompanionField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess, DynamicHub.class, "companion");
         WasmId.Field companionFieldId = masm.idFactory.newJavaField(hubCompanionField);
 
         WasmId.StructType companionTypeId = masm.idFactory.newJavaStruct(masm.getWasmProviders().getMetaAccess().lookupJavaType(DynamicHubCompanion.class));
-        ResolvedJavaField companionArrayHubField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub"));
+        ResolvedJavaField companionArrayHubField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess, DynamicHubCompanion.class, "arrayHub");
         WasmId.Field arrayHubFieldId = masm.idFactory.newJavaField(companionArrayHubField);
 
         Instruction.StructGet companion = new Instruction.StructGet(hubTypeId, companionFieldId, Extension.None, lowerExpression(newArray.getElementType()));
@@ -483,9 +484,10 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
     }
 
     private Instruction lowerLoadArrayComponentHub(LoadArrayComponentHubNode loadArrayComponentHub) {
-        ResolvedJavaField componentTypeField = masm.getProviders().getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentType"));
+        WebImageWasmGCProviders providers = masm().getWasmProviders();
+        ResolvedJavaField componentTypeField = JVMCIReflectionUtil.getUniqueDeclaredField(providers.getMetaAccess(), DynamicHub.class, "componentType");
 
-        WasmId.StructType hubTypeId = masm().getWasmProviders().util().getHubObjectId();
+        WasmId.StructType hubTypeId = providers.util().getHubObjectId();
         WasmId.Field componentTypeFieldId = masm.idFactory.newJavaField(componentTypeField);
 
         return new Instruction.StructGet(hubTypeId, componentTypeFieldId, Extension.None, lowerExpression(loadArrayComponentHub.getValue()));
