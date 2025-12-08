@@ -2623,9 +2623,29 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 boolean match = nullable && ref == WasmConstant.NULL || runTimeTypeCheck(expectedHeapType, ref);
                 if (!match) {
                     enterErrorBranch();
-                    throw WasmException.create(Failure.CAST, this);
+                    throw WasmException.create(Failure.CAST_FAILURE, this);
                 }
                 WasmFrame.pushReference(frame, stackPointer - 1, ref);
+                break;
+            }
+            case Bytecode.REF_I31: {
+                int i32 = WasmFrame.popInt(frame, stackPointer - 1);
+                Integer i31 = i32 & ~(1 << 31);
+                WasmFrame.pushReference(frame, stackPointer - 1, i31);
+                break;
+            }
+            case Bytecode.I31_GET_S:
+            case Bytecode.I31_GET_U: {
+                Object i31 = WasmFrame.popReference(frame, stackPointer - 1);
+                if (i31 == WasmConstant.NULL) {
+                    enterErrorBranch();
+                    throw WasmException.create(Failure.NULL_I31_REFERENCE, this);
+                }
+                int i32 = (int) i31;
+                if (aggregateOpcode == Bytecode.I31_GET_S) {
+                    i32 = (i32 << 1) >> 1;
+                }
+                WasmFrame.pushInt(frame, stackPointer - 1, i32);
                 break;
             }
             default:

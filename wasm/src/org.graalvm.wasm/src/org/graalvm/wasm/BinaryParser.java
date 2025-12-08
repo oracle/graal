@@ -1994,6 +1994,33 @@ public class BinaryParser extends BinaryStreamParser {
                         state.addInstruction(aggregateOpcode, expectedHeapType);
                         break;
                     }
+                    case Instructions.ANY_CONVERT_EXTERN: {
+                        int externrefType = state.popChecked(EXTERNREF_TYPE);
+                        state.push(WasmType.withNullable(WasmType.isNullable(externrefType), ANY_HEAPTYPE));
+                        // nop - undo the aggregate flag
+                        state.retreat();
+                        break;
+                    }
+                    case Instructions.EXTERN_CONVERT_ANY: {
+                        int anyrefType = state.popChecked(ANYREF_TYPE);
+                        state.push(WasmType.withNullable(WasmType.isNullable(anyrefType), EXTERN_HEAPTYPE));
+                        // nop - undo the aggregate flag
+                        state.retreat();
+                        break;
+                    }
+                    case Instructions.REF_I31: {
+                        state.popChecked(I32_TYPE);
+                        state.push(WasmType.withNullable(false, I31_HEAPTYPE));
+                        state.addInstruction(Bytecode.REF_I31);
+                        break;
+                    }
+                    case Instructions.I31_GET_S:
+                    case Instructions.I31_GET_U: {
+                        state.popChecked(I31REF_TYPE);
+                        state.push(I32_TYPE);
+                        state.addInstruction(aggregateOpcode);
+                        break;
+                    }
                 }
                 break;
             case Instructions.ATOMIC:
@@ -3128,6 +3155,29 @@ public class BinaryParser extends BinaryStreamParser {
                             state.addInstruction(Bytecode.ARRAY_NEW_FIXED, arrayTypeIdx, length);
                             // We cannot cache computed array values because they are mutable
                             calculable = false;
+                            break;
+                        }
+                        case Instructions.ANY_CONVERT_EXTERN: {
+                            int externrefType = state.popChecked(EXTERNREF_TYPE);
+                            state.push(WasmType.withNullable(WasmType.isNullable(externrefType), ANY_HEAPTYPE));
+                            // nop - undo the aggregate flag
+                            state.retreat();
+                            break;
+                        }
+                        case Instructions.EXTERN_CONVERT_ANY: {
+                            int anyrefType = state.popChecked(ANYREF_TYPE);
+                            state.push(WasmType.withNullable(WasmType.isNullable(anyrefType), EXTERN_HEAPTYPE));
+                            // nop - undo the aggregate flag
+                            state.retreat();
+                            break;
+                        }
+                        case Instructions.REF_I31: {
+                            state.popChecked(I32_TYPE);
+                            state.push(WasmType.withNullable(false, I31_HEAPTYPE));
+                            state.addInstruction(Bytecode.REF_I31);
+                            if (calculable) {
+                                stack.add((int) stack.removeLast() & ~(1 << 31));
+                            }
                             break;
                         }
                         default:

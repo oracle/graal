@@ -217,6 +217,13 @@ public class BytecodeGen {
     }
 
     /**
+     * Undoes the writing of the last byte to the bytecode.
+     */
+    public void retreat() {
+        data.dropLast();
+    }
+
+    /**
      * @return A byte array representation of the bytecode.
      */
     public byte[] toArray() {

@@ -685,6 +685,13 @@ public class ParserState {
     }
 
     /**
+     * Undoes the writing of the last byte to the bytecode.
+     */
+    public void retreat() {
+        bytecode.retreat();
+    }
+
+    /**
      * Finishes the current control frame and removes it from the control frame stack.
      *
      * @param multiValue If multiple return values are supported.
