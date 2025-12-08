@@ -371,6 +371,20 @@ public class WasmType implements TruffleObject {
         };
     }
 
+    /**
+     * Computes an approximation to the type containing values of type {@code typeA} that are not in
+     * {@code typeB}. Given WebAssembly's type system, this can only have the effect of removing
+     * {@code ref.null} when subtracting a nullable reference type from another nullable reference
+     * type.
+     */
+    public static int difference(int typeA, int typeB) {
+        if (isReferenceType(typeA) && isNullable(typeA) && isReferenceType(typeB) && isNullable(typeB)) {
+            return withNullable(false, typeA);
+        } else {
+            return typeA;
+        }
+    }
+
     public static int getCommonValueType(int[] types) {
         int type = 0;
         for (int resultType : types) {

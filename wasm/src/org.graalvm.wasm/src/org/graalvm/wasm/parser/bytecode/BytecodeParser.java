@@ -815,13 +815,16 @@ public abstract class BytecodeParser {
                         case Bytecode.ARRAY_GET_U:
                         case Bytecode.ARRAY_SET:
                         case Bytecode.ARRAY_FILL:
-                        case Bytecode.REF_TEST_NON_NULL:
-                        case Bytecode.REF_TEST_NULL:
-                        case Bytecode.REF_CAST_NON_NULL:
-                        case Bytecode.REF_CAST_NULL:
+                        case Bytecode.REF_TEST:
+                        case Bytecode.REF_CAST:
                         case Bytecode.ARRAY_COPY:
                         case Bytecode.ARRAY_INIT_ELEM: {
                             offset += 4;
+                            break;
+                        }
+                        case Bytecode.BR_ON_CAST_U8:
+                        case Bytecode.BR_ON_CAST_FAIL_U8: {
+                            offset += 7;
                             break;
                         }
                         case Bytecode.STRUCT_GET:
@@ -833,6 +836,11 @@ public abstract class BytecodeParser {
                         case Bytecode.ARRAY_NEW_ELEM:
                         case Bytecode.ARRAY_INIT_DATA: {
                             offset += 8;
+                            break;
+                        }
+                        case Bytecode.BR_ON_CAST_I32:
+                        case Bytecode.BR_ON_CAST_FAIL_I32: {
+                            offset += 10;
                             break;
                         }
                         default:

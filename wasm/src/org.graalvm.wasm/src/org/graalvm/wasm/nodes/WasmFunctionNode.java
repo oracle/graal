@@ -1614,8 +1614,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                                 if (profileCondition(bytecode, offset + 1, reference == WasmConstant.NULL)) {
                                     final int offsetDelta = rawPeekU8(bytecode, offset);
                                     // BR_ON_NULL_U8 encodes the back jump value as a positive byte
-                                    // value. BR_ON_NULL_U8
-                                    // can never perform a forward jump.
+                                    // value. BR_ON_NULL_U8 can never perform a forward jump.
                                     offset -= offsetDelta;
                                 } else {
                                     offset += 3;
@@ -2602,30 +2601,60 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 stackPointer -= 4;
                 break;
             }
-            case Bytecode.REF_TEST_NON_NULL:
-            case Bytecode.REF_TEST_NULL: {
-                final boolean nullable = aggregateOpcode == Bytecode.REF_TEST_NULL;
-                final int expectedHeapType = rawPeekI32(bytecode, offset);
+            case Bytecode.REF_TEST: {
+                final int expectedReferenceType = rawPeekI32(bytecode, offset);
                 offset += 4;
 
                 Object ref = WasmFrame.popReference(frame, stackPointer - 1);
-                boolean match = nullable && ref == WasmConstant.NULL || runTimeTypeCheck(expectedHeapType, ref);
+                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
                 WasmFrame.pushInt(frame, stackPointer - 1, match ? 1 : 0);
                 break;
             }
-            case Bytecode.REF_CAST_NON_NULL:
-            case Bytecode.REF_CAST_NULL: {
-                final boolean nullable = aggregateOpcode == Bytecode.REF_CAST_NULL;
-                final int expectedHeapType = rawPeekI32(bytecode, offset);
+            case Bytecode.REF_CAST: {
+                final int expectedReferenceType = rawPeekI32(bytecode, offset);
                 offset += 4;
 
                 Object ref = WasmFrame.popReference(frame, stackPointer - 1);
-                boolean match = nullable && ref == WasmConstant.NULL || runTimeTypeCheck(expectedHeapType, ref);
+                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
                 if (!match) {
                     enterErrorBranch();
                     throw WasmException.create(Failure.CAST_FAILURE, this);
                 }
                 WasmFrame.pushReference(frame, stackPointer - 1, ref);
+                break;
+            }
+            case Bytecode.BR_ON_CAST_U8:
+            case Bytecode.BR_ON_CAST_FAIL_U8: {
+                final int expectedReferenceType = rawPeekI32(bytecode, offset);
+                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_U8;
+
+                // Peek at top of stack instead of popping and pushing the same value.
+                Object ref = frame.getObjectStatic(stackPointer - 1);
+                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
+                if (profileCondition(bytecode, offset + 5, match != brOnCastFail)) {
+                    final int offsetDelta = rawPeekU8(bytecode, offset + 4);
+                    // BR_ON_CAST_U8 encodes the back jump value as a positive byte value.
+                    // BR_ON_CAST_U8 can never perform a forward jump.
+                    offset = offset + 4 - offsetDelta;
+                } else {
+                    offset += 7;
+                }
+                break;
+            }
+            case Bytecode.BR_ON_CAST_I32:
+            case Bytecode.BR_ON_CAST_FAIL_I32: {
+                final int expectedReferenceType = rawPeekI32(bytecode, offset);
+                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_I32;
+
+                // Peek at top of stack instead of popping and pushing the same value.
+                Object ref = frame.getObjectStatic(stackPointer - 1);
+                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
+                if (profileCondition(bytecode, offset + 8, match != brOnCastFail)) {
+                    final int offsetDelta = rawPeekI32(bytecode, offset + 4);
+                    offset = offset + 4 + offsetDelta;
+                } else {
+                    offset += 10;
+                }
                 break;
             }
             case Bytecode.REF_I31: {
@@ -5366,11 +5395,22 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         }
     }
 
-    private boolean runTimeTypeCheck(int expectedHeapType, Object object) {
-        if (WasmType.isConcreteReferenceType(expectedHeapType)) {
-            return object instanceof WasmTypedHeapObject heapObject && runTimeConcreteTypeCheck(expectedHeapType, heapObject);
+    private boolean runTimeTypeCheck(int expectedReferenceType, Object object) {
+        boolean isNullable = WasmType.isNullable(expectedReferenceType);
+        CompilerAsserts.partialEvaluationConstant(isNullable);
+        if (isNullable && object == WasmConstant.NULL) {
+            return true;
+        }
+        boolean isConcreteReferenceType = WasmType.isConcreteReferenceType(expectedReferenceType);
+        CompilerAsserts.partialEvaluationConstant(isConcreteReferenceType);
+        if (isConcreteReferenceType) {
+            int expectedTypeIndex = WasmType.getTypeIndex(expectedReferenceType);
+            CompilerAsserts.partialEvaluationConstant(expectedTypeIndex);
+            return object instanceof WasmTypedHeapObject heapObject && runTimeConcreteTypeCheck(expectedTypeIndex, heapObject);
         } else {
-            return module.closedHeapTypeOf(expectedHeapType).matchesValue(object);
+            int expectedAbstractHeapType = WasmType.getAbstractHeapType(expectedReferenceType);
+            CompilerAsserts.partialEvaluationConstant(expectedAbstractHeapType);
+            return module.closedHeapTypeOf(expectedAbstractHeapType).matchesValue(object);
         }
     }
 

@@ -87,10 +87,12 @@ public final class StackEffects {
         aggregateOpStackEffects[Bytecode.ARRAY_COPY] = POP_5;
         aggregateOpStackEffects[Bytecode.ARRAY_INIT_DATA] = POP_4;
         aggregateOpStackEffects[Bytecode.ARRAY_INIT_ELEM] = POP_4;
-        aggregateOpStackEffects[Bytecode.REF_TEST_NON_NULL] = NO_EFFECT;
-        aggregateOpStackEffects[Bytecode.REF_TEST_NULL] = NO_EFFECT;
-        aggregateOpStackEffects[Bytecode.REF_CAST_NON_NULL] = NO_EFFECT;
-        aggregateOpStackEffects[Bytecode.REF_CAST_NULL] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_TEST] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_U8] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_CAST] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_I32] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_FAIL_U8] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.BR_ON_CAST_FAIL_I32] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_I31] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.I31_GET_S] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.I31_GET_U] = NO_EFFECT;

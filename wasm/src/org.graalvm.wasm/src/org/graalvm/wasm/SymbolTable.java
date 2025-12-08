@@ -1077,6 +1077,14 @@ public abstract class SymbolTable {
         return closedExpectedType.equals(closedActualType) || closedActualType.isSubtypeOf(closedExpectedType);
     }
 
+    /**
+     * An alternative wording of {@link #matchesType} which is more natural when expressing
+     * subtyping constraints in type judgments.
+     */
+    public boolean isSubtypeOf(int subType, int superType) {
+        return matchesType(superType, subType);
+    }
+
     public void importSymbol(ImportDescriptor descriptor) {
         checkNotParsed();
         assert importedSymbols.size() == descriptor.importedSymbolIndex();
