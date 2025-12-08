@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -150,8 +149,8 @@ public class WebImageFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        BigBang bigbang = accessImpl.getBigBang();
+        FeatureImpl.BeforeAnalysisAccessImpl a = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        BigBang bigbang = a.getBigBang();
 
         // For DynamicNewArrayLowerer
         bigbang.addRootField(DynamicHub.class, "companion");
@@ -166,14 +165,13 @@ public class WebImageFeature implements InternalFeature {
          * to make it reachable explicitly.
          */
         Field codeStart = ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart");
-        access.registerAsAccessed(codeStart);
+        a.registerAsAccessed(codeStart);
 
         if (WebImageOptions.getBackend() == WebImageOptions.CompilerBackend.JS) {
-
             // Ensure that the long emulation gets lowered.
-            for (Method m : Long64.class.getDeclaredMethods()) {
-                assert Modifier.isStatic(m.getModifiers()) : m;
-                accessImpl.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
+            for (var m : a.getMetaAccess().lookupJavaType(Long64.class).getDeclaredMethods()) {
+                assert m.isStatic() : m;
+                a.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
             }
         }
 
@@ -188,7 +186,7 @@ public class WebImageFeature implements InternalFeature {
             RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz));
         }
 
-        LowerableResources.processResources(access, WebImageHostedConfiguration.get());
+        LowerableResources.processResources(a, WebImageHostedConfiguration.get());
 
         /*
          * Clear caches for Locale and BaseLocale.
@@ -200,10 +198,10 @@ public class WebImageFeature implements InternalFeature {
          * On JDK21, ReferencedKeySet and ReferencedKeyMap don't exist. We have to go through
          * reflection to access them because analysis tools like spotbugs still run on JDK21
          */
-        Field baseLocaleCacheField = accessImpl.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
-        Field localeCacheField = accessImpl.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
+        Field baseLocaleCacheField = a.findField("sun.util.locale.BaseLocale$1InterningCache", "CACHE");
+        Field localeCacheField = a.findField("java.util.Locale$LocaleCache", "LOCALE_CACHE");
 
-        access.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
+        a.registerFieldValueTransformer(baseLocaleCacheField, (receiver, originalValue) -> {
             /*
              * Executes `ReferencedKeySet.create(true,
              * ReferencedKeySet.concurrentHashMapSupplier())` with reflection.
@@ -214,7 +212,7 @@ public class WebImageFeature implements InternalFeature {
             return ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
         });
 
-        access.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
+        a.registerFieldValueTransformer(localeCacheField, (receiver, originalValue) -> {
             /*
              * Executes `ReferencedKeyMap.create(true,
              * ReferencedKeyMap.concurrentHashMapSupplier())` with reflection.
