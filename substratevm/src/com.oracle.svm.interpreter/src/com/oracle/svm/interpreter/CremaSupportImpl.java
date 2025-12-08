@@ -132,6 +132,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -390,6 +391,9 @@ public class CremaSupportImpl implements CremaSupport {
         hub.getCompanion().setHubMetadata(new RuntimeDynamicHubMetadata(thisType));
         hub.getCompanion().setReflectionMetadata(new RuntimeReflectionMetadata(thisType));
 
+        // Ensure all metadata is stored before publication
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+
         return hub;
     }
 
@@ -602,6 +606,9 @@ public class CremaSupportImpl implements CremaSupport {
         fillVTable(arrayHub, cremaVTable);
 
         arrayHub.setInterpreterType(thisType);
+
+        // Ensure all metadata is stored before publication
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
 
         componentHub.setArrayHub(arrayHub);
         return arrayHub;
