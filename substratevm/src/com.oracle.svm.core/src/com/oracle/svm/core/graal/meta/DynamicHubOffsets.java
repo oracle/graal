@@ -35,8 +35,10 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -44,8 +46,28 @@ import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Collects runtime field offsets for {@link DynamicHub} and {@link DynamicHubCompanion} and allows
+ * writing those fields in a way that is hidden to analysis.
+ * <p>
+ * There are 2 reasons to hide the fact that these fields are written to:
+ * <ul>
+ * <li>{@link DynamicHub} that are part of the image heap must be stored in the read-only part of
+ * the image heap</li>
+ * <li>Some of these fields are read in snippets and must be considered "immutable" to respect rules
+ * about memory reads appearing during lowering of nodes that didn't previously read those
+ * locations. Locations as considered immutable when analysis determines that they are never written
+ * to (see {@link com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity}). Runtime class
+ * loading creates {@link DynamicHub} and {@link DynamicHubCompanion} and using standard writes to
+ * those fields during their initialization would cause those fields to no longer be immutable.
+ * Those fields must only be written once during initialization.</li>
+ * </ul>
+ */
 public class DynamicHubOffsets {
     private static final int UNINITIALIZED = -1;
+
+    private final DynamicHubCompanionOffsets companionOffsets = new DynamicHubCompanionOffsets();
+
     /* defining order in DynamicHub */
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
@@ -95,6 +117,17 @@ public class DynamicHubOffsets {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int companionOffset = UNINITIALIZED;
 
+    private static final class DynamicHubCompanionOffsets {
+        @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+        private int additionalFlagsOffset = UNINITIALIZED;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public void initializeOffsets(MetaAccessProvider metaAccess) {
+            ResolvedJavaField additionalFlagsField = JVMCIReflectionUtil.getUniqueDeclaredField(metaAccess.lookupJavaType(DynamicHubCompanion.class), "additionalFlags");
+            additionalFlagsOffset = additionalFlagsField.getOffset();
+        }
+    }
+
     @Fold
     public static DynamicHubOffsets singleton() {
         return ImageSingletons.lookup(DynamicHubOffsets.class);
@@ -114,18 +147,18 @@ public class DynamicHubOffsets {
             if (Arrays.stream(SKIPPED_FIELDS).anyMatch(field.getName()::equals)) {
                 continue;
             }
-
             if (AnnotationUtil.isAnnotationPresent(field, InjectAccessors.class)) {
                 continue;
             }
 
             try {
                 Field offsetField = ReflectionUtil.lookupField(DynamicHubOffsets.class, field.getName() + "Offset");
-                offsetField.setInt(singleton(), field.getOffset());
+                offsetField.setInt(this, field.getOffset());
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere(e);
             }
         }
+
         // Ensure the expected fields exist
         for (Field field : DynamicHubOffsets.class.getDeclaredFields()) {
             String name = field.getName();
@@ -138,6 +171,8 @@ public class DynamicHubOffsets {
                 throw VMError.shouldNotReachHere(e);
             }
         }
+
+        companionOffsets.initializeOffsets(metaAccess);
     }
 
     public int getNameOffset() {
@@ -216,6 +251,10 @@ public class DynamicHubOffsets {
         return companionOffset;
     }
 
+    public int getCompanionAdditionalFlagsOffset() {
+        return companionOffsets.additionalFlagsOffset;
+    }
+
     public static void writeObject(DynamicHub hub, int offset, Object value) {
         if (offset < 0) {
             /* field removed by analysis */
@@ -254,5 +293,13 @@ public class DynamicHubOffsets {
             return;
         }
         BarrieredAccess.writeByte(hub, offset, value);
+    }
+
+    public static void writeByte(DynamicHubCompanion companion, int offset, byte value) {
+        if (offset < 0) {
+            /* field removed by analysis */
+            return;
+        }
+        BarrieredAccess.writeByte(companion, offset, value);
     }
 }

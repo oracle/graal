@@ -511,11 +511,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             }
         }
 
+        DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, simpleBinaryName, declaringClass, signature, info);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
         companion.canUnsafeAllocate = true;
         companion.classInitializationInfo = ClassInitializationInfo.forRuntimeLoadedClass(false, hasClassInitializer);
+        byte additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true));
+        writeByte(companion, dynamicHubOffsets.getCompanionAdditionalFlagsOffset(), additionalFlags);
 
         assert !isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
         boolean isInterface = isFlagSet(flags, IS_INTERFACE_FLAG_BIT);
@@ -576,25 +579,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-57813: setup a LazyFinalReference that calls `values` via reflection.
         companion.enumConstantsReference = null;
 
-        /*
-         * GR-61330:
-         *
-         * These are read in snippets and must also not be set directly or the analysis would not
-         * consider them to be immutable:
-         *
-         * companion.arrayHub = null;
-         *
-         * companion.additionalFlags =
-         * NumUtil.safeToUByte(makeFlag(ADDITIONAL_FLAGS_INSTANTIATED_BIT, true));
-         */
-
-        // GR-61330: only write if the field exists according to analysis
-        // companion.metaType = null;
-
-        // GR-57813
-        companion.hubMetadata = null;
-        companion.reflectionMetadata = null;
-
         /* Allocate memory in the metaspace and copy data from the Java heap to the metaspace. */
         DynamicHub hub = Metaspace.singleton().allocateDynamicHub(vTableEntries);
         int[] openTypeWorldTypeCheckSlots = Metaspace.singleton().copyToMetaspace(typeCheckSlotsHeapArray);
@@ -602,7 +586,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(superHub, declaredInstanceReferenceFieldOffsets);
 
         /* Write fields in defining order. */
-        DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         writeObject(hub, dynamicHubOffsets.getNameOffset(), name);
         writeByte(hub, dynamicHubOffsets.getHubTypeOffset(), hubType);
         writeByte(hub, dynamicHubOffsets.getReferenceTypeOffset(), referenceType.getValue());
