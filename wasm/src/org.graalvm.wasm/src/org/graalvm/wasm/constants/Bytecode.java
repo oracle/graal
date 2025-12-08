@@ -415,6 +415,9 @@ public class Bytecode {
     public static final int BR_ON_NON_NULL_U8 = 0x22;
     public static final int BR_ON_NON_NULL_I32 = 0x23;
 
+    // Misc - GC opcodes
+    public static final int REF_EQ = 0x24;
+
     // Atomic opcodes
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;

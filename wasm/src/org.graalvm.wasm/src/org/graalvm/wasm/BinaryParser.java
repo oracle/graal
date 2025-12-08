@@ -1800,6 +1800,14 @@ public class BinaryParser extends BinaryStreamParser {
                 state.push(functionReferenceType);
                 state.addInstruction(Bytecode.REF_FUNC, functionIndex);
                 break;
+            case Instructions.REF_EQ:
+                checkGCSupport(opcode);
+                state.popChecked(EQREF_TYPE);
+                state.popChecked(EQREF_TYPE);
+                state.push(I32_TYPE);
+                state.addMiscFlag();
+                state.addInstruction(Bytecode.REF_EQ);
+                break;
             case Instructions.AGGREGATE:
                 checkGCSupport(opcode);
                 int aggregateOpcode = readUnsignedInt32();

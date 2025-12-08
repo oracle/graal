@@ -2820,6 +2820,14 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 pushReference(frame, stackPointer - 1, reference);
                 break;
             }
+            case Bytecode.REF_EQ: {
+                Object ref1 = popReference(frame, stackPointer - 1);
+                Object ref2 = popReference(frame, stackPointer - 2);
+                boolean equal = ref1 == ref2 || ref1 instanceof Integer int1 && ref2 instanceof Integer int2 && int1.intValue() == int2.intValue();
+                pushInt(frame, stackPointer - 2, equal ? 1 : 0);
+                stackPointer -= 1;
+                break;
+            }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
