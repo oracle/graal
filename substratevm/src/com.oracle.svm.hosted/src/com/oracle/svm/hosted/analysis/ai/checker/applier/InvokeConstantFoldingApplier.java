@@ -21,6 +21,8 @@ import java.util.Set;
 /**
  * This is an applier that folds invokes to the constant values that they return
  */
+// TODO: since we now interpreter NewArray as its size, we cannot use this because it is not sound, this should not apply
+// TODO: but we should think how to handle this in a new analysis perhaps
 public final class InvokeConstantFoldingApplier extends BaseApplier {
 
     @Override

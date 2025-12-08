@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
+import com.oracle.svm.hosted.analysis.ai.analyzer.InvokeAnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallContextHolder;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.CallStack;
@@ -40,7 +40,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     }
 
     @Override
-    public AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
+    public InvokeAnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         Invoke invoke = invokeInput.invoke();
 
@@ -55,7 +55,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             StructuredGraph graph = AbstractInterpretationServices.getInstance().getGraph(targetAnalysisMethod);
             assert graph != null;
         } catch (Exception e) {
-            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
+            InvokeAnalysisOutcome<Domain> outcome = InvokeAnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
             logger.log(outcome.toString(), LoggerVerbosity.INFO);
             return outcome;
         }
@@ -64,7 +64,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             AbstractState<Domain> callerState = invokeInput.callerState();
             Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
             Summary<Domain> skipped = summaryManager.createSummary(invoke, callerPreAtInvoke, invokeInput.actualArgDomains());
-            return new AnalysisOutcome<>(AnalysisResult.IN_SKIP_LIST, skipped);
+            return new InvokeAnalysisOutcome<>(AnalysisResult.IN_SKIP_LIST, skipped);
         }
 
         AbstractState<Domain> callerState = invokeInput.callerState();
@@ -76,17 +76,17 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         Summary<Domain> cached = summaryManager.getSummary(targetAnalysisMethod, preSummary);
         if (cached != null) {
             logger.log("Summary cache contains targetMethod: " + targetAnalysisMethod, LoggerVerbosity.SUMMARY);
-            return AnalysisOutcome.ok(cached);
+            return InvokeAnalysisOutcome.ok(cached);
         }
 
         if (callStack.getDepth() >= callStack.getMaxCallStackDepth()) {
             logger.log("Recursion limit of: " + callStack.getMaxCallStackDepth() + " exceeded", LoggerVerbosity.INFO);
-            return AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
+            return InvokeAnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
         }
 
         if (callStack.hasMethodCallCycle(targetAnalysisMethod)) {
             logger.log("Analysis has encountered a mutual recursion cycle on: " + targetAnalysisMethod.getQualifiedName() + ", skipping analysis", LoggerVerbosity.INFO);
-            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
+            InvokeAnalysisOutcome<Domain> outcome = InvokeAnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
             logger.log(callStack.formatCycleWithMethod(targetAnalysisMethod), LoggerVerbosity.INFO);
             return outcome;
         }
@@ -112,7 +112,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             callStack.pop();
         }
 
-        return AnalysisOutcome.ok(preSummary);
+        return InvokeAnalysisOutcome.ok(preSummary);
     }
 
     @Override
@@ -127,6 +127,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         callStack.push(root);
         try {
             AbstractState<Domain> abstractState = fixpointIterator.runFixpointIteration();
+            // TODO: we should even create a summary for this root method, then we can run checkers only in the engine
             checkerManager.runCheckersOnSingleMethod(root, abstractState, analysisContext.getMethodGraphCache().getMethodGraphMap().get(root));
         } finally {
             callStack.pop();

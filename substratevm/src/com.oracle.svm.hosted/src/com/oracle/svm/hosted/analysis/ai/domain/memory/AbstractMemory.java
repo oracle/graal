@@ -383,9 +383,7 @@ public class AbstractMemory implements AbstractDomain<AbstractMemory> {
     public String toString() {
         if (isBot) return "AbsMemory(⊥)";
         if (isTop) return "AbsMemory(⊤)";
-        StringBuilder sb = new StringBuilder();
-        sb.append("AbsMemory{env=").append(env).append(", store=").append(store).append('}');
-        return sb.toString();
+        return "{env=" + env + ", store=" + store + '}';
     }
 
     @Override

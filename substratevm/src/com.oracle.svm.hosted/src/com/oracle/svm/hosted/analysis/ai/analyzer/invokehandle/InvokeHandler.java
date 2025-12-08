@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
+import com.oracle.svm.hosted.analysis.ai.analyzer.InvokeAnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 /**
@@ -17,7 +17,7 @@ public interface InvokeHandler<Domain extends AbstractDomain<Domain>> {
      * @param invokeInput the relevant information needed to perform abstract interpretation of a given invocation
      * @return the analysis outcome
      */
-    AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput);
+    InvokeAnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput);
 
     /**
      * The starting point of the analysis

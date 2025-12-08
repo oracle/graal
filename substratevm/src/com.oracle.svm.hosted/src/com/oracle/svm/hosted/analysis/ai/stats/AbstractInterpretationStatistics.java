@@ -14,7 +14,7 @@ import java.util.StringJoiner;
  * optimizations that followed.
  */
 public class AbstractInterpretationStatistics {
-
+    // TODO: maybe we should think about how to print the method filter statistics perhaps
     private final EnumMap<OptimizationKind, Integer> globalOptCounters = new EnumMap<>(OptimizationKind.class);
     private final Map<AnalysisMethod, MethodStats> methodStats = new LinkedHashMap<>();
 

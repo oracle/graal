@@ -11,6 +11,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -57,10 +58,15 @@ public final class BoundsCheckEliminatorApplier extends BaseApplier {
                 continue;
             }
 
-            if (guardIf.condition() instanceof IntegerLessThanNode || guardIf.condition() instanceof IntegerBelowNode) {
+            if (guardIf.condition() instanceof IntegerLessThanNode || guardIf.condition() instanceof IntegerBelowNode || guardIf.condition() instanceof IntegerEqualsNode) {
                 folded++;
-                if (shouldApply()) {
+                if (!shouldApply()) continue;
+
+                if (NodeUtil.isDirectPredecessorOfBCE(guardIf.falseSuccessor())) {
                     graph.removeSplitPropagate(guardIf, guardIf.trueSuccessor());
+                }
+                if (NodeUtil.isDirectPredecessorOfBCE(guardIf.trueSuccessor())) {
+                    graph.removeSplitPropagate(guardIf, guardIf.falseSuccessor());
                 }
             }
         }

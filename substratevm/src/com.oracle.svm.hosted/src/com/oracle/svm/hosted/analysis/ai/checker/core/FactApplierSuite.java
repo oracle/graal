@@ -64,7 +64,6 @@ public final class FactApplierSuite {
             }
         }
 
-        // Fallback: run without IGV session
         return runAppliersInternal(method, graph, aggregator, null);
     }
 
@@ -84,7 +83,7 @@ public final class FactApplierSuite {
                 AbstractInterpretationException.graphVerifyFailed(applier.getDescription(), method);
             }
 
-            if (session != null) {
+            if (session != null && applier.shouldApply()) {
                 session.dumpApplierSubphase(applier.getDescription());
             }
         }

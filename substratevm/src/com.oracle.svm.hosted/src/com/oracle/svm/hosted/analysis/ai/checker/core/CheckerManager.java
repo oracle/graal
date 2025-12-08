@@ -71,6 +71,8 @@ public final class CheckerManager {
             AnalysisMethod method = entry.getKey();
             MethodSummary<Domain> methodSummary = entry.getValue();
             AbstractState<Domain> abstractState = methodSummary.getStateAcrossAllContexts();
+            var logger = AbstractInterpretationLogger.getInstance();
+            logger.log( " Running checkers on method: " + method.getQualifiedName() + " Abstract state: " + abstractState, LoggerVerbosity.INFO);
             runCheckersOnSingleMethod(method, abstractState, methodGraphMap.get(method));
         }
     }

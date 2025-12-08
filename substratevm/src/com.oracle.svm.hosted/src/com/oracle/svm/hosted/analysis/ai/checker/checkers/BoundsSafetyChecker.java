@@ -55,15 +55,18 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
         for (Node n : abstractState.getStateMap().keySet()) {
             if (n instanceof AccessIndexedNode ain) {
 
+                AbstractInterpretationLogger.getInstance().log("Checking AccessIndexedNode: " + ain, LoggerVerbosity.CHECKER);
                 IfNode guardingIf = NodeUtil.findGuardingIf(ain);
                 if (guardingIf == null) {
                     continue;
                 }
+                AbstractInterpretationLogger.getInstance().log("Guarding if: " + guardingIf, LoggerVerbosity.CHECKER);
 
                 if (!NodeUtil.leadsToByteCodeException(guardingIf)) {
                     continue;
                 }
 
+                AbstractInterpretationLogger.getInstance().log("Leads to bce", LoggerVerbosity.CHECKER);
                 var mem = pickMem(abstractState, ain);
                 if (mem == null) continue;
                 IntInterval idx = intervalOf(ain.index(), mem);
@@ -71,7 +74,7 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
                 if (len < 0) {
                     len = deriveLengthFromGuard(abstractState, ain.getBoundsCheck());
                 }
-
+                AbstractInterpretationLogger.getInstance().log("AccessIndexedNode: " + ain + " index: " + idx + " len: " + len, LoggerVerbosity.CHECKER);
                 if (isSafe(idx, len)) {
                     facts.add(new SafeBoundsAccessFact(ain, true, idx, len));
                 }
@@ -124,7 +127,6 @@ public final class BoundsSafetyChecker implements Checker<AbstractMemory> {
                 if (v >= 0 && v <= Integer.MAX_VALUE) return (int) v;
             }
         }
-        // Search for ArrayLengthNode in the analyzed nodes that refers to the same array value
         for (Map.Entry<Node, NodeState<AbstractMemory>> e : st.getStateMap().entrySet()) {
             Node n = e.getKey();
             if (n instanceof ArrayLengthNode aln) {

@@ -35,6 +35,7 @@ public final class ConditionTruthChecker implements Checker<AbstractMemory> {
                 if (mem == null) continue;
                 IntInterval iv = mem.readStore(AccessPath.forLocal("n" + Integer.toHexString(System.identityHashCode(cond))));
                 if (iv != null && !iv.isTop() && !iv.isBot() && !iv.isLowerInfinite() && !iv.isUpperInfinite()) {
+                    // TODO: maybe bounds checking would be easier to do with this instead of bounds safetyChecker
                     if (iv.getLower() == 1 && iv.getUpper() == 1) {
                         facts.add(new ConditionTruthFact(ifn, cond, ConditionTruthFact.Truth.ALWAYS_TRUE));
                     } else if (iv.getLower() == 0 && iv.getUpper() == 0) {

@@ -10,22 +10,17 @@ import com.oracle.svm.hosted.analysis.ai.summary.Summary;
  * @param summary  the summary produced by the analysis, represented as an instance of {@link Summary}
  * @param <Domain> the type of the derived {@link AbstractDomain} used in the analysis
  */
-// TODO: make the summary here Optional
-public record AnalysisOutcome<Domain extends AbstractDomain<Domain>>(AnalysisResult result, Summary<Domain> summary) {
+public record InvokeAnalysisOutcome<Domain extends AbstractDomain<Domain>>(AnalysisResult result, Summary<Domain> summary) {
 
-    public static <Domain extends AbstractDomain<Domain>> AnalysisOutcome<Domain> ok(Summary<Domain> summary) {
-        return new AnalysisOutcome<>(AnalysisResult.OK, summary);
+    public static <Domain extends AbstractDomain<Domain>> InvokeAnalysisOutcome<Domain> ok(Summary<Domain> summary) {
+        return new InvokeAnalysisOutcome<>(AnalysisResult.OK, summary);
     }
 
-    public static <Domain extends AbstractDomain<Domain>> AnalysisOutcome<Domain> error(AnalysisResult result) {
-        return new AnalysisOutcome<>(result, null);
+    public static <Domain extends AbstractDomain<Domain>> InvokeAnalysisOutcome<Domain> error(AnalysisResult result) {
+        return new InvokeAnalysisOutcome<>(result, null);
     }
 
     public boolean isOk() {
         return result == AnalysisResult.OK;
-    }
-
-    public boolean isError() {
-        return result != AnalysisResult.OK;
     }
 }

@@ -29,14 +29,14 @@ public final class NodeUtil {
         return null;
     }
 
-    public static boolean leadsToByteCodeException(IfNode guardingIf) {
-        Node falseBegin = guardingIf.falseSuccessor();
-        if (falseBegin == null) return false;
+    public static boolean leadsToByteCodeException(IfNode ifNode) {
+        if (ifNode == null) return false;
+        return isDirectPredecessorOfBCE(ifNode.trueSuccessor()) || isDirectPredecessorOfBCE(ifNode.falseSuccessor());
+    }
 
-        var successors = falseBegin.successors();
-        if (successors.count() != 1) {
-            return false;
-        }
-        return successors.first() instanceof BytecodeExceptionNode;
+    public static boolean isDirectPredecessorOfBCE(Node node) {
+        if (node == null) return false;
+        if (node.successors().count() != 1) return false;
+        return node.successors().first() instanceof  BytecodeExceptionNode;
     }
 }

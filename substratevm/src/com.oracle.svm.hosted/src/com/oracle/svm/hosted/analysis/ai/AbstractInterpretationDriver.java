@@ -7,15 +7,11 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJNIMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
-import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
@@ -23,8 +19,6 @@ import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationExcepti
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-// FIXME: THE CONSTANT STAMP APPLIER HAS SOME INTERNAL MISTAKE THAT
-//  COMPLETELY FUCKS UP THE NATIVE IMAGE ONCE IT IS BUILT, INVESITGATE
 /**
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
@@ -72,10 +66,11 @@ public class AbstractInterpretationDriver {
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
                 .setConsoleEnabled(false)
-                .setFileEnabled(false)
-                .setFileThreshold(LoggerVerbosity.INFO)
+                .setFileEnabled(true)
+                .setFileThreshold(LoggerVerbosity.DEBUG)
                 .setConsoleThreshold(LoggerVerbosity.INFO)
-                .setGraphIgvDumpEnabled(true);
+                .setGraphIgvDumpEnabled(true)
+                .setGraphJsonExportEnabled(true);
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();
@@ -95,12 +90,10 @@ public class AbstractInterpretationDriver {
 //        /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
         var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
-                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new BoundsSafetyChecker())
-                .maxCallStackDepth(8)
+                .maxCallStackDepth(128)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
-                .addMethodFilter(new SkipJNIMethodFilter())
                 .build();
 
         /* 5. Register with manager */

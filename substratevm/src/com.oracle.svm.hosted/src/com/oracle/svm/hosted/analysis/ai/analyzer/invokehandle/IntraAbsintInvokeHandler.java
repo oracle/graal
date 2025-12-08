@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisOutcome;
+import com.oracle.svm.hosted.analysis.ai.analyzer.InvokeAnalysisOutcome;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalysisResult;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
@@ -29,8 +29,8 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     }
 
     @Override
-    public AnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
-        return AnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
+    public InvokeAnalysisOutcome<Domain> handleInvoke(InvokeInput<Domain> invokeInput) {
+        return InvokeAnalysisOutcome.error(AnalysisResult.ANALYSIS_FAILED);
     }
 
     @Override
