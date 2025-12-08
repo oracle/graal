@@ -113,6 +113,16 @@ public final class JVMCIReflectionUtil {
     }
 
     /**
+     * Shortcut for
+     * {@link #getUniqueDeclaredMethod(MetaAccessProvider, ResolvedJavaType, String, Class...)} that
+     * converts the {@link Class} parameters to {@link ResolvedJavaType} using the provided
+     * {@link MetaAccessProvider}.
+     */
+    public static ResolvedJavaMethod getUniqueDeclaredMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String name, Class<?>... parameterTypes) {
+        return getUniqueDeclaredMethod(metaAccess, metaAccess.lookupJavaType(declaringClass), name, parameterTypes);
+    }
+
+    /**
      * Gets the constructor declared by {@code declaringClass} uniquely identified by
      * {@code parameterTypes}. Like {@link Class#getDeclaredConstructor(Class...)}, this does not
      * consider super classes.
@@ -159,6 +169,15 @@ public final class JVMCIReflectionUtil {
      */
     public static ResolvedJavaMethod getDeclaredConstructor(MetaAccessProvider metaAccess, ResolvedJavaType declaringClass, Class<?>... parameterTypes) {
         return getDeclaredConstructor(false, metaAccess, declaringClass, parameterTypes);
+    }
+
+    /**
+     * Shortcut for {@link #getDeclaredConstructor(MetaAccessProvider, ResolvedJavaType, Class...)}
+     * that converts the {@link Class} parameters to {@link ResolvedJavaType} using the provided
+     * {@link MetaAccessProvider}.
+     */
+    public static ResolvedJavaMethod getDeclaredConstructor(MetaAccessProvider metaAccess, Class<?> declaringClass, Class<?>... parameterTypes) {
+        return getDeclaredConstructor(metaAccess, metaAccess.lookupJavaType(declaringClass), parameterTypes);
     }
 
     /**
@@ -256,6 +275,15 @@ public final class JVMCIReflectionUtil {
      */
     public static ResolvedJavaField getUniqueDeclaredField(ResolvedJavaType declaringClass, String fieldName) {
         return getUniqueDeclaredField(false, declaringClass, fieldName);
+    }
+
+    /**
+     * Shortcut for {@link #getUniqueDeclaredField(ResolvedJavaType, String)} that converts the
+     * {@link Class} parameters to {@link ResolvedJavaType} using the provided
+     * {@link MetaAccessProvider}.
+     */
+    public static ResolvedJavaField getUniqueDeclaredField(MetaAccessProvider metaAccessProvider, Class<?> declaringClass, String fieldName) {
+        return getUniqueDeclaredField(metaAccessProvider.lookupJavaType(declaringClass), fieldName);
     }
 
     /**
