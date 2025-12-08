@@ -133,7 +133,7 @@ public class ClassLowerer {
          * via a super call
          */
         for (HostedField field : type.getInstanceFields(false)) {
-            if (!ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(field)) {
+            if (!ClassWithMirrorLowerer.isFieldRepresentedInJavaScript(codeGenTool.getProviders().getMetaAccess(), field)) {
                 genFieldInitialization(codeGenTool, masm, field);
             }
         }

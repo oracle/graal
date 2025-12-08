@@ -89,7 +89,7 @@ import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCImageHeapLayoutInfo;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.webimage.wasm.types.WasmValType;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -878,7 +878,7 @@ public class WasmGCHeapWriter {
      */
     private Instruction createNewInstanceFuncRef(HostedType objectType) {
         if (WasmGCAllocationSupport.needsDynamicAllocationTemplate(objectType)) {
-            return new Instruction.RefFunc(providers.knownIds().instanceCreateTemplate.requestFunctionId(objectType.getJavaClass()));
+            return new Instruction.RefFunc(providers.knownIds().instanceCreateTemplate.requestFunctionId(objectType));
         } else {
             return new Instruction.RefNull(providers.knownIds().newInstanceFieldType);
         }
@@ -1047,8 +1047,7 @@ public class WasmGCHeapWriter {
         StringBuilder comment = new StringBuilder(clazz.toJavaName());
         if (DynamicHubLayout.singleton().isDynamicHub(clazz)) {
             ResolvedJavaType t = providers.getConstantReflection().asJavaType(data.getInfo().getConstant());
-            Class<?> representedClazz = OriginalClassProvider.getJavaClass(t);
-            comment.append(" for ").append(representedClazz.getTypeName());
+            comment.append(" for ").append(JVMCIReflectionUtil.getTypeName(t));
         }
 
         return comment.toString();

@@ -155,7 +155,7 @@ public class WasmGCAllocationSupport {
     public static void preRegisterAllocationTemplates(WebImageWasmGCProviders providers) {
         for (HostedType type : providers.getMetaAccess().getUniverse().getTypes()) {
             if (needsDynamicAllocationTemplate(type)) {
-                providers.knownIds().instanceCreateTemplate.requestFunctionId(type.getJavaClass());
+                providers.knownIds().instanceCreateTemplate.requestFunctionId(type);
             }
         }
     }

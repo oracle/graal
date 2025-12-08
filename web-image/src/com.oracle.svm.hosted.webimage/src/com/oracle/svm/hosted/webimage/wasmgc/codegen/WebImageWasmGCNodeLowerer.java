@@ -69,7 +69,6 @@ import com.oracle.svm.hosted.webimage.wasmgc.ast.id.GCKnownIds;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.id.WebImageWasmGCIds;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmGCUtil;
 import com.oracle.svm.hosted.webimage.wasmgc.types.WasmRefType;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.webimage.functionintrinsics.JSCallNode;
 import com.oracle.svm.webimage.functionintrinsics.JSSystemFunction;
@@ -402,7 +401,7 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
     }
 
     private Instruction lowerNewInstance(NewInstanceNode newInstance) {
-        return new Instruction.Call(masm().getKnownIds().instanceCreateTemplate.requestFunctionId(OriginalClassProvider.getJavaClass(newInstance.instanceClass())));
+        return new Instruction.Call(masm().getKnownIds().instanceCreateTemplate.requestFunctionId((HostedType) newInstance.instanceClass()));
     }
 
     private Instruction lowerDynamicNewInstance(DynamicNewInstanceNode newInstance) {
