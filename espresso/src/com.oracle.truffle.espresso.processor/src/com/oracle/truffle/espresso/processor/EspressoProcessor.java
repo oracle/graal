@@ -215,6 +215,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
     TypeElement truffleNode;
     private static final String TRUFFLE_NODE = "com.oracle.truffle.api.nodes.Node";
 
+    TypeElement truffleObject;
+    private static final String TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+
     // Global constants
     protected static final String FACTORY = "Factory";
     protected static final String FACTORY_FIELD_NAME = "FACTORY";
@@ -228,7 +231,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
     static final String IMPORT_STATIC_OBJECT = STATIC_OBJECT;
-    static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+    static final String IMPORT_TRUFFLE_OBJECT = TRUFFLE_OBJECT;
     static final String IMPORT_ESPRESSO_LANGUAGE = ESPRESSO_LANGUAGE;
     static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
     static final String IMPORT_ESPRESSO_CONTEXT = ESPRESSO_CONTEXT;
@@ -342,6 +345,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         espressoContext = getTypeElement(ESPRESSO_CONTEXT);
         substitutionProfiler = getTypeElement(SUBSTITUTION_PROFILER);
         truffleNode = getTypeElement(TRUFFLE_NODE);
+        truffleObject = getTypeElement(TRUFFLE_OBJECT);
 
         processImpl(roundEnv);
         done = true;

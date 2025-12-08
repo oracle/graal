@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Used to access the raw memory of a {@link JfrBuffer}.
@@ -178,7 +178,7 @@ public final class JfrBufferAccess {
 
     /**
      * If a buffer can't be freed right away, then we retire it instead. Retired buffers are ignored
-     * by the JFR infrastructure and may be reinstate or freed at a later point in time.
+     * by the JFR infrastructure and may be reinstated or freed at a later point in time.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRetired(JfrBuffer buffer) {

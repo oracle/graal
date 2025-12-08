@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,11 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+
+import org.graalvm.wasm.SymbolTable;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -51,14 +56,30 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
  */
 class BlockFrame extends ControlFrame {
     private final IntArrayList branches;
+    private final ArrayList<ExceptionHandler> exceptionHandlers;
 
-    BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
+    private BlockFrame(int[] paramTypes, int[] resultTypes, SymbolTable symbolTable, int initialStackSize, BitSet initializedLocals) {
+        super(paramTypes, resultTypes, symbolTable, initialStackSize, initializedLocals);
         branches = new IntArrayList();
+        exceptionHandlers = new ArrayList<>();
+    }
+
+    BlockFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame) {
+        this(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone());
+    }
+
+    static BlockFrame createFunctionFrame(int[] paramTypes, int[] resultTypes, int[] locals, SymbolTable symbolTable) {
+        BitSet initializedLocals = new BitSet(locals.length);
+        for (int localIndex = 0; localIndex < locals.length; localIndex++) {
+            if (localIndex < paramTypes.length || WasmType.hasDefaultValue(locals[localIndex])) {
+                initializedLocals.set(localIndex);
+            }
+        }
+        return new BlockFrame(paramTypes, resultTypes, symbolTable, 0, initializedLocals);
     }
 
     @Override
-    byte[] labelTypes() {
+    int[] labelTypes() {
         return resultTypes();
     }
 
@@ -69,27 +90,30 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(RuntimeBytecodeGen bytecode) {
-        if (branches.size() == 0) {
+        if (branches.size() == 0 && exceptionHandlers.isEmpty()) {
             return;
         }
         final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
         for (int branchLocation : branches.toArray()) {
             bytecode.patchLocation(branchLocation, location);
         }
+        for (ExceptionHandler catchEntry : exceptionHandlers) {
+            catchEntry.setTarget(location);
+        }
     }
 
     @Override
-    void addBranch(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchLocation());
-    }
-
-    @Override
-    void addBranchIf(RuntimeBytecodeGen bytecode) {
-        branches.add(bytecode.addBranchIfLocation());
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp) {
+        branches.add(bytecode.addBranchLocation(branchOp));
     }
 
     @Override
     void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchTableItemLocation());
+    }
+
+    @Override
+    void addExceptionHandler(ExceptionHandler handler) {
+        exceptionHandlers.add(handler);
     }
 }

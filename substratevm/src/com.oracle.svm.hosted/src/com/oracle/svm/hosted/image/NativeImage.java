@@ -103,9 +103,13 @@ import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ByteFormattingUtil;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -125,6 +129,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -269,7 +274,7 @@ public abstract class NativeImage extends AbstractImage {
     private static Class<? extends CHeader.Header> cHeader(HostedMethod entryPointStub) {
         /* check if method is annotated */
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub((CEntryPointCallStubMethod) entryPointStub.wrapped.wrapped);
-        CHeader methodAnnotation = entryPoint.getDeclaredAnnotation(CHeader.class);
+        CHeader methodAnnotation = AnnotationUtil.getAnnotation(entryPoint, CHeader.class);
         if (methodAnnotation != null) {
             return methodAnnotation.value();
         }
@@ -277,7 +282,7 @@ public abstract class NativeImage extends AbstractImage {
         /* check if enclosing classes are annotated */
         AnalysisType enclosingType = entryPoint.getDeclaringClass();
         while (enclosingType != null) {
-            CHeader enclosing = enclosingType.getDeclaredAnnotation(CHeader.class);
+            CHeader enclosing = AnnotationUtil.getAnnotation(enclosingType, CHeader.class);
             if (enclosing != null) {
                 return enclosing.value();
             }
@@ -427,9 +432,8 @@ public abstract class NativeImage extends AbstractImage {
      * Create the image sections for code, constants, and the heap.
      */
     @Override
-    @SuppressWarnings("try")
     public void build(String imageName, DebugContext debug) {
-        try (DebugContext.Scope buildScope = debug.scope("NativeImage.build")) {
+        try (DebugContext.Scope _ = debug.scope("NativeImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
@@ -487,7 +491,7 @@ public abstract class NativeImage extends AbstractImage {
             cGlobals.writeData(rwDataBuffer,
                             (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
                                             isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
-                            (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
+                            (offset, symbolName, _) -> defineRelocationForSymbol(symbolName, offset));
 
             // - Write the heap to its own section.
             long imageHeapSize = getImageHeapSize();
@@ -562,6 +566,7 @@ public abstract class NativeImage extends AbstractImage {
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
             printHeapStatistics(heap.getLayouter().getPartitions());
+            heap.dumpMetadata(heapLayout);
         }
     }
 
@@ -979,9 +984,8 @@ public abstract class NativeImage extends AbstractImage {
 
         protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
 
-        @SuppressWarnings("try")
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
-            try (Indent ignored = debug.logAndIndent("TextImpl.writeTextSection")) {
+            try (Indent _ = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
                  * Write the text content. For slightly complicated reasons, we now call
                  * patchMethods in two places -- but it only happens once for any given image build.
@@ -1022,7 +1026,7 @@ public abstract class NativeImage extends AbstractImage {
                 boolean buildingApplicationLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
                 HostedDynamicLayerInfo hostedDynamicLayerInfo = buildingApplicationLayer ? HostedDynamicLayerInfo.singleton() : null;
 
-                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getCompilationsWithSymbols()) {
                     HostedMethod current = pair.getLeft();
                     final String symName = localSymbolNameForMethod(current);
                     final String signatureString = current.getUniqueShortName();
@@ -1107,6 +1111,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 final class MethodPointerInvalidHandlerFeature implements InternalFeature {
     @Override

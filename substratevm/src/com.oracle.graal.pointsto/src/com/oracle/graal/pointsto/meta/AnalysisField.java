@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,16 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.svm.common.meta.GuaranteeFolded;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -72,18 +70,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private final boolean isInBaseLayer;
 
     public final ResolvedJavaField wrapped;
-
-    /**
-     * Initial field type flow, i.e., as specified by the analysis client. It can be used to inject
-     * specific types into a field that the analysis would not see on its own, and to inject the
-     * null value into a field.
-     */
-    protected FieldTypeFlow initialFlow;
-    /**
-     * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types. It does not track any context-sensitive information.
-     */
-    protected FieldTypeFlow sinkFlow;
 
     /** The reason flags contain a {@link BytecodePosition} or a reason object. */
     @SuppressWarnings("unused") private volatile Object isRead;
@@ -130,18 +116,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
-
-        initialFlow = new FieldTypeFlow(this, getType());
-        if (this.isStatic()) {
-            /* There is never any context-sensitivity for static fields. */
-            sinkFlow = initialFlow;
-        } else {
-            /*
-             * Regardless of the context-sensitivity policy, there is always this single type flow
-             * that accumulates all types.
-             */
-            sinkFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
-        }
 
         if (universe.hostVM().buildingExtensionLayer() && declaringClass.isInBaseLayer()) {
             int fid = universe.getImageLayerLoader().lookupHostedFieldInBaseLayer(this);
@@ -223,22 +197,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     }
 
-    public FieldTypeFlow getInitialFlow() {
-        return initialFlow;
-    }
-
-    public FieldTypeFlow getSinkFlow() {
-        return sinkFlow;
-    }
-
-    public FieldTypeFlow getStaticFieldFlow() {
-        assert Modifier.isStatic(this.getModifiers()) : this;
-        return sinkFlow;
-    }
-
     public void cleanupAfterAnalysis() {
-        initialFlow = null;
-        sinkFlow = null;
         readBy = null;
         writtenBy = null;
     }
@@ -295,16 +254,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void injectDeclaredType() {
-        BigBang bb = getUniverse().getBigbang();
-        if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(this.getType()), true);
-        } else if (bb.trackPrimitiveValues() && getStorageKind().isPrimitive()) {
-            ((PointsToAnalysisField) this).saturatePrimitiveField();
-        }
+        /* By default, nothing to do. */
     }
 
     public boolean isGuaranteeFolded() {
-        return getAnnotation(GuaranteeFolded.class) != null;
+        return AnnotationUtil.getAnnotation(this, GuaranteeFolded.class) != null;
     }
 
     public void checkGuaranteeFolded() {

@@ -28,8 +28,10 @@ import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoun
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -44,14 +46,13 @@ import jdk.graal.compiler.word.Word;
  * its base class {@code AdaptiveSizePolicy}. Method and variable names have been kept mostly the
  * same for comparability.
  */
-// GR-68417: adopt "JDK-8338977: Parallel: Improve heap resizing heuristics"
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+8/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L954-L1167")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+5/src/hotspot/share/gc/parallel/psScavenge.cpp#L319-L634")
-// @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L964-L1181")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+25/src/hotspot/share/gc/parallel/psScavenge.cpp#L319-L635")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+26/src/hotspot/share/gc/shared/gc_globals.hpp#L303-L407")
 class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*
@@ -161,10 +162,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_attempt_scavenge
+    public boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection) { // should_attempt_scavenge
         guaranteeSizeParametersInitialized();
 
         boolean collectYoungSeparately = shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen());
+        if (forcedCompleteCollection && !collectYoungSeparately) {
+            return true;
+        }
         if (!followingIncrementalCollection && collectYoungSeparately) {
             /*
              * With a copying collector, default to always doing an incremental collection first
@@ -356,6 +360,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         double decayedMajorGcCost = majorGcCost();
         double avgMajorInterval = avgMajorIntervalSeconds.getAverage();
         if (USE_ADAPTIVE_SIZE_DECAY_MAJOR_GC_COST && ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE > 0 && avgMajorInterval > 0) {
+            /*
+             * This seems pointless or flawed for major GCs because this method is called at the end
+             * when majorTimer has only just been restarted.
+             */
             double secondsSinceMajor = secondsSinceMajorGc();
             if (secondsSinceMajor > 0 && secondsSinceMajor > ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE * avgMajorInterval) {
                 double decayed = decayedMajorGcCost * (ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE * avgMajorInterval) / secondsSinceMajor;
@@ -393,24 +401,31 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return curSize.unsignedDivide(100).multiply(percentChange);
     }
 
+    /**
+     * Should not be called during a major collection itself because then, {@link #majorTimer} is
+     * repurposed to measure collection time (rather than time between collections).
+     */
     private double secondsSinceMajorGc() { // time_since_major_gc
-        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.startedNanos());
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.lastStartedNanoTime());
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
+    public void onCollectionBegin(boolean completeCollection, long beginNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.stopAt(requestingNanoTime);
+        if (!timer.wasStartedAtLeastOnce()) {
+            long origin = Isolates.isStartTimeAssigned() ? Isolates.getStartTimeNanos() : beginNanoTime;
+            timer.startAt(origin);
+        }
+        timer.stopAt(beginNanoTime);
         if (completeCollection) {
-            latestMajorMutatorIntervalNanos = timer.totalNanos();
+            latestMajorMutatorIntervalNanos = timer.lastIntervalNanos();
         } else {
-            latestMinorMutatorIntervalNanos = timer.totalNanos();
+            latestMinorMutatorIntervalNanos = timer.lastIntervalNanos();
         }
 
-        timer.reset();
         timer.start(); // measure collection pause
 
-        super.onCollectionBegin(completeCollection, requestingNanoTime);
+        super.onCollectionBegin(completeCollection, beginNanoTime);
     }
 
     @Override
@@ -420,13 +435,13 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalNanos, timer.totalNanos(), promoSize);
+                            cause, latestMajorMutatorIntervalNanos, timer.lastIntervalNanos(), promoSize);
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalNanos, timer.totalNanos(), edenSize);
+                            cause, latestMinorMutatorIntervalNanos, timer.lastIntervalNanos(), edenSize);
             minorCount++;
             minorCountSinceMajorCollection++;
 

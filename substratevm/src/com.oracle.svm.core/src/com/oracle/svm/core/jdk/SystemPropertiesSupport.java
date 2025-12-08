@@ -128,7 +128,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vendor", vm.vendor);
         initializeProperty("java.vendor.url", vm.vendorUrl);
         initializeProperty("java.vendor.version", vm.vendorVersion);
-        assert vm.info.equals(vm.info.toLowerCase(Locale.ROOT)) : "java.vm.info should not contain uppercase characters";
+        assert vm.info.equals(vm.info.toLowerCase(Locale.ROOT)) : "java.vm.info should not contain uppercase characters: " + vm.info;
         initializeProperty("java.vm.info", vm.info);
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", vm.vendor);
@@ -142,6 +142,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
         for (String futureDefault : FutureDefaultsOptions.getFutureDefaults()) {
+            initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
+        }
+        for (String futureDefault : FutureDefaultsOptions.getRetiredFutureDefaults()) {
             initializeProperty(FutureDefaultsOptions.SYSTEM_PROPERTY_PREFIX + futureDefault, Boolean.TRUE.toString());
         }
 

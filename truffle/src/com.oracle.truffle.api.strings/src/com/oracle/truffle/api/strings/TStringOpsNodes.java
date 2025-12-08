@@ -59,62 +59,62 @@ final class TStringOpsNodes {
 
     abstract static class IndexOfAnyCharUTF16Node extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, char[] values);
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int strideA, int fromIndex, int maxIndex, char[] values);
 
-        @Specialization(guards = {"isStride0(a)", "values.length == 1"})
-        int stride0(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, char[] values) {
+        @Specialization(guards = {"strideA == 0", "values.length == 1"})
+        int stride0(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, char[] values) {
             return TStringOps.indexOfAnyChar(this, arrayA, offsetA, 0, fromIndex, maxIndex, values);
         }
 
-        @Specialization(guards = {"isStride0(a)", "values.length > 1"})
-        int stride0MultiValue(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, char[] values) {
+        @Specialization(guards = {"strideA == 0", "values.length > 1"})
+        int stride0MultiValue(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, char[] values) {
             return TStringOps.indexOfAnyChar(this, arrayA, offsetA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
-        @Specialization(guards = "isStride1(a)")
-        int stride1(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, char[] values) {
+        @Specialization(guards = "strideA == 1")
+        int stride1(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, char[] values) {
             return TStringOps.indexOfAnyChar(this, arrayA, offsetA, 1, fromIndex, maxIndex, values);
         }
     }
 
     abstract static class IndexOfAnyIntNode extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values);
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int strideA, int fromIndex, int maxIndex, int[] values);
 
-        @Specialization(guards = {"isStride0(a)", "values.length == 1"})
-        int stride0(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values) {
+        @Specialization(guards = {"strideA == 0", "values.length == 1"})
+        int stride0(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, int[] values) {
             return TStringOps.indexOfAnyInt(this, arrayA, offsetA, 0, fromIndex, maxIndex, values);
         }
 
-        @Specialization(guards = {"isStride0(a)", "values.length > 1"})
-        int stride0MultiValue(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values) {
+        @Specialization(guards = {"strideA == 0", "values.length > 1"})
+        int stride0MultiValue(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, int[] values) {
             return TStringOps.indexOfAnyInt(this, arrayA, offsetA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
-        @Specialization(guards = {"isStride1(a)", "values.length == 1"})
-        int stride1(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values) {
+        @Specialization(guards = {"strideA == 1", "values.length == 1"})
+        int stride1(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, int[] values) {
             return TStringOps.indexOfAnyInt(this, arrayA, offsetA, 1, fromIndex, maxIndex, values);
         }
 
-        @Specialization(guards = {"isStride1(a)", "values.length > 1"})
-        int stride1MultiValue(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values) {
+        @Specialization(guards = {"strideA == 1", "values.length > 1"})
+        int stride1MultiValue(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, int[] values) {
             return TStringOps.indexOfAnyInt(this, arrayA, offsetA, 1, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xffff));
         }
 
-        @Specialization(guards = "isStride2(a)")
-        int stride2(@SuppressWarnings("unused") AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int maxIndex, int[] values) {
+        @Specialization(guards = "strideA == 2")
+        int stride2(byte[] arrayA, long offsetA, @SuppressWarnings("unused") int strideA, int fromIndex, int maxIndex, int[] values) {
             return TStringOps.indexOfAnyInt(this, arrayA, offsetA, 2, fromIndex, maxIndex, values);
         }
     }
 
     abstract static class RawIndexOfCodePointNode extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int codepoint, int fromIndex, int toIndex);
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int strideA, int codepoint, int fromIndex, int toIndex);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
-        static int cached(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int codepoint, int fromIndex, int toIndex,
-                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+        static int cached(Node node, byte[] arrayA, long offsetA, int strideA, int codepoint, int fromIndex, int toIndex,
+                        @Bind("fromStride(strideA)") CompactionLevel compaction,
                         @Cached("compaction") CompactionLevel cachedCompaction) {
             return TStringOps.indexOfCodePointWithStride(node, arrayA, offsetA, cachedCompaction.getStride(), fromIndex, toIndex, codepoint);
         }
@@ -122,12 +122,12 @@ final class TStringOpsNodes {
 
     abstract static class RawLastIndexOfCodePointNode extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int codepoint, int fromIndex, int toIndex);
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int strideA, int codepoint, int fromIndex, int toIndex);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
-        static int cached(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int codepoint, int fromIndex, int toIndex,
-                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+        static int cached(Node node, byte[] arrayA, long offsetA, int strideA, int codepoint, int fromIndex, int toIndex,
+                        @Bind("fromStride(strideA)") CompactionLevel compaction,
                         @Cached("compaction") CompactionLevel cachedCompaction) {
             return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, arrayA, offsetA, cachedCompaction.getStride(), fromIndex, toIndex, codepoint, 0);
         }
@@ -136,22 +136,22 @@ final class TStringOpsNodes {
     abstract static class RawIndexOfStringNode extends AbstractInternalNode {
 
         abstract int execute(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int fromIndex, int toIndex, byte[] mask);
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"compactionA == cachedCompactionA", "compactionB == cachedCompactionB"}, limit = LIMIT_STRIDE)
         static int doCached(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int fromIndex, int toIndex, byte[] mask,
-                        @Bind("fromStride(a.stride())") CompactionLevel compactionA,
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask,
+                        @Bind("fromStride(strideA)") CompactionLevel compactionA,
                         @Cached("compactionA") CompactionLevel cachedCompactionA,
-                        @Bind("fromStride(b.stride())") CompactionLevel compactionB,
+                        @Bind("fromStride(strideB)") CompactionLevel compactionB,
                         @Cached("compactionB") CompactionLevel cachedCompactionB,
                         @Cached InlinedConditionProfile oneLength) {
-            int strideB = cachedCompactionB.getStride();
-            int strideA = cachedCompactionA.getStride();
-            return runIndexOf(node, arrayA, offsetA, a.length(), strideA, arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, mask, oneLength);
+            return runIndexOf(node,
+                            arrayA, offsetA, lengthA, cachedCompactionA.getStride(),
+                            arrayB, offsetB, lengthB, cachedCompactionB.getStride(), fromIndex, toIndex, mask, oneLength);
         }
 
         static int runIndexOf(Node node,
@@ -173,22 +173,22 @@ final class TStringOpsNodes {
     abstract static class RawLastIndexOfStringNode extends AbstractInternalNode {
 
         abstract int execute(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int fromIndex, int toIndex, byte[] mask);
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"compactionA == cachedCompactionA", "compactionB == cachedCompactionB"}, limit = LIMIT_STRIDE)
         static int cachedLen1(Node node,
-                        AbstractTruffleString a, byte[] arrayA, long offsetA,
-                        AbstractTruffleString b, byte[] arrayB, long offsetB, int fromIndex, int toIndex, byte[] mask,
-                        @Bind("fromStride(a.stride())") CompactionLevel compactionA,
+                        byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] mask,
+                        @Bind("fromStride(strideA)") CompactionLevel compactionA,
                         @Cached("compactionA") CompactionLevel cachedCompactionA,
-                        @Bind("fromStride(b.stride())") CompactionLevel compactionB,
+                        @Bind("fromStride(strideB)") CompactionLevel compactionB,
                         @Cached("compactionB") CompactionLevel cachedCompactionB,
                         @Cached InlinedConditionProfile oneLength) {
-            int strideA = cachedCompactionA.getStride();
-            int strideB = cachedCompactionB.getStride();
-            return runIndexOf(node, arrayA, offsetA, a.length(), strideA, arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, mask, oneLength);
+            return runIndexOf(node,
+                            arrayA, offsetA, lengthA, cachedCompactionA.getStride(),
+                            arrayB, offsetB, lengthB, cachedCompactionB.getStride(), fromIndex, toIndex, mask, oneLength);
         }
 
         static int runIndexOf(Node node,
@@ -208,17 +208,17 @@ final class TStringOpsNodes {
     }
 
     static int memcmp(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB) {
-        int cmp = TStringOps.memcmpWithStride(location, a, arrayA, offsetA, a.stride(), b, arrayB, offsetB, b.stride(), Math.min(a.length(), b.length()));
-        return memCmpTail(cmp, a.length(), b.length());
+                    byte[] arrayA, long offsetA, int lengthA, int strideA,
+                    byte[] arrayB, long offsetB, int lengthB, int strideB, int lengthCMP) {
+        int cmp = TStringOps.memcmpWithStride(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
+        return memCmpTail(cmp, lengthA, lengthB);
     }
 
     static int memcmpBytes(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB) {
-        int cmp = TStringOps.memcmpBytesWithStride(location, a, arrayA, offsetA, a.stride(), b, arrayB, offsetB, b.stride(), Math.min(a.length(), b.length()));
-        return memCmpTail(cmp, a.length(), b.length());
+                    byte[] arrayA, long offsetA, int lengthA, int strideA,
+                    byte[] arrayB, long offsetB, int lengthB, int strideB, int lengthCMP) {
+        int cmp = TStringOps.memcmpBytesWithStride(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
+        return memCmpTail(cmp, lengthA, lengthB);
     }
 
     static int memCmpTail(int cmp, int lengthA, int lengthB) {
@@ -228,13 +228,13 @@ final class TStringOpsNodes {
     @SuppressWarnings("unused")
     abstract static class CalculateHashCodeNode extends AbstractInternalNode {
 
-        abstract int execute(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA);
+        abstract int execute(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA);
 
         @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
-        static int cached(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA,
-                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+        static int cached(Node node, byte[] arrayA, long offsetA, int lengthA, int strideA,
+                        @Bind("fromStride(strideA)") CompactionLevel compaction,
                         @Cached("compaction") CompactionLevel cachedCompaction) {
-            return TStringOps.hashCodeWithStride(node, a, arrayA, offsetA, cachedCompaction.getStride());
+            return TStringOps.hashCodeWithStride(node, arrayA, offsetA, lengthA, cachedCompaction.getStride());
         }
     }
 

@@ -24,15 +24,24 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import static com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER;
+
+import java.lang.reflect.Proxy;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.options.ModifiableOptionValues;
+import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
 
 @AutomaticallyRegisteredFeature
@@ -42,23 +51,33 @@ public class InitialLayerFeature implements InternalFeature {
         return ImageLayerBuildingSupport.buildingInitialLayer();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         /*
          * Make sure that critical VM components are included in the base layer by registering
          * runtime APIs as entry points. Although the types below are part of java.base, so they
          * would anyway be included in every base layer created with module=java.base, this ensures
          * that the base layer is usable regardless of the class inclusion policy.
          */
-        String pinReason = "base layer entry point included unconditionally";
+        var compilationSupport = LayeredCompilationSupport.singleton();
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Unsafe.class, "getUnsafe"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Unsafe.class, "allocateInstance", Class.class), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "gc"), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
+
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Unsafe.class, "getUnsafe")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Unsafe.class, "allocateInstance", Class.class)).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Runtime.class, "gc")).setPinnedToInitialLayer(pinReason);
-        metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class)).setPinnedToInitialLayer(pinReason);
+        metaAccess.lookupJavaType(Uninterruptible.class).registerAsReachable("Core type");
+        metaAccess.lookupJavaType(Proxy.getProxyClass(ClassLoaders.appClassLoader(), Uninterruptible.class)).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
     }
 
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // GR-71504 automatically detect accesses to fields of application layer only singletons
+        access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(ModifiableOptionValues.class, "v"));
+    }
 }

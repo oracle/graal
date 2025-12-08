@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 
@@ -53,7 +53,7 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     public static final String NULL_CLASS_LOADER_NAME = "native-image-null-class-loader";
     public static final String NULL_MODULE_NAME = "native-image-null-module";
     public static final String UNNAMED_MODULE_NAME = "native-image-unnamed";
-    private static final String STABLE_NAME_TEMPLATE = "/$Proxy.s";
+    private static final String STABLE_NAME_TEMPLATE = "$Proxy.s";
 
     private final ConcurrentMap<ResolvedJavaType, ProxySubstitutionType> typeSubstitutions = new ConcurrentHashMap<>();
     private final Set<String> uniqueTypeNames = new HashSet<>();
@@ -127,12 +127,17 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private String findUniqueName(Class<?> clazz, int hashCode) {
-        CharSequence baseName = "L" + clazz.getPackageName().replace('.', '/') + STABLE_NAME_TEMPLATE + Integer.toHexString(hashCode);
-        String name = baseName + ";";
+        CharSequence baseName;
+        if (clazz.getPackageName().isEmpty()) {
+            baseName = STABLE_NAME_TEMPLATE + Integer.toHexString(hashCode);
+        } else {
+            baseName = clazz.getPackageName().replace('.', '/') + '/' + STABLE_NAME_TEMPLATE + Integer.toHexString(hashCode);
+        }
+        String name = "L" + baseName + ";";
         synchronized (uniqueTypeNames) {
             int suffix = 1;
             while (uniqueTypeNames.contains(name)) {
-                name = baseName + "_" + suffix + ";";
+                name = "L" + baseName + "_" + suffix + ";";
                 suffix++;
             }
             uniqueTypeNames.add(name);

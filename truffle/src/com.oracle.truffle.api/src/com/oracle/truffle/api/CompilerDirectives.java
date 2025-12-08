@@ -47,6 +47,8 @@ import java.lang.annotation.Target;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
@@ -325,6 +327,167 @@ public final class CompilerDirectives {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
     public @interface ValueType {
+    }
+
+    /**
+     * Marks a method or constructor as a candidate for early inlining during Truffle compilation.
+     * <p>
+     * Methods annotated with {@code @EarlyInline} are considered by a dedicated early inlining
+     * phase before partial evaluation. This exposes the helper's control flow and state updates
+     * directly in the caller so that other Truffle directives such as {@link ExplodeLoop} and
+     * {@link EarlyEscapeAnalysis} can see and optimize them.
+     * <p>
+     * Only direct calls whose target method is annotated are considered, and normal inlining
+     * preconditions still apply. Indirect calls, native methods, and methods that cannot be inlined
+     * are ignored.
+     *
+     * <h3>Typical use cases</h3>
+     * <ul>
+     * <li>Inlining small branch or bytecode handlers into a
+     * {@link ExplodeLoop.LoopExplosionKind#MERGE_EXPLODE merge-exploded} interpreter loop so that
+     * loop explosion can merge state across the helper call.</li>
+     * <li>Inlining helpers that update non-escaping state objects in methods annotated with
+     * {@link EarlyEscapeAnalysis}, improving escape analysis and scalar replacement.</li>
+     * </ul>
+     *
+     * <h3>Example: early inlining of a branch handler</h3>
+     *
+     * <pre>
+     * {@code
+     * &#64;CompilationFinal(dimensions = 1) private final byte[] bytecodes = new byte[]{0, 1, 4, 2, 3};
+     *
+     * &#64;ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+     * int execute(Boolean v) {
+     *     byte[] bc = this.bytecodes;
+     *     int bci = 0;
+     *     while (true) {
+     *         CompilerAsserts.partialEvaluationConstant(bci);
+     *         switch (bc[bci]) {
+     *             case 0:
+     *                 bci++;
+     *                 break;
+     *             case 1:
+     *                 // {@code branchTrue} is inlined before partial evaluation.
+     *                 bci = branchTrue(bc, bci, v);
+     *                 break;
+     *             case 2:
+     *                 return 41;
+     *             case 3:
+     *                 return 42;
+     *             default:
+     *                 throw CompilerDirectives.shouldNotReachHere();
+     *         }
+     *     }
+     * }
+     *
+     * &#64;EarlyInline
+     * private static int branchTrue(byte[] bc, int bci, Boolean v) {
+     *     if (v) {
+     *         return bc[bci + 1];
+     *     } else {
+     *         return bci + 2;
+     *     }
+     * }
+     * }
+     * </pre>
+     *
+     * @since 25.1
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+    public @interface EarlyInline {
+    }
+
+    /**
+     * Requests the Truffle compiler to run escape analysis on this method before partial
+     * evaluation.
+     * <p>
+     * When a method or constructor is annotated with {@code @EarlyEscapeAnalysis}, a dedicated
+     * partial escape analysis phase is executed for that method before partial evaluation. This
+     * allows allocations that do not escape the method to be virtualized or eliminated, and their
+     * fields to be treated as partial-evaluation-time constants where possible.
+     *
+     * <h3>Typical use cases</h3>
+     * <ul>
+     * <li>Methods that allocate temporary objects whose fields are used only locally and are
+     * expected to become constants after partial evaluation.</li>
+     * <li>Interpreters that keep loop state in a small object (for example a bytecode index), in
+     * combination with {@link ExplodeLoop} and {@link EarlyInline}, so that the state object can be
+     * fully scalar replaced.</li>
+     * </ul>
+     *
+     * <h3>Example: non-escaping temporary object</h3>
+     *
+     * <pre>{@code
+     * &#64;EarlyEscapeAnalysis
+     * private static int computeConstant() {
+     *     TestEscape v = new TestEscape(42);
+     *     CompilerAsserts.partialEvaluationConstant(v.value);
+     *     // After early escape analysis and partial evaluation this method reduces to "return 42".
+     *     return v.value;
+     * }
+     *
+     * static final class TestEscape {
+     *     int value;
+     *
+     *     TestEscape(int value) {
+     *         this.value = value;
+     *     }
+     * }
+     * }</pre>
+     *
+     * <h3>Example: loop state object in a merge-exploded interpreter</h3>
+     *
+     * <pre>
+     * {@code
+     * static final class BytecodeIndex {
+     *     int bci;
+     * }
+     *
+     * &#64;CompilationFinal(dimensions = 1) private final byte[] bytecodes = new byte[]{0, 1, 4, 2, 3};
+     *
+     * &#64;ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+     * &#64;EarlyEscapeAnalysis
+     * int execute(Boolean v) {
+     *     byte[] bc = this.bytecodes;
+     *     BytecodeIndex index = new BytecodeIndex();
+     *     while (true) {
+     *         CompilerAsserts.partialEvaluationConstant(index.bci);
+     *         switch (bc[index.bci]) {
+     *             case 0:
+     *                 index.bci++;
+     *                 break;
+     *             case 1:
+     *                 // {@code branchTrue} is early inlined and sees the virtual {@code index}
+     *                 // object.
+     *                 branchTrue(bc, index, v);
+     *                 break;
+     *             case 2:
+     *                 return 41;
+     *             case 3:
+     *                 return 42;
+     *             case 4:
+     *                 throw CompilerDirectives.shouldNotReachHere();
+     *         }
+     *     }
+     * }
+     *
+     * @EarlyInline
+     * private static void branchTrue(byte[] bc, BytecodeIndex index, Boolean v) {
+     *     if (v) {
+     *         index.bci = bc[index.bci + 1];
+     *     } else {
+     *         index.bci = index.bci + 2;
+     *     }
+     * }
+     * }
+     * </pre>
+     *
+     * @since 25.1
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+    public @interface EarlyEscapeAnalysis {
     }
 
     /**
@@ -627,5 +790,4 @@ public final class CompilerDirectives {
         }
 
     }
-
 }

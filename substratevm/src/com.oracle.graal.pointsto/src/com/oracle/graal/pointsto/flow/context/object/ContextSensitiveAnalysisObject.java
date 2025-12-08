@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,9 @@ import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -102,7 +102,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
      * object.
      */
     protected static void mergeInstanceFieldFlow(PointsToAnalysis bb, FieldTypeStore fieldTypeStore, AnalysisObject object) {
-        AnalysisField field = fieldTypeStore.field();
+        PointsToAnalysisField field = fieldTypeStore.field();
 
         FieldTypeFlow readFieldFlow = fieldTypeStore.readFlow();
         FieldTypeFlow writeFieldFlow = fieldTypeStore.writeFlow();
@@ -127,7 +127,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     /** Returns the filter field flow corresponding to an unsafe accessed field. */
     @Override
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && bb.analysisPolicy().allocationSiteSensitiveHeap() : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
@@ -144,7 +144,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     }
 
     @Override
-    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers()) && bb.analysisPolicy().allocationSiteSensitiveHeap() : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
@@ -161,7 +161,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     }
 
     @Override
-    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+    protected void linkFieldFlows(PointsToAnalysis bb, PointsToAnalysisField field, FieldTypeStore fieldStore) {
         // link the initial instance field flow to the field write flow
         field.getInitialFlow().addUse(bb, fieldStore.writeFlow());
         // link the field read flow to the sink flow that accumulates all field types

@@ -211,7 +211,7 @@ public class HeapSnapshotVerifier {
         }
 
         private void verifyInstanceFieldValue(AnalysisField field, JavaConstant receiver, ImageHeapInstance receiverObject, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
-            if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+            if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null && !(ihc instanceof ImageHeapRelocatableConstant)) {
                 /*
                  * We cannot verify a base layer constant which doesn't have a backing hosted
                  * object. Since the hosted object is missing the constant would be replaced with

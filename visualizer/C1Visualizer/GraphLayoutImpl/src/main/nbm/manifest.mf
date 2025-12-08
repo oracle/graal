@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+OpenIDE-Module: at.ssw.dataflow
+OpenIDE-Module-Localizing-Bundle: at/ssw/dataflow/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.0
+

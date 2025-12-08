@@ -209,7 +209,7 @@ public final class ObjectGroupHistogram {
                 }
             }
         } else if (ihc instanceof ImageHeapObjectArray) {
-            heap.hConstantReflection.forEachArrayElement(ihc, (element, idx) -> {
+            heap.hConstantReflection.forEachArrayElement(ihc, (element, _) -> {
                 if (element.isNonNull()) {
                     ObjectInfo elementInfo = heap.getConstantInfo(element);
                     if (elementInfo != null) {

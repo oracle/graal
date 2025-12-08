@@ -47,7 +47,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
@@ -58,9 +57,9 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
     private final RegexProfile profile;
     private final CallTarget findStartCallTarget;
 
-    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile profile,
+    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, TRegexExecutorEntryNode captureGroupNode, RegexProfile profile,
                     CallTarget findStartCallTarget) {
-        super(language, source);
+        super(language);
         this.entryNode = insert(captureGroupNode);
         this.profile = profile;
         this.findStartCallTarget = findStartCallTarget;

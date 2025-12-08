@@ -12,8 +12,6 @@ It provides access to a Linux shell with a preauthenticated OCI Command Line Int
 
 Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine.
 
-> Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
-
 ## Steps to Use Oracle GraalVM in Cloud Shell
 
 Cloud Shell has several preinstalled JDKs, including Oracle GraalVM JDK.

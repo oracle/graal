@@ -59,7 +59,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class JavaRegexLexer extends RegexLexer {
@@ -598,7 +598,7 @@ public final class JavaRegexLexer extends RegexLexer {
         if (invert) {
             // TODO reference implementation has something with hasSupplementary, do we care about
             // this?;
-            p = p.createInverse(Encodings.UTF_16);
+            p = p.createInverse(Encoding.UTF_16);
         }
         return ClassSetContents.createCharacterClass(p);
     }
@@ -692,7 +692,7 @@ public final class JavaRegexLexer extends RegexLexer {
                     }
                     prev = curCharClass.toCodePointSet();
                     if (invert) {
-                        return prev.createInverse(Encodings.UTF_16);
+                        return prev.createInverse(Encoding.UTF_16);
                     }
                     return prev;
                 }

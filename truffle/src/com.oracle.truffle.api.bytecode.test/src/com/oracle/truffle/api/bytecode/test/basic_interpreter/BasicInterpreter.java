@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeFrame;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -81,6 +83,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -777,6 +780,56 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
+    @Operation(storeBytecodeIndex = true)
+    @SuppressWarnings("truffle-interpreted-performance")
+    public static final class CaptureFrame {
+        private static final Object FRAME_UNAVAILABLE = new Object();
+
+        @Specialization
+        public static BytecodeFrame perform(int skipFrames, FrameInstance.FrameAccess access) {
+            Object frameWalkResult = Truffle.getRuntime().iterateFrames(frameInstance -> {
+                BytecodeFrame result = BytecodeFrame.get(frameInstance, access);
+                if (result == null) {
+                    // Return a sentinel value so that frame walking doesn't continue.
+                    return FRAME_UNAVAILABLE;
+                }
+                return result;
+            }, skipFrames);
+
+            return frameWalkResult == FRAME_UNAVAILABLE ? null : (BytecodeFrame) frameWalkResult;
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @SuppressWarnings("truffle-interpreted-performance")
+    public static final class CaptureNonVirtualFrame {
+        private static final Object FRAME_UNAVAILABLE = new Object();
+
+        @Specialization
+        public static BytecodeFrame perform(int skipFrames) {
+            Object frameWalkResult = Truffle.getRuntime().iterateFrames(frameInstance -> {
+                BytecodeFrame result = BytecodeFrame.getNonVirtual(frameInstance);
+                if (result == null) {
+                    // Return a sentinel value so that frame walking doesn't continue.
+                    return FRAME_UNAVAILABLE;
+                }
+                return result;
+            }, skipFrames);
+
+            return frameWalkResult == FRAME_UNAVAILABLE ? null : (BytecodeFrame) frameWalkResult;
+        }
+    }
+
+    // Special operation that forces its operand to escape.
+    @Operation
+    public static final class Blackhole {
+        @Specialization
+        @TruffleBoundary
+        public static void perform(@SuppressWarnings("unused") Object value) {
+            // do nothing
+        }
+    }
+
     @Instrumentation
     public static final class PrintHere {
         @Specialization
@@ -812,7 +865,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         @TruffleBoundary
         protected static BytecodeConfig getConfig(BasicInterpreter root) {
-            BytecodeConfig.Builder configBuilder = BasicInterpreterBuilder.invokeNewConfigBuilder(root.getClass());
+            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.lookupVariant(root).newConfigBuilder();
             configBuilder.addInstrumentation(IncrementValue.class);
             return configBuilder.build();
         }
@@ -845,7 +898,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         @TruffleBoundary
         protected static BytecodeConfig getConfig(BasicInterpreter root) {
-            BytecodeConfig.Builder configBuilder = BasicInterpreterBuilder.invokeNewConfigBuilder(root.getClass());
+            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.lookupVariant(root).newConfigBuilder();
             configBuilder.addInstrumentation(DoubleValue.class);
             return configBuilder.build();
         }
@@ -920,6 +973,17 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         @SuppressWarnings("unused")
         public static Object[] doDefault(long arg0, @Variadic Object[] args) {
             return args;
+        }
+    }
+
+    @Operation(storeBytecodeIndex = false)
+    @ConstantOperand(name = "f", type = Function.class)
+    static final class Run {
+        @SuppressWarnings("unchecked")
+        @Specialization
+        @TruffleBoundary
+        public static Object doDefault(Function<?, ?> supplier, @Bind BytecodeNode bc) {
+            return ((Function<Object, Object>) supplier).apply(bc);
         }
     }
 

@@ -34,24 +34,17 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.util.LogUtils;
 
-import jdk.graal.compiler.options.Option;
-
 @AutomaticallyRegisteredFeature
 public class HostedMethodNameFactory implements InternalFeature {
-    public static final class Options {
-        @Option(help = "Log unique names which do not match across layers. This is an experimental option which will be removed.") //
-        public static final HostedOptionKey<Boolean> LogUniqueNameInconsistencies = new HostedOptionKey<>(false);
-    }
-
     private Map<String, Integer> methodNameCount = new ConcurrentHashMap<>();
     private Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-    private final boolean logUniqueNameInconsistencies = Options.LogUniqueNameInconsistencies.getValue();
+    private final boolean logUniqueNameInconsistencies = LayeredImageOptions.LayeredImageDiagnosticOptions.LogUniqueNameInconsistencies.getValue();
     private Set<String> reservedUniqueShortNames;
 
     public record MethodNameInfo(String name, String uniqueShortName) {
@@ -92,7 +85,7 @@ public class HostedMethodNameFactory implements InternalFeature {
         result = initialName;
 
         do {
-            int collisionCount = methodNameCount.merge(initialName.uniqueShortName(), 0, (oldValue, value) -> oldValue + 1);
+            int collisionCount = methodNameCount.merge(initialName.uniqueShortName(), 0, (oldValue, _) -> oldValue + 1);
             if (collisionCount != 0) {
                 result = generator.generateMethodNameInfo(collisionCount);
             }

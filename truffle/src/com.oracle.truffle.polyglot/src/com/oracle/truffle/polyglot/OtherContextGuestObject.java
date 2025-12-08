@@ -126,7 +126,7 @@ final class OtherContextGuestObject implements TruffleObject {
 
     }
 
-    private static final Message IDENTICAL = Message.resolve(InteropLibrary.class, "isIdentical");
+    private static final Message IDENTICAL = Message.resolveExact(InteropLibrary.class, "isIdentical", Object.class, Object.class, InteropLibrary.class);
 
     static Object sendImpl(Node node, PolyglotSharingLayer layer, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,

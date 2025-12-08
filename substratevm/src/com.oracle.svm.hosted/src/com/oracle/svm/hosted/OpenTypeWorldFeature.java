@@ -29,13 +29,17 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -44,7 +48,7 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -61,9 +65,12 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.TypeCheckBuilder;
 
 import jdk.graal.compiler.debug.Assertions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 public class OpenTypeWorldFeature implements InternalFeature {
+
+    private Map<AnalysisType, Set<AnalysisMethod>> typeToDispatchTableMethods;
 
     @Override
     public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
@@ -77,21 +84,16 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    private final Set<AnalysisType> triggeredTypes = new HashSet<>();
-
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        var config = (FeatureImpl.DuringAnalysisAccessImpl) access;
-        for (AnalysisType aType : config.getUniverse().getTypes()) {
-            if (triggeredTypes.add(aType)) {
-                aType.getOrCalculateOpenTypeWorldDispatchTableMethods();
-                config.requireAnalysisIteration();
-            }
-        }
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) access;
+        config.registerOnTypeCreatedCallback(this::calculateOpenTypeWorldDispatchTableMethods);
+        typeToDispatchTableMethods = new ConcurrentHashMap<>();
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        typeToDispatchTableMethods = null;
         var impl = (FeatureImpl.BeforeCompilationAccessImpl) access;
         for (HostedType type : impl.getUniverse().getTypes()) {
             DynamicHub hub = type.getHub();
@@ -100,10 +102,70 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
+    public static OpenTypeWorldFeature singleton() {
+        return ImageSingletons.lookup(OpenTypeWorldFeature.class);
+    }
+
+    public boolean isOpenTypeWorldDispatchTableMethodsCalculated(AnalysisType aType) {
+        return typeToDispatchTableMethods.containsKey(aType);
+    }
+
+    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods(AnalysisType aType) {
+        var result = typeToDispatchTableMethods.get(aType);
+        return Objects.requireNonNull(result);
+    }
+
+    private void calculateOpenTypeWorldDispatchTableMethods(AnalysisType aType) {
+        var result = calculateOpenTypeWorldDispatchTableMethods0(aType);
+        Objects.requireNonNull(result);
+        var prev = typeToDispatchTableMethods.put(aType, result);
+        assert prev == null : prev;
+    }
+
+    /*
+     * Calculates all methods in this class which should be included in its dispatch table.
+     */
+    private static Set<AnalysisMethod> calculateOpenTypeWorldDispatchTableMethods0(AnalysisType aType) {
+        if (aType.isPrimitive()) {
+            return Set.of();
+        }
+        if (aType.getWrapped() instanceof BaseLayerType) {
+            // GR-58587 implement proper support.
+            return Set.of();
+        }
+
+        var resultSet = new HashSet<AnalysisMethod>();
+        for (ResolvedJavaMethod m : aType.getWrapped().getDeclaredMethods(false)) {
+            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
+            if (m.isStatic()) {
+                /* Only looking at member methods */
+                continue;
+            }
+            try {
+                AnalysisMethod aMethod = aType.getUniverse().lookup(m);
+                assert aMethod != null : m;
+                resultSet.add(aMethod);
+            } catch (UnsupportedFeatureException t) {
+                /*
+                 * Methods which are deleted or not available on this platform will throw an error
+                 * during lookup - ignore and continue execution
+                 *
+                 * Note it is not simple to create a check to determine whether calling
+                 * universe#lookup will trigger an error by creating an analysis object for a type
+                 * not supported on this platform, as creating a method requires, in addition to the
+                 * types of its return type and parameters, all of the super types of its return and
+                 * parameters to be created as well.
+                 */
+            }
+        }
+
+        return resultSet;
+    }
+
     /**
      * see {@link SharedMethod#getIndirectCallTarget}.
      */
-    public static void computeIndirectCallTargets(HostedUniverse hUniverse, Map<AnalysisMethod, HostedMethod> methods) {
+    public void computeIndirectCallTargets(HostedUniverse hUniverse, Map<AnalysisMethod, HostedMethod> methods) {
         Map<HostedType, HostedType[]> allInterfacesMap = new HashMap<>();
         methods.forEach((aMethod, hMethod) -> {
             assert aMethod.isOriginalMethod();
@@ -127,7 +189,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
      * indirect call target. This logic is currently used for deciding the target of
      * virtual/interface calls when using the open type world.
      */
-    private static AnalysisMethod calculateIndirectCallTarget(Map<HostedType, HostedType[]> allInterfacesMap, HostedMethod hOriginal) {
+    private AnalysisMethod calculateIndirectCallTarget(Map<HostedType, HostedType[]> allInterfacesMap, HostedMethod hOriginal) {
         AnalysisMethod aOriginal = hOriginal.getWrapped();
         if (hOriginal.isStatic() || hOriginal.isConstructor()) {
             /*
@@ -137,7 +199,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
 
         var declaringClass = hOriginal.getDeclaringClass();
-        var dispatchTableMethods = declaringClass.getWrapped().getOpenTypeWorldDispatchTableMethods();
+        var dispatchTableMethods = getOpenTypeWorldDispatchTableMethods(declaringClass.getWrapped());
 
         if (dispatchTableMethods.contains(aOriginal)) {
             return aOriginal;
@@ -148,7 +210,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
                 // already checked
                 continue;
             }
-            dispatchTableMethods = interfaceType.getWrapped().getOpenTypeWorldDispatchTableMethods();
+            dispatchTableMethods = getOpenTypeWorldDispatchTableMethods(interfaceType.getWrapped());
             for (AnalysisMethod candidate : dispatchTableMethods) {
                 if (matchingSignature(candidate, aOriginal)) {
                     return candidate;
@@ -297,26 +359,26 @@ public class OpenTypeWorldFeature implements InternalFeature {
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
                     writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
                     writer.writeInt("maxInterfaceID", DynamicHubSupport.currentLayer().getMaxInterfaceId());
 
-                    return LayeredImageSingleton.PersistFlags.CREATE;
+                    return LayeredPersistFlags.CREATE;
                 }
 
                 @Override
-                public Class<? extends LayeredSingletonInstantiator> getSingletonInstantiator() {
+                public Class<? extends LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
                     return SingletonInstantiator.class;
                 }
             });
         }
     }
 
-    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator {
+    static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<LayerTypeCheckInfo> {
         @Override
-        public Object createFromLoader(ImageSingletonLoader loader) {
+        public LayerTypeCheckInfo createFromLoader(ImageSingletonLoader loader) {
             return new LayerTypeCheckInfo(loader.readInt("maxTypeID"), loader.readInt("maxInterfaceID"));
         }
     }

@@ -40,6 +40,7 @@ import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
 import jdk.graal.compiler.core.Instrumentation;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -413,17 +414,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private List<Runnable> shutdownHooks = new ArrayList<>();
 
     /**
-     * Take action related to entering a new execution phase.
-     *
-     * @param phase the execution phase being entered
-     */
-    void phaseTransition(String phase) {
-        if (CompilationStatistics.Options.UseCompilationStatistics.getValue(options)) {
-            CompilationStatistics.clear(phase);
-        }
-    }
-
-    /**
      * Adds a {@link Runnable} that will be run when this runtime is {@link #shutdown()}. The
      * runnable will be run on the same thread doing the shutdown. All the advice for regular
      * {@linkplain Runtime#addShutdownHook(Thread) shutdown hooks} also applies here but even more
@@ -448,8 +438,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         metricValues.print(options);
 
-        phaseTransition("final");
-
         if (snippetCounterGroups != null) {
             for (Group group : snippetCounterGroups) {
                 TTY.out().out().println(group);
@@ -458,6 +446,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         BenchmarkCounters.shutdown(runtime(), options, runtimeStartTime);
 
         outputDirectory.close();
+
+        CompilationPrinter.close();
 
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {

@@ -36,6 +36,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.junit.AfterClass;
@@ -101,37 +102,58 @@ public class ReplayCompilationTest extends GraalCompilerTest {
         return sentences.stream().flatMap(sentence -> Arrays.stream(sentence.split("\\s+"))).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
     }
 
+    private static List<String> reverseAndUppercase(List<String> input) {
+        return input.stream().map(s -> new StringBuilder(s).reverse().toString().toUpperCase()).collect(Collectors.toList());
+    }
+
     @Test
     public void recordsOnRetryAndReplays() throws Throwable {
         lengthsSquared(List.of("foo", "bar", "baz"));
         runTest((temp) -> {
             String methodName = "lengthsSquared";
             ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
-            OptionValues initialOptions = getInitialOptions();
+            OptionValues crashOptions = new OptionValues(getInitialOptions(), GraalCompilerOptions.CrashAt, methodName);
             String diagnoseOptionValue = DebugOptions.RecordForReplay.getName() + "=" + methodName;
-            OptionValues crashAndDiagnoseOptions = new OptionValues(initialOptions, DebugOptions.DumpPath, temp.toString(),
+            OptionValues crashAndDiagnoseOptions = new OptionValues(crashOptions, DebugOptions.DumpPath, temp.toString(),
                             GraalCompilerOptions.CompilationFailureAction, CompilationWrapper.ExceptionAction.Diagnose,
-                            DebugOptions.DiagnoseOptions, diagnoseOptionValue, GraalCompilerOptions.CrashAt, methodName);
-            /*
-             * Run a regular compilation with a forced crash, then retry and record the compilation.
-             * We need to run in a new compiler instance to override the dump path for diagnostics,
-             * where the recorded compilation unit is saved.
-             */
+                            DebugOptions.DiagnoseOptions, diagnoseOptionValue);
+            // Run a regular compilation with a forced crash.
             HotSpotCompilationRequestResult regularResult = runRegularCompilation(method, crashAndDiagnoseOptions);
             assertTrue(regularResult.getFailure() != null);
+            // Replay and check that the compilation task ends with the same exception.
+            replayCompilation(findReplayCompFile(temp.path), crashOptions, false);
+        });
+    }
 
-            // Replay the compilation without forcing a crash and enable diagnostic options.
+    @Test
+    public void recordsAndReplaysWithDiagnosticOptions() throws Throwable {
+        reverseAndUppercase(List.of("foo", "bar", "baz"));
+        runTest((temp) -> {
+            ResolvedJavaMethod method = getResolvedJavaMethod("reverseAndUppercase");
+            OptionValues initialOptions = getInitialOptions();
+            OptionValues recordOptions = new OptionValues(initialOptions, DebugOptions.RecordForReplay, "*",
+                            DebugOptions.DumpPath, temp.toString());
+            runRegularCompilation(method, recordOptions);
+            // Replay with the same options and verify the graphs are equal.
+            Path replayFile = findReplayCompFile(temp.path);
+            replayCompilation(replayFile, initialOptions, true);
+            /*
+             * Replay with diagnostic options. Do not check graph equality, since enabling graph
+             * dumps typically changes the graphs.
+             */
             EconomicSet<DebugOptions.OptimizationLogTarget> logTargets = EconomicSet.create();
             logTargets.add(DebugOptions.OptimizationLogTarget.Stdout);
-            OptionValues replayOptions = new OptionValues(initialOptions, DebugOptions.DumpPath, temp.toString(),
+            OptionValues diagnosticOptions = new OptionValues(initialOptions, DebugOptions.DumpPath, temp.toString(),
                             DebugOptions.PrintGraph, DebugOptions.PrintGraphTarget.File, DebugOptions.Dump, ":1",
                             DebugOptions.OptimizationLog, logTargets, DebugOptions.Log, "", DebugOptions.PrintBackendCFG, true);
-            replayCompilation(findReplayCompFile(temp.path), replayOptions);
+            replayCompilation(replayFile, diagnosticOptions, false);
         });
     }
 
     @Test
     public void recordAndExecuteReplayRunner() throws Throwable {
+        // The management library is needed for "--benchmark" to measure thread time and memory.
+        assumeManagementLibraryIsLoadable();
         wordCount(List.of("first test sentence", "second test sentence"));
         runTest((temp) -> {
             String methodName = "wordCount";
@@ -144,10 +166,10 @@ public class ReplayCompilationTest extends GraalCompilerTest {
             Path replayFile = findReplayCompFile(temp.path);
             String[][] argumentLists = new String[][]{
                             new String[]{"--compare-graphs=true", replayFile.toString()},
-                            new String[]{"--compare-graphs=false", "--benchmark=true", "--iterations=1", temp.path.toString()}
+                            new String[]{"--compare-graphs=false", temp.path.toString(), "--benchmark", "--iterations=1"}
             };
             for (String[] arguments : argumentLists) {
-                ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out());
+                ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(arguments, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
                 assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
             }
         });
@@ -161,7 +183,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
              * this is not an error.
              */
             assertTrue(Path.of(temp.path.toString(), "empty.json").toFile().createNewFile());
-            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out());
+            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
             assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
         });
     }
@@ -169,7 +191,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
     @Test
     public void emptyLauncherInputFails() throws Throwable {
         runTest((temp) -> {
-            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out());
+            ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
             assertTrue(status == ReplayCompilationRunner.ExitStatus.Failure);
         });
     }
@@ -202,14 +224,14 @@ public class ReplayCompilationTest extends GraalCompilerTest {
         return task.runCompilation(options);
     }
 
-    private static void replayCompilation(Path replayCompFile, OptionValues options) throws ReplayCompilationRunner.ReplayLauncherFailure {
+    private static void replayCompilation(Path replayCompFile, OptionValues options, boolean compareGraphs) throws ReplayCompilationRunner.ReplayLauncherFailure {
         CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
         HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
         CompilerConfigurationFactory configFactory = CompilerConfigurationFactory.selectFactory(runtimeProvider.getCompilerConfigurationName(), options, jvmciRuntime);
         try (ReplayCompilationRunner.Reproducer reproducer = ReplayCompilationRunner.Reproducer.initializeFromFile(replayCompFile.toString(),
                         declarations, jvmciRuntime, options, configFactory, new GlobalMetrics(), TTY.out().out(), EconomicMap.create())) {
-            reproducer.compile().verify(false);
+            reproducer.compile().compareCompilationProducts(compareGraphs);
         }
     }
 

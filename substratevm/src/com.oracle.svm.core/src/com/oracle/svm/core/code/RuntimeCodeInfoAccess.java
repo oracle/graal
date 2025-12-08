@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -146,6 +148,7 @@ public final class RuntimeCodeInfoAccess {
         return objectFields;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean areAllObjectsOnImageHeap(CodeInfo info) {
         return cast(info).getAllObjectsAreInImageHeap();
     }
@@ -189,6 +192,7 @@ public final class RuntimeCodeInfoAccess {
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
         NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
     }
@@ -238,10 +242,9 @@ public final class RuntimeCodeInfoAccess {
     private static void protectCodeMemory(CodePointer codeStart, UnsignedWord codeSize, int permissions) {
         int result = VirtualMemoryProvider.get().protect(codeStart, codeSize, permissions);
         if (result != 0) {
-            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. This may be caused by " +
-                            "a. a too restrictive OS-limit of allowed memory mappings (see vm.max_map_count on Linux), " +
-                            "b. a too strict security policy if you are running on Security-Enhanced Linux (SELinux), or " +
-                            "c. a Native Image internal error.");
+            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. " +
+                            "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again." +
+                            "If you are running on Security-Enhanced Linux (SELinux), you may also need to check the configured security policy.");
         }
     }
 

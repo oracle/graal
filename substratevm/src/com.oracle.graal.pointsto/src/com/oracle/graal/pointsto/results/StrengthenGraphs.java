@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -60,6 +61,7 @@ import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLowerThanNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -169,9 +171,9 @@ public abstract class StrengthenGraphs {
         int neverNull = 0;
         int canBeNull = 0;
         for (var field : bb.getUniverse().getFields()) {
-            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object && field instanceof PointsToAnalysisField ptaField) {
                 /* If the field flow is saturated we must assume it can be null. */
-                if (field.getSinkFlow().isSaturated() || field.getSinkFlow().getState().canBeNull()) {
+                if (ptaField.getSinkFlow().isSaturated() || ptaField.getSinkFlow().getState().canBeNull()) {
                     canBeNull++;
                 } else {
                     neverNull++;
@@ -179,8 +181,8 @@ public abstract class StrengthenGraphs {
             }
         }
         ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
-        imageBuildStats.insert("instancefield_neverNull").addAndGet(neverNull);
-        imageBuildStats.insert("instancefield_canBeNull").addAndGet(canBeNull);
+        imageBuildStats.createCounter("instancefield_neverNull").addAndGet(neverNull);
+        imageBuildStats.createCounter("instancefield_canBeNull").addAndGet(canBeNull);
     }
 
     @SuppressWarnings("try")
@@ -243,23 +245,26 @@ public abstract class StrengthenGraphs {
 
     protected abstract void persistStrengthenGraph(AnalysisMethod method);
 
-    /*
+    /**
      * Returns a type that can replace the original type in stamps as an exact type. When the
      * returned type is the original type itself, the original type has no subtype and can be used
      * as an exact type.
-     *
-     * Returns null if there is no single implementor type.
+     * <p>
+     * Returns {@code null} if there is no optimization potential, i.e., if the original type
+     * doesn't have a unique implementor type, or we cannot prove that it has a unique implementor
+     * type due to open-world analysis.
      */
     protected abstract AnalysisType getSingleImplementorType(AnalysisType originalType);
 
-    /*
+    /**
      * Returns a type that can replace the original type in stamps.
-     *
-     * Returns null if the original type has no assignable type that is instantiated, i.e., the code
-     * using the type is unreachable.
-     *
+     * <p>
+     * Returns {@code null} if the original type has no assignable type that is instantiated, i.e.,
+     * the code using the type is unreachable.
+     * <p>
      * Returns the original type itself if there is no optimization potential, i.e., if the original
-     * type itself is instantiated or has more than one instantiated direct subtype.
+     * type itself is instantiated or has more than one instantiated direct subtype, or we cannot
+     * prove that it doesn't have any instantiated subtype due to open-world analysis.
      */
     protected abstract AnalysisType getStrengthenStampType(AnalysisType originalType);
 
@@ -322,7 +327,8 @@ public abstract class StrengthenGraphs {
     }
 
     private JavaTypeProfile createTypeProfile(TypeState typeState, boolean injectNotRecordedProbability) {
-        double probability = 1d / (typeState.typesCount() + (injectNotRecordedProbability ? 1 : 0));
+        final double notRecordedProb = injectNotRecordedProbability ? BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY : 0.0d;
+        final double probability = (1.0 - notRecordedProb) / typeState.typesCount();
 
         Stream<? extends ResolvedJavaType> stream = typeState.typesStream(bb);
         if (converter != null) {
@@ -332,7 +338,7 @@ public abstract class StrengthenGraphs {
                         .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
                         .toArray(JavaTypeProfile.ProfiledType[]::new);
 
-        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), injectNotRecordedProbability ? probability : 0, pitems);
+        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), notRecordedProb, pitems);
     }
 
     protected JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
@@ -347,7 +353,8 @@ public abstract class StrengthenGraphs {
     private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees, boolean injectNotRecordedProbability) {
         JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
         int hashCode = 0;
-        double probability = 1d / (pitems.length + (injectNotRecordedProbability ? 1 : 0));
+        final double notRecordedProb = injectNotRecordedProbability ? BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY : 0.0d;
+        final double probability = (1.0 - notRecordedProb) / pitems.length;
 
         int idx = 0;
         for (AnalysisMethod aMethod : callees) {
@@ -355,7 +362,7 @@ public abstract class StrengthenGraphs {
             pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
             hashCode = hashCode * 31 + convertedMethod.hashCode();
         }
-        return new CachedJavaMethodProfile(new JavaMethodProfile(injectNotRecordedProbability ? probability : 0, pitems), hashCode);
+        return new CachedJavaMethodProfile(new JavaMethodProfile(notRecordedProb, pitems), hashCode);
     }
 }
 
@@ -385,7 +392,7 @@ final class StrengthenGraphsCounters {
 
         ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
         for (Counter counter : Counter.values()) {
-            values[counter.ordinal()] = imageBuildStats.insert(location + "_" + counter.name());
+            values[counter.ordinal()] = imageBuildStats.createCounter(counter.name(), location);
         }
     }
 

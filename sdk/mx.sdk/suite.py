@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.58.6",
+  "mxversion": "7.68.2",
   "name" : "sdk",
-  "version" : "26.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -76,7 +76,7 @@ suite = {
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "UPL",
-  "ignore_suite_commit_info": True,
+  "capture_suite_commit_info": False,
   "libraries" : {
     "WRK_MULTIARCH": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch-2.0.tar.gz"],
@@ -976,6 +976,7 @@ suite = {
         "exports" : [
           "com.oracle.svm.core.annotate",
           "org.graalvm.nativeimage.hosted",
+          "org.graalvm.nativeimage.dynamicaccess",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",
           "org.graalvm.nativeimage.c.type",

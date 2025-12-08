@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.meta;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -61,6 +59,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.debug.Assertions;
@@ -369,12 +369,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean isForeignCallTarget() {
-        return isAnnotationPresent(SubstrateForeignCallTarget.class);
+        return AnnotationUtil.isAnnotationPresent(this, SubstrateForeignCallTarget.class);
     }
 
     @Override
     public boolean isSnippet() {
-        return isAnnotationPresent(Snippet.class);
+        return AnnotationUtil.isAnnotationPresent(this, Snippet.class);
     }
 
     public boolean hasVTableIndex() {
@@ -414,7 +414,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public Deoptimizer.StubType getDeoptStubType() {
-        Deoptimizer.DeoptStub stubAnnotation = getAnnotation(Deoptimizer.DeoptStub.class);
+        Deoptimizer.DeoptStub stubAnnotation = AnnotationUtil.getAnnotation(this, Deoptimizer.DeoptStub.class);
         if (stubAnnotation != null) {
             return stubAnnotation.stubType();
         }
@@ -564,11 +564,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Annotation[][] getParameterAnnotations() {
-        return wrapped.getParameterAnnotations();
-    }
-
-    @Override
     public Type[] getGenericParameterTypes() {
         return wrapped.getGenericParameterTypes();
     }
@@ -585,7 +580,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean shouldBeInlined() {
-        return getAnnotation(AlwaysInline.class) != null || getAnnotation(ForceInline.class) != null;
+        return AnnotationUtil.getAnnotation(this, AlwaysInline.class) != null || AnnotationUtil.getAnnotation(this, ForceInline.class) != null;
     }
 
     private LineNumberTable lineNumberTable;

@@ -42,6 +42,7 @@ import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
 import jdk.internal.reflect.Reflection;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -85,6 +87,12 @@ public final class ClassInitializationInfo {
     private static final ClassInitializationInfo INITIALIZED_HAS_CLINIT_NO_TRACKING = new ClassInitializationInfo(InitState.FullyInitialized, true, false);
     private static final ClassInitializationInfo FAILED_NO_CLINIT_NO_TRACKING = new ClassInitializationInfo(InitState.InitializationError, false, false);
     private static final ClassInitializationInfo FAILED_HAS_CLINIT_NO_TRACKING = new ClassInitializationInfo(InitState.InitializationError, true, false);
+
+    /**
+     * Marks that a runtime-loaded class has a class initializer that should be executed in the
+     * interpreter.
+     */
+    private static final FunctionPointerHolder INTERPRETER_INITIALIZATION_MARKER = new FunctionPointerHolder(null);
 
     /**
      * Function pointer to the class initializer that should be called at run-time. In some cases,
@@ -188,12 +196,12 @@ public final class ClassInitializationInfo {
     }
 
     /** For classes that are loaded at run-time. */
-    private ClassInitializationInfo(boolean typeReachedTracked) {
+    private ClassInitializationInfo(boolean typeReachedTracked, boolean hasClassInitializer) {
         assert RuntimeClassLoading.isSupported();
 
         this.buildTimeInitialized = false;
-        this.hasInitializer = true;
-        this.runtimeClassInitializer = null;
+        this.hasInitializer = hasClassInitializer;
+        this.runtimeClassInitializer = hasClassInitializer ? INTERPRETER_INITIALIZATION_MARKER : null;
         this.slowPathRequired = true;
         this.initLock = new ReentrantLock();
         /* GR-59739: Needs a new state "Loaded". */
@@ -224,8 +232,8 @@ public final class ClassInitializationInfo {
         return new ClassInitializationInfo(methodPointer, typeReachedTracked);
     }
 
-    public static ClassInitializationInfo forRuntimeLoadedClass(boolean typeReachedTracked) {
-        return new ClassInitializationInfo(typeReachedTracked);
+    public static ClassInitializationInfo forRuntimeLoadedClass(boolean typeReachedTracked, boolean hasClassInitializer) {
+        return new ClassInitializationInfo(typeReachedTracked, hasClassInitializer);
     }
 
     public boolean isBuildTimeInitialized() {
@@ -533,7 +541,7 @@ public final class ClassInitializationInfo {
          */
         Throwable exception = null;
         try {
-            invokeClassInitializer();
+            invokeClassInitializer(hub);
         } catch (Throwable ex) {
             exception = ex;
         }
@@ -694,24 +702,32 @@ public final class ClassInitializationInfo {
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-26+13/src/hotspot/share/oops/instanceKlass.cpp#L1675-L1715")
-    private void invokeClassInitializer() {
+    private void invokeClassInitializer(DynamicHub hub) {
         if (runtimeClassInitializer == null) {
             return;
         }
-
-        ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) runtimeClassInitializer.functionPointer;
-        VMError.guarantee(functionPointer.isNonNull());
 
         /* Protect the yellow zone before executing arbitrary Java code. */
         if (Platform.includedIn(NATIVE_ONLY.class)) {
             StackOverflowCheck.singleton().protectYellowZone();
         }
         try {
-            functionPointer.invoke();
+            invokeClassInitializer0(hub);
         } finally {
             if (Platform.includedIn(NATIVE_ONLY.class)) {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();
             }
+        }
+    }
+
+    private void invokeClassInitializer0(DynamicHub hub) {
+        if (RuntimeClassLoading.isSupported() && runtimeClassInitializer == INTERPRETER_INITIALIZATION_MARKER) {
+            ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
+            CremaSupport.singleton().execute(classInitializer, new Object[0], false);
+        } else {
+            ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) runtimeClassInitializer.functionPointer;
+            VMError.guarantee(functionPointer.isNonNull());
+            functionPointer.invoke();
         }
     }
 

@@ -34,10 +34,13 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMThreads;
@@ -56,7 +59,7 @@ final class StackVerifier {
     public static boolean verifyAllThreads() {
         boolean result = true;
 
-        STACK_FRAME_VISITOR.initialize();
+        STACK_FRAME_VISITOR.initialize(CurrentIsolate.getCurrentThread());
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), STACK_FRAME_VISITOR);
         result &= STACK_FRAME_VISITOR.result;
 
@@ -65,7 +68,7 @@ final class StackVerifier {
                 continue;
             }
 
-            STACK_FRAME_VISITOR.initialize();
+            STACK_FRAME_VISITOR.initialize(thread);
             JavaStackWalker.walkThread(thread, STACK_FRAME_VISITOR);
             result &= STACK_FRAME_VISITOR.result;
         }
@@ -76,21 +79,31 @@ final class StackVerifier {
         private final VerifyFrameReferencesVisitor verifyFrameReferencesVisitor;
 
         private boolean result;
+        private IsolateThread thread;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         StackFrameVerificationVisitor() {
             verifyFrameReferencesVisitor = new VerifyFrameReferencesVisitor();
         }
 
-        public void initialize() {
+        @SuppressWarnings("hiding")
+        public void initialize(IsolateThread thread) {
             this.result = true;
+            this.thread = thread;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitRegularFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo) {
-            verifyFrameReferencesVisitor.initialize(currentSP, currentIP);
-            CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, verifyFrameReferencesVisitor);
+            verifyFrameReferencesVisitor.initialize(thread, currentSP, currentIP);
+            if (JavaFrames.isInterpreterLeaveStub(currentIP)) {
+                // This should probably be handled in JavaStackWalker GR-71827
+                long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(currentSP.readLong(0));
+                Pointer actualSP = currentSP.add(Word.unsigned(varStackSize));
+                InterpreterSupport.walkInterpreterLeaveStubFrame(verifyFrameReferencesVisitor, actualSP, currentSP);
+            } else {
+                CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, verifyFrameReferencesVisitor);
+            }
             result &= verifyFrameReferencesVisitor.result;
             return true;
         }
@@ -104,6 +117,7 @@ final class StackVerifier {
     }
 
     public static class VerifyFrameReferencesVisitor implements ObjectReferenceVisitor {
+        private IsolateThread thread;
         private Pointer sp;
         private CodePointer ip;
         private boolean result;
@@ -113,10 +127,15 @@ final class StackVerifier {
         }
 
         @SuppressWarnings("hiding")
-        public void initialize(Pointer sp, CodePointer ip) {
+        public void initialize(IsolateThread thread, Pointer sp, CodePointer ip) {
+            this.thread = thread;
             this.sp = sp;
             this.ip = ip;
             this.result = true;
+        }
+
+        public IsolateThread getIsolateThread() {
+            return thread;
         }
 
         public Pointer getSP() {

@@ -24,15 +24,24 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+
 import java.security.SecureRandom;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.PosixSunSecuritySubstitutions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
@@ -46,16 +55,31 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
  */
 @AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 public class NativeSecureRandomFilesCloser implements InternalFeature {
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(this::registerShutdownHook, sun.security.provider.NativePRNG.class);
+        var element = sun.security.provider.NativePRNG.class;
+        access.registerReachabilityHandler(this::registerShutdownHook, element);
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            /*
+             * GR-70850: We should always register the shutdown hook, but only execute it when then
+             * element is seen in a layer.
+             */
+            access.registerAsUsed(element);
+        }
     }
 
     private void registerShutdownHook(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         RuntimeSupport.Hook hook = PosixSunSecuritySubstitutions.getTearDownHook();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(hook);
-        access.rescanObject(hook);
+        ScanReason reason = new OtherReason("Manual rescan triggered from " + NativeSecureRandomFilesCloser.class);
+        access.rescanObject(hook, reason);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -56,12 +56,10 @@ import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.PointsToAnalyzer;
-import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PointstoAnalyzerTester {
     private Set<Executable> expectedReachableMethods = new HashSet<>();
@@ -166,7 +164,6 @@ public class PointstoAnalyzerTester {
             } catch (UnsupportedFeatureException e) {
                 unsupportedFeatureException = e;
             }
-            ClassLoader analysisClassLoader = pointstoAnalyzer.getClassLoader();
             if (!expectPass) {
                 return;
             }
@@ -175,39 +172,19 @@ public class PointstoAnalyzerTester {
             assertNotNull(universe);
 
             assertReachable("Method", expectedReachableMethods, expectedUnreachableMethods, reflectionMethod -> {
-                try {
-                    Executable actualMethod = reflectionMethod;
-                    Class<?> declaringClass = reflectionMethod.getDeclaringClass();
-                    if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
-                        Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
-                        actualMethod = c.getDeclaredMethod(reflectionMethod.getName(), reflectionMethod.getParameterTypes());
-                    }
-                    ResolvedJavaMethod m = universe.getOriginalMetaAccess().lookupJavaMethod(actualMethod);
-                    return universe.getMethod(m);
-                } catch (ReflectiveOperationException e) {
-                    throw AnalysisError.shouldNotReachHere(e);
-                }
+                ResolvedJavaMethod m = universe.getOriginalMetaAccess().lookupJavaMethod(reflectionMethod);
+                return universe.getMethod(m);
             },
                             reflectionMethod -> reflectionMethod.getDeclaringClass().getName() + "." + reflectionMethod.getName());
             assertReachable("<clinit>", expectedReachableClinits, expectedUnreachableClinits, clazz -> {
-                AnalysisType t = classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz);
+                AnalysisType t = classToAnalysisType(universe, originalMetaAccess, clazz);
                 return t.getClassInitializer();
             }, clazz -> clazz.getName() + ".<clinit>");
-            assertReachable("Type", expectedReachableTypes, expectedUnreachableTypes, clazz -> classToAnalysisType(analysisClassLoader, universe, originalMetaAccess, clazz),
+            assertReachable("Type", expectedReachableTypes, expectedUnreachableTypes, clazz -> classToAnalysisType(universe, originalMetaAccess, clazz),
                             clazz -> clazz.getName());
             assertReachable("Field", expectedReachableFields, expectedUnreachableFields, reflectionField -> {
-                try {
-                    Field actualField = reflectionField;
-                    Class<?> declaringClass = actualField.getDeclaringClass();
-                    if (!analysisClassLoader.equals(declaringClass.getClassLoader())) {
-                        Class<?> c = Class.forName(declaringClass.getName(), false, analysisClassLoader);
-                        actualField = c.getDeclaredField(reflectionField.getName());
-                    }
-                    ResolvedJavaField resolvedJavaField = originalMetaAccess.lookupJavaField(actualField);
-                    return universe.getField(resolvedJavaField);
-                } catch (ReflectiveOperationException e) {
-                    throw AnalysisError.shouldNotReachHere(e);
-                }
+                ResolvedJavaField resolvedJavaField = originalMetaAccess.lookupJavaField(reflectionField);
+                return universe.getField(resolvedJavaField);
             },
                             reflectionField -> reflectionField.getDeclaringClass().getName() + "." + reflectionField.getName());
 
@@ -221,17 +198,8 @@ public class PointstoAnalyzerTester {
         }
     }
 
-    private static AnalysisType classToAnalysisType(ClassLoader analysisClassLoader, AnalysisUniverse universe, MetaAccessProvider originalMetaAccess, Class<?> clazz) {
-        try {
-            Class<?> actualClass = clazz;
-            if (!analysisClassLoader.equals(clazz.getClassLoader())) {
-                actualClass = Class.forName(clazz.getName(), false, analysisClassLoader);
-            }
-            ResolvedJavaType resolvedJavaType = originalMetaAccess.lookupJavaType(actualClass);
-            return universe.optionalLookup(resolvedJavaType);
-        } catch (ReflectiveOperationException e) {
-            throw AnalysisError.shouldNotReachHere(e);
-        }
+    private static AnalysisType classToAnalysisType(AnalysisUniverse universe, MetaAccessProvider originalMetaAccess, Class<?> clazz) {
+        return universe.optionalLookup(originalMetaAccess.lookupJavaType(clazz));
     }
 
     public Object runAnalysisForFeatureResult(Class<? extends Feature> feature) {

@@ -36,12 +36,8 @@ import jdk.graal.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotStampProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotSuitesProvider;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.memory.FixedAccessNode;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
@@ -119,21 +115,6 @@ public class HotSpotDecoratedBackendFactory extends HotSpotBackendFactory {
     @Override
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, HotSpotWordTypes wordTypes) {
         return delegate.createSnippetReflection(runtime, constantReflection, wordTypes);
-    }
-
-    @Override
-    protected IdentityHashCodeProvider createIdentityHashCodeProvider() {
-        return delegate.createIdentityHashCodeProvider();
-    }
-
-    @Override
-    protected boolean isWriteToNewObject(FixedAccessNode node) {
-        return delegate.isWriteToNewObject(node);
-    }
-
-    @Override
-    protected boolean isWriteToNewObject(FixedWithNextNode node, ValueNode base) {
-        return delegate.isWriteToNewObject(node, base);
     }
 
     @Override

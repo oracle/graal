@@ -1,7 +1,7 @@
 [[rule]]
 files = "GlobUtils.java"
 all = [
-    "david.nestorovic@oracle.com"
+    "vojin.jovanovic@oracle.com"
 ]
 any = [
 ]

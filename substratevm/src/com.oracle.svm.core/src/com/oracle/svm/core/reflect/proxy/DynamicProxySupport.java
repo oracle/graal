@@ -27,27 +27,30 @@ package com.oracle.svm.core.reflect.proxy;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.layeredimagesingleton.DuplicableImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.Duplicable;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
@@ -55,7 +58,8 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
 
-public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImageSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = Duplicable.class)
+public class DynamicProxySupport implements DynamicProxyRegistry {
 
     public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
 
@@ -105,23 +109,26 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void addProxyClass(ConfigurationCondition condition, Class<?>... interfaces) {
-        VMError.guarantee(condition.isRuntimeChecked(), "The condition used must be a runtime condition.");
+    public synchronized void addProxyClass(AccessCondition condition, boolean preserved, Class<?>... interfaces) {
+        VMError.guarantee(condition instanceof TypeReachabilityCondition && ((TypeReachabilityCondition) condition).isRuntimeChecked(), "The condition used must be a runtime condition.");
         /*
          * Make a defensive copy of the interfaces array to protect against the caller modifying the
          * array.
          */
         Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
-
-        if (!proxyCache.containsKey(key)) {
-            proxyCache.put(key, new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), createProxyClass(intfs)));
+        ConditionalRuntimeValue<Object> conditionalValue = proxyCache.get(key);
+        if (conditionalValue == null) {
+            conditionalValue = new ConditionalRuntimeValue<>(RuntimeDynamicAccessMetadata.emptySet(preserved), createProxyClass(intfs, preserved));
+            proxyCache.put(key, conditionalValue);
+        } else if (!preserved) {
+            conditionalValue.getDynamicAccessMetadata().setNotPreserved();
         }
-        proxyCache.get(key).getConditions().addCondition(condition);
+        conditionalValue.getDynamicAccessMetadata().addCondition(condition);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static Object createProxyClass(Class<?>[] interfaces) {
+    private static Object createProxyClass(Class<?>[] interfaces, boolean preserved) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
@@ -144,14 +151,15 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
              * InvocationHandler)`, is registered for reflection so that dynamic proxy instances can
              * be allocated at run time.
              */
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+            reflectionSupport.register(AccessCondition.unconditional(), false, preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
 
             /*
              * The proxy class reflectively looks up the methods of the interfaces it implements to
              * pass a Method object to InvocationHandler.
              */
             for (Class<?> intf : interfaces) {
-                RuntimeReflection.register(intf.getMethods());
+                reflectionSupport.register(AccessCondition.unconditional(), false, preserved, intf.getMethods());
             }
             return clazz;
         } catch (Throwable t) {
@@ -194,7 +202,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         ConditionalRuntimeValue<Object> clazzOrError = proxyCache.get(key);
 
-        if (clazzOrError == null || !clazzOrError.getConditions().satisfied()) {
+        if (clazzOrError == null || !clazzOrError.getDynamicAccessMetadata().satisfied()) {
             throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
         }
         if (clazzOrError.getValue() instanceof Throwable) {
@@ -224,6 +232,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
         return clazz;
     }
 
+    public boolean isProxyPreserved(Class<?>... interfaces) {
+        ProxyCacheKey key = new ProxyCacheKey(interfaces);
+        if (proxyCache.get(key) instanceof ConditionalRuntimeValue<Object> entry) {
+            return entry.getDynamicAccessMetadata().isPreserved();
+        }
+        return false;
+    }
+
     private static RuntimeException incompatibleClassLoaders(ClassLoader provided, Class<?>[] interfaces) {
         StringBuilder b = new StringBuilder("Interface(s) not visible to the provided class loader: ");
         describeLoaderChain(b, provided);
@@ -250,15 +266,5 @@ public class DynamicProxySupport implements DynamicProxyRegistry, DuplicableImag
 
     public static String proxyTypeDescriptor(String... interfaceNames) {
         return "Proxy[" + String.join(", ", interfaceNames) + "]";
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        return PersistFlags.NOTHING;
     }
 }

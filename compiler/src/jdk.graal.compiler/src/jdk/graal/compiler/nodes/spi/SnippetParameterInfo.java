@@ -24,21 +24,26 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
+import static jdk.graal.compiler.annotation.AnnotationValueSupport.findAnnotationValue;
+import static jdk.graal.compiler.annotation.AnnotationValueSupport.getAnnotationValue;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
-import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
+import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Encodes info about a snippet's parameters derived from annotations such as
@@ -49,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class SnippetParameterInfo {
 
     public SnippetParameterInfo(ResolvedJavaMethod method) {
-        assert method.getAnnotation(Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
+        assert getAnnotationValue(method, Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
         int parameterCount = method.getSignature().getParameterCount(method.hasReceiver());
         if (parameterCount > Integer.SIZE) {
             throw new UnsupportedOperationException("too many arguments");
@@ -59,20 +64,26 @@ public final class SnippetParameterInfo {
         int varargs = 0;
         int nonNull = 0;
         int offset = method.hasReceiver() ? 1 : 0;
-        for (int i = offset; i < count; i++) {
-            int bit = 1 << i;
-            if (method.getParameterAnnotation(ConstantParameter.class, i - offset) != null) {
-                constant |= bit;
-            }
-            if (method.getParameterAnnotation(VarargsParameter.class, i - offset) != null) {
-                varargs |= bit;
-            }
-            if (method.getParameterAnnotation(NonNullParameter.class, i - offset) != null) {
-                nonNull |= bit;
-            }
 
-            assert ((constant & bit) == 0) || ((varargs & bit) == 0) : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
-                            VarargsParameter.class.getSimpleName();
+        var parsed = AnnotationValueSupport.getParameterAnnotationValues(method);
+        if (parsed != null) {
+            for (int i = offset; i < count; i++) {
+                List<AnnotationValue> annotations = parsed.values().get(i - offset);
+                int bit = 1 << i;
+                ResolvedJavaType container = parsed.container();
+                if (findAnnotationValue(annotations, ConstantParameter.class, container) != null) {
+                    constant |= bit;
+                }
+                if (findAnnotationValue(annotations, VarargsParameter.class, container) != null) {
+                    varargs |= bit;
+                }
+                if (findAnnotationValue(annotations, NonNullParameter.class, container) != null) {
+                    nonNull |= bit;
+                }
+
+                assert ((constant & bit) == 0) || ((varargs & bit) == 0) : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
+                                VarargsParameter.class.getSimpleName();
+            }
         }
         if (method.hasReceiver()) {
             // Receiver must be constant.

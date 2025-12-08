@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -45,6 +44,7 @@ import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -90,7 +90,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Simplify graphs based on reachability information tracked by the static analysis. Additionally,
@@ -183,19 +182,27 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
     }
 
     private void handleLoadField(LoadFieldNode node, SimplifierTool tool) {
-        /*
-         * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because then
-         * there is no artificial anchor after which the more precise type is available. However,
-         * the memory load will be a floating node later, so we can only update the stamp directly
-         * to the stamp that is correct for the whole method and all inlined methods.
-         */
         PointsToAnalysisField field = (PointsToAnalysisField) node.field();
+        if (!analysis.isClosed(field)) {
+            /*
+             * We cannot trust the field's state if the field is open as it may be written from the
+             * open world.
+             */
+            return;
+        }
         Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, field.getSinkFlow(), node, tool);
         if (fieldNewStampOrConstant instanceof JavaConstant) {
             ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, analysis.getMetaAccess(), graph);
             graph.replaceFixedWithFloating(node, replacement);
             tool.addToWorkList(replacement);
         } else {
+            /*
+             * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because
+             * then there is no artificial anchor after which the more precise type is available.
+             * However, the memory load will be a floating node later, so we can only update the
+             * stamp directly to the stamp that is correct for the whole method and all inlined
+             * methods.
+             */
             super.updateStampInPlace(node, (Stamp) fieldNewStampOrConstant, tool);
 
             /*
@@ -339,6 +346,23 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             }
         }
 
+        boolean hasReceiver = invokeFlow.getTargetMethod().hasReceiver();
+        /*
+         * The receiver's analysis results are complete when either:
+         *
+         * 1. We are in the closed world.
+         *
+         * 2. The receiver TypeFlow's type is a closed type, so it may be not extended in a later
+         * layer.
+         *
+         * 3. The receiver TypeFlow is not saturated.
+         *
+         * Otherwise, when the receiver's analysis results are incomplete, then it is possible for
+         * more types to be observed in subsequent layers.
+         */
+        boolean receiverAnalysisResultsComplete = strengthenGraphs.isClosedTypeWorld ||
+                        (hasReceiver && (analysis.isClosed(invokeFlow.getReceiverType()) || !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())));
+
         if (callTarget.invokeKind().isDirect()) {
             /*
              * Note: A direct invoke doesn't necessarily imply that the analysis should have
@@ -355,45 +379,43 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
                 AnalysisMethod singleCallee = callees.iterator().next();
                 assert targetMethod.equals(singleCallee) : "Direct invoke target mismatch: " + targetMethod + " != " + singleCallee + ". Called from " + graph.method().format("%H.%n");
             }
-        } else if (AnnotationAccess.isAnnotationPresent(targetMethod, Delete.class)) {
+        } else if (AnnotationUtil.isAnnotationPresent(targetMethod, Delete.class)) {
             /* We de-virtualize invokes to deleted methods since the callee must be unique. */
             AnalysisError.guarantee(callees.size() == 1, "@Delete methods should have a single callee.");
             AnalysisMethod singleCallee = callees.iterator().next();
             devirtualizeInvoke(singleCallee, invoke);
-        } else if (targetMethod.canBeStaticallyBound() || strengthenGraphs.isClosedTypeWorld) {
+        } else if (targetMethod.canBeStaticallyBound() || (receiverAnalysisResultsComplete && callees.size() == 1)) {
             /*
-             * We only de-virtualize invokes if we run a closed type world analysis or the target
-             * method can be trivially statically bound.
+             * A method can be devirtualized if there is only one possible callee. This can be
+             * determined by the following ways:
+             *
+             * 1. The method can be trivially statically bound, as determined independently of
+             * analysis results.
+             *
+             * 2. Analysis results indicate there is only one callee. The analysis results are
+             * required to be complete, as there could be more than only one callee in subsequent
+             * layers.
              */
-            if (callees.size() == 1) {
-                AnalysisMethod singleCallee = callees.iterator().next();
-                devirtualizeInvoke(singleCallee, invoke);
-            } else {
-                TypeState receiverTypeState = null;
-                /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());
-                }
-                assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, false);
-            }
+            assert callees.size() == 1;
+            AnalysisMethod singleCallee = callees.iterator().next();
+            devirtualizeInvoke(singleCallee, invoke);
         } else {
-            /* Last resort, try to inject profiles optimistically. */
             TypeState receiverTypeState = null;
-            if (invokeFlow.getTargetMethod().hasReceiver()) {
-                if (methodFlow.isSaturated(analysis, invokeFlow)) {
+            if (hasReceiver) {
+                if (methodFlow.isSaturated(analysis, invokeFlow.getReceiver())) {
                     /*
-                     * For saturated invokes use all seen instantiated subtypes of target method
-                     * declaring class. In an open world this is incomplete as new types may be seen
-                     * later, but it is an optimistic approximation.
+                     * Saturated receivers can be all instantiated subtypes of the target method's
+                     * declaring class. Note if receiverAnalysisResultsComplete is false then new
+                     * types may be seen later; however, this still serves as an optimistic
+                     * approximation.
                      */
-                    receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(analysis, false).getState();
+                    receiverTypeState = targetMethod.getDeclaringClass().getTypeFlow(analysis, true).getState();
                 } else {
+                    assert receiverAnalysisResultsComplete;
                     receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());
                 }
             }
-            if (receiverTypeState != null && receiverTypeState.typesCount() <= MAX_TYPES_OPTIMISTIC_PROFILES) {
-                assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, true);
-            }
+            assignInvokeProfiles(invoke, invokeFlow, callees, receiverTypeState, !receiverAnalysisResultsComplete);
         }
 
         if (allowOptimizeReturnParameter && (strengthenGraphs.isClosedTypeWorld || callTarget.invokeKind().isDirect() || targetMethod.canBeStaticallyBound())) {
@@ -445,15 +467,6 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
         invoke.callTarget().setInvokeKind(CallTargetNode.InvokeKind.Special);
         invoke.callTarget().setTargetMethod(singleCallee);
     }
-
-    /**
-     * Maximum number of types seen in a {@link TypeState} for a virtual {@link Invoke} to consider
-     * optimistic profile injection. See {@link #handleInvoke(Invoke, SimplifierTool)} for more
-     * details. Note that this is a footprint consideration - we do not want to carry around
-     * gargantuan {@link JavaTypeProfile} in {@link MethodCallTargetNode} that cannot be used
-     * anyway.
-     */
-    private static final int MAX_TYPES_OPTIMISTIC_PROFILES = 100;
 
     private void assignInvokeProfiles(Invoke invoke, InvokeTypeFlow invokeFlow, Collection<AnalysisMethod> callees, TypeState receiverTypeState, boolean assumeNotRecorded) {
         /*
@@ -640,9 +653,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             assert exactType.equals(strengthenGraphs.getStrengthenStampType(exactType)) : exactType;
 
             if (!oldStamp.isExactType() || !exactType.equals(oldType)) {
-                ResolvedJavaType targetType = toTargetFunction.apply(exactType);
-                if (targetType != null) {
-                    TypeReference typeRef = TypeReference.createExactTrusted(targetType);
+                if (typePredicate.test(exactType)) {
+                    TypeReference typeRef = TypeReference.createExactTrusted(exactType);
                     return StampFactory.object(typeRef, nonNull);
                 }
             }
@@ -678,9 +690,8 @@ class TypeFlowSimplifier extends ReachabilitySimplifier {
             assert typeStateTypes.stream().map(newType::isAssignableFrom).reduce(Boolean::logicalAnd).get() : typeStateTypes;
 
             if (!newType.equals(oldType) && (oldType != null || !newType.isJavaLangObject())) {
-                ResolvedJavaType targetType = toTargetFunction.apply(newType);
-                if (targetType != null) {
-                    TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(targetType);
+                if (typePredicate.test(newType)) {
+                    TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(newType);
                     return StampFactory.object(typeRef, nonNull);
                 }
             }

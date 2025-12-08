@@ -89,6 +89,68 @@ public final class HostCompilerDirectives {
     }
 
     /**
+     * Marks a switch statement within a loop as a candidate for threaded switch optimization.
+     * Threaded switch replicates the switch statement at the end of each case, improving branch
+     * prediction at the processor level.
+     *
+     * Usage example:
+     *
+     * <pre>
+     * while (cond) {
+     *   input = inlinedNextOpcode();
+     *   switch (markThreadedSwitch(input)) {
+     *     case op1: { body1; }
+     *     case op2: { body2; }
+     *   }
+     * }
+     * </pre>
+     *
+     * The compiler recognizes the code blocks from the loop header up to the switch and duplicates
+     * them into each case that continues the while loop. This effectively transforms the structure
+     * as follows:
+     *
+     * <pre>
+     * if (cond) {
+     *   input = inlinedNextOpcode();
+     *   switch (markThreadedSwitch(input)) {
+     *     case op1: {
+     *         body1;
+     *         if (cond) {
+     *           input = inlinedNextOpcode();
+     *           switch (markThreadedSwitch(input)) // go to matching case of outer switch
+     *         }
+     *     }
+     *     case op2: {
+     *         body2;
+     *         if (cond) {
+     *           input = inlinedNextOpcode();
+     *           switch (markThreadedSwitch(input)) // go to matching case of outer switch
+     *         }
+     *     }
+     *   }
+     * }
+     * </pre>
+     *
+     * When additional statements follow the switch block within a loop, the compiler may trigger an
+     * optimization to duplicate these statements into each case block. If this duplication does not
+     * occur, the compiler can still identify the loop as a candidate for threaded switch
+     * optimization and apply relevant optimizations to minimize overhead in the loop header, such
+     * as postponing register spilling from the loop header to cases with actual register pressure,
+     * even at the cost of code bloat. However, due to the presence of these tail statements, the
+     * loop has only one back edge, which effectively disables threading.
+     *
+     * The compiler may also reject candidates for threaded switch optimization if the identified
+     * code blocks, after inlining, contain complex control flow or operations beyond memory reads.
+     * To log decisions related to threaded switch optimization, use the Graal option
+     * {@code TraceThreadedSwitchOptimization}.
+     *
+     * @since 25.1
+     */
+    public static int markThreadedSwitch(int input) {
+        return input;
+    }
+
+    /**
      * Marks a method that is an implementation of a Truffle interpreter, and which should receive
      * additional optimization budget.
      * <p>
@@ -174,7 +236,7 @@ public final class HostCompilerDirectives {
      * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">
      * Truffle host compilation documentation</a>.
      *
-     * @since 26.0
+     * @since 25.1
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})

@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.ProcessProperties;
@@ -41,7 +42,11 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.truffle.llvm.toolchain.launchers.AbstractToolchainWrapper.ToolchainWrapperConfig;
 import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
-public final class BinUtil {
+public final class BinUtil extends Driver {
+
+    public BinUtil(String exe) {
+        super(exe);
+    }
 
     public static void main(String[] args) {
         ToolchainWrapperConfig config = AbstractToolchainWrapper.getConfig();
@@ -69,10 +74,10 @@ public final class BinUtil {
         }
 
         final Path toolPath = Driver.getLLVMBinDir().resolve(toolName);
-        runTool(toolPath, args);
+        new BinUtil(Objects.toString(toolPath.getFileName(), "")).runTool(toolPath, args);
     }
 
-    public static void runTool(Path toolPath, String[] args) {
+    public void runTool(Path toolPath, String[] args) {
         ArrayList<String> utilArgs = new ArrayList<>(args.length + 1);
         utilArgs.add(toolPath.toString());
         if (args.length > 0) {
@@ -85,14 +90,14 @@ public final class BinUtil {
             p.waitFor();
             System.exit(p.exitValue());
         } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
-            Driver.printMissingToolMessage(Optional.ofNullable(toolPath.getParent()).map(Path::getParent).map(Path::toString).orElse("<invalid>"));
+            log("Error: %s", e.getMessage());
+            printMissingToolMessage(Optional.ofNullable(toolPath.getParent()).map(Path::getParent).map(Path::toString).orElse("<invalid>"));
             System.exit(1);
         } catch (InterruptedException e) {
             if (p != null) {
                 p.destroyForcibly();
             }
-            System.err.println("Error: Subprocess interrupted: " + e.getMessage());
+            log("Error: Subprocess interrupted: %s", e.getMessage());
             System.exit(1);
         }
     }

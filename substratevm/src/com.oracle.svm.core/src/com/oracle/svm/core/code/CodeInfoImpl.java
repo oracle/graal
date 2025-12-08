@@ -170,6 +170,16 @@ interface CodeInfoImpl extends CodeInfo {
     void setCodeAndDataMemorySize(UnsignedWord codeAndDataMemorySize);
 
     @RawField
+    void setRelativeIPOffset(UnsignedWord offset);
+
+    /**
+     * An offset that enables us to store code in different memory regions while keeping the code
+     * info encoding as if it were part of a single continuous memory region.
+     */
+    @RawField
+    UnsignedWord getRelativeIPOffset();
+
+    @RawField
     NonmovableArray<Byte> getCodeInfoIndex();
 
     @RawField

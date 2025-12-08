@@ -97,11 +97,10 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     @Override
-    @SuppressWarnings("try")
     public void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, CompilationResult result, CompilationResultBuilderFactory factory,
                     EntryPointDecorator entryPointDecorator, RegisterConfig config, LIRSuites lirSuites) {
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start(debug)) {
+        try (DebugContext.Scope _ = debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable _ = BackEnd.start(debug)) {
             emitLLVM(graph, result);
             dumpDebugInfo(result, graph);
         } catch (Throwable e) {
@@ -111,10 +110,9 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
         }
     }
 
-    @SuppressWarnings("try")
     private void emitLLVM(StructuredGraph graph, CompilationResult result) {
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope ds = debug.scope("EmitLLVM"); DebugCloseable a = EmitLLVM.start(debug)) {
+        try (DebugContext.Scope _ = debug.scope("EmitLLVM"); DebugCloseable _ = EmitLLVM.start(debug)) {
             assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL);
 
             ResolvedJavaMethod method = graph.method();
@@ -126,7 +124,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
             byte[] bitcode = generator.getBitcode();
             result.setTargetCode(bitcode, bitcode.length);
 
-            try (DebugContext.Scope s = debug.scope("LIRStages", nodeBuilder, null, null)) {
+            try (DebugContext.Scope _ = debug.scope("LIRStages", nodeBuilder, null, null)) {
                 /* Dump LIR along with HIR (the LIR is looked up from context) */
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
             } catch (Throwable e) {

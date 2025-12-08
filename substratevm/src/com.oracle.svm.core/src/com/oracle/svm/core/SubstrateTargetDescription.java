@@ -25,16 +25,31 @@
 package com.oracle.svm.core;
 
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.RuntimeCodeCache;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTrait;
+import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.traits.SingletonTraits;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SubstrateTargetDescription.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class SubstrateTargetDescription extends TargetDescription {
+    private static final String RUNTIME_CHECKED_CPU_FEATURES = "runtimeCheckedCPUFeatures";
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean shouldInlineObjectsInImageCode() {
         return SubstrateOptions.SpawnIsolates.getValue();
@@ -54,5 +69,32 @@ public class SubstrateTargetDescription extends TargetDescription {
 
     public EnumSet<?> getRuntimeCheckedCPUFeatures() {
         return runtimeCheckedCPUFeatures;
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public SingletonTrait getLayeredCallbacksTrait() {
+            var action = new SingletonLayeredCallbacks<SubstrateTargetDescription>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, SubstrateTargetDescription singleton) {
+                    writer.writeStringList(RUNTIME_CHECKED_CPU_FEATURES, getCPUFeaturesList(singleton));
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, SubstrateTargetDescription singleton) {
+                    List<String> previousLayerRuntimeCheckedCPUFeatures = loader.readStringList(RUNTIME_CHECKED_CPU_FEATURES);
+                    List<String> currentLayerRuntimeCheckedCPUFeatures = getCPUFeaturesList(singleton);
+                    VMError.guarantee(previousLayerRuntimeCheckedCPUFeatures.equals(currentLayerRuntimeCheckedCPUFeatures),
+                                    "The runtime checked CPU Features should be consistent across layers. The previous layer CPU Features were %s, but the current layer are %s",
+                                    previousLayerRuntimeCheckedCPUFeatures, currentLayerRuntimeCheckedCPUFeatures);
+                }
+            };
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, action);
+        }
+    }
+
+    private static List<String> getCPUFeaturesList(SubstrateTargetDescription substrateTargetDescription) {
+        return substrateTargetDescription.runtimeCheckedCPUFeatures.stream().map(Enum::toString).toList();
     }
 }

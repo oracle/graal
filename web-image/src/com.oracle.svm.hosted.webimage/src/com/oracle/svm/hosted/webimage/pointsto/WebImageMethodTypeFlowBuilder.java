@@ -58,9 +58,7 @@ public class WebImageMethodTypeFlowBuilder extends SVMMethodTypeFlowBuilder {
 
     public static boolean processWebImageNodes(PointsToAnalysis bb, PointsToAnalysisMethod method, TypeFlowGraphBuilder typeFlowGraphBuilder, FixedNode n, TypeFlowsOfNodes state,
                     MethodFlowsGraph flowsGraph) {
-        if (n instanceof InterceptJSInvokeNode) {
-            InterceptJSInvokeNode node = (InterceptJSInvokeNode) n;
-
+        if (n instanceof InterceptJSInvokeNode node) {
             TypeFlowBuilder<?>[] argumentBuilders = new TypeFlowBuilder<?>[node.arguments().size()];
             for (int i = 0; i < argumentBuilders.length; i++) {
                 final ValueNode argument = node.arguments().get(i);
@@ -87,10 +85,10 @@ public class WebImageMethodTypeFlowBuilder extends SVMMethodTypeFlowBuilder {
                 return intercept;
             });
 
-            for (int i = 0; i < argumentBuilders.length; i++) {
-                if (argumentBuilders[i] != null) {
-                    interceptBuilder.addUseDependency(argumentBuilders[i]);
-                    interceptBuilder.addObserverDependency(argumentBuilders[i]);
+            for (TypeFlowBuilder<?> argumentBuilder : argumentBuilders) {
+                if (argumentBuilder != null) {
+                    interceptBuilder.addUseDependency(argumentBuilder);
+                    interceptBuilder.addObserverDependency(argumentBuilder);
                 }
             }
 

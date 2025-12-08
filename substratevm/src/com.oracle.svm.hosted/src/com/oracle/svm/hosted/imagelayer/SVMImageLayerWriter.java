@@ -32,13 +32,10 @@ import static com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchem
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -72,7 +69,6 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -88,7 +84,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -96,33 +91,33 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.core.traits.InjectedSingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.core.traits.SingletonTraitKind;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageSingletonsSupportImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
-import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
-import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.InitialLayerCGlobalTracking;
@@ -133,7 +128,6 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.DynamicHubInfo;
@@ -145,6 +139,8 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotation;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnnotationElement;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
@@ -174,10 +170,15 @@ import com.oracle.svm.shaded.org.capnproto.StructList;
 import com.oracle.svm.shaded.org.capnproto.Text;
 import com.oracle.svm.shaded.org.capnproto.TextList;
 import com.oracle.svm.shaded.org.capnproto.Void;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.OriginalFieldProvider;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.annotation.AnnotationValueSupport;
+import jdk.graal.compiler.annotation.AnnotationValueType;
+import jdk.graal.compiler.annotation.EnumElement;
+import jdk.graal.compiler.annotation.ErrorElement;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -186,15 +187,15 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.NodeClassMap;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.annotation.AnnotationType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
@@ -271,7 +272,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             } catch (Exception e) {
                 throw GraalError.shouldNotReachHere(e, "Error during graphs file dumping.");
             }
-            return new StringBuilder("@").append(offset).append("[").append(encodedGraph.length).append("]").toString();
+            return "@" + offset + "[" + encodedGraph.length + "]";
         }
 
         void finish() {
@@ -449,7 +450,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         ClassInitializationInfo info = hub.getClassInitializationInfo();
         if (info == null) {
             /* Type metadata was not initialized. */
-            assert !type.isReachable();
+            assert !type.isReachable() : type;
             builder.setHasClassInitInfo(false);
         } else {
             builder.setHasClassInitInfo(true);
@@ -477,6 +478,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setModifiers(type.getModifiers());
         builder.setIsInterface(type.isInterface());
         builder.setIsEnum(type.isEnum());
+        builder.setIsRecord(type.isRecord());
         builder.setIsInitialized(type.isInitialized());
         boolean successfulSimulation = simulateClassInitializerSupport.isSuccessfulSimulation(type);
         boolean failedSimulation = simulateClassInitializerSupport.isFailedSimulation(type);
@@ -578,9 +580,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static void handleNameConflict(String message) {
-        if (SubstrateOptions.AbortOnNameConflict.getValue()) {
+        if (LayeredImageOptions.LayeredImageDiagnosticOptions.AbortOnNameConflict.getValue()) {
             throw VMError.shouldNotReachHere(message);
-        } else {
+        } else if (LayeredImageOptions.LayeredImageDiagnosticOptions.LogOnNameConflict.getValue()) {
             LogUtils.warning(message);
         }
     }
@@ -596,7 +598,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
 
         String methodDescriptor = imageLayerSnapshotUtil.getMethodDescriptor(method);
-        if (methodDescriptors.put(methodDescriptor, method) != null) {
+        if (methodDescriptors.putIfAbsent(methodDescriptor, method) != null) {
             throw GraalError.shouldNotReachHere("The method descriptor should be unique, but %s got added twice.\nThe first method is %s and the second is %s."
                             .formatted(methodDescriptor, methodDescriptors.get(methodDescriptor), method));
         }
@@ -630,7 +632,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsImplementationInvoked(method.isSimplyImplementationInvoked());
         builder.setIsIntrinsicMethod(method.isIntrinsicMethod());
 
-        builder.setCompilationBehaviorOrdinal((byte) method.getCompilationBehavior().ordinal());
+        var compilationBehavior = method.getCompilationBehavior();
+        if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER) {
+            UserError.guarantee(hUniverse.lookup(method).isCompiled(), "User methods with layered compilation behavior %s must be registered via %s in the initial layer",
+                            LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER, LayeredCompilationSupport.class);
+        }
+        builder.setCompilationBehaviorOrdinal((byte) compilationBehavior.ordinal());
 
         if (graphsInfo != null && graphsInfo.analysisGraphLocation != null) {
             assert !method.isDelayed() : "The method " + method + " has an analysis graph, but is delayed to the application layer";
@@ -722,7 +729,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         LayeredStaticFieldSupport.LayerAssignmentStatus assignmentStatus = LayeredStaticFieldSupport.singleton().getAssignmentStatus(field);
         if (hostedField.hasInstalledLayerNum()) {
             fieldInstalledNum = hostedField.getInstalledLayerNum();
-            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNDECIDED) {
+            if (assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.UNSPECIFIED) {
                 assignmentStatus = LayeredStaticFieldSupport.LayerAssignmentStatus.PRIOR_LAYER;
             } else {
                 assert assignmentStatus == LayeredStaticFieldSupport.LayerAssignmentStatus.APP_LAYER_REQUESTED ||
@@ -732,70 +739,74 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setPriorInstalledLayerNum(fieldInstalledNum);
         builder.setAssignmentStatus(assignmentStatus.ordinal());
 
+        var updatableReceivers = LayeredFieldValueTransformerSupport.singleton().getUpdatableReceivers(field);
+        var receivers = builder.initUpdatableReceivers(updatableReceivers.size());
+        int idx = 0;
+        for (var receiver : updatableReceivers) {
+            receivers.set(idx, ImageHeapConstant.getConstantID(receiver));
+            idx++;
+        }
+
         persistAnnotations(field, builder::initAnnotationList);
 
         JavaConstant simulatedFieldValue = simulateClassInitializerSupport.getSimulatedFieldValue(field);
         writeConstant(simulatedFieldValue, builder.initSimulatedFieldValue());
     }
 
-    private void persistAnnotations(AnnotatedElement annotatedElement, IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
-        Class<? extends Annotation>[] annotationTypes = AnnotationAccess.getAnnotationTypes(annotatedElement);
-        persistAnnotations(annotatedElement, annotationTypes, builder);
-    }
-
-    private void persistAnnotations(AnnotatedElement annotatedElement, Class<? extends Annotation>[] annotationTypes,
-                    IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder>> builder) {
-        var b = builder.apply(annotationTypes.length);
-        for (int i = 0; i < annotationTypes.length; i++) {
-            Class<? extends Annotation> annotationClass = annotationTypes[i];
-            SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder annotationBuilder = b.get(i);
-            annotationBuilder.setTypeName(annotationClass.getName());
-            Annotation annotation = AnnotationAccess.getAnnotation(annotatedElement, annotationClass);
-            persistAnnotationValues(annotation, annotationClass, annotationBuilder::initValues);
+    private void persistAnnotations(Annotated annotated, IntFunction<StructList.Builder<PersistedAnnotation.Builder>> builder) {
+        Map<ResolvedJavaType, AnnotationValue> annotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(annotated);
+        var b = builder.apply(annotationValues.size());
+        int i = 0;
+        for (var e : annotationValues.entrySet()) {
+            ResolvedJavaType annotationClass = e.getKey();
+            PersistedAnnotation.Builder annotationBuilder = b.get(i++);
+            annotationBuilder.setTypeName(annotationClass.toJavaName());
+            persistAnnotationElements(e.getValue(), annotationBuilder::initValues);
         }
     }
 
-    private void persistAnnotationValues(Annotation annotation, Class<? extends Annotation> annotationClass, IntFunction<StructList.Builder<AnnotationValue.Builder>> builder) {
-        AnnotationType annotationType = AnnotationType.getInstance(annotationClass);
-        EconomicMap<String, Object> members = EconomicMap.create();
-        annotationType.members().forEach((memberName, memberAccessor) -> {
-            try {
-                String moduleName = memberAccessor.getDeclaringClass().getModule().getName();
-                if (moduleName != null) {
-                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SVMImageLayerWriter.class, false, moduleName);
-                }
-                AnnotationMemberValue memberValue = AnnotationMemberValue.getMemberValue(annotation, memberName, memberAccessor, annotationType);
-                Object value = memberValue.get(annotationType.memberTypes().get(memberName));
-                members.put(memberName, value);
-            } catch (AnnotationMetadata.AnnotationExtractionError e) {
-                /* We skip the incorrect annotation */
-            }
-        });
+    private void persistAnnotationElements(AnnotationValue annotation,
+                    IntFunction<StructList.Builder<PersistedAnnotationElement.Builder>> builder) {
+        EconomicMap<String, Object> persistedMembers = EconomicMap.create();
+        Map<String, Object> members = annotation.getElements();
+        Map<String, ResolvedJavaType> memberTypes = AnnotationValueType.getInstance(annotation.getAnnotationType()).memberTypes();
         if (!members.isEmpty()) {
-            var list = builder.apply(members.size());
-            MapCursor<String, Object> cursor = members.getEntries();
+            for (var e : members.entrySet()) {
+                Object v = e.getValue();
+                if (v instanceof ErrorElement) {
+                    /* GR-70978 will add support for error elements */
+                    return;
+                }
+                persistedMembers.put(e.getKey(), v);
+            }
+        }
+        if (!persistedMembers.isEmpty()) {
+            var list = builder.apply(persistedMembers.size());
+            MapCursor<String, Object> cursor = persistedMembers.getEntries();
             for (int i = 0; cursor.advance(); i++) {
                 var b = list.get(i);
-                b.setName(cursor.getKey());
+                String name = cursor.getKey();
+                b.setName(name);
                 Object v = cursor.getValue();
-                persistAnnotationValue(v, b);
+                persistAnnotationElement(v, memberTypes.get(name), b);
             }
         }
     }
 
-    private void persistAnnotationValue(Object v, AnnotationValue.Builder b) {
-        if (v.getClass().isArray()) {
-            if (v instanceof Object[] array) {
+    private void persistAnnotationElement(Object v, ResolvedJavaType memberType, PersistedAnnotationElement.Builder b) {
+        if (memberType.isArray()) {
+            ResolvedJavaType componentType = memberType.getComponentType();
+            if (!componentType.isPrimitive()) {
+                List<?> list = (List<?>) v;
                 var ba = b.initMembers();
-                ba.setClassName(v.getClass().getComponentType().getName());
-                var bav = ba.initMemberValues(array.length);
-                for (int i = 0; i < array.length; ++i) {
-                    persistAnnotationValue(array[i], bav.get(i));
+                ba.setClassName(componentType.toJavaName());
+                var bav = ba.initMemberValues(list.size());
+                int i = 0;
+                for (Object e : list) {
+                    persistAnnotationElement(e, componentType, bav.get(i++));
                 }
             } else {
-                Class<?> componentType = v.getClass().getComponentType();
-                assert componentType.isPrimitive() : v + " should be a primitive array";
-                persistConstantPrimitiveArray(b.initPrimitiveArray(), JavaKind.fromJavaClass(componentType), v);
+                persistConstantPrimitiveArray(b.initPrimitiveArray(), componentType.getJavaKind(), v);
             }
         } else {
             switch (v) {
@@ -807,21 +818,21 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 case Float f -> setAnnotationPrimitiveValue(b, JavaKind.Float, Float.floatToRawIntBits(f));
                 case Long j -> setAnnotationPrimitiveValue(b, JavaKind.Long, j);
                 case Double d -> setAnnotationPrimitiveValue(b, JavaKind.Double, Double.doubleToRawLongBits(d));
-                case Class<?> clazz -> b.setClassName(clazz.getName());
-                case Annotation innerAnnotation ->
-                    persistAnnotationValues(innerAnnotation, innerAnnotation.annotationType(), b.initAnnotation()::initValues);
+                case ResolvedJavaType type -> b.setClassName(type.toJavaName());
+                case AnnotationValue innerAnnotation ->
+                    persistAnnotationElements(innerAnnotation, b.initAnnotation()::initValues);
                 case String s -> b.setString(s);
-                case Enum<?> e -> {
+                case EnumElement e -> {
                     var ba = b.initEnum();
-                    ba.setClassName(e.getDeclaringClass().getName());
-                    ba.setName(e.name());
+                    ba.setClassName(e.enumType.toJavaName());
+                    ba.setName(e.name);
                 }
-                default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v);
+                default -> throw AnalysisError.shouldNotReachHere("Unsupported value for annotation element: " + v + ", " + v.getClass());
             }
         }
     }
 
-    private static void setAnnotationPrimitiveValue(AnnotationValue.Builder b, JavaKind kind, long rawValue) {
+    private static void setAnnotationPrimitiveValue(PersistedAnnotationElement.Builder b, JavaKind kind, long rawValue) {
         var pv = b.initPrimitive();
         pv.setTypeChar(NumUtil.safeToUByte(kind.getTypeChar()));
         pv.setRawValue(rawValue);
@@ -837,8 +848,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         AnalysisError.guarantee(type.isTrackedAcrossLayers(), "Type %s from constant %s should have been marked as trackedAcrossLayers, but was not", type, imageHeapConstant);
         builder.setTypeId(type.getId());
 
-        IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
-        int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);
+        ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
+        int identityHashCode = constantReflection.identityHashCode(imageHeapConstant);
         builder.setIdentityHashCode(identityHashCode);
 
         switch (imageHeapConstant) {
@@ -919,7 +930,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        return !AnnotationAccess.isAnnotationPresent(field, Delete.class) &&
+        return !AnnotationUtil.isAnnotationPresent(field, Delete.class) &&
                         ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                         field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers() && field.installableInLayer();
     }
@@ -935,23 +946,46 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static void persistConstantPrimitiveArray(PrimitiveArray.Builder builder, JavaKind componentKind, Object array) {
-        assert componentKind.toJavaClass().equals(array.getClass().getComponentType());
-        switch (array) {
-            case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
-            case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));
-            case short[] a -> persistArray(a, builder::initS, (b, i) -> b.set(i, a[i]));
-            case char[] a -> persistArray(a, builder::initC, (b, i) -> b.set(i, (short) a[i]));
-            case int[] a -> persistArray(a, builder::initI, (b, i) -> b.set(i, a[i]));
-            case long[] a -> persistArray(a, builder::initJ, (b, i) -> b.set(i, a[i]));
-            case float[] a -> persistArray(a, builder::initF, (b, i) -> b.set(i, a[i]));
-            case double[] a -> persistArray(a, builder::initD, (b, i) -> b.set(i, a[i]));
-            default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+        if (array instanceof List<?> l) {
+            switch (componentKind) {
+                case Boolean -> persistList(l, builder::initZ, (b, i) -> b.set(i, (boolean) l.get(i)));
+                case Byte -> persistList(l, builder::initB, (b, i) -> b.set(i, (byte) l.get(i)));
+                case Short -> persistList(l, builder::initS, (b, i) -> b.set(i, (short) l.get(i)));
+                case Char -> persistList(l, builder::initC, (b, i) -> b.set(i, (short) (char) l.get(i)));
+                case Int -> persistList(l, builder::initI, (b, i) -> b.set(i, (int) l.get(i)));
+                case Long -> persistList(l, builder::initJ, (b, i) -> b.set(i, (long) l.get(i)));
+                case Float -> persistList(l, builder::initF, (b, i) -> b.set(i, (float) l.get(i)));
+                case Double -> persistList(l, builder::initD, (b, i) -> b.set(i, (double) l.get(i)));
+                default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+            }
+        } else {
+            assert componentKind.toJavaClass().equals(array.getClass().getComponentType()) : "%s != %s".formatted(componentKind.toJavaClass(), array.getClass().getComponentType());
+            switch (array) {
+                case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
+                case byte[] a -> persistArray(a, builder::initB, (b, i) -> b.set(i, a[i]));
+                case short[] a -> persistArray(a, builder::initS, (b, i) -> b.set(i, a[i]));
+                case char[] a -> persistArray(a, builder::initC, (b, i) -> b.set(i, (short) a[i]));
+                case int[] a -> persistArray(a, builder::initI, (b, i) -> b.set(i, a[i]));
+                case long[] a -> persistArray(a, builder::initJ, (b, i) -> b.set(i, a[i]));
+                case float[] a -> persistArray(a, builder::initF, (b, i) -> b.set(i, a[i]));
+                case double[] a -> persistArray(a, builder::initD, (b, i) -> b.set(i, a[i]));
+                default -> throw new IllegalArgumentException("Unsupported kind: " + componentKind);
+            }
         }
     }
 
     /** Enables concise one-liners in {@link #persistConstantPrimitiveArray}. */
     private static <A, T extends ListBuilder> void persistArray(A array, IntFunction<T> init, ObjIntConsumer<T> setter) {
         int length = Array.getLength(array);
+        T builder = init.apply(length);
+        for (int i = 0; i < length; i++) {
+            setter.accept(builder, i);
+        }
+    }
+
+    /** Enables concise one-liners in {@link #persistConstantPrimitiveArray}. */
+    private static <T extends ListBuilder> void persistList(List<?> list, IntFunction<T> init, ObjIntConsumer<T> setter) {
+        int length = list.size();
         T builder = init.apply(length);
         for (int i = 0; i < length; i++) {
             setter.accept(builder, i);
@@ -977,7 +1011,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private boolean maybeWriteConstant(JavaConstant constant, ConstantReference.Builder builder) {
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            assert constantsMap.containsKey(imageHeapConstant);
+            assert constantsMap.containsKey(imageHeapConstant) : imageHeapConstant;
             var ocb = builder.initObjectConstant();
             ocb.setConstantId(ImageHeapConstant.getConstantID(imageHeapConstant));
         } else if (constant instanceof PrimitiveConstant primitiveConstant) {
@@ -998,8 +1032,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             if (word instanceof MethodRef methodRef) {
                 AnalysisMethod method = getRelocatableConstantMethod(methodRef);
                 switch (methodRef) {
-                    case MethodOffset mo -> builder.initMethodOffset().setMethodId(method.getId());
-                    case MethodPointer mp -> builder.initMethodPointer().setMethodId(method.getId());
+                    case MethodOffset _ -> builder.initMethodOffset().setMethodId(method.getId());
+                    case MethodPointer _ -> builder.initMethodPointer().setMethodId(method.getId());
                     default -> throw VMError.shouldNotReachHere("Unsupported method ref: " + methodRef);
                 }
                 return true;
@@ -1071,7 +1105,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              * withAnalysisGraph as it will throw if the MethodGraphsInfo already has an analysis
              * graph.
              */
-            methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
+            methodsMap.compute(method, (_, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
                             .withAnalysisGraph(method, location, analysisParsedGraph.isIntrinsic()));
         }
     }
@@ -1088,7 +1122,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
          * withStrengthenedGraph as it will throw if the MethodGraphsInfo already has a strengthened
          * graph.
          */
-        methodsMap.compute(method, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(method, location));
+        methodsMap.compute(method, (_, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS).withStrengthenedGraph(method, location));
     }
 
     private String persistGraph(AnalysisMethod method, EncodedGraph analyzedGraph) {
@@ -1123,32 +1157,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void addPolymorphicSignatureCaller(AnalysisMethod polymorphicSignature, AnalysisMethod caller) {
         AnalysisError.guarantee(!polymorphicSignatureSealed, "The caller %s for method %s was added after the methods were persisted", caller, polymorphicSignature);
-        polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
+        polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, _ -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
-    record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int singletonId, RecreateInfo recreateInfo, int keyStoreId, EconomicMap<String, Object> keyStore) {
+    record SingletonPersistInfo(LayeredPersistFlags flags, int singletonId, Class<?> singletonInstantiator, int keyStoreId, EconomicMap<String, Object> keyStore) {
     }
 
-    // GR-66792 remove once no custom persist actions exist
-    record RecreateInfo(String clazz, String method) {
-    }
-
-    RecreateInfo createRecreateInfo(SingletonLayeredCallbacks action) {
-        if (action instanceof InjectedSingletonLayeredCallbacks injectAction) {
-            // GR-66792 remove once no custom persist actions exist
-            Class<?> singletonClass = injectAction.getSingletonClass();
-            String recreateName = "createFromLoader";
-            Method loaderMethod = ReflectionUtil.lookupMethod(true, singletonClass, recreateName, ImageSingletonLoader.class);
-            if (loaderMethod == null) {
-                throw VMError.shouldNotReachHere("Unable to find createFromLoader for %s", singletonClass);
-            }
-            return new RecreateInfo(singletonClass.getName(), recreateName);
-
-        } else {
-            return new RecreateInfo(action.getSingletonInstantiator().getName(), "");
-        }
-    }
-
+    @SuppressWarnings("unchecked")
     public void writeImageSingletonInfo(List<Map.Entry<Class<?>, ImageSingletonsSupportImpl.SingletonInfo>> layeredImageSingletons) {
         /*
          * First write the image singleton keys
@@ -1165,31 +1180,31 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             boolean initialLayerOnly = initialLayerSingletons.contains(singleton);
             if (!singletonPersistInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl(snapshotBuilder, hUniverse);
-                SingletonLayeredCallbacks action = (SingletonLayeredCallbacks) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
-                var flags = action.doPersist(writer, singleton);
+                var action = (SingletonLayeredCallbacks<?>) singletonEntry.getValue().traitMap().getTrait(SingletonTraitKind.LAYERED_CALLBACKS).get().metadata();
+                var flags = SubstrateUtil.cast(action, SingletonLayeredCallbacks.class).doPersist(writer, singleton);
                 if (initialLayerOnly) {
-                    VMError.guarantee(flags == LayeredImageSingleton.PersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredImageSingleton.PersistFlags.FORBIDDEN,
+                    VMError.guarantee(flags == LayeredPersistFlags.FORBIDDEN, "InitialLayer Singleton's persist action must return %s %s", LayeredPersistFlags.FORBIDDEN,
                                     singleton);
                 }
                 int singletonId = SVMImageLayerSnapshotUtil.UNDEFINED_SINGLETON_OBJ_ID;
                 int keyStoreId = SVMImageLayerSnapshotUtil.UNDEFINED_KEY_STORE_ID;
-                RecreateInfo recreateInfo = null;
+                Class<?> singletonInstantiator = null;
                 EconomicMap<String, Object> keyValueStore = null;
-                if (flags == LayeredImageSingleton.PersistFlags.CREATE) {
-                    VMError.guarantee(!(singleton instanceof Feature), "Features cannot return %s. Use %s instead. Feature: %s", LayeredImageSingleton.PersistFlags.CREATE,
-                                    LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION, singleton);
+                if (flags == LayeredPersistFlags.CREATE) {
+                    VMError.guarantee(!(singleton instanceof Feature), "Features cannot return %s. Use %s instead. Feature: %s", LayeredPersistFlags.CREATE,
+                                    LayeredPersistFlags.CALLBACK_ON_REGISTRATION, singleton);
                     singletonId = nextSingletonId++;
-                    recreateInfo = createRecreateInfo(action);
+                    singletonInstantiator = action.getSingletonInstantiator();
                     keyValueStore = writer.getKeyValueStore();
                     keyStoreId = nextKeyStoreId++;
-                } else if (flags == LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION) {
+                } else if (flags == LayeredPersistFlags.CALLBACK_ON_REGISTRATION) {
                     keyValueStore = writer.getKeyValueStore();
                     keyStoreId = nextKeyStoreId++;
                 } else {
                     VMError.guarantee(writer.getKeyValueStore().isEmpty(), "ImageSingletonWriter was used, but the results will not be persisted %s %s", singletonEntry.getKey(), singleton);
                 }
 
-                var info = new SingletonPersistInfo(flags, singletonId, recreateInfo, keyStoreId, keyValueStore);
+                var info = new SingletonPersistInfo(flags, singletonId, singletonInstantiator, keyStoreId, keyValueStore);
                 singletonPersistInfoMap.put(singleton, info);
             }
             var info = singletonPersistInfoMap.get(singleton);
@@ -1212,7 +1227,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
          * Next write the singleton objects.
          */
         var sortedBySingletonIds = singletonPersistInfoMap.entrySet().stream()
-                        .filter(e -> e.getValue().flags == LayeredImageSingleton.PersistFlags.CREATE)
+                        .filter(e -> e.getValue().flags == LayeredPersistFlags.CREATE)
                         .sorted(Comparator.comparingInt(e -> e.getValue().singletonId))
                         .toList();
         StructList.Builder<ImageSingletonObject.Builder> objectsBuilder = snapshotBuilder.initSingletonObjects(sortedBySingletonIds.size());
@@ -1224,8 +1239,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             ImageSingletonObject.Builder ob = objectsBuilder.get(i);
             ob.setId(info.singletonId);
             ob.setClassName(entry.getKey().getClass().getName());
-            ob.setRecreateClass(info.recreateInfo().clazz());
-            ob.setRecreateMethod(info.recreateInfo().method());
+            ob.setSingletonInstantiatorClass(info.singletonInstantiator().getName());
             ob.setKeyStoreId(info.keyStoreId);
         }
 
@@ -1312,7 +1326,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeBoolList(String keyName, List<Boolean> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             boolean[] b = new boolean[value.size()];
             for (int i = 0; i < value.size(); i++) {
                 b[i] = value.get(i);
@@ -1329,7 +1343,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeIntList(String keyName, List<Integer> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             var previous = keyValueStore.put(keyName, value.stream().mapToInt(i -> i).toArray());
             assert previous == null : Assertions.errorMessage(keyName, previous);
         }
@@ -1348,7 +1362,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         @Override
         public void writeStringList(String keyName, List<String> value) {
-            assert nonNullEntries(value);
+            assert nonNullEntries(value) : value;
             var previous = keyValueStore.put(keyName, value.toArray(String[]::new));
             assert previous == null : Assertions.errorMessage(keyName, previous);
         }

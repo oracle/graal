@@ -225,10 +225,9 @@ public final class BytecodeSupport {
             if (index >= consts.length) {
                 this.constants = Arrays.copyOf(consts, consts.length * 2);
             }
-            if (index == HASH_THRESHOLD) {
+            if (index == HASH_THRESHOLD - 1) {
                 fillMapFromConsts();
             }
-
             return index;
         }
 

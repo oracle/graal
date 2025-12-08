@@ -24,44 +24,82 @@
  */
 package com.oracle.svm.core.hub.crema;
 
-import java.util.List;
-
-import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.espresso.classfile.ParserKlass;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Signature;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public interface CremaSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType);
 
-    int getAfterFieldsOffset(DynamicHub hub);
+    Target_java_lang_invoke_MemberName resolveMemberName(Target_java_lang_invoke_MemberName mn, Class<?> caller);
 
-    interface CremaDispatchTable {
-        int vtableLength();
+    Object invokeBasic(Target_java_lang_invoke_MemberName memberName, Object methodHandle, Object[] args);
 
-        int itableLength(Class<?> iface);
-    }
+    Object linkToVirtual(Object[] args);
 
-    CremaDispatchTable getDispatchTable(ParserKlass parsed, Class<?> superClass, List<Class<?>> superInterfaces);
+    Object linkToStatic(Object[] args);
 
-    void fillDynamicHubInfo(DynamicHub hub, CremaDispatchTable table, List<Class<?>> transitiveSuperInterfaces, int[] interfaceIndices);
+    Object linkToSpecial(Object[] args);
 
-    Object newInstance(ResolvedJavaMethod targetMethod, Object[] args);
+    Object linkToInterface(Object[] args);
 
-    Object execute(ResolvedJavaMethod targetMethod, Object[] args);
+    Object getStaticStorage(ResolvedJavaField resolved);
+
+    DynamicHub createHub(ParserKlass parsed, ClassDefinitionInfo info, int typeID, String externalName, Module module, ClassLoader classLoader, Class<?> superClass, Class<?>[] superInterfaces);
+
+    /**
+     * Creates a new instance of {@code type} without running any constructor yet. The caller should
+     * make sure to run a constructor before publishing the result.
+     */
+    Object allocateInstance(ResolvedJavaType type);
+
+    Object execute(ResolvedJavaMethod targetMethod, Object[] args, boolean isVirtual);
 
     Class<?> toClass(ResolvedJavaType resolvedJavaType);
 
-    Class<?> resolveOrThrow(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+    default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return resolveOrThrow(symbolicType, accessingClass);
+    }
 
-    Class<?> resolveOrNull(JavaType unresolvedJavaType, ResolvedJavaType accessingClass);
+    Class<?> resolveOrThrow(Symbol<Type> type, ResolvedJavaType accessingClass);
+
+    default Class<?> resolveOrNull(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return resolveOrNull(symbolicType, accessingClass);
+    }
+
+    Class<?> resolveOrNull(Symbol<Type> type, ResolvedJavaType accessingClass);
+
+    default Class<?> findLoadedClass(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
+        ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
+        Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
+        return findLoadedClass(symbolicType, accessingClass);
+    }
+
+    Class<?> findLoadedClass(Symbol<Type> type, ResolvedJavaType accessingClass);
+
+    Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
+
+    ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);

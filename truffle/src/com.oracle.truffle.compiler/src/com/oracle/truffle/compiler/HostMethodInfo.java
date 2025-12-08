@@ -41,8 +41,6 @@
 package com.oracle.truffle.compiler;
 
 /**
- * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
- * compiler implementation side.
  *
  * @param isTruffleBoundary specifies if the method is annotated by {@code TruffleBoundary}
  * @param isBytecodeInterpreterSwitch specifies if the method is annotated by
@@ -50,7 +48,10 @@ package com.oracle.truffle.compiler;
  * @param isBytecodeInterpreterSwitchBoundary specifies if the method is annotated by
  *            {@code BytecodeInterpreterSwitchBoundary}
  * @param isInliningCutoff specifies if the method is annotated by {@code InliningCutoff}
+ *
+ * @deprecated Unused since 25.1, retained only for compatibility with older versions.
  */
+@Deprecated(since = "25.1")
 public record HostMethodInfo(
                 boolean isTruffleBoundary,
                 boolean isBytecodeInterpreterSwitch,

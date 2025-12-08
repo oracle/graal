@@ -40,13 +40,13 @@
  */
 package org.graalvm.wasm;
 
-import org.graalvm.wasm.exception.Failure;
-
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_INSTANCE_SIZE;
+
+import org.graalvm.wasm.exception.Failure;
 
 /**
  * Limits on various aspects of a module.
@@ -73,13 +73,14 @@ public final class ModuleLimits {
     private final int tableInstanceSizeLimit;
     private final int memoryInstanceSizeLimit;
     private final long memory64InstanceSizeLimit;
+    private final int tagCountLimit;
 
     public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int memoryCountLimit, int importCountLimit,
                     int exportCountLimit, int globalCountLimit,
                     int dataSegmentCountLimit, int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int localCountLimit,
-                    int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit) {
+                    int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit, int tagCountLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
-        this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
+        this.typeCountLimit = minUnsigned(typeCountLimit, WasmType.MAX_TYPE_INDEX);
         this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);
         this.tableCountLimit = minUnsigned(tableCountLimit, Integer.MAX_VALUE);
         this.multiMemoryCountLimit = minUnsigned(memoryCountLimit, Integer.MAX_VALUE);
@@ -95,6 +96,7 @@ public final class ModuleLimits {
         this.tableInstanceSizeLimit = minUnsigned(tableInstanceSizeLimit, MAX_TABLE_INSTANCE_SIZE);
         this.memoryInstanceSizeLimit = minUnsigned(memoryInstanceSizeLimit, MAX_MEMORY_INSTANCE_SIZE);
         this.memory64InstanceSizeLimit = minUnsigned(memory64InstanceSizeLimit, MAX_MEMORY_64_INSTANCE_SIZE);
+        this.tagCountLimit = minUnsigned(tagCountLimit, Integer.MAX_VALUE);
     }
 
     private static int minUnsigned(int a, int b) {
@@ -107,7 +109,7 @@ public final class ModuleLimits {
 
     static final ModuleLimits DEFAULTS = new ModuleLimits(
                     Integer.MAX_VALUE,
-                    Integer.MAX_VALUE,
+                    WasmType.MAX_TYPE_INDEX,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
@@ -122,7 +124,8 @@ public final class ModuleLimits {
                     Integer.MAX_VALUE,
                     MAX_TABLE_INSTANCE_SIZE,
                     MAX_MEMORY_INSTANCE_SIZE,
-                    MAX_MEMORY_64_INSTANCE_SIZE);
+                    MAX_MEMORY_64_INSTANCE_SIZE,
+                    Integer.MAX_VALUE);
 
     public void checkModuleSize(int size) {
         assertUnsignedIntLessOrEqual(size, moduleSizeLimit, Failure.MODULE_SIZE_LIMIT_EXCEEDED);
@@ -196,6 +199,10 @@ public final class ModuleLimits {
         } else {
             assertUnsignedLongLessOrEqual(size, memoryInstanceSizeLimit, Failure.MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED);
         }
+    }
+
+    public void checkTagCount(int count) {
+        assertUnsignedIntLessOrEqual(count, tagCountLimit, Failure.TAG_COUNT_LIMIT_EXCEEDED);
     }
 
     public int tableInstanceSizeLimit() {

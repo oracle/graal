@@ -76,6 +76,7 @@ import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
+import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +90,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
@@ -1780,7 +1780,7 @@ public final class TruffleFile {
     private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
         long n = TempFileRandomHolder.getRandom().nextLong();
         n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
-        String name = prefix + Long.toString(n) + suffix;
+        String name = prefix + n + suffix;
         TruffleFile result = targetDirectory.resolve(name);
         if (!targetDirectory.equals(result.getParent())) {
             throw new InvalidPathException(name, "Must be a simple name");
@@ -1806,12 +1806,12 @@ public final class TruffleFile {
     }
 
     private static final class TempFileRandomHolder {
-        private static Random RANDOM;
+        private static volatile SecureRandom RANDOM;
 
-        static Random getRandom() {
+        static SecureRandom getRandom() {
             if (RANDOM == null) {
                 /* We don't want RANDOM seeds in the image heap. */
-                RANDOM = new Random();
+                RANDOM = new SecureRandom();
             }
             return RANDOM;
         }

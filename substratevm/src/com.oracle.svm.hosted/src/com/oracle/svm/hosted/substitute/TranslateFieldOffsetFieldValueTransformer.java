@@ -31,7 +31,7 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;

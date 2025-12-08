@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -47,7 +47,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.MethodFilter;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -68,10 +67,10 @@ public class MethodConfigReader {
      *
      * @param file the configuration file to read.
      * @param bigbang
-     * @param classLoader analysis classloader
+     * @param classLoaderAccess for loading classes
      * @param actionForEachMethod the action to take for each resolved method.
      */
-    public static void readMethodFromFile(String file, BigBang bigbang, ClassLoader classLoader, Consumer<AnalysisMethod> actionForEachMethod) {
+    public static void readMethodFromFile(String file, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod) {
         List<String> methodNameList = new ArrayList<>();
         Path entryFilePath = Paths.get(file);
         File entryFile = entryFilePath.toFile();
@@ -85,7 +84,7 @@ public class MethodConfigReader {
             AnalysisError.shouldNotReachHere(e);
         }
         int totalSize = methodNameList.size();
-        int num = forMethodList(bigbang.getDebug(), methodNameList, bigbang, classLoader, actionForEachMethod);
+        int num = forMethodList(bigbang.getDebug(), methodNameList, bigbang, classLoaderAccess, actionForEachMethod);
         StringBuilder sb = new StringBuilder();
         sb.append("==Reading analysis entry points status==").append(System.lineSeparator());
         sb.append(num).append(" out of ").append(totalSize).append(" methods are read from ").append(file).append(System.lineSeparator());
@@ -97,17 +96,17 @@ public class MethodConfigReader {
     }
 
     @SuppressWarnings("try")
-    public static int forMethodList(DebugContext debug, List<String> methods, BigBang bigbang, ClassLoader classLoader, Consumer<AnalysisMethod> actionForEachMethod) {
+    public static int forMethodList(DebugContext debug, List<String> methods, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod) {
         AtomicInteger validMethodsNum = new AtomicInteger(0);
         try (DebugContext.Scope s = debug.scope(READ_ENTRY_POINTS)) {
             methods.stream().forEach(method -> {
                 if (!method.isBlank()) {
                     try {
-                        workWithMethod(method, bigbang, classLoader, actionForEachMethod);
+                        workWithMethod(method, bigbang, classLoaderAccess, actionForEachMethod);
                         validMethodsNum.incrementAndGet();
                     } catch (Throwable t) {
                         // Checkstyle: Allow raw info or warning printing - begin
-                        debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method " + method + " as analysis root method. Reason: " + t.getMessage());
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method %s as analysis root method. Reason: %s", method, t.getMessage());
                         // Checkstyle: Allow raw info or warning printing - end
                     }
                 }
@@ -116,7 +115,8 @@ public class MethodConfigReader {
         return validMethodsNum.get();
     }
 
-    private static void workWithMethod(String method, BigBang bigbang, ClassLoader classLoader, Consumer<AnalysisMethod> actionForEachMethod) throws ClassNotFoundException {
+    private static void workWithMethod(String method, BigBang bigbang, PointsToAnalyzer.ClassLoaderAccess classLoaderAccess, Consumer<AnalysisMethod> actionForEachMethod)
+                    throws ClassNotFoundException {
         int pos = method.indexOf('(');
         int dotAfterClassNamePos;
         if (pos == -1) {
@@ -128,12 +128,13 @@ public class MethodConfigReader {
             AnalysisError.shouldNotReachHere("The the given method's name " + method + " doesn't contain the declaring class name.");
         }
         String className = method.substring(0, dotAfterClassNamePos);
-        Class<?> c = Class.forName(className, false, classLoader);
+        ResolvedJavaType t = classLoaderAccess.forName(className);
+        if (t == null) {
+            throw new ClassNotFoundException(className);
+        }
         // MethodFilter.parse requires ResolvedJavaMethod as input
-        MetaAccessProvider originalMetaAccess = bigbang.getUniverse().getOriginalMetaAccess();
-        List<ResolvedJavaMethod> methodCandidates = Arrays.stream(c.getDeclaredMethods()).map(m -> originalMetaAccess.lookupJavaMethod(m)).filter(m -> !m.isNative()).collect(Collectors.toList());
-        methodCandidates.addAll(Arrays.stream(c.getDeclaredConstructors()).map(m -> originalMetaAccess.lookupJavaMethod(m)).collect(Collectors.toList()));
-        ResolvedJavaType t = originalMetaAccess.lookupJavaType(c);
+        List<ResolvedJavaMethod> methodCandidates = Arrays.stream(t.getDeclaredMethods()).filter(m -> !m.isNative()).collect(Collectors.toList());
+        methodCandidates.addAll(Arrays.stream(t.getDeclaredConstructors()).toList());
         if (t.getClassInitializer() != null) {
             methodCandidates.add(t.getClassInitializer());
         }

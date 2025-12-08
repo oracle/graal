@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub.registry;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -56,10 +55,9 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.perf.TimerCollection;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.internal.loader.BootLoader;
 import jdk.internal.misc.PreviewFeatures;
 
 /**
@@ -101,15 +99,8 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private static EconomicMap<String, String> computeBootPackageToModuleMap() {
-        Field moduleField = ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.NamedPackage"), "module");
         EconomicMap<String, String> bootPackageToModule = EconomicMap.create();
-        BootLoader.packages().forEach(p -> {
-            try {
-                bootPackageToModule.put(p.getName(), ((Module) moduleField.get(p)).getName());
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        });
+        JVMCIReflectionUtil.bootLoaderPackages().forEach(p -> bootPackageToModule.put(p.getName(), p.module().getName()));
         return bootPackageToModule;
     }
 
@@ -300,13 +291,17 @@ public final class ClassRegistries implements ParsingContext {
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
-        ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
-        Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
-        if (type == null) {
-            throw new NoClassDefFoundError(name);
-        }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) singleton().getRegistry(loader);
-        return registry.defineClass(type, b, off, len, info);
+        if (name != null) {
+            ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
+            Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
+            if (type == null) {
+                throw new NoClassDefFoundError(name);
+            }
+            return registry.defineClass(type, b, off, len, info);
+        } else {
+            return registry.defineClass(null, b, off, len, info);
+        }
     }
 
     @SuppressWarnings("unchecked")

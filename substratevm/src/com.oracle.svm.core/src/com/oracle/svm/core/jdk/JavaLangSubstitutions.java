@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicGenerationNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -76,9 +77,8 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicGenerationNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
 
@@ -470,21 +470,21 @@ final class Target_java_lang_Math {
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double sin(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.SIN);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.SIN);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double cos(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.COS);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.COS);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double tan(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TAN);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.TAN);
     }
 
     @Substitute
@@ -492,35 +492,35 @@ final class Target_java_lang_Math {
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     @TargetElement(onlyWith = IsAMD64.class)
     public static double tanh(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.TANH);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.TANH);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double log(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.LOG);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.LOG);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double log10(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.LOG10);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.LOG10);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double exp(double a) {
-        return UnaryMathIntrinsicNode.compute(a, UnaryOperation.EXP);
+        return UnaryMathIntrinsicGenerationNode.compute(a, UnaryOperation.EXP);
     }
 
     @Substitute
     @Uninterruptible(reason = "Must not contain a safepoint.")
     @SubstrateForeignCallTarget(fullyUninterruptible = true, stubCallingConvention = false)
     public static double pow(double a, double b) {
-        return BinaryMathIntrinsicNode.compute(a, b, BinaryOperation.POW);
+        return BinaryMathIntrinsicGenerationNode.compute(a, b, BinaryOperation.POW);
     }
 }
 

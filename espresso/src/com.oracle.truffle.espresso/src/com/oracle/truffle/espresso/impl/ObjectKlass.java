@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
-import static com.oracle.truffle.espresso.meta.Meta.isSignaturePolymorphicHolderType;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
@@ -64,6 +63,7 @@ import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
@@ -82,7 +82,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
-import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -100,7 +99,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Resolved non-primitive, non-array types in Espresso.
  */
-public final class ObjectKlass extends Klass {
+public final class ObjectKlass extends Klass implements AttributedElement {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
     public static final KlassVersion[] EMPTY_KLASSVERSION_ARRAY = new KlassVersion[0];
@@ -176,31 +175,33 @@ public final class ObjectKlass extends Klass {
     private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
     // endregion
 
-    public Attribute getAttribute(Symbol<Name> attrName) {
-        return getLinkedKlass().getAttribute(attrName);
+    @Override
+    public Attribute[] getAttributes() {
+        return getKlassVersion().getAttributes();
     }
 
     @SuppressWarnings("this-escape")
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), linkedKlass.getFlags(), linkedKlass.getParserKlass().getHiddenKlassId());
 
+        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
+
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
-        RuntimeConstantPool pool = new RuntimeConstantPool(linkedKlass.getConstantPool(), this);
-        definingClassLoader = classLoader;
-        this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
+        this.definingClassLoader = classLoader;
         this.klassVersion = new KlassVersion(pool, linkedKlass, superKlass, superInterfaces);
+        this.enclosingMethod = getAttribute(EnclosingMethodAttribute.NAME, EnclosingMethodAttribute.class);
 
         Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : Field.EMPTY_ARRAY;
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
-        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
-        staticFieldTable = new Field[lkStaticFields.length];
+        this.fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        this.staticFieldTable = new Field[lkStaticFields.length];
 
         assert fieldTable.length == linkedKlass.getFieldTableLength();
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
-        localFieldTableIndex = skFieldTable.length;
+        this.localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
             Field instanceField = new Field(klassVersion, lkInstanceFields[i], pool);
             fieldTable[localFieldTableIndex + i] = instanceField;
@@ -858,7 +859,7 @@ public final class ObjectKlass extends Klass {
     public Klass nest() {
         if (nest == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NestHostAttribute nestHost = (NestHostAttribute) getAttribute(NestHostAttribute.NAME);
+            NestHostAttribute nestHost = getAttribute(NestHostAttribute.NAME, NestHostAttribute.class);
             if (nestHost == null) {
                 nest = this;
             } else {
@@ -894,7 +895,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public boolean nestMembersCheck(Klass k) {
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null) {
             return false;
         }
@@ -911,7 +912,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public boolean isSealed() {
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
@@ -920,7 +921,7 @@ public final class ObjectKlass extends Klass {
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
         }
-        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        PermittedSubclassesAttribute permittedSubclasses = getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class);
         if (permittedSubclasses == null) {
             return true;
         }
@@ -946,7 +947,7 @@ public final class ObjectKlass extends Klass {
         if (this != nest()) {
             return nest().getNestMembers();
         }
-        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        NestMembersAttribute nestMembers = getAttribute(NestMembersAttribute.NAME, NestMembersAttribute.class);
         if (nestMembers == null || nestMembers.getClasses().length == 0) {
             return new Klass[]{nest()};
         }
@@ -1094,100 +1095,6 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    @TruffleBoundary
-    public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        assert isInterface();
-        /*
-         * 2. Otherwise, if C declares a method with the name and descriptor specified by the
-         * interface method reference, method lookup succeeds.
-         */
-        for (Method m : getDeclaredMethods()) {
-            if (methodName == m.getName() && signature == m.getRawSignature()) {
-                return m;
-            }
-        }
-        /*
-         * 3. Otherwise, if the class Object declares a method with the name and descriptor
-         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
-         * not have its ACC_STATIC flag set, method lookup succeeds.
-         */
-        assert getSuperKlass().getType() == Types.java_lang_Object;
-        Method m = getSuperKlass().lookupDeclaredMethod(methodName, signature);
-        if (m != null && m.isPublic() && !m.isStatic()) {
-            return m;
-        }
-
-        Method resolved = null;
-        /*
-         * Interfaces are sorted, superinterfaces first; traverse in reverse order to get
-         * maximally-specific first.
-         */
-        for (int i = getiKlassTable().length - 1; i >= 0; i--) {
-            ObjectKlass superInterf = getiKlassTable()[i].getKlass();
-            for (Method.MethodVersion superMVersion : superInterf.getInterfaceMethodsTable()) {
-                Method superM = superMVersion.getMethod();
-                /*
-                 * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
-                 * methods declared in superInterf.
-                 */
-                if (methodName == superM.getName() && signature == superM.getRawSignature()) {
-                    if (resolved == null) {
-                        resolved = superM;
-                    } else {
-                        /*
-                         * 4. Otherwise, if the maximally-specific superinterface methods
-                         * (&sect;5.4.3.3) of C for the name and descriptor specified by the method
-                         * reference include exactly one method that does not have its ACC_ABSTRACT
-                         * flag set, then this method is chosen and method lookup succeeds.
-                         *
-                         * 5. Otherwise, if any superinterface of C declares a method with the name
-                         * and descriptor specified by the method reference that has neither its
-                         * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
-                         * chosen and method lookup succeeds.
-                         */
-                        resolved = Method.resolveMaximallySpecific(resolved, superM).getMethod();
-                        if (resolved.getITableIndex() == -1) {
-                            /*
-                             * Multiple maximally specific: this method has a poison pill.
-                             *
-                             * NOTE: Since java 9, we can invokespecial interface methods (ie: a
-                             * call directly to the resolved method, rather than after an interface
-                             * lookup). We are looking up a method taken from the implemented
-                             * interface (and not from a currently non-existing itable of the
-                             * implementing interface). This difference, and the possibility of
-                             * invokespecial, means that we cannot return the looked up method
-                             * directly in case of multiple maximally specific method. thus, we
-                             * spawn a new proxy method, attached to no method table, just to fail
-                             * if invokespecial.
-                             */
-                            assert (resolved.identity() == superM.identity());
-                            resolved.setITableIndex(superM.getITableIndex());
-                        }
-                    }
-                }
-            }
-        }
-        return resolved;
-    }
-
-    @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        KLASS_LOOKUP_METHOD_COUNT.inc();
-        Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
-        if (method == null) {
-            // Implicit interface methods.
-            method = lookupMirandas(methodName, signature);
-        }
-        if (method == null && isSignaturePolymorphicHolderType(getType())) {
-            method = lookupPolysigMethod(methodName, signature, lookupMode);
-        }
-        if (method == null && getSuperKlass() != null) {
-            CompilerAsserts.partialEvaluationConstant(this);
-            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
-        }
-        return method;
-    }
-
     public Field[] getFieldTable() {
         if (!getContext().advancedRedefinitionEnabled()) {
             return fieldTable;
@@ -1230,19 +1137,6 @@ public final class ObjectKlass extends Klass {
             // Note that caller is responsible for filtering out removed fields
             return staticFieldTable;
         }
-    }
-
-    private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
-        if (getMirandaMethods() == null) {
-            return null;
-        }
-        for (Method.MethodVersion miranda : getMirandaMethods()) {
-            Method method = miranda.getMethod();
-            if (method.getName() == methodName && method.getRawSignature() == signature) {
-                return method;
-            }
-        }
-        return null;
     }
 
     void print(PrintStream out) {
@@ -1338,13 +1232,13 @@ public final class ObjectKlass extends Klass {
     }
 
     public boolean isRecord() {
-        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME) != null;
+        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME, RecordAttribute.class) != null;
     }
 
     @Override
     public String getGenericTypeAsString() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) getLinkedKlass().getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
@@ -1366,7 +1260,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public String getSourceDebugExtension() {
-        SourceDebugExtensionAttribute attribute = (SourceDebugExtensionAttribute) getAttribute(SourceDebugExtensionAttribute.NAME);
+        SourceDebugExtensionAttribute attribute = getAttribute(SourceDebugExtensionAttribute.NAME, SourceDebugExtensionAttribute.class);
         return attribute != null ? attribute.getDebugExtension() : null;
     }
 
@@ -1658,7 +1552,7 @@ public final class ObjectKlass extends Klass {
         return size;
     }
 
-    public final class KlassVersion {
+    public final class KlassVersion implements AttributedElement {
         final Assumption assumption;
         final RuntimeConstantPool pool;
         final LinkedKlass linkedKlass;
@@ -1687,7 +1581,7 @@ public final class ObjectKlass extends Klass {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             ParserMethod[] parserMethods = linkedKlass.getParserKlass().getMethods();
 
@@ -1730,7 +1624,7 @@ public final class ObjectKlass extends Klass {
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.modifiers = linkedKlass.getFlags();
-            this.innerClasses = (InnerClassesAttribute) linkedKlass.getAttribute(InnerClassesAttribute.NAME);
+            this.innerClasses = getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
             DetectedChange change = packet.detectedChange;
             this.superKlass = change.getSuperKlass();
@@ -1898,10 +1792,6 @@ public final class ObjectKlass extends Klass {
             return implementor;
         }
 
-        Object getAttribute(Symbol<Name> attrName) {
-            return linkedKlass.getAttribute(attrName);
-        }
-
         ConstantPool getConstantPool() {
             return pool;
         }
@@ -1999,7 +1889,7 @@ public final class ObjectKlass extends Klass {
         }
 
         public String getSourceFile() {
-            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Names.SourceFile);
+            SourceFileAttribute sfa = getAttribute(SourceFileAttribute.NAME, SourceFileAttribute.class);
             if (sfa == null) {
                 return null;
             }
@@ -2011,6 +1901,11 @@ public final class ObjectKlass extends Klass {
                 source = getContext().findOrCreateSource(ObjectKlass.this);
             }
             return source;
+        }
+
+        @Override
+        public Attribute[] getAttributes() {
+            return linkedKlass.getParserKlass().getAttributes();
         }
 
         @Override

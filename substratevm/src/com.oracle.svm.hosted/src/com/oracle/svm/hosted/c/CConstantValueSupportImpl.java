@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import java.lang.annotation.Annotation;
-import java.util.EnumSet;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,13 +34,15 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 
 import com.oracle.svm.core.c.enums.CEnumRuntimeData;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -51,7 +52,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class CConstantValueSupportImpl implements CConstantValueSupport, LayeredImageSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+public final class CConstantValueSupportImpl implements CConstantValueSupport {
     private final NativeLibraries nativeLibraries;
     private final MetaAccessProvider metaAccess;
 
@@ -133,19 +135,9 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport, L
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
 
-        if (method.getAnnotation(annotationClass) == null) {
+        if (AnnotationUtil.getAnnotation(method, annotationClass) == null) {
             throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + ClassUtil.getUnqualifiedName(annotationClass));
         }
         return method;
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        return PersistFlags.NOTHING;
     }
 }

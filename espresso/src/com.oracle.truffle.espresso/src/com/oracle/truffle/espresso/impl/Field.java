@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
@@ -29,11 +30,23 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
@@ -51,6 +64,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe;
 
 /**
  * Represents a resolved Espresso field.
@@ -81,7 +95,8 @@ import com.oracle.truffle.espresso.shared.meta.FieldAccess;
  * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
-public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, Method, Field> {
+@ExportLibrary(InteropLibrary.class)
+public class Field extends Member<Type> implements FieldRef, TruffleObject, FieldAccess<Klass, Method, Field>, AttributedElement {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
@@ -121,6 +136,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         return !holder.getAssumption().isValid();
     }
 
+    @Override
     public final Attribute[] getAttributes() {
         return linkedField.getParserField().getAttributes();
     }
@@ -128,7 +144,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     @SuppressWarnings("unchecked")
     public final Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
@@ -201,10 +217,6 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
                 typeKlassCache = tk;
             }
         }
-    }
-
-    public final Attribute getAttribute(Symbol<Name> attrName) {
-        return linkedField.getAttribute(attrName);
     }
 
     public static Field getReflectiveFieldRoot(StaticObject seed, Meta meta) {
@@ -1036,7 +1048,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     }
 
     public int getConstantValueIndex() {
-        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Names.ConstantValue);
+        ConstantValueAttribute a = getAttribute(ConstantValueAttribute.NAME, ConstantValueAttribute.class);
         if (a == null) {
             return 0;
         }
@@ -1082,5 +1094,87 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
             }
         }
     }
+
     // endregion jdwp-specific
+    private static final KeysArray<String> ALL_MEMBERS;
+    private static final Set<String> ALL_MEMBERS_SET;
+
+    static {
+        String[] members = {
+                        ReadMember.FLAGS,
+                        ReadMember.OFFSET,
+                        ReadMember.NAME,
+                        ReadMember.TYPE,
+        };
+        ALL_MEMBERS = new KeysArray<>(members);
+        ALL_MEMBERS_SET = Set.of(members);
+    }
+
+    @ExportMessage
+    abstract static class ReadMember {
+        static final String FLAGS = "flags";
+        static final String OFFSET = "offset";
+        static final String NAME = "name";
+        static final String TYPE = "type";
+
+        @Specialization(guards = "FLAGS.equals(member)")
+        static int getFlags(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getFlags();
+        }
+
+        @Specialization(guards = "OFFSET.equals(member)")
+        static int getOffset(Field receiver, @SuppressWarnings("unused") String member,
+                        @Bind Node node) {
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            return Target_sun_misc_Unsafe.getGuestFieldOffset(receiver, EspressoLanguage.get(node));
+        }
+
+        @Specialization(guards = "NAME.equals(member)")
+        static String getName(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getNameAsString();
+        }
+
+        @Specialization(guards = "TYPE.equals(member)")
+        static String getType(Field receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.getType().toString();
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public static Object doUnknown(Field receiver, String member) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("static-method")
+    public boolean isMemberReadable(String member) {
+        return ALL_MEMBERS_SET.contains(member);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return ALL_MEMBERS;
+    }
+
+    @ExportMessage
+    public TriState isIdenticalOrUndefined(Object other) {
+        return TriState.valueOf(this == other);
+    }
+
+    @ExportMessage
+    public int identityHashCode() {
+        return System.identityHashCode(this);
+    }
 }

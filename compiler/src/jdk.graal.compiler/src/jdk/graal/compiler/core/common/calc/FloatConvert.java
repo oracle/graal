@@ -94,6 +94,14 @@ public enum FloatConvert {
     }
 
     /**
+     * Returns {@code true} if this operation's input bit size is strictly larger than its output
+     * bit size.
+     */
+    public boolean isNarrowing() {
+        return inputBits > reverse().inputBits;
+    }
+
+    /**
      * Returns the conversion operation corresponding to a conversion from {@code from} to
      * {@code to}. Returns {@code null} if the given stamps don't correspond to a conversion
      * operation.

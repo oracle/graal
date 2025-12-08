@@ -24,18 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.internal.loader.ClassLoaderValue;
-import jdk.internal.loader.ClassLoaders;
-import jdk.internal.module.ServicesCatalog;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -43,6 +31,20 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.loader.ClassLoaders;
+import jdk.internal.module.ServicesCatalog;
 
 /**
  * <p>
@@ -83,9 +85,7 @@ public final class RuntimeClassLoaderValueSupport {
     @Platforms(Platform.HOSTED_ONLY.class) //
     public void update(List<ModuleLayer> runtimeModuleLayers) {
         for (ModuleLayer runtimeLayer : runtimeModuleLayers) {
-            Set<ClassLoader> loaders = runtimeLayer.modules().stream()
-                            .map(Module::getClassLoader)
-                            .collect(Collectors.toSet());
+            Set<ClassLoader> loaders = runtimeLayer.modules().stream().map(Module::getClassLoader).collect(Collectors.toSet());
             for (ClassLoader loader : loaders) {
                 bindRuntimeModuleLayerToLoader(runtimeLayer, loader);
                 registerServicesCatalog(loader);
@@ -101,7 +101,7 @@ public final class RuntimeClassLoaderValueSupport {
         if (loader == null) {
             return bootLoaderCLV;
         } else {
-            return classLoaderValueMaps.computeIfAbsent(loader, k -> new ConcurrentHashMap<>());
+            return classLoaderValueMaps.computeIfAbsent(loader, _ -> new ConcurrentHashMap<>());
         }
     }
 

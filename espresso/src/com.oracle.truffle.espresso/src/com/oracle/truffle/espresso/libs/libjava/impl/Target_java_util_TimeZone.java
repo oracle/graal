@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.libs.libjava.impl;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.TimeZone;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.libs.libjava.LibJava;
@@ -37,7 +36,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = TimeZone.class, group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_java_util_TimeZone {
     @Substitution
     @TruffleBoundary

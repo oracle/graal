@@ -60,7 +60,6 @@ import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -405,13 +404,13 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     @ExportLibrary(InteropLibrary.class)
     class OtherObject implements TruffleObject {
         @ExportMessage
-        final boolean hasLanguage() {
+        final boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
-        final Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage
@@ -438,13 +437,13 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }
 
         @ExportMessage
-        final boolean hasLanguage() {
+        final boolean hasLanguageId() {
             return true;
         }
 
         @ExportMessage
-        final Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
+        String getLanguageId() {
+            return ProxyLanguage.ID;
         }
 
         @ExportMessage

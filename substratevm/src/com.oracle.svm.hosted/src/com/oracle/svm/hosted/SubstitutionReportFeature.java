@@ -32,7 +32,7 @@ import java.util.function.Function;
 
 import jdk.graal.compiler.options.Option;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;

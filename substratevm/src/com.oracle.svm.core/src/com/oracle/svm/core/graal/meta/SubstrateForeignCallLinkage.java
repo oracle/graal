@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.meta;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.vm.ci.code.CodeCacheProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -72,7 +73,7 @@ public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
     }
 
     @Override
-    public long getMaxCallTargetOffset() {
+    public long getMaxCallTargetOffset(CodeCacheProvider codeCache) {
         return -1;
     }
 

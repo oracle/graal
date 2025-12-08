@@ -264,11 +264,17 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.SWAP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
-import com.oracle.svm.core.StaticFieldsSupport;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+import java.util.Objects;
+
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
@@ -285,6 +291,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -316,7 +323,7 @@ public final class Interpreter {
         int receiverSlot = hasReceiver ? 1 : 0;
         int curSlot = 0;
         if (hasReceiver) {
-            assert arguments[0] != null : "null receiver in init arguments !";
+            InterpreterUtil.assertion(arguments[0] != null, "null receiver in init arguments !");
             Object receiver = arguments[0];
             setLocalObject(frame, curSlot, receiver);
             curSlot += JavaKind.Object.getSlotCount();
@@ -363,21 +370,10 @@ public final class Interpreter {
     public static Object execute(InterpreterResolvedJavaMethod method, Object[] args, boolean forceStayInInterpreter) {
         InterpreterFrame frame = EspressoFrame.allocate(method.getMaxLocals(), method.getMaxStackSize(), args);
 
-        InterpreterUtil.guarantee(!method.isNative(), "trying to interpret native method %s", method);
+        InterpreterUtil.guarantee(!method.isNative() || method.getSignaturePolymorphicIntrinsic() != null, "trying to interpret native method %s", method);
 
         initializeFrame(frame, method);
         return execute0(method, frame, forceStayInInterpreter);
-    }
-
-    public static Object newInstance(InterpreterResolvedJavaMethod method, Object[] args) {
-        // this is a constructor call, so we have to allocate a new instance,
-        // expand this into args[0] and then execute
-        Object newReference = InterpreterToVM.createNewReference(method.getDeclaringClass());
-        Object[] finalArgs = new Object[args.length + 1];
-        finalArgs[0] = newReference;
-        System.arraycopy(args, 0, finalArgs, 1, args.length);
-        execute(method, finalArgs, false);
-        return newReference;
     }
 
     private static Object execute0(InterpreterResolvedJavaMethod method, InterpreterFrame frame, boolean stayInInterpreter) {
@@ -389,8 +385,13 @@ public final class Interpreter {
                 assert lockTarget != null;
                 InterpreterToVM.monitorEnter(frame, nullCheck(lockTarget));
             }
-            int startTop = startingStackOffset(method.getMaxLocals());
-            return Root.executeBodyFromBCI(frame, method, 0, startTop, stayInInterpreter);
+            SignaturePolymorphicIntrinsic intrinsic = method.getSignaturePolymorphicIntrinsic();
+            if (intrinsic != null) {
+                return IntrinsicRoot.execute(frame, method, intrinsic, stayInInterpreter);
+            } else {
+                int startTop = startingStackOffset(method.getMaxLocals());
+                return Root.executeBodyFromBCI(frame, method, 0, startTop, stayInInterpreter);
+            }
         } finally {
             InterpreterToVM.releaseInterpreterFrameLocks(frame);
         }
@@ -477,10 +478,155 @@ public final class Interpreter {
                         .string("/top=").unsigned(top).newline();
     }
 
-    public static final class Root {
+    private static void traceIntrinsicEnter(InterpreterResolvedJavaMethod method, int indent, SignaturePolymorphicIntrinsic intrinsic) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
 
+        setLogIndent(indent + 2);
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("[interp] Intrinsic Entered ") //
+                        .string(method.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(method.getName()) //
+                        .string(method.getSignature().toMethodDescriptor()) //
+                        .string(" with iid=").string(intrinsic.name()) //
+                        .newline();
+    }
+
+    private static void traceInvokeBasic(InterpreterResolvedJavaMethod target, int indent) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
+
+        traceInterpreter(" ".repeat(indent)) //
+                        .string("invokeBasic target=") //
+                        .string(target.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(target.getName()) //
+                        .string(target.getSignature().toMethodDescriptor()) //
+                        .newline();
+    }
+
+    private static void traceLinkTo(InterpreterResolvedJavaMethod target, SignaturePolymorphicIntrinsic intrinsic, int indent) {
+        /* arguments to Log methods might have side-effects */
+        if (!InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            return;
+        }
+
+        traceInterpreter(" ".repeat(indent)) //
+                        .string(intrinsic.name())
+                        .string(" target=") //
+                        .string(target.getDeclaringClass().getName()) //
+                        .string("::") //
+                        .string(target.getName()) //
+                        .string(target.getSignature().toMethodDescriptor()) //
+                        .newline();
+    }
+
+    public static final class IntrinsicRoot {
+        @NeverInline("needed far stack walking")
+        public static Object execute(InterpreterFrame frame, InterpreterResolvedJavaMethod method, SignaturePolymorphicIntrinsic intrinsic, boolean forceStayInInterpreter) {
+            int indent = getLogIndent();
+            traceIntrinsicEnter(method, indent, intrinsic);
+            return switch (intrinsic) {
+                case InvokeBasic -> {
+                    MethodHandle mh = (MethodHandle) EspressoFrame.getThis(frame);
+                    Target_java_lang_invoke_MemberName vmentry = MethodHandleInterpreterUtils.extractVMEntry(mh);
+                    InterpreterResolvedJavaMethod target = InterpreterResolvedJavaMethod.fromMemberName(vmentry);
+                    Object[] calleeArgs = frame.getArguments();
+                    // This should integrate with the debugger GR-70801
+                    boolean preferStayInInterpreter = forceStayInInterpreter;
+                    traceInvokeBasic(target, indent);
+                    try {
+                        yield InterpreterToVM.dispatchInvocation(target, calleeArgs, false, forceStayInInterpreter, preferStayInInterpreter, false, false);
+                    } catch (SemanticJavaException e) {
+                        throw uncheckedThrow(e.getCause());
+                    }
+                }
+                case LinkToStatic, LinkToSpecial, LinkToVirtual, LinkToInterface -> {
+                    InterpreterResolvedJavaMethod resolutionSeed = getLinkToTarget(frame);
+                    InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
+                    boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
+                    Object[] basicArgs = unbasic(frame, signature, hasReceiver);
+                    // This should integrate with the debugger GR-70801
+                    boolean preferStayInInterpreter = forceStayInInterpreter;
+                    traceLinkTo(resolutionSeed, intrinsic, indent);
+                    try {
+                        boolean isInvokeInterface = intrinsic == SignaturePolymorphicIntrinsic.LinkToInterface;
+                        boolean isVirtual = isInvokeInterface || intrinsic == SignaturePolymorphicIntrinsic.LinkToVirtual;
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, isInvokeInterface, false);
+                        yield rebasic(result, signature.getReturnKind());
+                    } catch (SemanticJavaException e) {
+                        throw uncheckedThrow(e.getCause());
+                    }
+                }
+                default -> throw VMError.shouldNotReachHere(Objects.toString(intrinsic));
+            };
+        }
+    }
+
+    private static InterpreterResolvedJavaMethod getLinkToTarget(InterpreterFrame frame) {
+        Object[] arguments = frame.getArguments();
+        Target_java_lang_invoke_MemberName memberName = (Target_java_lang_invoke_MemberName) arguments[arguments.length - 1];
+        return InterpreterResolvedJavaMethod.fromMemberName(memberName);
+    }
+
+    private static Object[] unbasic(InterpreterFrame frame, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
+        return unbasic(frame.getArguments(), targetSig, inclReceiver);
+    }
+
+    static Object[] unbasic(Object[] arguments, InterpreterUnresolvedSignature targetSig, boolean inclReceiver) {
+        int parameterCount = targetSig.getParameterCount(inclReceiver);
+        Object[] res = new Object[parameterCount];
+        int start = 0;
+        if (inclReceiver) {
+            res[start++] = arguments[0];
+        }
+        for (int i = start; i < parameterCount; i++) {
+            JavaKind kind = targetSig.getParameterKind(i - start);
+            res[i] = unbasic(arguments[i], kind);
+        }
+        return res;
+    }
+
+    // Transforms ints to sub-words
+    private static Object unbasic(Object arg, JavaKind kind) {
+        return switch (kind) {
+            case Boolean -> (int) arg != 0;
+            case Byte -> (byte) (int) arg;
+            case Char -> (char) (int) arg;
+            case Short -> (short) (int) arg;
+            default -> arg;
+        };
+    }
+
+    static Object rebasic(Object value, JavaKind returnType) {
+        // @formatter:off
+        return switch (returnType) {
+            case Boolean -> stackIntToBoolean((int) value);
+            case Byte    -> (byte) value;
+            case Short   -> (short) value;
+            case Char    -> (char) value;
+            case Int, Long, Float, Double, Object
+                         -> value;
+            case Void    -> null; // void
+            default      -> throw VMError.shouldNotReachHereAtRuntime();
+        };
+        // @formatter:on
+    }
+
+    public static final class Root {
+        @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
+
+            if (RistrettoProfileSupport.isEnabled()) {
+                RistrettoProfileSupport.profileMethodCall(method);
+            }
+
             int curBCI = startBCI;
             int top = startTop;
             byte[] code = method.getInterpretedCode();
@@ -1209,6 +1355,12 @@ public final class Interpreter {
                 String string = pool.resolveStringAt(cpi);
                 putObject(frame, top, string);
             }
+            case METHODTYPE -> {
+                putObject(frame, top, resolveMethodType(pool, method, opcode, cpi));
+            }
+            case METHODHANDLE -> {
+                putObject(frame, top, resolveMethodHandle(pool, method, opcode, cpi));
+            }
             case INVOKEDYNAMIC -> {
                 // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
@@ -1235,36 +1387,75 @@ public final class Interpreter {
                     boolean preferStayInInterpreter) {
         int invokeTop = top;
 
-        char cpi = BytecodeStream.readCPI2(code, curBCI);
-        InterpreterResolvedJavaMethod seedMethod = Interpreter.resolveMethod(method, opcode, cpi);
-
-        boolean hasReceiver = !seedMethod.isStatic();
+        InterpreterResolvedJavaMethod seedMethod;
         boolean isVirtual = opcode == INVOKEVIRTUAL || opcode == INVOKEINTERFACE;
 
         if (opcode == INVOKEDYNAMIC) {
-            int appendixCPI = BytecodeStream.readCPI4(code, curBCI) & 0xFFFF;
-            if (appendixCPI != 0) {
-                Object appendixEntry = method.getConstantPool().resolvedAt(appendixCPI, method.getDeclaringClass());
-                Object appendix;
+            int fullCPI = BytecodeStream.readCPI4(code, curBCI);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
+                // This can happen for the debugger
+                throw noSuchMethodError(opcode, null);
+            }
+            int indyCPI = fullCPI >>> 16;
+            int extraCPI = fullCPI & 0xFFFF;
+            Object indyEntry = method.getConstantPool().resolvedAt(indyCPI, method.getDeclaringClass());
+            Object appendix;
+            if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
+                // runtime-loaded case
+                if (extraCPI == 0) {
+                    // This call site is not linked yet
+                    try {
+                        extraCPI = invokeDynamicConstant.link((RuntimeInterpreterConstantPool) method.getConstantPool(), method.getDeclaringClass().getJavaClass(), method, curBCI);
+                        assert extraCPI != 0;
+                    } catch (Throwable e) {
+                        throw SemanticJavaException.raise(e);
+                    }
+                    BytecodeStream.patchIndyExtraCPI(code, curBCI, extraCPI);
+                    assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
+                    assert BytecodeStream.readCPI2(code, curBCI) == indyCPI;
+                }
+                CallSiteLink link = invokeDynamicConstant.getCallSiteLink(extraCPI);
+                while (!link.matchesCallSite(method, curBCI)) {
+                    /*
+                     * since the extra cpi read and write is not atomic, we might have read only 1
+                     * of the non-zero bytes. That is guaranteed to be <= the real extra CPI so it's
+                     * still safe to use in `getCallSiteLink`. `matchesCallSite` ensures we have the
+                     * full extraCPI.
+                     */
+                    extraCPI = BytecodeStream.readIndyExtraCPIVolatile(code, curBCI);
+                    link = invokeDynamicConstant.getCallSiteLink(extraCPI);
+                }
+                if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {
+                    appendix = successfulCallSiteLink.getUnboxedAppendix();
+                    seedMethod = successfulCallSiteLink.getInvoker();
+                } else {
+                    throw SemanticJavaException.raise(((FailedCallSiteLink) link).getFailure());
+                }
+            } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
+                // AOT case
+                seedMethod = entryMethod;
+                Object appendixEntry = method.getConstantPool().resolvedAt(extraCPI, method.getDeclaringClass());
                 if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
                     // The appendix is deliberately null.
                     appendix = null;
-                } else {
-                    if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
-                        appendix = referenceConstant.getReferent();
-                    } else {
-                        throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
-                    }
+                } else if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
+                    appendix = referenceConstant.getReferent();
                     if (appendix == null) {
                         throw SemanticJavaException.raise(new IncompatibleClassChangeError("INVOKEDYNAMIC appendix was not included in the image heap"));
                     }
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
                 }
-                EspressoFrame.putObject(callerFrame, top, appendix);
-                invokeTop = top + 1;
             } else {
-                throw VMError.shouldNotReachHere("Appendix-less INVOKEDYNAMIC");
+                throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC constant: " + indyEntry);
             }
+            EspressoFrame.putObject(callerFrame, top, appendix);
+            invokeTop = top + 1;
+        } else {
+            char cpi = BytecodeStream.readCPI2(code, curBCI);
+            seedMethod = Interpreter.resolveMethod(method, opcode, cpi);
         }
+        boolean hasReceiver = !seedMethod.isStatic();
 
         InterpreterUnresolvedSignature seedSignature = seedMethod.getSignature();
         int resultAt = invokeTop - seedSignature.slotsForParameters(hasReceiver);
@@ -1275,12 +1466,30 @@ public final class Interpreter {
         if (!seedMethod.isStatic()) {
             nullCheck(calleeArgs[0]);
         }
-        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE);
+        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);
 
         retStackEffect += EspressoFrame.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
 
         /* instructions have fixed stack effect encoded */
         return retStackEffect - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private static MethodType resolveMethodType(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == LDC || opcode == LDC_W;
+        try {
+            return pool.resolvedMethodTypeAt(cpi, method.getDeclaringClass());
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
+    }
+
+    private static MethodHandle resolveMethodHandle(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+        assert opcode == LDC || opcode == LDC_W;
+        try {
+            return pool.resolvedMethodHandleAt(cpi, method.getDeclaringClass());
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
+        }
     }
 
     // region Class/Method/Field resolution
@@ -1299,9 +1508,8 @@ public final class Interpreter {
                 missingType = unresolvedJavaType;
             }
             throw noClassDefFoundError(opcode, missingType);
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1314,14 +1522,12 @@ public final class Interpreter {
             return getConstantPool(method).resolvedTypeAt(method.getDeclaringClass(), cpi);
         } catch (UnsupportedResolutionException e) {
             return null;
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            // Unrelated to resolution, just propagate the error.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
-    private static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    public static InterpreterResolvedJavaMethod resolveMethod(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
         assert Bytecodes.isInvoke(opcode);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noSuchMethodError(opcode, null);
@@ -1335,9 +1541,8 @@ public final class Interpreter {
                 missingMethod = unresolvedJavaMethod;
             }
             throw noSuchMethodError(opcode, missingMethod);
-        } catch (ClassFormatError e) {
-            // Out-of-bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1355,9 +1560,8 @@ public final class Interpreter {
                 missingField = unresolvedJavaField;
             }
             throw noSuchFieldError(opcode, missingField);
-        } catch (ClassFormatError e) {
-            // Out of bounds CPI or mis-matching tag.
-            throw SemanticJavaException.raise(e);
+        } catch (Throwable t) {
+            throw SemanticJavaException.raise(t);
         }
     }
 
@@ -1503,8 +1707,7 @@ public final class Interpreter {
 
         int slotCount = kind.getSlotCount();
         Object receiver = (opcode == PUTSTATIC)
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - slotCount - 1));
 
         if (field.isStatic()) {
@@ -1547,8 +1750,7 @@ public final class Interpreter {
         assert kind != JavaKind.Illegal;
 
         Object receiver = opcode == GETSTATIC
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
-                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
+                        ? field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum())
                         : nullCheck(popObject(frame, top - 1));
 
         if (field.isStatic()) {

@@ -160,11 +160,6 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
-    default Value emitMathSinh(Value input) {
-        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @SuppressWarnings("unused")
     default Value emitMathTan(Value input) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
@@ -190,22 +185,22 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
-    default Value emitMathMax(Value x, Value y) {
+    default Value emitMathMax(LIRKind cmpKind, Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
-    default Value emitMathMin(Value x, Value y) {
+    default Value emitMathMin(LIRKind cmpKind, Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
-    default Value emitMathUnsignedMax(Value x, Value y) {
+    default Value emitMathUnsignedMax(LIRKind cmpKind, Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
-    default Value emitMathUnsignedMin(Value x, Value y) {
+    default Value emitMathUnsignedMin(LIRKind cmpKind, Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 

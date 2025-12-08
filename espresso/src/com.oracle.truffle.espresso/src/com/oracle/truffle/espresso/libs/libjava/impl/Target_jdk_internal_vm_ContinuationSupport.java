@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.libs.libjava.LibJava;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(type = "Ljdk/internal/vm/ContinuationSupport;", group = LibJava.class)
+@EspressoSubstitutions(group = LibJava.class)
 public final class Target_jdk_internal_vm_ContinuationSupport {
     @Substitution
     public static boolean isSupported0() {

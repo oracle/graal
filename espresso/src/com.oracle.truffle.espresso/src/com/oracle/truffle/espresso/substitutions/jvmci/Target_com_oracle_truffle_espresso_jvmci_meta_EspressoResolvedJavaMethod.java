@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions.jvmci;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIUnresolvedType;
+import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.getRawAnnotationBytes;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
 import java.lang.reflect.Executable;
@@ -51,7 +52,7 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jvmci.JVMCIIndyData;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -399,5 +400,19 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
         return method.getAttribute(Names.RuntimeVisibleAnnotations) != null;
+    }
+
+    @Substitution(hasReceiver = true)
+    abstract static class GetRawAnnotationBytes extends SubstitutionNode {
+        abstract @JavaType(byte[].class) StaticObject execute(StaticObject self, int category);
+
+        @Specialization
+        static StaticObject doDefault(StaticObject self, int category,
+                        @Bind("getContext()") EspressoContext context) {
+            assert context.getLanguage().isInternalJVMCIEnabled();
+            Meta meta = context.getMeta();
+            Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
+            return getRawAnnotationBytes(method, category, meta);
+        }
     }
 }

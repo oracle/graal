@@ -44,6 +44,17 @@ public class CommandGroup<C extends Command> extends OptionValue<C> {
     }
 
     /**
+     * Constructs an optional command argument with a specific default command.
+     *
+     * @param name the name of the command group
+     * @param defaultCommand the command selected by default
+     * @param help the help message
+     */
+    public CommandGroup(String name, C defaultCommand, String help) {
+        super(name, defaultCommand, help);
+    }
+
+    /**
      * Parses and updates the selected subcommand based on {@code args[offset]}.
      *
      * @see Command#parse(String[], int)

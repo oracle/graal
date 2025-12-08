@@ -30,13 +30,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
@@ -50,8 +50,6 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.heap.TypeData;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -60,6 +58,8 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -67,11 +67,14 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
@@ -167,7 +170,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private final AnalysisType[] interfaces;
     private AnalysisMethod[] declaredMethods;
-    private Set<AnalysisMethod> dispatchTableMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -218,6 +220,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * class file and therefore not in the list of declared methods.
      */
     @SuppressWarnings("unused") private volatile Object overrideableMethods;
+
+    private volatile AnalysisType arrayClass = null;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<AnalysisType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private volatile List<AnalysisType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -433,8 +446,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                  * doing the actual merging, ensures that concurrent updates to the flow are still
                  * merged correctly.
                  */
-                if (constantObject instanceof ConstantContextSensitiveObject) {
-                    ConstantContextSensitiveObject ct = (ConstantContextSensitiveObject) constantObject;
+                if (constantObject instanceof ConstantContextSensitiveObject ct) {
                     ct.setMergedWithUniqueConstantObject();
                     ct.mergeInstanceFieldsFlows(bb, uniqueConstant);
                 }
@@ -629,6 +641,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * Ignore missing type errors. The build process should not fail if the incomplete type
              * is not reached through other paths.
              */
+        }
+        /*
+         * Track fields of tracked types to ensure the analysis results are transferred across
+         * layers. This is important for things such as object layout decisions made in later
+         * layers.
+         */
+        for (var field : getInstanceFields(true)) {
+            ((AnalysisField) field).registerAsTrackedAcrossLayers(reason);
+        }
+        for (var field : getStaticFields()) {
+            ((AnalysisField) field).registerAsTrackedAcrossLayers(reason);
         }
     }
 
@@ -949,14 +972,31 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    private volatile AnalysisType arrayClass = null;
-
     @Override
     public final AnalysisType getArrayClass() {
         if (arrayClass == null) {
             arrayClass = universe.lookup(wrapped.getArrayClass());
         }
         return arrayClass;
+    }
+
+    @Override
+    public boolean isHidden() {
+        return wrapped.isHidden();
+    }
+
+    @Override
+    public List<? extends AnalysisType> getPermittedSubclasses() {
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            List<? extends JavaType> wrappedPermittedSubclasses = wrapped.getPermittedSubclasses();
+            permittedSubclasses = wrappedPermittedSubclasses == null ? null : wrappedPermittedSubclasses.stream().map(universe::lookup).collect(Collectors.toUnmodifiableList());
+        }
+        return permittedSubclasses;
+    }
+
+    @Override
+    public AnalysisType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return universe.lookup(wrapped.lookupType(unresolvedJavaType, resolve));
     }
 
     @Override
@@ -967,6 +1007,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isEnum() {
         return wrapped.isEnum();
+    }
+
+    @Override
+    public boolean isRecord() {
+        return wrapped.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return wrapped.getRecordComponents();
     }
 
     @Override
@@ -1297,6 +1347,20 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
+    public AnalysisMethod getEnclosingMethod() {
+        return universe.lookup(wrapped.getEnclosingMethod());
+    }
+
+    @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        ResolvedJavaType[] declaredTypes = wrapped.getDeclaredTypes();
+        for (int i = 0; i < declaredTypes.length; i++) {
+            declaredTypes[i] = universe.lookup(declaredTypes[i]);
+        }
+        return declaredTypes;
+    }
+
+    @Override
     public AnalysisMethod[] getDeclaredMethods() {
         return getDeclaredMethods(true);
     }
@@ -1331,63 +1395,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
-    }
-
-    public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
-        return dispatchTableMethods != null;
-    }
-
-    public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
-        Objects.requireNonNull(dispatchTableMethods);
-        return dispatchTableMethods;
-    }
-
-    /*
-     * Calculates all methods in this class which should be included in its dispatch table.
-     */
-    public Set<AnalysisMethod> getOrCalculateOpenTypeWorldDispatchTableMethods() {
-        if (dispatchTableMethods != null) {
-            return dispatchTableMethods;
-        }
-        if (isPrimitive()) {
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-        if (getWrapped() instanceof BaseLayerType) {
-            // GR-58587 implement proper support.
-            dispatchTableMethods = Set.of();
-            return dispatchTableMethods;
-        }
-
-        var resultSet = new HashSet<AnalysisMethod>();
-        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
-            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
-            if (m.isStatic()) {
-                /* Only looking at member methods */
-                continue;
-            }
-            try {
-                AnalysisMethod aMethod = universe.lookup(m);
-                assert aMethod != null : m;
-                resultSet.add(aMethod);
-            } catch (UnsupportedFeatureException t) {
-                /*
-                 * Methods which are deleted or not available on this platform will throw an error
-                 * during lookup - ignore and continue execution
-                 *
-                 * Note it is not simple to create a check to determine whether calling
-                 * universe#lookup will trigger an error by creating an analysis object for a type
-                 * not supported on this platform, as creating a method requires, in addition to the
-                 * types of its return type and parameters, all of the super types of its return and
-                 * parameters to be created as well.
-                 */
-            }
-        }
-
-        // ensure result is fully visible across threads
-        VarHandle.storeStoreFence();
-        dispatchTableMethods = resultSet;
-        return dispatchTableMethods;
     }
 
     @Override
@@ -1432,12 +1439,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isCloneableWithAllocation() {
         return isCloneableWithAllocation;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public ResolvedJavaType getHostClass() {
-        return universe.lookup(wrapped.getHostClass());
     }
 
     @Override

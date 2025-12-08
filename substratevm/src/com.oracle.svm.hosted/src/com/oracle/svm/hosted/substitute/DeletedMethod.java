@@ -26,18 +26,19 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -53,16 +54,16 @@ public class DeletedMethod extends CustomSubstitutionMethod {
                     SubstrateOptionsParser.HOSTED_OPTION_PREFIX);
 
     private final String message;
-    private final AnnotationValue[] injectedAnnotations;
+    private final List<AnnotationValue> injectedAnnotations;
 
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
         super(original);
         this.message = deleteAnnotation.value();
-        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(deleteAnnotation);
+        this.injectedAnnotations = List.of(AnnotationUtil.asAnnotationValue(deleteAnnotation));
     }
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return injectedAnnotations;
     }
 

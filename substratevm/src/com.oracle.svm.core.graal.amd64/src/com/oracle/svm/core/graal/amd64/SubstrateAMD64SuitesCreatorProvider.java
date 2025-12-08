@@ -24,10 +24,15 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+
 import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
-
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class SubstrateAMD64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAMD64SuitesCreatorProvider() {
         super(new AMD64SubstrateSuitesCreator(getHostedCompilerConfiguration()),

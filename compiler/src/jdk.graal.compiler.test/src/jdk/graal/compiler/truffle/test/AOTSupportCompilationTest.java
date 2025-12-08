@@ -24,11 +24,9 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Test;
-import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.dsl.test.AOTSupportTest;
 import com.oracle.truffle.api.dsl.test.AOTSupportTest.AOTDynamicDispatch;
@@ -43,6 +41,9 @@ import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibrarySin
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 
 public class AOTSupportCompilationTest extends PartialEvaluationTest {
 
@@ -120,7 +121,7 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
         return root;
     }
 
-    @TearDown
+    @After
     public void tearDown() {
         context.close();
     }

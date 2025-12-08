@@ -42,11 +42,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -63,6 +61,7 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
@@ -81,8 +80,11 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Assembler;
@@ -292,6 +294,9 @@ public class CompileQueue {
         public void beforeEncode(HostedMethod method, StructuredGraph graph, HighTierContext context) {
         }
 
+        public void beforeCompile() {
+        }
+
         @SuppressWarnings("unused")
         public void afterMethodCompile(HostedMethod method, StructuredGraph graph) {
         }
@@ -419,11 +424,10 @@ public class CompileQueue {
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true, new GraphEncoder(ConfigurationValues.getTarget().arch));
     }
 
-    @SuppressWarnings("try")
     public void finish(DebugContext debug) {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printParsing()) {
                 parseAll();
             }
 
@@ -449,7 +453,7 @@ public class CompileQueue {
             if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
                 ImageSingletons.lookup(HostedHeapDumpFeature.class).beforeInlining();
             }
-            try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printInlining()) {
                 inlineTrivialMethods(debug);
             }
             if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
@@ -458,7 +462,8 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
+            try (ProgressReporter.ReporterClosable _ = reporter.printCompiling()) {
+                notifyBeforeCompile();
                 compileAll();
                 notifyAfterCompile();
             }
@@ -747,14 +752,13 @@ public class CompileQueue {
         return !method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(graph);
     }
 
-    @SuppressWarnings("try")
     protected void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
         int round = 0;
         do {
             ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
-            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
+            try (Indent _ = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
                 runOnExecutor(() -> {
                     universe.getMethods().forEach(method -> {
                         assert method.isOriginalMethod();
@@ -839,7 +843,6 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
          * Before doing any work, check if there is any potential for inlining.
@@ -860,7 +863,7 @@ public class CompileQueue {
         }
         var providers = runtimeConfig.lookupBackend(method).getProviders();
         var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
-        try (var s = debug.scope("InlineTrivial", graph, method, this)) {
+        try (var _ = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
             new TrivialInlinePhase(decoder, method).apply(graph);
@@ -897,7 +900,7 @@ public class CompileQueue {
     }
 
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
-        if (!SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
+        if (!LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
             /*
              * We have compiled this method in a prior layer or this method's compilation is delayed
              * to the application layer, but don't have the graph available here.
@@ -930,7 +933,7 @@ public class CompileQueue {
          * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
          * more inlining restrictions and this code can be removed.
          */
-        RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
+        RestrictHeapAccess annotation = AnnotationUtil.getAnnotation(method, RestrictHeapAccess.class);
         return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
@@ -941,7 +944,7 @@ public class CompileQueue {
     private static <T extends Annotation> T getCallerAnnotation(Invoke invoke, Class<T> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
             assert state.getMethod() != null : state;
-            T annotation = state.getMethod().getAnnotation(annotationClass);
+            T annotation = AnnotationUtil.getAnnotation(state.getMethod(), annotationClass);
             if (annotation != null) {
                 return annotation;
             }
@@ -951,6 +954,12 @@ public class CompileQueue {
 
     protected CompileTask createCompileTask(HostedMethod method, CompileReason reason) {
         return new CompileTask(method, reason);
+    }
+
+    private void notifyBeforeCompile() {
+        for (Policy policy : this.policies) {
+            policy.beforeCompile();
+        }
     }
 
     protected void compileAll() throws InterruptedException {
@@ -1044,7 +1053,7 @@ public class CompileQueue {
             return;
         }
 
-        if (!allowFoldMethods && method.getAnnotation(Fold.class) != null && !isFoldInvocationPluginMethod(callerMethod)) {
+        if (!allowFoldMethods && AnnotationUtil.getAnnotation(method, Fold.class) != null && !isFoldInvocationPluginMethod(callerMethod)) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @%s: %s. " +
                             "This could happen if either: the Graal annotation processor was not executed on the parent-project of the method's declaring class, " +
                             "the arguments passed to the method were not compile-time constants, or the plugin was disabled by the corresponding %s.",
@@ -1097,9 +1106,8 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
-        if (method.getAnnotation(NodeIntrinsic.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
@@ -1108,7 +1116,7 @@ public class CompileQueue {
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
 
         StructuredGraph graph = graphTransplanter.transplantGraph(debug, method, reason);
-        try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
+        try (DebugContext.Scope _ = debug.scope("Parsing", graph, method, this)) {
 
             try {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
@@ -1205,10 +1213,10 @@ public class CompileQueue {
             return false;
         }
 
-        if (callee.getAnnotation(Specialize.class) != null) {
+        if (AnnotationUtil.getAnnotation(callee, Specialize.class) != null) {
             return false;
         }
-        if (callerAnnotatedWith(invoke, Specialize.class) && callee.getAnnotation(DeoptTest.class) != null) {
+        if (callerAnnotatedWith(invoke, Specialize.class) && AnnotationUtil.getAnnotation(callee, DeoptTest.class) != null) {
             return false;
         }
 
@@ -1229,7 +1237,7 @@ public class CompileQueue {
     }
 
     private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
-        if (method.getAnnotation(Specialize.class) != null && !method.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
+        if (AnnotationUtil.getAnnotation(method, Specialize.class) != null && !method.isDeoptTarget() && AnnotationUtil.getAnnotation(invokeTarget, DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
              */
@@ -1356,7 +1364,6 @@ public class CompileQueue {
         }
     }
 
-    @SuppressWarnings("try")
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config,
                     boolean fallback) {
 
@@ -1390,8 +1397,8 @@ public class CompileQueue {
             /* Check that graph is in good shape before compilation. */
             assert GraphOrder.assertSchedulableGraph(graph);
 
-            try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this);
-                            DebugCloseable b = GraalServices.GCTimerScope.create(debug)) {
+            try (DebugContext.Scope _ = debug.scope("Compiling", graph, method, this);
+                            DebugCloseable _ = GraalServices.GCTimerScope.create(debug)) {
 
                 if (deoptimizeAll && method.compilationInfo.canDeoptForTesting) {
                     DeoptimizationUtils.insertDeoptTests(method, graph);
@@ -1423,7 +1430,7 @@ public class CompileQueue {
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
-                try (Indent indent = debug.logAndIndent("compile %s", method)) {
+                try (Indent _ = debug.logAndIndent("compile %s", method)) {
                     Providers providers = backend.getProviders();
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts();
                     GraalCompiler.compile(new GraalCompiler.Request<>(graph,

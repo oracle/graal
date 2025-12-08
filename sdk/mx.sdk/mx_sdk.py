@@ -54,6 +54,7 @@ import argparse
 import datetime
 import shutil
 import tempfile
+from typing import Iterable, Tuple
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
 
@@ -200,6 +201,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
 def mx_post_parse_cmd_line(args):
     mx_sdk_vm_impl.mx_post_parse_cmd_line(args)
+    mx_sdk_benchmark.register_graalvm_vms()
 
 
 mx.update_commands(_suite, {
@@ -260,6 +262,116 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    vendor_info=vendor_info,
                                    use_upgrade_module_path=use_upgrade_module_path,
                                    default_to_jvmci=default_to_jvmci)
+
+
+def create_jsonschema_validator(schema_path):
+    """Create and return a jsonschema Validator for the schema at the given file path. Abort on missing jsonschema or invalid schema."""
+    import json
+    try:
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+    except json.JSONDecodeError as e:
+        mx.abort(f'Failed to parse JSON in schema file "{schema_path}" at line {e.lineno}, column {e.colno}: {e.msg}')
+    except OSError as e:
+        mx.abort(f'I/O error when opening schema file "{schema_path}": {e}')
+
+    try:
+        import jsonschema  # type: ignore
+    except ImportError as e:
+        mx.abort(
+            'Python module "jsonschema" is required to validate reachability metadata but was not found. '
+            'Install it with: \n\npython3 -m pip install --user jsonschema \n\n or \n\npip3 install jsonschema\n\n'
+            f'Original error: {e}')
+    try:
+        if hasattr(jsonschema, 'Draft202012Validator'):
+            return jsonschema.Draft202012Validator(schema)  # type: ignore[attr-defined]
+        else:
+            return jsonschema.Draft7Validator(schema)  # type: ignore
+    except (jsonschema.exceptions.SchemaError, TypeError) as e:
+        mx.abort(f'Invalid reachability metadata schema: {e}')
+
+
+def validate_json_file_with_validator(validator, file_path):
+    """Validates a JSON file against the provided Validator. Returns a list of detailed error strings; empty if valid."""
+    import json
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        mx.abort(f'Invalid JSON syntax at line {e.lineno}, column {e.colno}: {e.msg}')
+    except OSError as e:
+        mx.abort(f'I/O error: {e}')
+
+    # Use jsonschema's ValidationError string representation to produce messages in the form:
+    # Failed validating '<validator>' in schema[...] :
+    #     { ... failing subschema ... }
+    #
+    # On instance[...] :
+    #     <offending instance>
+    errors = []
+    for err in validator.iter_errors(data):
+        errors.append(str(err))
+    return errors
+
+
+def validate_dir_files_with_file_schema_pairs(schemas_dir: str, dir_with_json: str, json_and_schema_file_pairs: Iterable[Tuple[str, str]]) -> None:
+    """
+    Validate JSON files in a directory against corresponding JSON Schemas.
+
+    This scans the given directory for each JSON filename listed in json_and_schema_file_pairs.
+    For every file that exists, it validates the file against the associated schema located in
+    the Native Image docs assets directory. Validation uses a pre-built jsonschema.Validator
+    per schema to ensure consistent behavior and error reporting.
+
+    Parameters:
+    - schema_dir: Directory containing all schemas for a project.
+    - dir_with_json: Directory path containing JSON files to validate.
+    - json_and_schema_file_pairs: Iterable of (json_filename, schema_filename) pairs.
+
+    Behavior:
+    - Logs each validation attempt.
+    - Accumulates all validation errors across files.
+    - Calls mx.abort with a detailed message if any error is found; otherwise returns None.
+    """
+    # Build validators for all known schema files using CE helper to ensure uniform behavior and error reporting.
+    validators = {}
+    for _, schema_file in json_and_schema_file_pairs:
+        schema_path = os.path.join(schemas_dir, schema_file)
+        validators[schema_file] = create_jsonschema_validator(schema_path)
+
+    validation_errors_by_file = {}
+    for json_filename, schema_file in json_and_schema_file_pairs:
+        json_path = os.path.join(dir_with_json, json_filename)
+        if os.path.exists(json_path):
+            mx.log(f'Validating {json_path} against {schema_file}...')
+            errs = validate_json_file_with_validator(validators[schema_file], json_path)
+            if errs:
+                validation_errors_by_file[(json_path, schema_file)] = errs
+
+    if validation_errors_by_file:
+        sections = []
+        for (json_path, schema_file), errs in validation_errors_by_file.items():
+            header = (
+                "-------------------------------------------------------------------------------\n"
+                f"File:   {json_path}\n"
+                f"Schema: {schema_file}\n"
+                "-------------------------------------------------------------------------------"
+            )
+            sections.append(header + "\n\n" + "\n\n".join(errs))
+        msg = "Unable to validate JSON file(s) against the schema:\n\n" + "\n\n".join(sections)
+        mx.abort(msg)
+    # Validate any present config files
+    validation_errors = []
+    for json_filename, schema_file in json_and_schema_file_pairs:
+        json_path = os.path.join(dir_with_json, json_filename)
+        if os.path.exists(json_path):
+            mx.log(f'Validating {json_path} against {schema_file}...')
+            errs = validate_json_file_with_validator(validators[schema_file], json_path)
+            validation_errors.extend(errs)
+
+    if validation_errors:
+        mx.abort('Unable to validate JSON file against the schema:\n\n' + '\n\n'.join(validation_errors))
+
 
 class GraalVMJDKConfig(mx.JDKConfig):
 

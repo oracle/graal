@@ -41,8 +41,6 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-//JaCoCo Exclude
-
 public final class HotSpotConstantReflectionProviderProxy extends HotSpotConstantReflectionProvider implements CompilationProxy {
     private final InvocationHandler handler;
 

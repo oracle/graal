@@ -24,7 +24,15 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -35,13 +43,6 @@ import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
-import java.util.ArrayList;
 
 /**
  * Instances of this class are used to represent the reflection metadata for Dynamic hubs loaded at
@@ -63,6 +64,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         return type.getModifiers();
     }
 
+    @Override
     public Field[] getDeclaredFields(DynamicHub declaringClass, boolean publicOnly, @SuppressWarnings("unused") int layerNum) {
         ArrayList<Field> result = new ArrayList<>();
         includeFields(declaringClass, publicOnly, type.getDeclaredFields(), result);
@@ -79,7 +81,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     private static Field fromResolvedField(DynamicHub declaringClass, CremaResolvedJavaField resolvedField) {
         return ReflectionObjectFactory.newField(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),
                         resolvedField.getName(),
                         toClassOrThrow(resolvedField.getType(), resolvedField.getDeclaringClass()),
@@ -108,7 +110,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
         Class<?> receiverType = DynamicHub.toClass(declaringClass);
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedJavaMethod.getSignature().toParameterTypes(null), type);
         return ReflectionObjectFactory.newMethod(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         receiverType,
                         resolvedJavaMethod.getName(),
                         parameterTypes,
@@ -146,7 +148,7 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
     private Constructor<?> fromResolvedConstructor(DynamicHub declaringClass, CremaResolvedJavaMethod resolvedConstructor) {
         Class<?>[] parameterTypes = toClassArrayOrThrow(resolvedConstructor.toParameterTypes(), type);
         return ReflectionObjectFactory.newConstructor(
-                        RuntimeConditionSet.unmodifiableEmptySet(),
+                        RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata(),
                         DynamicHub.toClass(declaringClass),
                         parameterTypes,
                         /* (GR-69097) resolvedConstructor.getDeclaredExceptions() */
@@ -166,12 +168,12 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
 
     @Override
     public RecordComponent[] getRecordComponents(DynamicHub declaringClass, @SuppressWarnings("unused") int layerNum) {
-        CremaResolvedJavaRecordComponent[] recordComponents = type.getRecordComponents();
-        RecordComponent[] result = new RecordComponent[recordComponents.length];
+        List<? extends CremaResolvedJavaRecordComponent> recordComponents = type.getRecordComponents();
+        RecordComponent[] result = new RecordComponent[recordComponents.size()];
         Class<?> clazz = DynamicHub.toClass(declaringClass);
 
-        for (int i = 0; i < recordComponents.length; i++) {
-            CremaResolvedJavaRecordComponent recordComponent = recordComponents[i];
+        for (int i = 0; i < recordComponents.size(); i++) {
+            CremaResolvedJavaRecordComponent recordComponent = recordComponents.get(i);
             result[i] = ReflectionObjectFactory.newRecordComponent(
                             clazz,
                             recordComponent.getName(),

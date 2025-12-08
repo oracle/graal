@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -78,7 +80,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
 
     private void verifyHub(SVMHost svmHost, ObjectScanner objectScanner, AnalysisType type) {
         JavaConstant hubConstant = bb.getSnippetReflectionProvider().forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
+        ScanReason reason = new OtherReason("Manual hub rescan for " + type.getName() + " triggered from " + SVMImageHeapVerifier.class);
+        objectScanner.scanConstant(hubConstant, reason);
     }
 
     private SVMHost svmHost() {

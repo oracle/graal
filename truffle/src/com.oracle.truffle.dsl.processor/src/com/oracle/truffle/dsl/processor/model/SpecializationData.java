@@ -175,13 +175,17 @@ public final class SpecializationData extends TemplateMethod {
         }
         int signatureIndex = 0;
         List<TypeGuard> implicitTypeChecks = new ArrayList<>();
-        for (Parameter p : getDynamicParameters()) {
+        for (Parameter p : getSignatureParameters()) {
             if (typeSystem.hasImplicitSourceTypes(p.getType())) {
                 implicitTypeChecks.add(new TypeGuard(typeSystem, p.getType(), signatureIndex));
             }
             signatureIndex++;
         }
         return implicitTypeChecks;
+    }
+
+    public boolean isImplicitTypeGuard(TypeGuard typeGuard) {
+        return getNode().getTypeSystem().hasImplicitSourceTypes(typeGuard.getType());
     }
 
     public boolean isNodeReceiverVariable(VariableElement var) {
@@ -759,17 +763,35 @@ public final class SpecializationData extends TemplateMethod {
         return FlatNodeGenFactory.useSpecializationClass(this);
     }
 
-    private boolean isImplicitTypeGuardUsed(TypeGuard guard) {
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard, ExecutableTypeData inExecutable) {
+        if (!isImplicitTypeGuard(guard)) {
+            return false;
+        }
         int signatureIndex = guard.getSignatureIndex();
+        List<Parameter> specializationSignature = getSignatureParameters();
+        if (signatureIndex >= specializationSignature.size()) {
+            return false;
+        }
+
+        TypeMirror specializationType = specializationSignature.get(signatureIndex).getType();
+        if (!ElementUtils.typeEquals(guard.getType(), specializationType)) {
+            return false;
+        }
+
+        List<TypeMirror> parameters = inExecutable.getSignatureParameters();
+        if (signatureIndex >= parameters.size()) {
+            return true;
+        }
+        TypeMirror evaluatedParameter = parameters.get(signatureIndex);
+        if (ElementUtils.typeEquals(evaluatedParameter, specializationType)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isImplicitTypeGuardUsed(TypeGuard guard) {
         for (ExecutableTypeData executable : node.getExecutableTypes()) {
-            List<TypeMirror> parameters = executable.getSignatureParameters();
-            if (signatureIndex >= parameters.size()) {
-                // dynamically executed can be any type.
-                return true;
-            }
-            TypeMirror polymorphicParameter = parameters.get(signatureIndex);
-            TypeMirror specializationType = this.getSignatureParameters().get(signatureIndex).getType();
-            if (ElementUtils.needsCastTo(polymorphicParameter, specializationType)) {
+            if (isImplicitTypeGuardUsed(guard, executable)) {
                 return true;
             }
         }
@@ -901,6 +923,36 @@ public final class SpecializationData extends TemplateMethod {
         return getMaximumNumberOfInstances() > 1;
     }
 
+    /**
+     * Returns <code>true</code> if this specialization binds the node, else <code>false</code>.
+     */
+    public boolean isNodeBound() {
+        if (node.isGenerateInline()) {
+            /*
+             * For inlined nodes we need pass down the inlineTarget Node even for shared nodes using
+             * the first specialization parameter.
+             */
+            for (Parameter p : getSignatureParameters()) {
+                return p.isDeclared();
+            }
+            return false;
+        } else {
+            /*
+             * For exported message we need to use @Bind("$node") always even for any inlined cache
+             * as the "this" receiver refers to the library receiver.
+             *
+             * For regular cached nodes @Bind("this") must be used if a specialization data class is
+             * in use. If all inlined caches are shared we can use this and avoid the warning.
+             */
+            for (CacheExpression cache : getCaches()) {
+                if (cache.isBind() && isNodeReceiverBound(cache.getDefaultExpression())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     public boolean isGuardBindsExclusiveCache() {
         if (!getCaches().isEmpty() && !getGuards().isEmpty()) {
             for (GuardExpression guard : getGuards()) {
@@ -925,7 +977,13 @@ public final class SpecializationData extends TemplateMethod {
                 continue;
             } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
                 continue;
-            } else if (cache.getSharedGroup() != null) {
+            } else if (cache.getSharedGroup() != null || cache.getDisabledSharingGroup() != null) {
+                /*
+                 * If a cache was shared, but sharing was disabled automatically then we need to
+                 * keep treating the cache as shared in order to avoid triggering changes in the
+                 * number of specialization instances. These changes could cause follow-up errors,
+                 * for example with a Fallback specialization following after this specialization.
+                 */
                 continue;
             }
             return true;
@@ -952,6 +1010,7 @@ public final class SpecializationData extends TemplateMethod {
 
     public int getMaximumNumberOfInstances() {
         if (isGuardBindsExclusiveCache()) {
+
             DSLExpression expression = getLimitExpression();
             if (expression == null) {
                 return 3; // default limit
@@ -1213,6 +1272,15 @@ public final class SpecializationData extends TemplateMethod {
             return specializationData.getReturnType().getType();
         }
 
+    }
+
+    public boolean isStatic() {
+        ExecutableElement e = getMethod();
+        if (e != null) {
+            return e.getModifiers().contains(Modifier.STATIC);
+        } else {
+            return true;
+        }
     }
 
 }

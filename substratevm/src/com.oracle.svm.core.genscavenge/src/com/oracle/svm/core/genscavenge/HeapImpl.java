@@ -49,6 +49,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -104,6 +106,7 @@ public final class HeapImpl extends Heap {
     private final GCImpl gcImpl;
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
     private final HeapAccounting accounting = new HeapAccounting();
+    private final ImageHeapChunkLogger imageHeapChunkLogger = new ImageHeapChunkLogger();
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
     private Reference<?> refPendingList;
@@ -284,6 +287,13 @@ public final class HeapImpl extends Heap {
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logChunks(log);
         }
+        imageHeapChunkLogger.initialize(log);
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
+            ImageHeapWalker.walkImageHeapChunks(info, imageHeapChunkLogger);
+        }
+        if (AuxiliaryImageHeap.isPresent()) {
+            AuxiliaryImageHeap.singleton().walkHeapChunks(imageHeapChunkLogger);
+        }
         getYoungGeneration().logChunks(log, allowUnsafe);
         getOldGeneration().logChunks(log);
         getChunkProvider().logFreeChunks(log);
@@ -375,7 +385,7 @@ public final class HeapImpl extends Heap {
 
         @Override
         public <T> void visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+            if (!access.isWritable(region) && !access.usesUnalignedChunks(region)) {
                 access.visitObjects(region, this);
             }
         }
@@ -666,7 +676,7 @@ public final class HeapImpl extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(SerialAndEpsilonGCOptions.getNullRegionSize()))) {
             log.string("points into the protected memory between the heap base and the image heap");
             return true;
         }
@@ -754,24 +764,25 @@ public final class HeapImpl extends Heap {
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-            if (info.isInReadOnlyRegularPartition(ptr)) {
-                log.string("points into the image heap (read-only)");
+        for (ImageHeapInfo imageHeap : HeapImpl.getImageHeapInfos()) {
+            /* Check from most-specific to least-specific. */
+            if (imageHeap.isInAlignedReadOnlyRelocatable(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only relocatables)");
                 return true;
-            } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
-                log.string("points into the image heap (read-only relocatables)");
+            } else if (imageHeap.isInAlignedReadOnly(ptr)) {
+                log.string("points into the image heap (aligned chunk, read-only)");
                 return true;
-            } else if (info.isInWritablePatchedPartition(ptr)) {
-                log.string("points into the image heap (writable patched)");
+            } else if (imageHeap.isInAlignedWritablePatched(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable patched)");
                 return true;
-            } else if (info.isInWritableRegularPartition(ptr)) {
-                log.string("points into the image heap (writable)");
+            } else if (imageHeap.isInAlignedWritable(ptr)) {
+                log.string("points into the image heap (aligned chunk, writable)");
                 return true;
-            } else if (info.isInWritableHugePartition(ptr)) {
-                log.string("points into the image heap (writable huge)");
+            } else if (imageHeap.isInUnalignedWritable(ptr)) {
+                log.string("points into the image heap (unaligned chunk, writable)");
                 return true;
-            } else if (info.isInReadOnlyHugePartition(ptr)) {
-                log.string("points into the image heap (read-only huge)");
+            } else if (imageHeap.isInUnalignedReadOnly(ptr)) {
+                log.string("points into the image heap (unaligned chunk, read-only)");
                 return true;
             }
         }
@@ -923,7 +934,7 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Image heap boundaries:").indent(true);
+            log.string("Image heap:").indent(true);
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 info.print(log);
             }
@@ -932,7 +943,7 @@ public final class HeapImpl extends Heap {
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxHeapInfo != null) {
-                    log.string("Auxiliary image heap boundaries:").indent(true);
+                    log.string("Auxiliary image heap:").indent(true);
                     auxHeapInfo.print(log);
                     log.indent(false);
                 }
@@ -953,6 +964,31 @@ public final class HeapImpl extends Heap {
             boolean allowUnsafe = invocationCount == 1 && SubstrateDiagnostics.DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel);
             HeapImpl.getHeapImpl().logChunks(log, allowUnsafe);
             log.indent(false);
+        }
+    }
+
+    private static final class ImageHeapChunkLogger implements HeapChunkVisitor {
+        private Log log;
+
+        @SuppressWarnings("hiding")
+        void initialize(Log log) {
+            this.log = log;
+        }
+
+        @Override
+        public void visitAlignedChunk(AlignedHeader chunk) {
+            Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
+            HeapChunkLogging.logChunk(log, chunk, bottom, top, end, true, "I", false);
+        }
+
+        @Override
+        public void visitUnalignedChunk(UnalignedHeader chunk) {
+            Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
+            HeapChunkLogging.logChunk(log, chunk, bottom, top, end, false, "I", false);
         }
     }
 }

@@ -12,17 +12,19 @@ redirect_from:
 # Command-line Options
 
 Options to configure Native Image are provided in the following categories:
+
 - Build options: run `native-image --help` for help on build options.
 - Extra build options: run `native-image --help-extra` for help on extra build options.
 - Expert build options: run `native-image --expert-options` for help on expert options.
 
 Depending on the GraalVM version, the options to the `native-image` builder may differ.
 
-Native Image options can also be categorized as **hosted** or **runtime** options.
+Native Image options can also be categorized as **hosted** or **runtime** options:
 
-* **Hosted options**: to configure the build process&mdash;for example, influence what is included in the native binary and how it is built.
-These options use the prefix `-H:`.
-* **Runtime options**: to provide the initial value(s) when building the native binary, using the prefix `-R:`. At runtime, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
+- **Hosted options**: to configure the build process and set default values for run-time behavior. These options use the prefix `-H:`. For example, `-H:MaxHeapSize=2g` sets the default maximum heap size for the native executable.
+- **Runtime options**: to provide explicit values when building the native binary, using the prefix `-R:`. At run time, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
+
+You can use `-H:` options at build time to configure both build-time behavior and run-time defaults. For most use cases, `-H:` options are sufficient and you typically do not need to distinguish between build-time and run-time configuration.
 
 For more information describing how to define and use these options, read the [`com.oracle.svm.core.option`](https://github.com/oracle/graal/tree/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/option) package documentation.
 
@@ -140,10 +142,10 @@ GraalVM 25 introduces the `-H:Preserve` option. This lets you instruct the `nati
 
 You can use `-H:Preserve` in the following ways:
 
-* `-H:Preserve=all`: preserves all elements from the JDK and from the classpath
-* `-H:Preserve=module=<module>`: preserves all elements from a given module
+* `-H:Preserve=all`: preserves all elements from the entire JDK and classpath. This creates larger images but ensures all code is included, which can help resolve missing metadata issues.
+* `-H:Preserve=module=<module>`: preserves all elements from a given module.
 * `-H:Preserve=module=ALL-UNNAMED`: preserves all elements from the classpath (provided with `-cp`).
-* `-H:Preserve=package=<package>`: preserves all elements from a given package
+* `-H:Preserve=package=<package>`: preserves all elements from a given package. You can use `*` to include all subpackages, for example: `-H:Preserve=package=com.my.pkg.*,package=com.another.pkg.*`. Note that only the `*` wildcard is supported; other regex patterns are not allowed.
 * `-H:Preserve=path=<cp-entry>`: preserves all elements from a given class-path entry
 * You can combine any of the previous uses by separating them with a comma (`,`). For example: `-H:Preserve=path=<cp-entry>,module=<module>,module=<module2>,package=<package>`
 
@@ -151,7 +153,19 @@ You must explicitly configure multi-interface proxy classes, arrays of dimension
 
 If you get errors related to `--initialize-at-build-time`, follow the suggestions in the error messages.
 
+> **Note:** Using `-H:Preserve=all` requires significant memory and will result in much larger native images. Use the `-Os` flag to reduce image size. For more information, see [Optimizations and Performance](OptimizationsAndPerformance.md).
+
 For a practical demonstration, see the [preserve-package demo](https://github.com/graalvm/graalvm-demos/tree/master/native-image/preserve-package).
+
+#### Memory Requirements
+
+Native Image compilation is memory-intensive, particularly when building large projects or when using -`H:Preserve=all` or `--pgo-instrument`.
+
+If you encounter `OutOfMemoryError: Java heap space` you can:
+
+* use the `-Os` flag to reduce image size. For more information, see [Optimizations and Performance](OptimizationsAndPerformance.md)
+* use more specific preservation options like `-H:Preserve=package=<package>` instead of `-H:Preserve=all`
+* use more RAM by increasing the heap size with `-J-Xmx<n>g` where `<n>` varies based on your machine's available memory and build requirements
 
 ## System Properties
 

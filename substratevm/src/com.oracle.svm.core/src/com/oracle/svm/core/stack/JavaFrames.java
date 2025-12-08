@@ -63,6 +63,14 @@ public class JavaFrames {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isInterpreterLeaveStub(CodePointer ip) {
+        if (!InterpreterSupport.isEnabled()) {
+            return false;
+        }
+        return InterpreterSupport.isInInterpreterLeaveStub(ip);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static UnsignedWord getTotalFrameSize(JavaFrame frame) {
         long size = CodeInfoQueryResult.getTotalFrameSize(frame.getEncodedFrameSize());
         assert size > 0;

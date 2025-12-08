@@ -149,7 +149,7 @@ public @interface Operation {
      * uncached interpreter tier} is enabled.
      *
      * @see StoreBytecodeIndex
-     * @since 26.0
+     * @since 25.1
      */
     boolean storeBytecodeIndex() default true;
 

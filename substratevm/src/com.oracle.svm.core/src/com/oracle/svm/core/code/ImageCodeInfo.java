@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
@@ -40,15 +40,18 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.MultiLayer;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
 
-public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSingleton {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public class ImageCodeInfo {
     public static final String CODE_INFO_NAME = "image code";
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -60,6 +63,7 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataSize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord relativeIPOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableFirstId;
 
     private final Object[] objectFields;
@@ -74,7 +78,7 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
     @UnknownObjectField(availability = AfterCompilation.class) byte[] methodTable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ImageCodeInfo() {
+    protected ImageCodeInfo() {
         NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT, NmtCategory.Code);
         NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
         // The image code info is never invalidated, so we consider it as always tethered.
@@ -90,24 +94,24 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         int size = imageCodeInfos.length;
         for (int i = 0; i < size; i++) {
             ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
-            CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
-            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : Word.nullPointer();
+            CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getCodeInfo();
+            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getCodeInfo() : Word.nullPointer();
 
             ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
         }
-        return runtimeCodeInfos[0].getData();
+        return runtimeCodeInfos[0].getCodeInfo();
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
-    private static void prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
+    protected static void prepareCodeInfo0(ImageCodeInfo imageCodeInfo, CodeInfoImpl infoImpl, CodeInfo next) {
         assert infoImpl.getCodeStart().isNull() : "already initialized";
-
         infoImpl.setObjectFields(NonmovableArrays.fromImageHeap(imageCodeInfo.objectFields));
         infoImpl.setCodeStart(imageCodeInfo.codeStart);
         infoImpl.setCodeSize(imageCodeInfo.codeSize);
         infoImpl.setDataOffset(imageCodeInfo.dataOffset);
         infoImpl.setDataSize(imageCodeInfo.dataSize);
         infoImpl.setCodeAndDataMemorySize(imageCodeInfo.codeAndDataMemorySize);
+        infoImpl.setRelativeIPOffset(imageCodeInfo.relativeIPOffset);
         infoImpl.setCodeInfoIndex(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoIndex));
         infoImpl.setCodeInfoEncodings(NonmovableArrays.fromImageHeap(imageCodeInfo.codeInfoEncodings));
         infoImpl.setStackReferenceMapEncoding(NonmovableArrays.fromImageHeap(imageCodeInfo.referenceMapEncoding));
@@ -120,6 +124,20 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         infoImpl.setMethodTableFirstId(imageCodeInfo.methodTableFirstId);
         infoImpl.setIsAOTImageCode(true);
         infoImpl.setNextImageCodeInfo(next);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerAsImmutable(Feature.AfterCompilationAccess config) {
+        config.registerAsImmutable(this);
+        config.registerAsImmutable(codeInfoIndex);
+        config.registerAsImmutable(codeInfoEncodings);
+        config.registerAsImmutable(referenceMapEncoding);
+        config.registerAsImmutable(frameInfoEncodings);
+        config.registerAsImmutable(objectConstants);
+        config.registerAsImmutable(classes);
+        config.registerAsImmutable(memberNames);
+        config.registerAsImmutable(otherStrings);
+        config.registerAsImmutable(methodTable);
     }
 
     /**
@@ -138,11 +156,6 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
 
     public List<Integer> getTotalByteArrayLengths() {
         return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length, methodTable.length);
-    }
-
-    @Override
-    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 
     /**
@@ -214,6 +227,16 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
         @Override
         public void setCodeAndDataMemorySize(UnsignedWord value) {
             codeAndDataMemorySize = value;
+        }
+
+        @Override
+        public void setRelativeIPOffset(UnsignedWord offset) {
+            relativeIPOffset = offset;
+        }
+
+        @Override
+        public UnsignedWord getRelativeIPOffset() {
+            return relativeIPOffset;
         }
 
         @Override

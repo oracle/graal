@@ -41,6 +41,8 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 
@@ -50,6 +52,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -65,7 +68,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class StoreBytecodeEliminationTest {
+public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     @SuppressWarnings("unchecked")
     public static StoreBytecodeEliminationRootNode parseNode(BytecodeParser<?> builder) {
@@ -128,7 +131,32 @@ public class StoreBytecodeEliminationTest {
         assertEquals(-1, root.getCallTarget().call(1));
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @Test
+    public void testExplicitUsesSingleton() {
+        StoreBytecodeEliminationRootNode root = parseNode((StoreBytecodeEliminationRootNodeGen.Builder b) -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginExplicitTest();
+            b.emitLoadArgument(0);
+            b.endExplicitTest();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        root.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(-1, root.getCallTarget().call(0));
+
+        Instruction instruction = root.getBytecodeNode().getInstructionsAsList().get(1);
+        assertEquals("c.ExplicitTest", instruction.getName());
+        Instruction.Argument nodeArgument = findNodeArgument(instruction);
+        assertNotNull(nodeArgument);
+
+        assertSingletonNode(nodeArgument);
+        assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, enableSpecializationIntrospection = true)
     abstract static class StoreBytecodeEliminationRootNode extends RootNode implements BytecodeRootNode {
 
         private static final int BCI_INDEX;

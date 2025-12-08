@@ -27,15 +27,19 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.annotation.Annotation;
 import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.AnnotationsContainer;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * This type is used in the context of Layered Image, when loading a base layer in another layer.
@@ -44,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * this case, a {@link BaseLayerType} is created using information from the base layer and wrapped
  * in an {@link AnalysisType} to replace this missing type is the new layer.
  */
-public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType, OriginalClassProvider {
+public class BaseLayerType extends AnnotationsContainer implements ResolvedJavaType, OriginalClassProvider {
     /**
      * The type corresponding to this {@link BaseLayerType} can be created later while building the
      * new layer. To avoid both types having the same name, the name of the {@link BaseLayerType} is
@@ -56,6 +60,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private final int modifiers;
     private final boolean isInterface;
     private final boolean isEnum;
+    private final boolean isRecord;
     private final boolean isInitialized;
     private final boolean isLinked;
     private final String sourceFileName;
@@ -67,7 +72,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private ResolvedJavaField[] instanceFields;
     private ResolvedJavaField[] instanceFieldsWithSuper;
 
-    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean isLinked,
+    public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isRecord, boolean isInitialized, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
                     Annotation[] annotations) {
         super(annotations);
@@ -76,6 +81,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
         this.modifiers = modifiers;
         this.isInterface = isInterface;
         this.isEnum = isEnum;
+        this.isRecord = isRecord;
         this.isInitialized = isInitialized;
         this.isLinked = isLinked;
         this.sourceFileName = sourceFileName;
@@ -222,6 +228,16 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public boolean isHidden() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
+    public List<JavaType> getPermittedSubclasses() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public JavaKind getJavaKind() {
         /* All the primitive types can be looked up by name */
         return JavaKind.Object;
@@ -229,6 +245,11 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
@@ -267,6 +288,16 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public boolean isRecord() {
+        return isRecord;
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
@@ -287,8 +318,18 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         return enclosingType;
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 
     @Override
@@ -312,21 +353,6 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public boolean isCloneableWithAllocation() {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
         throw AnalysisError.shouldNotReachHere("This type is incomplete and should not be used.");
     }
 

@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 
-@EspressoSubstitutions(value = CRC32.class, group = LibZip.class)
+@EspressoSubstitutions(group = LibZip.class)
 public final class Target_java_util_zip_CRC32 {
     private static CRC32 getHostCRC32(StaticObject crc, LibsMeta lMeta) {
         if (StaticObject.isNull(crc)) {

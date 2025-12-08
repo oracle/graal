@@ -66,7 +66,8 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * <p>
          * When this trait is linked to a singleton, the singleton's key class is expected to match
          * the singleton's implementation key. In addition, a singleton with this trait can only be
-         * installed in the application layer.
+         * installed in the application layer. Finally, {@link ImageSingletons#add} must be called
+         * before the analysis phase (i.e. these image singletons cannot be added at a later point).
          * <p>
          * Referring to fields of an app layer singleton from a code compiled in a shared layer,
          * i.e., even before the value of the field can be known, is safe. This is because, instead
@@ -74,11 +75,6 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * {@link LoadImageSingletonNode} and lowered into a singleton table read.
          */
         APP_LAYER_ONLY(EmptyMetadata.class),
-
-        /*
-         * GR-66794: switch from using interfaces to traits for implementing the following
-         * behaviors.
-         */
 
         /**
          * A different version of this singleton can be installed in each layer. For these
@@ -97,6 +93,12 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
          * Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional build
          * requires the singleton to be installed in the build and will return an array of length 1
          * * containing that singleton.
+         *
+         * <p>
+         * When this trait is linked to a singleton, the singleton's key class is expected to match
+         * the singleton's implementation key. In addition, {@link ImageSingletons#add} must be
+         * called before the analysis phase (i.e. these image singletons cannot be added at a later
+         * point).
          */
         MULTI_LAYER(EmptyMetadata.class);
 
@@ -155,6 +157,16 @@ public record SingletonLayeredInstallationKind(InstallationKind kind, Object met
         @Override
         public SingletonTrait getLayeredInstallationKindTrait() {
             return APP_LAYER_ONLY;
+        }
+    }
+
+    public static final SingletonTrait MULTI_LAYER = new SingletonTrait(SingletonTraitKind.LAYERED_INSTALLATION_KIND,
+                    new SingletonLayeredInstallationKind(InstallationKind.MULTI_LAYER, EmptyMetadata.EMPTY));
+
+    public static final class MultiLayer extends SingletonLayeredInstallationKindSupplier {
+        @Override
+        public SingletonTrait getLayeredInstallationKindTrait() {
+            return MULTI_LAYER;
         }
     }
 }

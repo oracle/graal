@@ -75,7 +75,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.common.TestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -594,41 +596,52 @@ public class ContextAPITest extends AbstractPolyglotTest {
     }
 
     @Theory
-    public void testMultithreadedEnterLeave(boolean vthreads) throws InterruptedException, ExecutionException {
-        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
-        Context c = Context.create();
-        Set<Reference<Thread>> threads = new HashSet<>();
-        ExecutorService service = Executors.newFixedThreadPool(20, (run) -> {
-            Thread t = vthreads ? Thread.ofVirtual().unstarted(run) : new Thread(run);
-            threads.add(new WeakReference<>(t));
-            return t;
-        });
+    public void testMultithreadedEnterLeave(boolean vthreads) throws Exception {
+        Runnable runnable = () -> {
+            try {
+                Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
+                Context c = Context.create();
+                Set<Reference<Thread>> threads = new HashSet<>();
+                ExecutorService service = Executors.newFixedThreadPool(20, (run) -> {
+                    Thread t = vthreads ? Thread.ofVirtual().unstarted(run) : new Thread(run);
+                    threads.add(new WeakReference<>(t));
+                    return t;
+                });
 
-        List<Future<?>> futures = new ArrayList<>();
+                List<Future<?>> futures = new ArrayList<>();
 
-        for (int i = 0; i < 200; i++) {
-            futures.add(service.submit(() -> testEnterLeave(c, 0)));
-        }
+                for (int i = 0; i < 200; i++) {
+                    futures.add(service.submit(() -> testEnterLeave(c, 0)));
+                }
 
-        for (Future<?> future : futures) {
-            future.get();
-        }
+                for (Future<?> future : futures) {
+                    future.get();
+                }
 
-        service.shutdown();
-        assertTrue("Executor threads did not finish in time.", service.awaitTermination(10, TimeUnit.SECONDS));
-        for (Reference<Thread> threadRef : threads) {
-            Thread t = threadRef.get();
-            if (t != null) {
-                t.join(10000);
+                service.shutdown();
+                assertTrue("Executor threads did not finish in time.", service.awaitTermination(10, TimeUnit.SECONDS));
+                for (Reference<Thread> threadRef : threads) {
+                    Thread t = threadRef.get();
+                    if (t != null) {
+                        t.join(10000);
+                    }
+                }
+                Reference<ExecutorService> ref = new WeakReference<>(service);
+                service = null;
+                if (!vthreads) { // GR-54640 This fails transiently with virtual threads
+                    GCUtils.assertGc("Nobody holds on the executor anymore", ref);
+                    GCUtils.assertGc("Nobody holds on the thread anymore", threads);
+                }
+                c.close();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new AssertionError(e);
             }
+        };
+        if (ImageInfo.inImageCode()) {
+            runnable.run();
+        } else {
+            SubprocessTestUtils.newBuilder(ContextAPITest.class, runnable).run();
         }
-        Reference<ExecutorService> ref = new WeakReference<>(service);
-        service = null;
-        if (!vthreads) { // GR-54640 This fails transiently with virtual threads
-            GCUtils.assertGc("Nobody holds on the executor anymore", ref);
-            GCUtils.assertGc("Nobody holds on the thread anymore", threads);
-        }
-        c.close();
     }
 
     @Test

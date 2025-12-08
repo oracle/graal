@@ -48,6 +48,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
+import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -127,7 +128,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         this.lengthTmp = this.lengthReg = arrayLength;
         this.fromIndexTmp = this.fromIndexReg = fromIndex;
         this.searchValue1Tmp = this.searchValue1 = searchValue1;
-        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             this.searchValue2Tmp = searchValue2;
             this.searchValue2 = Value.ILLEGAL;
         } else {
@@ -137,16 +138,16 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         this.searchValue4 = searchValue4;
 
         this.vectorKind = getVectorKind(stride);
-        this.vectorCompareVal = allocateVectorRegisters(tool, stride, variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? 2 : nValues);
-        this.vectorArray = allocateVectorRegisters(tool, stride, variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? stride.value : 4);
+        this.vectorCompareVal = allocateVectorRegisters(tool, stride, variant.isTable() ? 2 : nValues);
+        this.vectorArray = allocateVectorRegisters(tool, stride, variant.isTable() ? stride.value : 4);
         this.vectorTemp = allocateVectorRegisters(tool, stride, getNumberOfRequiredTempVectors(variant, nValues));
     }
 
     private static int getNumberOfRequiredTempVectors(LIRGeneratorTool.ArrayIndexOfVariant variant, int nValues) {
         switch (variant) {
-            case MatchRange:
+            case MatchRange, MatchRangeForeignEndian:
                 return nValues / 2 + 1;
-            case Table:
+            case Table, TableForeignEndian:
                 return 4;
             default:
                 return 0;
@@ -170,8 +171,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         RegisterValue regLength = REG_LENGTH.asValue(arrayLength.getValueKind());
         RegisterValue regFromIndex = REG_FROM_INDEX.asValue(fromIndex.getValueKind());
         RegisterValue regSearchValue1 = REG_SEARCH_VALUE_1.asValue(searchValues[0].getValueKind());
-        Value regSearchValue2 = nValues > 1 ? REG_SEARCH_VALUE_2.asValue(searchValues[1].getValueKind())
-                        : variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? REG_SEARCH_VALUE_2.asValue() : Value.ILLEGAL;
+        Value regSearchValue2 = nValues > 1 ? REG_SEARCH_VALUE_2.asValue(searchValues[1].getValueKind()) : variant.isTable() ? REG_SEARCH_VALUE_2.asValue() : Value.ILLEGAL;
         Value regSearchValue3 = nValues > 2 ? tool.asAllocatable(searchValues[2]) : Value.ILLEGAL;
         Value regSearchValue4 = nValues > 3 ? tool.asAllocatable(searchValues[3]) : Value.ILLEGAL;
 
@@ -212,6 +212,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         Register[] vecCmp = asRegisters(vectorCompareVal);
         Register[] vecArray = asRegisters(vectorArray);
         Register[] vecTmp = asRegisters(vectorTemp);
+        DataSection.Data reverseBytesMask = null;
         Label ret = new Label();
         Label bulkVectorLoop = new Label();
         Label singleVectorLoop = new Label();
@@ -229,7 +230,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         Label elementWiseNotFound = new Label();
         Label skipBulkVectorLoop = new Label();
         Label bsfAdd = new Label();
-        int vectorLength = variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? vectorKind.getSizeInBytes() : vectorKind.getVectorLength();
+        int vectorLength = variant.isTable() ? vectorKind.getSizeInBytes() : vectorKind.getVectorLength();
         int bulkSize = vectorLength * nVectors;
 
         if (useConstantOffset()) {
@@ -244,7 +245,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // re-use fromIndex register as temp
         Register cmpResult = asRegister(fromIndexReg);
 
-        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             // load lookup tables
             asm.movdqu(AVXSize.XMM, vecCmp[0], new AMD64Address(asRegister(searchValue[0])));
             asm.movdqu(AVXSize.XMM, vecCmp[1], new AMD64Address(asRegister(searchValue[0]), AVXSize.XMM.getBytes()));
@@ -266,6 +267,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 broadcastSearchValue(crb, asm, vecCmp[i], searchValue[i], cmpResult, vecArray[0]);
             }
         }
+        if (variant.isForeignEndian()) {
+            GraalError.guarantee(stride.value > 1, "ForeignEndian search modes are not implemented for Stride 1");
+            reverseBytesMask = writeToDataSection(crb, getReverseBytesMask(stride));
+        }
 
         // check if vector load is in bounds
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.LessEqual, runVectorized, false);
@@ -276,12 +281,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             // index = fromIndex (+ 1 if findTwoConsecutive) + XMM vector size
             asm.subq(index, vectorLength / 2);
             // check if vector load is in bounds
-            asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? elementWise : qWordWise, false);
+            asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, variant.isTable() ? elementWise : qWordWise, false);
             // do one vector comparison from fromIndex
-            emitVectorCompare(asm, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, xmmFound, variant != LIRGeneratorTool.ArrayIndexOfVariant.Table);
+            emitVectorCompare(crb, asm, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, xmmFound, !variant.isTable());
             // and one aligned to the array end
             asm.movq(index, arrayLength);
-            emitVectorCompare(asm, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, xmmFound, true);
+            emitVectorCompare(crb, asm, AVXSize.XMM, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, xmmFound, true);
             // no match, return negative
             asm.jmp(elementWiseNotFound);
             // match found, adjust index by XMM offset
@@ -292,7 +297,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
 
         int vectorLengthQWord = AVXSize.QWORD.getBytes() / stride.value;
-        if (variant != LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (!variant.isTable()) {
             asm.bind(qWordWise);
             // region is too short for XMM vectors, try QWORD
             Label[] qWordFound = {new Label()};
@@ -301,10 +306,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             // check if vector load is in bounds
             asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, elementWise, false);
             // do one vector comparison from fromIndex
-            emitVectorCompare(asm, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, qWordFound, true);
+            emitVectorCompare(crb, asm, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, qWordFound, true);
             // and one aligned to the array end
             asm.movq(index, arrayLength);
-            emitVectorCompare(asm, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, qWordFound, true);
+            emitVectorCompare(crb, asm, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, qWordFound, true);
             // no match, return negative
             asm.jmpb(elementWiseNotFound);
             // match found, adjust index by QWORD offset
@@ -317,7 +322,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // search range is smaller than vector size, do element-wise comparison
         asm.bind(elementWise);
         // index = fromIndex (+ 1 if findTwoConsecutive)
-        asm.subq(index, (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) ? (supportsAVX2AndYMM() ? (vectorLength / 2) : vectorLength) : vectorLengthQWord);
+        asm.subq(index, variant.isTable() ? (supportsAVX2AndYMM() ? (vectorLength / 2) : vectorLength) : vectorLengthQWord);
         // check if enough array slots remain
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.GreaterEqual, elementWiseNotFound, true);
 
@@ -354,8 +359,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     cmplAndJcc(crb, asm, cmpResult, searchValue[i], elementWiseFound, ConditionFlag.Equal, true);
                 }
                 break;
-            case MatchRange:
+            case MatchRange, MatchRangeForeignEndian:
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
+                if (variant == LIRGeneratorTool.ArrayIndexOfVariant.MatchRangeForeignEndian) {
+                    reverseBytesScalar(asm, valueSize, cmpResult);
+                }
                 for (int i = 0; i < nValues; i += 2) {
                     Label noMatch = new Label();
                     cmplAndJcc(crb, asm, cmpResult, searchValue[i], noMatch, ConditionFlag.Below, true);
@@ -378,10 +386,13 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 asm.orq(cmpResult, asRegister(searchValue[1]));
                 asm.cmpqAndJcc(cmpResult, asRegister(searchValue[0]), AMD64Assembler.ConditionFlag.Equal, elementWiseFound, true);
                 break;
-            case Table:
+            case Table, TableForeignEndian:
                 Label greaterThan0xff = new Label();
                 Register tmp = asRegister(searchValue2Tmp);
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
+                if (variant == LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian) {
+                    reverseBytesScalar(asm, valueSize, cmpResult);
+                }
                 if (stride.value > 1) {
                     asm.cmpqAndJcc(cmpResult, 0xff, ConditionFlag.Above, greaterThan0xff, true);
                 }
@@ -415,7 +426,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.bind(runVectorized);
 
         // do one unaligned vector comparison pass and adjust alignment afterwards
-        emitVectorCompare(asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, vectorFound, false);
+        emitVectorCompare(crb, asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, vectorFound, false);
 
         // adjust index to vector size alignment
         asm.movl(cmpResult, arrayPtr);
@@ -429,7 +440,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // add bulk size
         asm.addq(index, bulkSize);
 
-        boolean bulkLoopShortJmp = !((variant == LIRGeneratorTool.ArrayIndexOfVariant.MatchRange && nValues == 4 || variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) && stride.value > 1);
+        boolean bulkLoopShortJmp = !((variant.isMatchRange() && nValues == 4 || variant.isTable()) && stride.value > 1);
         /*
          * Check if there are enough array slots remaining for the bulk loop. Note: The alignment
          * following the cmpAndJcc can lead to a jump distance > 127. This prevents safely using a
@@ -440,7 +451,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.align(preferredLoopAlignment(crb));
         asm.bind(bulkVectorLoop);
         // memory-aligned bulk comparison
-        emitVectorCompare(asm, vectorSize, nVectors, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, vectorFound, false);
+        emitVectorCompare(crb, asm, vectorSize, nVectors, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, vectorFound, false);
         // adjust index
         asm.addq(index, bulkSize);
         // check if there are enough array slots remaining for the bulk loop
@@ -451,7 +462,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             // do last load from end of array
             asm.movq(index, arrayLength);
             // compare
-            emitVectorCompare(asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, vectorFound, true);
+            emitVectorCompare(crb, asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, vectorFound, true);
         } else {
             // remove bulk offset
             asm.subq(index, bulkSize);
@@ -465,7 +476,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             // if load would be over bounds, set the load to the end of the array
             asm.cmovq(AMD64Assembler.ConditionFlag.Greater, index, arrayLength);
             // compare
-            emitVectorCompare(asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, vectorFound, true);
+            emitVectorCompare(crb, asm, vectorSize, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, reverseBytesMask, cmpResult, vectorFound, true);
             // check if there are enough array slots remaining for the loop
             asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Less, singleVectorLoop, true);
         }
@@ -481,7 +492,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             }
         }
         asm.bind(bsfAdd);
-        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             asm.pxor(vectorSize, vecTmp[1], vecTmp[1]);
             asm.pcmpeqb(vectorSize, vecTmp[2], vecTmp[1]);
             asm.pmovmsk(vectorSize, cmpResult, vecTmp[2]);
@@ -489,7 +500,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
         // find offset
         bsfq(asm, cmpResult, cmpResult);
-        if (stride.value > 1 && variant != LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (stride.value > 1 && !variant.isTable()) {
             // convert byte offset to chars
             asm.shrq(cmpResult, stride.log2);
         }
@@ -497,6 +508,17 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         asm.addq(index, cmpResult);
 
         asm.bind(ret);
+    }
+
+    private static void reverseBytesScalar(AMD64MacroAssembler asm, OperandSize valueSize, Register value) {
+        switch (valueSize) {
+            case BYTE -> {
+            }
+            case WORD -> asm.rorw(value, 8);
+            case DWORD -> asm.bswapl(value);
+            case QWORD -> asm.bswapq(value);
+            default -> GraalError.shouldNotReachHereUnexpectedValue(valueSize);
+        }
     }
 
     private int getNumberOfVectorsInBulkLoop() {
@@ -528,7 +550,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     }
 
     private int getResultIndexDelta(int i) {
-        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             return vectorSize.getBytes();
         }
         return (i + 1) * vectorKind.getVectorLength() + (findTwoConsecutive ? 1 : 0);
@@ -614,7 +636,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private void emitVectorCompare(AMD64MacroAssembler asm,
+    @SuppressWarnings("fallthrough")
+    private void emitVectorCompare(CompilationResultBuilder crb,
+                    AMD64MacroAssembler asm,
                     AVXSize vSize,
                     int nVectors,
                     Register arrayPtr,
@@ -622,14 +646,15 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     Register[] vecCmp,
                     Register[] vecArray,
                     Register[] vecTmp,
+                    DataSection.Data vecReverseBytesMask,
                     Register cmpResult,
                     Label[] vectorFound,
                     boolean shortJmp) {
         // load array contents into vectors
-        int nVectorLoads = variant == LIRGeneratorTool.ArrayIndexOfVariant.Table ? stride.value : nVectors;
+        int nVectorLoads = variant.isTable() ? stride.value : nVectors;
         for (int i = 0; i < nVectorLoads; i++) {
             int base = i * nValues;
-            for (int j = 0; j < (withMask || variant == LIRGeneratorTool.ArrayIndexOfVariant.MatchRange ? nValues / 2 : nValues); j++) {
+            for (int j = 0; j < (withMask || variant.isMatchRange() ? nValues / 2 : nValues); j++) {
                 emitArrayLoad(asm, vSize, vecArray[base + j], arrayPtr, index, getVectorOffset(nVectorLoads - (i + 1), j, vSize));
             }
         }
@@ -650,6 +675,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     emitVectorCompareCheckVectorFound(asm, vSize, cmpResult, vectorFound[nVectors - (i + 1)], shortJmp);
                 }
                 break;
+            case MatchRangeForeignEndian:
+                assert nVectors == 1 : nVectors;
+                asm.pshufb(vSize == AVXSize.QWORD ? AVXSize.XMM : vSize, vecArray[0], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                // fallthrough
             case MatchRange:
                 assert nVectors == 1 : nVectors;
                 if (nValues == 2) {
@@ -702,7 +731,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     emitVectorCompareCheckVectorFound(asm, vSize, cmpResult, vectorFound[nVectors - ((i / 2) + 1)], shortJmp);
                 }
                 break;
-            case Table:
+            case Table, TableForeignEndian:
                 Register mask0xf = vecTmp[0];
                 Register tableHi = vecCmp[0];
                 Register tableLo = vecCmp[1];
@@ -711,6 +740,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                         performTableLookup(asm, vSize, mask0xf, tableHi, tableLo, vecArray[0], vecTmp[1], vecTmp[2], vecTmp[3]);
                         break;
                     case S2:
+                        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian) {
+                            asm.pshufb(vSize, vecArray[0], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                            asm.pshufb(vSize, vecArray[1], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                        }
                         // narrow string chars to bytes
                         asm.packuswb(vSize, vecTmp[1], vecArray[0], vecArray[1]);
                         // right-shift chars by 8
@@ -730,6 +763,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                         }
                         break;
                     case S4:
+                        if (variant == LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian) {
+                            asm.pshufb(vSize, vecArray[0], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                            asm.pshufb(vSize, vecArray[1], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                            asm.pshufb(vSize, vecArray[2], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                            asm.pshufb(vSize, vecArray[3], (AMD64Address) crb.recordDataSectionReference(vecReverseBytesMask));
+                        }
                         // narrow string ints to bytes
                         asm.packusdw(vSize, vecTmp[1], vecArray[0], vecArray[1]);
                         asm.packusdw(vSize, vecTmp[2], vecArray[2], vecArray[3]);

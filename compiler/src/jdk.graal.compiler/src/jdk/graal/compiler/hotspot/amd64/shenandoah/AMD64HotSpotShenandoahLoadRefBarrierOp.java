@@ -126,8 +126,8 @@ public class AMD64HotSpotShenandoahLoadRefBarrierOp extends AMD64LIRInstruction 
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L296-L430",
-              sha1 = "a039ddb87ee03446a7d015f2d955eb3014c9413e")
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/x86/gc/shenandoah/shenandoahBarrierSetAssembler_x86.cpp#L296-L468",
+              sha1 = "a9498d910854bef11b768c79d4ff560fc8357955")
     // @formatter:on
     public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AMD64MacroAssembler masm, LIRInstruction op, Register thread, Register resultRegister,
                     Register objectRegister, Register rtmp1, Register rtmp2,

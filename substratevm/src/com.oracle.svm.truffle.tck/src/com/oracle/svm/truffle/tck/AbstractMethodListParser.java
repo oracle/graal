@@ -38,7 +38,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;

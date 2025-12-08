@@ -26,8 +26,13 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -46,7 +51,6 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -68,12 +72,14 @@ import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -83,6 +89,7 @@ import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -126,6 +133,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     private final boolean layeredBuild = ImageLayerBuildingSupport.buildingImageLayer();
     private final boolean initialLayerBuild = layeredBuild && ImageLayerBuildingSupport.buildingInitialLayer();
+    private final LayeredFieldValueTransformerSupport layeredFieldValueTransformerSupport = layeredBuild ? LayeredFieldValueTransformerSupport.singleton() : null;
 
     /**
      * A Map from objects at construction-time to native image objects.
@@ -226,7 +234,6 @@ public final class NativeImageHeap implements ImageHeap {
         return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
     }
 
-    @SuppressWarnings("try")
     public void addInitialObjects() {
         addObjectsPhase.allow();
         internStringsPhase.allow();
@@ -271,7 +278,7 @@ public final class NativeImageHeap implements ImageHeap {
                 StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
-            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
+            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, ImageHeapScanner.LATE_SCAN);
 
             addObject(imageInternedStrings, true, HeapInclusionReason.InternedStringsTable);
 
@@ -313,7 +320,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         for (HostedField field : hUniverse.getFields()) {
             if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
-                assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
+                assert field.isWritten() || !field.isValueAvailable(null) || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
                 addConstant(hConstantReflection.readConstantField(field, null), false, field);
             }
@@ -587,13 +594,23 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
+                    boolean fieldPatchable = false;
+                    if (layeredFieldValueTransformerSupport != null) {
+                        fieldPatchable = layeredFieldValueTransformerSupport.finalizeFieldValue(field, constant);
+                    }
                     boolean fieldRelocatable = false;
                     /*
                      * Fields that are only available after heap layout, such as
                      * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
                      * not be processed.
                      */
-                    if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
+                    if (field.isRead() && field.isValueAvailable(constant) && !ignoredFields.contains(field)) {
+                        /*
+                         * We will only patch read fields. Hence, we only need to assign objects to
+                         * the patchable partition when the field value is part of the image heap.
+                         */
+                        patched = patched || fieldPatchable;
+
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = hConstantReflection.readConstantField(field, constant);
@@ -620,7 +637,7 @@ public final class NativeImageHeap implements ImageHeap {
                          */
                         relocatable = relocatable || fieldRelocatable;
                     }
-                    written = written || ((field.isWritten() || !field.isValueAvailable()) && !field.isFinal() && !fieldRelocatable);
+                    written = written || ((field.isWritten() || !field.isValueAvailable(constant)) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
@@ -786,11 +803,42 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addLateToImageHeap(Object object, Object reason) {
         assert !(object instanceof DynamicHub) : "needs a different identity hashcode";
         assert !(object instanceof String) : "needs String interning";
-        aUniverse.getHeapScanner().rescanObject(object, OtherReason.LATE_SCAN);
+        aUniverse.getHeapScanner().rescanObject(object, ImageHeapScanner.LATE_SCAN);
 
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
         return addToImageHeap(object, (HostedClass) type, getSize(object, type), System.identityHashCode(object), reason);
+    }
+
+    /**
+     * Dumps metadata for every object in the image heap.
+     */
+    public void dumpMetadata(ImageHeapLayoutInfo heapLayout) {
+        String metadataFileName = SubstrateOptions.ImageHeapMetadataDumpFileName.getValue();
+        if (metadataFileName == null || metadataFileName.isEmpty()) {
+            // Do not dump metadata if the file name isn't set
+            return;
+        }
+
+        Path metadataFilePath = SubstrateOptions.getImagePath(HostedOptionValues.singleton()).resolve(metadataFileName);
+        File metadataFile = metadataFilePath.toFile();
+        String metadataDir = metadataFile.getParent();
+        if (!new File(metadataDir).exists()) {
+            throw VMError.shouldNotReachHere("Image heap metadata directory does not exist: " + metadataDir);
+        }
+
+        long heapLayoutStartOffset = heapLayout.getStartOffset();
+
+        try (FileWriter metadataOut = new FileWriter(metadataFile);
+                        BufferedWriter metadataBw = new BufferedWriter(metadataOut)) {
+            metadataBw.write("class-name,partition,offset-in-heap,size\n");
+            for (ObjectInfo info : getObjects()) {
+                String csvLine = info.getClazz().getName() + "," + info.getPartition().getName() + "," + (info.getOffset() - heapLayoutStartOffset) + "," + info.getSize() + System.lineSeparator();
+                metadataBw.write(csvLine);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to dump image heap metadata to " + metadataFile, ex);
+        }
     }
 
     private long getSize(Object object, HostedType type) {
@@ -918,6 +966,11 @@ public final class NativeImageHeap implements ImageHeap {
         @Override
         public Class<?> getObjectClass() {
             return clazz.getJavaClass();
+        }
+
+        @Override
+        public HostedType getObjectType() {
+            return clazz;
         }
 
         public ImageHeapConstant getConstant() {
@@ -1152,6 +1205,11 @@ final class BaseLayerPartition implements ImageHeapPartition {
     @Override
     public String getName() {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public boolean isWritable() {
+        return false;
     }
 
     @Override

@@ -53,7 +53,6 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -68,8 +67,11 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
 import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -167,7 +169,7 @@ public abstract class VMThreads {
      * this field after being removed from the linked list.
      */
     public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord("VMThreads.nextTL");
-    private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
+    public static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
     /** The highest stack address. 0 if not available on this platform. */
@@ -1154,7 +1156,8 @@ public abstract class VMThreads {
 }
 
 @AutomaticallyRegisteredFeature
-class ThreadLookupFeature implements InternalFeature, FeatureSingleton {
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
+class ThreadLookupFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(VMThreads.ThreadLookup.class)) {

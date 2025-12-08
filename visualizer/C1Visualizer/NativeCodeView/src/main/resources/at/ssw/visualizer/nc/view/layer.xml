@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.1//EN" "http://www.netbeans.org/dtds/filesystem-1_1.dtd">
+<filesystem>
+    <folder name="Actions">
+        <folder name="Window">
+            <file name="at-ssw-visualizer-nc-view-NCViewAction.instance"/>
+        </folder>
+    </folder>
+    <folder name="Menu">
+        <folder name="Window">
+            <file name="NCViewAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/at-ssw-visualizer-nc-view-NCViewAction.instance"/>
+                <attr name="position" intvalue="350"/>
+            </file>
+        </folder>
+    </folder>
+    <folder name="Windows2">
+        <folder name="Components">
+            <file name="NCViewTopComponent.settings" url="NCViewTopComponentSettings.xml"/>
+        </folder>
+        <folder name="Modes">
+            <folder name="bottomLeft">
+                <file name="NCViewTopComponent.wstcref" url="NCViewTopComponentWstcref.xml">
+                    <attr name="position" intvalue="400"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
+</filesystem>

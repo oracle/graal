@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.55.2",
+  "mxversion": "7.67.0",
   "name" : "truffle",
-  "version" : "26.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -66,6 +66,7 @@ suite = {
       },
     ]
   },
+  "capture_suite_commit_info": False,
   "libraries" : {
 
     # ------------- Libraries -------------
@@ -289,8 +290,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:POLYGLOT",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
+        "com.oracle.truffle.api.bytecode",
         "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
@@ -483,14 +483,14 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_TCK_TESTS",
         "mx:JUNIT",
-        "mx:JMH_1_21",
       ],
       "requires" : [
+        "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "17+",
-      "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
       "javac.lint.overrides" : "none",
       "testProject" : True,
@@ -686,6 +686,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "API,Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -745,6 +746,8 @@ suite = {
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
         "TRUFFLE_RUNTIME",
+        "TRUFFLE_SL",
+        "TRUFFLE_TEST",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1193,7 +1196,6 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
-        "mx:JMH_1_21",
       ],
       "requires" : [
         "java.logging",
@@ -1201,7 +1203,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "testProject" : True,
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -1796,6 +1798,7 @@ suite = {
           "com.oracle.truffle.api.memory",
           "com.oracle.truffle.api.io",
           "com.oracle.truffle.api.frame",
+          "com.oracle.truffle.api.impl",
           "com.oracle.truffle.api",
           "com.oracle.truffle.api.instrumentation",
           "com.oracle.truffle.api.dsl",
@@ -1816,7 +1819,6 @@ suite = {
           "com.oracle.truffle.api.strings.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
           "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           "com.oracle.truffle.object.enterprise to com.oracle.truffle.enterprise",
           # GR-64984: Exports to com.oracle.truffle.enterprise are only needed for jdk21.
@@ -1837,20 +1839,6 @@ suite = {
         ],
       },
 
-      "moduleInfo:closed" : {
-        # This is the module descriptor for the Truffle API modular jar deployed via maven.
-        # It exports all the Truffle API packages to the language that get loaded through Truffle at runtime.
-        "exports" : [
-          # Unqualified exports
-          "com.oracle.truffle.api.provider",
-          "com.oracle.truffle.api.instrumentation.provider",
-          "com.oracle.truffle.api.library.provider",
-          # Qualified exports
-          "com.oracle.truffle.api* to org.graalvm.locator, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm, com.oracle.truffle.truffle_nfi_panama",
-          "com.oracle.truffle.object to org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-        ],
-      },
       "subDir" : "src",
       "javaCompliance" : "17+",
       "dependencies" : [
@@ -2214,7 +2202,6 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
-        "mx:JMH_1_21"
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -2302,7 +2289,6 @@ suite = {
        "exclude" : [
          "mx:HAMCREST",
          "mx:JUNIT",
-         "mx:JMH_1_21",
          "VISUALVM-LIB-JFLUID-HEAP",
          "JIMFS",
          "GUAVA"
@@ -2334,6 +2320,8 @@ suite = {
          "TRUFFLE_API",
          "TRUFFLE_RUNTIME",
          "TRUFFLE_JCODINGS",
+         "TRUFFLE_SL",
+         "TRUFFLE_TEST",
         ],
        "testDistribution": True,
        "maven" : False,

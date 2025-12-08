@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package jdk.graal.compiler.core.test;
 
 import java.util.List;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
@@ -37,8 +39,6 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
@@ -187,7 +187,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         return iOf.usages().count() == 1 && iOf.usages().first() instanceof FixedGuardNode;
     }
 
-    private static int findDeoptLoopDepth(DeoptimizationReason reason, StructuredGraph g) {
+    public static int findDeoptLoopDepth(DeoptimizationReason reason, StructuredGraph g) {
         ControlFlowGraph cfg = ControlFlowGraph.computeForSchedule(g);
         assertTrue(cfg.getLoops().size() > 0, "Loop(s) in graph expected!");
 

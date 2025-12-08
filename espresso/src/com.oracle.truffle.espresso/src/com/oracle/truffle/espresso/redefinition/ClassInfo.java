@@ -160,7 +160,7 @@ public abstract class ClassInfo {
                 }
 
                 ConstantPool pool = parserKlass.getConstantPool();
-                EnclosingMethodAttribute attr = (EnclosingMethodAttribute) parserKlass.getAttribute(EnclosingMethodAttribute.NAME);
+                EnclosingMethodAttribute attr = parserKlass.getAttribute(EnclosingMethodAttribute.NAME, EnclosingMethodAttribute.class);
                 int nameAndTypeIndex = attr.getNameAndTypeIndex();
                 enclosing.append(pool.nameAndTypeName(nameAndTypeIndex)).append(";").append(pool.nameAndTypeDescriptor(nameAndTypeIndex));
             }

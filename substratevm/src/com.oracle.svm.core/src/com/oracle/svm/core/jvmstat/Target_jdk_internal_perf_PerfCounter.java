@@ -29,16 +29,29 @@ import java.nio.LongBuffer;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
 /**
- * PerfCounter objects that end up in the image heap reference an invalid buffer (see
- * PerfCounter.lb). Accessing this buffer would result in a segfault, so we substitute all methods
- * that may access this buffer.
+ * {@code PerfCounter} objects created at build time and written in the image heap reference an
+ * invalid buffer via the {@code PerfCounter.lb} field. Accessing this buffer would result in a
+ * segfault, so we substitute all methods that may access this buffer. Moreover, we delete the
+ * buffer field since it should never be reachable and make the factory methods that would
+ * initialize it throw an {@link VMError#unsupportedFeature(String)} at run time.
  */
 @TargetClass(className = "jdk.internal.perf.PerfCounter")
 final class Target_jdk_internal_perf_PerfCounter {
     @Delete //
     private LongBuffer lb;
+
+    @Substitute  //
+    public static Target_jdk_internal_perf_PerfCounter newPerfCounter(@SuppressWarnings("unused") String name) {
+        throw VMError.unsupportedFeature("Creating a new jdk.internal.perf.PerfCounter at run time is currently not supported.");
+    }
+
+    @Substitute  //
+    public static Target_jdk_internal_perf_PerfCounter newConstantPerfCounter(@SuppressWarnings("unused") String name) {
+        throw VMError.unsupportedFeature("Creating a new jdk.internal.perf.PerfCounter at run time is currently not supported.");
+    }
 
     @Substitute
     @SuppressWarnings("static-method")

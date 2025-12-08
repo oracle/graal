@@ -104,9 +104,6 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
-
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
@@ -145,9 +142,6 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
 
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
-
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
@@ -184,9 +178,6 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
 
         if (!Modifier.isVolatile(modifiers))
             throw new IllegalArgumentException("Must be volatile type");
-
-        if (Modifier.isStatic(modifiers))
-            throw new IllegalArgumentException("Must not be a static field");
 
         // access checks are disabled
         this.cclass = tclass;

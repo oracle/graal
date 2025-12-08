@@ -233,17 +233,20 @@ public final class RuntimeCPUFeatureRegion {
      * <p>
      * All arguments must be compile-time constant.
      */
-    public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
-
-    public static native RuntimeCPUFeatureRegion enterSet(@ConstantNodeParameter EnumSet<?> arg0);
+    public static native RuntimeCPUFeatureRegion enterSet(@ConstantNodeParameter EnumSet<?> features);
 
     /**
-     * @see #enter(Enum)
+     * @see #enterSet(EnumSet)
+     */
+    public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
+
+    /**
+     * @see #enterSet(EnumSet)
      */
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1);
 
     /**
-     * @see #enter(Enum)
+     * @see #enterSet(EnumSet)
      */
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1, @ConstantNodeParameter Enum<T> arg2);
 

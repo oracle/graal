@@ -41,7 +41,6 @@ import jdk.graal.compiler.truffle.phases.inlining.CallTree;
 import jdk.graal.compiler.graphio.GraphBlocks;
 import jdk.graal.compiler.graphio.GraphStructure;
 
-import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;

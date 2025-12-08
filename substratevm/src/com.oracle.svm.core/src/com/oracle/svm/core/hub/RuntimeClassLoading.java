@@ -27,8 +27,11 @@ package com.oracle.svm.core.hub;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.security.ProtectionDomain;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -267,5 +270,21 @@ public class RuntimeClassLoading {
             return;
         }
         // GR-59739 runtime linking
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class NoRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return !isSupported();
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class WithRuntimeClassLoading implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return isSupported();
+        }
     }
 }

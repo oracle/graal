@@ -44,7 +44,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageInfo;
@@ -72,6 +71,7 @@ import jdk.graal.compiler.libgraal.truffle.LibGraalTruffleHostEnvironmentLookup;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashMap;
@@ -131,7 +131,7 @@ public final class LibGraalFeature implements Feature {
                 throw new GraalError(cl.getClass().getName() + " does not support META-INF/libgraal.java.home protocol (see javadoc of HostedLibGraalClassLoader)");
             }
             return Path.of(new String(in.readAllBytes()));
-        } catch (IOException e) {
+        } catch (IOException e) { // Parfait_ALLOW impossible-redundant-condition (PARSEC-7191)
             throw new GraalError(e);
         }
     }

@@ -111,6 +111,7 @@ import com.oracle.truffle.espresso.nodes.bytecodes.ShortArrayStoreNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.lookup.LookupMode;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -190,7 +191,8 @@ public final class JniEnv extends NativeEnv {
         popObject = nativeAccess.lookupAndBindSymbol(nespressoLibrary, "pop_object", NativeSignature.create(NativeType.OBJECT, NativeType.POINTER));
 
         jniEnvPtr = initializeAndGetEnv(initializeNativeContext);
-        assert jniEnvPtr != null && !getUncached().isNull(jniEnvPtr);
+        assert jniEnvPtr != null;
+        assert !getUncached().isNull(jniEnvPtr) || !getLanguage().isNativeAvailable();
         assert getUncached().isPointer(jniEnvPtr);
     }
 
@@ -447,7 +449,7 @@ public final class JniEnv extends NativeEnv {
             if (fieldType != null) {
                 // Lookup only if name and type are known symbols.
                 klass.safeInitialize();
-                field = klass.lookupField(fieldName, fieldType, Klass.LookupMode.INSTANCE_ONLY);
+                field = klass.lookupField(fieldName, fieldType, LookupMode.INSTANCE_ONLY);
                 assert field == null || field.getType().equals(fieldType);
             }
         }
@@ -491,7 +493,7 @@ public final class JniEnv extends NativeEnv {
                 Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                field = klass.lookupField(fieldName, fieldType, Klass.LookupMode.STATIC_ONLY);
+                field = klass.lookupField(fieldName, fieldType, LookupMode.STATIC_ONLY);
                 assert field == null || field.getType().equals(fieldType);
             }
         }

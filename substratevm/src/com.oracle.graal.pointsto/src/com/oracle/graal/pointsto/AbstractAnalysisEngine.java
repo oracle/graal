@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.hosted.Feature;
@@ -47,6 +48,9 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -103,6 +107,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final ClassInclusionPolicy classInclusionPolicy;
     private static final ResolvedJavaMethod[] NO_METHODS = new ResolvedJavaMethod[]{};
     private static final ResolvedJavaField[] NO_FIELDS = new ResolvedJavaField[]{};
+    private volatile boolean initialized = false;
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
@@ -130,7 +135,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
-        classInclusionPolicy.setBigBang(this);
+        if (classInclusionPolicy != null) {
+            classInclusionPolicy.setBigBang(this);
+        }
         this.classInclusionPolicy = classInclusionPolicy;
     }
 
@@ -224,6 +231,19 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         /* Initialize for the next iteration. */
         executor.init(getTiming());
         return analysisModified;
+    }
+
+    @Override
+    public void markInitializationFinished() {
+        assert !initialized;
+
+        initialized = true;
+        universe.notifyBigBangInitialized();
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
     }
 
     @Override
@@ -394,6 +414,34 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     public void tryRegisterFieldForBaseImage(AnalysisField field) {
         if (classInclusionPolicy.isAnalysisFieldIncluded(field)) {
             classInclusionPolicy.includeField(field);
+        }
+    }
+
+    @Override
+    public void tryRegisterNativeMethodsForBaseImage(ResolvedJavaType type) {
+        /*
+         * Some modules contain native methods that should not be included in the image because they
+         * are hosted only, or because they are currently unsupported.
+         */
+        Set<Module> forbiddenModules = hostVM.getSharedLayerForbiddenModules();
+        if (forbiddenModules.contains(OriginalClassProvider.getJavaClass(type).getModule())) {
+            return;
+        }
+        /*
+         * Some methods in target classes can be marked as native because the substitution only
+         * injects an annotation, or provides an alias, without changing the implementation. Those
+         * methods should not be included in the image.
+         */
+        if (AnnotationUtil.isAnnotationPresent(type, TargetClass.class)) {
+            return;
+        }
+        ResolvedJavaMethod[] methods = tryApply(type, t -> t.getDeclaredMethods(false), NO_METHODS);
+        for (ResolvedJavaMethod method : methods) {
+            if (method.isNative()) {
+                if (getHostVM().isSupportedOriginalMethod(this, method)) {
+                    classInclusionPolicy.includeMethod(method);
+                }
+            }
         }
     }
 

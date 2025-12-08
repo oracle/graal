@@ -480,6 +480,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         switch (layer.getContextPolicy()) {
             case EXCLUSIVE:
+                layer.close();
                 break;
             case REUSE:
                 sharedLayers.add(layer);
@@ -773,6 +774,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         validateSandbox();
         printDeprecatedOptionsWarning(deprecatedDescriptors);
+
+        long currentTimestamp = System.nanoTime();
+        for (CallTarget loadedCallTarget : getCallTargets()) {
+            RUNTIME.setInitializedTimestamp(loadedCallTarget, currentTimestamp);
+        }
+
         return true;
     }
 
@@ -1253,6 +1260,21 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
+    @TruffleBoundary
+    <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(String languageId, boolean fail) {
+        PolyglotLanguage foundLanguage = idToLanguage.get(languageId);
+        if (foundLanguage == null) {
+            if (HOST_LANGUAGE_ID.equals(languageId)) {
+                return hostLanguage;
+            }
+            if (fail) {
+                Set<String> languageNames = idToLanguage.keySet();
+                throw PolyglotEngineException.illegalArgument("Cannot find language " + languageId + " among " + languageNames);
+            }
+        }
+        return foundLanguage;
+    }
+
     boolean storeCache(Path targetPath, long cancelledWord) {
         if (!TruffleOptions.AOT) {
             throw new UnsupportedOperationException("Storing the engine cache is only supported on native-image hosts.");
@@ -1398,6 +1420,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
                 getEngineLogger().log(Level.INFO, String.format("Specialization histogram: %n%s", logMessage.toString()));
+            }
+            for (PolyglotSharingLayer layer : sharedLayers) {
+                layer.close();
             }
 
             RUNTIME.onEngineClosed(this.runtimeData);
@@ -1621,6 +1646,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             for (Future<Void> future : futures) {
                 boolean timedOut = false;
                 try {
+                    // Parfait_ALLOW impossible-redundant-condition
                     if (timeout != null && timeout != Duration.ZERO) {
                         long timeElapsed = System.currentTimeMillis() - startMillis;
                         long timeoutMillis = timeout.toMillis();
@@ -2446,22 +2472,32 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             case Ignore -> {
             }
             case Print -> {
-                StringWriter message = new StringWriter();
-                try (PrintWriter errWriter = new PrintWriter(message)) {
-                    errWriter.printf("""
-                                    [engine] WARNING: %s
-                                    To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
-                                    The accepted values are:
-                                      - Ignore:    Do not print this warning.
-                                      - Print:     Print this warning (default value).
-                                      - Throw:     Throw an exception instead of printing this warning.
-                                    """, reason);
-                    exception.printStackTrace(errWriter);
+                if (closeOnCollectedErrorLogged.compareAndSet(false, true)) {
+                    logCloseOnCollectedError(reason, exception);
                 }
-                logFallback(message.toString());
             }
+            case PrintAll -> logCloseOnCollectedError(reason, exception);
             case Throw -> throw new RuntimeException(reason, exception);
         }
+    }
+
+    private static final AtomicBoolean closeOnCollectedErrorLogged = new AtomicBoolean();
+
+    private static void logCloseOnCollectedError(String reason, Throwable exception) {
+        StringWriter message = new StringWriter();
+        try (PrintWriter errWriter = new PrintWriter(message)) {
+            errWriter.printf("""
+                            [engine] WARNING: %s
+                            To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
+                            The accepted values are:
+                              - Ignore:    Do not print this warning.
+                              - Print:     Print this warning only for the first occurrence; suppress subsequent ones (default value).
+                              - PrintAll:  Print this warning.
+                              - Throw:     Throw an exception instead of printing this warning.
+                            """, reason);
+            exception.printStackTrace(errWriter);
+        }
+        logFallback(message.toString());
     }
 
     static final class StableLocalLocations {

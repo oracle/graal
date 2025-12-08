@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.core.util.EnvVariableUtils.EnvironmentVariable;
+import static com.oracle.svm.hosted.NativeImageClassLoaderSupport.PathDigestEntry;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -60,28 +61,17 @@ import com.oracle.svm.util.LogUtils;
 public class LoadLayerArchiveSupport extends LayerArchiveSupport {
 
     @SuppressWarnings("this-escape")
-    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport, Platform current) {
-        super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport);
+    public LoadLayerArchiveSupport(String layerName, Path layerFile, Path tempDir, ArchiveSupport archiveSupport, Platform current, boolean enableLogging) {
+        super(layerName, layerFile, tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "load"), archiveSupport, enableLogging);
         this.archiveSupport.expandJarToDir(layerFile, layerDir);
         layerProperties.loadAndVerify(current);
-        loadBuilderArgumentsFile();
     }
 
-    private void loadBuilderArgumentsFile() {
-        try (Stream<String> lines = Files.lines(getBuilderArgumentsFilePath())) {
-            lines.forEach(builderArguments::add);
+    private static <T> List<T> loadBuildEntries(Path path, Function<String, T> stringParser, String buildEntryTypeDescription) {
+        try (Stream<String> lines = Files.lines(path)) {
+            return lines.map(stringParser).toList();
         } catch (IOException e) {
-            throw UserError.abort("Unable to load builder arguments from file " + getBuilderArgumentsFilePath());
-        }
-    }
-
-    private List<EnvironmentVariable> loadEnvironmentVariablesFile() {
-        List<EnvironmentVariable> envVariables = new ArrayList<>();
-        try (Stream<String> lines = Files.lines(getEnvVariablesFilePath())) {
-            lines.map(EnvironmentVariable::of).forEach(envVariables::add);
-            return envVariables;
-        } catch (IOException e) {
-            throw UserError.abort("Unable to load environment variables from file " + getEnvVariablesFilePath());
+            throw UserError.abort("Unable to load " + buildEntryTypeDescription + " from file " + path);
         }
     }
 
@@ -97,12 +87,19 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
     public void verifyCompatibility(NativeImageClassLoaderSupport classLoaderSupport, Map<String, OptionLayerVerificationRequests> allRequests, boolean strict, boolean verbose) {
         Function<String, String> filterFunction = argument -> splitArgumentOrigin(argument).argument;
         boolean violationsFound = false;
-        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
-        violationsFound |= verifyBuilderArgumentsCompatibility(builderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, false);
-        violationsFound |= verifyEnvironmentVariablesCompatibility(loadEnvironmentVariablesFile(), parseEnvVariables(), strict, verbose);
+        List<String> previousBuilderArguments = loadBuildEntries(getBuilderArgumentsFilePath(), Function.identity(), "builder arguments");
+        violationsFound |= verifyBuilderArgumentsCompatibility(previousBuilderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose, true);
+        violationsFound |= verifyBuilderArgumentsCompatibility(previousBuilderArguments, classLoaderSupport.getHostedOptionParser().getArguments(), filterFunction, allRequests, strict, verbose,
+                        false);
         if (violationsFound && verbose) {
             UserError.abort("Verbose LayerOptionVerification failed.");
         }
+
+        List<EnvironmentVariable> previousEnvironmentVariables = loadBuildEntries(getEnvVariablesFilePath(), EnvironmentVariable::of, "environment variables");
+        verifyEnvironmentVariablesCompatibility(previousEnvironmentVariables, parseEnvVariables(), strict);
+
+        List<PathDigestEntry> previousPathDigestEntries = loadBuildEntries(getBuildPathDigestsFilePath(), PathDigestEntry::of, "build path digests");
+        verifyBuildPathDigestsCompatibility(previousPathDigestEntries, classLoaderSupport.computePathEntryDigests(), strict);
     }
 
     private static boolean verifyBuilderArgumentsCompatibility(List<String> previousArgs, List<String> currentArgs, Function<String, String> filterFunction,
@@ -230,29 +227,53 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
      * but are not considered by this verification, since mismatches between these don't affect
      * layer compatibility.
      */
-    private static boolean verifyEnvironmentVariablesCompatibility(List<EnvironmentVariable> previousEnvVars, List<EnvironmentVariable> currentEnvVars, boolean strict, boolean verbose) {
+    private static void verifyEnvironmentVariablesCompatibility(List<EnvironmentVariable> previousEnvVars, List<EnvironmentVariable> currentEnvVars, boolean strict) {
         Set<EnvironmentVariable> currentEnvVarsSet = new HashSet<>(currentEnvVars);
         boolean violationsFound = false;
+        String messagePrefix = strict ? "Error" : "Warning";
 
         for (EnvironmentVariable previousEnvVar : previousEnvVars) {
             if (currentEnvVarsSet.contains(previousEnvVar)) {
                 continue;
             }
-
             violationsFound = true;
             String message = "Current layered image build must set environment variable " + previousEnvVar + " as it was set in the previous layer build.";
-            if (verbose) {
-                LogUtils.info("Error: ", message);
-            } else {
-                if (strict) {
-                    throw UserError.abort(message);
-                } else {
-                    LogUtils.warning(message);
-                }
-            }
+            LogUtils.info(messagePrefix, message);
         }
 
-        return violationsFound;
+        if (violationsFound && strict) {
+            throw UserError.abort("Environment variable layer compatibility check failed.");
+        }
+    }
+
+    private static void verifyBuildPathDigestsCompatibility(List<PathDigestEntry> previousPathDigests, List<PathDigestEntry> currentPathDigests, boolean strict) {
+        Set<String> currentDigests = new HashSet<>(currentPathDigests.size());
+        currentPathDigests.forEach(pathEntry -> currentDigests.add(pathEntry.digest()));
+
+        List<PathDigestEntry> previousUnmatchedPathDigests = previousPathDigests.stream()
+                        .filter(pathEntry -> !currentDigests.contains(pathEntry.digest()))
+                        .toList();
+        if (previousUnmatchedPathDigests.isEmpty()) {
+            // All class/module-path entry digests from the previous layered build were present in
+            // the current layered build.
+            // Therefore, the compatibility check passes and we report no violations.
+            return;
+        }
+
+        Set<String> currentPathNames = new HashSet<>(currentPathDigests.size());
+        currentPathDigests.forEach(pathEntry -> currentPathNames.add(pathEntry.path()));
+        String messagePrefix = strict ? "Error" : "Warning";
+        for (PathDigestEntry unmatchedDigestEntry : previousUnmatchedPathDigests) {
+            boolean pathNotFound = !currentPathNames.contains(unmatchedDigestEntry.path());
+            String pathType = unmatchedDigestEntry.type().equals(PathDigestEntry.PathType.cp) ? "classpath" : "modulepath";
+            String message = "The entry " + unmatchedDigestEntry.path() + " included in the " + pathType + " of the previous layered build was" +
+                            (pathNotFound ? " not" : "") + " found in the " + pathType + " of the current layered build" + (pathNotFound ? "." : ", but its contents have been modified.");
+            LogUtils.info(messagePrefix, message);
+        }
+
+        if (strict) {
+            throw UserError.abort("Class/Module-path layer compatibility check failed.");
+        }
     }
 
     record ArgumentOrigin(boolean booleanOption, String argument, String origin) {

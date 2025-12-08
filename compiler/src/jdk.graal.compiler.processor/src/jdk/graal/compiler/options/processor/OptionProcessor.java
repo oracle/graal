@@ -396,6 +396,7 @@ public class OptionProcessor extends AbstractProcessor {
                     Set<Element> originatingElements) {
 
         static OptionsDeclarer ERROR = new OptionsDeclarer(null, null, null, false, null, null);
+
         static OptionsDeclarer create(ProcessingEnvironment env, Element optionsDeclarerElement, boolean implementsOptionsContainer) {
             Element e = optionsDeclarerElement;
 

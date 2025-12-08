@@ -312,14 +312,14 @@ public class NativeMemoryTracking {
     }
 
     public static RuntimeSupport.Hook initializationHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             NativeMemoryTracking.singleton().trackReserve(ImageHeapProvider.get().getImageHeapReservedBytes(), NmtCategory.ImageHeap);
             NativeMemoryTracking.singleton().trackCommit(ImageHeapProvider.get().getImageHeapMappedBytes(), NmtCategory.ImageHeap);
         };
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
-        return isFirstIsolate -> {
+        return _ -> {
             NativeMemoryTracking.singleton().printStatistics();
         };
     }

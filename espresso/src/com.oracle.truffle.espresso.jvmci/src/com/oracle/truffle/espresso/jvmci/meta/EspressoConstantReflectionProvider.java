@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import java.util.Objects;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -35,7 +34,7 @@ import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class EspressoConstantReflectionProvider implements ConstantReflectionProvider {
+public final class EspressoConstantReflectionProvider implements ConstantReflectionProviderWithStaticsBase {
     private final EspressoMethodHandleAccessProvider methodHandleAccessProvider;
     private final EspressoMetaAccessProvider metaAccess;
 
@@ -132,7 +131,7 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
             if (receiver.isNull() || !receiver.getJavaKind().isObject()) {
                 return null;
             }
-            Class<?> holderClass = ((EspressoResolvedJavaType) espressoField.getDeclaringClass()).getMirror();
+            Class<?> holderClass = espressoField.getDeclaringClass().getMirror();
             Object objReceiver = unwrap((EspressoObjectConstant) receiver);
             if (!holderClass.isAssignableFrom(objReceiver.getClass())) {
                 return null;
@@ -284,6 +283,23 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
         return new KlassConstant((EspressoResolvedObjectType) type);
     }
 
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+        if (!(constant instanceof EspressoObjectConstant objectConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
+        Object unwrapped = unwrap(objectConstant);
+        return System.identityHashCode(unwrapped);
+    }
+
     public JavaConstant forObject(Object object) {
         return wrap(object);
     }
@@ -296,5 +312,13 @@ public final class EspressoConstantReflectionProvider implements ConstantReflect
         return null;
     }
 
-    public native EspressoResolvedInstanceType getTypeForStaticBase(EspressoObjectConstant staticBase);
+    private native EspressoResolvedInstanceType getTypeForStaticBase(EspressoObjectConstant staticBase);
+
+    @Override
+    public AbstractEspressoResolvedInstanceType getTypeForStaticBase(JavaConstant staticBase) {
+        if (!(staticBase instanceof EspressoObjectConstant)) {
+            return null;
+        }
+        return getTypeForStaticBase((EspressoObjectConstant) staticBase);
+    }
 }

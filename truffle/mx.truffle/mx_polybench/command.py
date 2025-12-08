@@ -40,15 +40,22 @@
 #
 import argparse
 import contextlib
+import os
 import shlex
 from argparse import ArgumentParser
 from enum import Enum
-from typing import List, Set, Tuple, NamedTuple
+from typing import List, Set, Tuple, NamedTuple, Dict
 
 import mx
 import mx_benchmark
 import mx_sdk
-from mx_polybench.model import _resolve_all_benchmarks, _get_all_suites, PolybenchBenchmarkSuiteEntry
+from mx_polybench.model import (
+    _resolve_all_benchmarks,
+    _get_all_suites,
+    PolybenchBenchmarkSuiteEntry,
+    _extend_env,
+    PolybenchBenchmarkSuite,
+)
 
 _suite = mx.suite("truffle")
 
@@ -200,6 +207,8 @@ def _run_suite(args):
         base_args.append("--dry-run")
     elif args.dry_run_polybench:
         base_args.append("--dry-run-polybench")
+    elif args.reuse_disk_images:
+        base_args.append("--reuse-disk-images")
 
     def polybench_run_function(argument_list: List[str]) -> None:
         raw_args = base_args + argument_list + override_arguments
@@ -239,7 +248,9 @@ class VMFeature(Enum):
 def _get_vm_features(args) -> Set[VMFeature]:
     def require_native(feature_name):
         if not args.is_native:
-            mx.abort(f"Feature {feature_name} is only supported on native runs, but native mode is not selected.")
+            mx.abort(
+                f"Feature {feature_name} is only supported on native runs, but native mode is not selected (enable native mode with --native)."
+            )
 
     result = set()
     if args.is_native:
@@ -256,19 +267,21 @@ def _get_vm_features(args) -> Set[VMFeature]:
 def _run_benchmark_pattern(args):
     arguments_spec = PolybenchArgumentsSpecification.parse(args.benchmark_arguments)
     run_spec = PolybenchRunSpecification(args.benchmarks, _get_vm_features(args), arguments_spec)
-    _validate_jdk(run_spec.is_native())
+    _validate_jdk(run_spec)
     mx.logv(f"Performing polybench run: {run_spec}")
-    _run_specification(run_spec, pattern_is_glob=args.pattern_is_glob, dry_run=args.dry_run)
+    _run_specification(
+        run_spec, pattern_is_glob=args.pattern_is_glob, dry_run=args.dry_run, reuse_disk_images=args.reuse_disk_images
+    )
 
 
-def _validate_jdk(is_native: bool) -> mx.JDKConfig:
+def _validate_jdk(run_spec: "PolybenchRunSpecification") -> mx.JDKConfig:
     jdk = mx.get_jdk()
+    rerun_details = (
+        'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
+        '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
+    )
     if not mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home):
-        rerun_details = (
-            'You can change the JDK using "mx --java-home $GRAALVM_HOME", where GRAALVM_HOME points to a downloaded GraalVM release '
-            '(or a GraalVM built from source, e.g., with "mx -p /vm --env ce build").'
-        )
-        if is_native:
+        if run_spec.is_native():
             mx.abort(
                 f"Polybench was invoked with a non-Graal JDK ({jdk.home}), but a native image run was requested. "
                 f"Re-run using a Graal JDK. " + rerun_details
@@ -278,8 +291,19 @@ def _validate_jdk(is_native: bool) -> mx.JDKConfig:
                 f"Polybench is intended to run on a Graal JDK, but it was invoked with a non-Graal JDK ({jdk.home}). "
                 f"If you encounter issues, consider re-running using a GraalVM release. " + rerun_details
             )
+
+    if VMFeature.PGO in run_spec.vm_features and not _check_vm_is_enterprise(jdk.home):
+        mx.abort(
+            "PGO was requested, but the Graal JDK specified does not appear to support PGO. Re-run using an Oracle GraalVM. "
+            + rerun_details
+        )
+
     mx.logv(f"Using GraalVM at {jdk.home}")
     return jdk
+
+
+def _check_vm_is_enterprise(jdk_home):
+    return os.path.exists(os.path.join(jdk_home, "lib", "svm", "builder", "svm-enterprise.jar"))
 
 
 def _parse_mx_benchmark_pattern(pattern: str, pattern_is_glob: bool) -> str:
@@ -341,18 +365,20 @@ class PolybenchRunSpecification(NamedTuple):
     vm_features: Set[VMFeature] = set()
     arguments: PolybenchArgumentsSpecification = PolybenchArgumentsSpecification()
 
-    def append_arguments(self, other: PolybenchArgumentsSpecification) -> "PolybenchRunSpecification":
-        return PolybenchRunSpecification(
-            pattern=self.pattern, vm_features=self.vm_features, arguments=self.arguments.append(other)
-        )
-
     def is_native(self) -> bool:
         return VMFeature.NATIVE in self.vm_features
 
-    def jvm_name(self) -> str:
-        return "native-image-java-home" if self.is_native() else "java-home"
+    def jvm_and_config(self) -> Tuple[str, str]:
+        if self.is_native():
+            # The VM config misses the 'ce'/'ee' suffix. The PolybenchBenchmarkSuite
+            # patches this in the output data.
+            return "native-image", self._native_vm_config()
+        else:
+            # The vanilla configuration does not inject any additional VM arguments.
+            # The PolybenchBenchmarkSuite overwrites this config in the output data.
+            return "server", "vanilla"
 
-    def jvm_config(self) -> str:
+    def _native_vm_config(self) -> str:
         features = []
         if VMFeature.G1GC in self.vm_features:
             features.append("g1gc")
@@ -361,12 +387,18 @@ class PolybenchRunSpecification(NamedTuple):
         return "-".join(features) if features else "default"
 
 
-def _run_specification(spec: PolybenchRunSpecification, pattern_is_glob: bool = True, dry_run: bool = False):
+def _run_specification(
+    spec: PolybenchRunSpecification,
+    pattern_is_glob: bool = True,
+    dry_run: bool = False,
+    reuse_disk_images: bool = False,
+):
     pattern = _parse_mx_benchmark_pattern(spec.pattern, pattern_is_glob)
+    jvm_name, jvm_config = spec.jvm_and_config()
     mx_benchmark_args = (
         [f"polybench:{pattern}"]
         + spec.arguments.mx_benchmark_args
-        + ["--", f"--jvm={spec.jvm_name()}", f"--jvm-config={spec.jvm_config()}"]
+        + ["--", f"--jvm={jvm_name}", f"--jvm-config={jvm_config}", "--prebuilt-vm"]
         + spec.arguments.vm_args
         + ["--"]
         + spec.arguments.polybench_args
@@ -377,7 +409,15 @@ def _run_specification(spec: PolybenchRunSpecification, pattern_is_glob: bool = 
         return
 
     mx.logv(f"Running command: {command_string}")
-    mx_benchmark.benchmark(mx_benchmark_args)
+    with _extend_env(_extra_run_variables(reuse_disk_images)):
+        mx_benchmark.benchmark(mx_benchmark_args)
+
+
+def _extra_run_variables(reuse_disk_images) -> Dict[str, str]:
+    result = {}
+    if reuse_disk_images:
+        result[PolybenchBenchmarkSuite.REUSE_DISK_IMAGES] = "true"
+    return result
 
 
 def _base_mx_command() -> List[str]:
@@ -461,6 +501,16 @@ def _create_parser() -> ArgumentParser:
     )
     parser.add_argument(
         run_flag("--g1gc"), action="store_true", default=False, help="use G1GC (only valid for native runs)"
+    )
+    parser.add_argument(
+        run_flag("--reuse-disk-images"),
+        action="store_true",
+        default=False,
+        help=(
+            "reuse existing native images found on disk. Polybench will reuse an image from disk if it was built with the same languages and VM arguments. "
+            "This feature does not detect stale images, does not support PGO, and should only be used for development. "
+            f'This feature can also be enabled by setting the environment variable {PolybenchBenchmarkSuite.REUSE_DISK_IMAGES} to "true".'
+        ),
     )
     benchmark_pattern_group = parser.add_mutually_exclusive_group()
     benchmark_pattern_group.add_argument(

@@ -55,8 +55,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -245,9 +245,10 @@ public final class IsolatedGraalUtils {
         // The context is cleared in the CEntryPointOptions.epilogue (also in case of an exception)
 
         SubstrateMethod method = ImageHeapObjects.deref(methodRef);
-        RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+        RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
         DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
-        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(),
+                        RuntimeCompilationSupport.getLIRSuites(), method);
         ClientHandle<SubstrateInstalledCode> installedCodeHandle = IsolatedRuntimeCodeInstaller.installInClientIsolate(methodRef, compilationResult, installedCodeFactoryHandle);
         Log.log().string("Code for " + method.format("%H.%n(%p)") + ": " + compilationResult.getTargetCodeSize() + " bytes").newline();
 
@@ -265,7 +266,7 @@ public final class IsolatedGraalUtils {
                 IsolatedCompileClient.set(null);
             }
         } else {
-            RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+            RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
             try (DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build()) {
                 SubstrateGraalUtils.compile(debug, method);
             }
@@ -280,9 +281,10 @@ public final class IsolatedGraalUtils {
         IsolatedCompileContext.set(new IsolatedCompileContext(clientIsolate));
         // The context is cleared in the CEntryPointOptions.epilogue (also in case of an exception)
 
-        RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+        RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
         try (DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build()) {
-            SubstrateGraalUtils.doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), ImageHeapObjects.deref(methodRef));
+            SubstrateGraalUtils.doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(),
+                            ImageHeapObjects.deref(methodRef));
         }
 
         return Word.zero();

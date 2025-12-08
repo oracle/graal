@@ -55,6 +55,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -64,6 +66,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -149,7 +152,7 @@ public class JavaMainWrapper {
         public List<String> getInputArguments() {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             if (args.getArgv().isNonNull() && args.getArgc() > 0) {
-                String[] unmodifiedArgs = SubstrateUtil.convertCToJavaArgs(args.getArgc(), args.getArgv());
+                String[] unmodifiedArgs = ArgsSupport.convertCToJavaArgs(args.getArgc(), args.getArgv());
                 List<String> inputArgs = new ArrayList<>(Arrays.asList(unmodifiedArgs));
 
                 if (mainArgs != null) {
@@ -161,6 +164,11 @@ public class JavaMainWrapper {
         }
     }
 
+    /**
+     * For layered images this method is delayed until the application layer. This is necessary so
+     * that the method handle can be inlined before analysis.
+     */
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static void invokeMain(String[] args) throws Throwable {
         String[] mainArgs = args;
         if (ImageSingletons.contains(PreMainSupport.class)) {
@@ -198,7 +206,7 @@ public class JavaMainWrapper {
      */
     private static int runCore0() {
         try {
-            if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+            if (SubstrateOptions.InitializeVM.getValue()) {
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
                  * because they often depend on option values. The user is expected to manually run
@@ -270,9 +278,11 @@ public class JavaMainWrapper {
         }
     }
 
+    /** The entry point of the image needs to be in the application layer. */
     @Uninterruptible(reason = "Thread state not set up yet.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @LayeredCompilationBehavior(Behavior.FULLY_DELAYED_TO_APPLICATION_LAYER)
     public static int run(int argc, CCharPointerPointer argv) {
         if (SubstrateOptions.RunMainInNewThread.getValue()) {
             return doRunInNewThread(argc, argv);
@@ -281,7 +291,9 @@ public class JavaMainWrapper {
         }
     }
 
+    /** SVM start-up logic should be pinned to the initial layer. */
     @Uninterruptible(reason = "Thread state not setup yet.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static int doRun(int argc, CCharPointerPointer argv) {
         try {
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
@@ -314,6 +326,7 @@ public class JavaMainWrapper {
     private static int doRunInNewThread(int argc, CCharPointerPointer argv) {
         MAIN_ISOLATE_PARAMETERS.get().setArgc(argc);
         MAIN_ISOLATE_PARAMETERS.get().setArgv(argv);
+        // GR-71873 change to use runtime stack size value
         long stackSize = SubstrateOptions.StackSize.getHostedValue();
         OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), Word.nullPointer(), (int) stackSize);
         if (osThreadHandle.isNull()) {
@@ -469,6 +482,36 @@ public class JavaMainWrapper {
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
+        }
+    }
+
+    /** Support for platform-specific conversion of the command line to Java main arguments. */
+    @AutomaticallyRegisteredImageSingleton(ArgsSupport.class)
+    public static class ArgsSupport {
+        private static ArgsSupport singleton() {
+            return ImageSingletons.lookup(ArgsSupport.class);
+        }
+
+        /**
+         * Convert C-style to Java-style command line arguments. The first C-style argument, which
+         * is always the executable file name, is ignored.
+         *
+         * @param argc the number of arguments in the {@code argv} array.
+         * @param argv a C {@code char**}.
+         *
+         * @return the command line argument strings in a Java string array.
+         */
+        public static String[] convertCToJavaArgs(int argc, CCharPointerPointer argv) {
+            String[] args = new String[argc - 1];
+            for (int i = 1; i < argc; ++i) {
+                args[i - 1] = singleton().toJavaArg(argv.read(i));
+            }
+            return args;
+        }
+
+        /** Converts a single argv element to a Java string. */
+        protected String toJavaArg(CCharPointer rawArg) {
+            return CTypeConversion.toJavaString(rawArg);
         }
     }
 }

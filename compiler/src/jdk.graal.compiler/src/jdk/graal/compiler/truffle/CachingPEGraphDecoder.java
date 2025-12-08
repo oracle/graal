@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -54,6 +55,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.truffle.phases.PrePartialEvaluationSuite;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -67,6 +69,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
 
     protected final Providers graphCacheProviders;
     protected final GraphBuilderConfiguration graphBuilderConfig;
+    private final KnownTruffleTypes truffleTypes;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> localGraphCache;
     private final Supplier<AutoCloseable> createPersistentCachedGraphScope;
@@ -85,6 +88,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
                     StructuredGraph graph,
                     Providers graphCacheProviders,
                     Providers decodingProviders,
+                    KnownTruffleTypes truffleTypes,
                     GraphBuilderConfiguration graphBuilderConfig,
                     LoopExplosionPlugin loopExplosionPlugin,
                     InvocationPlugins invocationPlugins,
@@ -104,6 +108,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException, forceLink);
 
+        this.truffleTypes = truffleTypes;
         assert !graphBuilderConfig.trackNodeSourcePosition() || graph.trackNodeSourcePosition();
 
         this.graphCacheProviders = graphCacheProviders;
@@ -121,16 +126,16 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         StructuredGraph graphToEncode = buildGraph(method, canonicalizer);
 
-        /*
-         * ConvertDeoptimizeToGuardPhase reduces the number of merges in the graph, so that fewer
-         * frame states will be created. This significantly reduces the number of nodes in the
-         * initial graph.
-         */
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
-            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, graphCacheProviders);
+            Providers p = this.graphCacheProviders;
+
+            new PrePartialEvaluationSuite(graphToEncode.getOptions(), truffleTypes, p, canonicalizer, (m) -> buildGraph(m, canonicalizer), Function.identity()).apply(graphToEncode, p);
+
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, p);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
-                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graphToEncode, graphCacheProviders);
+                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graphToEncode, p);
             }
+
         } catch (Throwable t) {
             throw debug.handle(t);
         }

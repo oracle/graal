@@ -102,8 +102,8 @@ public class TStringAsNativeTest extends TStringTestBase {
                 assertBytesEqual(inflateNoCache, encoding, array);
                 Assert.assertEquals(naturalStride, inflate.getStringCompactionLevelUncached(encoding).getLog2());
                 Assert.assertEquals(naturalStride, inflateNoCache.getStringCompactionLevelUncached(encoding).getLog2());
-                Assert.assertEquals(compactStride, compact.getStringCompactionLevelUncached(encoding).getLog2());
-                Assert.assertEquals(compactStride, compactNoCache.getStringCompactionLevelUncached(encoding).getLog2());
+                Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compact.getStringCompactionLevelUncached(encoding).getLog2());
+                Assert.assertEquals(isCompactionSupported(encoding) ? compactStride : naturalStride, compactNoCache.getStringCompactionLevelUncached(encoding).getLog2());
             }
         });
     }

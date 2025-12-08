@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
 
 import java.util.Arrays;
@@ -505,6 +506,7 @@ public class FrameInfoDecoder {
                 valueInfo.kind = extractKind(flags);
                 valueInfo.isCompressedReference = extractIsCompressedReference(flags);
                 valueInfo.isEliminatedMonitor = extractIsEliminatedMonitor(flags);
+                valueInfo.isAutoBoxedPrimitive = extractIsAutoBoxedPrimitive(flags);
             }
             if (valueType.hasData) {
                 long valueInfoData = readBuffer.getSV();
@@ -574,44 +576,56 @@ public class FrameInfoDecoder {
     protected static final int KIND_SHIFT = TYPE_SHIFT + TYPE_BITS;
     protected static final int KIND_MASK_IN_PLACE = ((1 << KIND_BITS) - 1) << KIND_SHIFT;
 
-    /**
-     * Value not used by {@link JavaKind} as a marker for eliminated monitors. The kind of a monitor
-     * is always {@link JavaKind#Object}.
-     */
-    protected static final int IS_ELIMINATED_MONITOR_KIND_VALUE = 15;
+    /* Repurpose unused {@link JavaKind} ordinal values as markers for special object values. */
+    protected static final int AUTOBOXED_PRIMITIVE_KIND_INDEX = 14;
+    protected static final int ELIMINATED_MONITOR_KIND_INDEX = 15;
 
     protected static final int IS_COMPRESSED_REFERENCE_BITS = 1;
     protected static final int IS_COMPRESSED_REFERENCE_SHIFT = KIND_SHIFT + KIND_BITS;
     protected static final int IS_COMPRESSED_REFERENCE_MASK_IN_PLACE = ((1 << IS_COMPRESSED_REFERENCE_BITS) - 1) << IS_COMPRESSED_REFERENCE_SHIFT;
 
-    protected static final JavaKind[] KIND_VALUES;
-
-    static {
-        KIND_VALUES = Arrays.copyOf(JavaKind.values(), IS_ELIMINATED_MONITOR_KIND_VALUE + 1);
-        assert KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] == null;
-        KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] = JavaKind.Object;
-    }
+    protected static final JavaKind[] KIND_VALUES = createJavaKindArray();
 
     /* Allow allocation-free access to ValueType values */
     private static final ValueType[] ValueTypeValues = ValueType.values();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static ValueType extractType(int flags) {
         return ValueTypeValues[(flags & TYPE_MASK_IN_PLACE) >> TYPE_SHIFT];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static JavaKind extractKind(int flags) {
-        return KIND_VALUES[(flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT];
+        return KIND_VALUES[extractKindIndex(flags)];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean extractIsCompressedReference(int flags) {
         return (flags & IS_COMPRESSED_REFERENCE_MASK_IN_PLACE) != 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean extractIsEliminatedMonitor(int flags) {
-        return ((flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT) == IS_ELIMINATED_MONITOR_KIND_VALUE;
+        return extractKindIndex(flags) == ELIMINATED_MONITOR_KIND_INDEX;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean extractIsAutoBoxedPrimitive(int flags) {
+        return extractKindIndex(flags) == AUTOBOXED_PRIMITIVE_KIND_INDEX;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int extractKindIndex(int flags) {
+        return (flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT;
+    }
+
+    private static JavaKind[] createJavaKindArray() {
+        JavaKind[] result = Arrays.copyOf(JavaKind.values(), ELIMINATED_MONITOR_KIND_INDEX + 1);
+        assert result[AUTOBOXED_PRIMITIVE_KIND_INDEX] == null;
+        assert result[ELIMINATED_MONITOR_KIND_INDEX] == null;
+
+        result[AUTOBOXED_PRIMITIVE_KIND_INDEX] = JavaKind.Object;
+        result[ELIMINATED_MONITOR_KIND_INDEX] = JavaKind.Object;
+        return result;
     }
 }

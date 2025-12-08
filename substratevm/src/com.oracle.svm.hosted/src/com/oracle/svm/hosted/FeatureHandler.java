@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
@@ -63,6 +64,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -90,11 +92,15 @@ public class FeatureHandler {
     public void forEachFeature(Consumer<Feature> consumer) {
         for (Feature feature : featureInstances) {
             try {
+                if (!ImageSingletons.lookup(APIDeprecationSupport.class).isUserEnabledFeaturesStarted() && Options.userEnabledFeatures().contains(feature.getClass().getName())) {
+                    ImageSingletons.lookup(APIDeprecationSupport.class).setUserEnabledFeaturesStarted(true);
+                }
                 consumer.accept(feature);
             } catch (Throwable t) {
                 throw handleFeatureError(feature, t);
             }
         }
+        ImageSingletons.lookup(APIDeprecationSupport.class).setUserEnabledFeaturesStarted(false);
     }
 
     public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
@@ -110,8 +116,8 @@ public class FeatureHandler {
     }
 
     @SuppressWarnings("unchecked")
-    public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
-        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
+    public void registerFeatures(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, DebugContext debug) {
+        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, originalMetaAccess, debug);
 
         LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>();
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
@@ -177,7 +183,6 @@ public class FeatureHandler {
         }
 
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
-
         for (Class<?> featureClass : automaticFeatures) {
             registerFeature(featureClass, specificClassProvider, access);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,15 +27,19 @@
 package com.oracle.graal.pointsto.standalone;
 
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -46,10 +50,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class StandaloneHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, Class<?>> typeToClass = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Class<?>, AnalysisType> classToType = new ConcurrentHashMap<>();
-    private String imageName;
+    private final String imageName;
+    /*
+     * By default, there is no eager class initialization nor delayed class initialization in
+     * standalone analysis, so we don't need do any actual class initialization work here. Setting
+     * this field to true changes that behavior and allows class initialization.
+     */
+    private final boolean initializeClasses;
 
-    public StandaloneHost(OptionValues options, ClassLoader classLoader) {
-        super(options, classLoader);
+    private final boolean isClosedTypeWorld;
+
+    public StandaloneHost(OptionValues options, String imageName, boolean initializeClasses, boolean isClosedTypeWorld) {
+        super(options, /*- ClassLoader not supported. */ null);
+        this.imageName = imageName;
+        this.initializeClasses = initializeClasses;
+        this.isClosedTypeWorld = isClosedTypeWorld;
     }
 
     @Override
@@ -66,6 +81,7 @@ public class StandaloneHost extends HostVM {
         registerType(analysisType);
     }
 
+    @Deprecated
     public AnalysisType lookupType(Class<?> clazz) {
         assert clazz != null : "Class must not be null";
         return classToType.get(clazz);
@@ -78,23 +94,16 @@ public class StandaloneHost extends HostVM {
 
     @Override
     public void onTypeReachable(BigBang bb, AnalysisType type) {
-        if (!type.isReachable()) {
-            AnalysisError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + type);
+        AnalysisError.guarantee(type.isReachable(), "Registering and initializing a type that was not yet marked as reachable: %s", type.toJavaName());
+        if (initializeClasses) {
+            type.getWrapped().initialize();
         }
-        /*
-         * There is no eager class initialization nor delayed class initialization in standalone
-         * analysis, so we don't need do any actual class initialization work here.
-         */
     }
 
     @Override
     public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
         return new StandaloneGraphBuilderPhase.Instance(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
-    }
-
-    public void setImageName(String name) {
-        imageName = name;
     }
 
     @Override
@@ -104,6 +113,16 @@ public class StandaloneHost extends HostVM {
 
     @Override
     public Comparator<? super ResolvedJavaType> getTypeComparator() {
-        return null;
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider) {
+        throw AnalysisError.shouldNotReachHere("StandaloneHost.handleForeignCall");
+    }
+
+    @Override
+    public boolean isClosedTypeWorld() {
+        return isClosedTypeWorld;
     }
 }

@@ -21,12 +21,12 @@
 # questions.
 #
 suite = {
-    "mxversion": "7.55.2",
+    "mxversion": "7.65.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "26.0.0",
+    "version" : "25.1.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -50,7 +50,7 @@ suite = {
         ]
     },
 
-    "ignore_suite_commit_info": True,
+    "capture_suite_commit_info": False,
 
     "projects" : {
         "com.oracle.truffle.tools.chromeinspector" : {

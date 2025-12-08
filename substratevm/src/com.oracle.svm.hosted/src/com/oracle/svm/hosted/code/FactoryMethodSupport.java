@@ -75,7 +75,7 @@ public class FactoryMethodSupport {
         VMError.guarantee(aConstructor.getDeclaringClass().isAssignableFrom(aInstType), "Must be assignable from");
         VMError.guarantee(aInstType.isInstanceClass() && !aInstType.isAbstract(), "Must be a non-abstract instance class");
         Map<ConstructorDescription, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
-        FactoryMethod factoryMethod = methods.computeIfAbsent(new ConstructorDescription(aConstructor, aInstType), key -> {
+        FactoryMethod factoryMethod = methods.computeIfAbsent(new ConstructorDescription(aConstructor, aInstType), _ -> {
             /*
              * Computing the factory method name via the analysis universe ensures that type name
              * modifications, like to make lambda names unique, are incorporated in the name.

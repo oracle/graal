@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
-public class RecordAttribute extends Attribute {
+public final class RecordAttribute extends Attribute {
     public static final Symbol<Name> NAME = ParserNames.Record;
 
     @CompilationFinal(dimensions = 1) //
@@ -41,7 +41,7 @@ public class RecordAttribute extends Attribute {
         this.components = components;
     }
 
-    public static class RecordComponentInfo {
+    public static final class RecordComponentInfo implements AttributedElement {
         final char name;
         final char descriptor;
         @CompilationFinal(dimensions = 1) //
@@ -61,13 +61,9 @@ public class RecordAttribute extends Attribute {
             this.attributes = attributes;
         }
 
-        public Attribute getAttribute(Symbol<Name> attributeName) {
-            for (Attribute attr : attributes) {
-                if (attr.getName().equals(attributeName)) {
-                    return attr;
-                }
-            }
-            return null;
+        @Override
+        public Attribute[] getAttributes() {
+            return attributes;
         }
 
         public boolean isSame(RecordComponentInfo otherComponent, ConstantPool pool, ConstantPool otherPool) {

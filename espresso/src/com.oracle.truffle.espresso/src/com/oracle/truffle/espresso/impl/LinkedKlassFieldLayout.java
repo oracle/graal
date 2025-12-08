@@ -217,6 +217,7 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Types.java_lang_Thread, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_INTERRUPTED, Types._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
+                                        new HiddenField(Names.HIDDEN_INTERRUPTED_EVENT, Types.java_lang_Object, EspressoLanguage::needsInterruptedEvent, NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_HOST_THREAD),
                                         new HiddenField(Names.HIDDEN_ESPRESSO_MANAGED, Types._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
                                         new HiddenField(Names.HIDDEN_TO_NATIVE_LOCK, Types.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
@@ -282,6 +283,12 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Types.sun_nio_fs_TrufflePath, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_TRUFFLE_FILE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        }),
+                        entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignDirectoryStream, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_HOST_REFERENCE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
+                        }),
+                        entry(Types.sun_nio_fs_TruffleFilteredDirectoryStream$ForeignIterator, new HiddenField[]{
+                                        new HiddenField(Names.HIDDEN_HOST_REFERENCE, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)
                         }),
                         entry(Types.java_util_zip_CRC32, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_CRC32, Types.java_lang_Object, EspressoLanguage::useEspressoLibs, ACC_FINAL)

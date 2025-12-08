@@ -118,7 +118,7 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
 
     @Override
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L100-L183",
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L100-L183",
               sha1 = "7b3d183187ff6578e0d14eb54e4b5007ff4d5e1e")
     // @formatter:on
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
@@ -199,7 +199,7 @@ public class AArch64HotSpotShenandoahSATBBarrierOp extends AArch64LIRInstruction
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
                 AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
                 masm.str(64, previousValue, cArg0);
-                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : scratch1, null);
+                AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : scratch1, null);
                 masm.jmp(done);
             }
         });

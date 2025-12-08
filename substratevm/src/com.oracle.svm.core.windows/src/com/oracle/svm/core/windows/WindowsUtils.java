@@ -47,12 +47,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 import jdk.graal.compiler.word.Word;
 
@@ -231,5 +233,44 @@ public class WindowsUtils {
             CEntryPointActions.failFatally(WinBase.GetLastError(), dllName);
         }
         return dllHandle;
+    }
+
+    /**
+     * Returns a holder that exposes a {@linkplain WCharPointer WCharPointer} to a null-terminated
+     * wide C string created from the given Java String.
+     */
+    public static WCharPointerHolder toWideCString(String javaString) {
+        assert javaString != null;
+        return new WCharPointerHolder(javaString);
+    }
+
+    /**
+     * Holder for a null-terminated wide C string. The exposed {@linkplain WCharPointer
+     * WCharPointer} remains valid only while this holder is open.
+     */
+    public static final class WCharPointerHolder implements AutoCloseable {
+        private final PrimitiveArrayView wideCString;
+
+        private WCharPointerHolder(String javaString) {
+            /*
+             * Windows wide C strings use UTF-16LE, matching Java char[]. So we add a trailing NUL
+             * and then reinterpret the Java char[] as a wchar_t[].
+             */
+            int length = javaString.length();
+            char[] chars = new char[length + 1]; // trailing NUL
+            javaString.getChars(0, length, chars, 0);
+            wideCString = PrimitiveArrayView.createForReading(chars);
+        }
+
+        /** Returns the pointer to the null-terminated wide C string. */
+        public WCharPointer get() {
+            return wideCString.addressOfArrayElement(0);
+        }
+
+        /** Invalidates the pointer. */
+        @Override
+        public void close() {
+            wideCString.close();
+        }
     }
 }

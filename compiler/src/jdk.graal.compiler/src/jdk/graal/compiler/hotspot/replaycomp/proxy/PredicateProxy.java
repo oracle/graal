@@ -26,9 +26,7 @@ package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
 import java.util.function.Predicate;
 
-//JaCoCo Exclude
-
-final class PredicateProxy extends CompilationProxyBase implements Predicate<Object> {
+public final class PredicateProxy extends CompilationProxyBase implements Predicate<Object> {
     PredicateProxy(InvocationHandler handler) {
         super(handler);
     }

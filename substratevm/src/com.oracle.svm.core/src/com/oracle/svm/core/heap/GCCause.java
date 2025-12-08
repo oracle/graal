@@ -39,7 +39,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
 import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.core.traits.SingletonLayeredCallbacks;
@@ -184,9 +184,9 @@ class GCCauseFeature implements InternalFeature {
 
         @Override
         public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks() {
+            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<GCCauseFeature>() {
                 @Override
-                public LayeredImageSingleton.PersistFlags doPersist(ImageSingletonWriter writer, Object singleton) {
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, GCCauseFeature singleton) {
                     List<String> gcCauses;
                     if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                         gcCauses = GCCause.getGCCauses().stream().map(gcCause -> {
@@ -198,16 +198,16 @@ class GCCauseFeature implements InternalFeature {
                             }
                         }).toList();
                     } else {
-                        gcCauses = ((GCCauseFeature) singleton).registeredGCCauses;
+                        gcCauses = singleton.registeredGCCauses;
                     }
                     writer.writeStringList("registeredGCCauses", gcCauses);
 
-                    return LayeredImageSingleton.PersistFlags.CALLBACK_ON_REGISTRATION;
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
                 }
 
                 @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, Object singleton) {
-                    ((GCCauseFeature) singleton).registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
+                public void onSingletonRegistration(ImageSingletonLoader loader, GCCauseFeature singleton) {
+                    singleton.registeredGCCauses = Collections.unmodifiableList(loader.readStringList("registeredGCCauses"));
                 }
             });
         }

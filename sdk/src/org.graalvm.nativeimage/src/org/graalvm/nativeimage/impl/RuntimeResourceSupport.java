@@ -44,11 +44,12 @@ import java.util.Collection;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface RuntimeResourceSupport<C> {
 
     @SuppressWarnings("unchecked")
-    static RuntimeResourceSupport<ConfigurationCondition> singleton() {
+    static RuntimeResourceSupport<AccessCondition> singleton() {
         return ImageSingletons.lookup(RuntimeResourceSupport.class);
     }
 
@@ -58,20 +59,20 @@ public interface RuntimeResourceSupport<C> {
 
     void ignoreResources(C condition, String pattern, Object origin);
 
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, boolean preserved, String name);
 
     void addResourceBundles(C condition, String basename, Collection<Locale> locales);
 
     /* Following functions are used only from features */
-    void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath);
+    void addCondition(AccessCondition condition, Module module, String resourcePath);
 
     void addResourceEntry(Module module, String resourcePath, Object origin);
 
     default void addResource(Module module, String resourcePath, Object origin) {
-        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath, origin);
+        addResource(AccessCondition.unconditional(), module, resourcePath, origin);
     }
 
-    default void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
+    default void addResource(AccessCondition condition, Module module, String resourcePath, Object origin) {
         addResourceEntry(module, resourcePath, origin);
         addCondition(condition, module, resourcePath);
     }

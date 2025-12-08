@@ -111,8 +111,8 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/a2743bab4fd203b0791cf47e617c1a95b05ab3cc/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L232-L309",
-              sha1 = "4ed44f985dfdca39bf93c6d306a378be4bf88fe7")
+    @SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/aarch64/gc/shenandoah/shenandoahBarrierSetAssembler_aarch64.cpp#L232-L310",
+              sha1 = "bb10b26282f609139ff48d430746036f5b06f892")
     // @formatter:on
     @SuppressWarnings("try")
     public static void emitCode(GraalHotSpotVMConfig config, CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction op, Register thread, Register result, Register object,
@@ -199,7 +199,7 @@ public class AArch64HotSpotShenandoahLoadRefBarrierOp extends AArch64LIRInstruct
                     masm.str(64, addressReg, cArg1);
 
                     // Make the call
-                    AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : rtmp2, null);
+                    AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget, crb.getCodeCache()) ? null : rtmp2, null);
 
                     // Retrieve result and move to the result register.
                     AArch64Address cRet = (AArch64Address) crb.asAddress(cc.getReturn());

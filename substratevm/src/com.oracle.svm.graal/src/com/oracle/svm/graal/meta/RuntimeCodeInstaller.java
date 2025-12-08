@@ -116,9 +116,8 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         this.debug = new DebugContext.Builder(RuntimeOptionValues.singleton()).build();
     }
 
-    @SuppressWarnings("try")
     private void prepareCodeMemory() {
-        try (Indent indent = debug.logAndIndent("create installed code of %s.%s", method.getDeclaringClass().getName(), method.getName())) {
+        try (Indent _ = debug.logAndIndent("create installed code of %s.%s", method.getDeclaringClass().getName(), method.getName())) {
             TargetDescription target = ConfigurationValues.getTarget();
 
             if (target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes() != 8) {
@@ -266,7 +265,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false, null));
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders(false, null, false));
         codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         Runnable noop = () -> {
         };

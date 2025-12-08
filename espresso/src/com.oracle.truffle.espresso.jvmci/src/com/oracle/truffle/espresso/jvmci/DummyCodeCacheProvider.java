@@ -22,6 +22,29 @@
  */
 package com.oracle.truffle.espresso.jvmci;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.CMOV;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.CX8;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.FXSR;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.MMX;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.A;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.C;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.D;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.F;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.I;
+import static jdk.vm.ci.riscv64.RISCV64.CPUFeature.M;
+
+import java.util.EnumSet;
+
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -30,6 +53,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.riscv64.RISCV64;
 
 public final class DummyCodeCacheProvider implements CodeCacheProvider {
     private final TargetDescription target;
@@ -76,5 +100,28 @@ public final class DummyCodeCacheProvider implements CodeCacheProvider {
     @Override
     public boolean shouldDebugNonSafepoints() {
         throw JVMCIError.unimplemented();
+    }
+
+    /**
+     * Returns a {@link TargetDescription} that matches the host's architecture.
+     * <p>
+     * Note that beyond the general ISA type (AMD64, AArch64, ...) details of the actual host target
+     * are currently not accurate.
+     */
+    public static TargetDescription getHostTarget() {
+        String archString = System.getProperty("os.arch");
+        Architecture arch = switch (archString) {
+            case "amd64", "x86_64" -> {
+                EnumSet<AMD64.CPUFeature> x8664v2 = EnumSet.of(CMOV, CX8, FXSR, MMX, SSE, SSE2, POPCNT, SSE3, SSE4_1, SSE4_2, SSSE3);
+                yield new AMD64(x8664v2);
+            }
+            case "aarch64", "arm64" -> new AArch64(EnumSet.of(AArch64.CPUFeature.FP));
+            case "riscv64" -> {
+                EnumSet<RISCV64.CPUFeature> imacfd = EnumSet.of(I, M, A, C, F, D);
+                yield new RISCV64(imacfd);
+            }
+            default -> throw JVMCIError.unimplemented(archString);
+        };
+        return new TargetDescription(arch, true, 16, 4096, true);
     }
 }

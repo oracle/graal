@@ -40,9 +40,14 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.LinkStrategy;
@@ -51,14 +56,17 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class HeapBreakdownProvider {
     private static final String BYTE_ARRAY_PREFIX = "byte[] for ";
     private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
 
+    protected ImageHeapPartition[] allImageHeapPartitions;
     private boolean reportStringBytes = true;
     private int graphEncodingByteLength = -1;
 
@@ -97,8 +105,15 @@ public class HeapBreakdownProvider {
         this.totalHeapSize = totalHeapSize;
     }
 
+    public ImageHeapPartition[] getAllImageHeapPartitions() {
+        assert allImageHeapPartitions != null;
+        return allImageHeapPartitions;
+    }
+
     protected void calculate(BeforeImageWriteAccessImpl access, boolean resourcesAreReachable) {
-        HostedMetaAccess metaAccess = access.getHostedMetaAccess();
+        allImageHeapPartitions = access.getImage().getHeap().getLayouter().getPartitions();
+
+        HostedMetaAccess metaAccess = access.getMetaAccess();
         ObjectLayout objectLayout = ImageSingletons.lookup(ObjectLayout.class);
 
         Map<HostedClass, HeapBreakdownEntry> classToDataMap = new HashMap<>();
@@ -114,7 +129,9 @@ public class HeapBreakdownProvider {
             }
             long objectSize = o.getSize();
             totalObjectSize += objectSize;
-            classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of).add(objectSize);
+            HeapBreakdownEntry heapBreakdownEntry = classToDataMap.computeIfAbsent(o.getClazz(), HeapBreakdownEntry::of);
+            heapBreakdownEntry.add(objectSize);
+            heapBreakdownEntry.addPartition(o.getPartition(), allImageHeapPartitions);
             if (reportStringBytesConstant && o.getObject() instanceof String string) {
                 byte[] bytes = getInternalByteArray(string);
                 /* Ensure every byte[] is counted only once. */
@@ -196,6 +213,8 @@ public class HeapBreakdownProvider {
 
     private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, long byteSize, int count) {
         newData.add(byteSize, count);
+        // Assign byte[] entry's partitions to the new more specific byte[] entry.
+        newData.copyPartitions(byteArrayEntry);
         entries.add(newData);
         byteArrayEntry.remove(byteSize, count);
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
@@ -212,12 +231,14 @@ public class HeapBreakdownProvider {
     public abstract static class HeapBreakdownEntry {
         long byteSize;
         int count;
+        int partitions = 0;
 
         public static HeapBreakdownEntry of(HostedClass hostedClass) {
-            return new HeapBreakdownEntryForClass(hostedClass.getJavaClass());
+            return new HeapBreakdownEntryForClass(hostedClass);
         }
 
         public static HeapBreakdownEntry of(String name) {
+
             return new HeapBreakdownEntryFixed(new SimpleHeapObjectKindName(name));
         }
 
@@ -226,6 +247,22 @@ public class HeapBreakdownProvider {
         }
 
         public abstract HeapBreakdownLabel getLabel(int maxLength);
+
+        public ImageHeapPartition[] getPartitions(ImageHeapPartition[] allImageHeapPartitions) {
+            ImageHeapPartition[] entryPartitions = new ImageHeapPartition[Integer.bitCount(partitions)];
+            int i = 0;
+            for (int j = 0; j < allImageHeapPartitions.length; j++) {
+                if (((partitions >> j) & 1) == 1) {
+                    entryPartitions[i] = allImageHeapPartitions[j];
+                    i++;
+                }
+            }
+            return entryPartitions;
+        }
+
+        public HeapBreakdownLabel getLabel() {
+            return getLabel(-1);
+        }
 
         public long getByteSize() {
             return byteSize;
@@ -248,6 +285,21 @@ public class HeapBreakdownProvider {
             this.byteSize -= subByteSize;
             this.count -= subCount;
         }
+
+        void addPartition(ImageHeapPartition newPartition, ImageHeapPartition[] allImageHeapPartitions) {
+            int newPartitionMask = 1;
+            for (ImageHeapPartition partition : allImageHeapPartitions) {
+                if (partition.equals(newPartition)) {
+                    break;
+                }
+                newPartitionMask <<= 1;
+            }
+            this.partitions |= newPartitionMask;
+        }
+
+        public void copyPartitions(HeapBreakdownEntry sourceEntry) {
+            this.partitions = sourceEntry.partitions;
+        }
     }
 
     static class HeapBreakdownEntryFixed extends HeapBreakdownEntry {
@@ -266,21 +318,21 @@ public class HeapBreakdownProvider {
 
     static class HeapBreakdownEntryForClass extends HeapBreakdownEntry {
 
-        private final Class<?> clazz;
+        private final HostedType type;
 
-        HeapBreakdownEntryForClass(Class<?> clazz) {
-            this.clazz = clazz;
+        HeapBreakdownEntryForClass(HostedClass type) {
+            this.type = type;
         }
 
         @Override
         public HeapBreakdownLabel getLabel(int maxLength) {
             if (maxLength >= 0) {
-                String moduleNamePrefix = ProgressReporterUtils.moduleNamePrefix(clazz.getModule());
+                String moduleNamePrefix = ProgressReporterUtils.moduleNamePrefix(JVMCIReflectionUtil.getModule(type));
                 int maxLengthClassName = maxLength - moduleNamePrefix.length();
-                String truncatedClassName = ProgressReporterUtils.truncateFQN(clazz.getTypeName(), maxLengthClassName);
+                String truncatedClassName = ProgressReporterUtils.truncateFQN(JVMCIReflectionUtil.getTypeName(type), maxLengthClassName);
                 return new SimpleHeapObjectKindName(moduleNamePrefix + truncatedClassName);
             } else {
-                return new SimpleHeapObjectKindName(clazz.getTypeName());
+                return new SimpleHeapObjectKindName(JVMCIReflectionUtil.getTypeName(type));
             }
         }
     }

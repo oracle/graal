@@ -581,9 +581,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
     private LanguageInfo getObjectLanguageInfo(LanguageInfo defaultInfo, Object object) {
         assert object != null;
-        if (INTEROP.hasLanguage(object)) {
+        if (INTEROP.hasLanguageId(object)) {
             try {
-                return env.getLanguageInfo(INTEROP.getLanguage(object));
+                String languageId = INTEROP.getLanguageId(object);
+                return "host".equals(languageId) ? env.getHostLanguage() : env.getLanguages().get(languageId);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);

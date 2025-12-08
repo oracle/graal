@@ -29,8 +29,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 
@@ -54,7 +54,6 @@ import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.options.WebImageOptions.CompilerBackend;
 import com.oracle.svm.hosted.webimage.util.BenchmarkLogger;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmLMJavaMainSupport;
-import com.oracle.svm.hosted.webimage.wasm.codegen.BinaryenCompat;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.WebImageJavaMainSupport;
@@ -83,7 +82,7 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
      * {@code svm-wasm} tool macro contains all option names.
      */
     private static void dumpProvidedHostedOptions(HostedOptionParser optionParser) {
-        EconomicMap<String, OptionDescriptor> allHostedOptions = optionParser.getAllHostedOptions();
+        UnmodifiableEconomicMap<String, OptionDescriptor> allHostedOptions = optionParser.getAllHostedOptions();
 
         List<String> names = new ArrayList<>();
 
@@ -158,19 +157,16 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             optionProvider.getHostedValues().put(SubstrateOptions.ParseRuntimeOptions, false);
         }
 
-        // force closed-world
+        // GR-71032 support open type world hub layout
+        // force closed type world and hub layout
         optionProvider.getHostedValues().put(SubstrateOptions.ClosedTypeWorld, true);
+        optionProvider.getHostedValues().put(SubstrateOptions.ClosedTypeWorldHubLayout, true);
 
         CompilerBackend backend = WebImageOptions.getBackend(classLoader);
 
         if (backend == CompilerBackend.WASM || backend == CompilerBackend.WASMGC) {
             // For the Wasm backends, turn off closure compiler
             optionProvider.getHostedValues().put(WebImageOptions.ClosureCompiler, false);
-
-            if (backend == CompilerBackend.WASMGC && !optionProvider.getHostedValues().containsKey(BinaryenCompat.Options.UseBinaryen)) {
-                // For WasmGC backend, use binaryen by default
-                optionProvider.getHostedValues().put(BinaryenCompat.Options.UseBinaryen, true);
-            }
 
             if (!optionProvider.getHostedValues().containsKey(WebImageOptions.NamingConvention)) {
                 // The naming convention does not affect the binary image (unless debug information

@@ -71,7 +71,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.impl.TruffleVersions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -84,6 +83,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.FileSystem.Selector;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -93,6 +93,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.impl.TruffleVersions;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -566,10 +567,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
              */
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
-            } else if (getAPIAccess().isProxy(hostValue)) {
-                guestValue = EngineAccessor.HOST.toDisconnectedHostProxy(hostValue);
             } else {
-                guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
+                if (hostValue instanceof Proxy) {
+                    guestValue = EngineAccessor.HOST.toDisconnectedHostProxy(hostValue);
+                } else {
+                    guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
+                }
             }
             return getAPIAccess().newValue(hostValue instanceof BigInteger ? disconnectedBigIntegerHostValue : disconnectedHostValue, null, guestValue, null);
         }

@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -60,12 +59,12 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
-import com.oracle.svm.core.debug.GdbJitInterface;
+import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.debug.SubstrateDebugTypeEntrySupport;
+import com.oracle.svm.core.debug.gdb.GdbJitInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -73,6 +72,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -200,7 +200,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          * Create a global symbol for the jit debug descriptor with proper initial values for the
          * GDB JIT compilation interface.
          */
-        if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+        if (SubstrateDebugInfoInstaller.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoInstaller.DEBUG_INFO_OBJFILE_NAME)) {
             Architecture arch = ConfigurationValues.getTarget().arch;
             ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GdbJitInterface.JITDescriptor.class)).order(arch.getByteOrder());
 
@@ -253,16 +253,14 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     }
 
     @Override
-    @SuppressWarnings("try")
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
-        try (Timer.StopTimer t = timer.start()) {
+        try (Timer.StopTimer _ = timer.start()) {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-            RuntimeConfiguration runtimeConfiguration = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getRuntimeConfiguration();
-            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess(),
-                            runtimeConfiguration);
+            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getMetaAccess(),
+                            accessImpl.getRuntimeConfiguration());
             var objectFile = image.getObjectFile();
 
             int debugInfoGenerationThreadCount = SubstrateOptions.DebugInfoGenerationThreadCount.getValue();

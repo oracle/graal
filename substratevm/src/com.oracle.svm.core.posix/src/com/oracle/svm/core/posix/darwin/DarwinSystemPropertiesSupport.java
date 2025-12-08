@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -37,14 +37,21 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
+import jdk.graal.compiler.word.Word;
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 @CLibrary(value = "darwin", requireStatic = true)
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
@@ -105,7 +112,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
                 CCharPointer osVersionStr = Foundation.systemVersionPlatform();
                 if (osVersionStr.isNonNull()) {
                     osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-                    UntrackedNullableNativeMemory.free(osVersionStr);
+                    LibC.free(osVersionStr);
                     return osVersionValue;
                 }
             } else {
@@ -120,19 +127,19 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
         CCharPointer osVersionStr = Foundation.systemVersionPlatformFallback();
         if (osVersionStr.isNonNull()) {
             osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-            UntrackedNullableNativeMemory.free(osVersionStr);
+            LibC.free(osVersionStr);
             return osVersionValue;
         }
         return osVersionValue = "Unknown";
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
 @AutomaticallyRegisteredFeature
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
-        /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

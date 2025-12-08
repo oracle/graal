@@ -51,6 +51,14 @@ mx benchmark renaissance:scrabble -- -Djdk.graal.CompilationFailureAction=Diagno
 
 It is possible to **not** record retried compilations with the option `-Djdk.graal.DiagnoseOptions=RecordForReplay=`.
 
+When a recorded compilation ends with an exception, the type and stack trace of the exception is saved in the replay
+file. During replay, the launcher verifies that the replayed compilation throws an exception of the same type. Use the
+`--verbose=true` option to print the stack trace of the recorded exception.
+
+```shell
+mx replaycomp --verbose=true ./replay-files
+```
+
 ## Replay with JVM Arguments
 
 JVM arguments, including compiler options, can be passed directly to the `replaycomp` command.
@@ -65,22 +73,33 @@ Any `-ea`, `-esa`, and `-X` arguments from the command line are passed to the JV
 
 Jargraal can replay both jargraal and libgraal compilations. Libgraal can replay only libgraal compilations.
 
-It is necessary to explicitly enable the replay launcher entry point when building libgraal using the VM argument
-`-Ddebug.jdk.graal.enableReplayLauncher=true`.
+To replay on libgraal, build libgraal first. Then, pass the `--libgraal` argument to `mx replaycomp`, which invokes the
+native launcher. With the below commands, all replay related processing (including JSON parsing) is performed by
+libgraal code.
 
 ```shell
-EXTRA_IMAGE_BUILDER_ARGUMENTS=-Ddebug.jdk.graal.enableReplayLauncher=true mx --env libgraal build
-```
-
-When the `--libgraal` argument is passed to `mx replaycomp`, the previously built libgraal native library is loaded, and
-the native launcher is invoked instead of the Java launcher. With the below command, all replay related processing
-(including JSON parsing) is performed by libgraal code.
-
-```shell
+mx -p ../vm --env libgraal build
 mx replaycomp --libgraal ./replay-files
 ```
 
+It is possible to specify a different JDK for the replay with the `--jdk-home` argument. The below command runs replay
+using the libgraal image that is part of the built JDK in `$GRAALVM_HOME`.
+
+```shell
+GRAALVM_HOME=$(mx -p ../vm --env libgraal graalvm-home)
+mx replaycomp --jdk-home $GRAALVM_HOME ./replay-files
+```
+
 ## Replay Options
+
+`--verbose=true` prints additional information for every compilation, including:
+* the system properties of the recorded compilation (the options include the VM command from the recorded run),
+* the final canonical graph of the recorded/replayed compilation,
+* the stack trace of the exception thrown during the recorded/replayed compilation.
+
+```shell
+mx replaycomp --verbose=true ./replay-files
+```
 
 `--compare-graphs=true` compares the final canonical graph of the replayed compilation to the recorded one, which is
 included in the JSON replay file. If there is a mismatch, the command exits with a non-zero status.
@@ -95,4 +114,54 @@ The `-Djdk.graal.ReplayDivergenceIsFailure=true` argument prevents using default
 
 ```shell
 mx replaycomp -Djdk.graal.ReplayDivergenceIsFailure=true ./replay-files
+```
+
+## Performance Counters
+
+When replaying with the `--benchmark` command on the AMD64 Linux platform, the replay launcher can count hardware
+performance events via the [PAPI](https://github.com/icl-utk-edu/papi) library. To enable this, it is necessary to set
+up PAPI and build the optional PAPI bridge library. Note that recent architectures may not be supported; see the list
+here: https://github.com/icl-utk-edu/papi/wiki/Supported-Architectures.
+
+### PAPI Setup
+
+PAPI can usually be installed with the package manager (`papi-devel` on Fedora, `libpapi-dev` on Ubuntu). The PAPI
+bridge links against the PAPI available on the system.
+
+To monitor hardware events, it may be necessary to lower the system's restrictions for accessing hardware performance
+counters like shown below.
+
+```shell
+sudo sysctl kernel.perf_event_paranoid=-1
+```
+
+Additionally, the performance monitoring library (libpfm) may fail to select the appropriate performance monitoring unit
+(PMU). The selection can be forced to `amd64` using an environment variable.
+
+```shell
+export LIBPFM_FORCE_PMU=amd64
+```
+
+To discover the available counters, use the `papi_avail` and `papi_native_avail` commands, which are part of the PAPI
+installation. Verify that a particular event like `PAPI_TOT_INS` (retired instruction count) is counted using the
+`papi_command_line` utility.
+
+```shell
+papi_avail
+papi_native_avail
+papi_command_line PAPI_TOT_INS
+```
+
+### PAPI Bridge
+
+The below command builds the PAPI bridge library using the PAPI library available on the system.
+
+```shell
+ENABLE_PAPI_BRIDGE=true mx build --dependencies PAPI_BRIDGE
+```
+
+The launcher accepts a comma-separated list of event names. The event counts are reported for every benchmark iteration.
+
+```shell
+ENABLE_PAPI_BRIDGE=true mx replaycomp ./replay-files --benchmark --event-names PAPI_TOT_INS
 ```

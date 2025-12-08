@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.hosted.code;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
-import com.oracle.svm.util.ReflectionUtil;
+import static com.oracle.svm.util.AnnotationUtil.newAnnotationValue;
 
+import java.util.List;
+
+import com.oracle.svm.core.Uninterruptible;
+
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -45,16 +47,13 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
      * they must be uninterruptible. The method then called by the stub does not need to be
      * uninterruptible itself.
      */
-    @Uninterruptible(reason = "Entry point", calleeMustBe = false)
-    @SuppressWarnings("unused")
-    private static void uninterruptibleAnnotationHolder() {
-    }
-
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder")));
+    private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(
+                    newAnnotationValue(Uninterruptible.class,
+                                    "reason", "Entry point",
+                                    "calleeMustBe", false));
 
     @Override
-    public AnnotationValue[] getInjectedAnnotations() {
+    public List<AnnotationValue> getInjectedAnnotations() {
         return INJECTED_ANNOTATIONS;
     }
 }

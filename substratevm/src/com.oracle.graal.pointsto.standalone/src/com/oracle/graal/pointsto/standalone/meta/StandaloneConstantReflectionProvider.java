@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,38 +26,115 @@
 
 package com.oracle.graal.pointsto.standalone.meta;
 
+import java.util.Objects;
+import java.util.concurrent.ForkJoinPool;
+
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.standalone.StandaloneHost;
+import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class StandaloneConstantReflectionProvider extends HotSpotConstantReflectionProvider {
+public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
     private final AnalysisUniverse universe;
+    private final ConstantReflectionProvider original;
+    private final AnalysisField commonPoolField;
+    private final JavaConstant commonPoolSubstitution;
 
-    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, HotSpotJVMCIRuntime runtime) {
-        super(runtime);
+    public StandaloneConstantReflectionProvider(AnalysisMetaAccess aMetaAccess, AnalysisUniverse universe, ConstantReflectionProvider original,
+                    SnippetReflectionProvider originalSnippetReflection) {
         this.universe = universe;
+        this.original = original;
+        commonPoolField = aMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ForkJoinPool.class, "common"));
+        commonPoolSubstitution = originalSnippetReflection.forObject(new ForkJoinPool());
     }
 
     @Override
-    public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        ResolvedJavaField wrappedField = ((AnalysisField) field).getWrapped();
-        JavaConstant ret = universe.getHostedValuesProvider().interceptHosted(super.readFieldValue(wrappedField, receiver));
-        if (ret == null) {
-            ret = wrappedField.getConstantValue();
-            if (ret == null) {
-                ret = JavaConstant.defaultForKind(wrappedField.getJavaKind());
+    public Boolean constantEquals(Constant x, Constant y) {
+        return original.constantEquals(x, y);
+    }
+
+    @Override
+    public Integer readArrayLength(JavaConstant array) {
+        if (array instanceof ImageHeapConstant) {
+            if (array instanceof ImageHeapArray) {
+                return ((ImageHeapArray) array).getLength();
             }
+            return null;
         }
-        return ret;
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return null;
+        }
+        return original.readArrayLength(array);
+    }
+
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+        if (!(constant instanceof ImageHeapConstant imageHeapConstant)) {
+            throw new IllegalArgumentException("Constant has unexpected type " + constant.getClass() + ": " + constant);
+        }
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            return imageHeapConstant.getIdentityHashCode();
+        }
+        Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, constant));
+        return System.identityHashCode(hostedObject);
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        return universe.getHostedValuesProvider().interceptHosted(original.readArrayElement(array, index));
+    }
+
+    @Override
+    public final JavaConstant readFieldValue(ResolvedJavaField f, JavaConstant receiver) {
+        AnalysisField field = (AnalysisField) f;
+
+        field.beforeFieldValueAccess();
+
+        if (field.equals(commonPoolField)) {
+            /*
+             * Replace the common pool value from the hosted heap with a new object. The common pool
+             * is used during analysis, so it can expose analysis metadata to the analysis itself,
+             * i.e., the analysis engine analyzing itself.
+             */
+            return commonPoolSubstitution;
+        }
+        return universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(field.wrapped, receiver));
+    }
+
+    @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        return universe.getHostedValuesProvider().interceptHosted(original.boxPrimitive(source));
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        return universe.getHostedValuesProvider().interceptHosted(original.unboxPrimitive(source));
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        return universe.getHostedValuesProvider().interceptHosted(original.forString(value));
     }
 
     /**
@@ -66,12 +143,12 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
      */
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return super.asJavaClass(markReachable(type));
+        return original.asJavaClass(markReachable(type));
     }
 
     @Override
     public final Constant asObjectHub(ResolvedJavaType type) {
-        return super.asObjectHub(markReachable(type));
+        return original.asObjectHub(markReachable(type));
     }
 
     private static ResolvedJavaType markReachable(ResolvedJavaType type) {
@@ -86,17 +163,20 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof HotSpotObjectConstant) {
-            HotSpotObjectConstant hotSpotObjectConstant = (HotSpotObjectConstant) constant;
-            Object obj = hotSpotObjectConstant.asObject(hotSpotObjectConstant.getType());
-            if (obj instanceof Class) {
-                return getHostVM().lookupType((Class<?>) obj);
-            }
+        ResolvedJavaType originalJavaType = original.asJavaType(constant);
+        if (originalJavaType != null) {
+            return universe.lookup(originalJavaType);
         }
         return null;
     }
 
-    private StandaloneHost getHostVM() {
-        return (StandaloneHost) universe.hostVM();
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        return original.getMethodHandleAccess();
+    }
+
+    @Override
+    public MemoryAccessProvider getMemoryAccessProvider() {
+        return original.getMemoryAccessProvider();
     }
 }

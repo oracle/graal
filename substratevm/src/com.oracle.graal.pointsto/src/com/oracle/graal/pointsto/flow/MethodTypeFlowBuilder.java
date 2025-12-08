@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -55,12 +53,14 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.util.AnnotationUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -298,7 +298,7 @@ public class MethodTypeFlowBuilder {
                 if (!usePredicates) {
                     type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     for (var f : type.getInstanceFields(true)) {
-                        var field = (AnalysisField) f;
+                        var field = (PointsToAnalysisField) f;
                         PointsToAnalysis pta = (PointsToAnalysis) bb;
                         field.getInitialFlow().addState(pta, TypeState.defaultValueForKind(pta, field.getStorageKind()));
                     }
@@ -508,7 +508,7 @@ public class MethodTypeFlowBuilder {
     }
 
     private boolean handleNodeIntrinsic() {
-        if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
+        if (AnnotationUtil.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = method.getSignature().getReturnType();
             if (bb.isSupportedJavaKind(returnType.getJavaKind())) {
@@ -1592,13 +1592,13 @@ public class MethodTypeFlowBuilder {
                 state.add(node, newArrayBuilder);
 
             } else if (n instanceof LoadFieldNode node) { // value = object.field
-                processLoadField(node, (AnalysisField) node.field(), node.object(), state);
+                processLoadField(node, (PointsToAnalysisField) node.field(), node.object(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
             } else if (n instanceof StoreFieldNode node) { // object.field = value
-                processStoreField(node, (AnalysisField) node.field(), node.object(), node.value(), node.value().getStackKind(), state);
+                processStoreField(node, (PointsToAnalysisField) node.field(), node.object(), node.value(), node.value().getStackKind(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
@@ -1707,7 +1707,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    processLoadField(node, (AnalysisField) fieldOffsetProvider.getField(), object, state);
+                    processLoadField(node, (PointsToAnalysisField) fieldOffsetProvider.getField(), object, state);
                 } else if (StampTool.isAlwaysArray(object)) {
                     processLoadIndexed(node, object, state);
                 } else {
@@ -1720,7 +1720,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    processStoreField(node, (AnalysisField) fieldOffsetProvider.getField(), object, newValue, newValueKind, state);
+                    processStoreField(node, (PointsToAnalysisField) fieldOffsetProvider.getField(), object, newValue, newValueKind, state);
                 } else if (StampTool.isAlwaysArray(object)) {
                     processStoreIndexed(node, object, newValue, newValueKind, state);
                 } else {
@@ -1733,7 +1733,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
             if (object.getStackKind() == JavaKind.Object) {
                 if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
-                    var field = (AnalysisField) fieldOffsetProvider.getField();
+                    var field = (PointsToAnalysisField) fieldOffsetProvider.getField();
                     processStoreField(node, field, object, newValue, newValueKind, state);
                     processLoadField(node, field, object, state);
                 } else if (StampTool.isAlwaysArray(object)) {
@@ -1990,12 +1990,12 @@ public class MethodTypeFlowBuilder {
                     if (type.isArray()) {
                         processStoreIndexed(commitAllocationNode, object, value, value.getStackKind(), state);
                     } else {
-                        AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                        var field = (PointsToAnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
                         processStoreField(commitAllocationNode, field, object, value, value.getStackKind(), state);
                     }
                 } else {
                     if (!type.isArray()) {
-                        AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                        var field = (PointsToAnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
                         field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
@@ -2023,24 +2023,35 @@ public class MethodTypeFlowBuilder {
         state.add(node, newInstanceBuilder);
     }
 
-    protected void processLoadField(ValueNode node, AnalysisField field, ValueNode object, TypeFlowsOfNodes state) {
+    protected void processLoadField(ValueNode node, PointsToAnalysisField field, ValueNode object, TypeFlowsOfNodes state) {
         field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
 
         if (bb.isSupportedJavaKind(node.getStackKind())) {
             TypeFlowBuilder<?> loadFieldBuilder;
             if (field.isStatic()) {
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadStaticFieldTypeFlow.class, () -> {
+                    processOpenWorldField(field);
                     FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
-                    LoadStaticFieldTypeFlow loadFieldFLow = new LoadStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, fieldFlow);
-                    flowsGraph.addNodeFlow(node, loadFieldFLow);
-                    return loadFieldFLow;
+                    LoadStaticFieldTypeFlow loadFieldFlow = new LoadStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, fieldFlow);
+                    flowsGraph.addNodeFlow(node, loadFieldFlow);
+                    return loadFieldFlow;
                 });
             } else {
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadInstanceFieldTypeFlow.class, () -> {
-                    LoadInstanceFieldTypeFlow loadFieldFLow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
-                    flowsGraph.addNodeFlow(node, loadFieldFLow);
-                    return loadFieldFLow;
+                    LoadInstanceFieldTypeFlow loadFieldFlow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
+                    processOpenWorldField(field);
+                    if (!bb.isClosed(loadFieldFlow.field().getDeclaringClass())) {
+                        /*
+                         * If the field declaring type is open then the receiver object state of a
+                         * load may be empty/incomplete. Saturate the load, assuming there are
+                         * unseen writes in the open world.
+                         */
+                        loadFieldFlow.enableFlow(bb);
+                        loadFieldFlow.onSaturated(bb);
+                    }
+                    flowsGraph.addNodeFlow(node, loadFieldFlow);
+                    return loadFieldFlow;
                 });
                 loadFieldBuilder.addObserverDependency(objectBuilder);
             }
@@ -2049,8 +2060,27 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    protected void processStoreField(ValueNode node, AnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+    private void processOpenWorldField(PointsToAnalysisField field) {
+        if (!bb.isClosed(field)) {
+            /*
+             * Open fields can be written from the open world and may contain state not seen by the
+             * analysis. This is equivalent with assuming any of their input is saturated.
+             */
+            field.getInitialFlow().onInputSaturated(bb, null);
+        }
+    }
+
+    protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+
+        if (!bb.isClosed(field)) {
+            /*
+             * Open fields can be written from the open world and may contain state not seen by the
+             * analysis. We don't track their writes, instead we eagerly saturate their loads (See
+             * processLoadField).
+             */
+            return;
+        }
 
         if (bb.isSupportedJavaKind(newValueKind)) {
             TypeFlowBuilder<?> valueBuilder = state.lookupOrAny(newValue, newValueKind);
@@ -2121,7 +2151,6 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeLoad(ValueNode node, ValueNode object, TypeFlowsOfNodes state) {
         /* All unsafe accessed primitive fields are always saturated. */
         if (node.getStackKind() == JavaKind.Object) {
-            TypeFlowBuilder<?> objectBuilder = state.lookup(object);
 
             TypeFlowBuilder<?> loadBuilder;
             if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
@@ -2137,6 +2166,7 @@ public class MethodTypeFlowBuilder {
                     return preSaturated;
                 });
             } else {
+                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 /*
                  * Use the Object type as a conservative approximation for both the receiver object
                  * type and the loaded values type.
@@ -2146,9 +2176,9 @@ public class MethodTypeFlowBuilder {
                     flowsGraph.addMiscEntryFlow(loadTypeFlow);
                     return loadTypeFlow;
                 });
+                loadBuilder.addObserverDependency(objectBuilder);
             }
 
-            loadBuilder.addObserverDependency(objectBuilder);
             state.add(node, loadBuilder);
         }
     }

@@ -36,12 +36,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -71,18 +75,20 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * Error indices are less than {@link #NO_DATA}.
      */
     public static final int FIRST_ERROR_INDEX = NO_DATA - 1;
-    public static final int NO_METHOD_METADATA = -1;
+    private static final int NO_METHOD_METADATA = -1;
     public static final int NULL_OBJECT = -1;
-    public static final int COMPLETE_FLAG_INDEX = 31;
+    private static final int COMPLETE_FLAG_INDEX = 31;
     public static final int COMPLETE_FLAG_MASK = 1 << COMPLETE_FLAG_INDEX;
-    public static final int IN_HEAP_FLAG_INDEX = 30;
+    private static final int IN_HEAP_FLAG_INDEX = 30;
     public static final int IN_HEAP_FLAG_MASK = 1 << IN_HEAP_FLAG_INDEX;
-    public static final int HIDING_FLAG_INDEX = 29;
+    private static final int HIDING_FLAG_INDEX = 29;
     public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
-    public static final int NEGATIVE_FLAG_INDEX = 28;
+    private static final int NEGATIVE_FLAG_INDEX = 28;
     public static final int NEGATIVE_FLAG_MASK = 1 << NEGATIVE_FLAG_INDEX;
+    private static final int PRESERVED_FLAG_INDEX = 27;
+    public static final int PRESERVED_FLAG_MASK = 1 << PRESERVED_FLAG_INDEX;
     /* single lookup flags are filled before encoding */
-    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK;
+    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK | PRESERVED_FLAG_MASK;
 
     public static final int ALL_FIELDS_FLAG = 1 << 16;
     public static final int ALL_DECLARED_FIELDS_FLAG = 1 << 17;
@@ -108,6 +114,36 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return Arrays.stream(MultiLayeredImageSingleton.getAllLayers(RuntimeMetadataEncoding.class)).map(RuntimeMetadataEncoding::getEncoding).toList();
     }
 
+    public static int clearInternalModifiers(int modifiers) {
+        return modifiers & (~ALL_FLAGS_MASK);
+    }
+
+    public static int getRawModifiers(Method m) {
+        assert m != null;
+        return SubstrateUtil.cast(m, Target_java_lang_reflect_Method.class).modifiers;
+    }
+
+    public static int getRawModifiers(Constructor<?> c) {
+        assert c != null;
+        return SubstrateUtil.cast(c, Target_java_lang_reflect_Constructor.class).modifiers;
+    }
+
+    public static int getRawModifiers(Executable ex) {
+        assert ex != null;
+        if (ex instanceof Method m) {
+            return getRawModifiers(m);
+        } else if (ex instanceof Constructor<?> c) {
+            return getRawModifiers(c);
+        } else {
+            throw VMError.shouldNotReachHere("Unexpected executable type");
+        }
+    }
+
+    public static int getRawModifiers(Field f) {
+        assert f != null;
+        return SubstrateUtil.cast(f, Target_java_lang_reflect_Field.class).modifiers;
+    }
+
     /**
      * Fields encoding.
      *
@@ -118,13 +154,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Field.class, (i) -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true, layerId), layerId);
+        return decodeArray(reader, Field.class, _ -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true, layerId), layerId);
     }
 
     @Override
     public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, FieldDescriptor.class, (i) -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false, layerId), layerId);
+        return decodeArray(reader, FieldDescriptor.class, _ -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false, layerId), layerId);
     }
 
     /**
@@ -137,13 +173,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Method.class, (i) -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true, layerId), layerId);
+        return decodeArray(reader, Method.class, _ -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true, layerId), layerId);
     }
 
     @Override
     public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, MethodDescriptor.class, (i) -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true, layerId), layerId);
+        return decodeArray(reader, MethodDescriptor.class, _ -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true, layerId), layerId);
     }
 
     /**
@@ -156,13 +192,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Constructor.class, (i) -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false, layerId), layerId);
+        return decodeArray(reader, Constructor.class, _ -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false, layerId), layerId);
     }
 
     @Override
     public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(layerId), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, ConstructorDescriptor.class, (i) -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false, layerId),
+        return decodeArray(reader, ConstructorDescriptor.class, _ -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false, layerId),
                         layerId);
     }
 
@@ -190,7 +226,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     private static Class<?>[] parseClasses(int index, byte[] encoding, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, Class.class, (i) -> decodeType(reader, layerId), layerId);
+        return decodeArray(reader, Class.class, _ -> decodeType(reader, layerId), layerId);
     }
 
     /**
@@ -203,7 +239,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index, int layerId) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return decodeArray(reader, RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType), layerId), layerId);
+        return decodeArray(reader, RecordComponent.class, _ -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType), layerId), layerId);
     }
 
     /**
@@ -217,7 +253,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     public Object[] parseObjects(int index, DynamicHub declaringType) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(declaringType.getLayerId()), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         int layerId = declaringType.getLayerId();
-        return decodeArray(reader, Object.class, (i) -> decodeObject(reader, layerId), layerId);
+        return decodeArray(reader, Object.class, _ -> decodeObject(reader, layerId), layerId);
     }
 
     /**
@@ -273,6 +309,11 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     @Override
     public boolean isNegative(int modifiers) {
         return (modifiers & NEGATIVE_FLAG_MASK) != 0;
+    }
+
+    @Override
+    public boolean isPreserved(int modifiers) {
+        return (modifiers & PRESERVED_FLAG_MASK) != 0;
     }
 
     public static boolean isErrorIndex(int index) {
@@ -347,8 +388,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
+        boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
 
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId);
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
@@ -356,7 +398,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  * Generate negative copy of the field. Finding a non-public field when looking for
                  * a public one should not result in a missing registration exception.
                  */
-                return ReflectionObjectFactory.newField(conditions, declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
+                return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
                                 null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
             }
             if (reflectOnly) {
@@ -385,7 +427,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             if (!reflectOnly) {
                 return new FieldDescriptor(declaringClass, name);
             }
-            return ReflectionObjectFactory.newField(conditions, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null,
+            return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null,
+                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null,
                             null);
         }
         boolean trustedFinal = buf.getU1() == 1;
@@ -398,13 +441,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             modifiers |= NEGATIVE_FLAG_MASK;
         }
 
-        Field reflectField = ReflectionObjectFactory.newField(conditions, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason, typeAnnotations);
+        Field reflectField = ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, deletedReason,
+                        typeAnnotations);
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
-    private static RuntimeConditionSet decodeConditions(UnsafeArrayTypeReader buf, int layerId) {
-        var conditionTypes = decodeArray(buf, Class.class, i -> decodeType(buf, layerId), layerId);
-        return RuntimeConditionSet.createDecoded(conditionTypes);
+    private static RuntimeDynamicAccessMetadata decodeDynamicAccessMetadata(UnsafeArrayTypeReader buf, int layerId, boolean preserved) {
+        var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
+        return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
     }
 
     /**
@@ -514,7 +558,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
-        RuntimeConditionSet conditions = decodeConditions(buf, layerId);
+        boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, layerId);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
@@ -523,10 +568,12 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  * looking for a public one should not result in a missing registration exception.
                  */
                 if (isMethod) {
-                    executable = ReflectionObjectFactory.newMethod(conditions, declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK,
+                    executable = ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null,
+                                    modifiers | NEGATIVE_FLAG_MASK,
                                     null, null, null, null, null, null, null, layerId);
                 } else {
-                    executable = ReflectionObjectFactory.newConstructor(conditions, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null, null, null,
+                    executable = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null,
+                                    null, null,
                                     null);
                 }
             }
@@ -551,9 +598,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         String name = isMethod ? decodeMemberName(buf, layerId) : null;
         Object[] parameterTypes;
         if (complete || hiding || negative) {
-            parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, layerId), layerId);
+            parameterTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
         } else {
-            parameterTypes = decodeArray(buf, String.class, (i) -> decodeOtherString(buf, layerId), layerId);
+            parameterTypes = decodeArray(buf, String.class, _ -> decodeOtherString(buf, layerId), layerId);
         }
         Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf, layerId) : null;
         if (!complete) {
@@ -569,16 +616,16 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 if (!reflectOnly) {
                     return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
                 }
-                return ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
+                return ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers,
                                 null, null, null, null, null, null, null, layerId);
             } else {
                 if (!reflectOnly) {
                     return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
                 }
-                return ReflectionObjectFactory.newConstructor(conditions, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
+                return ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
             }
         }
-        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, layerId), layerId);
+        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
         String signature = decodeOtherString(buf, layerId);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
@@ -592,14 +639,14 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
         Target_java_lang_reflect_Executable executable;
         if (isMethod) {
-            Method method = ReflectionObjectFactory.newMethod(conditions, declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
+            Method method = ReflectionObjectFactory.newMethod(dynamicAccessMetadata, declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers,
                             signature, annotations, parameterAnnotations, annotationDefault, accessor, reflectParameters, typeAnnotations, layerId);
             if (!reflectOnly) {
                 return new MethodDescriptor(method);
             }
             executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         } else {
-            Constructor<?> constructor = ReflectionObjectFactory.newConstructor(conditions, declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
+            Constructor<?> constructor = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
                             modifiers, signature, annotations, parameterAnnotations, accessor, reflectParameters, typeAnnotations);
             if (!reflectOnly) {
                 return new ConstructorDescriptor(constructor);

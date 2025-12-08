@@ -403,6 +403,15 @@ public class AArch64ASIMDMove {
         }
     }
 
+    /**
+     * Converts a mask vector, i.e., a vector of all-zero-bits or all-one-bits values, to a scalar
+     * mask of one bit per vector element.
+     * </p>
+     *
+     * <em>Important:</em> This implementation expects a mask vector as input. To extract one bit
+     * per element of a general vector, the input to this instruction must be converted to a mask
+     * (e.g., with an arithmetic shift to make all bits equal to the sign bit).
+     */
     public static final class VectorToBitMask extends AArch64LIRInstruction {
         public static final LIRInstructionClass<VectorToBitMask> TYPE = LIRInstructionClass.create(VectorToBitMask.class);
 

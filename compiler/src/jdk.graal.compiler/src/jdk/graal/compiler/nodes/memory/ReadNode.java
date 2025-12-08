@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -223,7 +224,8 @@ public class ReadNode extends FloatableAccessNode
             throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node."); // ExcludeFromJacocoGeneratedReport
         }
         try (DebugCloseable position = withNodeSourcePosition()) {
-            return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(NodeView.DEFAULT), getGuard(), getBarrierType(), field, trustInjected));
+            GraalError.guarantee(graph().getGraphState().isDuringStage(GraphState.StageFlag.FLOATING_READS), "Only during FloatingReadPhase");
+            return graph().addOrUniqueWithInputs(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp, guard, barrierType, field, trustInjected, false));
         }
     }
 

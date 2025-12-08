@@ -35,6 +35,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import com.oracle.svm.core.JavaMainWrapper;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -60,7 +61,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
@@ -452,7 +452,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 exitWhenArgumentParsingFails = parameters.getExitWhenArgumentParsingFails();
             }
 
-            String[] args = SubstrateUtil.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+            String[] args = JavaMainWrapper.ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
             try {
                 args = RuntimeOptionParser.parseAndConsumeAllOptions(args, ignoreUnrecognized);
             } catch (IllegalArgumentException e) {

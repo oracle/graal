@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -33,11 +34,18 @@ import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Utsname;
+import com.oracle.svm.core.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -88,13 +96,18 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
 class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.firstImageBuild();
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
-        /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
         ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

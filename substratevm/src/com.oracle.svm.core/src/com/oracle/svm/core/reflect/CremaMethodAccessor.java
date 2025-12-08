@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.MethodAccessor;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.lang.reflect.InvocationTargetException;
 
 @InternalVMMethod
 public final class CremaMethodAccessor extends AbstractCremaAccessor implements MethodAccessor {
@@ -42,19 +41,29 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
     }
 
     @Override
-    public Object invoke(Object obj, Object[] args) throws IllegalArgumentException, InvocationTargetException {
-        if (!targetMethod.isStatic()) {
-            verifyReceiver(obj);
-            verifyArguments(args);
-        } else {
+    public Object invoke(Object obj, Object[] initialArguments) throws IllegalArgumentException, InvocationTargetException {
+        Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
+        if (targetMethod.isStatic()) {
             verifyArguments(args);
             ensureDeclaringClassInitialized();
+        } else {
+            verifyReceiver(obj);
+            verifyArguments(args);
         }
 
-        Object[] finalArgs = new Object[args.length + 1];
-        finalArgs[0] = obj;
-        System.arraycopy(args, 0, finalArgs, 1, args.length);
-        return CremaSupport.singleton().execute(targetMethod, finalArgs);
+        Object[] finalArgs;
+        if (targetMethod.isStatic()) {
+            finalArgs = args;
+        } else {
+            finalArgs = new Object[args.length + 1];
+            finalArgs[0] = obj;
+            System.arraycopy(args, 0, finalArgs, 1, args.length);
+        }
+        try {
+            return CremaSupport.singleton().execute(targetMethod, finalArgs, !targetMethod.isStatic());
+        } catch (Throwable t) {
+            throw new InvocationTargetException(t);
+        }
     }
 
     @Override

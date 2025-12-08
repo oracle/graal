@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.lang.reflect.Array;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
@@ -36,6 +37,8 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
+import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -49,19 +52,22 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
+import com.oracle.svm.util.GraalAccess;
 
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider, TypeReachedProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, TypeReachedProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
@@ -89,14 +95,16 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public Integer identityHashCode(JavaConstant constant) {
-        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
-            return null;
-        } else if (constant.isNull()) {
+        JavaKind kind = Objects.requireNonNull(constant).getJavaKind();
+        if (kind != JavaKind.Object) {
+            throw new IllegalArgumentException("Constant has unexpected kind " + kind + ": " + constant);
+        }
+        if (constant.isNull()) {
             /* System.identityHashCode is specified to return 0 when passed null. */
             return 0;
         } else if (constant instanceof PatchedWordConstant) {
             /* Kind of a primitive constant, so it does not have an identity hash code. */
-            return null;
+            throw new IllegalArgumentException("PatchedWordConstant has no identity hash code: " + constant);
         }
 
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;
@@ -182,6 +190,67 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         return null;
     }
 
+    /**
+     * Attempts to read a value from an array that is not a full single array element. For example,
+     * the number of bytes to read ({@code accessBytes}) may differ from the array element size.
+     *
+     * @param accessBytes number of bytes to read from the array (1, 2, 4, or 8)
+     * @param accessedDataOffset offset in bytes, from the start of the first array element (not
+     *            from the beginning of the array object)
+     * @return a {@link JavaConstant} containing the read value
+     *
+     * @throws IllegalArgumentException if the value could not be read
+     */
+    public JavaConstant readArrayUnaligned(ImageHeapArray array, int accessBytes, long accessedDataOffset, int runtimeIndexScale) {
+        if (accessBytes < 1 || accessBytes > 8 || !CodeUtil.isPowerOf2(accessBytes)) {
+            throw new IllegalArgumentException(String.valueOf(accessBytes));
+        }
+
+        if (array.getJavaKind() != JavaKind.Object) {
+            throw new IllegalArgumentException("Base of kind " + array.getJavaKind() + " is not supported.");
+        } else if (array.isNull()) {
+            throw new IllegalArgumentException("Base is null.");
+        }
+
+        if (array instanceof ImageHeapPrimitiveArray heapArray) {
+            /* Unaligned accesses are only allowed for primitive arrays. */
+            MetaAccessProvider originalMetaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+            JavaKind arrayKind = JavaKind.fromJavaClass(heapArray.getType().getComponentType().getJavaClass());
+            long hostedBaseOffset = originalMetaAccess.getArrayBaseOffset(arrayKind);
+            long hostedIndexScale = originalMetaAccess.getArrayIndexScale(arrayKind);
+            assert hostedIndexScale == runtimeIndexScale : "element size must match for primitive arrays";
+
+            /* Bounds check. */
+            Object primitiveArray = heapArray.getArray();
+            long arrayDataSize = Array.getLength(primitiveArray) * hostedIndexScale;
+            if (accessedDataOffset < 0 || accessedDataOffset + accessBytes > arrayDataSize) {
+                throw new IllegalArgumentException("Reading outside array bounds.");
+            }
+
+            /* Compute the accessed offset relative to the start of the array. */
+            long accessedHostedOffset = accessedDataOffset + hostedBaseOffset;
+
+            /* Read from the array and convert the value to a constant. */
+            Object value = readFromPrimitiveArray(accessBytes, primitiveArray, accessedHostedOffset);
+            JavaConstant result = JavaConstant.forBoxedPrimitive(value);
+            return checkExpectedValue(result);
+        } else if (array instanceof ImageHeapObjectArray) {
+            throw new IllegalArgumentException("Misaligned object read from array.");
+        } else {
+            throw VMError.shouldNotReachHere("Unexpected base: " + array.getClass());
+        }
+    }
+
+    private static Object readFromPrimitiveArray(int accessBytes, Object primitiveArray, long hostedOffset) {
+        return switch (accessBytes) {
+            case 1 -> Unsafe.getUnsafe().getByte(primitiveArray, hostedOffset);
+            case 2 -> Unsafe.getUnsafe().getShort(primitiveArray, hostedOffset);
+            case 4 -> Unsafe.getUnsafe().getInt(primitiveArray, hostedOffset);
+            case 8 -> Unsafe.getUnsafe().getLong(primitiveArray, hostedOffset);
+            default -> throw VMError.shouldNotReachHere("Only 1 to 8 bytes can be accessed: " + accessBytes);
+        };
+    }
+
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         VMError.guarantee(array instanceof ImageHeapConstant);
         if (array instanceof ImageHeapArray heapArray) {
@@ -237,7 +306,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             return null;
         }
 
-        if (!fieldValueInterceptionSupport.isValueAvailable(field)) {
+        if (!fieldValueInterceptionSupport.isValueAvailable(field, receiver)) {
             /* Value is not yet available. */
             return null;
         }

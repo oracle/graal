@@ -25,12 +25,6 @@
 
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalDouble;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalFloat;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalInt;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalLong;
-import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +34,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -59,13 +52,17 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -76,7 +73,6 @@ import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @InternalVMMethod
@@ -176,12 +172,12 @@ public abstract class InterpreterStubSection {
     public abstract int getVTableStubSize();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void markEnterStubPatch(ResolvedJavaMethod enterStub) {
+    public void markEnterStubPatch(HostedMethod enterStub) {
         markEnterStubPatch(stubsBufferImpl, enterStub);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub);
+    protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, HostedMethod enterStub);
 
     @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)
     @NeverInline("needs ABI boundary")
@@ -227,14 +223,14 @@ public abstract class InterpreterStubSection {
         var kind = SubstrateCallingConventionKind.Java.toType(true);
         CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(kind, returnType, signature.toParameterTypes(thisType), stubSection.valueKindFactory);
 
-        InterpreterFrame frame = EspressoFrame.allocate(interpreterMethod.getMaxLocals(), interpreterMethod.getMaxStackSize(), new Object[0]);
+        Object[] args = new Object[count + (interpreterMethod.hasReceiver() ? 1 : 0)];
 
         int interpSlot = 0;
         int gpIdx = 0;
         int fpIdx = 0;
         if (interpreterMethod.hasReceiver()) {
             Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(callingConvention.getArgument(gpIdx), enterData, gpIdx))).toObject();
-            setLocalObject(frame, 0, receiver);
+            args[interpSlot] = receiver;
             gpIdx++;
             interpSlot++;
         }
@@ -257,15 +253,15 @@ public abstract class InterpreterStubSection {
 
             switch (argKind) {
                 // @formatter:off
-                case Boolean: setLocalInt(frame, interpSlot,  (arg & 0xff) != 0 ? 1 : 0); break;
-                case Byte:    setLocalInt(frame, interpSlot, (byte) arg); break;
-                case Short:   setLocalInt(frame, interpSlot, (short) arg); break;
-                case Char:    setLocalInt(frame, interpSlot, (char) arg); break;
-                case Int:     setLocalInt(frame, interpSlot, (int) arg); break;
-                case Long:    setLocalLong(frame, interpSlot, arg); interpSlot++; break;
-                case Float:   setLocalFloat(frame, interpSlot, Float.intBitsToFloat((int) arg)); break;
-                case Double:  setLocalDouble(frame, interpSlot, Double.longBitsToDouble(arg)); interpSlot++; break;
-                case Object:  setLocalObject(frame, interpSlot, ((Pointer) Word.pointer(arg)).toObject()); break;
+                case Boolean: args[interpSlot] = (arg & 0xff) != 0; break;
+                case Byte:    args[interpSlot] = (byte) arg; break;
+                case Short:   args[interpSlot] = (short) arg; break;
+                case Char:    args[interpSlot] = (char) arg; break;
+                case Int:     args[interpSlot] = (int) arg; break;
+                case Long:    args[interpSlot] = arg; break;
+                case Float:   args[interpSlot] = Float.intBitsToFloat((int) arg); break;
+                case Double:  args[interpSlot] = Double.longBitsToDouble(arg); break;
+                case Object:  args[interpSlot] = ((Pointer) Word.pointer(arg)).toObject(); break;
                 // @formatter:on
                 default:
                     throw VMError.shouldNotReachHereAtRuntime();
@@ -273,39 +269,47 @@ public abstract class InterpreterStubSection {
             interpSlot++;
         }
 
-        Object retVal = Interpreter.execute(interpreterMethod, frame);
+        Object retVal;
+        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
+        if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
+            /* A JIT compiled version is available, execute this one instead */
+            CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
+            retVal = leaveInterpreter(entryPoint, interpreterMethod, accessingClass, args);
+        } else {
+            retVal = Interpreter.execute(interpreterMethod, args);
+        }
 
         switch (returnType.getJavaKind()) {
             case Boolean:
-                assert retVal instanceof Boolean;
+                InterpreterUtil.assertion(retVal instanceof Boolean, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Boolean) retVal) ? 1 : 0);
                 break;
             case Byte:
-                assert retVal instanceof Byte;
+                InterpreterUtil.assertion(retVal instanceof Byte, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Byte) retVal).longValue());
                 break;
             case Short:
-                assert retVal instanceof Short;
+                InterpreterUtil.assertion(retVal instanceof Short, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Short) retVal).longValue());
                 break;
             case Char:
-                assert retVal instanceof Character;
+                InterpreterUtil.assertion(retVal instanceof Character, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Character) retVal).charValue());
                 break;
             case Int:
-                assert retVal instanceof Integer;
+                InterpreterUtil.assertion(retVal instanceof Integer, "invalid return type");
                 accessHelper.setGpReturn(enterData, ((Integer) retVal).longValue());
                 break;
             case Long:
-                assert retVal instanceof Long;
+                InterpreterUtil.assertion(retVal instanceof Long, "invalid return type");
                 accessHelper.setGpReturn(enterData, (Long) retVal);
                 break;
             case Float:
-                assert retVal instanceof Float;
+                InterpreterUtil.assertion(retVal instanceof Float, "invalid return type");
                 accessHelper.setFpReturn(enterData, Float.floatToRawIntBits((float) retVal));
                 break;
             case Double:
-                assert retVal instanceof Double;
+                InterpreterUtil.assertion(retVal instanceof Double, "invalid return type");
                 accessHelper.setFpReturn(enterData, Double.doubleToRawLongBits((double) retVal));
                 break;
             case Object:
@@ -356,7 +360,7 @@ public abstract class InterpreterStubSection {
 
         Pointer stackBuffer = Word.nullPointer();
         if (stackSize > 0) {
-            stackBuffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(Word.unsigned(stackSize));
+            stackBuffer = NativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
             accessHelper.setSp(leaveData, stackSize, stackBuffer);
         }
 
@@ -421,7 +425,7 @@ public abstract class InterpreterStubSection {
         } finally {
             if (stackSize > 0) {
                 VMError.guarantee(stackBuffer.isNonNull());
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackBuffer);
+                NativeMemory.free(stackBuffer);
             }
         }
 

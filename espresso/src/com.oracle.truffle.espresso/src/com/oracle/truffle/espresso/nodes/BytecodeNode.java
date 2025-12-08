@@ -2279,7 +2279,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex);
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, null);
         // Perform the call outside of the lock.
         return invoke.execute(frame, false);
     }
@@ -2314,9 +2314,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
      * happening on this node.
      */
-    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex) {
+    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, ResolvedCall<Klass, Method, Field> resolvedCall) {
         CompilerAsserts.neverPartOfCompilation();
-        ResolvedInvoke resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
+        ResolvedInvoke resolvedInvoke;
+        if (resolvedCall == null) {
+            resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
+        } else {
+            assert !resolvedCall.getResolvedMethod().isInvokeIntrinsic() : "An inlined method may never be an invokeGeneric.";
+            assert resolvedCall.getCallKind() != CallKind.ITABLE_LOOKUP : "A bytecode-inlined method may not be from an interface dispatch.";
+            resolvedInvoke = new ResolvedInvoke(resolvedCall, null);
+        }
+
         return atomic(() -> {
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);

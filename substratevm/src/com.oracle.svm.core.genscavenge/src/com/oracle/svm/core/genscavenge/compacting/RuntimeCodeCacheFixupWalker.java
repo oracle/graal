@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge.compacting;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
@@ -43,6 +44,7 @@ public final class RuntimeCodeCacheFixupWalker implements CodeInfoVisitor {
     }
 
     @Override
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     public void visitCode(CodeInfo codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
             return;

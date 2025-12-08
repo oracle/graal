@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.meta;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -115,7 +115,7 @@ public class DynamicHubOffsets {
                 continue;
             }
 
-            if (AnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
+            if (AnnotationUtil.isAnnotationPresent(field, InjectAccessors.class)) {
                 continue;
             }
 

@@ -61,6 +61,7 @@ import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.AMD64Ternary;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64VectorConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove.AVXMoveToIntOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorShuffle;
@@ -101,8 +102,6 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
     public AMD64SIMDInstructionEncoding getSimdEncoding() {
         return simdEncoding;
     }
-
-    protected abstract Value emitIntegerMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop, Signedness signedness);
 
     public abstract Variable emitVectorOpMaskTestMove(Value left, boolean negateLeft, Value right, Value trueValue, Value falseValue);
 
@@ -456,24 +455,46 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
         return result;
     }
 
-    @Override
-    public Value emitMathMax(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Max);
+    /**
+     * Emit a vector floating point to integer conversion that needs fixup code to adjust the result
+     * to Java semantics.
+     */
+    protected AllocatableValue emitVectorFloatConvertWithFixup(AMD64Kind kind, VexRMOp op, Value input, boolean canBeNaN, boolean canOverflow, boolean narrow, Signedness signedness) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input).changeType(kind));
+        /*
+         * If the convert is a narrowing convert (e.g. D2F), we have to encode with the argument
+         * size instead of the result size.
+         */
+        AVXSize size = narrow ? getRegisterSize(input) : getRegisterSize(result);
+        AMD64VectorConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
+        getLIRGen().append(new AMD64VectorConvertFloatToIntegerOp(getLIRGen(), emitter, size, result, input, canBeNaN, canOverflow, signedness));
+        return result;
     }
 
     @Override
-    public Value emitMathMin(Value a, Value b) {
-        return emitMathMinMax(a, b, AMD64MathMinMaxFloatOp.Min);
+    public Value emitMathMax(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max);
     }
 
     @Override
-    public Value emitMathUnsignedMax(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
+    public Value emitMathMin(LIRKind cmpKind, Value a, Value b) {
+        if (((AMD64Kind) a.getPlatformKind()).isInteger()) {
+            return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.SIGNED);
+        }
+        return emitMathMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min);
     }
 
     @Override
-    public Value emitMathUnsignedMin(Value a, Value b) {
-        return emitIntegerMinMax(a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
+    public Value emitMathUnsignedMax(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Max, Signedness.UNSIGNED);
+    }
+
+    @Override
+    public Value emitMathUnsignedMin(LIRKind cmpKind, Value a, Value b) {
+        return emitIntegerMinMax(cmpKind, a, b, AMD64MathMinMaxFloatOp.Min, Signedness.UNSIGNED);
     }
 
     public Variable emitReverseBytes(Value input) {

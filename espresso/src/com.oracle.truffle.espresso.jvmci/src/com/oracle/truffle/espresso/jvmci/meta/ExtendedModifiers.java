@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.jvmci.meta;
 
-public final class ExtendedModifiers {
-    public static final int SYNTHETIC = 0x00001000;
-    public static final int ENUM = 0x00004000;
-    public static final int BRIDGE = 0x00000040;
-    public static final int VARARGS = 0x00000080;
-    public static final int ANNOTATION = 0x00002000;
-    public static final int HIDDEN = 0x00100000;
-    public static final int FINALIZER = 0x00010000;
+final class ExtendedModifiers {
+    static final int SYNTHETIC = 0x00001000;
+    static final int ENUM = 0x00004000;
+    static final int BRIDGE = 0x00000040;
+    static final int VARARGS = 0x00000080;
+    static final int ANNOTATION = 0x00002000;
+    static final int HIDDEN = 0x00100000;
+    static final int FINALIZER = 0x00010000;
     static final int STABLE_FIELD = 0x00010000;
     static final int SCOPED_METHOD = 0x00200000;
 

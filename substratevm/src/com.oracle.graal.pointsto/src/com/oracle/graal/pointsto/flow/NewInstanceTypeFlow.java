@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -76,7 +76,7 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
         declaredType.registerAsInstantiated(source);
         if (insertDefaultFieldValues) {
             for (var f : declaredType.getInstanceFields(true)) {
-                var field = (AnalysisField) f;
+                var field = (PointsToAnalysisField) f;
                 field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
             }
         }

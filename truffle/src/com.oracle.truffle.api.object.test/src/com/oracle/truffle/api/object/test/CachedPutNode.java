@@ -45,15 +45,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
 @GenerateInline(false)
 abstract class CachedPutNode extends Node {
     public abstract void execute(DynamicObject obj, Object key, Object value);
 
+    @SuppressWarnings("deprecation")
     @Specialization(limit = "3")
     static void write(DynamicObject obj, Object key, Object value,
-                    @CachedLibrary("obj") DynamicObjectLibrary lib) {
+                    @CachedLibrary("obj") com.oracle.truffle.api.object.DynamicObjectLibrary lib) {
         lib.put(obj, key, value);
     }
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,7 +34,12 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Disallowed;
+import com.oracle.svm.core.traits.SingletonTraits;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -47,17 +51,20 @@ class SubstrateRISCV64Feature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
 
-        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRegisterConfigFactory() {
-            @Override
-            public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
-                return new SubstrateRISCV64RegisterConfig(config, metaAccess, target, preserveFramePointer);
-            }
-        });
+        ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRISCV64RegisterConfigFactory());
 
         ImageSingletons.add(ReservedRegisters.class, new RISCV64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
             throw GraalError.unimplemented("The RISC-V native backend is currently unimplemented. Use the LLVM backend.");
         }
+    }
+}
+
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Disallowed.class)
+class SubstrateRISCV64RegisterConfigFactory implements SubstrateRegisterConfigFactory {
+    @Override
+    public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
+        return new SubstrateRISCV64RegisterConfig(config, metaAccess, target, preserveFramePointer);
     }
 }

@@ -136,10 +136,10 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     }
 
     private static MethodHandleIntrinsicImpl intrinsic(Variant variant, String species, JavaKind kind, int index) {
-        return cache.computeIfAbsent(variant, (v) -> new ConcurrentHashMap<>())
-                        .computeIfAbsent(species, (s) -> new ConcurrentHashMap<>())
-                        .computeIfAbsent(kind, (t) -> new ConcurrentHashMap<>())
-                        .computeIfAbsent(index, (i) -> new MethodHandleIntrinsicImpl(variant, species, kind, index));
+        return cache.computeIfAbsent(variant, _ -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(species, _ -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(kind, _ -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(index, _ -> new MethodHandleIntrinsicImpl(variant, species, kind, index));
     }
 
     static MethodHandleIntrinsicImpl intrinsic(Variant variant) {

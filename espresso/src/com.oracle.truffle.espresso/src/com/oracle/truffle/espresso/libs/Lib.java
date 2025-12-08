@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -57,23 +58,38 @@ public final class Lib implements TruffleObject {
         String name();
 
         Lib create(EspressoContext ctx);
+
+        default boolean isValidfor(@SuppressWarnings("unused") EspressoLanguage language) {
+            return true;
+        }
     }
 
     private final String name;
 
     public Lib(EspressoContext context, List<JavaSubstitution.Factory> collector, String name) {
+        this(context, collector, name, true);
+    }
+
+    public Lib(EspressoContext context, List<JavaSubstitution.Factory> collector, String name, boolean mangle) {
         this.name = name;
         for (JavaSubstitution.Factory factory : collector) {
             if (factory.isValidFor(context.getLanguage())) {
                 List<MethodKey> refs = getRefs(context, factory);
                 for (MethodKey ref : refs) {
-                    String key = Mangle.mangleMethod(
-                                    ref.getHolderType(),
-                                    ref.getName().toString(),
-                                    factory.needsSignatureMangle()
-                                                    ? ref.getSignature()
-                                                    : null,
-                                    false);
+                    String key;
+
+                    if (mangle) {
+                        key = Mangle.mangleMethod(
+                                        ref.getHolderType(),
+                                        ref.getName().toString(),
+                                        factory.needsSignatureMangle()
+                                                        ? ref.getSignature()
+                                                        : null,
+                                        false);
+                    } else {
+                        key = ref.getName().toString();
+                    }
+
                     assert !bindings.containsKey(key);
                     context.getLogger().finer(() -> "Registering " + name() + " library entry: " + key);
                     bindings.put(key, factory);

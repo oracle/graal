@@ -50,23 +50,21 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.TrackDynamicAccessEnabled;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.ReachabilityCallbackNode;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
 import com.oracle.svm.hosted.dynamicaccessinference.StrictDynamicAccessInferenceFeature;
@@ -123,8 +121,6 @@ public final class ReflectionPlugins {
     private final ParsingReason reason;
     private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
-    private final boolean trackDynamicAccess;
-    private final DynamicAccessDetectionFeature dynamicAccessDetectionFeature;
     private final DynamicAccessInferenceLog inferenceLog;
     private final SubstitutionReflectivityFilter reflectivityFilter;
 
@@ -136,9 +132,6 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
-
-        trackDynamicAccess = TrackDynamicAccessEnabled.isTrackDynamicAccessEnabled();
-        dynamicAccessDetectionFeature = trackDynamicAccess ? DynamicAccessDetectionFeature.instance() : null;
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
 
@@ -523,7 +516,7 @@ public final class ReflectionPlugins {
         }
     }
 
-    private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
+    private static final Predicate<Object[]> alwaysAllowConstantFolding = _ -> true;
 
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, boolean subjectToStrictDynamicAccessInference) {
         registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding, subjectToStrictDynamicAccessInference);
@@ -636,12 +629,7 @@ public final class ReflectionPlugins {
             return false;
         }
 
-        b.add(ReachabilityRegistrationNode.create(() -> {
-            registerForRuntimeReflection((T) receiverValue, registrationCallback);
-            if (trackDynamicAccess) {
-                dynamicAccessDetectionFeature.addFoldEntry(b.bci(), b.getMethod());
-            }
-        }, reason));
+        b.add(ReachabilityCallbackNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;
     }
 

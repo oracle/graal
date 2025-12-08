@@ -24,29 +24,34 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind;
 import com.oracle.svm.core.util.VMError;
 
-public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
+public final class MultiLayeredImageSingleton {
 
-    int LAYER_NUM_UNINSTALLED = -3;
+    public static final int LAYER_NUM_UNINSTALLED = -3;
     /**
      * Marker indicating this field is an instance field, not a static field.
      */
-    int NONSTATIC_FIELD_LAYER_NUMBER = -2;
+    public static final int NONSTATIC_FIELD_LAYER_NUMBER = -2;
     /**
      * Marker used when a having a layer number is not applicable (such as when not building layered
      * images).
      */
-    int UNUSED_LAYER_NUMBER = -1;
-    int UNKNOWN_LAYER_NUMBER = 0;
-    int INITIAL_LAYER_NUMBER = 0;
+    public static final int UNUSED_LAYER_NUMBER = -1;
+    public static final int UNKNOWN_LAYER_NUMBER = 0;
+    public static final int INITIAL_LAYER_NUMBER = 0;
+
+    private MultiLayeredImageSingleton() {
+
+    }
 
     /**
      * Returns an array containing the image singletons installed for {@code key} within all layers.
-     * See {@link LayeredImageSingleton} for full explanation.
+     * See {@link InstallationKind#MULTI_LAYER} for full explanation.
      */
     @SuppressWarnings("unused")
-    static <T extends MultiLayeredImageSingleton> T[] getAllLayers(Class<T> key) {
+    public static <T> T[] getAllLayers(Class<T> key) {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
 
@@ -56,7 +61,7 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
      * (and this is allowed), then null is returned.
      */
     @SuppressWarnings("unused")
-    static <T extends MultiLayeredImageSingleton> T getForLayer(Class<T> key, int index) {
+    public static <T> T getForLayer(Class<T> key, int index) {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
 }

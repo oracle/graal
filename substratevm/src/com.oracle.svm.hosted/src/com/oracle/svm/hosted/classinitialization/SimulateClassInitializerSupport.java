@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
+import com.oracle.svm.hosted.AbstractAnalysisMetadataTrackingNode;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -212,7 +213,6 @@ public class SimulateClassInitializerSupport {
      * <p>
      * In layered image builds the simulation result is loaded from previous layers, if available.
      */
-    @SuppressWarnings("try")
     public boolean trySimulateClassInitializer(BigBang bb, AnalysisType type) {
         var existingResult = lookupPublishedSimulateClassInitializerResult(type);
         if (existingResult != null) {
@@ -220,7 +220,7 @@ public class SimulateClassInitializerSupport {
         }
 
         var debug = new DebugContext.Builder(bb.getOptions()).build();
-        try (var scope = debug.scope("SimulateClassInitializer", type)) {
+        try (var _ = debug.scope("SimulateClassInitializer", type)) {
             /* Entry point to the analysis: start a new cluster of class initializers. */
             var cluster = new SimulateClassInitializerCluster(this, bb);
             boolean result = trySimulateClassInitializer(debug, type, cluster, null);
@@ -507,7 +507,6 @@ public class SimulateClassInitializerSupport {
         }
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph decodeGraph(SimulateClassInitializerClusterMember clusterMember, AnalysisMethod classInitializer) {
         var bb = clusterMember.cluster.bb;
         var analysisParsedGraph = classInitializer.ensureGraphParsed(bb);
@@ -520,7 +519,7 @@ public class SimulateClassInitializerSupport {
                         .recordInlinedMethods(analysisParsedGraph.getEncodedGraph().isRecordingInlinedMethods())
                         .build();
 
-        try (var scope = debug.scope("GraphDecoderSimulateClassInitializer", result)) {
+        try (var _ = debug.scope("GraphDecoderSimulateClassInitializer", result)) {
 
             var decoder = createGraphDecoder(clusterMember, bb, result);
             decoder.decode(classInitializer);
@@ -574,6 +573,9 @@ public class SimulateClassInitializerSupport {
                     return;
                 }
             }
+        } else if (node instanceof AbstractAnalysisMetadataTrackingNode) {
+            /* This node should not affect image semantics as it gets removed after analysis. */
+            return;
         }
 
         clusterMember.notInitializedReasons.add(node);

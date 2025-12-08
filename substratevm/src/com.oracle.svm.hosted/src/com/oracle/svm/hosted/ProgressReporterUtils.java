@@ -26,7 +26,14 @@
 package com.oracle.svm.hosted;
 
 import java.net.URL;
-import java.security.CodeSource;
+
+import com.oracle.graal.vmaccess.ResolvedJavaModule;
+import com.oracle.graal.vmaccess.ResolvedJavaPackage;
+import com.oracle.svm.core.util.ByteFormattingUtil;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class ProgressReporterUtils {
 
@@ -83,10 +90,20 @@ final class ProgressReporterUtils {
                 }
                 break;
             }
+            if (sb.length() + 2 >= maxLength) {
+                // if next char + '.' reaches limit, stop
+                sb.append(TRUNCATION_PLACEHOLDER);
+                break;
+            }
             sb.append(fqn.charAt(currentDot + 1)).append('.');
             if (sb.length() + (classNameLength - nextDot) <= maxLength) {
                 // Rest fits maxLength, append and return.
                 sb.append(fqn.substring(nextDot + 1));
+                break;
+            }
+            if (sb.length() + 1 >= maxLength) {
+                // if no more space for next reduction, stop
+                sb.append(TRUNCATION_PLACEHOLDER);
                 break;
             }
             currentDot = nextDot;
@@ -94,7 +111,7 @@ final class ProgressReporterUtils {
         return sb.toString();
     }
 
-    static String moduleNamePrefix(Module javaModule) {
+    static String moduleNamePrefix(ResolvedJavaModule javaModule) {
         if (!javaModule.isNamed()) {
             return "";
         }
@@ -110,18 +127,15 @@ final class ProgressReporterUtils {
         return moduleName;
     }
 
-    record BreakDownClassifier(Package javaPackage, Module javaModule, String location) {
-        static BreakDownClassifier of(Class<?> clazz) {
-            return new BreakDownClassifier(clazz.getPackage(), clazz.getModule(), sourcePath(clazz));
+    record BreakDownClassifier(ResolvedJavaPackage javaPackage, ResolvedJavaModule javaModule, String location) {
+        static BreakDownClassifier of(HostedType type) {
+            return new BreakDownClassifier(JVMCIReflectionUtil.getPackage(type), JVMCIReflectionUtil.getModule(type), sourcePath(type));
         }
 
-        private static String sourcePath(Class<?> clazz) {
-            CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
-            if (codeSource != null) {
-                URL sourceLocation = codeSource.getLocation();
-                if (sourceLocation != null && !"jrt".equals(sourceLocation.getProtocol())) {
-                    return sourceLocation.getPath();
-                }
+        private static String sourcePath(ResolvedJavaType type) {
+            URL sourceLocation = JVMCIReflectionUtil.getOrigin(type);
+            if (sourceLocation != null && !"jrt".equals(sourceLocation.getProtocol())) {
+                return sourceLocation.getPath();
             }
             return null;
         }

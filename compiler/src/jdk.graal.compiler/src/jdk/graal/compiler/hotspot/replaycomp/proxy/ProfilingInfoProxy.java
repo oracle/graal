@@ -30,8 +30,6 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
 
-//JaCoCo Exclude
-
 public sealed class ProfilingInfoProxy extends CompilationProxyBase implements ProfilingInfo permits HotSpotProfilingInfoProxy {
     ProfilingInfoProxy(InvocationHandler handler) {
         super(handler);

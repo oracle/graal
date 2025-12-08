@@ -28,6 +28,7 @@ import static java.lang.Character.toUpperCase;
 import static jdk.graal.compiler.replacements.PEGraphDecoder.Options.MaximumLoopExplosionCount;
 
 import java.lang.reflect.Type;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -40,14 +41,16 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
-import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -59,15 +62,14 @@ import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
-import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiArrayNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
-import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerMulHighNode;
 import jdk.graal.compiler.nodes.calc.RoundNode;
@@ -133,6 +135,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -172,6 +175,7 @@ public class TruffleGraphBuilderPlugins {
         registerDynamicObjectPlugins(plugins, types, canDelayIntrinsification, providers.getConstantReflection());
         registerBufferPlugins(plugins, types, canDelayIntrinsification);
         registerMemorySegmentPlugins(plugins, types, canDelayIntrinsification);
+        registerByteArraySupportPlugins(plugins, canDelayIntrinsification);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
@@ -1209,10 +1213,11 @@ public class TruffleGraphBuilderPlugins {
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
+                        return true;
                     } else {
                         TypeReference type;
                         if (isExactType.asJavaConstant().asInt() != 0) {
-                            assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                            GraalError.guarantee(javaType.isConcrete(), "exact type is not a concrete class: %s", javaType);
                             type = TypeReference.createExactTrusted(javaType);
                         } else {
                             type = TypeReference.createTrusted(b.getAssumptions(), javaType);
@@ -1220,30 +1225,14 @@ public class TruffleGraphBuilderPlugins {
 
                         boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
                         Stamp piStamp = StampFactory.object(type, trustedNonNull);
-
-                        ConditionAnchorNode valueAnchorNode = null;
-                        if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
-                            // Nothing to do.
-                        } else {
-                            boolean skipAnchor = false;
-                            LogicNode compareNode = CompareNode.createCompareNode(object.graph(), CanonicalCondition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection,
-                                            NodeView.DEFAULT);
-
-                            if (compareNode instanceof LogicConstantNode) {
-                                LogicConstantNode logicConstantNode = (LogicConstantNode) compareNode;
-                                if (logicConstantNode.getValue()) {
-                                    skipAnchor = true;
-                                }
-                            }
-
-                            if (!skipAnchor) {
-                                valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
-                            }
+                        ValueNode guard = null;
+                        // If the condition is the constant true then no guard is needed
+                        if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
+                            guard = b.add(ConditionAnchorNode.create(condition, constantReflection, b.getMetaAccess(), b.getOptions(), NodeView.DEFAULT));
                         }
-
-                        b.addPush(JavaKind.Object, trustedBox(type, types, PiNode.create(object, piStamp, valueAnchorNode)));
+                        b.addPush(JavaKind.Object, trustedBox(type, types, PiNode.create(object, piStamp, guard)));
+                        return true;
                     }
-                    return true;
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
@@ -1301,9 +1290,7 @@ public class TruffleGraphBuilderPlugins {
                 ValueNode guard = null;
                 // If the condition is the constant true then no guard is needed
                 if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
-                    LogicNode compare = b.add(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
-                                    ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
-                    guard = b.add(new ConditionAnchorNode(compare));
+                    guard = b.add(ConditionAnchorNode.create(condition, b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), NodeView.DEFAULT));
                 }
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, guard, forceLocation)));
                 return true;
@@ -1332,18 +1319,17 @@ public class TruffleGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode offset, ValueNode value, ValueNode location) {
-            ValueNode locationArgument = location;
-            if (locationArgument.isConstant()) {
+            if (location.isConstant()) {
                 LocationIdentity locationIdentity;
                 boolean forceLocation;
-                if (locationArgument.isNullConstant()) {
+                if (location.isNullConstant()) {
                     locationIdentity = LocationIdentity.any();
                     forceLocation = false;
-                } else if (locationArgument.asJavaConstant().equals(anyConstant)) {
+                } else if (location.asJavaConstant().equals(anyConstant)) {
                     locationIdentity = LocationIdentity.any();
                     forceLocation = true;
                 } else {
-                    locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
+                    locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                     forceLocation = true;
                 }
                 b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceLocation));
@@ -1377,7 +1363,7 @@ public class TruffleGraphBuilderPlugins {
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
                 }
             } catch (Throwable t) {
-                debug.handle(t);
+                throw debug.handle(t);
             }
         }
     }
@@ -1411,7 +1397,7 @@ public class TruffleGraphBuilderPlugins {
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: unsafeCast arguments could not reduce to a constant: %s, %s, %s", type, nonNull, isExactType);
                 }
             } catch (Throwable t) {
-                debug.handle(t);
+                throw debug.handle(t);
             }
         }
     }
@@ -1419,8 +1405,7 @@ public class TruffleGraphBuilderPlugins {
     static BailoutException failPEConstant(GraphBuilderContext b, ValueNode value) {
         StringBuilder sb = new StringBuilder();
         sb.append(value);
-        if (value instanceof ValuePhiNode) {
-            ValuePhiNode valuePhi = (ValuePhiNode) value;
+        if (value instanceof ValuePhiNode valuePhi) {
             sb.append(" (");
             for (Node n : valuePhi.inputs()) {
                 sb.append(n);
@@ -1443,8 +1428,7 @@ public class TruffleGraphBuilderPlugins {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
             ValueNode curValue = value;
-            if (curValue instanceof BoxNode) {
-                BoxNode boxNode = (BoxNode) curValue;
+            if (curValue instanceof BoxNode boxNode) {
                 curValue = boxNode.getValue();
             }
             if (curValue.isConstant()) {
@@ -1456,5 +1440,122 @@ public class TruffleGraphBuilderPlugins {
             }
         }
 
+    }
+
+    private static void registerByteArraySupportPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
+        Registration r = new Registration(plugins, "com.oracle.truffle.api.memory.UnsafeByteArraySupport");
+        r.register(new UnsafeGetUnalignedPlugin("unsafeGetShortUnaligned", JavaKind.Short, canDelayIntrinsification));
+        r.register(new UnsafeGetUnalignedPlugin("unsafeGetIntUnaligned", JavaKind.Int, canDelayIntrinsification));
+        r.register(new UnsafeGetUnalignedPlugin("unsafeGetLongUnaligned", JavaKind.Long, canDelayIntrinsification));
+    }
+
+    private static class UnsafeGetUnalignedPlugin extends OptionalInvocationPlugin {
+        private final boolean canDelayIntrinsification;
+        private final JavaKind resultKind;
+
+        UnsafeGetUnalignedPlugin(String name, JavaKind resultKind, boolean canDelayIntrinsification) {
+            super(name, byte[].class, long.class);
+            this.canDelayIntrinsification = canDelayIntrinsification;
+            this.resultKind = resultKind;
+            assert resultKind == JavaKind.Short || resultKind == JavaKind.Int || resultKind == JavaKind.Long : resultKind;
+            GraalError.guarantee(ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN, "only supported on little-endian architecture");
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                        ValueNode bufferNode, ValueNode byteOffsetNode) {
+            if (bufferNode instanceof ConstantNode bufferConstNode && byteOffsetNode.isConstant()) {
+                if (bufferConstNode.getStableDimension() == 1) { // implies non-null
+                    JavaConstant bufferConst = bufferConstNode.asJavaConstant();
+                    long byteOffset = byteOffsetNode.asJavaConstant().asLong();
+                    JavaConstant value = readUnaligned(b, resultKind, bufferConst, byteOffset);
+                    if (value != null && (bufferConstNode.isDefaultStable() || !value.isDefaultForKind())) {
+                        b.addPush(resultKind, ConstantNode.forPrimitive(value, b.getGraph()));
+                        return true;
+                    }
+                }
+            } else if (canDelayIntrinsification) {
+                return false;
+            }
+            b.addPush(resultKind, new RawLoadNode(bufferNode, byteOffsetNode, resultKind, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), MemoryOrderMode.PLAIN));
+            return true;
+        }
+
+        /**
+         * Reads a short, int, or long value from a potentially unaligned offset in a byte[] array.
+         * Performs a single aligned read if the address is aligned, otherwise combines the results
+         * of multiple reads of the next narrower naturally aligned width or individual bytes.
+         *
+         * @param resultKind value kind, either short, int, or long
+         * @param base byte[] array constant, with stable dimensions = 1
+         * @param byteOffset byte[] index, not including array base offset
+         * @return result value constant or {@code null} if out of bounds
+         */
+        @SuppressWarnings("fallthrough")
+        private static JavaConstant readUnaligned(GraphBuilderContext b, JavaKind resultKind, JavaConstant base, long byteOffset) {
+            ConstantReflectionProvider constantReflection = b.getConstantReflection();
+            MemoryAccessProvider memoryAccessProvider = constantReflection.getMemoryAccessProvider();
+            long displacement = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte) + byteOffset;
+            int resultBytes = resultKind.getByteCount();
+            if (displacement % resultBytes == 0) {
+                // Already aligned, so we can read the value directly.
+                IntegerStamp accessStamp = StampFactory.forInteger(resultKind.getBitCount());
+                return (JavaConstant) accessStamp.readConstant(memoryAccessProvider, base, displacement);
+            }
+
+            // Figure out if we can read the value in wider-than-byte aligned parts.
+            JavaKind alignedKind = null;
+            switch (resultKind) {
+                case Long:
+                    if (displacement % Integer.BYTES == 0) {
+                        alignedKind = JavaKind.Int;
+                        break;
+                    }
+                    // fallthrough
+                case Int:
+                    if (displacement % Short.BYTES == 0) {
+                        alignedKind = JavaKind.Short;
+                        break;
+                    }
+                    break;
+            }
+            if (alignedKind != null) {
+                long value = 0;
+                long mask = NumUtil.getNbitNumberLong(alignedKind.getBitCount());
+                IntegerStamp accessStamp = StampFactory.forInteger(alignedKind.getBitCount());
+                for (int byteCount = 0; byteCount < resultBytes; byteCount += alignedKind.getByteCount()) {
+                    var part = (JavaConstant) accessStamp.readConstant(memoryAccessProvider, base, displacement + byteCount);
+                    if (part == null) {
+                        /*
+                         * Should not normally happen if base+displacement is aligned and in bounds;
+                         * but in the unexpected case that the read fails, handle it gracefully.
+                         */
+                        return null;
+                    }
+                    value |= ((part.asLong() & mask) << (byteCount * Byte.SIZE));
+                }
+                return JavaConstant.forPrimitive(resultKind, value);
+            }
+
+            // Displacement is odd, so we have to read the value byte-by-byte.
+            assert displacement % 2 != 0 : displacement;
+            long value = 0;
+            int byteOffsetAsInt = NumUtil.safeToInt(byteOffset);
+            for (int byteCount = 0; byteCount < resultBytes; byteCount += 2) {
+                JavaConstant b0 = constantReflection.readArrayElement(base, byteOffsetAsInt + byteCount);
+                JavaConstant b1 = constantReflection.readArrayElement(base, byteOffsetAsInt + byteCount + 1);
+                if (b0 == null || b1 == null) {
+                    /*
+                     * Byte offset is out of bounds. This is not necessarily an error since it
+                     * depends on control flow / bounds checks if this read is actually reachable,
+                     * so we must not fail compilation. We can either deoptimize here or fall back
+                     * to a normal unsafe read.
+                     */
+                    return null;
+                }
+                value |= (b0.asInt() & 0xffL | ((b1.asInt() & 0xffL) << Byte.SIZE)) << (byteCount * Byte.SIZE);
+            }
+            return JavaConstant.forPrimitive(resultKind, value);
+        }
     }
 }

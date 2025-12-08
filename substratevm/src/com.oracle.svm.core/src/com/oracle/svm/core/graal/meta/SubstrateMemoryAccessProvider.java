@@ -25,13 +25,11 @@
 package com.oracle.svm.core.graal.meta;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
 public interface SubstrateMemoryAccessProvider extends MemoryAccessProvider {
-
     /**
      * Reads a <b>compressed</b> Java {@link Object} reference using a base address, a displacement
      * and the encoding of the reference.
@@ -39,5 +37,4 @@ public interface SubstrateMemoryAccessProvider extends MemoryAccessProvider {
      * @see #readObjectConstant(Constant, long)
      */
     JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement, CompressEncoding encoding);
-
 }

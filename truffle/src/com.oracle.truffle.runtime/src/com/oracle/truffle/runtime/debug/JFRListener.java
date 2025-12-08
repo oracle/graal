@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.runtime.debug;
 
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -80,6 +81,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     // Support for JFRListener#isInstrumented
     private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
     private static final AtomicReference<InstrumentedFilterState> instrumentedFilterState = new AtomicReference<>(InstrumentedFilterState.NEW);
+    private static final ByteBuffer nativeInstrumentedFilterState = ByteBuffer.allocateDirect(1);
     private static volatile ResolvedJavaType resolvedJfrEventClass;
 
     private final ThreadLocal<CompilationData> currentCompilation = new ThreadLocal<>();
@@ -107,12 +109,29 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     public static boolean isInstrumented(ResolvedJavaMethod method) {
-        // Initialization must be deferred into the image execution time
+        if (!isActive()) {
+            return false;
+        }
+        return isInstrumentedImpl(method);
+    }
+
+    public static boolean isActive() {
         InstrumentedFilterState currentState = instrumentedFilterState.get();
         if (currentState == InstrumentedFilterState.INACTIVE) {
             return false;
         }
-        return isInstrumentedImpl(method, currentState);
+        if (currentState == InstrumentedFilterState.NEW) {
+            currentState = initializeInstrumentedFilter();
+        }
+        // If JFR is not active or we are in the image build time return false
+        return currentState != InstrumentedFilterState.NEW && currentState != InstrumentedFilterState.INACTIVE;
+    }
+
+    public static ByteBuffer nativeState() {
+        if (instrumentedFilterState.get() == InstrumentedFilterState.NEW) {
+            initializeInstrumentedFilter();
+        }
+        return nativeInstrumentedFilterState;
     }
 
     @Override
@@ -292,18 +311,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     // Support for JFRListener#isInstrumented
-    private static boolean isInstrumentedImpl(ResolvedJavaMethod method, InstrumentedFilterState state) {
-
-        InstrumentedFilterState currentState = state;
-        if (currentState == InstrumentedFilterState.NEW) {
-            currentState = initializeInstrumentedFilter();
-        }
-
-        // If JFR is not active or we are in the image build time return false
-        if (currentState == InstrumentedFilterState.NEW || currentState == InstrumentedFilterState.INACTIVE) {
-            return false;
-        }
-
+    private static boolean isInstrumentedImpl(ResolvedJavaMethod method) {
         /*
          * Between JDK-11 and JDK-21, JFR utilizes instrumentation to inject calls to
          * jdk.jfr.internal.instrument.ThrowableTracer into constructors of Throwable and Error.
@@ -341,9 +349,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             if (FACTORY != null) {
                 FACTORY.addInitializationListener(() -> {
                     instrumentedFilterState.set(InstrumentedFilterState.ACTIVE);
+                    nativeInstrumentedFilterState.put(0, (byte) 1);
                 });
                 InstrumentedFilterState currentState = FACTORY.isInitialized() ? InstrumentedFilterState.ACTIVE : InstrumentedFilterState.INACTIVE;
-                instrumentedFilterState.compareAndSet(InstrumentedFilterState.NEW, currentState);
+                if (instrumentedFilterState.compareAndSet(InstrumentedFilterState.NEW, currentState)) {
+                    nativeInstrumentedFilterState.put(0, (byte) (currentState == InstrumentedFilterState.ACTIVE ? 1 : 0));
+                }
             } else {
                 instrumentedFilterState.set(InstrumentedFilterState.INACTIVE);
             }

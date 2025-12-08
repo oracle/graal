@@ -89,7 +89,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      */
     protected final boolean areKeysContiguous;
 
-    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData) {
+    protected boolean mayEmitThreadedCode;
+
+    public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData, boolean mayEmitThreadedCode) {
         super(TYPE, value, successors, keySuccessors, profileData);
         assert keySuccessors.length == keys.length + 1 : "Must have etry key for default " + Assertions.errorMessageContext("keySucc", keySuccessors, "keys", keys);
         assert keySuccessors.length == profileData.getKeyProbabilities().length : Assertions.errorMessageContext("keySucc", keySuccessors, "profiles", profileData.getKeyProbabilities());
@@ -98,6 +100,11 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger() : Assertions.errorMessageContext("value", value);
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
+        this.mayEmitThreadedCode = mayEmitThreadedCode;
+    }
+
+    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData, boolean mayEmitThreadedCode) {
+        this(value, new AbstractBeginNode[successorCount], keys, keySuccessors, profileData, mayEmitThreadedCode);
     }
 
     private boolean assertSorted() {
@@ -117,10 +124,6 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             assert b;
         }
         return true;
-    }
-
-    public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData) {
-        this(value, new AbstractBeginNode[successorCount], keys, keySuccessors, profileData);
     }
 
     @Override
@@ -251,6 +254,14 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     @Override
     public ProfileSource profileSource() {
         return profileData.getProfileSource();
+    }
+
+    public boolean mayEmitThreadedCode() {
+        return this.mayEmitThreadedCode;
+    }
+
+    public void markThreadedCode() {
+        this.mayEmitThreadedCode = true;
     }
 
     private static final class MergeCoalesceBuilder {
@@ -711,7 +722,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
          * while removing successors).
          */
         AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-        SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeySuccessors, profileData.copy(newKeyProbabilities)));
+        IntegerSwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeySuccessors, profileData.copy(newKeyProbabilities), mayEmitThreadedCode));
 
         /* Replace ourselves with the new switch */
         ((FixedWithNextNode) predecessor()).setNext(newSwitch);

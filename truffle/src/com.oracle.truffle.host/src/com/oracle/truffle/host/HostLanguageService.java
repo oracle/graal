@@ -47,6 +47,7 @@ import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
@@ -136,28 +137,27 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue) {
-        HostContext context = (HostContext) hostContext;
-        assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
+    public Object toGuestValue(Object node, Object hostValue, boolean asValue) {
+        assert validHostValue(node, hostValue) : "polyglot unboxing should be a no-op at this point.";
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
-        } else if (api.isProxy(hostValue)) {
-            return HostProxy.toProxyGuestObject(context, hostValue);
+        } else if (hostValue instanceof Proxy) {
+            return HostProxy.toProxyGuestObject(HostContext.get((Node) node), hostValue);
         } else if (!asValue && hostValue instanceof ScopedObject) {
             return ((ScopedObject) hostValue).unwrapForGuest();
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
-            return HostObject.forClass((Class<?>) hostValue, context);
+            return HostObject.forClass((Class<?>) hostValue, HostContext.get((Node) node));
         } else if (hostValue == null) {
             return HostObject.NULL;
         } else {
-            return HostObject.forObject(hostValue, context);
+            return HostObject.forObject(hostValue, HostContext.get((Node) node));
         }
     }
 
-    private boolean validHostValue(Object hostValue, HostContext context) {
-        Object unboxed = language.access.toGuestValue(context.internalContext, hostValue);
+    private boolean validHostValue(Object node, Object hostValue) {
+        Object unboxed = language.access.toGuestValue(node, language.api, hostValue);
         return unboxed == hostValue;
     }
 

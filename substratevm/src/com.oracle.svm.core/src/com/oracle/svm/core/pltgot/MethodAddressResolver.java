@@ -33,6 +33,11 @@ public interface MethodAddressResolver {
      *
      * Note that it is the responsibility of this method to write the resolved address to the GOT
      * entry as otherwise it will be called for subsequent calls of the same method.
+     *
+     * This method might execute in a context that does not declare writes to the memory locations
+     * it uses or other side effects that it has (e.g., foreign calls), so it must be very careful
+     * that callers don't see stale state from accesses floating across its invocation, or can deal
+     * with it accordingly.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long resolveMethodWithGotEntry(long gotEntry);

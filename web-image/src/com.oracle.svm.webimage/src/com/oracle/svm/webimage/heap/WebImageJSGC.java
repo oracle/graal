@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.webimage.heap;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 
@@ -49,6 +52,7 @@ public class WebImageJSGC implements GC {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public String getDefaultMaxHeapSize() {
         return "unknown";
     }

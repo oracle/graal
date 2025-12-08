@@ -1039,6 +1039,7 @@ public final class TruffleLogger {
                         found = logger;
                         break;
                     }
+                    // Parfait_ALLOW toctou-race-condition-warning (compare-and-set pattern)
                     found = getLogger(loggerName);
                 }
             }
@@ -1046,8 +1047,8 @@ public final class TruffleLogger {
         }
 
         private TruffleLogger getOrCreateLogger(final String id, final String loggerName) {
-            if (!LanguageAccessor.ENGINE.isKnownLoggerId(id)) {
-                throw new IllegalArgumentException("Unknown language or instrument id " + id + ", known ids: " + String.join(", ", LanguageAccessor.ENGINE.getKnownLoggerIds()));
+            if (!LanguageAccessor.ENGINE.isKnownLoggerId(loggerCache, id)) {
+                throw new IllegalArgumentException("Unknown language or instrument id " + id + ", known ids: " + String.join(", ", LanguageAccessor.ENGINE.getKnownLoggerIds(loggerCache)));
             }
             final String globalLoggerId = loggerName == null || loggerName.isEmpty() ? id : id + '.' + loggerName;
             return getOrCreateLogger(globalLoggerId);

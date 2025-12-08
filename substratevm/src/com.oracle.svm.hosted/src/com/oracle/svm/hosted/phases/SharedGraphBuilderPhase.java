@@ -42,14 +42,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.AnnotationAccess;
-
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -80,6 +76,9 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.AnnotationUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -270,10 +269,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
                 try {
                     graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before instrumenting @Scoped method");
-                    if (AnnotationAccess.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
+                    if (AnnotationUtil.isAnnotationPresent(method, ForeignSupport.Scoped.class) && SharedArenaSupport.isAvailable()) {
                         // substituted, only add the scoped node
                         introduceScopeNodes();
-                    } else if (AnnotationAccess.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
+                    } else if (AnnotationUtil.isAnnotationPresent(method, SharedArenaSupport.SCOPED_ANNOTATION) && SharedArenaSupport.isAvailable()) {
                         // not substituted, also instrument
                         instrumentScopedMethod();
                     }
@@ -510,7 +509,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * For all patterns involving a vmClass the following holds: session is always
                      * p[0], and vmClass is always p[1]. However, in between we can have Class<E> e,
                      * int length, V v, M m then msp, offset, M m, S s, offsetInRange etc.
-                     * 
+                     *
                      * We always map AbstractMemorySegmentImpl msp to base and offset to offset
                      * (which always comes after). There can be arguments after offset which we
                      * ignore. And we skip all arguments between vmClass and msp. So any arg between
@@ -1515,7 +1514,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
                 BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
-                                key -> new BootstrapMethodInfo());
+                                _ -> new BootstrapMethodInfo());
                 ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 
                 /*

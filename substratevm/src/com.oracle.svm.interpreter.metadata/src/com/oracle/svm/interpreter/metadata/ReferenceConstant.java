@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
+import java.util.Objects;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.Objects;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.svm.core.SubstrateMetadata;
+import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
-public final class ReferenceConstant<T> implements JavaConstant {
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+
+public final class ReferenceConstant<T> implements JavaConstant, SubstrateMetadata {
 
     private final T ref; // can be null
 

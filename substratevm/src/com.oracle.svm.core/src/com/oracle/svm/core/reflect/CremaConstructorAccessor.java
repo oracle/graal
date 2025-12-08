@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import org.graalvm.nativeimage.ImageSingletons;
 
 @InternalVMMethod
 public final class CremaConstructorAccessor extends AbstractCremaAccessor implements ConstructorAccessor {
@@ -40,9 +40,20 @@ public final class CremaConstructorAccessor extends AbstractCremaAccessor implem
     }
 
     @Override
-    public Object newInstance(Object[] args) {
+    public Object newInstance(Object[] initialArguments) throws InvocationTargetException {
+        Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
         verifyArguments(args);
         ensureDeclaringClassInitialized();
-        return ImageSingletons.lookup(CremaSupport.class).newInstance(targetMethod, args);
+
+        Object newReference = CremaSupport.singleton().allocateInstance(targetMethod.getDeclaringClass());
+        Object[] finalArgs = new Object[args.length + 1];
+        finalArgs[0] = newReference;
+        System.arraycopy(args, 0, finalArgs, 1, args.length);
+        try {
+            CremaSupport.singleton().execute(targetMethod, finalArgs, false);
+        } catch (Throwable t) {
+            throw new InvocationTargetException(t);
+        }
+        return newReference;
     }
 }

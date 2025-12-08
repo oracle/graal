@@ -128,6 +128,15 @@ public class SimdBlendWithLogicMaskNode extends TernaryNode implements VectorLIR
             }
             return SimdBlendWithLogicMaskNode.create(forY, forX, newSelector);
         }
+        SimdStamp falseValuesStamp = (SimdStamp) forX.stamp(NodeView.from(tool));
+        SimdStamp trueValuesStamp = (SimdStamp) forY.stamp(NodeView.from(tool));
+        if (falseValuesStamp.isAllZeros() && trueValuesStamp.isAllOnes()) {
+            /*
+             * This is the vector equivalent of (condition ? true : false), we don't need to blend.
+             * The input mask is all we need.
+             */
+            return forZ;
+        }
 
         return this;
     }

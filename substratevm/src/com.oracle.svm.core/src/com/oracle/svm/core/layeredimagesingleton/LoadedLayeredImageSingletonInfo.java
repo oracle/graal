@@ -24,10 +24,19 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.util.Set;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class LoadedLayeredImageSingletonInfo {
 
     private final Set<Class<?>> loadedKeys;

@@ -57,11 +57,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0ad919c1e54895b000b58f6a1b54d79f76970845/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7753-L7791",
-          sha1 = "2330d39ce8b81ede5e4433f27ca0f703d6f54d89")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3735-L3744",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/c59e44a7aa2aeff0823830b698d524523b996650/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L7750-L7788",
+          sha1 = "232bbf6f1aa4cf95182f546679b4fa7f9cfba70c")
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3733-L3742",
           sha1 = "376de6fbb2caccaac53c4aa934ce96f8f0dc7f18")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/c2d76f9844aadf77a0b213a9169a7c5c8c8f1ffb/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3932-L4242",
+@SyncPort(from = "https://github.com/openjdk/jdk25u/blob/b8aa130bab715f187476181acc5021b27958833f/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3930-L4240",
           sha1 = "48559bd1d7e871f8cb8c352efc801364d88558cf")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {

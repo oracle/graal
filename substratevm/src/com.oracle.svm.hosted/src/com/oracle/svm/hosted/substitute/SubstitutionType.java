@@ -24,30 +24,34 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.util.AnnotatedWrapper;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * Type which fully substitutes its original type, i.e. @{@link Substitute} on the class level.
  *
  * @see InjectedFieldsType
  */
-public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
+public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper, AnnotatedWrapper {
 
     private final ResolvedJavaType original;
     private final ResolvedJavaType annotated;
@@ -148,6 +152,16 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public boolean isRecord() {
+        return annotated.isRecord();
+    }
+
+    @Override
+    public List<? extends ResolvedJavaRecordComponent> getRecordComponents() {
+        return annotated.getRecordComponents();
+    }
+
+    @Override
     public int getModifiers() {
         int result = annotated.getModifiers();
         if (!original.isLeaf()) {
@@ -219,6 +233,16 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public boolean isHidden() {
+        return annotated.isHidden();
+    }
+
+    @Override
+    public List<? extends JavaType> getPermittedSubclasses() {
+        return annotated.getPermittedSubclasses();
+    }
+
+    @Override
     public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         /* First check the annotated class. @Substitute methods are found there. */
         ResolvedJavaMethod result = annotated.resolveConcreteMethod(method, callerType);
@@ -250,7 +274,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
+    public Annotated getWrappedAnnotated() {
         return annotated;
     }
 
@@ -275,8 +299,18 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
+    public ResolvedJavaType[] getDeclaredTypes() {
+        return annotated.getDeclaredTypes();
+    }
+
+    @Override
     public ResolvedJavaType getEnclosingType() {
         return annotated.getEnclosingType();
+    }
+
+    @Override
+    public ResolvedJavaMethod getEnclosingMethod() {
+        return annotated.getEnclosingMethod();
     }
 
     @Override
@@ -334,14 +368,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public boolean isCloneableWithAllocation() {
-        throw JVMCIError.unimplemented();
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return original.lookupType(unresolvedJavaType, resolve);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public ResolvedJavaType getHostClass() {
-        return original.getHostClass();
+    public boolean isCloneableWithAllocation() {
+        throw JVMCIError.unimplemented();
     }
 
     @Override

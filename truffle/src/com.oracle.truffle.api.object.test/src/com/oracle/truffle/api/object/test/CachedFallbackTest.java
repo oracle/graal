@@ -44,15 +44,68 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
+import java.util.List;
+
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
+@SuppressWarnings("deprecation")
+@RunWith(Parameterized.class)
 public class CachedFallbackTest extends AbstractLibraryTest {
+
+    public enum TestRun {
+        LIBRARY,
+        NODES;
+    }
+
+    @Parameter(0) public TestRun run;
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return List.of(TestRun.values());
+    }
+
+    record CachedGetNodeWrapper(CachedGetNode node, DynamicObject.GetNode getNode) {
+        public Object execute(DynamicObject obj, Object key) {
+            if (node != null) {
+                return node.execute(obj, key);
+            } else {
+                return getNode.execute(obj, key, null);
+            }
+        }
+    }
+
+    record CachedPutNodeWrapper(CachedPutNode node, DynamicObject.PutNode putNode) {
+        public void execute(DynamicObject obj, Object key, Object value) {
+            if (node != null) {
+                node.execute(obj, key, value);
+            } else {
+                putNode.execute(obj, key, value);
+            }
+        }
+    }
+
+    CachedGetNodeWrapper getNode() {
+        return switch (run) {
+            case LIBRARY -> new CachedGetNodeWrapper(adopt(CachedGetNodeGen.create()), null);
+            case NODES -> new CachedGetNodeWrapper(null, DynamicObject.GetNode.create());
+        };
+    }
+
+    CachedPutNodeWrapper putNode() {
+        return switch (run) {
+            case LIBRARY -> new CachedPutNodeWrapper(adopt(CachedPutNodeGen.create()), null);
+            case NODES -> new CachedPutNodeWrapper(null, DynamicObject.PutNode.create());
+        };
+    }
 
     @Test
     public void testMixedReceiverTypeSameShape() {
@@ -62,13 +115,13 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key = "key";
         String val = "value";
 
-        CachedPutNode writeNode = adopt(CachedPutNodeGen.create());
+        var writeNode = putNode();
         writeNode.execute(o1, key, val);
         writeNode.execute(o2, key, val);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val, readNode.execute(o1, key));
         assertEquals(val, readNode.execute(o2, key));
     }
@@ -83,7 +136,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         assertTrue(library.accepts(o1));
         assertTrue(library.accepts(o2));
         library.put(o1, key1, val1);
@@ -93,7 +146,7 @@ public class CachedFallbackTest extends AbstractLibraryTest {
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));
@@ -111,16 +164,16 @@ public class CachedFallbackTest extends AbstractLibraryTest {
         String key2 = "key2";
         String val2 = "value2";
 
-        DynamicObjectLibrary library1 = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library1 = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         library1.put(o1, key1, val1);
         library1.put(o2, key1, val1);
-        DynamicObjectLibrary library2 = adopt(DynamicObjectLibrary.getFactory().create(o1));
+        var library2 = adopt(com.oracle.truffle.api.object.DynamicObjectLibrary.getFactory().create(o1));
         library2.put(o1, key2, val2);
         library2.put(o2, key2, val2);
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        CachedGetNode readNode = adopt(CachedGetNodeGen.create());
+        var readNode = getNode();
         assertEquals(val1, readNode.execute(o1, key1));
         assertEquals(val1, readNode.execute(o2, key1));
         assertEquals(val2, readNode.execute(o1, key2));

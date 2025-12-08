@@ -56,16 +56,19 @@ import java.lang.management.LockInfo;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -97,9 +100,11 @@ import org.junit.Test;
 
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.junit.experimental.theories.Theory;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.Description;
+import org.junit.runners.Parameterized.Parameters;
 import org.junit.runners.model.Statement;
 
 /**
@@ -127,12 +132,19 @@ public final class SubprocessTestUtils {
     private static final boolean DEBUG_SUBPROCESSES = Boolean.getBoolean("SubprocessTestUtils.javaDebugger");
 
     /**
-     * Recommended value of the subprocess timeout. After exceeding it, the process is forcibly
+     * The default subprocess timeout. If the subprocess exceeds this duration, it is forcibly
      * terminated.
      *
      * @see Builder#timeout(Duration)
      */
-    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
+
+    /**
+     * Disables the subprocess timeout. When set, the subprocess is allowed to run indefinitely.
+     *
+     * @see Builder#timeout(Duration)
+     */
+    public static final Duration NO_TIMEOUT = Duration.ZERO;
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
@@ -174,16 +186,23 @@ public final class SubprocessTestUtils {
     private static Method findTestMethod(Class<?> testClass) {
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         if (stack != null) {
+            Map<String, Method> testMethodByName = new HashMap<>();
+            for (Method method : testClass.getDeclaredMethods()) {
+                if (method.getAnnotation(Test.class) != null || method.getAnnotation(Theory.class) != null) {
+                    Method prev = testMethodByName.put(method.getName(), method);
+                    if (prev != null) {
+                        throw new IllegalStateException(String.format("Multiple test methods with the same name '%s' found in class %s. Conflicting methods: %s and %s.",
+                                        method.getName(), testClass.getName(), prev, method));
+                    }
+                }
+            }
+
             for (int i = stack.length - 1; i >= 0; i--) {
                 StackTraceElement element = stack[i];
                 if (testClass.getName().equals(element.getClassName())) {
-                    try {
-                        Method method = testClass.getDeclaredMethod(element.getMethodName());
-                        if (method.getAnnotation(Test.class) != null) {
-                            return method;
-                        }
-                    } catch (NoSuchMethodException noSuchMethodException) {
-                        // skip methods with arguments.
+                    Method method = testMethodByName.get(element.getMethodName());
+                    if (method != null) {
+                        return method;
                     }
                 }
             }
@@ -191,10 +210,31 @@ public final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
+    private static String findParametersFormat(Class<?> testClass) {
+        for (Method method : testClass.getDeclaredMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            Parameters parameters = method.getAnnotation(Parameters.class);
+            if (parameters != null) {
+                return parameters.name();
+            }
+        }
+        return null;
+    }
+
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
-                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart,
+                    List<Object> parameterizedBy) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
+        if (parameterizedBy != null) {
+            String parametersFormat = findParametersFormat(testMethod.getDeclaringClass());
+            if (parametersFormat != null) {
+                String parametersName = MessageFormat.format(parametersFormat, parameterizedBy.toArray());
+                testName = String.format("%s[%s]", testName, parametersName);
+            }
+        }
         Subprocess subprocess = javaHelper(
                         configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
@@ -468,10 +508,11 @@ public final class SubprocessTestUtils {
         private final List<String> prefixVmArgs = new ArrayList<>();
         private final List<String> postfixVmArgs = new ArrayList<>();
         private boolean failOnNonZeroExit = true;
-        private Duration timeout;
+        private Duration timeout = DEFAULT_TIMEOUT;
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
         private boolean removeOptimizedRuntimeOptions;
+        private List<Object> parameterizedBy = List.of();
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -528,9 +569,11 @@ public final class SubprocessTestUtils {
 
         /**
          * Sets the subprocess timeout. After its expiration, the subprocess is forcibly terminated.
-         * By default, there is no timeout and the subprocess execution time is not limited.
+         * By default, the subprocess timeout is {@link #DEFAULT_TIMEOUT}. To set no subprocess
+         * timeout, use {@link #NO_TIMEOUT}.
          *
          * @see SubprocessTestUtils#DEFAULT_TIMEOUT
+         * @see SubprocessTestUtils#NO_TIMEOUT
          *
          */
         public Builder timeout(Duration duration) {
@@ -548,11 +591,27 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        /**
+         * Associates the JUnit parameterized test arguments with this subprocess invocation.
+         * <p>
+         * When running a {@code @RunWith(Parameterized.class)} test, each test instance is
+         * constructed with a specific set of parameter values. These values determine the test
+         * case's display name (as configured via {@code @Parameters(name = ...)}).
+         * <p>
+         * By calling {@link #parameterizedBy(Object...)}, you provide the same set of parameter
+         * values to the {@code SubprocessTestUtils} infrastructure so that the subprocess execution
+         * reflects the parameterization of the current test.
+         */
+        public Builder parameterizedBy(Object... parameters) {
+            this.parameterizedBy = List.of(parameters);
+            return this;
+        }
+
         public void run() throws IOException, InterruptedException {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart, parameterizedBy);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -776,7 +835,7 @@ public final class SubprocessTestUtils {
         }
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
         List<String> output = new ArrayList<>();
-        if (timeout == null) {
+        if (timeout == NO_TIMEOUT) {
             String line;
             while ((line = stdout.readLine()) != null) {
                 output.add(line);

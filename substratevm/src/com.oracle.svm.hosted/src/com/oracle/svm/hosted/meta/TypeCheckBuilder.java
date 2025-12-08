@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
@@ -51,7 +52,7 @@ import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.DynamicHubTypeCheckUtil;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
@@ -144,7 +145,7 @@ import jdk.vm.ci.meta.JavaType;
  * entries encode the following:
  *
  * <pre>
- * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubTypeCheckUtil#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
+ * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
  * </pre>
  *
  * Thus, interfaceIDs encoded in hash tables must be > 0, to properly distinguish them from empty
@@ -153,8 +154,8 @@ import jdk.vm.ci.meta.JavaType;
  * The implementation of the open-world typechecks can be found in {@link OpenTypeWorldSnippets},
  * the loading of interface methods can be found in {@link OpenTypeWorldDispatchTableSnippets}. The
  * type check data for dynamic hubs is computed in
- * {@link DynamicHubTypeCheckUtil#computeOpenTypeWorldTypeCheckData} with the hashing function being
- * defined in {@link DynamicHubTypeCheckUtil#hash}.
+ * {@link DynamicHubUtils#computeOpenTypeWorldTypeCheckData} with the hashing function being defined
+ * in {@link DynamicHubUtils#hash}.
  */
 public final class TypeCheckBuilder {
     public static final int UNINITIALIZED_TYPECHECK_SLOTS = -1;
@@ -236,7 +237,7 @@ public final class TypeCheckBuilder {
 
         /* Finding subtype graph roots. */
         HashSet<HostedType> hasParent = new HashSet<>();
-        subtypeMap.forEach((type, subtypes) -> hasParent.addAll(subtypes));
+        subtypeMap.forEach((_, subtypes) -> hasParent.addAll(subtypes));
         allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).toList();
 
         heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
@@ -344,7 +345,7 @@ public final class TypeCheckBuilder {
 
         /* Finding the roots of the parent map. */
         Set<HostedType> hasSubtype = new HashSet<>();
-        elementParentMap.forEach((child, parents) -> hasSubtype.addAll(parents));
+        elementParentMap.forEach((_, parents) -> hasSubtype.addAll(parents));
         List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).toList();
 
         List<HostedType> heightOrderedElements = generateHeightOrder(elementParentMapRoots, elementParentMap);
@@ -455,7 +456,7 @@ public final class TypeCheckBuilder {
 
                 /* Getting filteredArraySubtypesMap roots. */
                 Set<HostedType> typesWithSubtypes = new HashSet<>();
-                filteredArraySubtypesMap.forEach((k, v) -> typesWithSubtypes.addAll(v));
+                filteredArraySubtypesMap.forEach((_, v) -> typesWithSubtypes.addAll(v));
                 List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).toList();
 
                 HostedType parentObjectType = getHighestDimArrayType(objectType, dimension - 1);
@@ -944,7 +945,7 @@ public final class TypeCheckBuilder {
                          * not possible to merge interfaces into each other.
                          */
                         Map<Integer, ArrayList<Node>> destinationMap = isNodeInterface ? interfaceHashMap : classHashMap;
-                        destinationMap.computeIfAbsent(hash, k -> new ArrayList<>()).add(node);
+                        destinationMap.computeIfAbsent(hash, _ -> new ArrayList<>()).add(node);
                     }
                 }
 
@@ -1061,7 +1062,7 @@ public final class TypeCheckBuilder {
              */
             static void recordDuplicateRelation(Map<Node, Set<HostedType>> duplicateMap, Node node, Node duplicate) {
                 assert !duplicateMap.containsKey(duplicate) : "By removing this node, duplicate records are being lost.";
-                duplicateMap.computeIfAbsent(node, k -> new HashSet<>()).add(duplicate.type);
+                duplicateMap.computeIfAbsent(node, _ -> new HashSet<>()).add(duplicate.type);
             }
 
             /**
@@ -1078,7 +1079,7 @@ public final class TypeCheckBuilder {
                     Node node = nodes[i];
                     if (node.isInterface) {
                         // recording descendant information
-                        Set<Node> descendants = descendantMap.computeIfAbsent(node, k -> new HashSet<>());
+                        Set<Node> descendants = descendantMap.computeIfAbsent(node, _ -> new HashSet<>());
                         descendants.add(node);
                         Node[] descendantArray = descendants.toArray(Node.EMPTY_ARRAY);
                         Arrays.sort(descendantArray, Comparator.comparingInt(n -> n.id));
@@ -1094,7 +1095,7 @@ public final class TypeCheckBuilder {
                      * ancestors, due to the guarantees about the interface graph
                      */
                     for (Node ancestor : node.sortedAncestors) {
-                        descendantMap.computeIfAbsent(ancestor, k -> new HashSet<>()).add(node);
+                        descendantMap.computeIfAbsent(ancestor, _ -> new HashSet<>()).add(node);
                     }
                 }
                 this.interfaceNodes = interfaceList.toArray(Node.EMPTY_ARRAY);
@@ -1112,7 +1113,7 @@ public final class TypeCheckBuilder {
                 for (HostedType type : heightOrderedTypes) {
 
                     boolean isTypeInterface = isInterface(type);
-                    Set<Node> ancestors = interfaceAncestors.computeIfAbsent(type, k -> isTypeInterface ? new HashSet<>() : null);
+                    Set<Node> ancestors = interfaceAncestors.computeIfAbsent(type, _ -> isTypeInterface ? new HashSet<>() : null);
                     if (ancestors == null) {
                         /* This node does not need to be part of the interface graph */
                         continue;
@@ -1131,7 +1132,7 @@ public final class TypeCheckBuilder {
 
                     /* Passing ancestor information to children. */
                     for (HostedType child : subtypeMap.get(type)) {
-                        interfaceAncestors.computeIfAbsent(child, k -> new HashSet<>()).addAll(ancestors);
+                        interfaceAncestors.computeIfAbsent(child, _ -> new HashSet<>()).addAll(ancestors);
                     }
                 }
 
@@ -1277,7 +1278,7 @@ public final class TypeCheckBuilder {
 
                 // add new relation to proper columnToGroupingMap keys
                 for (int connection : sortedGroupIds) {
-                    columnToGroupingMap.computeIfAbsent(connection, k -> new HashSet<>()).add(newGrouping);
+                    columnToGroupingMap.computeIfAbsent(connection, _ -> new HashSet<>()).add(newGrouping);
                 }
 
                 return AddGroupingResult.SUCCESS;
@@ -1420,7 +1421,9 @@ public final class TypeCheckBuilder {
              */
             static boolean verifyC1POrderingProperty(List<BitSet> c1POrdering, PrimeMatrix matrix) {
                 ArrayList<Integer> overlappingSets = new ArrayList<>();
+                var watchdog = DeadlockWatchdog.singleton();
                 for (int i = 0; i < c1POrdering.size(); i++) {
+                    watchdog.recordActivity();
                     BitSet item = c1POrdering.get(i);
                     boolean hasOverlap = item.intersects(matrix.containedNodes);
                     if (hasOverlap) {
@@ -1541,7 +1544,7 @@ public final class TypeCheckBuilder {
                     Map<ContiguousGroup, Set<ContiguousGroup>> otherEdgeMap = matrix.edgeMap;
                     for (Map.Entry<ContiguousGroup, Set<ContiguousGroup>> entry : otherEdgeMap.entrySet()) {
                         ContiguousGroup key = entry.getKey();
-                        edgeMap.computeIfAbsent(key, k -> new HashSet<>()).addAll(entry.getValue());
+                        edgeMap.computeIfAbsent(key, _ -> new HashSet<>()).addAll(entry.getValue());
                     }
                 }
 
@@ -1552,7 +1555,7 @@ public final class TypeCheckBuilder {
                 edgeMap.put(initialGroup, new HashSet<>());
                 for (ContiguousGroup edge : edges) {
                     edgeMap.get(initialGroup).add(edge);
-                    edgeMap.computeIfAbsent(edge, k -> new HashSet<>()).add(initialGroup);
+                    edgeMap.computeIfAbsent(edge, _ -> new HashSet<>()).add(initialGroup);
                 }
 
                 return true;
@@ -1816,7 +1819,9 @@ public final class TypeCheckBuilder {
                 return result;
             });
             List<Node> iterationOrder = Arrays.stream(graph.interfaceNodes).sorted(comparator).toList();
+            DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
             for (Node node : iterationOrder) {
+                watchdog.recordActivity();
 
                 // first trying to add grouping to existing slot
                 boolean foundAssignment = false;
@@ -1854,6 +1859,7 @@ public final class TypeCheckBuilder {
 
             // assigning slot IDs
             for (InterfaceSlot slot : slots) {
+                watchdog.recordActivity();
                 List<BitSet> c1POrder = slot.getC1POrder();
                 int slotId = slot.id;
                 int id = 1;
@@ -1872,6 +1878,7 @@ public final class TypeCheckBuilder {
 
             // now computing ranges for each interface
             for (Node interfaceNode : graph.interfaceNodes) {
+                watchdog.recordActivity();
                 int minId = Integer.MAX_VALUE;
                 int maxId = Integer.MIN_VALUE;
                 HostedType type = interfaceNode.type;
@@ -1976,7 +1983,7 @@ public final class TypeCheckBuilder {
 
         BiFunction<HostedType, Boolean, OpenTypeWorldTypeInfo> getTypeInfo = (type, allowMissing) -> {
             if (allowMissing) {
-                typeInfoMap.computeIfAbsent(type, (k) -> new OpenTypeWorldTypeInfo());
+                typeInfoMap.computeIfAbsent(type, _ -> new OpenTypeWorldTypeInfo());
             }
 
             OpenTypeWorldTypeInfo typeInfo = typeInfoMap.get(type);

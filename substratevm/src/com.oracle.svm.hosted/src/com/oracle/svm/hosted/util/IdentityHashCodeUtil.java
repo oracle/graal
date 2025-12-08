@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.util;
 
-import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
@@ -117,7 +117,13 @@ public class IdentityHashCodeUtil {
          * See HotSpotHashCodeSnippets for explanation.
          */
         long lockBits = markWord & config.markWordLockMaskInPlace;
-        if (lockBits != config.monitorValue) {
+        boolean containsHashCode;
+        if (config.lockingMode == config.lockingModeLightweight) {
+            containsHashCode = lockBits != config.monitorValue;
+        } else {
+            containsHashCode = lockBits == config.unlockedValue;
+        }
+        if (containsHashCode) {
             int hashcode = (int) ((markWord & hashCodeMask) >>> config.markWordHashCodeShift);
             if (hashcode == config.uninitializedIdentityHashCodeValue) {
                 return UNINITIALIZED;

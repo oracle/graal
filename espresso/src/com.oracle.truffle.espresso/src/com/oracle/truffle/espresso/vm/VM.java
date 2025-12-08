@@ -152,9 +152,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -196,6 +196,9 @@ public final class VM extends NativeEnv {
 
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
+    private final @Pointer TruffleObject mokapotSetThreadInterrupted;
+    private final @Pointer TruffleObject mokapotCreateInterruptedEvent;
+    private final @Pointer TruffleObject mokapotDestroyInterruptedEvent;
     private final @Pointer TruffleObject mokapotCaptureState;
     private final @Pointer TruffleObject getPackageAt;
 
@@ -234,12 +237,38 @@ public final class VM extends NativeEnv {
         }
     }
 
+    public boolean needsThreadInterruptedNotification() {
+        return mokapotSetThreadInterrupted != null;
+    }
+
+    @TruffleBoundary
+    public void notifyThreadInterrupted(StaticObject guestThread, boolean interrupted) {
+        assert needsThreadInterruptedNotification();
+        try {
+            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(guestThread);
+            assert event != null;
+            getUncached().execute(mokapotSetThreadInterrupted, event, interrupted);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("setThreadInterrupted failed", e);
+        }
+    }
+
     public Management getManagement() {
         return management;
     }
 
     public @Pointer TruffleObject getJavaLibrary() {
         return javaLibrary;
+    }
+
+    public Object createInterruptedEvent() {
+        try {
+            TruffleObject ptr = (TruffleObject) getUncached().execute(mokapotCreateInterruptedEvent);
+            assert getUncached().isPointer(ptr);
+            return ptr;
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("mokapotAttachThread failed", e);
+        }
     }
 
     public static final class GlobalFrameIDs {
@@ -329,6 +358,18 @@ public final class VM extends NativeEnv {
                             "mokapotAttachThread",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER));
 
+            mokapotSetThreadInterrupted = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotSetThreadInterrupted",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.BOOLEAN), false, true);
+
+            mokapotCreateInterruptedEvent = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotCreateInterruptedEvent",
+                            NativeSignature.create(NativeType.POINTER), false, true);
+
+            mokapotDestroyInterruptedEvent = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotDestroyInterruptedEvent",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER), false, true);
+
             mokapotCaptureState = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotCaptureState",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT));
@@ -350,7 +391,7 @@ public final class VM extends NativeEnv {
             this.processHandleValue = getUncached().asPointer(getUncached().execute(mokapotGetProcessHandle));
             getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
-            assert !getUncached().isNull(this.mokapotEnvPtr);
+            assert !getUncached().isNull(this.mokapotEnvPtr) || !getLanguage().isNativeAvailable();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -1075,7 +1116,7 @@ public final class VM extends NativeEnv {
             return meta.java_lang_Class.allocateReferenceArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;
-        InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
+        InnerClassesAttribute innerClasses = instanceKlass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
 
         if (innerClasses == null || innerClasses.entryCount() == 0) {
             return meta.java_lang_Class.allocateReferenceArray(0);
@@ -1120,7 +1161,7 @@ public final class VM extends NativeEnv {
      * inside methods).
      */
     private static Klass computeEnclosingClass(ObjectKlass klass) {
-        InnerClassesAttribute innerClasses = (InnerClassesAttribute) klass.getAttribute(InnerClassesAttribute.NAME);
+        InnerClassesAttribute innerClasses = klass.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
         if (innerClasses == null) {
             return null;
         }
@@ -1197,7 +1238,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetClassSignature(@JavaType(Class.class) StaticObject self) {
         if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
-            SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Names.Signature);
+            SignatureAttribute signature = klass.getAttribute(Names.Signature, SignatureAttribute.class);
             if (signature != null) {
                 String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex()).toString();
                 return getMeta().toGuestString(sig);
@@ -1303,7 +1344,7 @@ public final class VM extends NativeEnv {
         meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror(meta) : StaticObject.NULL);
 
         // Find and set generic signature
-        SignatureAttribute genericSignatureAttribute = (SignatureAttribute) recordInfo.getAttribute(SignatureAttribute.NAME);
+        SignatureAttribute genericSignatureAttribute = recordInfo.getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
         meta.java_lang_reflect_RecordComponent_signature.setObject(component,
                         genericSignatureAttribute != null ? meta.toGuestString(pool.utf8At(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
 
@@ -1326,7 +1367,7 @@ public final class VM extends NativeEnv {
         if (!(k instanceof ObjectKlass klass)) {
             return StaticObject.NULL;
         }
-        RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
+        RecordAttribute record = klass.getAttribute(RecordAttribute.NAME, RecordAttribute.class);
         if (record == null) {
             return StaticObject.NULL;
         }
@@ -1353,7 +1394,7 @@ public final class VM extends NativeEnv {
         if (!klass.isSealed()) {
             return StaticObject.NULL;
         }
-        char[] classes = ((PermittedSubclassesAttribute) klass.getAttribute(PermittedSubclassesAttribute.NAME)).getClasses();
+        char[] classes = klass.getAttribute(PermittedSubclassesAttribute.NAME, PermittedSubclassesAttribute.class).getClasses();
         StaticObject[] permittedSubclasses = new StaticObject[classes.length];
         RuntimeConstantPool pool = klass.getConstantPool();
         int nClasses = 0;
@@ -1378,10 +1419,6 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public int JVM_GetClassAccessFlags(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass(getMeta());
-        return getClassAccessFlags(klass);
-    }
-
-    public static int getClassAccessFlags(Klass klass) {
         if (klass.isPrimitive()) {
             final int primitiveFlags = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
             assert klass.getModifiers() == primitiveFlags;
@@ -1582,6 +1619,16 @@ public final class VM extends NativeEnv {
             t.printStackTrace();
         } finally {
             context.unregisterThread(currentThread);
+        }
+        if (mokapotDestroyInterruptedEvent != null) {
+            TruffleObject event = (TruffleObject) getMeta().HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
+            if (event != null) {
+                try {
+                    getUncached().execute(mokapotDestroyInterruptedEvent, event);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw EspressoError.shouldNotReachHere("mokapotDetachThread failed", e);
+                }
+            }
         }
 
         return JNI_OK;
@@ -1896,59 +1943,52 @@ public final class VM extends NativeEnv {
     public @JavaType(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.CLASS, meta, profiler);
-        return constantPool.resolvedKlassAt(null, index).mirror();
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.CLASS, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl(isJni = true)
     public double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.DOUBLE, meta, profiler);
-        return constantPool.doubleAt(index);
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.DOUBLE, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().doubleAt(index);
     }
 
     @VmImpl(isJni = true)
     public float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.FLOAT, meta, profiler);
-        return constantPool.floatAt(index);
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.FLOAT, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().floatAt(index);
     }
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.STRING, meta, profiler);
-        return constantPool.resolvedStringAt(index);
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.STRING, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().resolvedStringAt(index);
     }
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool,
                     int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.UTF8, meta, profiler);
-        return getMeta().toGuestString(constantPool.utf8At(index).toString());
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.UTF8, meta, profiler);
+        return getMeta().toGuestString(jcpool.getMirrorKlass(getMeta()).getConstantPool().utf8At(index).toString());
     }
 
     @VmImpl(isJni = true)
     public int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.INTEGER, meta, profiler);
-        return constantPool.intAt(index);
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.INTEGER, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().intAt(index);
     }
 
     @VmImpl(isJni = true)
     public long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused, @JavaType(Object.class) StaticObject jcpool, int index,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
-        RuntimeConstantPool constantPool = jcpool.getMirrorKlass(getMeta()).getConstantPool();
-        checkTag(constantPool, index, ConstantPool.Tag.LONG, meta, profiler);
-        return constantPool.longAt(index);
+        checkTag(jcpool.getMirrorKlass(getMeta()).getConstantPool(), index, ConstantPool.Tag.LONG, meta, profiler);
+        return jcpool.getMirrorKlass(getMeta()).getConstantPool().longAt(index);
     }
 
     // endregion ConstantPool
@@ -2773,10 +2813,21 @@ public final class VM extends NativeEnv {
         if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holderKlass)) {
             return true;
         }
-        if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
+        if (isMethodHandleIntrinsic(m) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
             return true;
         }
         return false;
+    }
+
+    public static boolean isMethodHandleIntrinsic(Method m) {
+        SignaturePolymorphicIntrinsic id = SignaturePolymorphicIntrinsic.getId(m);
+        /*
+         * Contrary to HotSpot implementation, Espresso pushes the MH.invoke_ frames on the stack.
+         * Thus, we need to explicitly ignore them, and can't copy the HotSpot implementation here.
+         *
+         * HotSpot: return isSignaturePolymorphic(id) && isSignaturePolymorphicIntrinsic(id);
+         */
+        return id != null;
     }
 
     private boolean isAuthorized(StaticObject context, Klass klass) {
@@ -3406,7 +3457,7 @@ public final class VM extends NativeEnv {
             throw EspressoError.shouldNotReachHere();
         }
 
-        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Names.MethodParameters);
+        MethodParametersAttribute methodParameters = method.getAttribute(MethodParametersAttribute.NAME, MethodParametersAttribute.class);
 
         if (methodParameters == null) {
             return StaticObject.NULL;
@@ -3534,6 +3585,12 @@ public final class VM extends NativeEnv {
     public static @JavaType(internalName = "Ljdk/internal/vm/ThreadSnapshot;") StaticObject JVM_CreateThreadSnapshot(@SuppressWarnings("unused") @JavaType(Thread.class) StaticObject thread,
                     @Inject Meta meta) {
         throw meta.throwException(meta.java_lang_UnsupportedOperationException);
+    }
+
+    @VmImpl
+    public static @Pointer TruffleObject JVM_GetThreadInterruptEvent(@Inject EspressoContext context, @Inject Meta meta) {
+        StaticObject currentThread = context.getCurrentPlatformThread();
+        return (TruffleObject) meta.HIDDEN_INTERRUPTED_EVENT.getHiddenObject(currentThread);
     }
 
     // endregion threads

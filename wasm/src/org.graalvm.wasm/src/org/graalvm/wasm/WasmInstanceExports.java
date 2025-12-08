@@ -80,7 +80,7 @@ public final class WasmInstanceExports implements TruffleObject {
         }
         final Integer tableIndex = symbolTable.exportedTables().get(member);
         if (tableIndex != null) {
-            return instance.store().tables().table(instance.tableAddress(tableIndex));
+            return instance.table(tableIndex);
         }
         final Integer memoryIndex = symbolTable.exportedMemories().get(member);
         if (memoryIndex != null) {
@@ -89,6 +89,10 @@ public final class WasmInstanceExports implements TruffleObject {
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
             return instance.externalGlobal(globalIndex);
+        }
+        final Integer tagIndex = symbolTable.exportedTags().get(member);
+        if (tagIndex != null) {
+            return instance.tag(tagIndex);
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -100,7 +104,8 @@ public final class WasmInstanceExports implements TruffleObject {
         return symbolTable.exportedFunctions().containsKey(member) ||
                         symbolTable.exportedMemories().containsKey(member) ||
                         symbolTable.exportedTables().containsKey(member) ||
-                        symbolTable.exportedGlobals().containsKey(member);
+                        symbolTable.exportedGlobals().containsKey(member) ||
+                        symbolTable.exportedTags().containsKey(member);
     }
 
     @ExportMessage
@@ -143,6 +148,9 @@ public final class WasmInstanceExports implements TruffleObject {
             exportNames.add(memoryName);
         }
         for (String globalName : symbolTable.exportedGlobals().getKeys()) {
+            exportNames.add(globalName);
+        }
+        for (String globalName : symbolTable.exportedTags().getKeys()) {
             exportNames.add(globalName);
         }
         return new Sequence<>(exportNames);

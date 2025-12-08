@@ -29,9 +29,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-//JaCoCo Exclude
-
-final class HotSpotMemoryAccessProviderProxy extends CompilationProxyBase implements HotSpotMemoryAccessProvider {
+public final class HotSpotMemoryAccessProviderProxy extends CompilationProxyBase implements HotSpotMemoryAccessProvider {
     HotSpotMemoryAccessProviderProxy(InvocationHandler handler) {
         super(handler);
     }

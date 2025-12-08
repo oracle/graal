@@ -36,6 +36,10 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.meta.SharedType;
 
 import jdk.internal.vm.annotation.Stable;
@@ -68,14 +72,8 @@ public final class DynamicHubCompanion {
     final int modifiers;
 
     /**
-     * The access flags of this class as they were in the class's bytecode, including the original
-     * setting of ACC_SUPER.
-     */
-    final int classFileAccessFlags;
-
-    /**
-     * The class that serves as the host for the nest. All nestmates have the same host. Always
-     * encoded with null for Dynamic hubs allocated at runtime.
+     * The class that serves as the host for the nest. All nestmates have the same host. Initially
+     * set to {@code null} for runtime-loaded classes.
      */
     @Stable Class<?> nestHost;
 
@@ -96,8 +94,10 @@ public final class DynamicHubCompanion {
 
     /**
      * The hub for an array of this type, or null if the array type has been determined as
-     * uninstantiated by the static analysis.
+     * uninstantiated by the static analysis. In layered builds, it is possible for this value to be
+     * initially set to null and then updated in a subsequent layer.
      */
+    @LayeredFieldValue(transformer = ArrayHubTransformer.class) //
     @Stable DynamicHub arrayHub;
 
     /**
@@ -153,33 +153,34 @@ public final class DynamicHubCompanion {
     Constructor<?> cachedConstructor;
     Object jfrEventConfiguration;
     @Stable boolean canUnsafeAllocate;
+    Object classData;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
-
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+    static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData) {
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, classData, null);
     }
 
-    static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
-                    ClassLoader classLoader, String simpleBinaryName, Object declaringClass, String signature) {
+    static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    ClassLoader classLoader, String simpleBinaryName, Object declaringClass, String signature, ClassDefinitionInfo info) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classFileAccessFlags, classLoader, null, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, info.dynamicNest, simpleBinaryName, declaringClass, signature, info.classData, info.protectionDomain);
     }
 
-    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers, int classFileAccessFlags,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, Object classData, ProtectionDomain protectionDomain) {
         this.module = module;
         this.superHub = superHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
-        this.classFileAccessFlags = classFileAccessFlags;
         this.nestHost = nestHost;
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
         this.signature = signature;
 
         this.classLoader = classLoader;
+        this.classData = classData;
+        this.protectionDomain = protectionDomain;
     }
 
     public void setHubMetadata(RuntimeDynamicHubMetadata hubMetadata) {
@@ -188,5 +189,46 @@ public final class DynamicHubCompanion {
 
     public void setReflectionMetadata(RuntimeReflectionMetadata reflectionMetadata) {
         this.reflectionMetadata = reflectionMetadata;
+    }
+
+    /**
+     * In layered builds it is possible for a {@link DynamicHubCompanion#arrayHub} to become
+     * reachable in a later layer than the layer in which the companion is installed in. When this
+     * happens we must update the companion's field to point to the newly installed value.
+     */
+    static class ArrayHubTransformer extends LayeredFieldValueTransformer<DynamicHubCompanion> {
+        boolean appLayer = ImageLayerBuildingSupport.buildingApplicationLayer();
+
+        @Override
+        public boolean isValueAvailable(DynamicHubCompanion receiver) {
+            /*
+             * As soon as we have a non-null value we set the field. Otherwise, once the ready for
+             * compilation phase has been reached no new dynamic hubs will be added and the value
+             * can set.
+             */
+            return receiver.arrayHub != null || BuildPhaseProvider.isReadyForCompilation();
+        }
+
+        @Override
+        public Result transform(DynamicHubCompanion receiver) {
+            /*
+             * When there is a concrete array hub value, then no update is needed in later layers.
+             * However, when both the value is null and we are not in the application layer, then we
+             * may update the value in a later layer.
+             */
+            return new Result(receiver.arrayHub, receiver.arrayHub == null && !appLayer);
+        }
+
+        @Override
+        public boolean isUpdateAvailable(DynamicHubCompanion receiver) {
+            /* A concrete new value has been found. */
+            return receiver.arrayHub != null;
+        }
+
+        @Override
+        public Result update(DynamicHubCompanion receiver) {
+            assert receiver.arrayHub != null : "update should only be called when a valid arrayHub is available";
+            return new Result(receiver.arrayHub, false);
+        }
     }
 }

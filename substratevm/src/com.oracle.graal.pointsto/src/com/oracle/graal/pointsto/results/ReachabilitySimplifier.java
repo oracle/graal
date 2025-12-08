@@ -24,13 +24,14 @@
  */
 package com.oracle.graal.pointsto.results;
 
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.results.StrengthenGraphs.AnalysisStrengthenGraphsPhase;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -65,7 +66,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Simplify graphs based on reachability information tracked by the static analysis.
@@ -76,16 +76,16 @@ class ReachabilitySimplifier implements CustomSimplification {
     protected final StructuredGraph graph;
 
     /**
-     * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are not created
-     * due to the optimizations performed during the
-     * {@link StrengthenGraphs.AnalysisStrengthenGraphsPhase}.
+     * Tests if a SubstrateTypes was already created for the corresponding {@link AnalysisType}. For
+     * runtime compiled methods, we must be careful to ensure new SubstrateTypes are not created due
+     * to the optimizations performed during the {@link AnalysisStrengthenGraphsPhase}.
      */
-    protected final Function<AnalysisType, ResolvedJavaType> toTargetFunction;
+    protected final Predicate<AnalysisType> typePredicate;
 
     ReachabilitySimplifier(StrengthenGraphs strengthenGraphs, AnalysisMethod method, StructuredGraph graph) {
         this.strengthenGraphs = strengthenGraphs;
         this.graph = graph;
-        this.toTargetFunction = strengthenGraphs.bb.getHostVM().getStrengthenGraphsToTargetFunction(method.getMultiMethodKey());
+        this.typePredicate = strengthenGraphs.bb.getHostVM().getStrengthenGraphsTypePredicate(method.getMultiMethodKey());
     }
 
     @Override
@@ -283,18 +283,26 @@ class ReachabilitySimplifier implements CustomSimplification {
         return "method " + StrengthenGraphs.getQualifiedName(graph) + ", node " + node;
     }
 
+    /**
+     * Tries to improve the stamp based on reachability information. It only handles
+     * {@link AbstractObjectStamp object stamps} as all primitives types are considered implicitly
+     * reachable and the analysis (reachability or points-to) doesn't track primitive ranges.
+     * <p>
+     * Returns a new {@link Stamp} if the input stamp can be improved, or {@code  null} otherwise.
+     */
     private Stamp strengthenStamp(Stamp s) {
         if (!(s instanceof AbstractObjectStamp stamp)) {
+            /* We can only strengthen object types. */
             return null;
         }
         AnalysisType originalType = (AnalysisType) stamp.type();
         if (originalType == null) {
+            /* The stamp is either empty or a non-exact java.lang.Object; nothing to strengthen. */
             return null;
         }
 
         /* In open world the type may become reachable later. */
         if (strengthenGraphs.isClosedTypeWorld && !originalType.isReachable()) {
-            /* We must be in dead code. */
             if (stamp.nonNull()) {
                 /* We must be in dead code. */
                 return StampFactory.empty(JavaKind.Object);
@@ -305,9 +313,8 @@ class ReachabilitySimplifier implements CustomSimplification {
 
         AnalysisType singleImplementorType = strengthenGraphs.getSingleImplementorType(originalType);
         if (singleImplementorType != null && (!stamp.isExactType() || !singleImplementorType.equals(originalType))) {
-            ResolvedJavaType targetType = toTargetFunction.apply(singleImplementorType);
-            if (targetType != null) {
-                TypeReference typeRef = TypeReference.createExactTrusted(targetType);
+            if (typePredicate.test(singleImplementorType)) {
+                TypeReference typeRef = TypeReference.createExactTrusted(singleImplementorType);
                 return StampFactory.object(typeRef, stamp.nonNull());
             }
         }
@@ -318,29 +325,25 @@ class ReachabilitySimplifier implements CustomSimplification {
             return null;
         }
 
-        Stamp newStamp;
         if (strengthenType == null) {
             /* The type and its subtypes are not instantiated. */
             if (stamp.nonNull()) {
                 /* We must be in dead code. */
-                newStamp = StampFactory.empty(JavaKind.Object);
+                return StampFactory.empty(JavaKind.Object);
             } else {
-                newStamp = StampFactory.alwaysNull();
+                return StampFactory.alwaysNull();
             }
-
         } else {
             if (stamp.isExactType()) {
                 /* We must be in dead code. */
-                newStamp = StampFactory.empty(JavaKind.Object);
+                return StampFactory.empty(JavaKind.Object);
             } else {
-                ResolvedJavaType targetType = toTargetFunction.apply(strengthenType);
-                if (targetType == null) {
-                    return null;
+                if (typePredicate.test(strengthenType)) {
+                    TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(strengthenType);
+                    return StampFactory.object(typeRef, stamp.nonNull());
                 }
-                TypeReference typeRef = TypeReference.createTrustedWithoutAssumptions(targetType);
-                newStamp = StampFactory.object(typeRef, stamp.nonNull());
+                return null;
             }
         }
-        return newStamp;
     }
 }

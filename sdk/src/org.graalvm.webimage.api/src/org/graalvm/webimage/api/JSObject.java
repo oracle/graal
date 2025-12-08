@@ -49,14 +49,14 @@ package org.graalvm.webimage.api;
  * wrapped into a <code>JSObject</code> instance. The <code>JSObject</code> allows the Java code to
  * access the fields of the underlying JavaScript object using the <code>get</code> and
  * <code>set</code> methods.
- *
+ * <p>
  * The Java {@link JSObject} instance that corresponds to the JavaScript object is called a <i>Java
  * mirror</i>. Vice versa, the JavaScript instance is a <i>JavaScript mirror</i> for that
  * {@link JSObject} instance.
  *
  *
  * <h3>Anonymous JavaScript objects</h3>
- *
+ * <p>
  * Here are a few examples of creating and modifying anonymous JavaScript objects:
  *
  * <pre>
@@ -68,7 +68,7 @@ package org.graalvm.webimage.api;
  * System.out.println(pair.get("x"));
  * System.out.println(pair.get("y"));
  * </pre>
- *
+ * <p>
  * In this example, using the {@code JSObject} methods, the user can access the <code>x</code> and
  * <code>y</code> fields.
  *
@@ -76,32 +76,32 @@ package org.graalvm.webimage.api;
  * pair.set("x", 5.4);
  * System.out.println(pair.get("x"));
  * </pre>
- *
+ * <p>
  * The code above sets a new value for the <code>x</code> field, and then prints the new value.
  *
  *
  * <h3>Anonymous JavaScript functions</h3>
- *
+ * <p>
  * A {@code JSObject} can be a Java-side wrapper for a JavaScript {@code Function} object. The
  * JavaScript {@code Function} value can be returned by the JavaScript code of the method annotated
  * with the {@link JS} annotation.
- *
+ * <p>
  * The Java program can then call the underlying function by calling the
  * {@link JSObject#call(Object, Object...)} method. If the underlying JavaScript object is not
  * callable, then calling {@code call} will result in an exception.
- *
+ * <p>
  * The {@code call} method has the following signature:
  *
  * <pre>
  * public Object call(Object thisArgument, Object... arguments);
  * </pre>
- *
+ * <p>
  * The {@code invoke} method has the following signature:
  *
  * <pre>
  * public Object invoke(Object... arguments);
  * </pre>
- *
+ * <p>
  * The difference is that the method {@code call} takes an object for specifying {@code this} of the
  * JavaScript function, while {@code invoke} uses the underlying {@code JSObject} as the value of
  * {@code this}.
@@ -130,13 +130,13 @@ package org.graalvm.webimage.api;
  *
  *
  * <h3>Declaring JavaScript classes in Java</h3>
- *
+ * <p>
  * The second purpose of {@link JSObject} is to declare JavaScript classes as classes in Java code,
  * in a way that makes the Java objects look-and-feel like native JavaScript objects. Users should
  * subclass the {@link JSObject} class when they need to define a JavaScript class whose fields and
  * methods can be accessed conveniently from Java, without the {@link JSObject#get(Object)} and
  * {@link JSObject#set(Object, Object)} methods.
- *
+ * <p>
  * Directly exposing a Java object to JavaScript code means that the JavaScript code is able to
  * manipulate the data within the object (e.g. mutate fields, add new fields, or redefine existing
  * fields), which is not allowed by default for regular Java classes. Extending {@link JSObject}
@@ -144,17 +144,17 @@ package org.graalvm.webimage.api;
  * One of the use-cases for these functionalities are JavaScript frameworks that redefine properties
  * of JavaScript objects with custom getters and setters, with the goal of enabling data-binding or
  * reactive updates.
- *
+ * <p>
  * In a subclass of {@link JSObject}, every JavaScript property directly corresponds to the Java
  * field of the same name. Consequently, all these properties point to native JavaScript values
  * rather than Java values, so bridge methods are generated that are called for each property access
  * and that convert native JavaScript values to their Java counterparts. The conversion rules are
  * the same as in a {@link JS}-annotated method. Furthermore, note that JavaScript code can violate
  * the Java type-safety by storing into some property a value that is not compatible with the
- * corresponding Java field. For this reason, the bridge methods also generate check-casts on every
- * access: if the JavaScript property that corresponds to the Java field does not contain a
- * compatible value, a {@link ClassCastException} is thrown.
- *
+ * corresponding Java field. For this reason, reading a Java field in a subclass of {@link JSObject}
+ * may result in a {@link ClassCastException} being throwns if the JavaScript property that
+ * corresponds to the Java field does not contain a compatible value.
+ * <p>
  * There are several restrictions imposed on {@link JSObject} subclasses:
  * <ul>
  * <li>Only public and protected fields are allowed to ensure encapsulation.</li>
@@ -179,7 +179,7 @@ package org.graalvm.webimage.api;
  *     }
  * }
  * </pre>
- *
+ * <p>
  * The preceding Java class is effectively translated to the corresponding JavaScript class:
  *
  * <pre>
@@ -194,7 +194,7 @@ package org.graalvm.webimage.api;
  *     }
  * }
  * </pre>
- *
+ * <p>
  * The {@code Point} class can be used from Java as if it were a normal Java class:
  *
  * <pre>
@@ -203,7 +203,7 @@ package org.graalvm.webimage.api;
  * System.out.println(p.y);
  * System.out.println(p.absolute());
  * </pre>
- *
+ * <p>
  * All accesses to the fields {@code x} and {@code y} are rewritten to accesses on the corresponding
  * JavaScript properties. JavaScript code may assign values to these properties that violate the
  * type of the corresponding Java fields, but a subsequent Java read of such a field will result in
@@ -219,11 +219,11 @@ package org.graalvm.webimage.api;
  *
  *
  * <h3>Passing {@code JSObject} subclasses between JavaScript and Java</h3>
- *
+ * <p>
  * When an object of the {@link JSObject} subclass is passed from Java to JavaScript code using the
  * {@link JS} annotation, the object is converted from its Java representation to its JavaScript
  * representation. Changes in the JavaScript representation are reflected in the Java representation
- * and vice-versa.
+ * and vice versa.
  *
  * <b>Example:</b> the following code resets the {@code Point} object in JavaScript by calling the
  * {@code reset} method, and then prints {@code 0, 0}:
@@ -236,7 +236,7 @@ package org.graalvm.webimage.api;
  * reset(p0, 0.0, 0.0);
  * System.out.println(p0.x + ", " + p0.y);
  * </pre>
- *
+ * <p>
  * A {@link Class} object that represents {@link JSObject} can also be passed to JavaScript code.
  * The {@link Class} object is wrapped in a proxy, which can be used inside a {@code new} expression
  * to instantiate the object of the corresponding class from JavaScript.
@@ -250,14 +250,44 @@ package org.graalvm.webimage.api;
  * Point p1 = create(Point.class, 1.25, 0.5);
  * System.out.println(p1.x + ", " + p1.y);
  * </pre>
- *
+ * <p>
  * Note that creating an object in JavaScript and passing it to Java several times does not
  * guarantee that the same mirror instance is returned each time -- each time a JavaScript object
  * becomes a Java mirror, a different instance of the mirror may be returned.
+ * <p>
+ * When doing type coercion (see {@link JSValue#as(Class)} JavaScript objects can be converted to
+ * any subtype of {@link JSObject}. This works because {@link JSObject} is just a wrapper around the
+ * JS object that maps field accesses to JavaScript property accesses, the underlying JS object can
+ * be wrapped by any {@link JSObject} subtype.
+ *
+ * Note that if the underlying JS property does not exist, reading the Java field may cause a
+ * {@link ClassCastException} because it is treated as containing a value of {@code undefined},
+ * which is not compatible with any other Java type (though if the field type is compatible with
+ * {@link JSUndefined}, this works and an instance of {@link JSUndefined} is returned when reading
+ * the field).
+ *
+ * <b>Example:</b> the following code creates an anonymous JavaScript object in JavaScript and then
+ * coerces it to the Java {@code Point} type:
+ *
+ * <pre>
+ * &#64;JS.Coerce
+ * &#64;JS("return {x: 12, y: 13};")
+ * public static Point create1();
+ *
+ * &#64;JS.Coerce
+ * &#64;JS("return {a: 12, b: 13};")
+ * public static Point create2();
+ *
+ * Point p1 = create1();
+ * Point p2 = create2();
+ * System.out.println(p1.x + ", " + p1.y);
+ * // These field reads throw a ClassCastException
+ * System.out.println(p2.x + ", " + p2.y);
+ * </pre>
  *
  *
  * <h3>Importing existing JavaScript classes</h3>
- *
+ * <p>
  * The {@link JSObject} class allows access to properties of any JavaScript object using the
  * {@link JSObject#get(Object)} and {@link JSObject#set(Object, Object)} methods. In situations
  * where the programmer knows the relevant properties of a JavaScript object (for example, when
@@ -265,14 +295,14 @@ package org.graalvm.webimage.api;
  * "imported" to Java. To do this, the user declares a {@link JSObject} subclass that serves as a
  * facade to the JavaScript object. This subclass must be annotated with the {@link JS.Import}
  * annotation.
- *
+ * <p>
  * The name of the declared class Java must match the name of the JavaScript class that is being
  * imported. The package name of the Java class is not taken into account -- the same JavaScript
- * class can be imported multiple times from within separate packages.
- *
+ * class can be imported multiple times.
+ * <p>
  * The exposed JavaScript fields must be declared as {@code protected} or {@code public}. The
  * constructor parameters must match those of the JavaScript class, and its body must be empty.
- *
+ * <p>
  * Here is an example of a class declared in JavaScript:
  *
  * <pre>
@@ -283,7 +313,7 @@ package org.graalvm.webimage.api;
  *     }
  * }
  * </pre>
- *
+ * <p>
  * To import this class in Java code, we need the following declaration in Java:
  *
  * <pre>
@@ -296,19 +326,19 @@ package org.graalvm.webimage.api;
  *     }
  * }
  * </pre>
- *
+ * <p>
  * The fields declared in the {@code Rectangle} class are directly mapped to the properties of the
  * underlying JavaScript object. If the type of the property of the underlying JavaScript object
  * does not match the type of the field declared in Java, then a field-read in Java will throw a
  * {@link ClassCastException}.
- *
+ * <p>
  * The {@code Rectangle} class can be instantiated from Java as follows:
  *
  * <pre>
  * Rectangle r = new Rectangle(640, 480);
  * System.out.println(r.width + "x" + r.height);
  * </pre>
- *
+ * <p>
  * A JavaScript object whose {@code constructor} property matches the imported JavaScript class can
  * be converted to the declared Java class when the JavaScript code passes a value to Java. Here is
  * a code example that creates the {@code Rectangle} object in JavaScript, and passes it to Java:
@@ -317,13 +347,13 @@ package org.graalvm.webimage.api;
  * &#64;JS("return new Rectangle(width, height);")
  * Rectangle createRectangle(int width, int height);
  * </pre>
- *
+ * <p>
  * Another way to convert a JavaScript object to a Java facade is to call the
  * {@link JSObject#as(Class)} method to cast the {@link JSObject} instance to the proper subtype.
  *
  *
  * <h3>Exporting Java classes to JavaScript</h3>
- *
+ * <p>
  * The users can annotate the exported classes with the {@link JS.Export} annotation to denote that
  * the {@link JSObject} subclass should be made available to JavaScript code. Exported classes can
  * be accessed using the JavaScript VM-instance API, using the `exports` property.
@@ -344,7 +374,7 @@ package org.graalvm.webimage.api;
  *     }
  * }
  * </pre>
- *
+ * <p>
  * The exported class can then be used from JavaScript code as follows:
  *
  * <pre>
@@ -391,6 +421,17 @@ public class JSObject extends JSValue {
      */
     @JS("return this[key];")
     public native Object get(Object key);
+
+    /**
+     * Same as {@link #get(Object)} but the returned values is coerced to the given type.
+     *
+     * @throws ClassCastException If the returned value is not of the given type and can't be
+     *             coerced to it.
+     * @see JSValue#checkedCoerce(Object, Class)
+     */
+    public <R> R get(Object key, Class<R> type) {
+        return JSValue.checkedCoerce(get(key), type);
+    }
 
     /**
      * Sets the value of the key passed as the argument in the JavaScript object.
@@ -531,20 +572,150 @@ public class JSObject extends JSValue {
         throw classCastException("double[]");
     }
 
-    @JS("return conversion.tryExtractFacadeClass(this, cls);")
-    private native <T> T extractFacadeClass(Class<?> cls);
+    @JS("return conversion.coerceToFacadeClass(this, cls);")
+    private native <T extends JSObject> T coerceToFacadeClass(Class<T> cls);
 
+    /**
+     * Implements the logic for coercing from {@link JSObject} to one of its subtypes.
+     * <p>
+     * Any {@link JSObject} instance can be unconditionally coerced to any of its subtypes because
+     * they are only a light wrapper around the underlying JavaScript object and coercion simply
+     * rewraps the JS object with the new wrapper type.
+     *
+     * @see JSValue#as(Class)
+     */
     @SuppressWarnings("unchecked")
     @Override
     public <T> T as(Class<T> cls) {
-        Object facade = extractFacadeClass(cls);
-        if (facade != null) {
-            return (T) facade;
+        if (cls.isAssignableFrom(this.getClass())) {
+            return (T) this;
         }
+
+        if (JSObject.class.isAssignableFrom(cls)) {
+            assert cls != JSObject.class : "Target of coercion " + cls + " should have been handled above";
+            return (T) coerceToFacadeClass((Class<? extends JSObject>) cls);
+        }
+
         return super.as(cls);
     }
 
     public boolean equalsJavaScript(JSObject that) {
         return referenceEquals(this, that).asBoolean();
     }
+
+    @JS.Coerce
+    @JS(value = "return Object.create(proto);")
+    public static native JSObject create(JSObject proto);
+
+    @JS.Coerce
+    @JS(value = "return Object.create(proto, properties);")
+    public static native JSObject create(JSObject proto, JSObject properties);
+
+    @JS.Coerce
+    @JS(value = "return Object.defineProperties(obj, props);")
+    public static native JSObject defineProperties(JSObject obj, JSObject props);
+
+    @JS.Coerce
+    @JS(value = "return Object.defineProperty(obj, prop, descriptor);")
+    public static native JSObject defineProperty(JSObject obj, JSString prop, JSObject descriptor);
+
+    @JS.Coerce
+    @JS(value = "return Object.defineProperty(obj, prop, descriptor);")
+    public static native JSObject defineProperty(JSObject obj, String prop, JSObject descriptor);
+
+    @JS.Coerce
+    @JS(value = "return Object.entries(obj);")
+    public static native JSObject entries(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.freeze(obj);")
+    public static native JSObject freeze(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.fromEntries(iterable);")
+    public static native JSObject fromEntries(JSObject iterable);
+
+    @JS.Coerce
+    @JS(value = "return Object.getOwnPropertyDescriptor(obj, prop);")
+    public static native JSObject getOwnPropertyDescriptor(JSObject obj, String prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.getOwnPropertyNames(obj);")
+    public static native JSObject getOwnPropertyNames(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.groupBy(items, callback);")
+    public static native JSObject groupBy(JSObject items, JSValue callback);
+
+    @JS.Coerce
+    @JS(value = "return Object.hasOwn(obj, prop);")
+    public static native boolean hasOwn(JSObject obj, String prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.hasOwn(obj, prop);")
+    public static native boolean hasOwn(JSObject obj, JSString prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.hasOwn(obj, prop);")
+    public static native boolean hasOwn(JSObject obj, JSSymbol prop);
+
+    @JS.Coerce
+    @JS(value = "return Object.is(value1, value2);")
+    public static native boolean is(JSValue value1, JSValue value2);
+
+    @JS.Coerce
+    @JS(value = "return Object.isExtensible(obj);")
+    public static native boolean isExtensible(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.isFrozen(obj);")
+    public static native boolean isFrozen(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.isSealed(obj);")
+    public static native boolean isSealed(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.keys(obj);")
+    public static native JSObject keys(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.preventExtensions(obj);")
+    public static native JSObject preventExtensions(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.seal(obj);")
+    public static native JSObject seal(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return Object.setPrototypeOf(obj, proto);")
+    public static native JSObject setPrototypeOf(JSObject obj, JSObject proto);
+
+    @JS.Coerce
+    @JS(value = "return Object.values(obj);")
+    public static native JSObject values(JSObject obj);
+
+    @JS.Coerce
+    @JS(value = "return this.isPrototypeOf(object);")
+    public native boolean isPrototypeOf(JSObject object);
+
+    @JS.Coerce
+    @JS(value = "return this.propertyIsEnumerable(prop);")
+    public native boolean propertyIsEnumerable(String prop);
+
+    @JS.Coerce
+    @JS(value = "return this.propertyIsEnumerable(prop);")
+    public native boolean propertyIsEnumerable(JSString prop);
+
+    @JS.Coerce
+    @JS(value = "return this.propertyIsEnumerable(prop);")
+    public native boolean propertyIsEnumerable(JSSymbol prop);
+
+    @JS.Coerce
+    @JS(value = "return this.toLocaleString();")
+    public native String toLocaleString();
+
+    @JS.Coerce
+    @JS(value = "return this.valueOf();")
+    public native JSValue valueOf();
 }

@@ -86,7 +86,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         GraalError.guarantee(arrayOffset.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(arrayLength.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
         GraalError.guarantee(fromIndex.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
-        if (variant == ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             GraalError.guarantee(searchValues.length == 1 && searchValues[0].getPlatformKind() == AArch64Kind.QWORD, "single pointer value expected");
         } else {
             GraalError.guarantee(Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD), "int values expected");
@@ -104,7 +104,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         this.searchValues = searchValues;
 
         temp = allocateTempRegisters(tool, 5);
-        vectorTemp = allocateVectorRegisters(tool, getNumberOfRequiredVectorRegisters(variant, stride, nValues), variant == ArrayIndexOfVariant.Table);
+        vectorTemp = allocateVectorRegisters(tool, getNumberOfRequiredVectorRegisters(variant, stride, nValues), variant.isTable());
     }
 
     private static int getNumberOfRequiredVectorRegisters(ArrayIndexOfVariant variant, Stride stride, int nValues) {
@@ -112,14 +112,14 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         switch (variant) {
             case MatchAny:
                 return nValues + (nValues > 1 ? 6 : 3);
-            case MatchRange:
+            case MatchRange, MatchRangeForeignEndian:
                 return nValues + 6;
             case WithMask:
                 return nValues + 3;
             case FindTwoConsecutive:
             case FindTwoConsecutiveWithMask:
                 return nValues + 5;
-            case Table:
+            case Table, TableForeignEndian:
                 switch (stride) {
                     case S1:
                         return 7;
@@ -196,6 +196,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(searchByElementLoop);
         masm.ldr(memAccessSize, curValue, AArch64Address.createRegisterOffsetAddress(memAccessSize, baseAddress, curIndex, false));
+        if (variant == ArrayIndexOfVariant.MatchRangeForeignEndian || variant == ArrayIndexOfVariant.TableForeignEndian) {
+            switch (stride) {
+                case S2 -> masm.rev16(32, curValue, curValue);
+                case S4, S8 -> masm.rev(stride.getBitCount(), curValue, curValue);
+            }
+        }
         switch (variant) {
             case MatchAny:
                 for (AllocatableValue searchValue : searchValues) {
@@ -203,7 +209,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     masm.branchConditionally(ConditionFlag.EQ, match);
                 }
                 break;
-            case MatchRange:
+            case MatchRange, MatchRangeForeignEndian:
                 for (int i = 0; i < searchValues.length; i += 2) {
                     Label noMatch = new Label();
                     masm.cmp(compareSize, curValue, asRegister(searchValues[i]));
@@ -223,7 +229,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 masm.cmp(compareSize, searchValueReg, curValue);
                 masm.branchConditionally(ConditionFlag.EQ, match);
                 break;
-            case Table:
+            case Table, TableForeignEndian:
                 Label greaterThan0xff = new Label();
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register tmp = sc.getRegister();
@@ -322,7 +328,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Register vecTableHi;
         Register vecTableLo;
 
-        if (variant == ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             vecMask0x0f = asRegister(vectorTemp[0]);
             vecTableHi = asRegister(vectorTemp[1]);
             vecTableLo = asRegister(vectorTemp[2]);
@@ -378,7 +384,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Label end = new Label();
 
         ElementSize eSize = ElementSize.fromStride(stride);
-        if (variant == ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             // in the table variant, searchValue0 is actually a pointer to a 32-byte array
             masm.fldp(128, vecTableHi, vecTableLo, AArch64Address.createPairBaseRegisterOnlyAddress(128, asRegister(searchValues[0])));
             masm.neon.moveVI(FullReg, ElementSize.Byte, vecMask0x0f, 0x0f);
@@ -423,7 +429,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.bind(searchByChunkLoopTail);
         masm.sub(64, currOffset, array, baseAddress);
 
-        if (variant != ArrayIndexOfVariant.Table) {
+        if (!variant.isTable()) {
             masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
         }
         emitSIMDMatch(masm, eSize, array, vecSearchValues, vecTmp, vecArray1, vecArray2, vecLastArray2, vecMask0x0f, vecTableHi, vecTableLo, matchInChunk);
@@ -458,7 +464,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         /* 4. If the element is found in a 32-byte chunk then find its position. */
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(matchInChunk);
-        if (variant == ArrayIndexOfVariant.Table) {
+        if (variant.isTable()) {
             // convert matching bytes to 0xff
             masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray1, vecArray1, vecArray1);
             masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray2, vecArray2, vecArray2);
@@ -467,7 +473,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
             Register tmp = scratchReg.getRegister();
             initCalcIndexOfFirstMatchMask(masm, vecTmp[0], tmp);
             calcIndexOfFirstMatch(masm, tmp, vecArray1, vecArray2, vecTmp[0], false);
-            if (variant == ArrayIndexOfVariant.Table) {
+            if (variant.isTable()) {
                 masm.asr(64, currOffset, currOffset, stride.log2);
             }
             masm.add(64, result, currOffset, tmp, ShiftType.ASR, 1);
@@ -482,6 +488,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.bind(end);
     }
 
+    @SuppressWarnings("fallthrough")
     private void emitSIMDMatch(AArch64MacroAssembler masm,
                     ElementSize eSize,
                     Register array,
@@ -524,6 +531,10 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     }
                 }
                 break;
+            case MatchRangeForeignEndian:
+                masm.neon.revVV(FullReg, eSize, vecArray1, vecArray1);
+                masm.neon.revVV(FullReg, eSize, vecArray2, vecArray2);
+                // fallthrough
             case MatchRange:
                 // match first range
                 // check if array elements are greater or equal to lower bound
@@ -583,51 +594,78 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 masm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp[0]);
                 masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
                 break;
-            case Table:
+            case Table, TableForeignEndian:
                 switch (stride) {
-                    case S1:
+                    case S1 -> {
                         masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
                         performTableLookup(masm, vecMask0x0f, vecTableHi, vecTableLo, vecArray1, vecArray2, vecTmp[0], vecTmp[1]);
-                        break;
-                    case S2:
+                    }
+                    case S2 -> {
                         // de-structuring load: get array element's upper and lower bytes into
                         // separate vectors
                         masm.neon.ld2MultipleVV(FullReg, ElementSize.Byte, vecArray1, vecTmp[0], createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, eSize, array, 32));
                         masm.neon.ld2MultipleVV(FullReg, ElementSize.Byte, vecArray2, vecTmp[1], createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, eSize, array, 32));
+                        Register vecArray1B0 = vecArray1;
+                        Register vecArray1B1 = vecTmp[0];
+                        Register vecArray2B0 = vecArray2;
+                        Register vecArray2B1 = vecTmp[1];
+                        if (variant.isForeignEndian()) {
+                            vecArray1B0 = vecTmp[0];
+                            vecArray1B1 = vecArray1;
+                            vecArray2B0 = vecTmp[1];
+                            vecArray2B1 = vecArray2;
+                        }
                         // compare upper bytes to zero
                         masm.neon.moveVI(FullReg, ElementSize.Byte, vecTmp[2], 0);
-                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp[0], vecTmp[0], vecTmp[2]);
-                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp[1], vecTmp[1], vecTmp[2]);
+                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArray1B1, vecArray1B1, vecTmp[2]);
+                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArray2B1, vecArray2B1, vecTmp[2]);
                         // perform table lookup on lower bytes
-                        performTableLookup(masm, vecMask0x0f, vecTableHi, vecTableLo, vecArray1, vecArray2, vecTmp[2], vecTmp[3]);
+                        performTableLookup(masm, vecMask0x0f, vecTableHi, vecTableLo, vecArray1B0, vecArray2B0, vecTmp[2], vecTmp[3]);
                         // eliminate all matches where the corresponding high byte is not zero
-                        masm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp[0]);
-                        masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
-                        break;
-                    case S4:
+                        masm.neon.andVVV(FullReg, vecArray1, vecArray1B0, vecArray1B1);
+                        masm.neon.andVVV(FullReg, vecArray2, vecArray2B0, vecArray2B1);
+                    }
+                    case S4 -> {
                         // de-structuring load: get array element's upper and lower bytes into
                         // separate vectors
                         masm.neon.ld4MultipleVVVV(FullReg, ElementSize.Byte, vecArray1, vecTmp[0], vecTmp[1], vecTmp[2],
                                         createStructureImmediatePostIndexAddress(LD4_MULTIPLE_4R, FullReg, eSize, array, 64));
                         masm.neon.ld4MultipleVVVV(FullReg, ElementSize.Byte, vecArray2, vecTmp[3], vecTmp[4], vecTmp[5],
                                         createStructureImmediatePostIndexAddress(LD4_MULTIPLE_4R, FullReg, eSize, array, 64));
+                        Register vecArray1B0 = vecArray1;
+                        Register vecArray1B1 = vecTmp[0];
+                        Register vecArray1B2 = vecTmp[1];
+                        Register vecArray1B3 = vecTmp[2];
+                        Register vecArray2B0 = vecArray2;
+                        Register vecArray2B1 = vecTmp[3];
+                        Register vecArray2B2 = vecTmp[4];
+                        Register vecArray2B3 = vecTmp[5];
+                        if (variant.isForeignEndian()) {
+                            vecArray1B0 = vecTmp[2];
+                            vecArray1B1 = vecTmp[1];
+                            vecArray1B2 = vecTmp[0];
+                            vecArray1B3 = vecArray1;
+                            vecArray2B0 = vecTmp[5];
+                            vecArray2B1 = vecTmp[4];
+                            vecArray2B2 = vecTmp[3];
+                            vecArray2B3 = vecArray2;
+                        }
                         // merge upper bytes
-                        masm.neon.orrVVV(FullReg, vecTmp[0], vecTmp[0], vecTmp[1]);
-                        masm.neon.orrVVV(FullReg, vecTmp[3], vecTmp[3], vecTmp[4]);
-                        masm.neon.orrVVV(FullReg, vecTmp[0], vecTmp[0], vecTmp[2]);
-                        masm.neon.orrVVV(FullReg, vecTmp[1], vecTmp[3], vecTmp[5]);
+                        masm.neon.orrVVV(FullReg, vecArray1B1, vecArray1B1, vecArray1B2);
+                        masm.neon.orrVVV(FullReg, vecArray2B1, vecArray2B1, vecArray2B2);
+                        masm.neon.orrVVV(FullReg, vecArray1B1, vecArray1B1, vecArray1B3);
+                        masm.neon.orrVVV(FullReg, vecArray2B1, vecArray2B1, vecArray2B3);
                         // compare upper bytes to zero
-                        masm.neon.moveVI(FullReg, ElementSize.Byte, vecTmp[2], 0);
-                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp[0], vecTmp[0], vecTmp[2]);
-                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp[1], vecTmp[1], vecTmp[2]);
+                        masm.neon.moveVI(FullReg, ElementSize.Byte, vecArray1B3, 0);
+                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArray1B1, vecArray1B1, vecArray1B3);
+                        masm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArray2B1, vecArray2B1, vecArray1B3);
                         // perform table lookup on lower bytes
-                        performTableLookup(masm, vecMask0x0f, vecTableHi, vecTableLo, vecArray1, vecArray2, vecTmp[2], vecTmp[3]);
+                        performTableLookup(masm, vecMask0x0f, vecTableHi, vecTableLo, vecArray1B0, vecArray2B0, vecArray1B3, vecArray2B3);
                         // eliminate all matches where the corresponding upper bytes are not zero
-                        masm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp[0]);
-                        masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
-                        break;
-                    default:
-                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
+                        masm.neon.andVVV(FullReg, vecArray1, vecArray1B0, vecArray1B1);
+                        masm.neon.andVVV(FullReg, vecArray2, vecArray2B0, vecArray2B1);
+                    }
+                    default -> throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
                 break;
         }
@@ -635,16 +673,16 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register tmp = sc.getRegister();
             /* If value != 0, then there was a match somewhere. */
-            cbnzVector(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], tmp, variant != ArrayIndexOfVariant.Table, matchInChunk);
+            cbnzVector(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], tmp, !variant.isTable(), matchInChunk);
         }
     }
 
     private Stride getMatchResultStride() {
-        return variant == ArrayIndexOfVariant.Table ? Stride.S1 : stride;
+        return variant.isTable() ? Stride.S1 : stride;
     }
 
     private int getSIMDLoopChunkSize() {
-        return variant == ArrayIndexOfVariant.Table ? 32 * stride.value : 32;
+        return variant.isTable() ? 32 * stride.value : 32;
     }
 
     private static void performTableLookup(AArch64MacroAssembler masm,
