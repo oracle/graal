@@ -805,6 +805,15 @@ public abstract class ImageHeapScanner {
     }
 
     /**
+     * Returns true if the provided {@code object} has an {@link ImageHeapConstant} representation,
+     * meaning it is a candidate to be installed in the image heap.
+     */
+    public boolean hasImageHeapConstant(Object object) {
+        var javaConstant = asConstant(Objects.requireNonNull(object));
+        return imageHeap.getSnapshot(javaConstant) instanceof ImageHeapConstant;
+    }
+
+    /**
      * Returns true if the provided {@code object} was seen as reachable by the static analysis.
      */
     public boolean isObjectReachable(Object object) {

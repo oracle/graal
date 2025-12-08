@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InstallationKind.UNAVAILABLE_AT_RUNTIME;
 import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL;
 
 import java.util.ArrayList;
@@ -37,13 +38,13 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -73,8 +74,11 @@ import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -429,6 +433,20 @@ public class LoadImageSingletonFeature implements InternalFeature {
             constantToTableSlotMap = Map.of();
         }
 
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess a) {
+        BeforeImageWriteAccessImpl access = (BeforeImageWriteAccessImpl) a;
+        ImageHeapScanner heapScanner = access.getHostedUniverse().getBigBang().getUniverse().getHeapScanner();
+        NativeImageHeap heap = access.getImage().getHeap();
+        var notInstalledSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(UNAVAILABLE_AT_RUNTIME);
+        for (var notInstalledSingleton : notInstalledSingletons) {
+            if (heapScanner.hasImageHeapConstant(notInstalledSingleton)) {
+                ObjectInfo objectInfo = heap.getObjectInfo(notInstalledSingleton);
+                VMError.guarantee(objectInfo == null, "Singleton of %s annotated with %s cannot be installed in the image heap", notInstalledSingletons.getClass(), UNAVAILABLE_AT_RUNTIME);
+            }
+        }
     }
 }
 
