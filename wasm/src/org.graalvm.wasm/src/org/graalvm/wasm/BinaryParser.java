@@ -84,6 +84,8 @@ import static org.graalvm.wasm.WasmType.STRUCTREF_TYPE;
 import static org.graalvm.wasm.WasmType.STRUCT_HEAPTYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_BLOCK_TYPE;
+import static org.graalvm.wasm.constants.Bytecode.REF_CAST;
+import static org.graalvm.wasm.constants.Bytecode.REF_TEST;
 import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
@@ -120,6 +122,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen.BranchOp.BrOnCast;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ExceptionHandler;
@@ -1985,10 +1988,11 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.REF_TEST_NULL: {
                         int expectedHeapType = readHeapType();
                         int topHeapType = module.topHeapTypeOf(expectedHeapType);
+                        int expectedReferenceType = WasmType.withNullable(aggregateOpcode == Instructions.REF_TEST_NULL, expectedHeapType);
                         int topReferenceType = WasmType.withNullable(true, topHeapType);
                         state.popChecked(topReferenceType);
                         state.push(I32_TYPE);
-                        state.addInstruction(aggregateOpcode, expectedHeapType);
+                        state.addInstruction(REF_TEST, expectedReferenceType);
                         break;
                     }
                     case Instructions.REF_CAST_NON_NULL:
@@ -1999,7 +2003,25 @@ public class BinaryParser extends BinaryStreamParser {
                         int topReferenceType = WasmType.withNullable(true, topHeapType);
                         state.popChecked(topReferenceType);
                         state.push(expectedReferenceType);
-                        state.addInstruction(aggregateOpcode, expectedHeapType);
+                        state.addInstruction(REF_CAST, expectedReferenceType);
+                        break;
+                    }
+                    case Instructions.BR_ON_CAST:
+                    case Instructions.BR_ON_CAST_FAIL: {
+                        final byte castOp = readCastOp();
+                        final int branchLabel = readTargetOffset();
+                        final int topHeapType = readHeapType();
+                        final int topReferenceType = WasmType.withNullable((castOp & 0x01) != 0, topHeapType);
+                        final int successfulHeapType = readHeapType();
+                        final int successfulReferenceType = WasmType.withNullable((castOp & 0x02) != 0, successfulHeapType);
+                        final int failedReferenceType = WasmType.difference(topReferenceType, successfulReferenceType);
+                        Assert.assertTrue(module.isSubtypeOf(successfulReferenceType, topReferenceType), Failure.TYPE_MISMATCH);
+                        BrOnCast branchOp = new BrOnCast(aggregateOpcode == Instructions.BR_ON_CAST_FAIL, successfulReferenceType);
+                        if (aggregateOpcode == Instructions.BR_ON_CAST) {
+                            state.addBranchOnCast(branchLabel, topReferenceType, successfulReferenceType, failedReferenceType, branchOp);
+                        } else {
+                            state.addBranchOnCast(branchLabel, topReferenceType, failedReferenceType, successfulReferenceType, branchOp);
+                        }
                         break;
                     }
                     case Instructions.ANY_CONVERT_EXTERN: {
@@ -3840,6 +3862,14 @@ public class BinaryParser extends BinaryStreamParser {
 
     private byte readImportType() {
         return read1();
+    }
+
+    private byte readCastOp() {
+        byte castOp = read1();
+        if (castOp < 0x00 || castOp > 0x03) {
+            throw Assert.fail(Failure.MALFORMED_CASTOP_FLAGS, "unexpected value for castop flag: 0x%02X", castOp);
+        }
+        return castOp;
     }
 
     private int readRefType() {

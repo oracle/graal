@@ -70,6 +70,7 @@ public enum Failure {
     MALFORMED_MEMOP_FLAGS(Type.MALFORMED, "malformed memop flags"),
     MALFORMED_CATCH(Type.MALFORMED, "malformed catch clause"),
     MALFORMED_TAG_ATTRIBUTE(Type.MALFORMED, "malformed tag attribute"),
+    MALFORMED_CASTOP_FLAGS(Type.MALFORMED, "malformed castop flags"),
     // GraalWasm-specific:
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
