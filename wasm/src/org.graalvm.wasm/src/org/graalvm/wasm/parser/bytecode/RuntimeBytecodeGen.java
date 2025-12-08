@@ -370,42 +370,100 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return location;
     }
 
-    public enum BranchOp {
-        BR(op(Bytecode.BR_U8), op(Bytecode.BR_I32), false),
-        BR_IF(op(Bytecode.BR_IF_U8), op(Bytecode.BR_IF_I32), true),
-        BR_ON_NULL(miscOp(Bytecode.BR_ON_NULL_U8), miscOp(Bytecode.BR_ON_NULL_I32), true),
-        BR_ON_NON_NULL(miscOp(Bytecode.BR_ON_NON_NULL_U8), miscOp(Bytecode.BR_ON_NON_NULL_I32), true);
+    public abstract static class BranchOp {
 
-        private final byte[] opcodesU8;
-        private final byte[] opcodesI32;
+        public static final BranchOp BR = new BranchOp(false) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_I32);
+            }
+        };
+
+        public static final BranchOp BR_IF = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_IF_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.BR_IF_I32);
+            }
+        };
+
+        public static final BranchOp BR_ON_NULL = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NULL_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NULL_I32);
+            }
+        };
+
+        public static final BranchOp BR_ON_NON_NULL = new BranchOp(true) {
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NON_NULL_U8);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                bytecode.add1(Bytecode.MISC);
+                bytecode.add1(Bytecode.BR_ON_NON_NULL_I32);
+            }
+        };
+
+        public static class BrOnCast extends BranchOp {
+
+            private final boolean brOnCastFail;
+            private final int expectedReferenceType;
+
+            public BrOnCast(boolean brOnCastFail, int expectedReferenceType) {
+                super(true);
+                this.brOnCastFail = brOnCastFail;
+                this.expectedReferenceType = expectedReferenceType;
+            }
+
+            @Override
+            public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
+                // Bytecode.AGGREGATE already emitted by caller
+                bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_U8 : Bytecode.BR_ON_CAST_U8);
+                bytecode.add4(expectedReferenceType);
+            }
+
+            @Override
+            public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
+                // Bytecode.AGGREGATE already emitted by caller
+                bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_I32 : Bytecode.BR_ON_CAST_I32);
+                bytecode.add4(expectedReferenceType);
+            }
+        }
+
         private final boolean profiled;
 
-        BranchOp(byte[] opcodesU8, byte[] opcodesI32, boolean profiled) {
-            this.opcodesU8 = opcodesU8;
-            this.opcodesI32 = opcodesI32;
+        BranchOp(boolean profiled) {
             this.profiled = profiled;
         }
 
-        public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
-            bytecode.addBytes(opcodesU8, 0, opcodesU8.length);
-        }
+        public abstract void emitOpcodesU8(RuntimeBytecodeGen bytecode);
 
-        public void emitOpcodesI32(RuntimeBytecodeGen bytecode) {
-            bytecode.addBytes(opcodesI32, 0, opcodesI32.length);
-        }
+        public abstract void emitOpcodesI32(RuntimeBytecodeGen bytecode);
 
         public void emitProfile(RuntimeBytecodeGen bytecode) {
             if (profiled) {
                 bytecode.addProfile();
             }
-        }
-
-        private static byte[] op(int opcode) {
-            return new byte[]{(byte) opcode};
-        }
-
-        private static byte[] miscOp(int opcode) {
-            return new byte[]{(byte) Bytecode.MISC, (byte) opcode};
         }
     }
 
