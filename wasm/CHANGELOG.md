@@ -6,6 +6,7 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 
 * Implemented the [exception handling](https://github.com/WebAssembly/exception-handling) proposal. This feature can be enabled with the experimental option `wasm.Exceptions=true`.
 * Implemented the [typed function references](https://github.com/WebAssembly/function-references) proposal. This feature can be enabled with the experimental option `wasm.TypedFunctionReferences=true`.
+* Implemented the [GC proposal](https://github.com/WebAssembly/gc) proposal. This feature can be enabled with the experimental option `wasm.GC=true`.
 
 ## Version 25.0.0
 
