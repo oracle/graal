@@ -40,9 +40,8 @@
  */
 package org.graalvm.wasm.types;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmTypedHeapObject;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.exception.WasmRuntimeException;
@@ -116,10 +115,9 @@ public enum AbstractHeapType implements HeapType {
         return switch (this) {
             case NOEXN, NOFUNC, NOEXTERN, NONE -> false;
             case FUNC -> val instanceof WasmFunctionInstance;
-            case EXTERN -> true;
-            case ANY -> val instanceof WasmTypedHeapObject;
-            case EQ -> throw CompilerDirectives.shouldNotReachHere("TODO");
-            case I31 -> throw CompilerDirectives.shouldNotReachHere("TODO");
+            case EXTERN, ANY -> val != WasmConstant.NULL;
+            case EQ -> val instanceof WasmArray || val instanceof WasmStruct || (val instanceof Integer integer && integer >= 0);
+            case I31 -> val instanceof Integer integer && integer >= 0;
             case STRUCT -> val instanceof WasmStruct;
             case ARRAY -> val instanceof WasmArray;
             case EXN -> val instanceof WasmRuntimeException;

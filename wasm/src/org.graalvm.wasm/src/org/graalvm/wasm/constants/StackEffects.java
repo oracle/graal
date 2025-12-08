@@ -91,6 +91,9 @@ public final class StackEffects {
         aggregateOpStackEffects[Bytecode.REF_TEST_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_CAST_NON_NULL] = NO_EFFECT;
         aggregateOpStackEffects[Bytecode.REF_CAST_NULL] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.REF_I31] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.I31_GET_S] = NO_EFFECT;
+        aggregateOpStackEffects[Bytecode.I31_GET_U] = NO_EFFECT;
 
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_S] = NO_EFFECT;
         miscOpStackEffects[Bytecode.I32_TRUNC_SAT_F32_U] = NO_EFFECT;
