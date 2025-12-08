@@ -1433,4 +1433,15 @@ public class CremaSupportImpl implements CremaSupport {
     private static <E extends Throwable> RuntimeException uncheckedThrow(Throwable throwable) throws E {
         throw (E) throwable;
     }
+
+    @Override
+    public Object computeEnclosingClass(DynamicHub hub) {
+        CremaResolvedObjectType type = (CremaResolvedObjectType) hub.getInterpreterType();
+        InnerClassesAttribute innerClassesAttribute = type.getAttribute(InnerClassesAttribute.NAME, InnerClassesAttribute.class);
+        if (innerClassesAttribute == null) {
+            return null;
+        }
+        // GR-70363
+        throw VMError.unimplemented("computeEnclosingClass");
+    }
 }

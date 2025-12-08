@@ -84,7 +84,7 @@ public final class DynamicHubCompanion {
      * The class that declares this class, as returned by {@code Class.getDeclaringClass0} or an
      * exception that happened at image-build time.
      */
-    final Object declaringClass;
+    Object declaringClass;
 
     final String signature;
 

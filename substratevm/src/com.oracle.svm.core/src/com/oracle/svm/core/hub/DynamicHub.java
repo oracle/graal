@@ -1341,8 +1341,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) declaringClass, getClassLoader0());
             return (Class<?>) declaringClass;
         } else if (declaringClass == UNINITIALIZED_DECLARING_CLASS_SENTINEL) {
-            // GR-70363
-            throw VMError.unimplemented("getDeclaringClass0 is not implemented yet for runtime-loaded classes");
+            if (!RuntimeClassLoading.isSupported()) {
+                throw VMError.shouldNotReachHere("UNINITIALIZED_DECLARING_CLASS_SENTINEL but no runtime class loading");
+            }
+            companion.declaringClass = CremaSupport.singleton().computeEnclosingClass(this);
+            VMError.guarantee(companion.declaringClass != UNINITIALIZED_DECLARING_CLASS_SENTINEL);
+            return getDeclaringClass0();
         } else if (declaringClass instanceof LinkageError) {
             throw (LinkageError) declaringClass;
         } else {

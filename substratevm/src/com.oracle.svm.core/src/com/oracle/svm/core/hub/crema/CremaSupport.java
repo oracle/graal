@@ -101,6 +101,8 @@ public interface CremaSupport {
 
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
+    Object computeEnclosingClass(DynamicHub hub);
+
     static CremaSupport singleton() {
         return ImageSingletons.lookup(CremaSupport.class);
     }
