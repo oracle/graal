@@ -66,6 +66,7 @@ public final class Instructions {
     public static final int RETURN = 0x0F;
     public static final int CALL = 0x10;
     public static final int CALL_INDIRECT = 0x11;
+    public static final int CALL_REF = 0x14;
 
     public static final int DROP = 0x1A;
     public static final int SELECT = 0x1B;
@@ -245,6 +246,20 @@ public final class Instructions {
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
 
+    public static final int I32_EXTEND8_S = 0xC0;
+    public static final int I32_EXTEND16_S = 0xC1;
+    public static final int I64_EXTEND8_S = 0xC2;
+    public static final int I64_EXTEND16_S = 0xC3;
+    public static final int I64_EXTEND32_S = 0xC4;
+
+    public static final int REF_NULL = 0xD0;
+    public static final int REF_IS_NULL = 0xD1;
+    public static final int REF_FUNC = 0xD2;
+    public static final int REF_EQ = 0xD3;
+    public static final int REF_AS_NON_NULL = 0xD4;
+    public static final int BR_ON_NULL = 0xD5;
+    public static final int BR_ON_NON_NULL = 0xD6;
+
     public static final int AGGREGATE = 0xFB;
 
     public static final int STRUCT_NEW = 0x00;
@@ -290,16 +305,6 @@ public final class Instructions {
     public static final int I64_TRUNC_SAT_F64_S = 0x06;
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
 
-    public static final int I32_EXTEND8_S = 0xC0;
-    public static final int I32_EXTEND16_S = 0xC1;
-    public static final int I64_EXTEND8_S = 0xC2;
-    public static final int I64_EXTEND16_S = 0xC3;
-    public static final int I64_EXTEND32_S = 0xC4;
-
-    public static final int REF_NULL = 0xD0;
-    public static final int REF_IS_NULL = 0xD1;
-    public static final int REF_FUNC = 0xD2;
-
     public static final int MEMORY_INIT = 0x08;
     public static final int DATA_DROP = 0x09;
     public static final int MEMORY_COPY = 0x0A;
@@ -310,11 +315,6 @@ public final class Instructions {
     public static final int TABLE_GROW = 0x0F;
     public static final int TABLE_SIZE = 0x10;
     public static final int TABLE_FILL = 0x11;
-
-    public static final int CALL_REF = 0x14;
-    public static final int REF_AS_NON_NULL = 0xD4;
-    public static final int BR_ON_NULL = 0xD5;
-    public static final int BR_ON_NON_NULL = 0xD6;
 
     public static final int ATOMIC = 0xFE;
 
