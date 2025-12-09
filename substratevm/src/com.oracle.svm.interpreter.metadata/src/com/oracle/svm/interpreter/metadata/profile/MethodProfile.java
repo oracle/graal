@@ -369,6 +369,7 @@ public final class MethodProfile {
         public String toString() {
             StringBuilder sb = new StringBuilder(128);
             sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(counter);
+            sb.append(", state=").append(state);
             int limit = Math.min(nextFreeSlot, types.length);
             sb.append(", types=[");
             for (int i = 0; i < limit; i++) {
@@ -393,11 +394,11 @@ public final class MethodProfile {
         }
 
         public JavaTypeProfile toTypeProfile() {
-            JavaTypeProfile.ProfiledType[] types = new JavaTypeProfile.ProfiledType[this.types.length];
-            for (int i = 0; i < types.length; i++) {
-                types[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbability(this.types[i]));
+            JavaTypeProfile.ProfiledType[] jTypes = new JavaTypeProfile.ProfiledType[this.types.length];
+            for (int i = 0; i < jTypes.length; i++) {
+                jTypes[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbability(this.types[i]));
             }
-            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedProbability(), types);
+            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedProbability(), jTypes);
         }
     }
 }
