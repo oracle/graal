@@ -29,11 +29,24 @@ package com.oracle.svm.core.genscavenge;
  * to assign a higher weight to newly added data points and effectively drop old data points without
  * keeping a history.
  *
+ * Note that this uses normalization, so it does not need special handling for a small number of
+ * samples (such as {@link AdaptiveWeightedAverage#OLD_THRESHOLD}).
+ *
  * Henrik J Blok, Discounted Least Squares Curve Fitting, 1997.
  *
  * Press, W.H. et al, Numerical Recipes in C: The Art of Scientific Computing, Second Edition, 1992.
  */
 final class ReciprocalLeastSquareFit {
+
+    /**
+     * Instantiates with a weight matching the given effective history length, defined as the number
+     * of data points after which the former history is discounted to 1/e.
+     */
+    static ReciprocalLeastSquareFit createWithEffectiveHistoryLength(double effectiveHistoryLength) {
+        double weight = 100 * (1 - (effectiveHistoryLength - 1) / effectiveHistoryLength);
+        return new ReciprocalLeastSquareFit(weight);
+    }
+
     private final double discount;
 
     private double sumY;
@@ -45,9 +58,9 @@ final class ReciprocalLeastSquareFit {
     private double a;
     private double b;
 
-    ReciprocalLeastSquareFit(double effectiveHistoryLength) {
-        assert effectiveHistoryLength > 0;
-        this.discount = (effectiveHistoryLength - 1.0) / effectiveHistoryLength;
+    ReciprocalLeastSquareFit(double weight) {
+        assert weight > 0 && weight <= 100 : "weight must be a percentage";
+        this.discount = 1 - (weight / 100);
     }
 
     public void sample(double x, double y) {
@@ -72,5 +85,15 @@ final class ReciprocalLeastSquareFit {
 
     public double getSlope(double x) {
         return -b / (x * x);
+    }
+
+    /* These methods are useful to determine whether a fit is plausible or shouldn't be used: */
+
+    public boolean isPositiveForPositiveX() {
+        return a > 0 && b >= 0;
+    }
+
+    public boolean isStrictlyDecreasing() {
+        return b > 0;
     }
 }

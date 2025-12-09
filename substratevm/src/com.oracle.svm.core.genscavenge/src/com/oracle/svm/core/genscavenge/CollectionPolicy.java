@@ -146,8 +146,7 @@ public interface CollectionPolicy {
      * The current limit for the size of the entire heap, which is less than or equal to
      * {@link #getMaximumHeapSize}.
      *
-     * NOTE: this can currently be exceeded during a collection while copying objects in the old
-     * generation.
+     * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
      */
     UnsignedWord getCurrentHeapCapacity();
 
@@ -160,8 +159,7 @@ public interface CollectionPolicy {
      * The hard limit for the size of the entire heap. Exceeding this limit triggers an
      * {@link OutOfMemoryError}.
      *
-     * NOTE: this can currently be exceeded during a collection while copying objects in the old
-     * generation.
+     * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
      */
     UnsignedWord getMaximumHeapSize();
 
@@ -217,6 +215,10 @@ public interface CollectionPolicy {
 
     /** Can be overridden to recover from OOM. */
     default boolean isOutOfMemory(UnsignedWord usedBytes) {
+        /*
+         * GR-72932: collections can tenure objects beyond the old generation's current or maximum
+         * size, and the following allocations can exceed the current or maximum heap size.
+         */
         return usedBytes.aboveThan(getMaximumHeapSize());
     }
 
