@@ -220,7 +220,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
         if (result != null) {
             return result;
         }
-        VMError.guarantee(!aField.isInBaseLayer() || !fieldsWithUpdatableValues.contains(aField.getId()),
+        VMError.guarantee(!aField.isInSharedLayer() || !fieldsWithUpdatableValues.contains(aField.getId()),
                         "Field value transformer should have already been installed via setupUpdatableValueTransformers.");
         return createTransformer(aField, layeredFieldValue, Set.of());
     }

@@ -307,7 +307,7 @@ public class ModuleLayerFeature implements InternalFeature {
 
         Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
-                        .filter(t1 -> !t1.isInBaseLayer() && typeIsReachable(t1))
+                        .filter(t1 -> !t1.isInSharedLayer() && typeIsReachable(t1))
                         .map(t -> t.getJavaClass().getModule())
                         .collect(Collectors.toSet());
 

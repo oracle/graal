@@ -220,7 +220,7 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
-            if (hostVM.buildingExtensionLayer() && result.isInBaseLayer()) {
+            if (hostVM.buildingExtensionLayer() && result.isInSharedLayer()) {
                 imageLayerLoader.initializeBaseLayerType(result);
             }
         }
@@ -387,14 +387,14 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField result = fields.computeIfAbsent(field, f -> {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().addBaseLayerField(newValue);
             }
             return newValue;
         });
 
         if (result.equals(newValue)) {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().initializeBaseLayerField(newValue);
             }
         }
@@ -441,7 +441,7 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod result = methods.computeIfAbsent(method, m -> {
-            if (newValue.isInBaseLayer()) {
+            if (newValue.isInSharedLayer()) {
                 getImageLayerLoader().addBaseLayerMethod(newValue);
             }
             return newValue;
