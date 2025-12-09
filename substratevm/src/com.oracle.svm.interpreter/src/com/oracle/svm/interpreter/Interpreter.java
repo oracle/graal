@@ -746,7 +746,7 @@ public final class Interpreter {
                         case BALOAD: // fall through
                         case CALOAD: // fall through
                         case SALOAD: // fall through
-                        case AALOAD: arrayLoad(frame,methodProfile,curBCI,  top, curOpcode); break;
+                        case AALOAD: arrayLoad(frame, methodProfile, curBCI,  top, curOpcode); break;
 
                         case ISTORE: setLocalInt(frame, BytecodeStream.readLocalIndex1(code, curBCI), popInt(frame, top - 1)); break;
                         case LSTORE: setLocalLong(frame, BytecodeStream.readLocalIndex1(code, curBCI), popLong(frame, top - 1)); break;
@@ -786,7 +786,7 @@ public final class Interpreter {
                         case AASTORE: // fall through
                         case BASTORE: // fall through
                         case CASTORE: // fall through
-                        case SASTORE: arrayStore(frame,methodProfile,curBCI, top, curOpcode); break;
+                        case SASTORE: arrayStore(frame, methodProfile, curBCI, top, curOpcode); break;
 
                         case POP2:
                             clear(frame, top - 1);
