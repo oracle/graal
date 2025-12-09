@@ -100,22 +100,23 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     public MethodProfile getProfile() {
         if (profile == null) {
-            /*
-             * Allocate the profile once per method. Apart from test scenarios the profile is never
-             * set to null again. Thus, the heavy locking code below is normally not run in a fast
-             * path.
-             */
-            synchronized (this) {
-                if (profile == null) {
-                    MethodProfile newProfile = new MethodProfile(this);
-                    // ensure everything is allocated and initialized before we signal the barrier
-                    // for the publishing write
-                    MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
-                    profile = newProfile;
-                }
-            }
+            initializedProfile();
         }
         return profile;
+    }
+
+    /**
+     * Allocate the profile once per method. Apart from test scenarios the profile is never set to
+     * null again. Thus, the heavy locking code below is normally not run in a fast path.
+     */
+    private synchronized void initializedProfile() {
+        if (profile == null) {
+            MethodProfile newProfile = new MethodProfile(this);
+            // ensure everything is allocated and initialized before we signal the barrier
+            // for the publishing write
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
+            profile = newProfile;
+        }
     }
 
     public synchronized void resetProfile() {

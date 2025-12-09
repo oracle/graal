@@ -117,12 +117,12 @@ public class RistrettoProfileSupport {
              * happens on most of the frequently executed cases here.
              */
             switch (oldState) {
-                /*
-                 * profile has not been initialized yet for this method, do so by switching to
-                 * INITIALIZING and then wait, if another thread went to initializing in the
-                 * meantime we are done
-                 */
                 case RistrettoConstants.COMPILE_STATE_INIT_VAL: {
+                    /*
+                     * The profile has not been initialized yet for this method. Do so by switching
+                     * to INITIALIZING. If another thread transitioned to initializing in the
+                     * meantime we are done.
+                     */
                     methodEntryInitCase(iMethod, rMethod);
                     break;
                 }
@@ -190,9 +190,8 @@ public class RistrettoProfileSupport {
         if (COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INIT_VAL, RistrettoConstants.COMPILE_STATE_INITIALIZING)) {
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
-            while (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
-                // spin until we are done writing
-                PauseNode.pause();
+            if (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
+                throw GraalError.shouldNotReachHere("We set transition to COMPILE_STATE_INITIALIZING, we must be allowed to set it to COMPILE_STATE_NEVER_COMPILED");
             }
             // continue to the NEVER_COMPILED state
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",

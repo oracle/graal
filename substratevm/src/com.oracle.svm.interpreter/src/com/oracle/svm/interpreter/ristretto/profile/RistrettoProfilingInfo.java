@@ -35,8 +35,10 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
 
 public class RistrettoProfilingInfo implements ProfilingInfo {
-    private final MethodProfile methodProfile;
+
     private static final double PROB_DELTA = 1e-6;
+
+    private final MethodProfile methodProfile;
 
     public RistrettoProfilingInfo(MethodProfile methodProfile) {
         this.methodProfile = methodProfile;
@@ -120,11 +122,6 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
     }
 
     @Override
-    public String toString() {
-        return "RistrettoProfilingInfo<" + this.toString(null, "; ") + ">";
-    }
-
-    @Override
     public void setMature() {
         methodProfile.setMature(true);
     }
@@ -137,5 +134,10 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
     @Override
     public int getCompilerIRSize(Class<?> irType) {
         return -1;
+    }
+
+    @Override
+    public String toString() {
+        return "RistrettoProfilingInfo<" + this.toString(null, "; ") + ">";
     }
 }

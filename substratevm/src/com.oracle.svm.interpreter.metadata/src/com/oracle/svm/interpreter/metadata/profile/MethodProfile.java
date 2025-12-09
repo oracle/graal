@@ -65,9 +65,6 @@ public final class MethodProfile {
 
     private final ResolvedJavaMethod method;
 
-    /**
-     * See {@link #isMature()}.
-     */
     private boolean isMature;
 
     public MethodProfile(ResolvedJavaMethod method) {

@@ -886,17 +886,14 @@ public final class Interpreter {
                         case IFGE: // fall through
                         case IFGT: // fall through
                         case IFLE:
-                            if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, true);
-                                }
+                            final boolean branchTaken1 = takeBranchPrimitive1(popInt(frame, top - 1), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTaken1);
+                            }
+                            if (branchTaken1) {
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
-                            } else {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, false);
-                                }
                             }
                             break;
 
@@ -906,49 +903,40 @@ public final class Interpreter {
                         case IF_ICMPGE: // fall through
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
-                            if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, true);
-                                }
+                            final boolean branchTaken2 = takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTaken2);
+                            }
+                            if (branchTaken2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
-                            } else {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, false);
-                                }
                             }
                             break;
 
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
-                            if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, true);
-                                }
+                            final boolean branchTakenRef2 = takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTakenRef2);
+                            }
+                            if (branchTakenRef2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
-                            } else {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, false);
-                                }
                             }
                             break;
 
                         case IFNULL: // fall through
                         case IFNONNULL:
-                            if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, true);
-                                }
+                            final boolean branchTakenRef1 = takeBranchRef1(popObject(frame, top - 1), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTakenRef1);
+                            }
+                            if (branchTakenRef1) {
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
-                            } else {
-                                if (methodProfile != null) {
-                                    methodProfile.profileBranch(curBCI, false);
-                                }
                             }
                             break;
 
