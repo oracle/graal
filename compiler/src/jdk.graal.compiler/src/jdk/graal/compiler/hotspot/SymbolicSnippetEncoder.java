@@ -649,8 +649,13 @@ public class SymbolicSnippetEncoder {
         }
 
         @Override
-        public Integer identityHashCode(JavaConstant constant) {
+        public int identityHashCode(JavaConstant constant) {
             return constantReflection.identityHashCode(constant);
+        }
+
+        @Override
+        public int makeIdentityHashCode(JavaConstant constant, int requestedValue) {
+            return constantReflection.makeIdentityHashCode(constant, requestedValue);
         }
     }
 

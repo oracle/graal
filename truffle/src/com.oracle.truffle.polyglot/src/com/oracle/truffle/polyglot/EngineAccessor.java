@@ -74,6 +74,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -628,7 +629,7 @@ final class EngineAccessor extends Accessor {
             }
             if (isPrimitive(guestObject)) {
                 return false;
-            } else if (context.engine.host.isHostValue(guestObject) || guestObject instanceof PolyglotBindings) {
+            } else if (InteropLibrary.getFactory().getUncached(guestObject).isHostObject(guestObject) || context.engine.host.isHostProxy(guestObject) || guestObject instanceof PolyglotBindings) {
                 return true;
             }
             PolyglotLanguage language = findObjectLanguage(context.engine, guestObject);
@@ -1259,24 +1260,29 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostException is supported and returns false
-            // because languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostException(exception);
+        @TruffleBoundary
+        public boolean isHostException(Throwable exception) {
+            InteropLibrary interop = InteropLibrary.getUncached(exception);
+            return interop.isHostObject(exception) && interop.isException(exception);
         }
 
         @Override
-        public Throwable asHostException(Object languageContext, Throwable exception) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            Throwable host = context.engine.host.unboxHostException(exception);
-            if (host == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalArgumentException("Provided value not a host exception.");
+        @TruffleBoundary
+        public Throwable asHostException(Throwable exception) {
+            if (exception != null) {
+                InteropLibrary interop = InteropLibrary.getUncached(exception);
+                boolean isHostException = interop.isHostObject(exception) && interop.isException(exception);
+                if (isHostException) {
+                    try {
+                        return (Throwable) interop.asHostObject(exception);
+                    } catch (HeapIsolationException e) {
+                        return null;
+                    } catch (UnsupportedMessageException e) {
+                        // Fall through to IllegalArgumentException
+                    }
+                }
             }
-            return host;
+            throw new IllegalArgumentException("Provided value not a host exception.");
         }
 
         @Override
@@ -1543,40 +1549,40 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object asHostObject(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            assert isHostObject(languageContext, obj);
-            return context.engine.host.unboxHostObject(obj);
+        @TruffleBoundary
+        public Object asHostObject(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            if (interop.isHostObject(obj)) {
+                try {
+                    return interop.asHostObject(obj);
+                } catch (HeapIsolationException e) {
+                    return null;
+                } catch (UnsupportedMessageException e) {
+                    // Fall through to IllegalArgumentException
+                }
+            }
+            throw new IllegalArgumentException("Provided value not a host object.");
         }
 
         @Override
-        public boolean isHostFunction(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostFunction is supported and returns false
-            // because languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostFunction(obj);
+        @TruffleBoundary
+        public boolean isHostFunction(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.isHostObject(obj) && interop.isExecutable(obj) && !interop.hasMembers(obj);
         }
 
         @Override
-        public boolean isHostObject(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostObject is supported and returns false because
-            // languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostObject(obj);
+        @TruffleBoundary
+        public boolean isHostObject(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.isHostObject(obj);
         }
 
         @Override
-        public boolean isHostSymbol(Object languageContext, Object obj) {
-            PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            PolyglotEngineImpl engine = context.engine;
-            // During context pre-initialization, engine.host is null, languages are not allowed to
-            // use host interop. But the call to isHostSymbol is supported and returns false because
-            // languages cannot create a HostObject.
-            return !engine.inEnginePreInitialization && engine.host.isHostSymbol(obj);
+        @TruffleBoundary
+        public boolean isHostSymbol(Object obj) {
+            InteropLibrary interop = InteropLibrary.getUncached(obj);
+            return interop.isHostObject(obj) && interop.isScope(obj);
         }
 
         @Override

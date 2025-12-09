@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -67,18 +68,22 @@ final class HostFunction implements TruffleObject {
         this.context = context;
     }
 
-    public static boolean isInstance(HostLanguage language, TruffleObject obj) {
-        return isInstance(language, (Object) obj);
-    }
-
-    public static boolean isInstance(HostLanguage language, Object obj) {
-        return HostLanguage.unwrapIfScoped(language, obj) instanceof HostFunction;
-    }
-
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isExecutable() {
         return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isHostObject() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object asHostObject() throws HeapIsolationException {
+        throw HeapIsolationException.create();
     }
 
     @ExportMessage
@@ -145,5 +150,4 @@ final class HostFunction implements TruffleObject {
     public int hashCode() {
         return method.hashCode();
     }
-
 }

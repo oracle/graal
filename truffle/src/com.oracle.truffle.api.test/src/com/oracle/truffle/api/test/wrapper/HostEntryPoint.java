@@ -46,6 +46,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.interop.InteropException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -144,7 +145,7 @@ final class HostEntryPoint {
         return guestToHost(api.getValueReceiver(v));
     }
 
-    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) {
+    public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) throws InteropException {
         Context c = unmarshall(Context.class, contextId);
         c.enter();
         try {
@@ -154,13 +155,13 @@ final class HostEntryPoint {
             Object result;
             try {
                 result = lib.send(receiver, message, localValues);
+            } catch (InteropException e) {
+                throw e;
+            } catch (AbstractTruffleException e) {
+                // also send over stack traces and messages
+                return new GuestExceptionPointer(guestToHost(e), e.getMessage());
             } catch (Exception e) {
-                if (e instanceof AbstractTruffleException) {
-                    // also send over stack traces and messages
-                    return new GuestExceptionPointer(guestToHost(e), e.getMessage());
-                } else {
-                    throw new RuntimeException("Internal error thrown by remote message.", e);
-                }
+                throw new RuntimeException("Internal error thrown by remote message.", e);
             }
             return marshallAtGuest(result);
         } finally {

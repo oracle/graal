@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Before;
@@ -90,13 +92,20 @@ public abstract class ProxyLanguageEnvTest {
         } catch (Exception e) {
             List<Class<? extends Throwable>> causes = new ArrayList<>();
             Throwable cause = e;
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
             while (cause != null) {
                 if (cause.getClass() == exception) {
                     return;
                 }
                 causes.add(cause.getClass());
-                if (env.isHostException(cause)) {
-                    cause = env.asHostException(cause);
+                if (interopLibrary.isHostObject(cause) && interopLibrary.isException(cause)) {
+                    try {
+                        cause = (Throwable) interopLibrary.asHostObject(cause);
+                    } catch (HeapIsolationException ex) {
+                        cause = cause.getCause();
+                    } catch (UnsupportedMessageException ex) {
+                        throw CompilerDirectives.shouldNotReachHere(ex);
+                    }
                 } else {
                     cause = cause.getCause();
                 }

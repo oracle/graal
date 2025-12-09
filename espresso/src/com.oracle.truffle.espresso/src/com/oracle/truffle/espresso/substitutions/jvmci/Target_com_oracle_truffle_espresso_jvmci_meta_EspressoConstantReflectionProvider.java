@@ -29,6 +29,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -39,6 +40,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
+import com.oracle.truffle.espresso.substitutions.continuations.Target_org_graalvm_continuations_IdentityHashCodes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
@@ -310,5 +312,16 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflec
             ObjectKlass klass = (ObjectKlass) staticBase.getKlass();
             return toJVMCIInstanceType(klass, objectTypeConstructor, context, meta);
         }
+    }
+
+    @Substitution(hasReceiver = true)
+    public static int makeIdentityHashCode0(@SuppressWarnings("unused") StaticObject self,
+                    @JavaType(Object.class) StaticObject obj, int requestedValue,
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
+        checkJVMCIAvailable(language);
+        if (requestedValue <= 0) {
+            throw meta.throwIllegalArgumentExceptionBoundary("hashcode must be > 0");
+        }
+        return Target_org_graalvm_continuations_IdentityHashCodes.setHashCode(obj, requestedValue, meta, language);
     }
 }

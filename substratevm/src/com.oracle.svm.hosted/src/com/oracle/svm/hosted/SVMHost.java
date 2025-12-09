@@ -142,7 +142,6 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
-import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.LogUtils;
@@ -180,6 +179,7 @@ import jdk.internal.loader.NativeLibraries;
 import jdk.internal.vm.annotation.DontInline;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -458,10 +458,12 @@ public class SVMHost extends HostVM {
     public void registerType(AnalysisType analysisType, int identityHashCode) {
         DynamicHub hub = createHub(analysisType);
 
-        boolean result = IdentityHashCodeUtil.injectIdentityHashCode(hub, identityHashCode);
-
-        if (!result) {
-            throw VMError.shouldNotReachHere("The hashcode was already set when trying to inject the value from the base layer.");
+        ConstantReflectionProvider constantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        JavaConstant hubConstant = GraalAccess.getOriginalSnippetReflection().forObject(hub);
+        int actualHashCode = constantReflection.makeIdentityHashCode(hubConstant, identityHashCode);
+        if (actualHashCode != identityHashCode) {
+            throw VMError.shouldNotReachHere("The identity hash code was already set to %d when trying to set it to %d from the base layer.",
+                            actualHashCode, identityHashCode);
         }
 
         registerType(analysisType, hub);

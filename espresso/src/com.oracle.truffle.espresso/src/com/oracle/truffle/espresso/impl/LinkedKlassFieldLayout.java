@@ -185,7 +185,7 @@ final class LinkedKlassFieldLayout {
         private static final HiddenField[] EMPTY = new HiddenField[0];
         private static final Map<Symbol<Type>, HiddenField[]> REGISTRY = Map.ofEntries(
                         entry(Types.java_lang_Object, new HiddenField[]{
-                                        new HiddenField(Names.HIDDEN_SYSTEM_IHASHCODE, Types._int, EspressoLanguage::isContinuumEnabled, ACC_VOLATILE),
+                                        new HiddenField(Names.HIDDEN_SYSTEM_IHASHCODE, Types._int, EspressoLanguage::canSetCustomIdentityHashCode, ACC_VOLATILE),
                         }),
                         entry(Types.java_lang_invoke_MemberName, new HiddenField[]{
                                         new HiddenField(Names.HIDDEN_VMTARGET),

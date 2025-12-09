@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import static com.oracle.truffle.espresso.vmaccess.EspressoExternalConstantReflectionProvider.safeGetClass;
+
 import java.util.Objects;
 
 import org.graalvm.polyglot.Context;
@@ -194,7 +196,7 @@ final class EspressoExternalVMAccess implements VMAccess {
     @Override
     public JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... arguments) {
         if (!(method instanceof EspressoExternalResolvedJavaMethod espressoMethod)) {
-            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod");
+            throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(method));
         }
         return espressoMethod.invoke(receiver, arguments);
     }
