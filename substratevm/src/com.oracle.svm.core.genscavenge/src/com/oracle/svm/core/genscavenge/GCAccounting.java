@@ -53,7 +53,6 @@ public final class GCAccounting {
     private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
-    private UnsignedWord edenChunkBytesBefore = Word.zero();
     private UnsignedWord youngChunkBytesBefore = Word.zero();
     private UnsignedWord oldChunkBytesBefore = Word.zero();
     private UnsignedWord oldChunkBytesAfter = Word.zero();
@@ -116,10 +115,6 @@ public final class GCAccounting {
         return youngChunkBytesBefore;
     }
 
-    public UnsignedWord getEdenChunkBytesBefore() {
-        return edenChunkBytesBefore;
-    }
-
     UnsignedWord getLastIncrementalCollectionPromotedChunkBytes() {
         return lastIncrementalCollectionPromotedChunkBytes;
     }
@@ -134,7 +129,6 @@ public final class GCAccounting {
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
 
-        edenChunkBytesBefore = youngGen.getEden().getChunkBytes();
         youngChunkBytesBefore = youngGen.getChunkBytes();
         oldChunkBytesBefore = oldGen.getChunkBytes();
 
