@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
@@ -149,6 +150,17 @@ public final class MethodProfile {
 
     public void profileType(int bci, ResolvedJavaType type) {
         ((TypeProfile) getAtBCI(bci, TypeProfile.class)).incrementType(type);
+    }
+
+    public void profileReceiver(int bci, Object receiver) {
+        if (receiver == null) {
+            /*
+             * TODO GR-71949 - profile nullSeen
+             */
+            return;
+        }
+        ResolvedJavaType type = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+        profileType(bci, type);
     }
 
     /**
@@ -294,7 +306,6 @@ public final class MethodProfile {
         public double getProbabilty(ResolvedJavaType type) {
             for (int i = 0; i < types.length; i++) {
                 ResolvedJavaType t = types[i];
-                System.out.printf("Checking if %s equals %s%n?", t, type);
                 if (t.equals(type)) {
                     return (double) counts[i] / (double) counter;
                 }
