@@ -90,7 +90,7 @@ public class RistrettoProfileSupport {
      *            {@link CremaResolvedJavaMethodImpl}
      * @throws AssertionError if iMethod is not a InterpreterResolvedJavaMethod instance
      */
-    public static MethodProfile profileMethodCall(InterpreterResolvedJavaMethod iMethod) {
+    public static MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod iMethod) {
         if (!RistrettoProfileSupport.isEnabled()) {
             return null;
         }
@@ -140,6 +140,8 @@ public class RistrettoProfileSupport {
                 }
                 case RistrettoConstants.COMPILE_STATE_INITIALIZING: {
                     /*
+                     * TODO GR-71948 - investigate an early return here
+                     * 
                      * another thread is initializing the compilation data, do a few more spins
                      * until that is done and then go on
                      */

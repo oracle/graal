@@ -623,7 +623,7 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodCall(method);
+            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
 
             int curBCI = startBCI;
             int top = startTop;

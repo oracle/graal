@@ -58,8 +58,8 @@ public final class MethodProfile {
     private final InterpreterProfile[] profiles;
 
     /**
-     * Cached entry always starts at 0, if it's a cache miss we will initialize it to the correct
-     * value.
+     * Caches the index of the last returned profile for the next access. Initialized to 0, will be
+     * set in {@link #getAtBCI(int, Class)}.
      */
     private int lastIndex;
 
@@ -108,7 +108,7 @@ public final class MethodProfile {
      * ergonomic decision. A profile is only mature if it was explicitly set with
      * {@link #setMature(boolean)}. Normally this is done by test code for example. Users of this
      * {@link MethodProfile} can combine this with real ergonomics.
-     * 
+     *
      * @return true if an explicit maturity override has been set on this profiling data; false
      *         otherwise
      */
@@ -142,8 +142,8 @@ public final class MethodProfile {
 
     /**
      * Gets the profile for {@code bci} whose class is {@code clazz}.
-     * 
-     * @return null if there's no prof
+     *
+     * @return null if there's no profile
      */
     private InterpreterProfile getAtBCI(int bci, Class<? extends InterpreterProfile> clazz) {
         int lastIndexLocal = lastIndex;
