@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
@@ -40,7 +41,6 @@ import com.oracle.svm.interpreter.ristretto.RistrettoRuntimeOptions;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.PauseNode;
 
 public class RistrettoProfileSupport {
@@ -149,7 +149,7 @@ public class RistrettoProfileSupport {
                     break;
                 }
                 default:
-                    throw GraalError.shouldNotReachHere("Unknown state " + oldState);
+                    throw VMError.shouldNotReachHere("Unknown state " + oldState);
             }
             oldState = COMPILATION_STATE_UPDATER.get(rMethod);
         } while (true);
@@ -191,7 +191,7 @@ public class RistrettoProfileSupport {
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
                             RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
             if (!COMPILATION_STATE_UPDATER.compareAndSet(rMethod, RistrettoConstants.COMPILE_STATE_INITIALIZING, RistrettoConstants.COMPILE_STATE_NEVER_COMPILED)) {
-                throw GraalError.shouldNotReachHere("We set transition to COMPILE_STATE_INITIALIZING, we must be allowed to set it to COMPILE_STATE_NEVER_COMPILED");
+                throw VMError.shouldNotReachHere("We set transition to COMPILE_STATE_INITIALIZING, we must be allowed to set it to COMPILE_STATE_NEVER_COMPILED");
             }
             // continue to the NEVER_COMPILED state
             trace(RistrettoRuntimeOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Finished setting state %s for %s%n",
