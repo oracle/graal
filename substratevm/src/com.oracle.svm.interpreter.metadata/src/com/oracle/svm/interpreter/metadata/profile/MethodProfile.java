@@ -87,7 +87,7 @@ public final class MethodProfile {
             int bci = stream.currentBCI();
             int opcode = stream.currentBC();
             // we can have multiple profiles for a single BCI: type, exception etc
-            if (Bytecodes.isProfiledBranch(opcode)) {
+            if (Bytecodes.isProfiledIfBranch(opcode)) {
                 allProfiles.add(new BranchProfile(bci));
             }
             if (Bytecodes.isTypeProfiled(opcode)) {

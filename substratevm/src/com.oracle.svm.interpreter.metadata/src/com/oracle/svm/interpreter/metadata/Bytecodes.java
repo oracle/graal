@@ -550,8 +550,8 @@ public class Bytecodes {
         def(IF_ICMPLE           , "if_icmple"       , "boo"  , -2, FALL_THROUGH | BRANCH | IF_BRANCH_PROFILED);
         def(IF_ACMPEQ           , "if_acmpeq"       , "boo"  , -2, COMMUTATIVE | FALL_THROUGH | BRANCH | IF_BRANCH_PROFILED);
         def(IF_ACMPNE           , "if_acmpne"       , "boo"  , -2, COMMUTATIVE | FALL_THROUGH | BRANCH | IF_BRANCH_PROFILED);
-        def(GOTO                , "goto"            , "boo"  ,  0, STOP | BRANCH | IF_BRANCH_PROFILED);
-        def(JSR                 , "jsr"             , "boo"  ,  0, STOP | BRANCH | IF_BRANCH_PROFILED);
+        def(GOTO                , "goto"            , "boo"  ,  0, STOP | BRANCH);
+        def(JSR                 , "jsr"             , "boo"  ,  0, STOP | BRANCH);
         def(RET                 , "ret"             , "bi"   ,  0, STOP);
         def(TABLESWITCH         , "tableswitch"     , ""     , -1, STOP);
         def(LOOKUPSWITCH        , "lookupswitch"    , ""     , -1, STOP);
@@ -663,10 +663,12 @@ public class Bytecodes {
      * the interpreter. Binary branches are instructions that have 2 successors - the taken and not
      * taken successor.
      *
+     * Note that {@link #GOTO} and {@link #JSR} are not considered a profiled if branch
+     *
      * @param opcode an opcode to test
      * @return {@code true} iff {@code opcode} is a binary branch instruction that is profiled
      */
-    public static boolean isProfiledBranch(int opcode) {
+    public static boolean isProfiledIfBranch(int opcode) {
         return (flagsArray[opcode & 0xff] & IF_BRANCH_PROFILED) != 0;
     }
 
