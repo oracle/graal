@@ -151,7 +151,7 @@ public final class MethodProfile {
     }
 
     public void profileType(int bci, ResolvedJavaType type) {
-        ((TypeProfile) getAtBCI(bci, TypeProfile.class)).incrementType(type);
+        ((TypeProfile) getAtBCI(bci, TypeProfile.class)).incrementTypeProfile(type);
     }
 
     public void profileReceiver(int bci, Object receiver) {
@@ -273,7 +273,7 @@ public final class MethodProfile {
 
     public static class TypeProfile extends CountingProfile {
         /**
-         * All types that are profiled per type.
+         * All types profiled.
          */
         private final ResolvedJavaType[] types;
 
@@ -319,7 +319,7 @@ public final class MethodProfile {
             return -1;
         }
 
-        public void incrementType(ResolvedJavaType type) {
+        public void incrementTypeProfile(ResolvedJavaType type) {
             counter++;
             // check if the type was already recorded, in which case we update the counts in a racy
             // fashion
