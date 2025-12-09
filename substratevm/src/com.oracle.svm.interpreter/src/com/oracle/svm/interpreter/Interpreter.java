@@ -887,9 +887,7 @@ public final class Interpreter {
                         case IFGT: // fall through
                         case IFLE:
                             final boolean branchTaken1 = takeBranchPrimitive1(popInt(frame, top - 1), curOpcode);
-                            if (methodProfile != null) {
-                                methodProfile.profileBranch(curBCI, branchTaken1);
-                            }
+                            profileBranch(methodProfile, curBCI, branchTaken1);
                             if (branchTaken1) {
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
@@ -904,9 +902,7 @@ public final class Interpreter {
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
                             final boolean branchTaken2 = takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode);
-                            if (methodProfile != null) {
-                                methodProfile.profileBranch(curBCI, branchTaken2);
-                            }
+                            profileBranch(methodProfile, curBCI, branchTaken2);
                             if (branchTaken2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
@@ -917,9 +913,7 @@ public final class Interpreter {
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
                             final boolean branchTakenRef2 = takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode);
-                            if (methodProfile != null) {
-                                methodProfile.profileBranch(curBCI, branchTakenRef2);
-                            }
+                            profileBranch(methodProfile, curBCI, branchTakenRef2);
                             if (branchTakenRef2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
@@ -930,9 +924,7 @@ public final class Interpreter {
                         case IFNULL: // fall through
                         case IFNONNULL:
                             final boolean branchTakenRef1 = takeBranchRef1(popObject(frame, top - 1), curOpcode);
-                            if (methodProfile != null) {
-                                methodProfile.profileBranch(curBCI, branchTakenRef1);
-                            }
+                            profileBranch(methodProfile, curBCI, branchTakenRef1);
                             if (branchTakenRef1) {
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
@@ -1094,9 +1086,7 @@ public final class Interpreter {
 
                         case CHECKCAST : {
                             Object receiver = peekObject(frame, top - 1);
-                            if (methodProfile != null) {
-                                methodProfile.profileReceiver(curBCI, receiver);
-                            }
+                            profileType(methodProfile, curBCI, receiver);
                             // Resolve type iff receiver != null.
                             if (receiver != null) {
                                 InterpreterToVM.checkCast(receiver, resolveType(method, CHECKCAST, BytecodeStream.readCPI2(code, curBCI)));
@@ -1105,9 +1095,7 @@ public final class Interpreter {
                         }
                         case INSTANCEOF : {
                             Object receiver = popObject(frame, top - 1);
-                            if (methodProfile != null) {
-                                methodProfile.profileReceiver(curBCI, receiver);
-                            }
+                            profileType(methodProfile, curBCI, receiver);
                             // Resolve type iff receiver != null.
                             putInt(frame, top - 1, (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(method, INSTANCEOF, BytecodeStream.readCPI2(code, curBCI)))) ? 1 : 0);
                             break;
@@ -1183,6 +1171,18 @@ public final class Interpreter {
                 top += Bytecodes.stackEffectOf(curOpcode);
                 curBCI += Bytecodes.lengthOf(curOpcode);
             } // loop
+        }
+    }
+
+    private static void profileType(MethodProfile methodProfile, int bci, Object o) {
+        if (methodProfile != null) {
+            methodProfile.profileReceiver(bci, o);
+        }
+    }
+
+    private static void profileBranch(MethodProfile methodProfile, int curBCI, boolean branchTaken1) {
+        if (methodProfile != null) {
+            methodProfile.profileBranch(curBCI, branchTaken1);
         }
     }
 
@@ -1275,9 +1275,7 @@ public final class Interpreter {
             case DALOAD -> putDouble(frame, top - 2, InterpreterToVM.getArrayDouble(index, (double[]) array));
             case AALOAD -> {
                 Object o = InterpreterToVM.getArrayObject(index, (Object[]) array);
-                if (methodProfile != null) {
-                    methodProfile.profileReceiver(bci, o);
-                }
+                profileType(methodProfile, bci, o);
                 putObject(frame, top - 2, o);
             }
             default -> throw VMError.shouldNotReachHereAtRuntime();
@@ -1299,9 +1297,7 @@ public final class Interpreter {
             case DASTORE -> InterpreterToVM.setArrayDouble(popDouble(frame, top - 1), index, (double[]) array);
             case AASTORE -> {
                 Object o = popObject(frame, top - 1);
-                if (methodProfile != null) {
-                    methodProfile.profileReceiver(bci, o);
-                }
+                profileType(methodProfile, bci, o);
                 InterpreterToVM.setArrayObject(o, index, (Object[]) array);
             }
             default -> throw VMError.shouldNotReachHereAtRuntime();
@@ -1498,11 +1494,9 @@ public final class Interpreter {
 
         Object[] calleeArgs = EspressoFrame.popArguments(callerFrame, invokeTop, hasReceiver, seedSignature);
         if (!seedMethod.isStatic()) {
-            nullCheck(calleeArgs[0]);
-        }
-        if (methodProfile != null) {
-            Object receiver = calleeArgs[0];
-            methodProfile.profileReceiver(curBCI, receiver);
+            final Object receiver = calleeArgs[0];
+            profileType(methodProfile, curBCI, receiver);
+            nullCheck(receiver);
         }
 
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);

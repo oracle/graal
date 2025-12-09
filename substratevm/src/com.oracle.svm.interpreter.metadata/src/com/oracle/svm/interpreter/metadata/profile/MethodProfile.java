@@ -34,6 +34,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -332,6 +333,7 @@ public final class MethodProfile {
         @SuppressWarnings("finally")
         private void addTypeAndIncrement(ResolvedJavaType type) {
             final long currentThreadId = Thread.currentThread().threadId();
+            assert currentThreadId != 0L : Assertions.errorMessage("ThreadID must never be 0", currentThreadId);
             // we are adding a new type to the profile, we have to perform this under a heavy lock
             while (true) {
                 if (!PROFILING_STATE_UPDATER.compareAndSet(this, 0, currentThreadId)) {
