@@ -102,8 +102,8 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import org.graalvm.wasm.api.Vector128;
-import org.graalvm.wasm.api.Vector128Shape;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Shape;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;

@@ -41,7 +41,7 @@
 package org.graalvm.wasm.types;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 
 public enum VectorType implements ValueType {
 

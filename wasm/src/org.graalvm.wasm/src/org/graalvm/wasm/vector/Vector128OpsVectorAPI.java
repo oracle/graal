@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.vector;
 
 /**
  * On JDK 25+, this class holds an implementation of the GraalWasm SIMD proposal that uses the
