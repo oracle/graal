@@ -46,4 +46,7 @@ public class RistrettoRuntimeOptions {
 
     @Option(help = "Trace compilation events.")//
     public static final RuntimeOptionKey<Boolean> JITTraceCompilation = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Number of invocations before profiling considers a method profile to be mature.")//
+    public static final RuntimeOptionKey<Integer> JITProfileMatureInvocationThreshold = new RuntimeOptionKey<>(1000);
 }

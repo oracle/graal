@@ -22,15 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter.metadata.profile;
+package com.oracle.svm.interpreter.ristretto.profile;
 
-/**
- * Abstract base representation of profile data for crema.
- */
-public abstract class InterpreterProfile {
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
-    public static class CountingProfile extends InterpreterProfile {
-        public long counter;
+import jdk.graal.compiler.nodes.spi.ProfileProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+public final class RistrettoProfileProvider implements ProfileProvider {
+    private final RistrettoProfilingInfo info;
+
+    public RistrettoProfileProvider(RistrettoMethod rMethod) {
+        this.info = new RistrettoProfilingInfo(rMethod.getProfile());
     }
 
+    @Override
+    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
+        return info;
+    }
+
+    @Override
+    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        /*
+         * TODO GR-71494 - no OSR support for now
+         */
+        return getProfilingInfo(method);
+    }
 }

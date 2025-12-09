@@ -291,6 +291,7 @@ import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -622,10 +623,7 @@ public final class Interpreter {
         @NeverInline("needed far stack walking")
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
-
-            if (RistrettoProfileSupport.isEnabled()) {
-                RistrettoProfileSupport.profileMethodCall(method);
-            }
+            final MethodProfile methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
 
             int curBCI = startBCI;
             int top = startTop;
@@ -888,7 +886,11 @@ public final class Interpreter {
                         case IFGE: // fall through
                         case IFGT: // fall through
                         case IFLE:
-                            if (takeBranchPrimitive1(popInt(frame, top - 1), curOpcode)) {
+                            final boolean branchTaken1 = takeBranchPrimitive1(popInt(frame, top - 1), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTaken1);
+                            }
+                            if (branchTaken1) {
                                 top += ConstantBytecodes.stackEffectOf(IFLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -901,7 +903,11 @@ public final class Interpreter {
                         case IF_ICMPGE: // fall through
                         case IF_ICMPGT: // fall through
                         case IF_ICMPLE:
-                            if (takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode)) {
+                            final boolean branchTaken2 = takeBranchPrimitive2(popInt(frame, top - 1), popInt(frame, top - 2), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTaken2);
+                            }
+                            if (branchTaken2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ICMPLE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -910,7 +916,11 @@ public final class Interpreter {
 
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE:
-                            if (takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode)) {
+                            final boolean branchTakenRef2 = takeBranchRef2(popObject(frame, top - 1), popObject(frame, top - 2), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTakenRef2);
+                            }
+                            if (branchTakenRef2) {
                                 top += ConstantBytecodes.stackEffectOf(IF_ACMPNE);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -919,7 +929,11 @@ public final class Interpreter {
 
                         case IFNULL: // fall through
                         case IFNONNULL:
-                            if (takeBranchRef1(popObject(frame, top - 1), curOpcode)) {
+                            final boolean branchTakenRef1 = takeBranchRef1(popObject(frame, top - 1), curOpcode);
+                            if (methodProfile != null) {
+                                methodProfile.profileBranch(curBCI, branchTakenRef1);
+                            }
+                            if (branchTakenRef1) {
                                 top += ConstantBytecodes.stackEffectOf(IFNONNULL);
                                 curBCI = beforeJumpChecks(frame, curBCI, BytecodeStream.readBranchDest2(code, curBCI), top);
                                 continue loop;
@@ -1280,6 +1294,7 @@ public final class Interpreter {
     private static int beforeJumpChecks(InterpreterFrame frame, int curBCI, int targetBCI, int top) {
         if (targetBCI <= curBCI) {
             // GR-55055: Safepoint poll needed?
+            // TODO GR-71799 - add ristretto backedge profiles
         }
         return targetBCI;
     }
