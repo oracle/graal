@@ -269,7 +269,6 @@ import java.lang.invoke.MethodType;
 import java.util.Objects;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -1095,22 +1094,19 @@ public final class Interpreter {
 
                         case CHECKCAST : {
                             Object receiver = peekObject(frame, top - 1);
+                            if (methodProfile != null) {
+                                methodProfile.profileReceiver(curBCI, receiver);
+                            }
                             // Resolve type iff receiver != null.
                             if (receiver != null) {
-                                if (methodProfile != null) {
-                                    ResolvedJavaType storedType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
-                                    methodProfile.profileType(curBCI, storedType);
-                                }
                                 InterpreterToVM.checkCast(receiver, resolveType(method, CHECKCAST, BytecodeStream.readCPI2(code, curBCI)));
                             }
                             break;
                         }
                         case INSTANCEOF : {
                             Object receiver = popObject(frame, top - 1);
-                            if (methodProfile != null&&receiver!=null) {
-                                // TODO profile nullSeen
-                                ResolvedJavaType storedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
-                                methodProfile.profileType(curBCI, storedType);
+                            if (methodProfile != null) {
+                                methodProfile.profileReceiver(curBCI, receiver);
                             }
                             // Resolve type iff receiver != null.
                             putInt(frame, top - 1, (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(method, INSTANCEOF, BytecodeStream.readCPI2(code, curBCI)))) ? 1 : 0);
@@ -1280,8 +1276,7 @@ public final class Interpreter {
             case AALOAD -> {
                 Object o = InterpreterToVM.getArrayObject(index, (Object[]) array);
                 if (methodProfile != null) {
-                    ResolvedJavaType storedType = DynamicHub.fromClass(o.getClass()).getInterpreterType();
-                    methodProfile.profileType(bci, storedType);
+                    methodProfile.profileReceiver(bci, o);
                 }
                 putObject(frame, top - 2, o);
             }
@@ -1305,8 +1300,7 @@ public final class Interpreter {
             case AASTORE -> {
                 Object o = popObject(frame, top - 1);
                 if (methodProfile != null) {
-                    ResolvedJavaType storedType = DynamicHub.fromClass(o.getClass()).getInterpreterType();
-                    methodProfile.profileType(bci, storedType);
+                    methodProfile.profileReceiver(bci, o);
                 }
                 InterpreterToVM.setArrayObject(o, index, (Object[]) array);
             }
@@ -1508,8 +1502,7 @@ public final class Interpreter {
         }
         if (methodProfile != null) {
             Object receiver = calleeArgs[0];
-            ResolvedJavaType storedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
-            methodProfile.profileType(curBCI, storedType);
+            methodProfile.profileReceiver(curBCI, receiver);
         }
 
         Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, isVirtual, forceStayInInterpreter, preferStayInInterpreter, opcode == INVOKEINTERFACE, false);
