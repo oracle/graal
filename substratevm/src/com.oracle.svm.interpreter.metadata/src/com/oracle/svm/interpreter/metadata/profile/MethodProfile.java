@@ -276,19 +276,16 @@ public final class MethodProfile {
         private final ResolvedJavaType[] types;
 
         /**
-         * All counts per type - each index represents the number of times {@code types[i]} was seen
-         * during profiling.
+         * All counts per type - each [index] represents the number of times {@code types[i]} was
+         * seen during profiling.
          */
         private final long[] counts;
         private long notRecordedCount;
-        private int nextFreeSlot;
+        private volatile int nextFreeSlot;
 
         // value of state is 0 if the state is READING, else it holds the id of the currently
         // writing thread
         private volatile long state;
-
-        private static final int READING_STATE = 0;
-        private static final int WRITING_STATE = 1;
 
         public static final AtomicLongFieldUpdater<TypeProfile> PROFILING_STATE_UPDATER = AtomicLongFieldUpdater.newUpdater(TypeProfile.class, "state");
 
@@ -303,7 +300,7 @@ public final class MethodProfile {
             return (double) notRecordedCount / (double) counter;
         }
 
-        public double getProbabilty(ResolvedJavaType type) {
+        public double getProbability(ResolvedJavaType type) {
             for (int i = 0; i < types.length; i++) {
                 ResolvedJavaType t = types[i];
                 if (t.equals(type)) {
@@ -324,13 +321,15 @@ public final class MethodProfile {
                 }
             }
             if (nextFreeSlot >= types.length) {
-                // all types saturated, racy update to not recorded
+                // all types saturated, racy update to notRecorded
                 notRecordedCount++;
                 return;
             }
+            // type was not seen and we have space, "lock" and increment
             addTypeAndIncrement(type);
         }
 
+        @SuppressWarnings("finally")
         private void addTypeAndIncrement(ResolvedJavaType type) {
             final long currentThreadId = Thread.currentThread().threadId();
             // we are adding a new type to the profile, we have to perform this under a heavy lock
@@ -343,27 +342,25 @@ public final class MethodProfile {
                     break;
                 }
             }
-            /*
-             * in the meantime its possible another thread already saturated the list of profiles,
-             * in this case we have to add to the remaining ones
-             */
-            if (nextFreeSlot >= types.length) {
-                notRecordedCount++;
-                return;
+            try {
+                /*
+                 * in the meantime its possible another thread already saturated the list of
+                 * profiles, in this case we have to add to the remaining ones
+                 */
+                if (nextFreeSlot >= types.length) {
+                    notRecordedCount++;
+                    return;
+                }
+                types[nextFreeSlot] = type;
+                counts[nextFreeSlot]++;
+                nextFreeSlot = nextFreeSlot + 1;
+            } finally {
+                if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
+                    return;
+                } else {
+                    throw GraalError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profile update");
+                }
             }
-            types[nextFreeSlot] = type;
-            counts[nextFreeSlot]++;
-            nextFreeSlot++;
-
-            if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
-                return;
-            } else {
-                throw GraalError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profiel udpate");
-            }
-        }
-
-        private boolean hasFreeSlots() {
-            return nextFreeSlot < types.length;
         }
 
         @Override
@@ -381,7 +378,6 @@ public final class MethodProfile {
                 sb.append(t.getName()).append(':').append(c);
             }
             sb.append(']');
-            // Include notRecordedCount if saturated or if there were any drops
             if (limit >= types.length) {
                 sb.append(", saturated=true");
             } else {
@@ -397,7 +393,7 @@ public final class MethodProfile {
         public JavaTypeProfile toTypeProfile() {
             JavaTypeProfile.ProfiledType[] types = new JavaTypeProfile.ProfiledType[this.types.length];
             for (int i = 0; i < types.length; i++) {
-                types[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbabilty(this.types[i]));
+                types[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbability(this.types[i]));
             }
             return new JavaTypeProfile(TriState.UNKNOWN, notRecordedProbability(), types);
         }
