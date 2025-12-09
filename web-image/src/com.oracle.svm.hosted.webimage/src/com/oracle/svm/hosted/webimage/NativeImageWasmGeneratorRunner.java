@@ -125,9 +125,6 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
             return ExitStatus.OK.getValue();
         }
 
-        // Turn off fallback images, Web Image cannot be built as a fallback image.
-        optionProvider.getHostedValues().put(SubstrateOptions.FallbackThreshold, SubstrateOptions.NoFallback);
-
         // We do not need to compile a GC because the JavaScript environment provides one.
         optionProvider.getHostedValues().put(SubstrateOptions.SupportedGCs, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
 

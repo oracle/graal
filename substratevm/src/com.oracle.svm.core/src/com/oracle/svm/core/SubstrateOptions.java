@@ -190,20 +190,6 @@ public class SubstrateOptions {
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
-    public static final int ForceFallback = 10;
-    public static final int Automatic = 5;
-    public static final int NoFallback = 0;
-
-    public static final String OptionNameForceFallback = "force-fallback";
-    public static final String OptionNameAutoFallback = "auto-fallback";
-    public static final String OptionNameNoFallback = "no-fallback";
-
-    @APIOption(name = OptionNameForceFallback, fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
-    @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
-    @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
-    @Option(help = "Define when fallback-image generation should be used.")//
-    public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
-
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
@@ -608,6 +594,17 @@ public class SubstrateOptions {
         @Option(help = "The number of nanoseconds that the isolate teardown can take before a fatal error is thrown. Disabled if less or equal to 0.", //
                         deprecated = true, deprecationMessage = "Use -XX:TearDownFailureSeconds=<secs> instead")//
         public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
+
+        public static final int Automatic = 5;
+        public static final int NoFallback = 0;
+
+        public static final String OptionNameAutoFallback = "auto-fallback";
+        public static final String OptionNameNoFallback = "no-fallback";
+
+        @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible", deprecated = "No effect, no replacement available") //
+        @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure", deprecated = "No effect, no replacement available") //
+        @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
+        public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
     }
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//

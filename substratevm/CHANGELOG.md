@@ -18,6 +18,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-71146) Make `ParseRuntimeOptions` a non-experimental flag and extract a separate (experimental) `InitializeVM` flag. If your project previously used `ParseRuntimeOptions` and you call `VMRuntime.initialize()` manually, you might have to disable the new flag.
 * (GR-69577) Retire `--future-defaults=complete-reflection-types`. All reflective operations on types registered for reflection will now return complete results.
 * (GR-71698) Introduced a new value for `--future-defaults=run-time-initialize-resource-bundles` that shifts away from build-time initialization for 'java.util.ResourceBundle'. Unless you store 'ResourceBundle'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+* (GR-71607) Deprecated and deleted the FallbackFeature. The flag `--no-fallback` is deprecated and has no effect any longer, other related options are removed.
 
 ## GraalVM 25
 * (GR-52276) (GR-61959) Add support for Arena.ofShared().

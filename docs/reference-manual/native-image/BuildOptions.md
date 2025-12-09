@@ -43,7 +43,6 @@ Run `native-image --help` for help on build options.
 * `--version`: print the product version and exit
 * `--help`: print this help message
 * `--help-extra`: print help on non-standard options
-* `--auto-fallback`: build a standalone executable if possible
 * `--color`: color build output (`always`, `never`, or `auto`)
 * `--configure-reflection-metadata`: enable runtime instantiation of reflection objects for non-invoked methods
 * `--emit`: emit additional data as a result of the build. Use `build-report` to emit a detailed Build Report, for example: `--emit build-report` or `--emit build-report=report.html`
@@ -57,7 +56,6 @@ Run `native-image --help` for help on build options.
 * `--exact-reachability-metadata`: enables exact and user-friendly handling of reflection, resources, JNI, and serialization
 * `--exact-reachability-metadata-path`: trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
-* `--force-fallback`: force building of a fallback native executable
 * `--future-defaults`: enable options that are planned to become defaults in future releases. A comma-separated list can contain `all`, `run-time-initialized-jdk`, `none`.
 * `--gc=<value>`: select a Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (not available in GraalVM Community Edition); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).
 * `--initialize-at-build-time`: a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during generation of a native executable. An empty string designates all packages.
@@ -70,7 +68,6 @@ Run `native-image --help` for help on build options.
 * `--native-compiler-options`: provide a custom C compiler option used for query code compilation
 * `--native-compiler-path`: provide a custom path to the C compiler used to query code compilation and linking
 * `--native-image-info`: show the native toolchain information and executable's build settings
-* `--no-fallback`: build a standalone native executable or report a failure
 * `--parallelism`: specify the maximum number of threads to use concurrently during native executable generation
 * `--pgo`: provide a comma-separated list of files from which to read the data collected for Profile-guided optimization of AOT-compiled code (reads from  _default.iprof_ if nothing is specified). Each file must contain a single `PGOProfiles` object, serialized in JSON format, optionally compressed by gzip. (Not available in GraalVM Community Edition.)
 * `--pgo-instrument`: instrument AOT-compiled code to collect data for Profile-guided optimization into the _default.iprof_ file. (Not available in GraalVM Community Edition.)

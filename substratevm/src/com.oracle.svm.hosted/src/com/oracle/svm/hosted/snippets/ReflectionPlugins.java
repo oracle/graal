@@ -60,7 +60,6 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
@@ -120,19 +119,17 @@ public final class ReflectionPlugins {
     private final ClassInitializationPlugin classInitializationPlugin;
     private final AnalysisUniverse aUniverse;
     private final ParsingReason reason;
-    private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
     private final DynamicAccessInferenceLog inferenceLog;
     private final SubstitutionReflectivityFilter reflectivityFilter;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
+                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason) {
         this.imageClassLoader = imageClassLoader;
         this.annotationSubstitutions = annotationSubstitutions;
         this.classInitializationPlugin = classInitializationPlugin;
         this.aUniverse = aUniverse;
         this.reason = reason;
-        this.fallbackFeature = fallbackFeature;
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
 
@@ -142,8 +139,8 @@ public final class ReflectionPlugins {
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
-        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, annotationSubstitutions, classInitializationPlugin, aUniverse, reason, fallbackFeature);
+                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason) {
+        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, annotationSubstitutions, classInitializationPlugin, aUniverse, reason);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
     }
@@ -645,12 +642,9 @@ public final class ReflectionPlugins {
         return true;
     }
 
-    private <T> void registerForRuntimeReflection(T receiver, Consumer<T> registrationCallback) {
+    private static <T> void registerForRuntimeReflection(T receiver, Consumer<T> registrationCallback) {
         try {
             registrationCallback.accept(receiver);
-            if (fallbackFeature != null) {
-                fallbackFeature.ignoreReflectionFallback = true;
-            }
         } catch (LinkageError e) {
             // Ignore, the call should be registered manually
         }

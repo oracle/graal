@@ -642,7 +642,7 @@ public class NativeImageGenerator {
                  */
                 bb.cleanupAfterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
-                throw FallbackFeature.reportAsFallback(ufe);
+                throw UserError.abort(ufe, "%s", ufe.getMessage());
             }
 
             var hConstantReflection = (HostedConstantReflectionProvider) runtimeConfiguration.getProviders().getConstantReflection();
@@ -890,7 +890,7 @@ public class NativeImageGenerator {
 
                 bb.afterAnalysis();
             } catch (UnsupportedFeatureException ufe) {
-                throw FallbackFeature.reportAsFallback(ufe);
+                throw UserError.abort(ufe, "%s", ufe.getMessage());
             }
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();

@@ -42,7 +42,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
@@ -57,7 +56,6 @@ import com.oracle.svm.core.fieldvaluetransformer.StaticFieldBaseFieldValueTransf
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
@@ -251,9 +249,8 @@ public class AutomaticUnsafeTransformationSupport {
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
-        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
-                        ParsingReason.AutomaticUnsafeTransformation, fallbackFeature);
+                        ParsingReason.AutomaticUnsafeTransformation);
 
         /*
          * Note: ConstantFoldLoadFieldPlugin should not be installed because it will disrupt

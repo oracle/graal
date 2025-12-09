@@ -28,7 +28,7 @@ package com.oracle.svm.core.util;
 public enum ExitStatus {
     OK(0),
     BUILDER_ERROR(1),
-    FALLBACK_IMAGE(2),
+    // FALLBACK_IMAGE(2), // discontinued
 
     // 3 used by `-XX:+ExitOnOutOfMemoryError` (see src/hotspot/share/utilities/debug.cpp)
     OUT_OF_MEMORY(3),
