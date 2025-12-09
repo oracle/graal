@@ -42,7 +42,7 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.api.Vector128Ops;
+import org.graalvm.wasm.vector.Vector128Ops;
 
 public abstract class WasmFrame {
 

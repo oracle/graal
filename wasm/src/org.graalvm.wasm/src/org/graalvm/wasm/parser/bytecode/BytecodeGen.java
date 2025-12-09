@@ -41,7 +41,7 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 /**

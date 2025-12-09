@@ -87,7 +87,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.InitializeTableSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.api.ExecuteHostFunctionNode;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.array.WasmArray;
 import org.graalvm.wasm.array.WasmFloat32Array;
 import org.graalvm.wasm.array.WasmFloat64Array;

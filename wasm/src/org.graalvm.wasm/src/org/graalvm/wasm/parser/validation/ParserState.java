@@ -48,7 +48,7 @@ import java.util.ArrayList;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;

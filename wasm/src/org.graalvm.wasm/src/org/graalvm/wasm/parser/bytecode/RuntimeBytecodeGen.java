@@ -42,7 +42,7 @@
 package org.graalvm.wasm.parser.bytecode;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
