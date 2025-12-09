@@ -38,6 +38,7 @@ import com.oracle.graal.vmaccess.ResolvedJavaModuleLayer;
 import com.oracle.graal.vmaccess.ResolvedJavaPackage;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ModifiersProvider;
@@ -81,6 +82,15 @@ public final class JVMCIReflectionUtil {
                             Arrays.stream(parameterTypes).map(ResolvedJavaType::toClassName).collect(Collectors.joining(", "))));
         }
         return result;
+    }
+
+    /**
+     * Shortcut for
+     * {@link #getUniqueDeclaredMethod(boolean, ResolvedJavaType, String, ResolvedJavaType...)} that
+     * passes {@code false} for {@code optional}.
+     */
+    public static ResolvedJavaMethod getUniqueDeclaredMethod(ResolvedJavaType declaringClass, String name, ResolvedJavaType... parameterTypes) {
+        return getUniqueDeclaredMethod(false, declaringClass, name, parameterTypes);
     }
 
     /**
@@ -369,4 +379,47 @@ public final class JVMCIReflectionUtil {
         return JVMCIReflectionUtilFallback.bootModuleLayer();
     }
 
+    /**
+     * Reads the value of the non-static field named {@code fieldName} in the declaring class of the
+     * object represented by {@code receiver}.
+     *
+     * @param receiver the instance object from which the field value will be read
+     * @param fieldName name of the field to read
+     * @throws NoSuchFieldError if no field is uniquely identified by {@code fieldName} in
+     *             {@code declaringClass}
+     * @throws IllegalArgumentException if {@code !receiver.getJavaKind().isObject()} or the named
+     *             field is static
+     * @throws NullPointerException if {@code receiver == null} or {@code receiver} represents
+     *             {@link JavaConstant#isNull() null}
+     */
+    public static JavaConstant readInstanceField(JavaConstant receiver, String fieldName) {
+        if (!receiver.getJavaKind().isObject()) {
+            throw new IllegalArgumentException("Not an object: " + receiver);
+        }
+        if (receiver.isNull()) {
+            throw new NullPointerException();
+        }
+        MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
+        ResolvedJavaType declaringClass = metaAccess.lookupJavaType(receiver);
+        ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(false, declaringClass, fieldName);
+        if (field.isStatic()) {
+            throw new IllegalArgumentException(fieldName + " is static");
+        }
+        return GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field, receiver);
+    }
+
+    /**
+     * Reads the value of the static field {@code fieldName} declared by {@code declaringClass}.
+     *
+     * @throws NoSuchFieldError if no field is uniquely identified by {@code fieldName} in
+     *             {@code declaringClass}
+     * @throws IllegalArgumentException if the named field is not static
+     */
+    public static JavaConstant readStaticField(ResolvedJavaType declaringClass, String fieldName) {
+        ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(false, declaringClass, fieldName);
+        if (!field.isStatic()) {
+            throw new IllegalArgumentException(fieldName + " is not static");
+        }
+        return GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field, null);
+    }
 }

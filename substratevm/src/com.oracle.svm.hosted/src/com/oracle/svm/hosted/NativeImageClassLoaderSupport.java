@@ -119,7 +119,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
 import jdk.internal.module.Resources;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class NativeImageClassLoaderSupport {
@@ -1234,12 +1233,12 @@ public final class NativeImageClassLoaderSupport {
                 }
             }
 
-            Class<?> clazz = null;
+            ResolvedJavaType type = null;
             try {
-                clazz = imageClassLoader.forName(className, module);
+                type = imageClassLoader.typeForName(className);
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
-            } catch (LinkageError | ClassNotFoundException t) {
+            } catch (ClassNotFoundException | LinkageError t) {
                 if (preserveReflectionMetadata) {
                     classNamesToPreserve.add(className);
                 }
@@ -1247,9 +1246,7 @@ public final class NativeImageClassLoaderSupport {
                 ImageClassLoader.handleClassLoadingError(le, "resolving class %s in %s", className, module);
             }
 
-            MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
-            if (clazz != null) {
-                ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
+            if (type != null) {
                 String packageName = JVMCIReflectionUtil.getPackageName(type);
                 includedJavaPackages.add(packageName);
                 if (includeUnconditionally || includePackages.shouldInclude(packageName)) {

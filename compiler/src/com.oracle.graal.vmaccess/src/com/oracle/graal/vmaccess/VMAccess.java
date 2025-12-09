@@ -72,6 +72,17 @@ public interface VMAccess {
     JavaConstant invoke(ResolvedJavaMethod method, JavaConstant receiver, JavaConstant... args);
 
     /**
+     * Creates an array from an array of values.
+     *
+     * @param componentType the component type for the array to be created
+     * @param elements the values with which to initialize the array
+     * @return the array as a {@link JavaConstant}
+     * @throws IllegalArgumentException if any value in {@code elements} is not assignable to
+     *             {@code componentType}
+     */
+    JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements);
+
+    /**
      * Lookup a type by name in the {@linkplain ClassLoader#getSystemClassLoader() system/app} class
      * loader. This performs the usual class loader delegation and behaves as if the following was
      * called: {@code Class.forName(name, false, ClassLoader.getSystemClassLoader())}.
@@ -106,18 +117,45 @@ public interface VMAccess {
     interface Builder {
         String getVMAccessName();
 
+        /**
+         * The module path to use. This has the semantics of the {@code --class-path} java launcher
+         * option.
+         */
         Builder classPath(List<String> paths);
 
+        /**
+         * The module path to use. This has the semantics of the {@code --module-path} java launcher
+         * option.
+         */
         Builder modulePath(List<String> paths);
 
+        /**
+         * Sets the list of modules to resolve in addition to the initial module. This has the
+         * semantics of the {@code --add-modules} java launcher option.
+         */
         Builder addModules(List<String> modules);
 
+        /**
+         * Sets the assertion status for application classes.
+         */
         Builder enableAssertions(boolean assertionStatus);
 
+        /**
+         * Sets the assertion status for system classes.
+         */
         Builder enableSystemAssertions(boolean assertionStatus);
 
+        /**
+         * Sets a system property value.
+         */
         Builder systemProperty(String name, String value);
 
+        /**
+         * Adds a VM option. This has the same semantics as a {@code JavaVMOption} in the JNI
+         * Invocation API.
+         *
+         * @see "https://docs.oracle.com/en/java/javase/25/docs/specs/jni/invocation.html#jni_createjavavm"
+         */
         Builder vmOption(String option);
 
         VMAccess build();

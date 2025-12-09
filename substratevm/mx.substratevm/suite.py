@@ -1770,6 +1770,7 @@ suite = {
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
                 "SVM_CONFIGURE",
+                "compiler:HOSTVMACCESS",
                 "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
@@ -1827,6 +1828,7 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
+                    "com.oracle.graal.vmaccess.VMAccess.Builder",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
@@ -2289,6 +2291,7 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "compiler:VMACCESS",
+                "compiler:HOSTVMACCESS",
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEIMAGE_LIBGRAAL",
             ],

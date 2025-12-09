@@ -56,6 +56,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -199,6 +200,11 @@ final class EspressoExternalVMAccess implements VMAccess {
             throw new IllegalArgumentException("Expected an EspressoExternalResolvedJavaMethod, got " + safeGetClass(method));
         }
         return espressoMethod.invoke(receiver, arguments);
+    }
+
+    @Override
+    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
+        throw JVMCIError.unimplemented();
     }
 
     static RuntimeException throwHostException(PolyglotException e) {

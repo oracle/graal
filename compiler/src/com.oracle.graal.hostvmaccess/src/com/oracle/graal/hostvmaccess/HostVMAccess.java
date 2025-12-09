@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.hostvmaccess;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
@@ -132,6 +133,22 @@ final class HostVMAccess implements VMAccess {
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public JavaConstant asArrayConstant(ResolvedJavaType componentType, JavaConstant... elements) {
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        Class<?> componentClass = snippetReflection.originalClass(componentType);
+        Object array = Array.newInstance(componentClass, elements.length);
+        for (int i = 0; i < elements.length; i++) {
+            JavaConstant argument = elements[i];
+            if (argument.getJavaKind().isObject()) {
+                Array.set(array, i, snippetReflection.asObject(Object.class, argument));
+            } else {
+                Array.set(array, i, argument.asBoxedPrimitive());
+            }
+        }
+        return snippetReflection.forObject(array);
     }
 
     @Override
