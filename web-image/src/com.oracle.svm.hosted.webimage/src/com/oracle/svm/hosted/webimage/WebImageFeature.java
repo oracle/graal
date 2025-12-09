@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
@@ -99,6 +98,7 @@ import com.oracle.svm.hosted.webimage.wasm.WasmLogHandler;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 import com.oracle.svm.webimage.WebImageSystemPropertiesSupport;
 import com.oracle.svm.webimage.api.Nothing;
 import com.oracle.svm.webimage.fs.FileSystemInitializer;
@@ -183,7 +183,7 @@ public class WebImageFeature implements InternalFeature {
          * objects. However, internal code needs to be able to create instances.
          */
         for (Class<?> clazz : new Class<?>[]{JSNumber.class, JSBigInt.class, JSSymbol.class, JSBoolean.class, JSObject.class, JSString.class}) {
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(clazz));
+            JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getDeclaredConstructor(metaAccess, clazz));
         }
 
         LowerableResources.processResources(a, WebImageHostedConfiguration.get());
