@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+// TODO: handle GC instructions
 public final class RegisterAllocationVerifier {
     public BlockMap<List<RAVInstruction.Base>> blockInstructions;
     public BlockMap<VerifierState> blockStates; // Current states
@@ -50,10 +51,78 @@ public final class RegisterAllocationVerifier {
         return true;
     }
 
+    private RegisterValue getRegisterFromUsage(
+            LinkedList<BasicBlock<?>> path,
+            BasicBlock<?> defBlock,
+            RAVInstruction.Base usageInstruction,
+            RegisterValue register,
+            Variable variable
+    ) {
+        while (!path.isEmpty()) {
+            var block = path.peek();
+            if (block == defBlock) {
+                break;
+            }
+
+            path.poll();
+        }
+
+        Value stackSlot = null;
+        boolean reachedUsage = false;
+        for (var block : path.reversed()) { // TODO: reconsider circular paths
+            var instructions = this.blockInstructions.get(block).reversed();
+            for (var instruction : instructions) {
+                if (instruction == usageInstruction) {
+                    reachedUsage = true;
+                    continue;
+                }
+
+                if (!reachedUsage) {
+                    continue;
+                }
+
+                // Tracking the value bottom up, from the usage up to the label definition
+                // looking for any changes to the target register that could highlight
+                // different register is supposed to be used, in case of reload/spill combo or
+                // register move. If we are wrong about the target register then, it will
+                // get thrown out in the verification stage. TODO: maybe try to use multiple usages to be sure?
+                switch (instruction) {
+                    case RAVInstruction.Spill spill -> {
+                        if (spill.to.equals(stackSlot)) {
+                            register = spill.from;
+                        }
+                    }
+                    case RAVInstruction.Move move -> {
+                        if (move.to.equals(register)) {
+                            register = move.from;
+                        }
+                    }
+                    case RAVInstruction.Reload reload -> {
+                        if (reload.to.equals(register)) {
+                            register = null; // No longer holds the variable
+                            stackSlot = reload.from;
+                        }
+                    }
+                    case RAVInstruction.VirtualMove move -> {
+                        if (move.location.equals(register) && !move.variableOrConstant.equals(variable)) {
+                            throw new Error("Target register has different variable."); // TODO: deal with this when we find an example
+                        }
+                    }
+                    // For Op, if there is a redefinition, we let the later stages handle that
+                    default -> {
+                    }
+                }
+            }
+        }
+
+        return register;
+    }
+
     private void mapLabelVariableFromUsage(
             // @formatter:off
             Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap,
-            Variable variable, RegisterValue register)
+            Variable variable, RegisterValue regGuess,
+            LinkedList<BasicBlock<?>> path, RAVInstruction.Base useInstruction)
             // @formatter:on
     {
         var variableLabelInstr = this.labelMap.get(variable);
@@ -61,13 +130,14 @@ public final class RegisterAllocationVerifier {
             return;
         }
 
+        var labelBlock = labelToBlockMap.get(variableLabelInstr);
+        var register = this.getRegisterFromUsage(path, labelBlock, useInstruction, regGuess, variable);
         for (int j = 0; j < variableLabelInstr.dests.count; j++) {
             if (variableLabelInstr.dests.orig[j].equals(variable)) {
                 variableLabelInstr.dests.curr[j] = register;
                 this.labelMap.remove(variable);
 
                 // Need to iterate over predecessors and fill jumps as well
-                var labelBlock = labelToBlockMap.get(variableLabelInstr);
                 for (int k = 0; k < labelBlock.getPredecessorCount(); k++) {
                     var pred = labelBlock.getPredecessorAt(k);
                     var jumpOp = (RAVInstruction.Op) this.blockInstructions.get(pred).getLast();
@@ -81,15 +151,19 @@ public final class RegisterAllocationVerifier {
      * Resolves label variable registers by finding where they are used.
      */
     private void resolveLabelsFromUsage() {
-        Queue<BasicBlock<?>> worklist = new LinkedList<>();
-        worklist.add(this.lir.getControlFlowGraph().getStartBlock());
+        Queue<LinkedList<BasicBlock<?>>> worklist = new LinkedList<>();
+
+        LinkedList<BasicBlock<?>> firstPath = new LinkedList<>(); // TODO: maybe use something better than LinkedList?
+        firstPath.add(this.lir.getControlFlowGraph().getStartBlock());
+        worklist.add(firstPath);
 
         Map<RAVInstruction.Op, BasicBlock<?>> labelToBlockMap = new HashMap<>();
 
-        Set<Integer> visited = new HashSet<>();
+        Set<BasicBlock<?>> visited = new HashSet<>();
         while (!worklist.isEmpty()) {
-            var block = worklist.poll();
-            visited.add(block.getId());
+            var path = worklist.poll();
+            var block = path.getLast();
+            visited.add(block);
 
             var instructions = this.blockInstructions.get(block);
             var labelInstr = (RAVInstruction.Op) instructions.getFirst();
@@ -105,13 +179,13 @@ public final class RegisterAllocationVerifier {
                 switch (instruction) {
                     case RAVInstruction.VirtualMove move -> {
                         if (move.variableOrConstant instanceof Variable variable && move.location instanceof RegisterValue register) {
-                            this.mapLabelVariableFromUsage(labelToBlockMap, variable, register);
+                            this.mapLabelVariableFromUsage(labelToBlockMap, variable, register, path, instruction);
                         }
                     }
                     case RAVInstruction.Op op -> {
                         for (int i = 0; i < op.uses.count; i++) {
                             if (op.uses.orig[i] instanceof Variable variable && op.uses.curr[i] instanceof RegisterValue register) {
-                                this.mapLabelVariableFromUsage(labelToBlockMap, variable, register);
+                                this.mapLabelVariableFromUsage(labelToBlockMap, variable, register, path, instruction);
                             }
                         }
                     }
@@ -122,11 +196,13 @@ public final class RegisterAllocationVerifier {
 
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 var succ = block.getSuccessorAt(i);
-                if (visited.contains(succ.getId())) {
+                if (visited.contains(succ)) {
                     continue;
                 }
-                // TODO: save path from label to usage and determine if value was spilled, reloaded, moved, etc...
-                worklist.add(succ);
+
+                var nextPath = new LinkedList<>(path);
+                nextPath.add(succ);
+                worklist.add(nextPath);
             }
         }
 
@@ -358,7 +434,7 @@ public final class RegisterAllocationVerifier {
                 }
 
                 if (!orig.getValueKind().equals(curr.getValueKind())) {
-                   return false; // Kind do not match
+                    return false; // Kind do not match
                 }
 
                 if (state.isConflicted() || state.isUnknown()) {
@@ -405,7 +481,7 @@ public final class RegisterAllocationVerifier {
                 }
 
                 if (!checkInputs(op.alive)) {
-                     return false;
+                    return false;
                 }
 
                 for (int i = 0; i < op.temp.count; i++) {
