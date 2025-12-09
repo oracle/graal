@@ -39,8 +39,15 @@ import com.oracle.svm.core.log.Log;
 import jdk.graal.compiler.word.Word;
 
 /**
- * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
- * for newly-allocated or promoted objects.
+ * This old generation has two spaces, {@link #fromSpace} for all objects, and {@link #toSpace}, to
+ * which live objects are copied during a collection (at the end of which, the spaces are swapped).
+ *
+ * Unlike with survivor spaces in the young generation, {@link AbstractCollectionPolicy} does not
+ * reserve half of the old generation size for {@link #toSpace}, so a collection can temporarily
+ * exceed the maximum old generation or maximum heap size by up to {@link #fromSpace}'s size.
+ *
+ * In other words, in extreme cases, memory consumption during a collection can be up to 2x of the
+ * current heap size, or even the configured maximum heap size.
  */
 final class CopyingOldGeneration extends OldGeneration {
     /* These Spaces are final and are flipped by transferring chunks from one to the other. */

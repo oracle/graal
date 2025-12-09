@@ -58,7 +58,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int MIN_SPACE_SIZE_AS_NUMBER_OF_ALIGNED_CHUNKS = 8;
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+20/src/hotspot/share/gc/shared/gc_globals.hpp#L572-L575") //
-    protected static final int MAX_TENURING_THRESHOLD = 15;
+    private static final int MAX_TENURING_THRESHOLD = 15;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
@@ -93,7 +93,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected AbstractCollectionPolicy(int initialNewRatio, int initialTenuringThreshold) {
         this.initialNewRatio = initialNewRatio;
-        this.tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
+        this.tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 0, HeapParameters.getMaxSurvivorSpaces());
     }
 
     @Override
@@ -268,7 +268,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getTenuringAge() {
         assert VMOperation.isGCInProgress() : "use only during GC";
-        return tenuringThreshold;
+        assert tenuringThreshold >= 0 && tenuringThreshold <= HeapParameters.getMaxSurvivorSpaces();
+        return tenuringThreshold + 1;
     }
 
     @Override
@@ -351,7 +352,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
              * i.e., together they occupy 2x this size. Our chunked heap doesn't reserve memory, so
              * we never occupy more than 1x this size for survivors except during collections. We
              * reserve 2x regardless (see below). However, this is inconsistent with how we
-             * interpret the maximum size of the old generation, which we can exceed the same way
+             * interpret the maximum size of CopyingOldGeneration, which we can exceed the same way
              * while copying during collections, but reserve only 1x its size.
              */
             initialSurvivor = initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO);
@@ -375,6 +376,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord survivorSize;
         UnsignedWord edenSize;
         UnsignedWord oldSize;
+        /*
+         * promoSize: memory reserved in the old generation for objects promoted from the young
+         * generation. Not used by all subclasses, but managed here for simplicity.
+         */
         UnsignedWord promoSize;
         if (sizes.isInitialized() && sameInitialSizes(initialEden, initialSurvivor, initialYoung, initialOldSize, initialHeap)) {
             /* Copy and limit existing values. */
