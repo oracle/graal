@@ -47,7 +47,7 @@ import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmNamesObject;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.ValueType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.constants.Mutability;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
