@@ -307,7 +307,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             return null;
         }
 
-        if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
+        if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInSharedLayer() && imageHeapInstance.nullFieldValues()) {
             return null;
         }
 

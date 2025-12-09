@@ -95,12 +95,12 @@ public final class VTableBuilder {
          * See generateDispatchTable for the use of this filter.
          */
         private boolean filterVTableMethods(HostedType type) {
-            return closedTypeWorld && !type.getWrapped().isInBaseLayer();
+            return closedTypeWorld && !type.getWrapped().isInSharedLayer();
         }
 
         private boolean shouldIncludeType(HostedType type) {
             if (closedTypeWorld) {
-                if (type.getWrapped().isInBaseLayer()) {
+                if (type.getWrapped().isInSharedLayer()) {
                     /*
                      * This check will be later removed.
                      *
@@ -114,7 +114,7 @@ public final class VTableBuilder {
                  * removed via graph strengthening. It is also always possible to see base layer
                  * types.
                  */
-                return type.getWrapped().isReachable() || type.getWrapped().isInBaseLayer();
+                return type.getWrapped().isReachable() || type.getWrapped().isInSharedLayer();
             } else {
                 /*
                  * When using the open type world we are conservative and calculate metadata for all

@@ -1531,7 +1531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         private static boolean isElementRegistered(Map<Integer, Set<Integer>> previousLayerRegisteredElements, AnalysisType declaringClass, int elementId) {
             Set<Integer> previousLayerRegisteredElementIds = previousLayerRegisteredElements.get(declaringClass.getId());
-            if (declaringClass.isInBaseLayer() && previousLayerRegisteredElementIds != null) {
+            if (declaringClass.isInSharedLayer() && previousLayerRegisteredElementIds != null) {
                 return previousLayerRegisteredElementIds.contains(elementId);
             }
             return false;

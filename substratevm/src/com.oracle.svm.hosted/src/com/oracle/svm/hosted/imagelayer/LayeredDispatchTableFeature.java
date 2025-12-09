@@ -208,7 +208,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private PriorDispatchTable getPriorDispatchTable(HostedType hType) {
-        if (hType.getWrapped().isInBaseLayer()) {
+        if (hType.getWrapped().isInSharedLayer()) {
             return priorDispatchTableCache.computeIfAbsent(hType, this::createPriorDispatchTable);
         } else {
             return null;
@@ -340,7 +340,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private void injectPriorLayerInfo(HostedType type, HostedDispatchTable dispatchTable) {
-        if (type.getWrapped().isInBaseLayer()) {
+        if (type.getWrapped().isInSharedLayer()) {
             var priorInfo = getPriorDispatchTable(type);
             if (priorInfo != null) {
                 compareTypeInfo(dispatchTable, priorInfo);

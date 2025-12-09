@@ -679,7 +679,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static int getBaseLayerTypeId(AnalysisType type) {
-        VMError.guarantee(type.isInBaseLayer());
+        VMError.guarantee(type.isInSharedLayer());
         if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
             return baseLayerType.getBaseLayerId();
         }
@@ -742,7 +742,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      */
     @Override
     public void initializeBaseLayerType(AnalysisType type) {
-        VMError.guarantee(type.isInBaseLayer());
+        VMError.guarantee(type.isInSharedLayer());
         PersistedAnalysisType.Reader td = findType(getBaseLayerTypeId(type));
         postTask(td.getIsInstantiated(), _ -> type.registerAsInstantiated(PERSISTED));
         postTask(td.getIsUnsafeAllocated(), _ -> type.registerAsUnsafeAllocated(PERSISTED));
@@ -1661,7 +1661,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private void addBaseLayerObject(int id, long objectOffset, Supplier<ImageHeapConstant> imageHeapConstantSupplier) {
         constants.computeIfAbsent(id, _ -> {
             ImageHeapConstant heapObj = imageHeapConstantSupplier.get();
-            heapObj.markInBaseLayer();
+            heapObj.markInSharedLayer();
             /*
              * Packages are normally rescanned when the DynamicHub is initialized. However, since
              * they are not relinked, the packages from the base layer will never be marked as
@@ -1737,7 +1737,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
-        VMError.guarantee(field.isInBaseLayer());
+        VMError.guarantee(field.isInSharedLayer());
         return !(field.getWrapped() instanceof BaseLayerField) && !AnnotationUtil.isAnnotationPresent(field, Delete.class);
     }
 

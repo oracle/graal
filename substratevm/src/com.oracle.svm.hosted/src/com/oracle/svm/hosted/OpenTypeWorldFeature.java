@@ -291,7 +291,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             for (HostedType type : types) {
-                if (type.getWrapped().isInBaseLayer()) {
+                if (type.getWrapped().isInSharedLayer()) {
                     var priorInfo = getTypecheckInfo(loader, type);
                     if (!priorInfo.installed()) {
                         // no need to validate this hub, as it was not installed
@@ -317,7 +317,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     }
 
     static TypeCheckInfo getTypecheckInfo(SVMImageLayerLoader loader, HostedType hType) {
-        if (hType.getWrapped().isInBaseLayer()) {
+        if (hType.getWrapped().isInSharedLayer()) {
             var hubInfo = loader.getDynamicHubInfo(hType.getWrapped());
             var valuesReader = hubInfo.getTypecheckSlotValues();
             int[] typecheckSlots = new int[valuesReader.size()];

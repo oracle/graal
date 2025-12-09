@@ -133,9 +133,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("unused") private volatile Object subTypes;
     AnalysisType superClass;
 
+    /**
+     * Unique id assigned to each {@link AnalysisType}. This id is consistent across layers and can
+     * be used to load or match a type in an extension layer.
+     */
     private final int id;
-    /** Marks a type loaded from a base layer. */
-    private final boolean isInBaseLayer;
+    /** Marks a type loaded from a shared layer. */
+    private final boolean isInSharedLayer;
 
     private final JavaKind storageKind;
     private final boolean isCloneableWithAllocation;
@@ -302,24 +306,24 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
-                 * This id is the actual link between the corresponding type from the base layer and
-                 * this new type.
+                 * This id is the actual link between the corresponding type from the shared layer
+                 * and this new type.
                  */
                 this.id = tid;
-                this.isInBaseLayer = true;
+                this.isInSharedLayer = true;
             } else {
                 this.id = universe.computeNextTypeId();
                 /*
                  * If both the BaseLayerType and the complete type are created at the same time,
-                 * there can be a race for the base layer id. It is possible that the complete type
-                 * gets the base layer id even though the BaseLayerType is created. In this case,
-                 * the AnalysisType should still be marked as isInBaseLayer.
+                 * there can be a race for the shared layer id. It is possible that the complete
+                 * type gets the shared layer id even though the BaseLayerType is created. In this
+                 * case, the AnalysisType should still be marked as isInSharedLayer.
                  */
-                this.isInBaseLayer = wrapped instanceof BaseLayerType;
+                this.isInSharedLayer = wrapped instanceof BaseLayerType;
             }
         } else {
             this.id = universe.computeNextTypeId();
-            this.isInBaseLayer = false;
+            this.isInSharedLayer = false;
         }
 
         /*
@@ -398,8 +402,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return id;
     }
 
-    public boolean isInBaseLayer() {
-        return isInBaseLayer;
+    public boolean isInSharedLayer() {
+        return isInSharedLayer;
     }
 
     public AnalysisObject getContextInsensitiveAnalysisObject() {
@@ -595,7 +599,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             scheduledTypeReachableNotifications = futures;
         }
 
-        if (isInBaseLayer && !(wrapped instanceof BaseLayerType)) {
+        if (isInSharedLayer && !(wrapped instanceof BaseLayerType)) {
             /*
              * Since the analysis of the type is skipped, the fields have to be created manually to
              * ensure their flags are loaded from the base layer. Not creating the fields would

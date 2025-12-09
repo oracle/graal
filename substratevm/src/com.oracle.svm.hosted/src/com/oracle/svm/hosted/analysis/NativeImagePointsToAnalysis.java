@@ -130,7 +130,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     public void onTypeReachable(AnalysisType type) {
         postTask(_ -> {
             type.getInitializeMetaDataTask().ensureDone();
-            if (type.isInBaseLayer()) {
+            if (type.isInSharedLayer()) {
                 /*
                  * Since the rescanning of the hub is skipped for constants from the base layer to
                  * avoid deadlocks, the hub needs to be rescanned manually after the metadata is
@@ -138,7 +138,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
             }
-            if (type.isArray() && type.getComponentType().isInBaseLayer()) {
+            if (type.isArray() && type.getComponentType().isInSharedLayer()) {
                 /* Rescan the component hub. This will be simplified by GR-60254. */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
             }

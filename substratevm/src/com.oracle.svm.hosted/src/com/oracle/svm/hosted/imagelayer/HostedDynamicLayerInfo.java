@@ -125,7 +125,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
         assert ImageLayerBuildingSupport.buildingExtensionLayer() : "This should only be called within extension images. Within the initial layer the direct calls can be performed";
         HostedMethod hMethod = (HostedMethod) sMethod;
         int compiledOffset = getPriorInstalledOffset(hMethod.getWrapped());
-        assert hMethod.wrapped.isInBaseLayer() && compiledOffset != HostedMethod.INVALID_CODE_ADDRESS_OFFSET;
+        assert hMethod.wrapped.isInSharedLayer() && compiledOffset != HostedMethod.INVALID_CODE_ADDRESS_OFFSET;
 
         var basePointer = CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalData);
         return new PriorLayerMethodLocation(basePointer, compiledOffset);
@@ -137,7 +137,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
     }
 
     private int getPriorInstalledOffset(AnalysisMethod aMethod) {
-        if (aMethod.isInBaseLayer()) {
+        if (aMethod.isInSharedLayer()) {
             return priorInstalledOffsetCache.computeIfAbsent(aMethod, _ -> {
                 var methodData = HostedImageLayerBuildingSupport.singleton().getLoader();
                 return methodData.getHostedMethodData(aMethod).getInstalledOffset();
@@ -148,7 +148,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
     }
 
     public static MethodNameInfo loadMethodNameInfo(AnalysisMethod aMethod) {
-        if (aMethod.isInBaseLayer()) {
+        if (aMethod.isInSharedLayer()) {
             var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             var methodData = loader.getHostedMethodData(aMethod);
             return new MethodNameInfo(methodData.getHostedMethodName().toString(), methodData.getHostedMethodUniqueName().toString());
@@ -175,7 +175,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
         assert !BuildPhaseProvider.isHostedUniverseBuilt();
         AnalysisMethod aMethod = hMethod.getWrapped();
         if (compiledInPriorLayer(aMethod)) {
-            assert aMethod.isInBaseLayer() : hMethod;
+            assert aMethod.isInSharedLayer() : hMethod;
             priorLayerMethodSymbols.add(localSymbolNameForMethod(hMethod));
             hMethod.setCompiledInPriorLayer();
             hMethod.setCodeAddressOffset(getPriorInstalledOffset(aMethod));

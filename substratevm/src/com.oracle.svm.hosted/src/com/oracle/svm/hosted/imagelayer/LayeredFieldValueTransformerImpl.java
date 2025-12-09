@@ -34,11 +34,11 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.GraalAccess;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -135,7 +135,7 @@ public class LayeredFieldValueTransformerImpl extends FieldValueTransformerWithR
      */
     private TransformedValueState createValueStatue(Object canonicalReceiver, Object receiver) {
         boolean useUpdate = false;
-        if (receiver instanceof ImageHeapConstant ihc && ihc.isInBaseLayer()) {
+        if (receiver instanceof ImageHeapConstant ihc && ihc.isInSharedLayer()) {
             useUpdate = priorLayerReceiversWithUpdatableValues.contains(ImageHeapConstant.getConstantID(ihc));
         }
         return new TransformedValueState(canonicalReceiver, useUpdate);

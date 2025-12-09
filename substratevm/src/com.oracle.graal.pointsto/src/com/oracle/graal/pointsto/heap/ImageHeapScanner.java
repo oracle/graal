@@ -732,7 +732,7 @@ public abstract class ImageHeapScanner {
                     JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
                     JavaConstant unwrappedSnapshot = ScanningObserver.maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
 
-                    if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInBaseLayer() && ihc.getHostedObject() == null) {
+                    if (fieldSnapshot instanceof ImageHeapConstant ihc && ihc.isInSharedLayer() && ihc.getHostedObject() == null) {
                         /*
                          * We cannot verify a base layer constant which doesn't have a backing
                          * hosted object. Since the hosted object is missing the constant would be

@@ -189,7 +189,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         }
 
         ImageHeapConstant ihc = (ImageHeapConstant) ((FeatureImpl.DuringAnalysisAccessImpl) access).getUniverse().getSnippetReflection().forObject(optionKey);
-        VMError.guarantee(ihc.isInBaseLayer(), "Newly seen key outside of base layer %s", optionKey);
+        VMError.guarantee(ihc.isInSharedLayer(), "Newly seen key outside of base layer %s", optionKey);
     }
 
     /**

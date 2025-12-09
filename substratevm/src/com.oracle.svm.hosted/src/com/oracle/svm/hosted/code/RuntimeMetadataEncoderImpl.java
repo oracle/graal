@@ -800,7 +800,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                  */
                 continue;
             }
-            if (!declaringType.getWrapped().isInBaseLayer()) {
+            if (!declaringType.getWrapped().isInSharedLayer()) {
                 int enclosingMethodInfoIndex = classMetadata.enclosingMethodInfo instanceof Throwable
                                 ? encodeErrorIndex((Throwable) classMetadata.enclosingMethodInfo)
                                 : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));

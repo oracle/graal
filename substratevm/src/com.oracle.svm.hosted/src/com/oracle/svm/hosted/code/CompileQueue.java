@@ -1264,7 +1264,7 @@ public class CompileQueue {
             return;
         }
         if (ImageLayerBuildingSupport.buildingExtensionLayer() && !method.wrapped.reachableInCurrentLayer()) {
-            assert method.wrapped.isInBaseLayer();
+            assert method.wrapped.isInSharedLayer();
             /*
              * This method was reached and analyzed in the base layer, but it was not compiled in
              * that layer, e.g., because it was always inlined. It is referenced in the app layer,

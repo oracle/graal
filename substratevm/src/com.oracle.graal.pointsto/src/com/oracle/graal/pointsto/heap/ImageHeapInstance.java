@@ -145,7 +145,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * or the result of executing the task, i.e., a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
-        if (isInBaseLayer()) {
+        if (isInSharedLayer()) {
             /* Base layer constants that are not relinked might not have field positions computed */
             field.getType().getInstanceFields(true);
         }
