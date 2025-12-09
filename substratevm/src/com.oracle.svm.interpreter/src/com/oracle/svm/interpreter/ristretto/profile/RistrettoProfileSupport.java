@@ -145,6 +145,7 @@ public class RistrettoProfileSupport {
                      * another thread is initializing the compilation data, do a few more spins
                      * until that is done and then go on
                      */
+                    PauseNode.pause();
                     break;
                 }
                 default:
