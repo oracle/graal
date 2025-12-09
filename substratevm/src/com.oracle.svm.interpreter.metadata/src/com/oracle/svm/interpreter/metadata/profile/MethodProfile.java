@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.metadata.profile;
 import static jdk.graal.compiler.bytecode.Bytecodes.END;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
@@ -69,7 +70,7 @@ public final class MethodProfile {
      * Caches the index of the last returned profile for the next access. Initialized to 0, will be
      * set in {@link #getAtBCI(int, Class)}.
      */
-    private int lastIndex;
+    private volatile int lastIndex;
 
     private final ResolvedJavaMethod method;
 
@@ -252,14 +253,14 @@ public final class MethodProfile {
 
         public double takenProfile() {
             if (counter == 0) {
-                return -1;
+                return -1D;
             }
             return (double) takenCounter / (double) counter;
         }
 
         public double notTakenProfile() {
             if (counter == 0) {
-                return -1;
+                return -1D;
             }
             return 1D - takenProfile();
         }
@@ -298,11 +299,18 @@ public final class MethodProfile {
         }
 
         public double notRecordedProbability() {
+            if (counter == 0L) {
+                return -1D;
+            }
             return (double) notRecordedCount / (double) counter;
         }
 
         public double getProbability(ResolvedJavaType type) {
-            for (int i = 0; i < types.length; i++) {
+            if (counter == 0L) {
+                // no entry yet seen
+                return -1D;
+            }
+            for (int i = 0; i < nextFreeSlot; i++) {
                 ResolvedJavaType t = types[i];
                 if (t.equals(type)) {
                     return (double) counts[i] / (double) counter;
@@ -394,11 +402,21 @@ public final class MethodProfile {
         }
 
         public JavaTypeProfile toTypeProfile() {
-            JavaTypeProfile.ProfiledType[] jTypes = new JavaTypeProfile.ProfiledType[this.types.length];
-            for (int i = 0; i < jTypes.length; i++) {
-                jTypes[i] = new JavaTypeProfile.ProfiledType(this.types[i], getProbability(this.types[i]));
+            if (nextFreeSlot == 0L || counter == 0L) {
+                // nothing recorded
+                return null;
             }
-            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedProbability(), jTypes);
+            // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
+            JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[nextFreeSlot];
+            for (int i = 0; i < nextFreeSlot; i++) {
+                double p = counts[i];
+                p = p / counter;
+                ptypes[i] = new JavaTypeProfile.ProfiledType(types[i], p);
+            }
+            Arrays.sort(ptypes);
+            double notRecordedTypeProbability = nextFreeSlot < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, notRecordedProbability()));
+            assert notRecordedTypeProbability == 0 || nextFreeSlot == types.length;
+            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedTypeProbability, ptypes);
         }
     }
 }
