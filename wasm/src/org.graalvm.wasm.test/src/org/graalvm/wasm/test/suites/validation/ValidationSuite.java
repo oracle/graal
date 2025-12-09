@@ -968,7 +968,7 @@ public class ValidationSuite extends WasmFileSuite {
                                         null),
 
                         binaryCase("Invalid instruction",
-                                        "Unknown opcode: 0x06",
+                                        "Legacy exception handling is not supported (opcode: 0x06)",
 
                                         // (module
                                         // (func
