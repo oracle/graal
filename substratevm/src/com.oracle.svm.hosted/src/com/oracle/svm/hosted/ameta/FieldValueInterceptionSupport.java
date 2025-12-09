@@ -159,8 +159,9 @@ public final class FieldValueInterceptionSupport {
 
         @Override
         public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass())
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
 
             FallbackFieldValueTransformer that = (FallbackFieldValueTransformer) o;
             return Objects.equals(jvmciFieldValueTransformer, that.jvmciFieldValueTransformer);
