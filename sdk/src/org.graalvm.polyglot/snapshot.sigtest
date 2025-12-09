@@ -131,11 +131,6 @@ meth public java.util.function.Predicate<{java.util.function.Predicate%0}> or(ja
 meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> isEqual(java.lang.Object)
 meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> not(java.util.function.Predicate<? super {%%0}>)
 
-CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
-
 CLSS public final org.graalvm.polyglot.Context
 innr public final Builder
 intf java.lang.AutoCloseable
@@ -190,6 +185,7 @@ meth public org.graalvm.polyglot.Context$Builder engine(org.graalvm.polyglot.Eng
 meth public org.graalvm.polyglot.Context$Builder environment(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
+meth public org.graalvm.polyglot.Context$Builder exceptionHandler(java.util.function.Consumer<org.graalvm.polyglot.PolyglotException>)
 meth public org.graalvm.polyglot.Context$Builder extendHostAccess(org.graalvm.polyglot.HostAccess,java.util.function.Consumer<org.graalvm.polyglot.HostAccess$Builder>)
 meth public org.graalvm.polyglot.Context$Builder extendIO(org.graalvm.polyglot.io.IOAccess,java.util.function.Consumer<org.graalvm.polyglot.io.IOAccess$Builder>)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
@@ -210,7 +206,7 @@ meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,exceptionHandler,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -240,6 +236,7 @@ CLSS public final org.graalvm.polyglot.Engine$Builder
 meth public org.graalvm.polyglot.Engine build()
 meth public org.graalvm.polyglot.Engine$Builder allowExperimentalOptions(boolean)
 meth public org.graalvm.polyglot.Engine$Builder err(java.io.OutputStream)
+meth public org.graalvm.polyglot.Engine$Builder exceptionHandler(java.util.function.Consumer<org.graalvm.polyglot.PolyglotException>)
 meth public org.graalvm.polyglot.Engine$Builder in(java.io.InputStream)
 meth public org.graalvm.polyglot.Engine$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder logHandler(java.util.logging.Handler)
@@ -250,7 +247,7 @@ meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.San
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
+hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT

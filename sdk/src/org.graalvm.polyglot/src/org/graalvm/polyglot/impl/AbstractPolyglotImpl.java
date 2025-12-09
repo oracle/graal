@@ -82,6 +82,7 @@ import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -176,7 +177,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getSourceSectionSource(Object sourceSection);
 
-        public abstract RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor);
+        public abstract PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor);
 
         public abstract boolean isInstrument(Object instrument);
 
@@ -479,9 +480,9 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
         return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
-                        hostLanguageOnly, registerInActiveEngines, polyglotHostService);
+                        hostLanguageOnly, registerInActiveEngines, polyglotHostService, exceptionHandler);
     }
 
     public void onEngineCreated(Object polyglotEngine) {
@@ -772,8 +773,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
-                        Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, String tmpDir,
-                        ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts);
+                        Consumer<PolyglotException> exceptionHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
+                        String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts);
 
         public abstract String getImplementationName(Object receiver);
 
