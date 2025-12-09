@@ -996,6 +996,14 @@ public class BinaryParser extends BinaryStreamParser {
                     state.setUnreachable();
                     break;
                 }
+                case Instructions.TRY:
+                case Instructions.RETHROW:
+                case Instructions.CATCH:
+                case Instructions.DELEGATE:
+                case Instructions.CATCH_ALL: {
+                    checkLegacyExceptionHandlingSupport(opcode);
+                    break;
+                }
                 case Instructions.LOCAL_GET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
@@ -2803,6 +2811,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkRelaxedSIMDSupport(int vectorOpcode) {
         checkContextOption(wasmContext.getContextOptions().supportRelaxedSIMD(), "Relaxed vector instructions are not enabled (opcode: 0x%02x 0x%x)", Instructions.VECTOR, vectorOpcode);
+    }
+
+    private static void checkLegacyExceptionHandlingSupport(int opcode) {
+        Assert.fail(Failure.UNSPECIFIED_MALFORMED, "Legacy exception handling is not supported (opcode: 0x%02x)", opcode);
     }
 
     private void checkExceptionHandlingSupport(int opcode) {

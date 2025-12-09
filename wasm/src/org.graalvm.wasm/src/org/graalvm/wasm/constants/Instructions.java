@@ -54,7 +54,10 @@ public final class Instructions {
     public static final int IF = 0x04;
     public static final int ELSE = 0x05;
 
+    public static final int TRY = 0x06; // legacy exception handling
+    public static final int CATCH = 0x07; // legacy exception handling
     public static final int THROW = 0x08;
+    public static final int RETHROW = 0x09; // legacy exception handling
     public static final int THROW_REF = 0x0A;
 
     public static final int END = 0x0B;
@@ -67,6 +70,9 @@ public final class Instructions {
     public static final int CALL = 0x10;
     public static final int CALL_INDIRECT = 0x11;
     public static final int CALL_REF = 0x14;
+
+    public static final int DELEGATE = 0x18; // legacy exception handling
+    public static final int CATCH_ALL = 0x19; // legacy exception handling
 
     public static final int DROP = 0x1A;
     public static final int SELECT = 0x1B;
