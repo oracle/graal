@@ -100,7 +100,7 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     public MethodProfile getProfile() {
         if (profile == null) {
-            initializedProfile();
+            initializeProfile();
         }
         return profile;
     }
@@ -109,7 +109,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      * Allocate the profile once per method. Apart from test scenarios the profile is never set to
      * null again. Thus, the heavy locking code below is normally not run in a fast path.
      */
-    private synchronized void initializedProfile() {
+    private synchronized void initializeProfile() {
         if (profile == null) {
             MethodProfile newProfile = new MethodProfile(this);
             // ensure everything is allocated and initialized before we signal the barrier
