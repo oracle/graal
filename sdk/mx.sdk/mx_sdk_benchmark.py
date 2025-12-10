@@ -72,7 +72,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_util
 from mx_util import Stage, StageName, Layer
-from mx_benchmark import BenchmarkDispatcher, BenchmarkDispatcherState, BenchmarkExecutionConfiguration, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, DataPoints, DataPoint, ForkInfo, SingleBenchmarkManager
+from mx_benchmark import BenchmarkDispatcher, BenchmarkDispatcherState, BenchmarkExecutionConfiguration, BenchmarkSuite, bm_exec_context, ConstantContextValueManager, DataPoints, DataPoint, ForkInfo, SingleBenchmarkManager, ConstantContextValue
 from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('sdk')
@@ -3176,6 +3176,10 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     If you want to run something like `hwloc-bind` or `taskset` prefixed before the app, you should use the '--cmd-app-prefix' Barista harness option.
     If you want to pass options to the app, you should use the '--app-args' Barista harness option.
     """
+    BARISTA_HOME = "BaristaBenchmarkSuite.repo-home"
+    ENV = "BaristaBenchmarkSuite.env"
+    JARS = "BaristaBenchmarkSuite.jar-paths"
+
     def __init__(self, custom_harness_command: mx_benchmark.CustomHarnessCommand = None):
         if custom_harness_command is None:
             custom_harness_command = BaristaBenchmarkSuite.BaristaCommand()
@@ -3226,32 +3230,49 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def completeBenchmarkList(self, bmSuiteArgs):
         return _baristaConfig["benchmarks"].keys()
 
-    def baristaDirectoryPath(self):
-        barista_home = mx.get_env("BARISTA_HOME")
-        if barista_home is None or not os.path.isdir(barista_home):
-            mx.abort("Please set the BARISTA_HOME environment variable to a " +
-                     "Barista benchmark suite directory.")
-        return barista_home
+    def baristaDirectoryPath(self) -> Path:
+        if bm_exec_context().get_opt(self.BARISTA_HOME) is None:
+            self._load_barista_home()
+        return bm_exec_context().get_opt(self.BARISTA_HOME)
+
+    def _load_barista_home(self):
+        if mx.get_env("BARISTA_HOME") is not None:
+            mx.warn("The use of the 'BARISTA_HOME' env var has been deprecated. "
+                    "The Barista repository is now automatically installed as a sibling directory to Graal. "
+                    "The env var will be ignored.")
+        target_dir = Path(mx.primary_suite().vc_dir).parent / "barista"
+        try:
+            barista_suite = mx.suite("barista", fatalIfMissing=False)
+            if barista_suite is None:
+                barista_suite = mx.primary_suite().clone_foreign_suite("barista", clone_binary_first=False)
+            bm_exec_context().add_context_value(self.BARISTA_HOME, ConstantContextValue(Path(barista_suite.dir)))
+        except StopIteration:
+            mx.abort("Cloning of 'barista' as a sibling of the current suite has failed!\n"
+                     f"Please manually clone it to '{target_dir}'.")
 
     def baristaApplicationDirectoryPath(self, benchmark: str) -> Path:
-        return Path(self.baristaDirectoryPath()) / "benchmarks" / benchmark
+        return self.baristaDirectoryPath() / "benchmarks" / benchmark
 
-    def baristaFilePath(self, file_name):
-        barista_home = self.baristaDirectoryPath()
-        file_path = os.path.abspath(os.path.join(barista_home, file_name))
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError("The BARISTA_HOME environment variable points to a directory " +
-                                    f"that does not contain a '{file_name}' file.")
+    def baristaFilePath(self, path_components: List[str]) -> Path:
+        file_path = self.baristaDirectoryPath()
+        for component in path_components:
+            file_path = file_path / component
+        file_path = file_path.resolve()
+        if not file_path.is_file():
+            raise FileNotFoundError(f"The Barista repository does not contain a {path_components} file!")
         return file_path
 
-    def baristaProjectConfigurationPath(self):
-        return self.baristaFilePath("pyproject.toml")
+    def baristaProjectConfigurationPath(self) -> Path:
+        return self.baristaFilePath(["pyproject.toml"])
 
-    def baristaBuilderPath(self):
-        return self.baristaFilePath("build")
+    def baristaBuilderPath(self) -> Path:
+        return self.baristaFilePath(["build"])
 
-    def baristaHarnessPath(self):
-        return self.baristaFilePath("barista")
+    def baristaHarnessPath(self) -> Path:
+        return self.baristaFilePath(["barista"])
+
+    def barista_install_script(self) -> Path:
+        return self.baristaFilePath(["deps", "install.py"])
 
     def baristaHarnessBenchmarkName(self):
         return _baristaConfig["benchmarks"][self.benchmarkName()].get("barista-bench-name", self.benchmarkName())
@@ -3262,9 +3283,93 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def validateEnvironment(self):
         self.baristaProjectConfigurationPath()
         self.baristaHarnessPath()
+        self._warn_barista_source()
+        self._install_barista()
+
+    def _warn_barista_source(self):
+        """
+        Check if the Barista repository was cloned from the open-source repo and warn the user if that is the case.
+
+        NOTE: There is nothing wrong with using the open-source repo - it is nearly identical to the internal repo.
+        However, the internal repo provides a slightly extended benchmark set so users that have access to the internal
+        repo should be using it.
+        """
+        out = mx.OutputCapture()
+        err = mx.OutputCapture()
+        try:
+            mx.run(["git", "remote", "-v"], cwd=self.baristaDirectoryPath(), out=out, err=err)
+            if re.search(r"github\.com/barista-benchmarks/barista", out.data):
+                mx.warn("The local Barista repository has been cloned from the original open-source repository.\n"
+                        "Some users might prefer to use a fork which could offer an extended set of benchmarks.\n"
+                        "To ensure you are using the repository from the URL of your choice, you can delete\n"
+                        "your local repository and:\n"
+                        "* Rerun the benchmark after setting the appropriate rewrite using MX_URLREWRITES.\n"
+                        "* Clone the Barista from the desired URL manually.")
+        except:
+            mx.log(err.data)
+            mx.log("Barista repository remote check failed! Ignoring the failure and proceeding.")
+
+    def _install_barista(self):
+        """Best-effort attempt at installing the 'barista' project and its dependencies."""
+        install_script = self.barista_install_script()
+        install_cmd = [str(install_script)]
+        mx.log(f"Installing 'barista' with: {install_cmd}")
+        try:
+            mx.run(install_cmd)
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Installing 'barista' failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nInstalling 'barista' failed!")
+
+    def _ensure_jar_exists(self, benchmark: str):
+        """Checks if the benchmark JAR exists and generates it if it doesn't."""
+        jar_path = self._get_jar_path(benchmark)
+        if not Path(jar_path).is_file():
+            self._generate_jar(benchmark)
+
+    def _get_jar_path(self, benchmark: str) -> str:
+        if benchmark not in bm_exec_context().get(self.JARS):
+            self._acquire_jar_path(benchmark)
+        return bm_exec_context().get(self.JARS)[benchmark]
+
+    def _acquire_jar_path(self, benchmark: str):
+        jar_path_cmd = [f"{self.baristaBuilderPath()}", "--get-jar", benchmark]
+        out = mx.OutputCapture()
+        mx.run(jar_path_cmd, out=out)
+        # Capture the application jar from the Barista 'build' script output
+        jar_pattern = r"application jar file path is: ([^\n]+)\n"
+        jar_match = re.search(jar_pattern, out.data)
+        if not jar_match:
+            raise ValueError(f"Could not extract the jar file path from the command output! Expected to match pattern {repr(jar_pattern)}.")
+        # Cache for future access
+        bm_exec_context().get(self.JARS)[benchmark] = jar_match.group(1)
+
+    def _generate_jar(self, benchmark: str):
+        """Generates the benchmark JAR file."""
+        jar_generation_cmd = [str(self.baristaBuilderPath()), "--skip-nib-generation", benchmark]
+        mx.log(f"Generating the JAR file by running {jar_generation_cmd}. This can take a while.")
+        try:
+            mx.run(jar_generation_cmd)
+        except BaseException as e:
+            if isinstance(e, SystemExit):
+                mx.abort(f"Generating the JAR file failed with exit code {e}!")
+            else:
+                mx.abort(f"{e}\nGenerating the JAR file failed!")
+
+    def before(self, bmSuiteArgs):
+        super().before(bmSuiteArgs)
+        bm_exec_context().add_context_value(self.ENV, ConstantContextValue(os.environ.copy()))
+        bm_exec_context().add_context_value(self.JARS, ConstantContextValue({}))
+
+    def after(self, bmSuiteArgs):
+        bm_exec_context().remove(self.JARS)
+        bm_exec_context().remove(self.ENV)
+        super().after(bmSuiteArgs)
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         with SingleBenchmarkManager(self):
+            self._ensure_jar_exists(self.benchmarkName())
             return super().run(benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -3539,7 +3644,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             barista_workload = suite.baristaHarnessBenchmarkWorkload()
 
             # Construct the Barista command
-            barista_cmd = [suite.baristaHarnessPath()]
+            barista_cmd = [str(suite.baristaHarnessPath())]
             barista_cmd.append(f"--java-home={java_exe_match.group(1)}")
             if barista_workload is not None:
                 barista_cmd.append(f"--config={barista_workload}")
