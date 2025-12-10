@@ -52,7 +52,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
     @Override
     public JavaTypeProfile getTypeProfile(int bci) {
         final var typeProfile = methodProfile.getTypeProfile(bci);
-        if (Assertions.assertionsEnabled()) {
+        if (Assertions.assertionsEnabled() && typeProfile != null) {
             for (var entry : typeProfile.getTypes()) {
                 final double p = entry.getProbability();
                 assert !Double.isNaN(p) && !Double.isInfinite(p) : Assertions.errorMessage("Invalid recorded type probability", p, entry.getType(),
