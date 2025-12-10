@@ -34,6 +34,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
@@ -41,6 +42,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.word.Word;
@@ -87,12 +89,23 @@ public class ThreadStackPrinter {
     public static class StackFramePrintVisitor extends ParameterizedStackFrameVisitor {
         private static final int MAX_STACK_FRAMES_PER_THREAD_TO_PRINT = 100_000;
 
-        private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
+        private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor;
         private int invocationCount;
         private int printedFrames;
         private Pointer expectedSP;
 
         public StackFramePrintVisitor() {
+            FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator;
+            if (InterpreterSupport.isEnabled()) {
+                /*
+                 * This helps print interpreter frames: InterpreterSupportImpl needs value info for
+                 * the method and bci.
+                 */
+                valueInfoAllocator = new CodeInfoDecoder.SingleShotValueInfoAllocator();
+            } else {
+                valueInfoAllocator = CodeInfoDecoder.DummyValueInfoAllocator.SINGLETON;
+            }
+            frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor(valueInfoAllocator);
         }
 
         @SuppressWarnings("hiding")
@@ -160,7 +173,7 @@ public class ThreadStackPrinter {
                 boolean isCompilationRoot = frame.getCaller() == null;
                 printFrameIdentifier(log, Word.nullPointer(), deoptFrame, isCompilationRoot, false);
                 logFrameRaw(log, sp, ip, deoptFrame.getSourceTotalFrameSize());
-                logFrameInfo(log, frame.getFrameInfo(), ImageCodeInfo.CODE_INFO_NAME + ", deopt");
+                logFrameInfo(log, frame.getFrameInfo(), ImageCodeInfo.CODE_INFO_NAME + ", deopt", sp);
                 if (!isCompilationRoot) {
                     log.newline();
                 }
@@ -202,7 +215,7 @@ public class ThreadStackPrinter {
             logJavaFrameMinimalInfo(log, sp, ip, codeInfo, null, isCompilationRoot);
 
             String codeInfoName = DeoptimizationSupport.enabled() ? CodeInfoAccess.getName(codeInfo) : null;
-            logFrameInfo(log, frameInfo, codeInfoName);
+            logFrameInfo(log, frameInfo, codeInfoName, sp);
         }
 
         private void logJavaFrameMinimalInfo(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot) {
@@ -261,11 +274,14 @@ public class ThreadStackPrinter {
             log.string("IP ").zhex(ip);
         }
 
-        private static void logFrameInfo(Log log, FrameInfoQueryResult frameInfo, String runtimeMethodInfoName) {
+        private void logFrameInfo(Log log, FrameInfoQueryResult frameInfo, String runtimeMethodInfoName, Pointer sp) {
             if (runtimeMethodInfoName != null) {
                 log.string("[").string(runtimeMethodInfoName).string("] ");
             }
             frameInfo.log(log);
+            if (InterpreterSupport.isEnabled() && invocationCount == 1 && InterpreterSupport.singleton().isInterpreterRoot(frameInfo)) {
+                InterpreterSupport.singleton().logInterpreterFrame(log, frameInfo, sp);
+            }
         }
 
         private static void printFrameIdentifier(Log log, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot, boolean isNative) {

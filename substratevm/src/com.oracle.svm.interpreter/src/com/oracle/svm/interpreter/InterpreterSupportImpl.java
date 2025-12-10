@@ -36,9 +36,14 @@ import org.graalvm.word.SignedWord;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 
 import jdk.graal.compiler.word.Word;
@@ -46,6 +51,8 @@ import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class InterpreterSupportImpl extends InterpreterSupport {
+    private static final int MAX_SYMBOL_LOG_LENGTH = 255;
+
     private final int bciSlot;
     private final int interpretedMethodSlot;
     private final int interpretedFrameSlot;
@@ -133,6 +140,93 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return new InterpreterFrameSourceInfo(intrinsicClass, sourceMethodName, LINENUMBER_NATIVE, -1, intrinsicMethod, interpreterFrame);
         }
         throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp) {
+        if (isInterpreterIntrinsicRoot(frameInfo)) {
+            logInterpreterIntrinsicFrame(log, frameInfo, sp);
+        } else if (isInterpreterBytecodeRoot(frameInfo)) {
+            logInterpreterBytecodeFrame(log, frameInfo, sp);
+        } else {
+            throw VMError.shouldNotReachHereAtRuntime();
+        }
+    }
+
+    private void logInterpreterBytecodeFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp) {
+        if (!frameInfo.hasLocalValueInfo()) {
+            log.string("  missing local value info (bytecode)");
+            return;
+        }
+        InterpreterResolvedJavaMethod interpretedMethod = readInterpretedMethod(frameInfo, sp);
+        if (interpretedMethod == null) {
+            log.string("  no interpreter method (bytecode)");
+            return;
+        }
+        int bci = readBCI(frameInfo, sp);
+        logInterpreterMethod(log, interpretedMethod, bci);
+    }
+
+    private void logInterpreterIntrinsicFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp) {
+        if (!frameInfo.hasLocalValueInfo()) {
+            log.string("  missing local value info (intrinsic)");
+            return;
+        }
+        InterpreterResolvedJavaMethod intrinsicMethod = readIntrinsicMethod(frameInfo, sp);
+        if (intrinsicMethod == null) {
+            log.string("  no interpreter method (intrinsic)");
+            return;
+        }
+        logInterpreterMethod(log, intrinsicMethod, -1);
+    }
+
+    private static void logInterpreterMethod(Log log, InterpreterResolvedJavaMethod interpretedMethod, int bci) {
+        String sourceHolderName = interpretedMethod.getDeclaringClass().getJavaClass().getName();
+        Symbol<Name> sourceMethodName = interpretedMethod.getSymbolicName();
+        LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
+        int sourceLineNumber = -1; // unknown
+        if (lineNumberTable != null && bci >= 0) {
+            sourceLineNumber = lineNumberTable.getLineNumber(bci);
+        }
+        log.spaces(2);
+        log.string(sourceHolderName);
+        log.character('.');
+        logSymbol(log, sourceMethodName);
+        String sourceFileName = interpretedMethod.getDeclaringClass().getSourceFileName();
+        if (sourceFileName == null && sourceLineNumber >= 0) {
+            sourceFileName = "Unknown Source";
+        }
+        if (sourceFileName != null) {
+            log.character('(');
+            log.string(sourceFileName);
+            if (sourceLineNumber >= 0) {
+                log.string(":");
+                log.signed(sourceLineNumber);
+            }
+            log.character(')');
+        }
+        if (bci >= 0) {
+            log.spaces(1);
+            log.string("@bci ");
+            log.signed(bci);
+        }
+    }
+
+    private static void logSymbol(Log log, ByteSequence byteSequence) {
+        int length = Math.min(byteSequence.length(), MAX_SYMBOL_LOG_LENGTH);
+        for (int i = 0; i < length; i++) {
+            int b = byteSequence.unsignedByteAt(i);
+            if (0x20 <= b && b <= 0x7e) {
+                // only log printable ascii
+                log.character((char) b);
+            } else {
+                log.character('?');
+            }
+        }
+        if (byteSequence.length() > MAX_SYMBOL_LOG_LENGTH) {
+            log.string("...");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
