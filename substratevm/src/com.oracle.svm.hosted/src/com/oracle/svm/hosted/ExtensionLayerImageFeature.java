@@ -33,7 +33,6 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -49,6 +48,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.InitialLayerFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
