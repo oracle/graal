@@ -530,7 +530,7 @@ public class JNIAccessFeature implements Feature {
     @Override
     @SuppressWarnings("unused")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        runtimeSupport.sealed();
+        runtimeSupport.seal();
         if (wereElementsAdded()) {
             runtimeSupport.abortIfSealed();
         }

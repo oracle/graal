@@ -717,7 +717,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        accessSupport.sealed();
+        accessSupport.seal();
         if (!ForeignFunctionsRuntime.areFunctionCallsSupported() && stubsRegistered) {
             assert getCreatedDowncallStubsCount() == 0;
             assert getCreatedUpcallStubsCount() == 0;
