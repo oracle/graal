@@ -24,24 +24,19 @@ package com.oracle.truffle.espresso.ffi;
 
 import java.nio.file.Path;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.libs.Lib;
 import com.oracle.truffle.espresso.libs.Libs;
 import com.oracle.truffle.espresso.libs.SubstitutionFactoryWrapper;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
-
-import sun.misc.Unsafe;
 
 /**
  * Uses Espresso's implementation of standard JDK libraries, falling back to a delegate if the
@@ -68,11 +63,6 @@ import sun.misc.Unsafe;
 public class EspressoLibsNativeAccess extends ContextAccessImpl implements NativeAccess {
 
     private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoLibsNativeAccess.class);
-    /*
-     * Temporarily used for off-heap memory access. Will be removed with the memory virtualization
-     * (GR-70643)
-     */
-    private static final Unsafe UNSAFE = UnsafeAccess.get();
 
     private static TruffleLogger getLogger() {
         return logger;
@@ -188,52 +178,6 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     }
 
     @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        // Will be removed with the memory virtualization (GR-70643)
-        long address = 0L;
-        try {
-            address = UNSAFE.allocateMemory(size);
-        } catch (OutOfMemoryError e) {
-            return null;
-        }
-        return TruffleByteBuffer.wrap(RawPointer.create(address), Math.toIntExact(size));
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        // Will be removed with the memory virtualization (GR-70643)
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        long oldAddress = 0L;
-        try {
-            oldAddress = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        long newAddress = 0L;
-        try {
-            newAddress = UNSAFE.reallocateMemory(oldAddress, newSize);
-        } catch (OutOfMemoryError e) {
-            return null;
-        }
-        return TruffleByteBuffer.wrap(RawPointer.create(newAddress), Math.toIntExact(newSize));
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        // Will be removed with the memory virtualization (GR-70643)
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        long address = 0L;
-        try {
-            address = InteropLibrary.getUncached().asPointer(buffer);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        UNSAFE.freeMemory(address);
-    }
-
-    @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
         return delegate.createNativeClosure(executable, nativeSignature);
     }
@@ -241,6 +185,11 @@ public class EspressoLibsNativeAccess extends ContextAccessImpl implements Nativ
     @Override
     public void prepareThread() {
         delegate.prepareThread();
+    }
+
+    @Override
+    public NativeMemory nativeMemory() {
+        return delegate.nativeMemory();
     }
 
     @TruffleBoundary

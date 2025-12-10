@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.libs.libjava.impl;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+
 import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 
@@ -157,16 +159,27 @@ public final class Target_java_lang_ClassLoader {
         // retrieve the GuestBuffer as Array
         @Pointer
         TruffleObject dataAddrPointer = ctx.getJNI().GetDirectBufferAddress(data);
-        ByteBuffer dataBuffer = NativeUtils.directByteBuffer(dataAddrPointer, len + off);
+        /*
+         * This refers to a NativeMemory address since the guest ByteBuffer was allocated using
+         * Unsafe.allocateMemory which we substitute to go through native memory.
+         */
+        long rawDataPtr = NativeUtils.interopAsPointer(dataAddrPointer);
+        byte[] buf = new byte[len];
+        // reads the memory in the buffer in plain mode (as does the native function).
+        try {
+            ctx.getNativeAccess().nativeMemory().readMemory(rawDataPtr + off, buf);
+        } catch (IllegalMemoryAccessException e) {
+            /*
+             * If we reach here it indicate we try to read outside the boundaries of the allocated
+             * directBuffer which suggests an IndexOutOfBoundsException.
+             */
+            throw ctx.getMeta().throwIndexOutOfBoundsExceptionBoundary("ByteBuffer", off, len);
+        }
 
         Symbol<Type> type = null;
         if (StaticObject.notNull(name)) {
             type = ctx.getVM().nameToInternal(toSlashName(ctx.getMeta().toHostString(name)));
         }
-
-        // read into array
-        byte[] buf = new byte[len];
-        dataBuffer.get(off, buf);
 
         return ctx.getVM().defineClass(type, loader, pd, buf);
 

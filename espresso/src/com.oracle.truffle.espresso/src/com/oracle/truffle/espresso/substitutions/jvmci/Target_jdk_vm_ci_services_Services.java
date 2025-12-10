@@ -22,16 +22,21 @@
  */
 package com.oracle.truffle.espresso.substitutions.jvmci;
 
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
+import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAllocationException;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -53,7 +58,7 @@ final class Target_jdk_vm_ci_services_Services {
     @Substitution
     @TruffleBoundary
     public static long readSystemPropertiesInfo(@JavaType(int[].class) StaticObject offsets,
-                    @Inject EspressoLanguage language, @Inject EspressoContext context) {
+                    @Inject EspressoLanguage language, @Inject EspressoContext context, @Inject Meta meta) {
         checkJVMCIAvailable(context.getLanguage());
         int[] unwrappedOffsets = offsets.unwrap(language);
         unwrappedOffsets[0] = NODE_STRUCT_NEXT_OFFSET;
@@ -91,9 +96,21 @@ final class Target_jdk_vm_ci_services_Services {
         }
 
         // Allocate the buffer
-        TruffleObject allocated = context.getNativeAccess().allocateMemory(size);
-        long ptr = NativeUtils.interopAsPointer(allocated);
-        ByteBuffer buffer = NativeUtils.directByteBuffer(ptr, size);
+        NativeMemory nativeMemory = context.getNativeAccess().nativeMemory();
+        long ptr = 0;
+        try {
+            ptr = nativeMemory.allocateMemory(size);
+        } catch (MemoryAllocationException e) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage(), context);
+        }
+        ByteBuffer buffer;
+        try {
+            buffer = NativeUtils.wrapNativeMemory(ptr, size, nativeMemory);
+        } catch (IllegalMemoryAccessException e) {
+            // we should not reach here since we have just a moment ago successfully allocated ptr.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
         for (i = 0; i < keys.length; i++) {
             /* Layout:
              * @formatter:off
