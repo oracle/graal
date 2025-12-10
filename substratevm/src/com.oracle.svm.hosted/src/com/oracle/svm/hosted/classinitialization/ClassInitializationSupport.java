@@ -217,7 +217,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Returns the computed init kind for {@code clazz}, which can differ from the configured init
      * kind returned by {@link #specifiedInitKindFor(Class)}.
      */
-    InitKind computedInitKindFor(Class<?> clazz) {
+    public InitKind computedInitKindFor(Class<?> clazz) {
         return classInitKinds.get(clazz);
     }
 
