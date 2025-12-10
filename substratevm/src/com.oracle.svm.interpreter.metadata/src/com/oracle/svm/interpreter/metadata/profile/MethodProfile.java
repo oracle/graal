@@ -32,11 +32,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -433,7 +433,7 @@ public final class MethodProfile {
                 if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
                     return;
                 } else {
-                    throw GraalError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profile update");
+                    throw VMError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profile update");
                 }
             }
         }
