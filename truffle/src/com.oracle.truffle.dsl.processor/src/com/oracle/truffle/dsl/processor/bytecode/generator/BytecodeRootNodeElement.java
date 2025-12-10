@@ -875,6 +875,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
             b.end();
              */
+            b.startIf().string("frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+            b.lineComment("The bci index might be illegal if it was never set due to optimizations.");
+            b.statement("return -1");
+            b.end();
             b.startReturn();
             b.startCall("frame.getInt").string("BCI_INDEX").end();
             b.end();

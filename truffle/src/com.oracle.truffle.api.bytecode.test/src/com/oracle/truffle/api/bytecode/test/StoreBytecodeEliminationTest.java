@@ -45,9 +45,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -63,6 +67,7 @@ import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -154,6 +159,28 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
         assertSingletonNode(nodeArgument);
         assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
+    }
+
+    /*
+     * This tests that if the frame update was optimized out, that capture stack does not fail, but
+     * instead returns -1 as bytecode index.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testClearBci() {
+        StoreBytecodeEliminationRootNode root = parseNode((StoreBytecodeEliminationRootNodeGen.Builder b) -> {
+            b.beginRoot();
+            b.emitClearBCI();
+            b.beginReturn();
+            b.emitCaptureStack();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        root.getBytecodeNode().setUncachedThreshold(0);
+
+        List<TruffleStackTraceElement> t = (List<TruffleStackTraceElement>) root.getCallTarget().call();
+        assertEquals(-1, t.get(0).getBytecodeIndex());
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, enableSpecializationIntrospection = true)
@@ -267,6 +294,36 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
                 return readBCI(frame);
             }
 
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        public static final class ClearBCI {
+
+            @Specialization
+            public static void doDefault(VirtualFrame f) {
+                f.clear(BCI_INDEX);
+            }
+
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        @SuppressWarnings("unused")
+        public static final class CaptureStack {
+
+            @Specialization
+            @TruffleBoundary
+            public static Object doDefault(@Bind Node node) {
+                return TruffleStackTrace.getStackTrace(new TestException(node));
+            }
+
+        }
+
+    }
+
+    @SuppressWarnings("serial")
+    static class TestException extends AbstractTruffleException {
+        TestException(Node node) {
+            super(node);
         }
 
     }
