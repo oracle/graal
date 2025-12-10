@@ -202,6 +202,23 @@ public final class MethodProfile {
         }
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder(256);
+        sb.append("MethodProfile{method=").append(method.toString());
+        sb.append(", mature=").append(isMature);
+        sb.append(", profileCount=").append(profiles.length);
+        sb.append(", profiles=[");
+        for (int i = 0; i < profiles.length; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(profiles[i]);
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
     public abstract static class InterpreterProfile {
         protected final int bci;
 
@@ -235,6 +252,10 @@ public final class MethodProfile {
         }
     }
 
+    /**
+     * Abstraction for a binary branch profile for bytecode if instructions. In compiled code
+     * normally represented by {@link jdk.graal.compiler.nodes.IfNode}.
+     */
     public static class BranchProfile extends CountingProfile {
         private long takenCounter;
 
@@ -271,9 +292,20 @@ public final class MethodProfile {
         }
     }
 
+    /**
+     * Abstraction for a type profile for bytecode instructions based on types: invokes, type
+     * checks, etc. Abstraction is generic to record any set of types together with their count and
+     * a {@link JavaTypeProfile#getNotRecordedProbability() not recorded probability}. In compiled
+     * code normally represented as a {@link JavaTypeProfile} attached to a
+     * {@link jdk.graal.compiler.nodes.java.MethodCallTargetNode}.
+     */
     public static class TypeProfile extends CountingProfile {
+
+        private static final AtomicLongFieldUpdater<TypeProfile> PROFILING_STATE_UPDATER = AtomicLongFieldUpdater.newUpdater(TypeProfile.class, "state");
+
         /**
-         * All types profiled.
+         * List of profiled types. Initially allocated to a fixed size and filled lazily during
+         * profiling.
          */
         private final ResolvedJavaType[] types;
 
@@ -282,14 +314,30 @@ public final class MethodProfile {
          * seen during profiling.
          */
         private final long[] counts;
+
+        /**
+         * Number of times a type was seen that could not fit into {@link #types}.
+         */
         private long notRecordedCount;
+
+        /**
+         * Next free index to use when lazily filling {@link #types}. {@link #typesSaturated()}
+         * determines if there is space for additional types.
+         */
         private volatile int nextFreeSlot;
 
         // value of state is 0 if the state is READING, else it holds the id of the currently
         // writing thread
+        /**
+         * Synchronization mechanism for lazily filling types. If {@link #typesSaturated()} returns
+         * {@code false} interpreter threads can add additional types to the profile. This
+         * potentially happens concurrently with multiple interpreter threads. In order to avoid
+         * over writing values and heavy synchronization we use CAS on the state field here to
+         * synchronize accesses. If {@code state==0} then no thread is concurrently updating the
+         * type list. If {@code state!=0} then it holds a threadID of the thread currently adding a
+         * type to the profile.
+         */
         private volatile long state;
-
-        public static final AtomicLongFieldUpdater<TypeProfile> PROFILING_STATE_UPDATER = AtomicLongFieldUpdater.newUpdater(TypeProfile.class, "state");
 
         public TypeProfile(int bci) {
             super(bci);
@@ -298,6 +346,9 @@ public final class MethodProfile {
             counts = new long[typeProfileWidth];
         }
 
+        /**
+         * See {@link JavaTypeProfile#getNotRecordedProbability()}.
+         */
         public double notRecordedProbability() {
             if (counter == 0L) {
                 return -1D;
@@ -305,9 +356,12 @@ public final class MethodProfile {
             return (double) notRecordedCount / (double) counter;
         }
 
+        /**
+         * Returns the probability of a given type in this profile.
+         */
         public double getProbability(ResolvedJavaType type) {
             if (counter == 0L) {
-                // no entry yet seen
+                // no type profiled yet
                 return -1D;
             }
             for (int i = 0; i < nextFreeSlot; i++) {
@@ -329,20 +383,28 @@ public final class MethodProfile {
                     return;
                 }
             }
-            if (nextFreeSlot >= types.length) {
+            if (typesSaturated()) {
                 // all types saturated, racy update to notRecorded
                 notRecordedCount++;
                 return;
             }
-            // type was not seen and we have space, "lock" and increment
+            // type was not seen, and we have space, "lock" and increment
             addTypeAndIncrement(type);
+        }
+
+        /**
+         * Determine if there is still space to add more types to this profile.
+         */
+        private boolean typesSaturated() {
+            return nextFreeSlot >= types.length;
         }
 
         @SuppressWarnings("finally")
         private void addTypeAndIncrement(ResolvedJavaType type) {
             final long currentThreadId = Thread.currentThread().threadId();
             assert currentThreadId != 0L : Assertions.errorMessage("ThreadID must never be 0", currentThreadId);
-            // we are adding a new type to the profile, we have to perform this under a heavy lock
+            // we are adding a new type to the profile, we have to perform this under some kind of
+            // lock, we cas on a volatile field
             while (true) {
                 if (!PROFILING_STATE_UPDATER.compareAndSet(this, 0, currentThreadId)) {
                     // try to acquire the state lock, spin if this fails until we are allowed to
@@ -354,16 +416,19 @@ public final class MethodProfile {
             }
             try {
                 /*
-                 * in the meantime its possible another thread already saturated the list of
-                 * profiles, in this case we have to add to the remaining ones
+                 * in the meantime (while waiting in the spin loop above) its possible another
+                 * thread already saturated the list of profiles, in this case we have to add to the
+                 * notRecordedCount
                  */
-                if (nextFreeSlot >= types.length) {
+                if (typesSaturated()) {
                     notRecordedCount++;
                     return;
                 }
-                types[nextFreeSlot] = type;
-                counts[nextFreeSlot]++;
-                nextFreeSlot = nextFreeSlot + 1;
+                // free space, add the new type
+                final int profileSlot = nextFreeSlot;
+                types[profileSlot] = type;
+                counts[profileSlot]++;
+                nextFreeSlot = profileSlot + 1;
             } finally {
                 if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
                     return;
@@ -371,6 +436,24 @@ public final class MethodProfile {
                     throw GraalError.shouldNotReachHere("Must always be able to set back threadID lock to 0 after profile update");
                 }
             }
+        }
+
+        public JavaTypeProfile toTypeProfile() {
+            if (nextFreeSlot == 0L || counter == 0L) {
+                // nothing recorded
+                return null;
+            }
+            // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
+            JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[nextFreeSlot];
+            for (int i = 0; i < nextFreeSlot; i++) {
+                double p = counts[i];
+                p = p / counter;
+                ptypes[i] = new JavaTypeProfile.ProfiledType(types[i], p);
+            }
+            Arrays.sort(ptypes);
+            double notRecordedTypeProbability = nextFreeSlot < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, notRecordedProbability()));
+            assert notRecordedTypeProbability == 0 || nextFreeSlot == types.length;
+            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedTypeProbability, ptypes);
         }
 
         @Override
@@ -399,24 +482,6 @@ public final class MethodProfile {
             }
             sb.append('}');
             return sb.toString();
-        }
-
-        public JavaTypeProfile toTypeProfile() {
-            if (nextFreeSlot == 0L || counter == 0L) {
-                // nothing recorded
-                return null;
-            }
-            // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
-            JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[nextFreeSlot];
-            for (int i = 0; i < nextFreeSlot; i++) {
-                double p = counts[i];
-                p = p / counter;
-                ptypes[i] = new JavaTypeProfile.ProfiledType(types[i], p);
-            }
-            Arrays.sort(ptypes);
-            double notRecordedTypeProbability = nextFreeSlot < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, notRecordedProbability()));
-            assert notRecordedTypeProbability == 0 || nextFreeSlot == types.length;
-            return new JavaTypeProfile(TriState.UNKNOWN, notRecordedTypeProbability, ptypes);
         }
     }
 }
