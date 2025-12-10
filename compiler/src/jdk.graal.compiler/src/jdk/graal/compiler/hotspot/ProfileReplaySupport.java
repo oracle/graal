@@ -226,13 +226,14 @@ public final class ProfileReplaySupport {
      * {@link Options#WarnAboutGraphSignatureMismatch}). If {@link Options#SaveProfiles} is set, the
      * method additionally saves the previously collected profiles to the given profile path.
      */
+    @SuppressWarnings("try")
     public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
                     int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {
             String codeSignature = null;
             String graphSignature = null;
             if (result != null) {
-                try {
+                try (DebugContext.Scope scope = debug.scope("ProfileReplay")) {
                     codeSignature = result.getCodeSignature();
                     assert graph != null;
                     String s = getCanonicalGraphString(graph);
@@ -252,7 +253,7 @@ public final class ProfileReplaySupport {
                 }
             }
             if (SaveProfiles.getValue(debug.getOptions())) {
-                try {
+                try (DebugContext.Scope scope = debug.scope("ProfileReplay")) {
                     EconomicMap<String, Object> map = EconomicMap.create();
                     map.put("identifier", compilationId.toString());
                     map.put("method", method.format("%H.%n(%P)%R"));
