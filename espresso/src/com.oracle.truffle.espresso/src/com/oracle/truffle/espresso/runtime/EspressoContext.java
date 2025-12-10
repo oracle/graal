@@ -333,10 +333,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     }
 
     public void initializeContext() throws ContextPatchingException {
-        EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
-                        "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
-                                        "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true). If you are attempting to pre-initialize " +
-                                        "an Espresso context, allow native access for pre-initialized languages through Truffle's image-build-time options.");
+        if (!getEnv().isNativeAccessAllowed()) {
+            getLogger().info("NativeAccess is not allowed. Functionality is limited (e.g. there is no access to LibAWT)!");
+        }
         assert !this.initialized;
         startupClockNanos = System.nanoTime();
 

@@ -241,9 +241,9 @@ public final class TruffleIO implements ContextAccess {
      *             The exception will have the same guest type as the host exception that happened.
      */
     @TruffleBoundary
-    public TruffleFile getPublicTruffleFileSafe(String path) {
+    public TruffleFile getInternalTruffleFile(String path) {
         try {
-            return context.getEnv().getPublicTruffleFile(path);
+            return context.getEnv().getInternalTruffleFile(path);
         } catch (UnsupportedOperationException e) {
             throw Throw.throwUnsupported(e.getMessage(), context);
         } catch (SecurityException e) {
@@ -1325,7 +1325,7 @@ public final class TruffleIO implements ContextAccess {
     }
 
     private int open(String path, Set<? extends OpenOption> options) {
-        return open(getPublicTruffleFileSafe(path), options);
+        return open(getInternalTruffleFile(path), options);
     }
 
     private int nextFreeFd() {

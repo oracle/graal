@@ -338,7 +338,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         if (env.getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
             String userNativeBackend = env.getOptions().get(EspressoOptions.NativeBackend);
             if (!isAllowed && !userNativeBackend.equals(nativeBackend)) {
-                throw EspressoError.fatal("trying to set NativeBackend even though NativeAccess is disabled");
+                throw EspressoError.fatal("trying to set NativeBackend to: " + userNativeBackend + ", even though NativeAccess is disabled");
             }
             return userNativeBackend;
 
