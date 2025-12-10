@@ -516,10 +516,9 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                     initializeKnownClass(type);
                 }
             }
-
             if (meta.jdk_internal_misc_UnsafeConstants != null) {
                 initializeKnownClass(Types.jdk_internal_misc_UnsafeConstants);
-                UnsafeAccess.initializeGuestUnsafeConstants(meta);
+                UnsafeAccess.initializeGuestUnsafeConstants(meta, nativeAccess.nativeMemory());
             }
 
             // Create main thread as soon as Thread class is initialized.

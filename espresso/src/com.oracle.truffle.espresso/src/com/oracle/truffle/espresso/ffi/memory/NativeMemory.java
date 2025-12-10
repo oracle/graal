@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.ffi.memory;
 
 import java.io.Serial;
+import java.lang.foreign.MemoryLayout;
 import java.nio.ByteBuffer;
 
 /**
@@ -446,6 +447,44 @@ public interface NativeMemory {
         }
     }
 
+    /**
+     * Report the size in bytes of a native pointer, as stored via {@link #putAddress}. This value
+     * will be either 4 or 8. Note that the sizes of other primitive types (as stored in native
+     * memory blocks) is determined fully by their information content.
+     */
+    default int addressSize() {
+        return 8;
+    }
+
+    /**
+     * Fetches a native pointer from a given memory address. If the address is zero, or does not
+     * point into a block obtained from {@link #allocateMemory}, the results are undefined.
+     *
+     * <p>
+     * If the native pointer is less than 64 bits wide, it is extended as an unsigned number to a
+     * Java long. The pointer may be indexed by any given byte offset, simply by adding that offset
+     * (as a simple integer) to the long representing the pointer. The number of bytes actually read
+     * from the target address maybe determined by consulting
+     * {@link java.lang.foreign.ValueLayout#ADDRESS} and using its {@link MemoryLayout#byteSize()}
+     *
+     * @see #allocateMemory
+     */
+    default long getAddress(long address) throws IllegalMemoryAccessException {
+        return getLong(address, MemoryAccessMode.PLAIN);
+    }
+
+    /**
+     * Stores a native pointer into a given memory address. If the address is zero, or does not
+     * point into a block obtained from {@link #allocateMemory}, the results are undefined. The
+     * number of bytes actually read from the target address maybe determined by consulting
+     * {@link java.lang.foreign.ValueLayout#ADDRESS} and using its {@link MemoryLayout#byteSize()}
+     *
+     * @see #getAddress
+     */
+    default void putAddress(long toAddress, long value) throws IllegalMemoryAccessException {
+        putLong(toAddress, value, MemoryAccessMode.PLAIN);
+    }
+
     interface Provider {
         /**
          * @return the name of the nativeMemory
@@ -478,6 +517,12 @@ public interface NativeMemory {
 
         public IllegalMemoryAccessException(String message) {
             super(message);
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public final Throwable fillInStackTrace() {
+            return this;
         }
     }
 

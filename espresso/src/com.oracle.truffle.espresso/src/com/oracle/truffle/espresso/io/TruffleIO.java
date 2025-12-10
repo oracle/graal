@@ -23,9 +23,7 @@
 package com.oracle.truffle.espresso.io;
 
 import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.IllegalMemoryAccessException;
-import static com.oracle.truffle.espresso.ffi.memory.NativeMemory.MemoryAccessMode;
 import static com.oracle.truffle.espresso.libs.libnio.impl.Target_sun_nio_ch_IOUtil.FD_LIMIT;
-import static com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.ADDRESS_SIZE;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -1419,8 +1417,8 @@ public final class TruffleIO implements ContextAccess {
     }
 
     private AddressLengthPair[] extractAddressLengthPairs(long address, int len, NativeMemory nativeMemory) {
-        int lenOffset = ADDRESS_SIZE;
-        int sizeOfIOVec = (short) (ADDRESS_SIZE * 2);
+        int lenOffset = nativeMemory.addressSize();
+        int sizeOfIOVec = (short) (nativeMemory.addressSize() * 2);
         long curIOVecAddr = address;
         long nextAddr;
         long nextLen;
@@ -1428,13 +1426,8 @@ public final class TruffleIO implements ContextAccess {
         AddressLengthPair[] addressLengthPairs = new AddressLengthPair[len];
         for (int i = 0; i < len; i++) {
             try {
-                if (ADDRESS_SIZE == 4) {
-                    nextAddr = nativeMemory.getInt(curIOVecAddr, MemoryAccessMode.PLAIN);
-                    nextLen = nativeMemory.getInt(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
-                } else {
-                    nextAddr = nativeMemory.getLong(curIOVecAddr, MemoryAccessMode.PLAIN);
-                    nextLen = nativeMemory.getLong(curIOVecAddr + lenOffset, MemoryAccessMode.PLAIN);
-                }
+                nextAddr = nativeMemory.getAddress(curIOVecAddr);
+                nextLen = nativeMemory.getAddress(curIOVecAddr + lenOffset);
             } catch (IllegalMemoryAccessException e) {
                 throw Throw.throwIOException("Invalid memory access: Trying to access memory outside the allocated region", getContext());
             }

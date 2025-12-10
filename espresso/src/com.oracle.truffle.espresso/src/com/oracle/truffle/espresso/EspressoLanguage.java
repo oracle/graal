@@ -151,7 +151,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean internalJvmciEnabled;
     @CompilationFinal private boolean externalJvmciEnabled;
     @CompilationFinal private boolean useEspressoLibs;
-    @CompilationFinal private boolean enableNetworking;
+    @CompilationFinal private boolean checkUnsafeArrayBounds;
     @CompilationFinal private boolean continuum;
     @CompilationFinal private String nativeBackendId;
     @CompilationFinal private boolean useTRegex;
@@ -271,6 +271,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         };
         this.nativeBackendId = setNativeBackendId(env);
         this.useEspressoLibs = setUseEspressoLibs(env);
+        this.checkUnsafeArrayBounds = setCheckUnsafeArrayBounds(env);
         assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
@@ -374,6 +375,23 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         }
     }
 
+    private boolean setCheckUnsafeArrayBounds(final TruffleLanguage.Env env) {
+        /*
+         * For no-native we turn on CheckUnsafeArrayBounds by default! If EspressoLibs is enabled
+         * with native access allowed we will NOT check array bounds by default.
+         */
+        boolean flagSet = env.getOptions().hasBeenSet(EspressoOptions.CheckUnsafeArrayBounds);
+        boolean userFlag = env.getOptions().get(EspressoOptions.CheckUnsafeArrayBounds);
+        if (nativeBackendId.equals(NoNativeAccess.Provider.ID)) {
+            if (flagSet && !userFlag) {
+                throw EspressoError.fatal("Array bounds in Unsafe must be checked in no-native mode!");
+            }
+            return true;
+        } else {
+            return userFlag;
+        }
+    }
+
     @Override
     protected boolean patchContext(EspressoContext context, Env newEnv) {
         // This check has to be done manually as long as language uses exclusive context sharing
@@ -408,6 +426,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseTRegex) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.UseEspressoLibs) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.CheckUnsafeArrayBounds) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.NativeBackend) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.MaxJavaStackTraceDepth);
     }
@@ -661,6 +680,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean useEspressoLibs() {
         return useEspressoLibs;
+    }
+
+    @Idempotent
+    public boolean checkUnsafeArrayBounds() {
+        return checkUnsafeArrayBounds;
     }
 
     public String nativeBackendId() {
