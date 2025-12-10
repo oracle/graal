@@ -562,7 +562,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     public void afterAnalysis() {
-        sealed();
+        seal();
     }
 
     private static void registerForDeserialization(AccessCondition cnd, boolean preserved, Class<?> serializationTargetClass) {

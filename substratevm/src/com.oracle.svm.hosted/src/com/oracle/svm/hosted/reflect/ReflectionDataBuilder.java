@@ -990,7 +990,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     void afterAnalysis() {
-        sealed();
+        seal();
         processedTypes = null;
     }
 
