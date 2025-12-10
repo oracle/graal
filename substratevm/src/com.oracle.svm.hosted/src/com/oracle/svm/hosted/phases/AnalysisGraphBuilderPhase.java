@@ -30,10 +30,9 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.WrongMethodTypeException;
 import java.util.List;
 
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
 import com.oracle.svm.util.ModuleSupport;
@@ -169,8 +168,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             }
             JavaMethod calleeMethod = lookupMethodInPool(cpi, opcode);
 
-            if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod ||
-                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
+            if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod || BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(bootstrap.getMethod())) {
                 super.genInvokeDynamic(cpi, opcode);
                 return;
             }
