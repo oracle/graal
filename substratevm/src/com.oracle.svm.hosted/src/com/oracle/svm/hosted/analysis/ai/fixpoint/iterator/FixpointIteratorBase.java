@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analysis.context.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.BasicIteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
@@ -12,7 +12,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -76,8 +76,6 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     protected void extrapolate(Node node) {
         var state = abstractState.getNodeState(node);
         int visitedAmount = iteratorContext.getNodeVisitCount(node);
-        logger.log("Before extrapolation: pre = " + abstractState.getPreCondition(node), LoggerVerbosity.DEBUG);
-        logger.log("Before extrapolation: post = " + abstractState.getPostCondition(node), LoggerVerbosity.DEBUG);
 
         var newPre = abstractState.getPreCondition(node).copyOf();
         IteratorPolicy policy = analysisContext.getIteratorPolicy();

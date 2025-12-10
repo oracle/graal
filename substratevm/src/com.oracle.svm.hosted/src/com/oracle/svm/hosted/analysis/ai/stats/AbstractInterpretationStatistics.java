@@ -1,13 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai.stats;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Aggregates high-level statistics for an abstract interpretation run and any checker/applier
@@ -16,7 +17,7 @@ import java.util.StringJoiner;
 public class AbstractInterpretationStatistics {
     // TODO: maybe we should think about how to print the method filter statistics perhaps
     private final EnumMap<OptimizationKind, Integer> globalOptCounters = new EnumMap<>(OptimizationKind.class);
-    private final Map<AnalysisMethod, MethodStats> methodStats = new LinkedHashMap<>();
+    private final ConcurrentHashMap<AnalysisMethod, MethodStats> methodStats = new ConcurrentHashMap<>();
 
     public static final class MethodStats {
         public final EnumMap<OptimizationKind, Integer> optCounters = new EnumMap<>(OptimizationKind.class);

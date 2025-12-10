@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
@@ -58,8 +58,9 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         logger.log("Collecting invariants predecessors for node: " + node, LoggerVerbosity.DEBUG);
         GraphTraversalHelper graphTraversalHelper = context.getGraphTraversalHelper();
         HIRBlock currentBlock = context.getBlockForNode(node);
+        assert currentBlock != null;
 
-        // Node is considered initially unreachable unless it is a graph entry with no predecessors.
+        /* Node is considered initially unreachable unless it is a graph entry with no predecessors. */
         int predecessorCount = graphTraversalHelper.getPredecessorCount(currentBlock);
         NodeState.NodeMark aggregateMark = predecessorCount == 0 ? NodeState.NodeMark.NORMAL : NodeState.NodeMark.UNREACHABLE;
         NodeState<Domain> nodeState = abstractState.getNodeState(node);
@@ -67,15 +68,16 @@ public record AbstractTransformer<Domain extends AbstractDomain<Domain>>(
         for (int i = 0; i < predecessorCount; i++) {
             HIRBlock predBlock = graphTraversalHelper.getPredecessorAt(currentBlock, i);
             Node predecessor = graphTraversalHelper.getEndNode(predBlock);
+
             context.setEdgeTraversal(predBlock, currentBlock);
             logger.log("  Processing edge: " + predBlock + " -> " + currentBlock, LoggerVerbosity.DEBUG);
 
-            // Skip edges coming from unreachable predecessors.
+            /* Skip edges coming from unreachable predecessors. */
             if (predecessor == null || abstractState.getNodeState(predecessor).isUnreachable()) {
                 continue;
             }
 
-            // Reset mark for this edge traversal and let execEdge potentially mark it unreachable.
+            /* Reset mark for this edge traversal and let execEdge potentially mark it unreachable. */
             nodeState.setMark(NodeState.NodeMark.NORMAL);
             analyzeEdge(predecessor, node, abstractState, context);
 

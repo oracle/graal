@@ -2,18 +2,17 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
-import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
-import com.oracle.svm.hosted.analysis.ai.analyzer.mode.IntraAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analysis.Analyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.AnalyzerManager;
+import com.oracle.svm.hosted.analysis.ai.analysis.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 
 import java.util.List;
 
@@ -60,7 +59,7 @@ public class AbstractInterpretationEngine {
     private void executeIntraProceduralAnalysis(IntraProceduralAnalyzer<?> analyzer) {
         var logger = AbstractInterpretationLogger.getInstance();
         IntraAnalyzerMode mode = analyzer.getAnalyzerMode();
-        if (mode == IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY && analysisRoot != null) {
+        if (mode == IntraAnalyzerMode.ANALYZE_MAIN_ENTRYPOINT_ONLY) {
             logger.log("Running intraprocedural analyzer on the main entry point only", LoggerVerbosity.INFO);
             analyzer.runAnalysis(analysisRoot);
             return;
@@ -74,11 +73,12 @@ public class AbstractInterpretationEngine {
         var logger = AbstractInterpretationLogger.getInstance();
         InterAnalyzerMode mode = analyzer.getAnalyzerMode();
 
-        if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT && analysisRoot != null) {
+        if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT) {
             logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
             analyzer.runAnalysis(analysisRoot);
         } else {
             logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
+            analyzer.runAnalysis(analysisRoot);
             for (var method : rootMethods) {
                 analyzer.runAnalysis(method);
             }

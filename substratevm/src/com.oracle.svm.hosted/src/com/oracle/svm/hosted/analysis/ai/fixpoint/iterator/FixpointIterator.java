@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 
 /**
  * API for a fixpoint iterator in abstract interpretation.

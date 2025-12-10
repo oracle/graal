@@ -8,7 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.MethodSummary;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -28,7 +28,6 @@ public final class CheckerManager {
     @SuppressWarnings("unchecked")
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log(String.valueOf(abstractState), LoggerVerbosity.DEBUG);
         var stats = AbstractInterpretationServices.getInstance().getStats();
         List<Fact> allFacts = new ArrayList<>();
 

@@ -1,0 +1,42 @@
+package com.oracle.svm.hosted.analysis.ai.analysis.methodfilter;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A wrapper around a list of {@link AnalysisMethodFilter}s.
+ */
+public final class AnalysisMethodFilterManager {
+
+    private final List<AnalysisMethodFilter> filters;
+
+    public AnalysisMethodFilterManager() {
+        this.filters = new ArrayList<>();
+    }
+
+    /**
+     * Adds a new filter to the manager.
+     *
+     * @param filter the filter to add
+     */
+    public void addMethodFilter(AnalysisMethodFilter filter) {
+        filters.add(filter);
+    }
+
+    /**
+     * Checks if the given analysisMethod should be skipped based on the registered filters.
+     *
+     * @param method the analysisMethod to check
+     * @return true if the analysisMethod should be skipped, false otherwise
+     */
+    public boolean shouldSkipMethod(AnalysisMethod method) {
+        for (AnalysisMethodFilter filter : filters) {
+            if (filter.shouldSkipMethod(method)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

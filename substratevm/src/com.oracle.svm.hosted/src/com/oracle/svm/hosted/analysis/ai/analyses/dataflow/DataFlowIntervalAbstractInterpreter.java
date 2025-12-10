@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyses.dataflow;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
-import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeInput;
+import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeInput;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AccessPath;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AliasSet;
@@ -13,7 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -50,8 +50,6 @@ import jdk.graal.compiler.nodes.calc.RightShiftNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.LoopBeginNode;
-import jdk.graal.compiler.nodes.LoopEndNode;
-import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
@@ -77,25 +75,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     @Override
     public void execEdge(Node source, Node target, AbstractState<AbstractMemory> abstractState, IteratorContext iteratorContext) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.log("Executing edge from: " + source + " -> " + target, LoggerVerbosity.DEBUG);
         AbstractMemory sourcePost = abstractState.getPostCondition(source);
         AbstractMemory destPre = abstractState.getPreCondition(target);
-
-        logger.log("Source post: " + sourcePost, LoggerVerbosity.DEBUG);
-        logger.log("Dest pre: " + destPre, LoggerVerbosity.DEBUG);
-        if (target instanceof LoopExitNode exit) {
-            LoopBeginNode lb = exit.loopBegin();
-            AbstractMemory acc = sourcePost.copyOf();
-            for (LoopEndNode le : lb.loopEnds()) {
-                AbstractMemory lePost = abstractState.getPostCondition(le);
-                if (lePost != null) {
-                    acc.joinWith(lePost);
-                }
-            }
-            abstractState.getPreCondition(target).joinWith(acc);
-            return;
-        }
-
         if (source instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
             IntInterval res = getNodeResultInterval(ifNode, sourcePost);
@@ -151,12 +132,10 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 return;
             }
 
-            // Unknown condition: just propagate
-            destPre.joinWith(sourcePost);
             return;
         }
 
-        // Non-If edges: standard propagation
+        /* Non-If edges: standard propagation */
         destPre.joinWith(sourcePost);
     }
 
@@ -339,6 +318,14 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             var invokeLogger = AbstractInterpretationLogger.getInstance();
             invokeLogger.log("[InvokeEval] Enter invoke node: " + inv + ", targetMethod=" + (inv.callTarget() != null ? inv.callTarget().targetMethod() : "<null>") +
                     ", preMemory=" + post, LoggerVerbosity.DEBUG);
+
+            if (inv.callTarget() == null) {
+                IntInterval top = new IntInterval();
+                top.setToTop();
+                bindNodeResult(inv.asNode(), top, post);
+                abstractState.setPostCondition(node, post);
+                return;
+            }
 
             List<Node> args = new ArrayList<>(inv.callTarget().arguments());
             AbstractMemory afterArgs = post.copyOf();

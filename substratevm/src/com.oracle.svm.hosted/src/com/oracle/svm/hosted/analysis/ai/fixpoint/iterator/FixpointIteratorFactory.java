@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analysis.context.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorStrategy;
 import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractTransformer;
@@ -15,12 +15,10 @@ public final class FixpointIteratorFactory {
                                                                                                   Domain initialDomain,
                                                                                                   AbstractTransformer<Domain> abstractTransformer,
                                                                                                   AnalysisContext analysisContext) {
-
         assert method.getAnalyzedGraph() != null;
         return switch (analysisContext.getIteratorPolicy().strategy()) {
             case IteratorStrategy.WTO -> new WtoFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
             case IteratorStrategy.WPO -> new WpoFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
-            default -> new WorkListFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);
         };
     }
 }

@@ -5,21 +5,24 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstractInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
-import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipSvmMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analysis.AnalyzerManager;
+import com.oracle.svm.hosted.analysis.ai.analysis.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.methodfilter.SkipSvmMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analysis.methodfilter.SkipJavaLangAnalysisMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.analysis.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.IfConditionChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
-import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.Analyzer;
 
 /**
  * The entry point of the abstract interpretation framework.
@@ -66,11 +69,11 @@ public class AbstractInterpretationDriver {
      * 2. Create and configure the {@link AbstractInterpretationLogger}.
      */
     private void prepareAnalyses() {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.CHECKER)
                 .setConsoleEnabled(false)
                 .setFileEnabled(false)
-                .setFileThreshold(LoggerVerbosity.INFO)
-                .setConsoleThreshold(LoggerVerbosity.INFO);
+                .setFileThreshold(LoggerVerbosity.CHECKER)
+                .setConsoleThreshold(LoggerVerbosity.CHECKER);
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();
@@ -80,24 +83,24 @@ public class AbstractInterpretationDriver {
                 new DataFlowIntervalAbstractInterpreter();
 
 //        /* 3. Example of building an intraprocedural analyzer */
-//        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_ALL_INVOKED_METHODS)
-//                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
-//                .registerChecker(new ConstantValueChecker())
-//                .registerChecker(new BoundsSafetyChecker())
-//                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
-//                .build();
-
-//        /* 4. Example of building an interprocedural analyzer */
-        SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
-        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
+        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_ALL_INVOKED_METHODS)
+                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IfConditionChecker())
-                .maxCallStackDepth(128)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
-                .addMethodFilter(new SkipSvmMethodFilter())
                 .build();
 
+//        /* 4. Example of building an interprocedural analyzer */
+//        SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
+//        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
+//                .registerChecker(new ConstantValueChecker())
+//                .registerChecker(new IfConditionChecker())
+//                .maxCallStackDepth(64)
+//                .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+//                .addMethodFilter(new SkipSvmMethodFilter())
+//                .build();
+
         /* 5. Register with manager */
-        analyzerManager.registerAnalyzer(interDataFlowAnalyzer);
+        analyzerManager.registerAnalyzer(intraDataFlowAnalyzer);
     }
 }

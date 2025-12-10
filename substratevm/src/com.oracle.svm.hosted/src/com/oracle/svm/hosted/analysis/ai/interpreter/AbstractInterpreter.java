@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.invokehandle.InvokeCallBack;
+import com.oracle.svm.hosted.analysis.ai.analysis.invokehandle.InvokeCallBack;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorContext;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
@@ -21,7 +21,7 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
      * @param source          the node from which the edge originates
      * @param target          the node to which the edge goes
      * @param abstractState   of the analyzed method
-     * @param iteratorContext optional context information from the fixpoint iterator
+     * @param iteratorContext  context information from the fixpoint iterator
      */
     void execEdge(Node source, Node target, AbstractState<Domain> abstractState, IteratorContext iteratorContext);
 
@@ -31,8 +31,8 @@ public interface AbstractInterpreter<Domain extends AbstractDomain<Domain>> {
      *
      * @param node            to interpret
      * @param abstractState   of the analyzed method
-     * @param invokeCallBack  callback that can be used to analyze the summary of invokes
-     * @param iteratorContext optional context information from the fixpoint iterator
+     * @param invokeCallBack  callback that can be used to analyze invokes
+     * @param iteratorContext context information from the fixpoint iterator
      */
     void execNode(Node node, AbstractState<Domain> abstractState, InvokeCallBack<Domain> invokeCallBack, IteratorContext iteratorContext);
 }

@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analysis.context.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.context.IteratorPhase;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;

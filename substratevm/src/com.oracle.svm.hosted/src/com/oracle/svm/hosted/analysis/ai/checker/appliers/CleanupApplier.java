@@ -4,7 +4,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
 import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
