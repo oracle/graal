@@ -45,12 +45,12 @@ public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport 
     }
 
     @Override
-    public void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods) {
+    public void register(AccessCondition condition, boolean preserved, Executable method) {
         // Do nothing.
     }
 
     @Override
-    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field... fields) {
+    public void register(AccessCondition condition, boolean finalIsWritable, boolean preserved, Field field) {
         // Do nothing.
     }
 

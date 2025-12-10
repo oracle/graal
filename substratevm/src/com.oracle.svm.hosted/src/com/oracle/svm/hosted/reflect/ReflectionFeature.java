@@ -323,12 +323,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
 
         ImageSingletons.add(ReflectionIntrospector.class, new ReflectionIntrospectorImpl());
-
-        /*
-         * Querying Object members is allowed to enable these accesses on array classes, since those
-         * don't define any additional members.
-         */
-        reflectionData.registerClassMetadata(AccessCondition.unconditional(), Object.class, false);
     }
 
     @Override
@@ -336,7 +330,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         aUniverse = access.getUniverse();
         var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
-        reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
+        reflectionData.init(access.getMetaAccess(), aUniverse);
         RuntimeProxyRegistrySupport proxyRegistry = ImageSingletons.lookup(RuntimeProxyRegistrySupport.class);
         RuntimeSerializationSupport<AccessCondition> serializationSupport = RuntimeSerializationSupport.singleton();
         RuntimeJNIAccessSupport jniSupport = SubstrateOptions.JNI.getValue() ? ImageSingletons.lookup(RuntimeJNIAccessSupport.class) : null;
@@ -391,7 +385,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         metaAccess = analysisAccess.getMetaAccess();
-        reflectionData.beforeAnalysis(analysisAccess);
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.setAnalysisAccess(access);
 
@@ -403,6 +396,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "vtableIndex"), new ComputeVTableIndex());
         analysisAccess.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(substrateMethodAccessorType, "interfaceTypeID"), new ComputeInterfaceTypeID());
 
+        /*
+         * Querying Object members is allowed to enable these accesses on array classes, since those
+         * don't define any additional members.
+         */
+        RuntimeReflection.register(Object.class);
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
     }

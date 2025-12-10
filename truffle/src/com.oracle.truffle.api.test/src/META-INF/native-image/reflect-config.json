@@ -76,6 +76,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "java.lang.Comparable",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
     "name": "java.util.function.Function",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
@@ -287,5 +291,11 @@
   {
     "name": "com.oracle.truffle.api.test.polyglot.ContextBuilderExtendAPITest$ShouldBeAccessible",
     "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GR40903Outer"
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.TruffleFileTest$EmptyPathTestFs"
   }
 ]

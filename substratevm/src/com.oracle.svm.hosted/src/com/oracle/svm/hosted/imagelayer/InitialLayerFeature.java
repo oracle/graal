@@ -32,11 +32,13 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.Uninterruptible;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -71,10 +73,16 @@ public class InitialLayerFeature implements InternalFeature {
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         metaAccess.lookupJavaType(Uninterruptible.class).registerAsReachable("Core type");
+        metaAccess.lookupJavaType(UninterruptibleUtils.class).registerAsReachable("Core type");
         metaAccess.lookupJavaType(Proxy.getProxyClass(ClassLoaders.appClassLoader(), Uninterruptible.class)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");
+        metaAccess.lookupJavaType(VMThreads.OSThreadHandle.class).registerAsReachable("Core type");
+        var pthread = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.posix.headers.Pthread$pthread_t");
+        if (pthread != null) {
+            metaAccess.lookupJavaType(pthread).registerAsReachable("Core type");
+        }
     }
 
     @Override

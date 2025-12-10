@@ -118,9 +118,9 @@ public class JNIRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    protected void registerExecutable(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
+    protected void registerExecutable(AccessCondition condition, boolean jniAccessible, Executable... executable) {
         ensureJniAccessible(jniAccessible);
-        super.registerExecutable(condition, queriedOnly, true, executable);
+        super.registerExecutable(condition, true, executable);
     }
 
     @Override

@@ -1035,6 +1035,7 @@ final class MethodPointerInvalidHandlerFeature implements InternalFeature {
             access.registerAsRoot(invalidCodeAddressHandler, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
         }
         access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + MethodPointerInvalidHandlerFeature.class);
     }
 
     static Method getInvalidCodeAddressHandler() {

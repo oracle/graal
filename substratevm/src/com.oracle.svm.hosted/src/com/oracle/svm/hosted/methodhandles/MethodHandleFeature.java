@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
@@ -383,7 +384,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
         if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != VarHandle.class) {
-            RuntimeReflection.register(subtype.getDeclaredMethods());
+            JVMCIRuntimeReflection.register(((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(subtype).getDeclaredMethods());
         }
     }
 
