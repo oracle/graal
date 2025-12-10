@@ -48,6 +48,7 @@ import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.wasm.api.Vector128;
@@ -1071,6 +1072,12 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @ExportMessage
     public void close() {
         dynamicBuffer = null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public ByteBuffer asByteBuffer() {
+        return ByteBuffer.wrap(dynamicBuffer, 0, (int) byteSize());
     }
 
     @ExportMessage
