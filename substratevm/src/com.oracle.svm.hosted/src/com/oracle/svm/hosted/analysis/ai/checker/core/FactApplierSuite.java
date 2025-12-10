@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.applier.*;
+import com.oracle.svm.hosted.analysis.ai.checker.appliers.*;
 import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationException;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
@@ -55,8 +55,7 @@ public final class FactApplierSuite {
         if (logger.isGraphIgvDumpEnabled()) {
             try (var session = new AbstractInterpretationLogger.IGVDumpSession(graph.getDebug(), graph, "FactApplierScope")) {
                 session.dumpBeforeSuite("running provided (" + appliers.size() + ") appliers");
-                ApplierResult total = runAppliersInternal(method, graph, aggregator, session);
-                return total;
+                return runAppliersInternal(method, graph, aggregator, session);
             } catch (AbstractInterpretationException e) {
                 throw new RuntimeException(e);
             } catch (Throwable e) {
@@ -76,6 +75,11 @@ public final class FactApplierSuite {
                                               AbstractInterpretationLogger.IGVDumpSession session) {
         ApplierResult total = ApplierResult.empty();
         for (FactApplier applier : appliers) {
+            // FIXME: we maybe want to dry-run the appliers so that we see what could have been applied
+            if (!applier.shouldApply()) {
+                continue;
+            }
+
             ApplierResult r = applier.apply(method, graph, aggregator);
             total = total.plus(r);
 

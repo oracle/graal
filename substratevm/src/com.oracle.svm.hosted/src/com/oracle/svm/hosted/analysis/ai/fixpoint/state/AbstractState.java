@@ -7,7 +7,9 @@ import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -72,12 +74,12 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        List<String> lines = new ArrayList<>();
         for (Node node : stateMap.keySet()) {
-            sb.append(node).append(" -> Pre: ").append(getPreCondition(node))
-                    .append(", Post: ").append(getPostCondition(node)).append(System.lineSeparator());
+            lines.add(node + " -> Pre: " + getPreCondition(node)
+                    + ", Post: " + getPostCondition(node));
         }
-        return sb.toString();
+        return String.join(System.lineSeparator(), lines);
     }
 
     public void clear() {

@@ -1,9 +1,10 @@
-package com.oracle.svm.hosted.analysis.ai.checker.core.facts;
+package com.oracle.svm.hosted.analysis.ai.checker.facts;
 
 import jdk.graal.compiler.graph.Node;
 
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 
+@Deprecated
 public final class SafeBoundsAccessFact implements Fact {
     private final Node access;
     private final boolean inBounds;

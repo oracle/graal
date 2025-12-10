@@ -1,9 +1,9 @@
-package com.oracle.svm.hosted.analysis.ai.checker.core.facts;
+package com.oracle.svm.hosted.analysis.ai.checker.facts;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.IfNode;
 
-public record ConditionTruthFact(IfNode ifNode, Node condition, Truth truth) implements Fact {
+public record ConditionTruthnessFact(IfNode ifNode, Node condition, Truth truth) implements Fact {
     public enum Truth {ALWAYS_TRUE, ALWAYS_FALSE}
 
     @Override

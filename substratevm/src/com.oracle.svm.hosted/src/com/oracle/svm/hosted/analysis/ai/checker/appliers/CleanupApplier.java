@@ -1,9 +1,9 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;

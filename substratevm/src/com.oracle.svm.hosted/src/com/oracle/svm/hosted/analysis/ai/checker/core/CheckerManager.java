@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.checker.core;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
@@ -28,6 +28,7 @@ public final class CheckerManager {
     @SuppressWarnings("unchecked")
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log(String.valueOf(abstractState), LoggerVerbosity.DEBUG);
         var stats = AbstractInterpretationServices.getInstance().getStats();
         List<Fact> allFacts = new ArrayList<>();
 
@@ -72,8 +73,9 @@ public final class CheckerManager {
             MethodSummary<Domain> methodSummary = entry.getValue();
             AbstractState<Domain> abstractState = methodSummary.getStateAcrossAllContexts();
             var logger = AbstractInterpretationLogger.getInstance();
-            logger.log( " Running checkers on method: " + method.getQualifiedName() + " Abstract state: " + abstractState, LoggerVerbosity.INFO);
+            logger.log( " Running checkers on method: " + method.getQualifiedName(), LoggerVerbosity.CHECKER);
             runCheckersOnSingleMethod(method, abstractState, methodGraphMap.get(method));
+            logger.log("\n",  LoggerVerbosity.INFO);
         }
     }
 }

@@ -1,11 +1,11 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.ConstantFact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -21,8 +21,6 @@ import java.util.Set;
 /**
  * This is an applier that folds invokes to the constant values that they return
  */
-// TODO: since we now interpreter NewArray as its size, we cannot use this because it is not sound, this should not apply
-// TODO: but we should think how to handle this in a new analysis perhaps
 public final class InvokeConstantFoldingApplier extends BaseApplier {
 
     @Override

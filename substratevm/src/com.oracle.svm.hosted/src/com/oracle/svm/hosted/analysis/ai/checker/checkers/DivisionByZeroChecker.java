@@ -1,11 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.checker.checkers;
 
 import com.oracle.svm.hosted.analysis.ai.checker.core.Checker;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
 import com.oracle.svm.hosted.analysis.ai.domain.numerical.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-
-import java.util.Set;
 
 /**
  * Represents a simple example of how a checker can be implemented.

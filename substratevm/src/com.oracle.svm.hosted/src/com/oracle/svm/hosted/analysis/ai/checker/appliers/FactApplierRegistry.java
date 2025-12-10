@@ -1,7 +1,7 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,8 +24,7 @@ public final class FactApplierRegistry {
     static {
         register(FactKind.CONSTANT, new InvokeConstantFoldingApplier());
         register(FactKind.CONSTANT, new ConstantStampApplier());
-        register(FactKind.CONDITION_TRUTH, new ConditionTruthApplier());
-        register(FactKind.BOUNDS_SAFETY, new BoundsCheckEliminatorApplier());
+        register(FactKind.CONDITION_TRUTH, new ConditionTruthnessApplier());
     }
 
     private FactApplierRegistry() {

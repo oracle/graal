@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker.core.facts;
+package com.oracle.svm.hosted.analysis.ai.checker.facts;
 
 import jdk.graal.compiler.graph.Node;
 

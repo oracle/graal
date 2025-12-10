@@ -2,10 +2,10 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-public class SkipJNIMethodFilter implements AnalysisMethodFilter {
+public class SkipSvmMethodFilter implements AnalysisMethodFilter {
 
     @Override
     public boolean shouldSkipMethod(AnalysisMethod method) {
-        return method.isNative();
+        return method.getQualifiedName().startsWith("com.oracle.svm");
     }
 }

@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.log;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.GraphTraversalHelper;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.NodeState;

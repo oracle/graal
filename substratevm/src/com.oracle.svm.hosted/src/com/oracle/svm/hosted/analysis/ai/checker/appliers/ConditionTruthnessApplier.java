@@ -1,11 +1,11 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConditionTruthFact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.ConditionTruthnessFact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * Applies ConditionTruthFact by folding always-true/false branches.
  */
-public final class ConditionTruthApplier extends BaseApplier {
+public final class ConditionTruthnessApplier extends BaseApplier {
 
     @Override
     public Set<FactKind> getApplicableFactKinds() {
@@ -25,6 +25,11 @@ public final class ConditionTruthApplier extends BaseApplier {
     @Override
     public String getDescription() {
         return "ConditionTruthFolding";
+    }
+
+    @Override
+    public boolean shouldApply() {
+        return true;
     }
 
     @Override
@@ -38,7 +43,7 @@ public final class ConditionTruthApplier extends BaseApplier {
         int falseFolded = 0;
 
         for (Fact f : facts) {
-            if (!(f instanceof ConditionTruthFact tf)) {
+            if (!(f instanceof ConditionTruthnessFact tf)) {
                 continue;
             }
             IfNode ifn = tf.ifNode();

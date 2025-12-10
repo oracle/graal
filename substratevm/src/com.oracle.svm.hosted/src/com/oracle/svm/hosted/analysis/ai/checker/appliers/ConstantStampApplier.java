@@ -1,11 +1,11 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.core.ApplierResult;
 import com.oracle.svm.hosted.analysis.ai.checker.core.FactAggregator;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.ConstantFact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.ConstantFact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.NodeView;
@@ -19,6 +19,7 @@ import java.util.Set;
  * Applies ConstantFact by tightening the stamp of the corresponding ValueNode
  * to an exact integer interval [v, v].
  */
+// TODO: same reason as invoke Constant Folding Applier, we should not do this since it is not sound
 public final class ConstantStampApplier extends BaseApplier {
 
     @Override
@@ -29,11 +30,6 @@ public final class ConstantStampApplier extends BaseApplier {
     @Override
     public String getDescription() {
         return "ConstantStamp";
-    }
-
-    @Override
-    public boolean shouldApply() {
-        return false;
     }
 
     @Override

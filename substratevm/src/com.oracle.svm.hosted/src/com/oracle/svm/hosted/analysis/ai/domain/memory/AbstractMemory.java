@@ -64,6 +64,10 @@ public class AbstractMemory implements AbstractDomain<AbstractMemory> {
         env.remove(v);
     }
 
+    public void removeStore(AccessPath path) {
+        store.remove(path);
+    }
+
     public void writeStore(AccessPath p, IntInterval val) {
         Objects.requireNonNull(p);
         Objects.requireNonNull(val);

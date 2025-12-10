@@ -26,8 +26,8 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
-import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -64,7 +64,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-// TODO: add support for newArray
 public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<AbstractMemory> {
 
     private static final String NODE_PREFIX = "n";
@@ -77,10 +76,16 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
     @Override
     public void execEdge(Node source, Node target, AbstractState<AbstractMemory> abstractState, IteratorContext iteratorContext) {
-        AbstractMemory post = abstractState.getPostCondition(source);
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.log("Executing edge from: " + source + " -> " + target, LoggerVerbosity.DEBUG);
+        AbstractMemory sourcePost = abstractState.getPostCondition(source);
+        AbstractMemory destPre = abstractState.getPreCondition(target);
+
+        logger.log("Source post: " + sourcePost, LoggerVerbosity.DEBUG);
+        logger.log("Dest pre: " + destPre, LoggerVerbosity.DEBUG);
         if (target instanceof LoopExitNode exit) {
             LoopBeginNode lb = exit.loopBegin();
-            AbstractMemory acc = post.copyOf();
+            AbstractMemory acc = sourcePost.copyOf();
             for (LoopEndNode le : lb.loopEnds()) {
                 AbstractMemory lePost = abstractState.getPostCondition(le);
                 if (lePost != null) {
@@ -93,198 +98,124 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
         if (source instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
-            if (cond instanceof IntegerLessThanNode itn) {
-                IntInterval ix = getNodeResultInterval(itn.getX(), post);
-                IntInterval iy = getNodeResultInterval(itn.getY(), post);
-                boolean defTrue = !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower();
-                boolean defFalse = !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper();
+            IntInterval res = getNodeResultInterval(ifNode, sourcePost);
+            boolean defTrue = !res.isBot() && !res.isTop() && res.getLower() == 1 && res.getUpper() == 1;
+            boolean defFalse = !res.isBot() && !res.isTop() && res.getLower() == 0 && res.getUpper() == 0;
 
-                if (target.equals(ifNode.trueSuccessor())) {
-                    if (defFalse) {
-                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y is definitely false): " + source + " -> " + target,
-                                LoggerVerbosity.DEBUG);
-                        return;
-                    }
-                    AbstractMemory narrowed = narrowOnLessThan(post, itn, true);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                } else if (target.equals(ifNode.falseSuccessor())) {
-                    if (defTrue) {
-                        // skip infeasible false edge
-                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y is definitely true): " + source + " -> " + target,
-                                LoggerVerbosity.DEBUG);
-                        return;
-                    }
-                    AbstractMemory narrowed = narrowOnLessThan(post, itn, false);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                }
-            } else if (cond instanceof IntegerBelowNode ib) {
-                IntInterval ix = getNodeResultInterval(ib.getX(), post);
-                IntInterval iy = getNodeResultInterval(ib.getY(), post);
-                boolean nonNeg = isNonNegative(ix) && isNonNegative(iy);
-                boolean defTrue = nonNeg && !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower();
-                boolean defFalse = nonNeg && !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper();
+            boolean toTrue = target.equals(ifNode.trueSuccessor());
+            boolean toFalse = target.equals(ifNode.falseSuccessor());
 
-                if (target.equals(ifNode.trueSuccessor())) {
-                    if (defFalse) {
-                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x<y (below) definitely false): " + source + " -> " + target,
-                                LoggerVerbosity.DEBUG);
-                        return;
-                    }
-                    AbstractMemory narrowed = narrowOnBelow(post, ib, true);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                } else if (target.equals(ifNode.falseSuccessor())) {
-                    if (defTrue) {
-                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                        AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x<y (below) definitely true): " + source + " -> " + target,
-                                LoggerVerbosity.DEBUG);
-                        return;
-                    }
-                    AbstractMemory narrowed = narrowOnBelow(post, ib, false);
-                    abstractState.getPreCondition(target).joinWith(narrowed);
-                    return;
-                }
-            } else if (cond instanceof IntegerEqualsNode eq) {
-                IntInterval ix = getNodeResultInterval(eq.getX(), post);
-                IntInterval iy = getNodeResultInterval(eq.getY(), post);
-                boolean defTrue = !ix.isBot() && !ix.isTop() && !iy.isBot() && !iy.isTop() && ix.getLower() == iy.getLower() && ix.getUpper() == iy.getUpper();
-                boolean defFalse = !ix.isBot() && !ix.isTop() && !iy.isBot() && !iy.isTop() && ix.getLower() != iy.getLower() && ix.getUpper() != iy.getUpper();
-                if (target.equals(ifNode.trueSuccessor())) {
-                    if (defFalse) {
-                        abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                    }
-                }
-
-                if (target.equals(ifNode.falseSuccessor()) && defTrue) {
-                    abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                    AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping false edge (x == y definitely false) : " + source + " -> " + target, LoggerVerbosity.DEBUG);
-                } else if (target.equals(ifNode.trueSuccessor()) && defFalse) {
-                    abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
-                    AbstractInterpretationLogger.getInstance().log("[EdgePrune] Skipping true edge (x == y definitely false) : " + source + " -> " + target, LoggerVerbosity.DEBUG);
-                }
-
-            } else if (cond instanceof IsNullNode isNull) {
-                AbstractMemory narrowed = post.copyOf();
-                IntInterval bool = target.equals(ifNode.trueSuccessor()) ? new IntInterval(1, 1) : new IntInterval(0, 0);
-                bindNodeResult(isNull, bool, narrowed);
-                abstractState.getPreCondition(target).joinWith(narrowed);
+            if ((toTrue && defFalse) || (toFalse && defTrue)) {
+                abstractState.getNodeState(target).setMark(NodeState.NodeMark.UNREACHABLE);
+                logger.log("[EdgePrune] Skipping " + (toTrue ? "true" : "false") + " edge (condition is definitely " + (defTrue ? "true" : "false") + "): " + source + " -> " + target,
+                        LoggerVerbosity.DEBUG);
                 return;
             }
+
+            // Narrowing on some conditions
+            AbstractMemory edgeState = sourcePost.copyOf();
+            if (cond instanceof IntegerLessThanNode itn) {
+                if (toTrue) {
+                    narrowOnLessThan(edgeState, itn, true);
+                } else if (toFalse) {
+                    narrowOnLessThan(edgeState, itn, false);
+                }
+                destPre.joinWith(edgeState);
+                return;
+            }
+
+            if (cond instanceof IntegerBelowNode ib) {
+                if (toTrue) {
+                    narrowOnBelow(edgeState, ib, true);
+                } else if (toFalse) {
+                    narrowOnBelow(edgeState, ib, false);
+                }
+                destPre.joinWith(edgeState);
+                return;
+            }
+
+            if (cond instanceof IntegerEqualsNode eq) {
+                if (toTrue) {
+                    narrowOnEquals(edgeState, eq, true);
+                } else if (toFalse) {
+                    narrowOnEquals(edgeState, eq, false);
+                }
+                destPre.joinWith(edgeState);
+                return;
+            }
+
+            if (cond instanceof IsNullNode isNull) {
+                IntInterval bool = toTrue ? new IntInterval(1, 1) : new IntInterval(0, 0);
+                bindNodeResult(isNull, bool, edgeState);
+                destPre.joinWith(edgeState);
+                return;
+            }
+
+            // Unknown condition: just propagate
+            destPre.joinWith(sourcePost);
+            return;
         }
 
-        abstractState.getPreCondition(target).joinWith(post);
+        // Non-If edges: standard propagation
+        destPre.joinWith(sourcePost);
     }
 
-    private AbstractMemory narrowOnLessThan(AbstractMemory base, IntegerLessThanNode itn, boolean isTrue) {
-        AbstractMemory out = base.copyOf();
+    private void narrowOnLessThan(AbstractMemory base, IntegerLessThanNode itn, boolean isTrue) {
         Node x = itn.getX();
         Node y = itn.getY();
-        IntInterval ix = getNodeResultInterval(x, out);
-        IntInterval iy = getNodeResultInterval(y, out);
-        if (ix == null || iy == null) return out;
-
-        IntInterval newX = ix.copyOf();
-        IntInterval newY = iy.copyOf();
+        IntInterval ix = getNodeResultInterval(x, base);
+        IntInterval iy = getNodeResultInterval(y, base);
+        if (ix == null || iy == null) return;
+        AccessPath px = base.lookupTempByName(nodeId(x));
+        if (px == null) return;
 
         if (isTrue) {
-            if (!iy.isUpperInfinite()) {
-                long uy = iy.getUpper();
-                newX.setUpper(Math.min(newX.getUpper(), uy - 1));
-            }
-            if (!ix.isLowerInfinite()) {
-                long lx = ix.getLower();
-                newY.setLower(Math.max(newY.getLower(), lx + 1));
-            }
+            // (x < y) => x.upper < y.lower
+            ix.meetWith(new IntInterval(IntInterval.NEG_INF, iy.getLower() - 1));
         } else {
             // !(x < y) => x >= y  => x.lower >= y.lower  and y.upper <= x.upper
-            if (!iy.isLowerInfinite()) {
-                long ly = iy.getLower();
-                newX.setLower(Math.max(newX.getLower(), ly));
-            }
-            if (!ix.isUpperInfinite()) {
-                long ux = ix.getUpper();
-                newY.setUpper(Math.min(newY.getUpper(), ux));
-            }
+            ix.meetWith(new IntInterval(iy.getUpper(), ix.getUpper()));
         }
-        AccessPath px = out.lookupTempByName(nodeId(x));
-        if (px != null) out.writeStore(px, newX);
-        AccessPath py = out.lookupTempByName(nodeId(y));
-        if (py != null) out.writeStore(py, newY);
-        return out;
+
+        base.writeStoreStrong(px, ix);
     }
 
-    private AbstractMemory narrowOnEquals(AbstractMemory base, IntegerEqualsNode eq, boolean isTrue) {
-        AbstractMemory out = base.copyOf();
+    private void narrowOnEquals(AbstractMemory base, IntegerEqualsNode eq, boolean isTrue) {
         Node x = eq.getX();
         Node y = eq.getY();
-        IntInterval ix = getNodeResultInterval(x, out);
-        IntInterval iy = getNodeResultInterval(y, out);
-        if (ix == null || iy == null) return out;
+        IntInterval ix = getNodeResultInterval(x, base);
+        IntInterval iy = getNodeResultInterval(y, base);
+        if (ix == null || iy == null) return;
+        AccessPath px = base.lookupTempByName(nodeId(x));
+        if (px == null) return;
 
-        if (isTrue) {
-            IntInterval nx = ix.copyOf();
-            nx.meetWith(iy);
-            IntInterval ny = iy.copyOf();
-            ny.meetWith(ix);
-            AccessPath px = out.lookupTempByName(nodeId(x));
-            if (px != null) out.writeStore(px, nx);
-            AccessPath py = out.lookupTempByName(nodeId(y));
-            if (py != null) out.writeStore(py, ny);
-        } else {
-            if (isPoint(ix)) {
-                IntInterval ny = iy.copyOf();
-                AccessPath py = out.lookupTempByName(nodeId(y));
-                if (py != null) out.writeStore(py, ny);
-            }
-            if (isPoint(iy)) {
-                IntInterval nx = ix.copyOf();
-                AccessPath px = out.lookupTempByName(nodeId(x));
-                if (px != null) out.writeStore(px, nx);
-            }
+        if (isTrue && isPoint(iy)) {
+            ix.meetWith(iy);
+            base.writeStoreStrong(px, ix);
         }
-        return out;
     }
 
     private static boolean isNonNegative(IntInterval v) {
         return v != null && !v.isBot() && !v.isTop() && !v.isLowerInfinite() && v.getLower() >= 0;
     }
 
-    private AbstractMemory narrowOnBelow(AbstractMemory base, IntegerBelowNode ib, boolean isTrue) {
-        AbstractMemory out = base.copyOf();
+    private void narrowOnBelow(AbstractMemory base, IntegerBelowNode ib, boolean isTrue) {
         Node x = ib.getX();
         Node y = ib.getY();
-        IntInterval ix = getNodeResultInterval(x, out);
-        IntInterval iy = getNodeResultInterval(y, out);
-        if (ix == null || iy == null) return out;
-        if (!isNonNegative(ix) || !isNonNegative(iy)) return out;
+        IntInterval ix = getNodeResultInterval(x, base);
+        IntInterval iy = getNodeResultInterval(y, base);
+        if (ix == null || iy == null) return;
+        if (!isNonNegative(ix) || !isNonNegative(iy)) return;
+        AccessPath px = base.lookupTempByName(nodeId(x));
+        if (px == null) return;
 
-        IntInterval nx = ix.copyOf();
-        IntInterval ny = iy.copyOf();
         if (isTrue) {
-            if (!iy.isUpperInfinite()) {
-                nx.setUpper(Math.min(nx.getUpper(), iy.getUpper() - 1));
-            }
-            if (!ix.isLowerInfinite()) {
-                ny.setLower(Math.max(ny.getLower(), ix.getLower() + 1));
-            }
+            ix.meetWith(new IntInterval(0, iy.getLower() - 1));
         } else {
-            if (!iy.isLowerInfinite()) {
-                nx.setLower(Math.max(nx.getLower(), iy.getLower()));
-            }
-            if (!ix.isUpperInfinite()) {
-                ny.setUpper(Math.min(ny.getUpper(), ix.getUpper()));
-            }
+            ix.meetWith(new IntInterval(iy.getUpper(), ix.getUpper()));
         }
-        AccessPath px = out.lookupTempByName(nodeId(x));
-        if (px != null) out.writeStore(px, nx);
-        AccessPath py = out.lookupTempByName(nodeId(y));
-        if (py != null) out.writeStore(py, ny);
-        return out;
+
+        base.writeStoreStrong(px, ix);
     }
 
     @Override
@@ -342,7 +273,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 }
                 bindNodeResult(node, val, post);
             } else {
-                // Instance field: ensure base evaluated
                 AbstractMemory afterObj = evalNode(lfn.object(), post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
                 AliasSet bases = resolveFieldBaseSet(lfn.object(), field, afterObj);
                 IntInterval val = afterObj.readFrom(bases, p -> p.appendField(field.getName()));
@@ -476,6 +406,8 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         } else if (node instanceof IfNode ifNode) {
             Node cond = ifNode.condition();
             post = evalNode(cond, post, abstractState, invokeCallBack, new HashSet<>(), iteratorContext);
+            IntInterval ix = getNodeResultInterval(cond, post);
+            bindNodeResult(ifNode, ix, post);
         }
 
         logger.log("Computed post-condition: " + post + " for node: " + node, LoggerVerbosity.DEBUG);
@@ -525,20 +457,17 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             case BinaryArithmeticNode<?> binaryArithmeticNode -> {
                 return evalBinaryArithmeticNode(binaryArithmeticNode, mem);
             }
-            case IntegerLessThanNode integerLessThanNode -> {
-                return evalIntegerLessThanNode(integerLessThanNode, mem);
-            }
-            case IntegerBelowNode integerBelowNode -> {
-                return evalIntegerBelowNode(integerBelowNode, mem);
-            }
-            case IntegerEqualsNode integerEqualsNode -> {
-                return evalIntegerEqualsNode(integerEqualsNode, mem);
+            case CompareNode cmpNode -> {
+                return evalCompareNode(cmpNode, mem);
             }
             case UnsignedRightShiftNode unsignedRightShiftNode -> {
                 return evalUnsignedRightShiftNode(unsignedRightShiftNode, mem);
             }
             case RightShiftNode rightShiftNode -> {
                 return evalRightShiftNode(rightShiftNode, mem);
+            }
+            case LeftShiftNode leftShiftNode -> {
+                return evalLeftShiftNode(leftShiftNode, mem);
             }
             case IsNullNode isNullNode -> {
                 IntInterval res = new IntInterval(0, 1);
@@ -624,7 +553,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
                 return mem;
             }
 
-            logger.log("  PhiNode not found in state, evaluating conservatively", LoggerVerbosity.DEBUG);
+//            logger.log("  PhiNode not found in state, evaluating conservatively", LoggerVerbosity.DEBUG);
         }
         boolean isLoopHeader = (merge instanceof LoopBeginNode);
         boolean isFirstVisit = false;
@@ -633,7 +562,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
             isFirstVisit = iteratorContext.isFirstVisit(merge);
         }
 
-        logger.log("Evaluating PhiNode: " + phi + " (loop header: " + isLoopHeader + ", first visit: " + isFirstVisit + ")", LoggerVerbosity.DEBUG);
+//        logger.log("Evaluating PhiNode: " + phi + " (loop header: " + isLoopHeader + ", first visit: " + isFirstVisit + ")", LoggerVerbosity.DEBUG);
         IntInterval acc = new IntInterval();
         acc.setToBot();
 
@@ -641,13 +570,13 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         for (int i = 0; i < numInputs; i++) {
             Node input = phi.valueAt(i);
             if (isLoopHeader && isFirstVisit && i == numInputs - 1) {
-                logger.log("  Input[" + i + "]: " + input + " = SKIPPED (back-edge on first iteration)", LoggerVerbosity.DEBUG);
+//                logger.log("  Input[" + i + "]: " + input + " = SKIPPED (back-edge on first iteration)", LoggerVerbosity.DEBUG);
                 continue;
             }
 
             IntInterval v;
             if (isLoopHeader && !isFirstVisit && i == numInputs - 1) {
-                logger.log("    Evaluating back-edge with originalIn: " + originalIn, LoggerVerbosity.DEBUG);
+//                logger.log("    Evaluating back-edge with originalIn: " + originalIn, LoggerVerbosity.DEBUG);
                 AbstractMemory mergePost = abstractState.getPostCondition(merge);
                 if (mergePost != null) {
                     v = evalBackEdgeValue(input, mergePost);
@@ -662,100 +591,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
             acc.joinWith(v);
         }
-
-        if (isLoopHeader) {
-            try {
-                Node backEdge = (numInputs > 0) ? phi.valueAt(numInputs - 1) : null;
-                Node initNode = (numInputs > 0) ? phi.valueAt(0) : null;
-                boolean isInduction = false;
-                long incr = 0L;
-
-                if (backEdge instanceof jdk.graal.compiler.nodes.calc.BinaryArithmeticNode<?> bin && bin instanceof AddNode) {
-                    Node x = bin.getX();
-                    Node y = bin.getY();
-                    boolean xIsPhi = (x == phi) || (x instanceof ValueProxy vpX && vpX.getOriginalNode() == phi);
-                    boolean yIsPhi = (y == phi) || (y instanceof ValueProxy vpY && vpY.getOriginalNode() == phi);
-                    Node other = xIsPhi ? y : (yIsPhi ? x : null);
-                    if (other instanceof ConstantNode cn && cn.asJavaConstant() != null && cn.asJavaConstant().getJavaKind().isNumericInteger()) {
-                        incr = cn.asJavaConstant().asLong();
-                        if (incr > 0) {
-                            isInduction = true;
-                        }
-                    }
-                }
-
-                boolean boundedByFinite = false;
-                long constantUpper = Long.MAX_VALUE;
-                Node potentialBoundNode = null;
-                if (isInduction) {
-                    for (Node u : phi.usages()) {
-                        if (u instanceof IntegerLessThanNode itn) {
-                            Node a = itn.getX();
-                            Node b = itn.getY();
-                            Node otherSide = (a == phi || (a instanceof ValueProxy vp && vp.getOriginalNode() == phi)) ? b : ((b == phi || (b instanceof ValueProxy vp2 && vp2.getOriginalNode() == phi)) ? a : null);
-                            if (otherSide instanceof ConstantNode cn2 && cn2.asJavaConstant() != null && cn2.asJavaConstant().getJavaKind().isNumericInteger()) {
-                                long bound = cn2.asJavaConstant().asLong();
-                                constantUpper = Math.min(constantUpper, bound - 1);
-                                boundedByFinite = true;
-                            } else if (otherSide != null) {
-                                potentialBoundNode = otherSide;
-                                IntInterval otherIv = getNodeResultInterval(otherSide, originalIn);
-                                if (!otherIv.isTop() && !otherIv.isUpperInfinite()) {
-                                    constantUpper = Math.min(constantUpper, otherIv.getUpper());
-                                    boundedByFinite = true;
-                                }
-                            }
-                        }
-                    }
-
-                    // If the only bound is array length of a parameter (or Pi(parameter)) => unknown finite bound
-                    boolean boundIsArrayLenOfParam = isArrayLengthOfParamOrPiParam(potentialBoundNode);
-
-                    if (!boundedByFinite && boundIsArrayLenOfParam) {
-                        // Immediately widen phi to [init, +inf] to force convergence
-                        long newLower;
-                        IntInterval initIv = getNodeResultInterval(initNode, originalIn);
-                        if (initIv != null && !initIv.isBot() && !initIv.isLowerInfinite()) {
-                            newLower = initIv.getLower();
-                        } else {
-                            newLower = 0L;
-                        }
-                        acc.setLower(Math.min(acc.isLowerInfinite() ? newLower : acc.getLower(), newLower));
-                        acc.setUpper(IntInterval.POS_INF);
-                        logger.log("Applied immediate widening for induction over unknown array length: " + acc, LoggerVerbosity.DEBUG);
-                    } else if (!boundedByFinite) {
-                        // Fallback to previous iteration based widening if we detect growth
-                        AbstractMemory mergePost = abstractState.getPostCondition(merge);
-                        IntInterval prevPhi = null;
-                        if (mergePost != null) {
-                            AccessPath prevP = mergePost.lookupTempByName(nodeId(phi));
-                            if (prevP != null) prevPhi = mergePost.readStore(prevP);
-                        }
-                        if (prevPhi != null) {
-                            boolean growingUpper = prevPhi.isTop() || prevPhi.isUpperInfinite() || (!acc.isUpperInfinite() && acc.getUpper() > prevPhi.getUpper());
-                            if (growingUpper) {
-                                long newLower;
-                                IntInterval initIv = getNodeResultInterval(initNode, originalIn);
-                                if (initIv != null && !initIv.isBot() && !initIv.isLowerInfinite()) {
-                                    newLower = Math.min(initIv.getLower(), acc.isLowerInfinite() ? 0 : acc.getLower());
-                                } else {
-                                    newLower = acc.isLowerInfinite() ? 0 : acc.getLower();
-                                }
-                                IntInterval widened = new IntInterval(newLower, IntInterval.POS_INF);
-                                acc.joinWith(widened);
-                                logger.log("Applied widening to induction phi " + phi + " => " + acc, LoggerVerbosity.DEBUG);
-                            }
-                        }
-                    } else if (boundedByFinite && constantUpper != Long.MAX_VALUE) {
-                        long newUpper = Math.min(acc.isUpperInfinite() ? constantUpper : Math.min(acc.getUpper(), constantUpper), constantUpper);
-                        acc.setUpper(newUpper);
-                    }
-                }
-            } catch (Throwable t) {
-                AbstractInterpretationLogger.getInstance().log("Induction/widening step failed: " + t.getMessage(), LoggerVerbosity.DEBUG);
-            }
-        }
-
         bindNodeResult(phi, acc, mem);
         logger.log("  PhiNode result: " + acc, LoggerVerbosity.DEBUG);
         return mem;
@@ -843,44 +678,55 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         return mem;
     }
 
-    private AbstractMemory evalIntegerLessThanNode(IntegerLessThanNode node, AbstractMemory mem) {
-        IntInterval ix = getNodeResultInterval(node.getX(), mem);
-        IntInterval iy = getNodeResultInterval(node.getY(), mem);
+    private AbstractMemory evalCompareNode(CompareNode cmpNode, AbstractMemory mem) {
+        IntInterval ix = getNodeResultInterval(cmpNode.getX(), mem);
+        IntInterval iy = getNodeResultInterval(cmpNode.getY(), mem);
         IntInterval res = new IntInterval();
         if (ix.isBot() || iy.isBot()) {
             res.setToBot();
         } else if (ix.isTop() || iy.isTop()) {
             res.setToTop();
-        } else if (!ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower()) {
-            // definitely true: max(x) < min(y)
-            res = new IntInterval(1, 1);
-        } else if (!ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper()) {
-            // definitely false: min(x) >= max(y)
-            res = new IntInterval(0, 0);
-        } else {
-            res = new IntInterval(0, 1);
         }
-        bindNodeResult(node, res, mem);
+
+        switch (cmpNode) {
+            case IntegerLessThanNode iltn -> res = getResultIntegerLessThanNode(ix, iy);
+            case IntegerBelowNode ibn -> res = getResultIntegerBelowNode(ix, iy);
+            case IntegerEqualsNode ien -> res = getResultIntegerEqualsNode(ix, iy);
+            default -> {
+            }
+        }
+        bindNodeResult(cmpNode, res, mem);
         return mem;
     }
 
-    private AbstractMemory evalIntegerBelowNode(IntegerBelowNode node, AbstractMemory mem) {
-        IntInterval ix = getNodeResultInterval(node.getX(), mem);
-        IntInterval iy = getNodeResultInterval(node.getY(), mem);
-        IntInterval res = new IntInterval();
-        if (ix.isBot() || iy.isBot()) {
-            res.setToBot();
-        } else if (ix.isTop() || iy.isTop()) {
-            res.setToTop();
-        } else if (isNonNegative(ix) && isNonNegative(iy) && !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower()) {
-            res = new IntInterval(1, 1);
-        } else if (isNonNegative(ix) && isNonNegative(iy) && !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper()) {
-            res = new IntInterval(0, 0);
-        } else {
-            res = new IntInterval(0, 1);
+    private IntInterval getResultIntegerLessThanNode(IntInterval ix, IntInterval iy) {
+        assert !ix.isTop() && !ix.isBot() && !iy.isTop() && !iy.isBot();
+        if (!ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower()) {
+            return new IntInterval(1, 1);
         }
-        bindNodeResult(node, res, mem);
-        return mem;
+        if (!ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper()) {
+            return new IntInterval(0, 0);
+        }
+        return new IntInterval(0, 1);
+    }
+
+    private IntInterval getResultIntegerBelowNode(IntInterval ix, IntInterval iy) {
+        assert !ix.isTop() && !ix.isBot() && !iy.isTop() && !iy.isBot();
+        if (isNonNegative(ix) && isNonNegative(iy) && !ix.isUpperInfinite() && !iy.isLowerInfinite() && ix.getUpper() < iy.getLower()) {
+            return new IntInterval(1, 1);
+        }
+        if (isNonNegative(ix) && isNonNegative(iy) && !ix.isLowerInfinite() && !iy.isUpperInfinite() && ix.getLower() >= iy.getUpper()) {
+            return new IntInterval(0, 0);
+        }
+        return new IntInterval(0, 1);
+    }
+
+    private IntInterval getResultIntegerEqualsNode(IntInterval ix, IntInterval iy) {
+        assert !ix.isTop() && !ix.isBot() && !iy.isTop() && !iy.isBot();
+        if (ix.getUpper() == iy.getUpper() && ix.getLower() == iy.getLower()) {
+            return new IntInterval(1, 1);
+        }
+        return new IntInterval(0, 0);
     }
 
     private AbstractMemory evalLeftShiftNode(LeftShiftNode node, AbstractMemory mem) {
@@ -956,7 +802,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private AbstractMemory evalVirtualArrayNode(VirtualArrayNode node, AbstractMemory mem) {
-        // Treat as an allocation root for aliasing purposes
         String aid = "allocVArr" + Integer.toHexString(System.identityHashCode(node));
         AccessPath root = AccessPath.forAllocSite(aid);
         mem.bindTempByName(nodeId(node), root);
@@ -986,11 +831,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         return mem;
     }
 
-    private AbstractMemory evalIntegerEqualsNode(IntegerEqualsNode node, AbstractMemory mem) {
-        IntInterval res = new IntInterval(0, 1);
-        bindNodeResult(node, res, mem);
-        return mem;
-    }
 
     private AbstractMemory evalPiNode(PiNode piNode, AbstractMemory mem) {
         IntInterval base = getNodeResultInterval(piNode.object(), mem);

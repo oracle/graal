@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.checker.applier;
+package com.oracle.svm.hosted.analysis.ai.checker.appliers;
 
 public abstract class BaseApplier implements FactApplier {
 

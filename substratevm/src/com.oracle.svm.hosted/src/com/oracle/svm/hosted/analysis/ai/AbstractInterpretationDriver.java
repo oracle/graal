@@ -7,10 +7,11 @@ import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.DataFlowIntervalAbstr
 import com.oracle.svm.hosted.analysis.ai.analyses.dataflow.inter.DataFlowIntervalAnalysisSummaryFactory;
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipSvmMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.metadata.filter.SkipJavaLangAnalysisMethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.mode.InterAnalyzerMode;
+import com.oracle.svm.hosted.analysis.ai.checker.checkers.IfConditionChecker;
 import com.oracle.svm.hosted.analysis.ai.checker.checkers.ConstantValueChecker;
-import com.oracle.svm.hosted.analysis.ai.checker.checkers.BoundsSafetyChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.memory.AbstractMemory;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
@@ -19,6 +20,7 @@ import com.oracle.svm.hosted.analysis.ai.exception.AbstractInterpretationExcepti
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationServices;
 import jdk.graal.compiler.debug.DebugContext;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
+
 /**
  * The entry point of the abstract interpretation framework.
  * This class is responsible for all the necessary setup and configuration of the framework, which will then be executed
@@ -66,11 +68,9 @@ public class AbstractInterpretationDriver {
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.DEBUG)
                 .setConsoleEnabled(false)
-                .setFileEnabled(true)
-                .setFileThreshold(LoggerVerbosity.DEBUG)
-                .setConsoleThreshold(LoggerVerbosity.INFO)
-                .setGraphIgvDumpEnabled(true)
-                .setGraphJsonExportEnabled(true);
+                .setFileEnabled(false)
+                .setFileThreshold(LoggerVerbosity.INFO)
+                .setConsoleThreshold(LoggerVerbosity.INFO);
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();
@@ -89,11 +89,12 @@ public class AbstractInterpretationDriver {
 
 //        /* 4. Example of building an interprocedural analyzer */
         SummaryFactory<AbstractMemory> summaryFactory = new DataFlowIntervalAnalysisSummaryFactory();
-        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT)
+        var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
                 .registerChecker(new ConstantValueChecker())
-                .registerChecker(new BoundsSafetyChecker())
+                .registerChecker(new IfConditionChecker())
                 .maxCallStackDepth(128)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
+                .addMethodFilter(new SkipSvmMethodFilter())
                 .build();
 
         /* 5. Register with manager */

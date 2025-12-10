@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker.core;
 
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.Fact;
-import com.oracle.svm.hosted.analysis.ai.checker.core.facts.FactKind;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.Fact;
+import com.oracle.svm.hosted.analysis.ai.checker.facts.FactKind;
 import jdk.graal.compiler.graph.Node;
 
 import java.util.*;
