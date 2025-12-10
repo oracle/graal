@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,8 @@
 package org.graalvm.collections;
 
 /**
- * Unmodifiable memory efficient set data structure.
+ * Unmodifiable memory efficient set data structure. It does not support {@linkplain #contains
+ * looking up} a {@code null} element.
  *
  * @since 19.0
  */
@@ -50,6 +51,7 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
     /**
      * Returns {@code true} if this set contains a mapping for the {@code element}.
      *
+     * @throws UnsupportedOperationException if {@code element == null}
      * @since 19.0
      */
     boolean contains(E element);
@@ -69,7 +71,7 @@ public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
     boolean isEmpty();
 
     /**
-     * Stores all of the elements in this set into {@code target}. An
+     * Stores all the elements in this set into {@code target}. An
      * {@link UnsupportedOperationException} will be thrown if the length of {@code target} does not
      * match the size of this set.
      *

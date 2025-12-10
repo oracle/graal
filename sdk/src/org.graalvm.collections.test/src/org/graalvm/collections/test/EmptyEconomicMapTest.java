@@ -38,51 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.collections;
+package org.graalvm.collections.test;
 
-import java.util.Iterator;
+import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * Singleton instance for empty set. Reuses empty iterator from {@link EmptyMap}.
- */
-class EmptySet {
-    static final EconomicSet<Object> EMPTY_SET = new EconomicSet<>() {
-        @Override
-        public boolean add(Object element) {
-            EconomicMapImpl.checkNonNull(element);
-            throw new IllegalArgumentException("Cannot modify the always-empty set");
-        }
+public class EmptyEconomicMapTest {
 
-        @Override
-        public void remove(Object element) {
-            EconomicMapImpl.checkNonNull(element);
-            throw new IllegalArgumentException("Cannot modify the always-empty set");
-        }
+    @Test
+    public void testIsEmpty() {
+        Assert.assertTrue(EconomicMap.emptyMap().isEmpty());
+    }
 
-        @Override
-        public void clear() {
-            throw new IllegalArgumentException("Cannot modify the always-empty set");
-        }
+    @Test
+    public void testSizeZero() {
+        Assert.assertEquals(0, EconomicMap.emptyMap().size());
+    }
 
-        @Override
-        public boolean contains(Object element) {
-            EconomicMapImpl.checkNonNull(element);
-            return false;
-        }
+    @Test(expected = IllegalArgumentException.class)
+    public void testPut() {
+        EconomicMap.emptyMap().put(1, "1");
+    }
 
-        @Override
-        public int size() {
-            return 0;
-        }
+    @Test(expected = IllegalArgumentException.class)
+    public void testRemoveKey() {
+        EconomicMap.emptyMap().removeKey(1);
+    }
 
-        @Override
-        public boolean isEmpty() {
-            return true;
-        }
+    @Test(expected = IllegalArgumentException.class)
+    public void testClear() {
+        EconomicMap.emptyMap().clear();
+    }
 
-        @Override
-        public Iterator<Object> iterator() {
-            return EmptyMap.EMPTY_ITERATOR;
-        }
-    };
+    @Test
+    public void testContainsKey() {
+        Assert.assertFalse(EconomicMap.emptyMap().containsKey(1));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testContainsNullKey() {
+        Assert.assertFalse(EconomicMap.emptyMap().containsKey(null));
+    }
+
+    @Test
+    public void testCursorAlwaysEmpty() {
+        Assert.assertFalse(EconomicMap.emptyMap().getEntries().advance());
+    }
+
 }
