@@ -796,6 +796,7 @@ public final class Resources {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static class SingletonInstantiator implements SingletonLayeredCallbacks.LayeredSingletonInstantiator<Resources> {
         @Override
         public Resources createFromLoader(ImageSingletonLoader loader) {

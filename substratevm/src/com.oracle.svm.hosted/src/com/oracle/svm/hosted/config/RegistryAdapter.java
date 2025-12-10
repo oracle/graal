@@ -260,22 +260,30 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
 
     @Override
     public void registerPublicMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        registry.register(condition, queriedOnly, false, type.getMethods());
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getMethods());
+        }
     }
 
     @Override
     public void registerDeclaredMethods(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        registry.register(condition, queriedOnly, false, type.getDeclaredMethods());
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getDeclaredMethods());
+        }
     }
 
     @Override
     public void registerPublicConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        registry.register(condition, queriedOnly, false, type.getConstructors());
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getConstructors());
+        }
     }
 
     @Override
     public void registerDeclaredConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
-        registry.register(condition, queriedOnly, false, type.getDeclaredConstructors());
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getDeclaredConstructors());
+        }
     }
 
     @Override
@@ -299,7 +307,9 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
 
     @SuppressWarnings("unused")
     protected void registerFieldNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String fieldName) {
-        registry.registerFieldLookup(condition, false, type, fieldName);
+        /*
+         * Field negative queries are not required as types will include all their fields by default
+         */
     }
 
     @Override
@@ -308,7 +318,9 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
         Executable[] methods = type.getDeclaredMethods();
         for (Executable method : methods) {
             if (method.getName().equals(methodName)) {
-                registerExecutable(condition, queriedOnly, jniAccessible, method);
+                if (!queriedOnly) {
+                    registerExecutable(condition, jniAccessible, method);
+                }
                 found = true;
             }
         }
@@ -318,7 +330,9 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     @Override
     public boolean registerAllConstructors(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Class<?> type) {
         Executable[] methods = type.getDeclaredConstructors();
-        registerExecutable(condition, queriedOnly, jniAccessible, methods);
+        if (!queriedOnly) {
+            registerExecutable(condition, jniAccessible, methods);
+        }
         return methods.length > 0;
     }
 
@@ -336,6 +350,9 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     @Override
     public final void registerMethod(AccessCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes, boolean jniAccessible)
                     throws NoSuchMethodException {
+        if (queriedOnly) {
+            return;
+        }
         try {
             Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
             Method method;
@@ -357,7 +374,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
                     throw e;
                 }
             }
-            registerExecutable(condition, queriedOnly, jniAccessible, method);
+            registerExecutable(condition, jniAccessible, method);
         } catch (NoSuchMethodException e) {
             if (throwMissingRegistrationErrors()) {
                 registerMethodNegativeQuery(condition, jniAccessible, type, methodName, methodParameterTypes);
@@ -370,9 +387,12 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     @Override
     public final void registerConstructor(AccessCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes, boolean jniAccessible)
                     throws NoSuchMethodException {
+        if (queriedOnly) {
+            return;
+        }
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         try {
-            registerExecutable(condition, queriedOnly, jniAccessible, type.getDeclaredConstructor(parameterTypesArray));
+            registerExecutable(condition, jniAccessible, type.getDeclaredConstructor(parameterTypesArray));
         } catch (NoSuchMethodException e) {
             if (throwMissingRegistrationErrors()) {
                 registerConstructorNegativeQuery(condition, jniAccessible, type, methodParameterTypes);
@@ -387,18 +407,24 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     }
 
     @SuppressWarnings("unused")
-    protected void registerExecutable(AccessCondition condition, boolean queriedOnly, boolean jniAccessible, Executable... executable) {
-        registry.register(condition, queriedOnly, false, executable);
+    protected void registerExecutable(AccessCondition condition, boolean jniAccessible, Executable... executable) {
+        registry.register(condition, false, executable);
     }
 
     @SuppressWarnings("unused")
     protected void registerMethodNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) {
-        registry.registerMethodLookup(condition, false, type, methodName, getParameterTypes(methodParameterTypes));
+        /*
+         * Method negative queries are not required as types will include all their methods by
+         * default
+         */
     }
 
     @SuppressWarnings("unused")
     protected void registerConstructorNegativeQuery(AccessCondition condition, boolean jniAccessible, Class<?> type, List<Class<?>> constructorParameterTypes) {
-        registry.registerConstructorLookup(condition, false, type, getParameterTypes(constructorParameterTypes));
+        /*
+         * Constructor negative queries are not required as types will include all their
+         * constructors by default
+         */
     }
 
     @Override

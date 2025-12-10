@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.reflect.serialize;
 
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
+import static org.graalvm.nativeimage.dynamicaccess.AccessCondition.unconditional;
 
 import java.io.Externalizable;
 import java.io.ObjectInputStream;
@@ -153,7 +154,7 @@ public class SerializationFeature implements InternalFeature {
             if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaClass, "writeReplace"));
                 SerializationBuilder.registerSerializationUIDElements(lambdaClass, false, false);
-                serializationBuilder.serializationSupport.registerSerializationTargetClass(AccessCondition.unconditional(), serializationBuilder.getHostVM().dynamicHub(lambdaClass), false);
+                serializationBuilder.serializationSupport.registerSerializationTargetClass(unconditional(), serializationBuilder.getHostVM().dynamicHub(lambdaClass), false);
             }
         }
     }
@@ -421,9 +422,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, preserved, superclass);
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, superclass, "writeReplace");
-                    ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, superclass, "readResolve");
+                    ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), preserved, superclass);
                 }
 
                 registerForSerialization(cnd, preserved, serializationTargetClass);
@@ -454,7 +453,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private void registerConstructorAccessor(AccessCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass, boolean preserved) {
         Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass))
                         .map(ReflectionUtil::lookupConstructor)
-                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, preserved, methods));
+                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods));
     }
 
     void beforeAnalysis(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
@@ -468,10 +467,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private static void registerQueriesForInheritableMethod(boolean preserved, Class<?> clazz, String methodName, Class<?>... args) {
         Class<?> iter = clazz;
         while (iter != null) {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, iter, methodName, args);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), preserved, iter);
             Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, args);
             if (method != null) {
-                registerMethod(AccessCondition.unconditional(), preserved, clazz, methodName, args);
+                registerMethod(unconditional(), preserved, clazz, methodName, args);
                 break;
             }
             iter = iter.getSuperclass();
@@ -479,11 +478,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private static void registerMethod(AccessCondition cnd, boolean preserved, Class<?> clazz, String methodName, Class<?>... args) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), preserved, clazz);
         Method method = ReflectionUtil.lookupMethod(true, clazz, methodName, args);
         if (method != null) {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, preserved, method);
-        } else {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(AccessCondition.unconditional(), preserved, clazz, methodName, args);
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, method);
         }
     }
 
@@ -504,7 +502,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             boolean initClValid = true;
             while (Serializable.class.isAssignableFrom(initCl)) {
                 Class<?> prev = initCl;
-                registerAllDeclaredConstructors(preserved, initCl);
+                registerType(preserved, initCl);
                 if ((initCl = initCl.getSuperclass()) == null || (!disableSerialConstructorChecks() &&
                                 !prev.isArray() && !superHasAccessibleConstructor(prev))) {
                     initClValid = false;
@@ -513,18 +511,17 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             }
 
             if (initClValid) {
-                registerAllDeclaredConstructors(preserved, initCl);
+                registerType(preserved, initCl);
             }
 
             Class<?> iter = serializationTargetClass;
             while (iter != null) {
+                registerType(preserved, iter);
                 registerAllDeclaredFields(preserved, iter);
                 try {
                     Arrays.stream(iter.getDeclaredFields())
                                     .map(Field::getType).forEach(type -> {
-                                        registerAllDeclaredMethods(preserved, type);
-                                        registerAllDeclaredFields(preserved, type);
-                                        registerAllDeclaredConstructors(preserved, type);
+                                        registerType(preserved, type);
                                     });
                 } catch (LinkageError l) {
                     /* Handled with registration above */
@@ -542,28 +539,22 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @SuppressWarnings("unused")
     static void registerSerializationUIDElements(Class<?> serializationTargetClass, boolean fullyRegister, boolean preserved) {
-        registerAllDeclaredConstructors(preserved, serializationTargetClass);
-        registerAllDeclaredMethods(preserved, serializationTargetClass);
+        registerType(preserved, serializationTargetClass);
         registerAllDeclaredFields(preserved, serializationTargetClass);
         if (fullyRegister) {
             try {
                 /* This is here a legacy that we can't remove as it is a breaking change */
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, preserved, serializationTargetClass.getDeclaredConstructors());
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, preserved, serializationTargetClass.getDeclaredMethods());
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, preserved, serializationTargetClass.getDeclaredFields());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), preserved, serializationTargetClass.getDeclaredConstructors());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), preserved, serializationTargetClass.getDeclaredMethods());
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(unconditional(), false, preserved, serializationTargetClass.getDeclaredFields());
             } catch (LinkageError e) {
                 /* Handled by registrations above */
             }
         }
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(AccessCondition.unconditional(), preserved, serializationTargetClass, "serialPersistentFields");
     }
 
-    static void registerAllDeclaredConstructors(boolean preserved, Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(AccessCondition.unconditional(), true, preserved, declaringClass);
-    }
-
-    static void registerAllDeclaredMethods(boolean preserved, Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(AccessCondition.unconditional(), true, preserved, declaringClass);
+    static void registerType(boolean preserved, Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), preserved, declaringClass);
     }
 
     static void registerAllDeclaredFields(boolean preserved, Class<?> declaringClass) {
@@ -583,20 +574,17 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * component accessor methods for reflection ensures that the record components are
              * available at run time.
              */
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(cnd, serializationTargetClass);
             try {
                 /* Serialization for records uses the canonical record constructor directly. */
                 Executable[] methods = new Executable[]{RecordUtils.getCanonicalRecordConstructor(serializationTargetClass)};
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, preserved, methods);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods);
                 Executable[] methods1 = RecordUtils.getRecordComponentAccessorMethods(serializationTargetClass);
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, preserved, methods1);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, preserved, methods1);
             } catch (LinkageError le) {
                 /*
                  * Handled by the record component registration above.
                  */
             }
-        } else if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(AccessCondition.unconditional(), preserved, serializationTargetClass);
         }
 
         registerMethod(cnd, preserved, serializationTargetClass, "readObject", ObjectInputStream.class);

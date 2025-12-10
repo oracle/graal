@@ -32,6 +32,9 @@
           "name": "pool"
         }
       ]
+    },
+    {
+      "type": "java.lang.management.MemoryUsage"
     }
   ]
 }

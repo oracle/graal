@@ -33,7 +33,6 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -50,7 +49,9 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.util.GraalAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
@@ -76,11 +77,11 @@ public class JfrEventFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        RuntimeReflection.registerFieldLookup(Throwable.class, "jfrTracing");
-        RuntimeReflection.registerFieldLookup(FileInputStream.class, "jfrTracing");
-        RuntimeReflection.registerFieldLookup(FileOutputStream.class, "jfrTracing");
-        RuntimeReflection.registerFieldLookup(FileChannelImpl.class, "jfrTracing");
-        RuntimeReflection.registerFieldLookup(RandomAccessFile.class, "jfrTracing");
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(Throwable.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileInputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileOutputStream.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(FileChannelImpl.class), "jfrTracing"));
+        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getUniqueDeclaredField(GraalAccess.lookupType(RandomAccessFile.class), "jfrTracing"));
     }
 
     @Override

@@ -1085,7 +1085,7 @@ final class InvalidVTableEntryFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.lastImageBuild();
+        return ImageLayerBuildingSupport.lastImageBuild() || !SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     @Override

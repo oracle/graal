@@ -244,10 +244,10 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
-                        jni.register(always, false, true, declaredMethod);
+                        jni.register(always, true, declaredMethod);
                     }
                     for (Constructor<?> declaredConstructor : c.getDeclaredConstructors()) {
-                        jni.register(always, false, true, declaredConstructor);
+                        jni.register(always, true, declaredConstructor);
                     }
                     for (Field declaredField : c.getDeclaredFields()) {
                         jni.register(always, false, true, declaredField);
@@ -275,8 +275,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
          * upwards multiple times when caching is implemented.
          */
         classesToPreserve.reversed().forEach(c -> {
-            reflection.registerAllFields(always, true, c);
-            reflection.registerAllMethodsQuery(always, false, true, c);
+            reflection.register(always, false, true, c.getFields());
+            reflection.register(always, true, c.getMethods());
             serialization.register(always, true, c);
         });
 
@@ -291,15 +291,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
 
-        reflection.registerAllDeclaredFields(always, true, c);
-        reflection.registerAllDeclaredMethodsQuery(always, false, true, c);
-        reflection.registerAllDeclaredConstructorsQuery(always, false, true, c);
-        reflection.registerAllConstructorsQuery(always, false, true, c);
-        reflection.registerAllClassesQuery(always, true, c);
-        reflection.registerAllDeclaredClassesQuery(always, true, c);
-        reflection.registerAllNestMembersQuery(always, true, c);
-        reflection.registerAllPermittedSubclassesQuery(always, true, c);
-        reflection.registerAllRecordComponentsQuery(always, c);
-        reflection.registerAllSignersQuery(always, c);
+        reflection.register(always, false, true, c.getDeclaredFields());
+        reflection.register(always, true, c.getDeclaredMethods());
+        reflection.register(always, true, c.getDeclaredConstructors());
     }
 }

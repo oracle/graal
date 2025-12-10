@@ -623,12 +623,7 @@ abstract class HostMethodDesc {
 
         @Override
         boolean isInvocable() {
-            for (SingleMethod overload : overloads) {
-                if (!overload.isInvocable()) {
-                    return false;
-                }
-            }
-            return true;
+            return getOverloads()[0].isInvocable();
         }
     }
 

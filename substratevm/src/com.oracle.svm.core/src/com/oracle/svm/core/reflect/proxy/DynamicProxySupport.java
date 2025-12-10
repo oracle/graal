@@ -164,14 +164,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * be allocated at run time.
              */
             RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-            reflectionSupport.register(AccessCondition.unconditional(), false, preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
+            reflectionSupport.register(AccessCondition.unconditional(), preserved, ReflectionUtil.lookupConstructor(clazz, InvocationHandler.class));
 
             /*
              * The proxy class reflectively looks up the methods of the interfaces it implements to
              * pass a Method object to InvocationHandler.
              */
             for (Class<?> intf : interfaces) {
-                reflectionSupport.register(AccessCondition.unconditional(), false, preserved, intf.getMethods());
+                reflectionSupport.register(AccessCondition.unconditional(), preserved, intf.getMethods());
             }
 
             /*
