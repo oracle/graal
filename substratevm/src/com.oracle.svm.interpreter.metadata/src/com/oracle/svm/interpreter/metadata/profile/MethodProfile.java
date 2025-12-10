@@ -45,25 +45,29 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 /**
+ * 
  * Stores interpreter profiling data collected during the execution of a single
  * {@link ResolvedJavaMethod}.
  * <p>
  * The data is written concurrently by multiple Crema interpreter threads during method execution.
  * It is subsequently read by compilation consumers, typically wrapped in a {@link ProfilingInfo}
  * object.
+ * </p>
  * <p>
  * <b>Thread Safety and Mutability:</b> Because multiple interpreter threads update the profiles
- * concurrently, the data within this object is <b>highly volatile</b>. Any profile-related
- * information returned by methods of this class can change significantly and rapidly over time.
- * Consumers must be aware of this mutability when reading and acting upon the profiling data.
+ * concurrently, the data within this object is highly volatile. Any profile-related information
+ * returned by methods of this class can change significantly and rapidly over time. Consumers must
+ * be aware of this mutability when reading and acting upon the profiling data.
+ * </p>
  */
 public final class MethodProfile {
-
-    /**
-     * Artificial byte code index for the method entry profile.
-     */
+    /** Artificial byte code index for the method entry profile. */
     private static final int JVMCI_METHOD_ENTRY_BCI = -1;
 
+    /**
+     * All profiles for the current method. Includes branch profiles, type profiles, profiles for
+     * exceptions etc.
+     */
     private final InterpreterProfile[] profiles;
 
     /**
@@ -84,7 +88,6 @@ public final class MethodProfile {
     private static InterpreterProfile[] buildProfiles(ResolvedJavaMethod method) {
         BytecodeStream stream = new BytecodeStream(method.getCode());
         stream.setBCI(0);
-
         List<InterpreterProfile> allProfiles = new ArrayList<>();
         // we always add a method entry counting profile
         allProfiles.add(new CountingProfile(JVMCI_METHOD_ENTRY_BCI));
@@ -92,6 +95,7 @@ public final class MethodProfile {
         while (stream.currentBC() != END) {
             int bci = stream.currentBCI();
             int opcode = stream.currentBC();
+
             // we can have multiple profiles for a single BCI: type, exception etc
             if (Bytecodes.isProfiledIfBranch(opcode)) {
                 allProfiles.add(new BranchProfile(bci));
@@ -102,6 +106,7 @@ public final class MethodProfile {
             // TODO GR-71799 - backedge / goto profiles
             stream.next();
         }
+
         return allProfiles.toArray(new InterpreterProfile[0]);
     }
 
@@ -114,7 +119,7 @@ public final class MethodProfile {
      * ergonomic decision. A profile is only mature if it was explicitly set with
      * {@link #setMature(boolean)}. Normally this is done by test code for example. Users of this
      * {@link MethodProfile} can combine this with real ergonomics.
-     *
+     * 
      * @return true if an explicit maturity override has been set on this profiling data; false
      *         otherwise
      */
@@ -156,9 +161,7 @@ public final class MethodProfile {
 
     public void profileReceiver(int bci, Object receiver) {
         if (receiver == null) {
-            /*
-             * TODO GR-71949 - profile nullSeen
-             */
+            // TODO GR-71949 - profile nullSeen
             return;
         }
         ResolvedJavaType type = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
@@ -167,7 +170,7 @@ public final class MethodProfile {
 
     /**
      * Gets the profile for {@code bci} whose class is {@code clazz}.
-     *
+     * 
      * @return null if there's no profile
      */
     private InterpreterProfile getAtBCI(int bci, Class<? extends InterpreterProfile> clazz) {
@@ -202,23 +205,10 @@ public final class MethodProfile {
         }
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder(256);
-        sb.append("MethodProfile{method=").append(method.toString());
-        sb.append(", mature=").append(isMature);
-        sb.append(", profileCount=").append(profiles.length);
-        sb.append(", profiles=[");
-        for (int i = 0; i < profiles.length; i++) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            sb.append(profiles[i]);
-        }
-        sb.append("]}");
-        return sb.toString();
-    }
-
+    /**
+     * Abstract base class for all interpreter profiles. Every profile has at least a bytecode index
+     * (BCI) it is associated with.
+     */
     public abstract static class InterpreterProfile {
         protected final int bci;
 
@@ -231,6 +221,9 @@ public final class MethodProfile {
         }
     }
 
+    /**
+     * Abstraction for counting profiles, i.e., profiles that record a frequency.
+     */
     public static class CountingProfile extends InterpreterProfile {
         protected long counter;
 
@@ -294,8 +287,10 @@ public final class MethodProfile {
 
     /**
      * Abstraction for a type profile for bytecode instructions based on types: invokes, type
-     * checks, etc. Abstraction is generic to record any set of types together with their count and
-     * a {@link JavaTypeProfile#getNotRecordedProbability() not recorded probability}. In compiled
+     * checks, etc.
+     * <p>
+     * Abstraction is generic to record any set of types together with their count and a
+     * {@link JavaTypeProfile#getNotRecordedProbability() not recorded probability}. In compiled
      * code normally represented as a {@link JavaTypeProfile} attached to a
      * {@link jdk.graal.compiler.nodes.java.MethodCallTargetNode}.
      */
@@ -326,16 +321,33 @@ public final class MethodProfile {
          */
         private volatile int nextFreeSlot;
 
-        // value of state is 0 if the state is READING, else it holds the id of the currently
-        // writing thread
         /**
-         * Synchronization mechanism for lazily filling types. If {@link #typesSaturated()} returns
-         * {@code false} interpreter threads can add additional types to the profile. This
-         * potentially happens concurrently with multiple interpreter threads. In order to avoid
-         * over writing values and heavy synchronization we use CAS on the state field here to
-         * synchronize accesses. If {@code state==0} then no thread is concurrently updating the
-         * type list. If {@code state!=0} then it holds a threadID of the thread currently adding a
-         * type to the profile.
+         * Synchronization mechanism for lazily populating the <code>types</code> array.
+         * 
+         * <p>
+         * When {@link #typesSaturated()} returns <code>false</code>, interpreter threads may add
+         * new types concurrently. To avoid heavyweight locking and accidental overwrites, updates
+         * are coordinated via a CAS on the <code>state</code> field.
+         * 
+         * <p>
+         * <strong>Semantics</strong>:
+         * 
+         * <ul>
+         * <li><code>state == 0</code>: no thread is currently writing (READING state).</li>
+         * <li><code>state != 0</code>: holds the thread ID of the writer currently updating the
+         * profile (WRITING state).</li>
+         * </ul>
+         * <p>
+         * <strong>Protocol</strong>:
+         * 
+         * <ul>
+         * <li>Writers spin until they successfully CAS <code>state</code> from <code>0</code> to
+         * their thread ID.</li>
+         * <li>Once acquired, a writer may check capacity, insert a new type, and update
+         * counters/indexes safely.</li>
+         * <li>Writers must always release by CAS-ing <code>state</code> back to <code>0</code>,
+         * allowing subsequent writers to proceed.</li>
+         * </ul>
          */
         private volatile long state;
 
@@ -375,13 +387,12 @@ public final class MethodProfile {
 
         public void incrementTypeProfile(ResolvedJavaType type) {
             counter++;
-            // check if the type was already recorded, in which case we update the counts in a racy
-            // fashion
-            for (int i = 0; i < types.length && i < nextFreeSlot; i++) {
-                if (types[i].equals(type)) {
-                    counts[i]++;
-                    return;
-                }
+            /*
+             * check if the type was already recorded, in which case we update the counts in a racy
+             * fashion
+             */
+            if (findAndProfileType(type, nextFreeSlot)) {
+                return;
             }
             if (typesSaturated()) {
                 // all types saturated, racy update to notRecorded
@@ -390,6 +401,16 @@ public final class MethodProfile {
             }
             // type was not seen, and we have space, "lock" and increment
             addTypeAndIncrement(type);
+        }
+
+        private boolean findAndProfileType(ResolvedJavaType type, int currentNextFreeSlot) {
+            for (int i = 0; i < types.length && i < currentNextFreeSlot; i++) {
+                if (types[i] != null && types[i].equals(type)) {
+                    counts[i]++;
+                    return true;
+                }
+            }
+            return false;
         }
 
         /**
@@ -403,8 +424,10 @@ public final class MethodProfile {
         private void addTypeAndIncrement(ResolvedJavaType type) {
             final long currentThreadId = Thread.currentThread().threadId();
             assert currentThreadId != 0L : Assertions.errorMessage("ThreadID must never be 0", currentThreadId);
-            // we are adding a new type to the profile, we have to perform this under some kind of
-            // lock, we cas on a volatile field
+            /*
+             * we are adding a new type to the profile, we have to perform this under some kind of
+             * lock, we cas on a volatile field
+             */
             while (true) {
                 if (!PROFILING_STATE_UPDATER.compareAndSet(this, 0, currentThreadId)) {
                     // try to acquire the state lock, spin if this fails until we are allowed to
@@ -414,9 +437,10 @@ public final class MethodProfile {
                     break;
                 }
             }
+
             try {
                 /*
-                 * in the meantime (while waiting in the spin loop above) its possible another
+                 * in the meantime (while waiting in the spin loop above) it's possible another
                  * thread already saturated the list of profiles, in this case we have to add to the
                  * notRecordedCount
                  */
@@ -424,11 +448,19 @@ public final class MethodProfile {
                     notRecordedCount++;
                     return;
                 }
-                // free space, add the new type
+
                 final int profileSlot = nextFreeSlot;
+
+                // check if another thread in the meantime added the same type while we waited
+                if (findAndProfileType(type, profileSlot)) {
+                    return;
+                }
+
+                // we have free space -> add the new type
                 types[profileSlot] = type;
                 counts[profileSlot]++;
                 nextFreeSlot = profileSlot + 1;
+
             } finally {
                 if (PROFILING_STATE_UPDATER.compareAndSet(this, currentThreadId, 0)) {
                     return;
@@ -439,20 +471,21 @@ public final class MethodProfile {
         }
 
         public JavaTypeProfile toTypeProfile() {
-            if (nextFreeSlot == 0L || counter == 0L) {
+            final int freeSlot = nextFreeSlot;
+            if (freeSlot == 0 || counter == 0L) {
                 // nothing recorded
                 return null;
             }
             // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
-            JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[nextFreeSlot];
-            for (int i = 0; i < nextFreeSlot; i++) {
+            JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[freeSlot];
+            for (int i = 0; i < freeSlot; i++) {
                 double p = counts[i];
                 p = p / counter;
                 ptypes[i] = new JavaTypeProfile.ProfiledType(types[i], p);
             }
             Arrays.sort(ptypes);
-            double notRecordedTypeProbability = nextFreeSlot < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, notRecordedProbability()));
-            assert notRecordedTypeProbability == 0 || nextFreeSlot == types.length;
+            double notRecordedTypeProbability = freeSlot < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, notRecordedProbability()));
+            assert notRecordedTypeProbability == 0.0 || freeSlot == types.length;
             return new JavaTypeProfile(TriState.UNKNOWN, notRecordedTypeProbability, ptypes);
         }
 
@@ -469,7 +502,11 @@ public final class MethodProfile {
                 }
                 ResolvedJavaType t = types[i];
                 long c = counts[i];
-                sb.append(t.getName()).append(':').append(c);
+                if (t != null) {
+                    sb.append(t.getName()).append(':').append(c);
+                } else {
+                    sb.append("null:").append(c);
+                }
             }
             sb.append(']');
             if (limit >= types.length) {
