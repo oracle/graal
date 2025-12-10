@@ -48,7 +48,11 @@ public final class Target_java_net_Inet6AddressImpl {
     @Throws(UnknownHostException.class)
     @SuppressWarnings("unused")
     public static @JavaType(String.class) StaticObject getLocalHostName(@JavaType(internalName = "Ljava/net/Inet6AddressImpl;") StaticObject self,
-                    @Inject Meta meta) {
+                    @Inject Meta meta, @Inject EspressoContext context) {
+        // Simulate a system where no real hostname can be retrieved.
+        if (!context.getEnv().isSocketIOAllowed()) {
+            return meta.toGuestString("localhost");
+        }
         try {
             return meta.toGuestString(InetAddress.getLocalHost().getHostName());
         } catch (UnknownHostException e) {
@@ -63,6 +67,7 @@ public final class Target_java_net_Inet6AddressImpl {
     public static @JavaType(InetAddress[].class) StaticObject lookupAllHostAddr(@JavaType(internalName = "Ljava/net/Inet6AddressImpl;") StaticObject self,
                     @JavaType(String.class) StaticObject hostname, int characteristics,
                     @Inject LibsMeta lMeta, @Inject LibsState libsState, @Inject EspressoContext context, @Inject TruffleIO io) {
+        libsState.net.checkNetworkEnabled();
         Meta meta = context.getMeta();
         if (hostname == StaticObject.NULL) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, "host argument is null");
