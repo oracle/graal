@@ -72,6 +72,9 @@ public final class SerialAndEpsilonGCOptions {
     @Option(help = "Print information about TLABs. Printed when The TLABs are retired before a GC, and during the resizing of the TLABs. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> PrintTLAB = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
 
+    @Option(help = "Print information about the metaspace on shutdown. Serial and epsilon GC only.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> PrintMetaspace = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
+
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
         /** Use {@link #getReservedMetaspaceSize} instead. */

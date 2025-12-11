@@ -59,6 +59,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
@@ -97,7 +98,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
 
         if (RuntimeClassLoading.isSupported()) {
-            ImageSingletons.add(Metaspace.class, new MetaspaceImpl());
+            MetaspaceImpl metaspace = new MetaspaceImpl();
+            ImageSingletons.add(Metaspace.class, metaspace);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(new MetaspaceImpl.ShutdownHook(metaspace));
         }
     }
 
