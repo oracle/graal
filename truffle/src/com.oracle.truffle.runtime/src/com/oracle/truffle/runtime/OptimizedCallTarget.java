@@ -1719,6 +1719,14 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         specializeException(value);
+        /*
+         * If the target throws an exception, we can't leave the return profile uninitialized,
+         * because it is needed for direct calls on SVM. If the return profile stays null, it causes
+         * a deopt of the caller for direct C2C and C2I calls to the target with the uninitialized
+         * return profile. If the callee keeps throwing an exception, the deopt can be repeated
+         * unlimited number of times thus causing a deopt cycle for the caller.
+         */
+        getInitializedReturnProfile();
         return value;
     }
 
