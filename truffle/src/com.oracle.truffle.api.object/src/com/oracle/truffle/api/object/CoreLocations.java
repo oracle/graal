@@ -539,6 +539,11 @@ abstract class CoreLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            setLong(store, 0L, false, true);
+        }
+
+        @Override
         public final boolean canStore(Object value) {
             return value instanceof Long || (allowInt && value instanceof Integer);
         }
@@ -677,6 +682,11 @@ abstract class CoreLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            setLong(store, 0L, false, true);
+        }
+
+        @Override
         public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
             if (ObjectStorageOptions.UseVarHandle) {
                 varHandle.set(store, value);
@@ -719,6 +729,11 @@ abstract class CoreLocations {
 
         public final void setLongInternal(DynamicObject store, long value, boolean guard) {
             longLocation.setLong(store, value, guard, true);
+        }
+
+        @Override
+        protected void clear(DynamicObject store) {
+            ((InstanceLocation) longLocation).clear(store);
         }
 
         public final LongLocation getInternalLongLocation() {
