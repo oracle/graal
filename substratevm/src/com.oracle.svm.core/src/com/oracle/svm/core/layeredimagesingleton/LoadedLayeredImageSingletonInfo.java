@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import java.util.Set;
-
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,9 +38,9 @@ import com.oracle.svm.core.traits.SingletonTraits;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class LoadedLayeredImageSingletonInfo {
 
-    private final Set<Class<?>> loadedKeys;
+    private final EconomicSet<Class<?>> loadedKeys;
 
-    public LoadedLayeredImageSingletonInfo(Set<Class<?>> loadedKeys) {
+    public LoadedLayeredImageSingletonInfo(EconomicSet<Class<?>> loadedKeys) {
         this.loadedKeys = loadedKeys;
     }
 

@@ -27,9 +27,7 @@ package com.oracle.svm.core.graal.lir;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueMarker;
@@ -46,6 +44,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Verifies that reference maps for C function calls are correct. See {@link CFunctionSnippets} for
@@ -95,7 +94,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         private final int newThreadStatus;
         private final CFunctionEpilogueMarker epilogueMarker;
 
-        private final Set<BasicBlock<?>> processed = new HashSet<>();
+        private final EconomicSet<BasicBlock<?>> processed = EconomicSet.create();
         private final Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         private final List<LIRFrameState> states = new ArrayList<>();

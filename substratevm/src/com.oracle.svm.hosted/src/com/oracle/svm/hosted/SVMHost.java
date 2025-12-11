@@ -35,7 +35,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +46,7 @@ import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -249,16 +249,19 @@ public class SVMHost extends HostVM {
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
 
     // All elements below are from the host VM universe, not the analysis universe
+
     /**
      * Contains fields that should be kept as closed in an open-world analysis. In general these are
      * fields that should not be written to because, e.g., they need to be folded in the base image.
      */
-    private final Set<ResolvedJavaField> closedWorldFields;
+    private final EconomicSet<ResolvedJavaField> closedWorldFields;
+
     /**
      * Some modules contain native methods that should never be in the image, as they are either
      * hosted only, or currently unsupported in layered images.
      */
-    protected final Set<Module> sharedLayerForbiddenModules;
+    protected final EconomicSet<Module> sharedLayerForbiddenModules;
+
     private final ResolvedJavaType optionKeyType;
     private final ResolvedJavaType featureType;
 
@@ -990,8 +993,8 @@ public class SVMHost extends HostVM {
     /**
      * @return fields that should stay closed even in an open-world analysis.
      */
-    private Set<ResolvedJavaField> getAlwaysClosedFields() {
-        Set<ResolvedJavaField> closedFields = new HashSet<>();
+    private EconomicSet<ResolvedJavaField> getAlwaysClosedFields() {
+        EconomicSet<ResolvedJavaField> closedFields = EconomicSet.create(24);
 
         /*
          * These fields need to be folded as they are used in snippets, and they must be accessed
@@ -1029,8 +1032,8 @@ public class SVMHost extends HostVM {
         return closedFields;
     }
 
-    protected Set<Module> initializeSharedLayerForbiddenModules() {
-        Set<Module> forbiddenModules = new HashSet<>();
+    protected EconomicSet<Module> initializeSharedLayerForbiddenModules() {
+        EconomicSet<Module> forbiddenModules = EconomicSet.create(20);
         forbiddenModules.add(JVMCI.class.getModule());
         addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM");
         addForbiddenModule(forbiddenModules, "com.oracle.svm.shadowed.org.bytedeco.javacpp.presets.javacpp");
@@ -1039,7 +1042,7 @@ public class SVMHost extends HostVM {
         return forbiddenModules;
     }
 
-    protected static void addForbiddenModule(Set<Module> sharedLayerForbiddenModules, String className) {
+    protected static void addForbiddenModule(EconomicSet<Module> sharedLayerForbiddenModules, String className) {
         Class<?> clazz = ReflectionUtil.lookupClass(true, className);
         if (clazz != null) {
             sharedLayerForbiddenModules.add(clazz.getModule());
@@ -1557,7 +1560,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Set<Module> getSharedLayerForbiddenModules() {
+    public EconomicSet<Module> getSharedLayerForbiddenModules() {
         return sharedLayerForbiddenModules;
     }
 }

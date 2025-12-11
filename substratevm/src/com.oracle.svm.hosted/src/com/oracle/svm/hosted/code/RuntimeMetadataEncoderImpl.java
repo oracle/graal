@@ -67,6 +67,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -182,7 +183,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private Map<HostedType, Throwable> constructorLookupErrors = new HashMap<>();
     private Map<HostedType, Throwable> recordComponentLookupErrors = new HashMap<>();
 
-    private Set<AccessibleObjectMetadata> heapData = new HashSet<>();
+    private EconomicSet<AccessibleObjectMetadata> heapData = EconomicSet.create();
 
     public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
         this.snippetReflection = snippetReflection;
@@ -383,7 +384,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return null;
         }
         SubstitutionReflectivityFilter reflectivityFilter = SubstitutionReflectivityFilter.singleton();
-        Set<Class<?>> reachableClasses = new HashSet<>();
+        Set<Class<?>> reachableClasses = new HashSet<>(); // noEconomicSet(temp)
         for (Class<?> clazz : classes) {
             try {
                 if (!reflectivityFilter.shouldExclude(clazz)) {
@@ -524,7 +525,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private HostedType[] registerClassValues(MetaAccessProvider metaAccess, Class<?>[] classes) {
-        Set<HostedType> includedClasses = new HashSet<>();
+        Set<HostedType> includedClasses = new HashSet<>(); // noEconomicSet(temp)
         for (Class<?> clazz : classes) {
             HostedType type;
             try {
@@ -957,7 +958,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
-        encodeArray(buf, dynamicAccessMetadata.getTypesForEncoding().toArray(Class[]::new), t -> encodeType(buf, t));
+        EconomicSet<Class<?>> typesForEncoding = dynamicAccessMetadata.getTypesForEncoding();
+        encodeArray(buf, typesForEncoding.toArray(new Class<?>[typesForEncoding.size()]), t -> encodeType(buf, t));
     }
 
     private void encodeExecutable(UnsafeArrayTypeWriter buf, ExecutableMetadata executable) {

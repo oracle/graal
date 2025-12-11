@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
@@ -317,11 +318,11 @@ public class FeatureImpl {
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
-            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
+            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).toHashSet().stream()
                             .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
-        Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        EconomicSet<AnalysisType> reachableSubtypes(AnalysisType baseType) {
             return AnalysisUniverse.reachableSubtypes(baseType);
         }
 

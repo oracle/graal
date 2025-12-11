@@ -28,7 +28,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +40,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.nodes.ParameterNode;
+import org.graalvm.collections.EconomicSet;
 
 public class TypeFlowGraphBuilder {
     private final PointsToAnalysis bb;
@@ -123,7 +123,7 @@ public class TypeFlowGraphBuilder {
         List<TypeFlow<?>> postInitFlows = new ArrayList<>();
 
         /* Work queue used by the iterative graph traversal. */
-        HashSet<TypeFlowBuilder<?>> processed = new HashSet<>();
+        EconomicSet<TypeFlowBuilder<?>> processed = EconomicSet.create();
         ArrayDeque<TypeFlowBuilder<?>> workQueue = new ArrayDeque<>();
 
         /* Keep track of already materialized flows. */

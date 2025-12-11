@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -56,6 +55,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
@@ -183,7 +183,7 @@ public class ResourcesFeature implements InternalFeature {
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<AccessCondition> {
         private final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
 
-        private final Set<String> alreadyAddedResources = new HashSet<>();
+        private final EconomicSet<String> alreadyAddedResources = EconomicSet.create();
 
         ResourcesRegistryImpl() {
         }
@@ -285,16 +285,6 @@ public class ResourcesFeature implements InternalFeature {
         public boolean shouldRegisterResource(Module module, String resourceName) {
             /* we only do this if we are on the classPath */
             if ((module == null || !module.isNamed())) {
-                /*
-                 * This check is not thread safe! If the resource is not added yet, maybe some other
-                 * thread is attempting to do it, so we have to perform same check again in
-                 * synchronized block (in that case). Anyway this check will cut the case when we
-                 * are sure that resource is added (so we don't need to enter synchronized block)
-                 */
-                if (alreadyAddedResources.contains(resourceName)) {
-                    return false;
-                }
-
                 /* addResources can be called from multiple threads */
                 synchronized (alreadyAddedResources) {
                     if (!alreadyAddedResources.contains(resourceName)) {
@@ -356,7 +346,7 @@ public class ResourcesFeature implements InternalFeature {
             /*
              * getResources could return same entry that was found by different(parent) classLoaders
              */
-            Set<String> alreadyProcessedResources = new HashSet<>();
+            EconomicSet<String> alreadyProcessedResources = EconomicSet.create();
             while (urls.hasMoreElements()) {
                 URL url = urls.nextElement();
                 if (alreadyProcessedResources.contains(url.toString())) {

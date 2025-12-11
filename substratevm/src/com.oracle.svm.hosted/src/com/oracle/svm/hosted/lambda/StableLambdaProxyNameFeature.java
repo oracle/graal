@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
@@ -41,6 +39,7 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 import jdk.graal.compiler.java.LambdaUtils;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
@@ -77,7 +76,7 @@ public final class StableLambdaProxyNameFeature implements InternalFeature {
         }
 
         /* Lambda names should be unique. */
-        Set<String> lambdaNames = new HashSet<>();
+        EconomicSet<String> lambdaNames = EconomicSet.create();
         types.stream()
                         .map(AnalysisType::getName)
                         .filter(LambdaUtils::isLambdaClassName)

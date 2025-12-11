@@ -85,7 +85,7 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
     static final String TREE_PATTERN_STR = "https://github.com/openjdk/jdk([0-9]+u)?/tree/<tag|revision>/path/to/dir/";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
-    private final Set<Element> processed = new HashSet<>();
+    private final Set<Element> processed = new HashSet<>(); // noEconomicSet(dependencies)
     private Trees trees;
     private boolean isECJ = false;
 

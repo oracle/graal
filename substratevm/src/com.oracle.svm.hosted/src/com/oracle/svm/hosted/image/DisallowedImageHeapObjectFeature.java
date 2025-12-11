@@ -37,11 +37,10 @@ import java.nio.Buffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.zip.ZipFile;
 
@@ -117,10 +116,10 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
                             System.getProperty("java.home"));
 
             /* We cannot check all byte[] encodings of strings, but we want to check common ones. */
-            Set<Charset> encodings = new HashSet<>(Arrays.asList(
+            List<Charset> encodings = Arrays.asList(
                             StandardCharsets.UTF_8,
                             StandardCharsets.UTF_16,
-                            Charset.forName(System.getProperty("sun.jnu.encoding"))));
+                            Charset.forName(System.getProperty("sun.jnu.encoding")));
 
             disallowedByteSubstrings = new IdentityHashMap<>();
             for (String s : disallowedSubstrings) {

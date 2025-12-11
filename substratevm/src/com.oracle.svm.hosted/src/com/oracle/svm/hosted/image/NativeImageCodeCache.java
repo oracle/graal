@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -50,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -422,8 +422,8 @@ public abstract class NativeImageCodeCache {
             runtimeMetadataEncoder.addRecordComponentsLookupError(type, error);
         });
 
-        Set<AnalysisField> includedFields = new HashSet<>();
-        Set<AnalysisMethod> includedMethods = new HashSet<>();
+        EconomicSet<AnalysisField> includedFields = EconomicSet.create();
+        EconomicSet<AnalysisMethod> includedMethods = EconomicSet.create();
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> configurationFields = reflectionSupport.getReflectionFields();
         Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> configurationExecutables = reflectionSupport.getReflectionExecutables();
 

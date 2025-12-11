@@ -83,6 +83,7 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -233,13 +234,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** Access Security.getSpiClass. */
     private Method getSpiClassMethod;
     /** All available services, organized by service type. */
-    private Map<String, Set<Service>> availableServices;
+    private Map<String, EconomicSet<Service>> availableServices;
 
     /** All providers deemed to be used by this feature. */
     private final Set<Provider> usedProviders = ConcurrentHashMap.newKeySet();
 
     /** Providers marked as used by the user. */
-    private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
+    private final EconomicSet<String> manuallyMarkedUsedProviderClassNames = EconomicSet.create();
 
     private Field verificationResultsField;
     private Field providerListField;
@@ -574,8 +575,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 
-    private static Set<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
-        Set<Class<?>> allKnownServices = new HashSet<>(knownServices);
+    private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
+        EconomicSet<Class<?>> allKnownServices = EconomicSet.create(knownServices);
         for (String value : Options.AdditionalSecurityServiceTypes.getValue().values()) {
             for (String serviceClazzName : value.split(",")) {
                 Class<?> serviceClazz = access.findClassByName(serviceClazzName);
@@ -706,7 +707,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable _ = trace(access, trigger, serviceType)) {
-            Set<Service> services = availableServices.get(serviceType);
+            EconomicSet<Service> services = availableServices.get(serviceType);
             VMError.guarantee(services != null);
             for (Service service : services) {
                 registerService(access, service);
@@ -725,12 +726,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      * Collect available services, organized by service type. JDK doesn't have a way to iterate
      * services by type so we need to build our own structure.
      */
-    private static Map<String, Set<Service>> computeAvailableServices() {
-        Map<String, Set<Service>> availableServices = new HashMap<>();
+    private static Map<String, EconomicSet<Service>> computeAvailableServices() {
+        Map<String, EconomicSet<Service>> availableServices = new HashMap<>();
         for (Provider provider : Security.getProviders()) {
             for (Service s : provider.getServices()) {
                 if (isValid(s)) {
-                    availableServices.computeIfAbsent(s.getType(), _ -> new HashSet<>()).add(s);
+                    availableServices.computeIfAbsent(s.getType(), _ -> EconomicSet.create()).add(s);
                 }
             }
         }
@@ -845,7 +846,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      */
                     String providerFQName = provider.getClass().getName();
                     if (support.isSecurityProviderNotLoaded(providerFQName)) {
-                        Set<String> registeredProviders = new HashSet<>();
+                        Set<String> registeredProviders = new HashSet<>(); // noEconomicSet(unimplemented)
                         ServiceLoaderFeature.registerProviderForRuntimeReflectionAccess(access, providerFQName, registeredProviders);
                         ServiceLoaderFeature.registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), Provider.class.getName(), registeredProviders);
                     }

@@ -28,7 +28,6 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -1100,13 +1100,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Since the subtypes are updated continuously as the universe is expanded this method may
      * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public Set<AnalysisType> getAllSubtypes() {
-        HashSet<AnalysisType> result = new HashSet<>();
+    public EconomicSet<AnalysisType> getAllSubtypes() {
+        EconomicSet<AnalysisType> result = EconomicSet.create();
         collectSubtypes(this, result);
         return result;
     }
 
-    private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
+    private static void collectSubtypes(AnalysisType baseType, EconomicSet<AnalysisType> result) {
         for (AnalysisType subType : baseType.getSubTypes()) {
             if (result.add(subType)) {
                 collectSubtypes(subType, result);

@@ -140,7 +140,7 @@ public abstract class LayeredModuleSingleton {
         }
         Map<String, Set<String>> namesMap = modulePackages.computeIfAbsent(module.getName(), _ -> new HashMap<>());
         for (var entry : packages.entrySet()) {
-            Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), _ -> new HashSet<>());
+            Set<String> modules = namesMap.computeIfAbsent(entry.getKey(), _ -> new HashSet<>()); // noEconomicSet(streaming)
             modules.addAll(entry.getValue().stream().map(GraalAccess::lookupModule).map(ResolvedJavaModule::getName).toList());
             modules.remove(null);
             /*

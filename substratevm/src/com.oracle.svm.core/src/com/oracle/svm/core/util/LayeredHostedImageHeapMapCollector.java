@@ -106,7 +106,7 @@ public class LayeredHostedImageHeapMapCollector {
 
                 @Override
                 public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredHostedImageHeapMapCollector singleton) {
-                    Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys);
+                    Set<String> reachableMapKeys = new HashSet<>(singleton.currentLayerReachableMapsKeys); // noEconomicSet(streaming)
                     if (singleton.previousLayerReachableMapKeys != null) {
                         reachableMapKeys.addAll(singleton.previousLayerReachableMapKeys);
                     }

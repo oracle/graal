@@ -26,10 +26,8 @@ package com.oracle.svm.hosted.imagelayer;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +38,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
@@ -215,8 +214,8 @@ public class LayeredDispatchTableFeature implements InternalFeature {
         }
     }
 
-    private static Set<String> getPriorUnresolvedSymbols() {
-        Set<String> unresolvedSymbols = new HashSet<>();
+    private static Iterable<String> getPriorUnresolvedSymbols() {
+        EconomicSet<String> unresolvedSymbols = EconomicSet.create();
         var hubInfos = HostedImageLayerBuildingSupport.singleton().getLoader().getDynamicHubInfos();
         for (var hubInfo : hubInfos) {
             if (hubInfo.getInstalled()) {
@@ -232,7 +231,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
                 }
             }
         }
-        return Collections.unmodifiableSet(unresolvedSymbols);
+        return unresolvedSymbols;
     }
 
     static Stream<AnalysisMethod> getPriorVirtualCallTargets() {
@@ -527,7 +526,7 @@ public class LayeredDispatchTableFeature implements InternalFeature {
         HostedMethod invalidMethod = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         Map<String, HostedMethod> resolvedPriorVTableMap = new HashMap<>();
-        Set<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? new HashSet<>() : null;
+        EconomicSet<String> unresolvedVTableSymbolNames = generateUnresolvedSymbolNames ? EconomicSet.create() : null;
 
         Map<ResolvedJavaMethod, String> deduplicatedMethodMap = new HashMap<>();
         final var unresolvedSlotCount = IntStream.iterate(0, i -> i + 1).iterator();

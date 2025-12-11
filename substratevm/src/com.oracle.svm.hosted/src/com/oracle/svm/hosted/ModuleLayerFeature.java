@@ -58,6 +58,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -296,7 +297,8 @@ public class ModuleLayerFeature implements InternalFeature {
     private void scanRuntimeBootLayerPrototype(BeforeAnalysisAccessImpl accessImpl) {
         Set<String> baseModules = ModuleLayer.boot().modules().stream().map(Module::getName).collect(Collectors.toSet());
         Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, EconomicSet.emptySet(), clf,
+                        null);
         /* Only scan the value if module support is enabled and bootLayer field is reachable. */
         accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer, scanReason), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
     }
@@ -311,8 +313,8 @@ public class ModuleLayerFeature implements InternalFeature {
                         .map(t -> t.getJavaClass().getModule())
                         .collect(Collectors.toSet());
 
-        Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet());
-        Set<Module> runtimeImageUnnamedModules = runtimeImageModules.stream().filter(Predicate.not(Module::isNamed)).collect(Collectors.toSet());
+        Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet()); // noEconomicSet(streaming)
+        Set<Module> runtimeImageUnnamedModules = runtimeImageModules.stream().filter(Predicate.not(Module::isNamed)).collect(Collectors.toSet()); // noEconomicSet(streaming)
 
         /*
          * Parse explicitly added modules via --add-modules. This is done early as this information
@@ -451,7 +453,7 @@ public class ModuleLayerFeature implements InternalFeature {
             finder = systemModuleFinder;
         }
 
-        Set<String> roots = new HashSet<>();
+        Set<String> roots = new HashSet<>(); // noEconomicSet(streaming)
 
         if (mainModule != null) {
             roots.add(mainModule);
@@ -556,7 +558,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 }
             }
 
-            Set<Module> syntheticModules = new HashSet<>();
+            EconomicSet<Module> syntheticModules = EconomicSet.create();
             if (isBootModuleLayer) {
                 syntheticModules.addAll(reachableSyntheticModules);
             }
@@ -575,7 +577,7 @@ public class ModuleLayerFeature implements InternalFeature {
     }
 
     private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, AnalysisAccessBase accessImpl, ImageClassLoader cl, Set<String> reachableModules,
-                    Set<Module> syntheticModules, Function<String, ClassLoader> clf, Configuration cfOverride) {
+                    EconomicSet<Module> syntheticModules, Function<String, ClassLoader> clf, Configuration cfOverride) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -842,10 +844,10 @@ public class ModuleLayerFeature implements InternalFeature {
                     moduleEnableNativeAccessField.setAccessible(true);
                 }
 
-                allUnnamedModuleSet = new HashSet<>(1);
+                allUnnamedModuleSet = new HashSet<>(1); // noEconomicSet(streaming)
                 allUnnamedModuleSet.add(allUnnamedModule);
                 patchModuleLoaderField(allUnnamedModule, imageClassLoader.getClassLoader());
-                everyoneSet = new HashSet<>(1);
+                everyoneSet = new HashSet<>(1); // noEconomicSet(streaming)
                 everyoneSet.add(everyoneModule);
 
                 namedModuleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
@@ -1073,7 +1075,7 @@ public class ModuleLayerFeature implements InternalFeature {
                 Module m = nameToModule.get(mn);
                 assert m != null;
 
-                Set<Module> reads = new HashSet<>(resolvedModule.reads().size());
+                Set<Module> reads = new HashSet<>(resolvedModule.reads().size()); // noEconomicSet(streaming)
                 for (ResolvedModule other : resolvedModule.reads()) {
                     Module m2 = nameToModule.get(other.name());
                     reads.add(m2);
@@ -1092,7 +1094,7 @@ public class ModuleLayerFeature implements InternalFeature {
                         for (ModuleDescriptor.Exports exports : m.getDescriptor().exports()) {
                             String source = exports.source();
                             if (exports.isQualified()) {
-                                Set<Module> targets = exportedPackages.getOrDefault(source, new HashSet<>(exports.targets().size()));
+                                Set<Module> targets = exportedPackages.getOrDefault(source, new HashSet<>(exports.targets().size())); // noEconomicSet(streaming)
                                 for (String target : exports.targets()) {
                                     Module m2 = nameToModule.get(target);
                                     if (m2 != null) {
@@ -1117,7 +1119,7 @@ public class ModuleLayerFeature implements InternalFeature {
                         for (ModuleDescriptor.Opens opens : descriptor.opens()) {
                             String source = opens.source();
                             if (opens.isQualified()) {
-                                Set<Module> targets = openPackages.getOrDefault(source, new HashSet<>(opens.targets().size()));
+                                Set<Module> targets = openPackages.getOrDefault(source, new HashSet<>(opens.targets().size())); // noEconomicSet(streaming)
                                 for (String target : opens.targets()) {
                                     Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
@@ -1142,7 +1144,7 @@ public class ModuleLayerFeature implements InternalFeature {
                             }
 
                             if (exports.isQualified()) {
-                                Set<Module> targets = exportedPackages.getOrDefault(source, new HashSet<>(exports.targets().size()));
+                                Set<Module> targets = exportedPackages.getOrDefault(source, new HashSet<>(exports.targets().size())); // noEconomicSet(streaming)
                                 for (String target : exports.targets()) {
                                     Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
@@ -1208,7 +1210,7 @@ public class ModuleLayerFeature implements InternalFeature {
         void addReads(AfterAnalysisAccessImpl accessImpl, Module module, Module other) throws IllegalAccessException {
             Set<Module> reads = (Set<Module>) moduleReadsField.get(module);
             if (reads == null) {
-                reads = new HashSet<>(1);
+                reads = new HashSet<>(1); // noEconomicSet(streaming)
                 moduleReadsField.set(module, reads);
             }
             reads.add(other == null ? allUnnamedModule : other);
@@ -1232,7 +1234,7 @@ public class ModuleLayerFeature implements InternalFeature {
             if (other == null) {
                 prev = exports.putIfAbsent(pn, allUnnamedModuleSet);
             } else {
-                HashSet<Module> targets = new HashSet<>(1);
+                HashSet<Module> targets = new HashSet<>(1); // noEconomicSet(streaming)
                 targets.add(other);
                 prev = exports.putIfAbsent(pn, targets);
             }
@@ -1289,7 +1291,7 @@ public class ModuleLayerFeature implements InternalFeature {
             if (other == null) {
                 prev = opens.putIfAbsent(pn, allUnnamedModuleSet);
             } else {
-                HashSet<Module> targets = new HashSet<>(1);
+                HashSet<Module> targets = new HashSet<>(1); // noEconomicSet(streaming)
                 targets.add(other);
                 prev = opens.putIfAbsent(pn, targets);
             }

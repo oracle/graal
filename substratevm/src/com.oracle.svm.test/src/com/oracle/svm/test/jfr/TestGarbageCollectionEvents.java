@@ -30,10 +30,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -55,7 +54,7 @@ public class TestGarbageCollectionEvents extends JfrRecordingTest {
     private static void validateEvents(List<RecordedEvent> events) {
         assertFalse(events.isEmpty());
         int foundSystemGc = 0;
-        Set<Integer> ids = new HashSet<>();
+        EconomicSet<Integer> ids = EconomicSet.create();
         for (RecordedEvent event : events) {
             assertTrue(ids.add(event.getInt("gcId")));
             assertNotNull(event.getThread("eventThread").getJavaName());

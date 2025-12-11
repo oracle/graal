@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +49,7 @@ import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.LinkEditSegment64Command;
 import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
+import org.graalvm.collections.EconomicSet;
 
 public final class MachOSymtab extends MachOObjectFile.LinkEditElement implements SymbolTable {
 
@@ -326,7 +326,7 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
         // our content depends on strtab content
         LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
         LayoutDecision strtabContent = decisions.get(strtab).getDecision(LayoutDecision.Kind.CONTENT);

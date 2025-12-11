@@ -36,7 +36,6 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -50,6 +49,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicSet;
 
 public class ReportUtils {
 
@@ -298,14 +298,14 @@ public class ReportUtils {
     public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent) {
         if (bb.trackTypeFlowInputs()) {
             StringBuilder msg = new StringBuilder(String.format("Propagation trace through type flows for type %s: %n", type.toJavaName()));
-            followInput(bb, flow, type, indent, new HashSet<>(), msg);
+            followInput(bb, flow, type, indent, EconomicSet.create(), msg);
             return msg.toString();
         } else {
             return String.format("To print the propagation trace through type flows for type %s set the -H:+TrackInputFlows option. %n", type.toJavaName());
         }
     }
 
-    private static void followInput(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
+    private static void followInput(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent, EconomicSet<TypeFlow<?>> seen, StringBuilder msg) {
         seen.add(flow);
         if (flow instanceof AllInstantiatedTypeFlow) {
             msg.append(String.format("AllInstantiated(%s)%n", flow.getDeclaredType().toJavaName(true)));

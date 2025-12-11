@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -322,7 +322,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                  */
                 singletonDuringImageBuild.installPriorSingletonInfo(support.getSingletonLoader());
             } else {
-                singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.of()));
+                singletonDuringImageBuild.addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(EconomicSet.emptySet()));
             }
         }
 
@@ -340,7 +340,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 return new SingletonInfo(SINGLETON_INSTALLATION_FORBIDDEN, traitMap);
             };
             var result = info.loadImageSingletons(forbiddenObjectCreator);
-            Set<Class<?>> installedKeys = new HashSet<>();
+            EconomicSet<Class<?>> installedKeys = EconomicSet.create();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
                 for (Class<?> key : entry.getValue()) {
@@ -356,7 +356,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             }
 
             // document what was installed during loading
-            addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.copyOf(installedKeys)));
+            addSingleton(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(installedKeys));
         }
 
         public static void clear() {

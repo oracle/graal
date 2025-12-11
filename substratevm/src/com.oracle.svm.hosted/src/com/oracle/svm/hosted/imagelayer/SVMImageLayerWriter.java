@@ -408,7 +408,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map.Entry<ImageHeapConstant, ConstantParent>[] constantsToPersist = (Map.Entry<ImageHeapConstant, ConstantParent>[]) constantsMap.entrySet().stream()
                         .sorted(Comparator.comparingInt(a -> ImageHeapConstant.getConstantID(a.getKey())))
                         .toArray(Map.Entry[]::new);
-        Set<Integer> constantsToRelink = new HashSet<>();
+        Set<Integer> constantsToRelink = new HashSet<>(); // noEconomicSet(streaming)
         initSortedArray(snapshotBuilder::initConstants, constantsToPersist,
                         (entry, bsupplier) -> persistConstant(entry.getKey(), entry.getValue(), bsupplier.get(), constantsToRelink));
         initInts(snapshotBuilder::initConstantsToRelink, constantsToRelink.stream().mapToInt(i -> i).sorted());

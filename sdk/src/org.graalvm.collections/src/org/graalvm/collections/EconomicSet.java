@@ -80,7 +80,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      *
      * @since 19.0
      */
-    default void addAll(EconomicSet<E> other) {
+    default void addAll(EconomicSet<? extends E> other) {
         addAll(other.iterator());
     }
 
@@ -89,7 +89,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      *
      * @since 19.0
      */
-    default void addAll(Iterable<E> values) {
+    default void addAll(Iterable<? extends E> values) {
         addAll(values.iterator());
     }
 
@@ -99,7 +99,7 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      *
      * @since 19.0
      */
-    default void addAll(Iterator<E> iterator) {
+    default void addAll(Iterator<? extends E> iterator) {
         while (iterator.hasNext()) {
             add(iterator.next());
         }
@@ -230,5 +230,11 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
     @SuppressWarnings("unchecked")
     static <E> EconomicSet<E> emptySet() {
         return (EconomicSet<E>) EmptySet.EMPTY_SET;
+    }
+
+    static <E> EconomicSet<E> of(E elem) {
+        EconomicSet<E> set = EconomicSet.create(1);
+        set.add(elem);
+        return set;
     }
 }

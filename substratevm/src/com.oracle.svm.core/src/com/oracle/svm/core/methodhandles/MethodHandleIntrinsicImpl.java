@@ -30,9 +30,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -43,6 +41,7 @@ import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * This class represents direct method handles which are not invoked through reflection for various
@@ -111,7 +110,7 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
 
     static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsicImpl>>>> cache = new ConcurrentHashMap<>();
     static final String NO_SPECIES = "";
-    static final Set<String> unsafeFieldAccessMethodNames = new HashSet<>();
+    static final EconomicSet<String> unsafeFieldAccessMethodNames = EconomicSet.create();
 
     static {
         for (String op : Arrays.asList("get", "put")) {

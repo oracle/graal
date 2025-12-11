@@ -27,11 +27,11 @@ package com.oracle.svm.hosted;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -310,7 +310,7 @@ public class HostedConfiguration {
         return new SubstrateStrengthenGraphs(bb, universe);
     }
 
-    public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
+    public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes) {
         /* First set the monitor field for types that always need it. */
         for (AnalysisType type : getForceMonitorSlotTypes(bb)) {
             assert !immutableTypes.contains(type);
@@ -321,8 +321,8 @@ public class HostedConfiguration {
         processedSynchronizedTypes(bb, hUniverse, immutableTypes);
     }
 
-    private static Set<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
-        Set<AnalysisType> forceMonitorTypes = new HashSet<>();
+    private static EconomicSet<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
+        EconomicSet<AnalysisType> forceMonitorTypes = EconomicSet.create();
         for (var entry : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES.entrySet()) {
             Optional<AnalysisType> optionalType = bb.getMetaAccess().optionalLookupJavaType(entry.getKey());
             if (optionalType.isPresent()) {
@@ -337,7 +337,7 @@ public class HostedConfiguration {
     }
 
     /** Process the types that the analysis found as needing synchronization. */
-    protected void processedSynchronizedTypes(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
+    protected void processedSynchronizedTypes(BigBang bb, HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes) {
         for (AnalysisType type : bb.getAllSynchronizedTypes()) {
             maybeSetMonitorField(hUniverse, immutableTypes, type);
         }
@@ -352,7 +352,7 @@ public class HostedConfiguration {
      *
      * Types that must be immutable cannot have a monitor field.
      */
-    protected static void maybeSetMonitorField(HostedUniverse hUniverse, Set<AnalysisType> immutableTypes, AnalysisType type) {
+    protected static void maybeSetMonitorField(HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes, AnalysisType type) {
         if (!type.isArray() && !immutableTypes.contains(type) && !AnnotationUtil.isAnnotationPresent(type, ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }

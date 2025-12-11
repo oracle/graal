@@ -25,14 +25,14 @@
 
 package com.oracle.svm.core.jdk.resources;
 
+import org.graalvm.collections.EconomicSet;
+
 import java.io.IOException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileTime;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class NativeImageResourceFileAttributesView implements BasicFileAttributeView {
 
@@ -47,7 +47,7 @@ public class NativeImageResourceFileAttributesView implements BasicFileAttribute
         isOther,
         fileKey;
 
-        private static final Set<String> attributeValues = new HashSet<>();
+        private static final EconomicSet<String> attributeValues = EconomicSet.create(12);
 
         static {
             for (AttributeID choice : AttributeID.values()) {

@@ -35,6 +35,7 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
@@ -137,14 +138,14 @@ public class ServiceLoaderFeature implements InternalFeature {
      * Services that should not be processed here, for example because they are handled by
      * specialized features.
      */
-    private final Set<String> servicesToSkip = new HashSet<>(SKIPPED_SERVICES);
+    private final EconomicSet<String> servicesToSkip = EconomicSet.create(SKIPPED_SERVICES);
 
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
                     /* Skip console providers until GR-44085 is fixed */
                     "jdk.internal.org.jline.JdkConsoleProviderImpl",
                     "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
-    private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
+    private final EconomicSet<String> serviceProvidersToSkip = EconomicSet.create(SKIPPED_PROVIDERS);
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -196,7 +197,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                 // Service class is not supported - skipping
             }
             // skip service
-            ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip));
+            ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip)); // noEconomicSet(concurrency)
         });
     }
 

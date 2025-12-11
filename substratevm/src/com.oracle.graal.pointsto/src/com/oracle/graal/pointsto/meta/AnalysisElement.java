@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.meta;
 
 import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -256,7 +256,7 @@ public abstract class AnalysisElement extends AbstractAnnotated {
         private final BigBang bb;
         private final StringBuilder reasonTrace;
         private final ArrayDeque<Object> reasonStack;
-        private final HashSet<Object> seen;
+        private final EconomicSet<Object> seen;
 
         ReachabilityTraceBuilder(String traceHeader, Object reason, BigBang bigBang) {
             header = traceHeader;
@@ -264,7 +264,7 @@ public abstract class AnalysisElement extends AbstractAnnotated {
             bb = bigBang;
             reasonTrace = new StringBuilder();
             reasonStack = new ArrayDeque<>();
-            seen = new HashSet<>();
+            seen = EconomicSet.create();
         }
 
         public static String buildReachabilityTrace(BigBang bb, Object reason, String header) {

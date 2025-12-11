@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -33,6 +31,7 @@ import com.oracle.graal.pointsto.meta.BaseLayerType;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * This substitution replaces all lambda proxy types with types that have a stable names. The name
@@ -47,11 +46,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
 
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
-    private final Set<String> uniqueLambdaProxyNames;
+    private final EconomicSet<String> uniqueLambdaProxyNames;
 
     LambdaProxyRenamingSubstitutionProcessor() {
         this.typeSubstitutions = new ConcurrentHashMap<>();
-        this.uniqueLambdaProxyNames = new HashSet<>();
+        this.uniqueLambdaProxyNames = EconomicSet.create();
     }
 
     @Override

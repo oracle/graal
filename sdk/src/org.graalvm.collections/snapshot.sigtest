@@ -177,6 +177,7 @@ meth public void removeAll(java.lang.Iterable<{org.graalvm.collections.EconomicS
 meth public void removeAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
 meth public void removeAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
 meth public void retainAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
+meth public static org.graalvm.collections.EconomicSet<{%%0}> of(java.lang.Object)
 
 CLSS public abstract org.graalvm.collections.Equivalence
 cons protected init()
@@ -307,6 +308,10 @@ meth public abstract boolean contains({org.graalvm.collections.UnmodifiableEcono
 meth public abstract boolean isEmpty()
 meth public abstract int size()
 meth public {org.graalvm.collections.UnmodifiableEconomicSet%0}[] toArray({org.graalvm.collections.UnmodifiableEconomicSet%0}[])
+meth public boolean containsAll(java.lang.Iterable)
+meth public boolean removeIf(java.util.function.Predicate)
+meth public java.util.HashSet toHashSet()
+meth public java.util.List toList()
 
 CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public abstract boolean advance()

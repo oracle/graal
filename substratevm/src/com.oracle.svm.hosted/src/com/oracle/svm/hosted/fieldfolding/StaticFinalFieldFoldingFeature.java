@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.fieldfolding;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -284,7 +284,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
         StaticFinalFieldFoldingSingleton singleton = StaticFinalFieldFoldingSingleton.singleton();
         boolean isClassInitializer = method.isClassInitializer();
         Map<AnalysisField, JavaConstant> optimizableFields = isClassInitializer ? new HashMap<>() : null;
-        Set<AnalysisField> ineligibleFields = isClassInitializer ? new HashSet<>() : null;
+        EconomicSet<AnalysisField> ineligibleFields = isClassInitializer ? EconomicSet.create() : null;
 
         for (Node n : graph.getNodes()) {
             if (n instanceof StoreFieldNode node) {
@@ -346,7 +346,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
      * Store of a static final field in the class initializer of its declaring class. This is the
      * normal way how static final fields are initialized.
      */
-    private static void analyzeStoreInClassInitializer(StoreFieldNode node, AnalysisField field, Map<AnalysisField, JavaConstant> optimizableFields, Set<AnalysisField> ineligibleFields) {
+    private static void analyzeStoreInClassInitializer(StoreFieldNode node, AnalysisField field, Map<AnalysisField, JavaConstant> optimizableFields, EconomicSet<AnalysisField> ineligibleFields) {
         if (field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
             /*
              * Loads of assertion status fields are constant folded using a different mechanism, so

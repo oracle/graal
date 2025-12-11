@@ -33,7 +33,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -56,6 +55,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.collections.EconomicSet;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 @AutomaticallyRegisteredFeature
@@ -113,7 +113,7 @@ public class FallbackFeature implements InternalFeature {
         }
     }
 
-    private final Set<AutoProxyInvoke> autoProxyInvokes = new HashSet<>();
+    private final EconomicSet<AutoProxyInvoke> autoProxyInvokes = EconomicSet.create();
 
     public void addAutoProxyInvoke(ResolvedJavaMethod method, int bci) {
         autoProxyInvokes.add(new AutoProxyInvoke(method, bci));

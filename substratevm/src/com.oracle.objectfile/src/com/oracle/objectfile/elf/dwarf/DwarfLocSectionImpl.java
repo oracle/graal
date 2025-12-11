@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -57,6 +56,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import org.graalvm.collections.EconomicSet;
 
 /**
  * Section generator for debug_loc section.
@@ -80,8 +80,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
-        Set<BuildDependency> deps = super.getDependencies(decisions);
+    public EconomicSet<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
+        EconomicSet<BuildDependency> deps = super.getDependencies(decisions);
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         /*
          * Order all content decisions after all size decisions by making loc section content depend

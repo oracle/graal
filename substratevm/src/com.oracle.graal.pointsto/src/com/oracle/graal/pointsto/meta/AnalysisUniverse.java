@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
@@ -781,8 +782,8 @@ public class AnalysisUniverse implements Universe {
      * Since the sub-types are updated continuously as the universe is expanded this method may
      * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public static Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-        Set<AnalysisType> result = baseType.getAllSubtypes();
+    public static EconomicSet<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        EconomicSet<AnalysisType> result = baseType.getAllSubtypes();
         result.removeIf(t -> !t.isReachable());
         return result;
     }

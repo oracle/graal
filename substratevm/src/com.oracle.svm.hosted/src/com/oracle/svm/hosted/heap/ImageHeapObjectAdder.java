@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.BiConsumer;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -47,7 +46,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ImageHeapObjectAdder {
-    private final Set<BiConsumer<NativeImageHeap, HostedUniverse>> objectAdders = new HashSet<>();
+    private final EconomicSet<BiConsumer<NativeImageHeap, HostedUniverse>> objectAdders = EconomicSet.create();
     private boolean sealed = false;
 
     public static ImageHeapObjectAdder singleton() {

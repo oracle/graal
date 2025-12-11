@@ -47,6 +47,8 @@ import javax.management.ObjectName;
 import javax.management.StandardEmitterMBean;
 import javax.management.StandardMBean;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -181,14 +183,14 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     public Set<Class<? extends PlatformManagedObject>> getPlatformManagementInterfaces() {
-        Set<Class<? extends PlatformManagedObject>> result = new HashSet<>(mxBeans.classToObject.keySet());
+        Set<Class<? extends PlatformManagedObject>> result = new HashSet<>(mxBeans.classToObject.keySet()); // noEconomicSet(substitution)
         result.addAll(GCRelatedMXBeans.mxBeans().classToObject.keySet());
         return Collections.unmodifiableSet(result);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public Set<PlatformManagedObject> getPlatformManagedObjects() {
-        Set<PlatformManagedObject> result = Collections.newSetFromMap(new IdentityHashMap<>());
+    public EconomicSet<PlatformManagedObject> getPlatformManagedObjects() {
+        EconomicSet<PlatformManagedObject> result = EconomicSet.create(Equivalence.IDENTITY);
         result.addAll(mxBeans.objects);
         result.addAll(GCRelatedMXBeans.mxBeans().objects);
         return result;
@@ -325,7 +327,7 @@ public final class ManagementSupport implements ThreadListener {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public boolean verifyNoOverlappingMxBeans() {
-        Set<Class<? extends PlatformManagedObject>> overlapping = new HashSet<>(mxBeans.classToObject.keySet());
+        Set<Class<? extends PlatformManagedObject>> overlapping = new HashSet<>(mxBeans.classToObject.keySet());  // noEconomicSet(retainAll)
         overlapping.retainAll(GCRelatedMXBeans.mxBeans().classToObject.keySet());
         return overlapping.isEmpty();
     }

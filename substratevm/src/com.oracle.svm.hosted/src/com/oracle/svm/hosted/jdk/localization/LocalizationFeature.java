@@ -37,9 +37,6 @@ import java.text.spi.DecimalFormatSymbolsProvider;
 import java.text.spi.NumberFormatProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,8 +55,8 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.ResourceBundleControlProvider;
 import java.util.spi.TimeZoneNameProvider;
-import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -157,7 +154,7 @@ public class LocalizationFeature implements InternalFeature {
 
     private Charset defaultCharset;
 
-    protected Set<Locale> allLocales;
+    protected EconomicSet<Locale> allLocales;
 
     protected LocalizationSupport support;
 
@@ -379,13 +376,13 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static Set<Locale> processLocalesOption() {
-        Set<Locale> locales = new HashSet<>();
+    private static EconomicSet<Locale> processLocalesOption() {
+        EconomicSet<Locale> locales = EconomicSet.create();
         if (Options.IncludeAllLocales.getValue()) {
-            Collections.addAll(locales, Locale.getAvailableLocales());
+            locales.addAll(Arrays.asList(Locale.getAvailableLocales()));
             /* Fallthrough to also allow adding custom locales */
         } else {
-            Collections.addAll(locales, MINIMAL_LOCALES);
+            locales.addAll(Arrays.asList(MINIMAL_LOCALES));
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
@@ -557,7 +554,9 @@ public class LocalizationFeature implements InternalFeature {
             if (locale != null) {
                 /* Get rid of locale specific suffix. */
                 String baseName = input.substring(0, splitIndex);
-                prepareBundle(AccessCondition.unconditional(), baseName, Collections.singletonList(locale));
+                EconomicSet<Locale> set = EconomicSet.create();
+                set.add(locale);
+                prepareBundle(AccessCondition.unconditional(), baseName, set);
                 return;
             } else {
                 trace("Cannot parse wanted locale " + input.substring(splitIndex + 1) + ", default will be used instead.");
@@ -592,7 +591,7 @@ public class LocalizationFeature implements InternalFeature {
     };
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(AccessCondition condition, String baseName, Collection<Locale> wantedLocales) {
+    public void prepareBundle(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
         prepareBundleInternal(condition, baseName, wantedLocales);
 
         String alternativeBundleName = null;
@@ -607,7 +606,7 @@ public class LocalizationFeature implements InternalFeature {
         }
     }
 
-    private void prepareBundleInternal(AccessCondition condition, String baseName, Collection<Locale> wantedLocales) {
+    private void prepareBundleInternal(AccessCondition condition, String baseName, Iterable<Locale> wantedLocales) {
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
             support.registerBundleLookup(condition, baseName);
@@ -652,8 +651,8 @@ public class LocalizationFeature implements InternalFeature {
                             "verify the bundle path is accessible in the classpath.";
             trace(errorMessage);
             prepareNegativeBundle(condition, baseName, Locale.ROOT, false);
-            for (String language : wantedLocales.stream().map(Locale::getLanguage).collect(Collectors.toSet())) {
-                prepareNegativeBundle(condition, baseName, Locale.of(language), false);
+            for (Locale locale : wantedLocales) {
+                prepareNegativeBundle(condition, baseName, Locale.of(locale.getLanguage()), false);
             }
             for (Locale locale : wantedLocales) {
                 if (!locale.getCountry().isEmpty()) {

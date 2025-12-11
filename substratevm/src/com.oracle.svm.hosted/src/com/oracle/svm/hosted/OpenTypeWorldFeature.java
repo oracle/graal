@@ -134,7 +134,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return Set.of();
         }
 
-        var resultSet = new HashSet<AnalysisMethod>();
+        var resultSet = new HashSet<AnalysisMethod>(); // noEconomicSet(streaming)
         for (ResolvedJavaMethod m : aType.getWrapped().getDeclaredMethods(false)) {
             assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
             if (m.isStatic()) {
@@ -236,7 +236,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
             return result;
         }
 
-        Set<HostedType> allInterfaceSet = new HashSet<>();
+        Set<HostedType> allInterfaceSet = new HashSet<>(); // noEconomicSet(temp)
 
         if (type.isInterface()) {
             allInterfaceSet.add(type);

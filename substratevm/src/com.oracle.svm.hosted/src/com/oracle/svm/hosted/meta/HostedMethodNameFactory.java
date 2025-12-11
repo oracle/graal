@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -45,7 +46,7 @@ public class HostedMethodNameFactory implements InternalFeature {
     private Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
     private final boolean buildingExtensionLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
     private final boolean logUniqueNameInconsistencies = LayeredImageOptions.LayeredImageDiagnosticOptions.LogUniqueNameInconsistencies.getValue();
-    private Set<String> reservedUniqueShortNames;
+    private UnmodifiableEconomicSet<String> reservedUniqueShortNames;
 
     public record MethodNameInfo(String name, String uniqueShortName) {
     }

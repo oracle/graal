@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.hosted.image.NativeImage.localSymbolNameForMethod;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
@@ -69,7 +70,7 @@ import com.oracle.svm.hosted.meta.HostedMethodNameFactory.MethodNameInfo;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedDynamicLayerInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
     private final CGlobalData<PointerBase> cGlobalData;
-    private final Set<String> priorLayerMethodSymbols = new HashSet<>();
+    private final EconomicSet<String> priorLayerMethodSymbols = EconomicSet.create();
     private final List<String> libNames;
     private final Map<AnalysisMethod, Integer> priorInstalledOffsetCache = ImageLayerBuildingSupport.buildingExtensionLayer() ? new ConcurrentHashMap<>() : null;
     /**
@@ -157,18 +158,18 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
         }
     }
 
-    public Set<String> getReservedNames() {
+    public UnmodifiableEconomicSet<String> getReservedNames() {
         /*
          * Note we only need to ensure method names for persisted analysis methods are reserved.
          */
-        Set<String> reservedNames = new HashSet<>();
+        EconomicSet<String> reservedNames = EconomicSet.create();
         var methods = HostedImageLayerBuildingSupport.singleton().getLoader().getHostedMethods();
         for (var methodData : methods) {
             if (methodData.getMethodId() != LayeredDispatchTableFeature.PriorDispatchMethod.UNPERSISTED_METHOD_ID) {
                 reservedNames.add(methodData.getHostedMethodUniqueName().toString());
             }
         }
-        return Collections.unmodifiableSet(reservedNames);
+        return reservedNames;
     }
 
     public void registerHostedMethod(HostedMethod hMethod) {
@@ -263,11 +264,11 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo {
 
                     writer.writeStringList("libNames", singleton.libNames);
 
-                    Set<String> nextLayerDelayedMethodSymbols = new HashSet<>(singleton.previousLayerDelayedMethodSymbols);
+                    Set<String> nextLayerDelayedMethodSymbols = new HashSet<>(singleton.previousLayerDelayedMethodSymbols); // noEconomicSet(streaming)
                     nextLayerDelayedMethodSymbols.addAll(singleton.delayedMethodSymbols.keySet());
                     writer.writeStringList("delayedMethodSymbols", nextLayerDelayedMethodSymbols.stream().toList());
 
-                    Set<Integer> nextLayerDelayedMethodIds = new HashSet<>(singleton.previousLayerDelayedMethodIds);
+                    Set<Integer> nextLayerDelayedMethodIds = new HashSet<>(singleton.previousLayerDelayedMethodIds); // noEconomicSet(streaming)
                     nextLayerDelayedMethodIds.addAll(singleton.delayedMethodIds);
                     writer.writeIntList("delayedMethodIds", nextLayerDelayedMethodIds.stream().toList());
 

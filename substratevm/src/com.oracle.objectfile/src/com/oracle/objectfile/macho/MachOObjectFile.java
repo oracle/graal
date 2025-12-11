@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -42,6 +41,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -493,7 +493,7 @@ public final class MachOObjectFile extends ObjectFile {
              * together. This is because, unlike ELF, a single logical segment *must* be mapped in a
              * single mmapping.
              */
-            HashSet<BuildDependency> deps = new HashSet<>();
+            EconomicSet<BuildDependency> deps = EconomicSet.create();
             Segment prevNonEmptySegment = null;
             for (Segment s : getSegments()) {
                 Element prev = null;
@@ -1195,7 +1195,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             deps.add(BuildDependency.createOrGet(ourContent, decisions.get(el).getDecision(LayoutDecision.Kind.OFFSET)));
             deps.add(BuildDependency.createOrGet(ourContent, decisions.get(el).getDecision(LayoutDecision.Kind.SIZE)));
@@ -1295,7 +1295,7 @@ public final class MachOObjectFile extends ObjectFile {
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
             // our content depends on the offset of every section we're going to reference
-            HashSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
             ArrayList<Section> requiredOffsets = new ArrayList<>();
             for (LoadCommand c : loadCommands) {
                 if (c instanceof SymtabCommand) {
@@ -1358,7 +1358,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             // our content (but not our size) depends on the offsets and sizes of every text section
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             for (Section s : getSections()) {
@@ -1434,7 +1434,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             // our content (but not our size) depends on the offset and size
             // of the corresponding element
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
@@ -1669,7 +1669,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             // our content depends on the offset and size of strtab, and offset of symtab
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             LayoutDecision strtabSize = decisions.get(symtab.strtab).getDecision(LayoutDecision.Kind.SIZE);
@@ -1723,7 +1723,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             return deps;
         }
 
@@ -2048,7 +2048,7 @@ public final class MachOObjectFile extends ObjectFile {
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
             // 'minimal' means that our size does not depend on our bytewise-encoded content
-            HashSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+            EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
             // our content depends on the offset and size of every section we contain
             LayoutDecision ourContent = decisions.get(this).getDecision(LayoutDecision.Kind.CONTENT);
             for (Element s : elementsInSegment) {

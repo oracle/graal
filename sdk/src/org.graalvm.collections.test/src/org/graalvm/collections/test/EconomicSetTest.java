@@ -124,7 +124,7 @@ public class EconomicSetTest {
     public void testToArray() {
         EconomicSet<Integer> set = EconomicSet.create();
         set.addAll(Arrays.asList(0, 1));
-        Assert.assertArrayEquals(set.toArray(new Integer[2]), new Integer[]{0, 1});
+        Assert.assertArrayEquals(set.toArray(new Integer[set.size()]), new Integer[]{0, 1});
     }
 
     @Test
