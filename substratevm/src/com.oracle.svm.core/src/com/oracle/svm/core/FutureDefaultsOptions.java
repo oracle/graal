@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -116,8 +118,7 @@ public class FutureDefaultsOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, AccumulatingLocatableMultiOptionValue.Strings oldValue, AccumulatingLocatableMultiOptionValue.Strings newValue) {
             super.onValueUpdate(values, oldValue, newValue);
-            /* temporary simple pwdctest, will do full parsing */
-            if (newValue.values().contains("all") || newValue.values().contains(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER)) {
+            if (computeFutureDefaults(newValue.getValuesWithOrigins()).contains(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER)) {
                 ClassForNameSupport.Options.ClassForNameRespectsClassLoader.update(values, true);
             }
         }
@@ -154,8 +155,20 @@ public class FutureDefaultsOptions {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void parseAndVerifyOptions() {
         verifyOptionDescription();
-        futureDefaults = new LinkedHashSet<>(getAllValues().size());
         var valuesWithOrigin = FutureDefaults.getValue().getValuesWithOrigins();
+        futureDefaults = computeFutureDefaults(valuesWithOrigin);
+        /* Set build-time properties for user features */
+        for (String futureDefault : getFutureDefaults()) {
+            setSystemProperty(futureDefault);
+        }
+
+        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
+            setSystemProperty(retiredFutureDefault);
+        }
+    }
+
+    private static LinkedHashSet<String> computeFutureDefaults(Stream<LocatableMultiOptionValue.ValueWithOrigin<String>> valuesWithOrigin) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
         valuesWithOrigin.forEach(valueWithOrigin -> {
             String value = valueWithOrigin.value();
             if (DEFAULT_NAME.equals(value)) {
@@ -190,26 +203,18 @@ public class FutureDefaultsOptions {
                                     SubstrateOptionsParser.commandArgument(FutureDefaults, NONE_NAME),
                                     valueWithOrigin.origin());
                 }
-                futureDefaults.clear();
+                result.clear();
             }
 
             if (value.equals(ALL_NAME)) {
-                futureDefaults.addAll(ALL_FUTURE_DEFAULTS);
+                result.addAll(ALL_FUTURE_DEFAULTS);
             } else if (value.equals(RUN_TIME_INITIALIZE_JDK)) {
-                futureDefaults.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
+                result.addAll(List.of(RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES));
             } else {
-                futureDefaults.add(value);
+                result.add(value);
             }
         });
-
-        /* Set build-time properties for user features */
-        for (String futureDefault : getFutureDefaults()) {
-            setSystemProperty(futureDefault);
-        }
-
-        for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
-            setSystemProperty(retiredFutureDefault);
-        }
+        return result;
     }
 
     private static void setSystemProperty(String futureDefault) {
