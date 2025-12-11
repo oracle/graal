@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
@@ -75,5 +76,9 @@ final class JVMCIReflectionUtilFallback {
 
     public static JavaConstant newInstance(ResolvedJavaType type) {
         return GraalAccess.getOriginalSnippetReflection().forObject(ReflectionUtil.newInstance(OriginalClassProvider.getJavaClass(type)));
+    }
+
+    public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
+        return GraalAccess.getOriginalSnippetReflection().forObject(Array.newInstance(OriginalClassProvider.getJavaClass(componentType), length));
     }
 }

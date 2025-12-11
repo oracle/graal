@@ -429,4 +429,13 @@ public final class JVMCIReflectionUtil {
     public static JavaConstant newInstance(ResolvedJavaType type) {
         return JVMCIReflectionUtilFallback.newInstance(type);
     }
+
+    /**
+     * Creates a new array with the specified component type and length.
+     *
+     * @see java.lang.reflect.Array#newInstance(Class, int)
+     */
+    public static JavaConstant newArrayInstance(ResolvedJavaType componentType, int length) {
+        return JVMCIReflectionUtilFallback.newArrayInstance(componentType, length);
+    }
 }
