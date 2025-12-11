@@ -105,6 +105,13 @@ public final class ByteArrayList {
         return array[index];
     }
 
+    public void dropLast() {
+        if (size() == 0) {
+            throw new IndexOutOfBoundsException("Trying to drop last element of empty list.");
+        }
+        size--;
+    }
+
     public int size() {
         return size;
     }

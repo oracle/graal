@@ -47,7 +47,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 
@@ -76,10 +76,10 @@ public class EmscriptenModule extends BuiltinModule {
         defineFunction(context, module, "__syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall54", language, module));
         defineFunction(context, module, "__syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall6", language, module));
         defineFunction(context, module, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, module));
-        defineGlobal(module, "_table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
-        defineGlobal(module, "_memory_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
-        defineGlobal(module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
-        defineGlobal(module, "DYNAMIC_BASE", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "_table_base", I32_TYPE, Mutability.CONSTANT, 0);
+        defineGlobal(module, "_memory_base", I32_TYPE, Mutability.CONSTANT, 0);
+        defineGlobal(module, "DYNAMICTOP_PTR", I32_TYPE, Mutability.CONSTANT, 0);
+        defineGlobal(module, "DYNAMIC_BASE", I32_TYPE, Mutability.CONSTANT, 0);
         defineTable(context, module, "table", 0, -1, WasmType.FUNCREF_TYPE);
         return module;
     }

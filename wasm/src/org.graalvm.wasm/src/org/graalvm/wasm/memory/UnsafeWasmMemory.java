@@ -54,8 +54,8 @@ import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-import org.graalvm.wasm.api.Vector128;
-import org.graalvm.wasm.api.Vector128Ops;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 

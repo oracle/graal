@@ -41,7 +41,7 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 /**
@@ -214,6 +214,13 @@ public class BytecodeGen {
      */
     public int location() {
         return data.size();
+    }
+
+    /**
+     * Undoes the writing of the last byte to the bytecode.
+     */
+    public void retreat() {
+        data.dropLast();
     }
 
     /**

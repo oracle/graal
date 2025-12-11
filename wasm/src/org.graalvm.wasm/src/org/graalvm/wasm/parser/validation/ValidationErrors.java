@@ -91,18 +91,33 @@ public class ValidationErrors {
     }
 
     @TruffleBoundary
-    public static WasmException createMissingLabel(int expected, int max) {
-        return WasmException.format(Failure.UNKNOWN_LABEL, "Unknown branch label %d (max %d).", expected, max);
+    public static WasmException createMissingLabel(int label, int max) {
+        return WasmException.format(Failure.UNKNOWN_LABEL, "Unknown branch label %d (max %d).", label, max);
     }
 
     @TruffleBoundary
-    public static WasmException createMissingFunctionType(int expected) {
-        return WasmException.format(Failure.UNKNOWN_TYPE, "Function type variable %d out of range.", expected);
+    public static WasmException createMissingType(int typeIndex) {
+        return WasmException.format(Failure.UNKNOWN_TYPE, "Type variable %d out of range.", typeIndex);
     }
 
     @TruffleBoundary
-    public static WasmException createMissingFunctionType(int expected, int max) {
-        return WasmException.format(Failure.UNKNOWN_TYPE, "Function type variable %d out of range. (max %d)", expected, max);
+    public static WasmException createMissingType(int typeIndex, int max) {
+        return WasmException.format(Failure.UNKNOWN_TYPE, "Type variable %d out of range. (max %d)", typeIndex, max);
+    }
+
+    @TruffleBoundary
+    public static WasmException createExpectedArrayType(int typeIndex) {
+        return WasmException.format(Failure.TYPE_MISMATCH, "Type %d is not an array type", typeIndex);
+    }
+
+    @TruffleBoundary
+    public static WasmException createExpectedStructType(int typeIndex) {
+        return WasmException.format(Failure.TYPE_MISMATCH, "Type %d is not a struct type", typeIndex);
+    }
+
+    @TruffleBoundary
+    public static WasmException createExpectedFunctionType(int typeIndex) {
+        return WasmException.format(Failure.TYPE_MISMATCH, "Type %d is not a function type", typeIndex);
     }
 
     @TruffleBoundary

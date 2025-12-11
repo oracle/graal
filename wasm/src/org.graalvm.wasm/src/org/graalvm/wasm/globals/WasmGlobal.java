@@ -43,11 +43,12 @@ package org.graalvm.wasm.globals;
 
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.SymbolTable;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmNamesObject;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.ValueType;
-import org.graalvm.wasm.api.Vector128;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.constants.Mutability;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("static-method")
 @ExportLibrary(InteropLibrary.class)
-public final class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
+public final class WasmGlobal implements TruffleObject, EmbedderDataHolder {
 
     private final int type;
     private final boolean mutable;
@@ -68,6 +69,8 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
 
     private long globalValue;
     private Object globalObjectValue;
+
+    private Object embedderData = WasmConstant.VOID;
 
     private WasmGlobal(int type, boolean mutable, SymbolTable symbolTable) {
         this.type = type;
@@ -110,7 +113,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
         return type;
     }
 
-    public SymbolTable.ClosedValueType getClosedType() {
+    public org.graalvm.wasm.types.ValueType getClosedType() {
         return SymbolTable.closedTypeOf(getType(), symbolTable);
     }
 
@@ -119,7 +122,7 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
     }
 
     public byte getMutability() {
-        return mutable ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
+        return mutable ? Mutability.MUTABLE : Mutability.CONSTANT;
     }
 
     public int loadAsInt() {
@@ -245,5 +248,15 @@ public final class WasmGlobal extends EmbedderDataHolder implements TruffleObjec
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new WasmNamesObject(new String[]{VALUE_MEMBER});
+    }
+
+    @Override
+    public Object getEmbedderData() {
+        return embedderData;
+    }
+
+    @Override
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }

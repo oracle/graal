@@ -46,7 +46,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.Mutability;
 import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.junit.Assert;
 import org.junit.Test;
@@ -308,7 +308,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 context.eval(source);
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Invalid constant expression for table elem expression:"));
+                Assert.assertTrue("Expected type mismatch error", e.getMessage().contains("Expected result types [funcref], but got [i32]"));
             }
         });
     }
@@ -874,7 +874,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         // (func (export "main") (type 0)
         // global.get 0
         // )
-        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.EXTERNREF_TYPE, "D0 6F 0B").addType(EMPTY_INTS, new int[]{WasmType.EXTERNREF_TYPE}).addFunction(0,
+        final byte[] binary = newBuilder().addGlobal(Mutability.CONSTANT, WasmType.EXTERNREF_TYPE, "D0 6F 0B").addType(EMPTY_INTS, new int[]{WasmType.EXTERNREF_TYPE}).addFunction(0,
                         EMPTY_INTS, "23 00 0B").addFunctionExport(0, "main").build();
         runRuntimeTest(binary, instance -> {
             Value main = instance.getMember("main");
@@ -890,7 +890,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         // (func (export "main") (type 0)
         // global.get 0
         // )
-        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.EXNREF_TYPE, "D0 69 0B").addType(EMPTY_INTS, new int[]{WasmType.EXNREF_TYPE}).addFunction(0,
+        final byte[] binary = newBuilder().addGlobal(Mutability.CONSTANT, WasmType.EXNREF_TYPE, "D0 69 0B").addType(EMPTY_INTS, new int[]{WasmType.EXNREF_TYPE}).addFunction(0,
                         EMPTY_INTS, "23 00 0B").addFunctionExport(0, "main").build();
         runRuntimeTest(binary, options -> options.option("wasm.Exceptions", "true"), instance -> {
             Value main = instance.getMember("main");
@@ -914,7 +914,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         // i32.const 0
         // call_indirect 0 (type 0)
         // )
-        final byte[] binary = newBuilder().addGlobal(GlobalModifier.CONSTANT, WasmType.FUNCREF_TYPE, "D2 00 0B").addTable(1, 1, WasmType.FUNCREF_TYPE).addType(EMPTY_INTS,
+        final byte[] binary = newBuilder().addGlobal(Mutability.CONSTANT, WasmType.FUNCREF_TYPE, "D2 00 0B").addTable(1, 1, WasmType.FUNCREF_TYPE).addType(EMPTY_INTS,
                         new int[]{WasmType.I32_TYPE}).addFunction(0, EMPTY_INTS, "41 01 0B").addFunction(0, EMPTY_INTS, "41 00 23 00 26 00 41 00 11 00 00 0B").addFunctionExport(
                                         1, "main").build();
         runRuntimeTest(binary, instance -> {

@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -66,6 +65,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.wasm.types.ValueType;
 
 /**
  * Wrapper call target for executing imported host functions in the parent context.
@@ -128,7 +128,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
      */
     private Object convertResult(Object result, int resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
-        SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
+        ValueType closedResultType = module.closedTypeOf(resultType);
         CompilerAsserts.partialEvaluationConstant(closedResultType);
         return switch (resultType) {
             case WasmType.I32_TYPE -> asInt(result);
@@ -166,7 +166,7 @@ public final class ExecuteHostFunctionNode extends RootNode {
             for (int i = 0; i < resultCount; i++) {
                 int resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
-                SymbolTable.ClosedValueType closedResultType = module.closedTypeOf(resultType);
+                ValueType closedResultType = module.closedTypeOf(resultType);
                 CompilerAsserts.partialEvaluationConstant(closedResultType);
                 Object value = arrayInterop.readArrayElement(result, i);
                 switch (resultType) {

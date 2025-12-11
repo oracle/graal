@@ -48,12 +48,13 @@ import java.util.ArrayList;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen.BranchOp;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -218,6 +219,7 @@ public class ParserState {
             }
             // Push value back onto the stack and perform a checked pop to get the correct error
             // message
+            // TODO: This might need a different error message?
             valueStack.push(value);
         }
         return popChecked(WasmType.FUNCREF_TYPE);
@@ -401,7 +403,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_IF);
+        frame.addBranch(bytecode, BranchOp.BR_IF);
     }
 
     /**
@@ -415,7 +417,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR);
+        frame.addBranch(bytecode, BranchOp.BR);
     }
 
     public void addBranchOnNull(int branchLabel) {
@@ -424,7 +426,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_ON_NULL);
+        frame.addBranch(bytecode, BranchOp.BR_ON_NULL);
     }
 
     public void addBranchOnNonNull(int branchLabel, int referenceType) {
@@ -443,7 +445,29 @@ public class ParserState {
         for (int i = 0; i < labelTypes.length - 1; i++) {
             push(labelTypes[i]);
         }
-        frame.addBranch(bytecode, RuntimeBytecodeGen.BranchOp.BR_ON_NON_NULL);
+        frame.addBranch(bytecode, BranchOp.BR_ON_NON_NULL);
+    }
+
+    public void addBranchOnCast(int branchLabel, int topReferenceType, int jumpReferenceType, int noJumpReferenceType, BranchOp branchOp) {
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        final int[] labelTypes = frame.labelTypes();
+
+        if (labelTypes.length < 1) {
+            throw ValidationErrors.createLabelTypesMismatch(labelTypes, new int[]{jumpReferenceType});
+        }
+        if (!symbolTable.matchesType(labelTypes[labelTypes.length - 1], jumpReferenceType)) {
+            throw ValidationErrors.createTypeMismatch(labelTypes[labelTypes.length - 1], jumpReferenceType);
+        }
+        popChecked(topReferenceType);
+        for (int i = labelTypes.length - 2; i >= 0; i--) {
+            popChecked(labelTypes[i]);
+        }
+        for (int i = 0; i < labelTypes.length - 2; i++) {
+            push(labelTypes[i]);
+        }
+        push(noJumpReferenceType);
+        frame.addBranch(bytecode, branchOp);
     }
 
     /**
@@ -523,6 +547,13 @@ public class ParserState {
      */
     public void addCall(int nodeIndex, int functionIndex) {
         bytecode.addCall(nodeIndex, functionIndex);
+    }
+
+    /**
+     * Adds the aggregate flag to the bytecode.
+     */
+    public void addAggregateFlag() {
+        bytecode.addOp(Bytecode.AGGREGATE);
     }
 
     /**
@@ -674,6 +705,13 @@ public class ParserState {
     public void addVectorLaneInstruction(int instruction, byte laneIndex) {
         bytecode.addOp(instruction);
         bytecode.add(laneIndex);
+    }
+
+    /**
+     * Undoes the writing of the last byte to the bytecode.
+     */
+    public void retreat() {
+        bytecode.retreat();
     }
 
     /**
