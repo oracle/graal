@@ -58,8 +58,8 @@ public final class JVMCIVersionCheck {
     // Checkstyle: stop stable iteration order check
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "25", Map.of(
-                                    "Oracle Corporation", createLabsJDKVersion("25.0.1+8", "25.1", 12),
-                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.1+8", "25.1", 12)));
+                                    "Oracle Corporation", createLabsJDKVersion("25.0.1+8", "25.1", 13),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("25.0.1+8", "25.1", 13)));
     // Checkstyle: resume stable iteration order check
 
     private static final int NA = 0;
