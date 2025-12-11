@@ -213,7 +213,8 @@ public class RuntimeCompiledMethodSupport {
     }
 
     @SuppressWarnings("unused")
-    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> buildGraph, CanonicalizerPhase canonicalizer, Providers providers) {
+    protected void applyParsingHookPhases(DebugContext debug, StructuredGraph graph, Function<ResolvedJavaMethod, StructuredGraph> graphBuilder,
+                    Function<ResolvedJavaMethod, ResolvedJavaMethod> targetResolver, CanonicalizerPhase canonicalizer, Providers providers) {
     }
 
     private static class RuntimeCompileTask implements CompletionExecutor.DebugContextRunnable {

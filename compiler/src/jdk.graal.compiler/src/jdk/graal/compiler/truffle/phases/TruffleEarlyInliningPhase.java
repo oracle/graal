@@ -48,7 +48,6 @@ import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -66,7 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The goal is to expose simple partial evaluated methods and directive patterns early, so that
  * subsequent optimizations in particular {@code @ExplodeLoop} work on them correctly.
  */
-public final class TruffleEarlyInliningPhase extends Phase {
+public class TruffleEarlyInliningPhase extends Phase {
 
     static class Options {
         //@formatter:off
@@ -77,23 +76,33 @@ public final class TruffleEarlyInliningPhase extends Phase {
     }
 
     private final Providers providers;
-    private final Function<ResolvedJavaMethod, StructuredGraph> lookup;
-    private final ResolvedJavaType unwrappedAnnotationType;
+    private final Function<ResolvedJavaMethod, StructuredGraph> graphBuilder;
+    private final ResolvedJavaType earlyInlineAnnotationType;
     private final CanonicalizerPhase canonicalizer;
     private final int maxDepth;
 
-    public TruffleEarlyInliningPhase(OptionValues options, CanonicalizerPhase canonicalizer, KnownTruffleTypes types, Providers providers,
-                    Function<ResolvedJavaMethod, StructuredGraph> lookup, Function<ResolvedJavaType, ResolvedJavaType> unwrapType) {
+    public TruffleEarlyInliningPhase(OptionValues options, CanonicalizerPhase canonicalizer, Providers providers,
+                    Function<ResolvedJavaMethod, StructuredGraph> graphBuilder, ResolvedJavaType earlyInlineAnnotationType) {
         this.providers = providers;
-        this.lookup = lookup;
+        this.graphBuilder = graphBuilder;
         this.canonicalizer = canonicalizer;
         this.maxDepth = Options.TruffleEarlyInliningMaxDepth.getValue(options);
-        this.unwrappedAnnotationType = unwrapType.apply(types.CompilerDirectives_EarlyInline);
+        this.earlyInlineAnnotationType = earlyInlineAnnotationType;
     }
 
     @Override
     public boolean checkContract() {
         return false;
+    }
+
+    protected ResolvedJavaMethod getInvokeTarget(ResolvedJavaMethod targetMethod) {
+        // nothing to do by default
+        return targetMethod;
+    }
+
+    @SuppressWarnings("unused")
+    protected void processInvokeArgs(Invoke invoke, ResolvedJavaMethod targetMethod) {
+        // nothing to do by default
     }
 
     @Override
@@ -147,15 +156,13 @@ public final class TruffleEarlyInliningPhase extends Phase {
     }
 
     private void inlineCall(EconomicSet<Node> canonicalizableNodes, StructuredGraph targetGraph, Invoke invoke) {
-        inlineGraph(canonicalizableNodes, targetGraph, invoke, lookup.apply(invoke.getTargetMethod()));
-    }
-
-    private static void inlineGraph(EconomicSet<Node> canonicalizableNodes, StructuredGraph targetGraph, Invoke invoke,
-                    StructuredGraph inlineGraph) {
-        ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+        ResolvedJavaMethod targetMethod = getInvokeTarget(invoke.getTargetMethod());
+        StructuredGraph inlineGraph = graphBuilder.apply(targetMethod);
         StructuredGraph graph = invoke.asFixedNode().graph();
         assert graph == targetGraph : Assertions.errorMessageContext("call", invoke, "invoke", invoke, "graph", invoke.asFixedNode().graph(), "targetGraph", targetGraph);
         assert inlineGraph.method().equals(targetMethod);
+        processInvokeArgs(invoke, targetMethod);
+        targetGraph.recordMethod(targetMethod);
         canonicalizableNodes.addAll(InliningUtil.inlineForCanonicalization(invoke, inlineGraph, true, targetMethod, null, "TruffleEarlyInliningPhase", "TruffleEarlyInliningPhase"));
     }
 
@@ -177,7 +184,7 @@ public final class TruffleEarlyInliningPhase extends Phase {
             return false;
         }
         Map<ResolvedJavaType, AnnotationValue> declaredAnnotationValues = AnnotationValueSupport.getDeclaredAnnotationValues(targetMethod);
-        if (!declaredAnnotationValues.containsKey(unwrappedAnnotationType)) {
+        if (!declaredAnnotationValues.containsKey(earlyInlineAnnotationType)) {
             return false;
         }
         String failureMessage = InliningUtil.checkInvokeConditions(invoke);
