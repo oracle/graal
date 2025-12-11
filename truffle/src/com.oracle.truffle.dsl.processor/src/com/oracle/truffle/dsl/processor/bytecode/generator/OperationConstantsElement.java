@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,63 +40,48 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.BiConsumer;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.STATIC;
 
-import com.oracle.truffle.dsl.processor.java.model.CodeElement.StringBuilderCodeWriter;
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import java.util.Set;
+
+import javax.lang.model.element.ElementKind;
+
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
-/**
- * Utility to group values by their produced code. This allows e.g. to group switch statements
- * without complex grouping logic.
- */
-public final class EqualityCodeTree {
-    private final CodeTree tree;
-    private final String source;
+final class OperationConstantsElement extends AbstractElement {
 
-    private EqualityCodeTree(CodeTree tree) {
-        this.tree = tree;
-        StringBuilderCodeWriter codeWriter = new StringBuilderCodeWriter();
-        codeWriter.visitTree(tree, null, null);
-        source = codeWriter.getString();
+    OperationConstantsElement(BytecodeRootNodeElement parent) {
+        super(parent, Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Operations");
     }
 
-    public CodeTree getTree() {
-        return tree;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(source);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        } else if (obj == null) {
-            return false;
-        } else if (getClass() != obj.getClass()) {
-            return false;
-        } else {
-            EqualityCodeTree other = (EqualityCodeTree) obj;
-            return Objects.equals(source, other.source);
+    void lazyInit() {
+        for (OperationModel operation : parent.model.getOperations()) {
+            CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), operation.getConstantName());
+            fld.createInitBuilder().string(operation.id).end();
+            this.add(fld);
         }
+        this.add(createGetName());
     }
 
-    public static <T> Map<EqualityCodeTree, List<T>> group(CodeTreeBuilder parent, Collection<T> values, BiConsumer<T, CodeTreeBuilder> grouper) {
-        final Map<EqualityCodeTree, List<T>> grouping = new LinkedHashMap<>();
-        for (T value : values) {
-            CodeTreeBuilder b = parent.create();
-            grouper.accept(value, b);
-            grouping.computeIfAbsent(new EqualityCodeTree(b.build()), (k) -> new ArrayList<>()).add(value);
+    private CodeExecutableElement createGetName() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(STATIC), type(String.class), "getName");
+        ex.addParameter(new CodeVariableElement(type(int.class), "operation"));
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startSwitch().string("operation").end().startBlock();
+        for (OperationModel operation : parent.model.getOperations()) {
+            b.startCase().string(operation.getConstantName()).end();
+            b.startCaseBlock();
+            b.startReturn().doubleQuote(operation.name).end();
+            b.end();
         }
-        return grouping;
+        b.end();
+        b.tree(GeneratorUtils.createShouldNotReachHere("Invalid operation"));
+        return ex;
     }
 }
