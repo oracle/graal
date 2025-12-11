@@ -841,7 +841,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (callsite.getParent() == null || callsite.getParent().getTarget() == null) {
             return null;
         }
-        ProfilingInfo profilingInfo = graph.getProfileProvider().getProfilingInfo(callsite.getParent().getTarget());
+        ProfilingInfo profilingInfo = graph.getProfileProvider().getProfilingInfo(null, callsite.getParent().getTarget());
         if (profilingInfo == null) {
             return null;
         }

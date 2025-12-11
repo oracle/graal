@@ -657,7 +657,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             SnippetTemplate.SnippetInfo snippetInfo;
             final ArrayCopyTypeCheck arrayTypeCheck;
 
-            final var profilingInfo = arraycopy.graph().getProfilingInfo(arraycopy.stateAfter().getMethod());
+            final var profilingInfo = arraycopy.graph().getProfilingInfo(arraycopy.graph().getCallerContext(), arraycopy.stateAfter().getMethod());
             final boolean exceptionSeen = profilingInfo != null && profilingInfo.getExceptionSeen(arraycopy.bci()).isTrue();
 
             ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
@@ -765,7 +765,8 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("arrayLocation", locationIdentity);
             args.add("counters", counters);
 
-            final var profilingInfo = arraycopy.graph().getProfilingInfo((arraycopy.stateDuring() == null ? arraycopy.stateAfter() : arraycopy.stateDuring()).getMethod());
+            final var profilingInfo = arraycopy.graph().getProfilingInfo(arraycopy.graph().getCallerContext(),
+                            (arraycopy.stateDuring() == null ? arraycopy.stateAfter() : arraycopy.stateDuring()).getMethod());
             final boolean exceptionSeen = profilingInfo != null && profilingInfo.getExceptionSeen(arraycopy.bci()).isTrue();
             args.add("exceptionSeen", exceptionSeen);
 

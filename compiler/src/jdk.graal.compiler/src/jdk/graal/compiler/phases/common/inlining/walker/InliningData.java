@@ -163,7 +163,7 @@ public class InliningData {
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue(options)) {
             return "it exceeds the maximum recursive inlining depth";
         } else {
-            if (new OptimisticOptimizations(rootGraph.getProfilingInfo(method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
+            if (new OptimisticOptimizations(rootGraph.getProfilingInfo(invoke.asNode().graph().getCallerContext(), method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
                 return "the callee uses less optimistic optimizations than caller";
             } else {
                 return null;

@@ -176,7 +176,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                         // PerMethodRecompilationCutoff flag but since it's under our control we can
                         // produce more useful diagnostics. The default HotSpot limit of 400 is
                         // probably too large as well.
-                        ProfilingInfo info = task.getProfileProvider().getProfilingInfo(request.getMethod());
+                        ProfilingInfo info = task.getProfileProvider().getProfilingInfo(null, request.getMethod());
                         return HotSpotCompilationRequestResult.failure("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info), false);
                     }
 
@@ -282,7 +282,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
 
         LIRSuites lirSuites = getLIRSuites(providers, options);
-        ProfilingInfo profilingInfo = graph.getProfileProvider() != null ? graph.getProfileProvider().getProfilingInfo(method, !isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
+        ProfilingInfo profilingInfo = graph.getProfileProvider() != null ? graph.getProfileProvider().getProfilingInfo(null, method, !isOSR, isOSR)
+                        : DefaultProfilingInfo.get(TriState.FALSE);
         OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo, options);
 
         /*

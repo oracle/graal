@@ -26,27 +26,26 @@ package com.oracle.svm.interpreter.ristretto.profile;
 
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public final class RistrettoProfileProvider implements ProfileProvider {
+public final class RistrettoContextAgnosticProfileProvider implements ProfileProvider {
     private final RistrettoProfilingInfo info;
 
-    public RistrettoProfileProvider(RistrettoMethod rMethod) {
+    public RistrettoContextAgnosticProfileProvider(RistrettoMethod rMethod) {
         this.info = new RistrettoProfilingInfo(rMethod.getProfile());
     }
 
     @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method) {
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method) {
         return info;
     }
 
     @Override
-    public ProfilingInfo getProfilingInfo(ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
-        /*
-         * TODO GR-71494 - no OSR support for now
-         */
-        return getProfilingInfo(method);
+    public ProfilingInfo getProfilingInfo(NodeSourcePosition callingContext, ResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
+        return getProfilingInfo(callingContext, method);
     }
+
 }
