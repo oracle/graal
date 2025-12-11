@@ -255,7 +255,6 @@ import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
-import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
@@ -1088,11 +1087,8 @@ public class NativeImageGenerator {
                 bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
                 if (TesaEngine.Options.TransitiveEffectSummaryAnalysis.getValue()) {
-                    /*
-                     * Tesa only works in ClosedTypeWorld. PLTGOT seems to create memory kills
-                     * unseen by TESA.
-                     */
-                    if (SubstrateOptions.useClosedTypeWorld() && !PLTGOTOptions.EnablePLTGOT.getValue()) {
+                    /* Tesa only works in ClosedTypeWorld. */
+                    if (SubstrateOptions.useClosedTypeWorld()) {
                         TesaEngine engine = new TesaEngine();
                         ImageSingletons.add(TesaEngine.class, engine);
                         /* Register the engine in ImageBuildStatistics for reporting. */
