@@ -30,8 +30,6 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +76,7 @@ import com.oracle.graal.pointsto.flow.context.bytecode.ContextSensitiveMultiType
 import com.oracle.graal.pointsto.flow.context.bytecode.ContextSensitiveSingleTypeState;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.GraalAccess;
@@ -116,9 +115,8 @@ public class PointsToStats {
     public static void report(@SuppressWarnings("unused") BigBang bb, String reportNameRoot) {
         assert reportStatistics || reportTypeStateMemoryFootPrint : "At least one of these options should be selected.";
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
-            String timeStamp = LocalDateTime.now().format(formatter);
-            Path statsDirectory = Files.createDirectories(FileSystems.getDefault().getPath("svmbuild").resolve("stats"));
+            String timeStamp = ReportUtils.getTimeStampString();
+            Path statsDirectory = Files.createDirectories(FileSystems.getDefault().getPath("stats"));
 
             /* Both report option include the footprint, so generate it unconditionally. */
             doReport(statsDirectory, reportNameRoot, "type state memory footprint", timeStamp, PointsToStats::reportTypeStateMemoryFootprint);
