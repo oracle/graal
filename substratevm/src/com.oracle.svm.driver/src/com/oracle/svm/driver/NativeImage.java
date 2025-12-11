@@ -120,8 +120,6 @@ public class NativeImage {
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getName();
     private static final String CUSTOM_COMMON_FORK_JOIN_POOL_THREAD_FACTORY = NativeImageSystemClassLoader.NativeImageForkJoinWorkerThreadFactory.class.getName();
 
-    static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
-
     static final String platform = getPlatform();
 
     private static String getPlatform() {
@@ -391,7 +389,7 @@ public class NativeImage {
             if (rootDir != null) {
                 this.rootDir = rootDir;
             } else {
-                if (IS_AOT) {
+                if (ImageInfo.inImageRuntimeCode()) {
                     Path executablePath = Paths.get(ProcessProperties.getExecutableName());
                     Path binDir = executablePath.getParent();
                     Path rootDirCandidate = binDir.getParent();
