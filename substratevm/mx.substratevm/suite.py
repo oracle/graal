@@ -1825,6 +1825,7 @@ suite = {
                     "org.graalvm.nativeimage.configure",
                     "org.graalvm.nativeimage.libgraal",
                     "org.graalvm.espresso.shared.svm",
+                    "jdk.graal.compiler.vmaccess",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1970,6 +1971,7 @@ suite = {
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
+                    "org.graalvm.collections",
                 ]
             },
             "noMavenJavadoc": True,
@@ -2246,6 +2248,7 @@ suite = {
                     "com.oracle.svm.diagnosticsagent",
                 ],
                 "requires": [
+                  "org.graalvm.collections",
                   "org.graalvm.nativeimage.builder",
                 ],
             },
@@ -2431,6 +2434,8 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "org.graalvm.collections",
+                    "jdk.graal.compiler.vmaccess",
                     "org.graalvm.nativeimage",
                 ],
                 "requiresConcealed" : {
@@ -2686,6 +2691,7 @@ suite = {
                 "com.oracle.svm.jdwp.server",
             ],
             "distDependencies": [
+                "sdk:COLLECTIONS",
                 "substratevm:SVM",
             ],
             "moduleInfo" : {
