@@ -331,6 +331,10 @@ public abstract class AbstractEspressoResolvedArrayType extends EspressoResolved
         return null;
     }
 
+    public int getDimensions() {
+        return dimensions;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) {

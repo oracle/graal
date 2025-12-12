@@ -34,6 +34,7 @@ final class EspressoExternalObjectConstant implements JavaConstant {
     private final org.graalvm.polyglot.Value value;
 
     EspressoExternalObjectConstant(EspressoExternalVMAccess access, org.graalvm.polyglot.Value value) {
+        assert !value.isNull();
         this.access = access;
         this.value = value;
     }
