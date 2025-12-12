@@ -47,7 +47,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithReceiverBasedAvailability;
-import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.layered.LayeredFieldValue;
@@ -68,7 +67,6 @@ import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -77,6 +75,7 @@ import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class centralizes access to the several ways we have to transform and intercept field
@@ -113,7 +112,7 @@ public final class FieldValueInterceptionSupport {
      * contrast to most other methods of this class, invoking this method does not prevent a future
      * registration of a field value transformer for that field.
      */
-    public FieldValueTransformer lookupAlreadyRegisteredTransformer(ResolvedJavaField oField) {
+    public JVMCIFieldValueTransformer lookupAlreadyRegisteredTransformer(ResolvedJavaField oField) {
         assert !(oField instanceof OriginalFieldProvider) : oField;
 
         var existingInterceptor = fieldValueInterceptors.get(oField);
@@ -127,34 +126,35 @@ public final class FieldValueInterceptionSupport {
      * Register a field value transformer for the provided field. There can only be one transformer
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
-    public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        registerFieldValueTransformer(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
+    public void registerLegacyFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
+        registerLegacyFieldValueTransformer(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaField(reflectionField), transformer);
     }
 
     /**
-     * Wraps a {@link JVMCIFieldValueTransformer} in an {@link FieldValueTransformer}. Eventually,
-     * this should be reversed, i.e., {@link FieldValueTransformer} should be wrapped in
-     * {@link JVMCIFieldValueTransformer} (GR-71666).
+     * Wraps a {@link FieldValueTransformer} in an {@link JVMCIFieldValueTransformer}.
      */
-    public static final class FallbackFieldValueTransformer implements FieldValueTransformer {
-        private final JVMCIFieldValueTransformer jvmciFieldValueTransformer;
+    public static final class WrappedFieldValueTransformer implements JVMCIFieldValueTransformer {
+        private final FieldValueTransformer fieldValueTransformer;
 
-        public FallbackFieldValueTransformer(JVMCIFieldValueTransformer jvmciFieldValueTransformer) {
-            this.jvmciFieldValueTransformer = jvmciFieldValueTransformer;
+        public static JVMCIFieldValueTransformer create(FieldValueTransformer fieldValueTransformer) {
+            if (fieldValueTransformer instanceof JVMCIFieldValueTransformer jvmciFieldValueTransformer) {
+                return jvmciFieldValueTransformer;
+            }
+            return new WrappedFieldValueTransformer(fieldValueTransformer);
+        }
+
+        private WrappedFieldValueTransformer(FieldValueTransformer fieldValueTransformer) {
+            this.fieldValueTransformer = fieldValueTransformer;
         }
 
         @Override
-        public Object transform(Object reflectionReceiver, Object reflectionOriginalValue) {
-            SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-            JavaConstant receiver = reflectionReceiver == null ? null : originalSnippetReflection.forObject(reflectionReceiver);
-            JavaConstant originalValue = reflectionOriginalValue == null ? null : originalSnippetReflection.forObject(reflectionOriginalValue);
-            return new JavaConstantWrapper(Objects.requireNonNull(jvmciFieldValueTransformer.transform(receiver, originalValue),
-                            "JVMCIFieldValueTransformer must not return `null`. Use `JavaConstant.NULL_POINTER`instead"));
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+            return FieldValueTransformerWithAvailability.transformAndConvert(fieldValueTransformer, receiver, originalValue);
         }
 
         @Override
         public boolean isAvailable() {
-            return jvmciFieldValueTransformer.isAvailable();
+            return fieldValueTransformer.isAvailable();
         }
 
         @Override
@@ -163,33 +163,38 @@ public final class FieldValueInterceptionSupport {
                 return false;
             }
 
-            FallbackFieldValueTransformer that = (FallbackFieldValueTransformer) o;
-            return Objects.equals(jvmciFieldValueTransformer, that.jvmciFieldValueTransformer);
+            WrappedFieldValueTransformer that = (WrappedFieldValueTransformer) o;
+            return Objects.equals(fieldValueTransformer, that.fieldValueTransformer);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(jvmciFieldValueTransformer);
+            return Objects.hashCode(fieldValueTransformer);
         }
+
+        @Override
+        public String toString() {
+            return "Wrapped[" + fieldValueTransformer + ']';
+        }
+    }
+
+    public void registerLegacyFieldValueTransformer(ResolvedJavaField oField, FieldValueTransformer transformer) {
+        registerFieldValueTransformer(oField, WrappedFieldValueTransformer.create(transformer));
     }
 
     /**
      * Register a field value transformer for the provided field. There can only be one transformer
      * per field, if there is already a transformation in place, a {@link UserError} is reported.
      */
-    public void registerJVMCIFieldValueTransformer(ResolvedJavaField resolvedJavaField, JVMCIFieldValueTransformer transformer) {
-        registerFieldValueTransformer(resolvedJavaField, new FallbackFieldValueTransformer(transformer));
-    }
-
-    public void registerFieldValueTransformer(ResolvedJavaField oField, FieldValueTransformer transformer) {
+    public void registerFieldValueTransformer(ResolvedJavaField oField, JVMCIFieldValueTransformer transformer) {
         if (annotationSubstitutions.isDeleted(oField)) {
             throw UserError.abort("Cannot register a field value transformer for field %s: %s", oField.format("%H.%n"),
                             "The field is marked as deleted, i.e., the field is not available on this platform");
         }
-        registerFieldValueTransformer(oField, OriginalClassProvider.getJavaClass(oField.getType()), transformer);
+        registerFieldValueTransformer(oField, OriginalClassProvider.getOriginalType(oField.getType()), transformer);
     }
 
-    public void registerFieldValueTransformer(ResolvedJavaField oField, Class<?> transformedValueAllowedType, FieldValueTransformer transformer) {
+    public void registerFieldValueTransformer(ResolvedJavaField oField, ResolvedJavaType transformedValueAllowedType, JVMCIFieldValueTransformer transformer) {
         assert oField != null && !(oField instanceof OriginalFieldProvider) : oField;
 
         var transformation = new FieldValueTransformation(transformedValueAllowedType, Objects.requireNonNull(transformer));
@@ -467,7 +472,7 @@ public final class FieldValueInterceptionSupport {
         LayeredFieldValue layeredFieldValue = AnnotationUtil.getAnnotation(aField, LayeredFieldValue.class);
         if (layeredFieldValue != null) {
             var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
-            return new FieldValueTransformation(OriginalClassProvider.getJavaClass(oField.getType()), transformer);
+            return new FieldValueTransformation(OriginalClassProvider.getOriginalType(oField.getType()), transformer);
         }
         return null;
     }
