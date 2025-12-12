@@ -274,7 +274,12 @@ public final class ClassRegistries implements ParsingContext {
                 if (RuntimeClassLoading.isSupported()) {
                     RuntimeClassLoading.getOrCreateArrayHub(hub);
                 } else {
-                    throw MissingReflectionRegistrationUtils.reportClassAccess(name);
+                    if (arrayDimensions <= 255) {
+                        /* throw only for valid arrays */
+                        throw MissingReflectionRegistrationUtils.reportClassAccess(name);
+                    } else {
+                        return null;
+                    }
                 }
             }
             remainingDims--;
