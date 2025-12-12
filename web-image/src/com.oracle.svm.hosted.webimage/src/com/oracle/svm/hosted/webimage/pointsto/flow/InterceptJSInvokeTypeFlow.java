@@ -43,6 +43,8 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public class InterceptJSInvokeTypeFlow extends TypeFlow<BytecodePosition> {
     private final AnalysisMethod targetMethod;
+    /// One [TypeFlow] per method argument (including receiver for non-static methods at index 0).
+    /// Contains `null` for primitive arguments, in which case that entry should be ignored.
     private final TypeFlow<?>[] arguments;
 
     public InterceptJSInvokeTypeFlow(BytecodePosition source, AnalysisMethod targetMethod, TypeFlow<?>[] arguments) {
@@ -99,7 +101,16 @@ public class InterceptJSInvokeTypeFlow extends TypeFlow<BytecodePosition> {
         // If the input type is saturated, then it must be replaced with the
         // all-instantiated-type-flow of the corresponding type parameter.
         for (int i = 0; i < this.arguments.length; i++) {
-            if (this.arguments[i] == observed) {
+            TypeFlow<?> argument = this.arguments[i];
+            if (argument == null) {
+                // Ignore arguments without typeflows (they're primitive type arguments)
+                continue;
+            }
+
+            // observed == null is used when this method call is deferred (because this flow wasn't
+            // enabled yet when the observed flow was saturated). In that case, we need to
+            // conservatively treat all argument flows as saturated.
+            if (observed == null || argument == observed) {
                 TypeFlow<?> paramTypeFlow;
                 if (targetMethod.isStatic()) {
                     paramTypeFlow = targetMethod.getSignature().getParameterType(i).getTypeFlow(bb, true);
@@ -110,6 +121,9 @@ public class InterceptJSInvokeTypeFlow extends TypeFlow<BytecodePosition> {
                         paramTypeFlow = targetMethod.getSignature().getParameterType(i - 1).getTypeFlow(bb, true);
                     }
                 }
+
+                assert !paramTypeFlow.getState().isPrimitive() : "Found primitive type state for argument " + i + " in method " + this.targetMethod;
+
                 this.arguments[i] = paramTypeFlow;
                 this.arguments[i].addUse(bb, this);
                 this.arguments[i].addObserver(bb, this);
