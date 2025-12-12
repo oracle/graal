@@ -10,6 +10,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 public interface AnalysisMethodFilter {
 
     /**
+     * Description of the method filter
+     * @return String description of the method filter
+     */
+    String getDescription();
+
+    /**
      * Checks if the given analysisMethod be skipped during the analysis.
      *
      * @param method the method to check

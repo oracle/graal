@@ -79,6 +79,7 @@ public class AbstractInterpretationEngine {
         } else {
             logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
             analyzer.runAnalysis(analysisRoot);
+            // TODO: make this parallelized
             for (var method : rootMethods) {
                 analyzer.runAnalysis(method);
             }

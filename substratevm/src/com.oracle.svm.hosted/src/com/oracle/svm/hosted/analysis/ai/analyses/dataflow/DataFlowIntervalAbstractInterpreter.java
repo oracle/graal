@@ -710,10 +710,16 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
     private IntInterval getResultIntegerEqualsNode(IntInterval ix, IntInterval iy) {
         assert !ix.isTop() && !ix.isBot() && !iy.isTop() && !iy.isBot();
-        if (ix.getUpper() == iy.getUpper() && ix.getLower() == iy.getLower()) {
+        if (isPoint(ix) && isPoint(iy) && ix.getUpper() == iy.getUpper() && ix.getLower() == iy.getLower()) {
             return new IntInterval(1, 1);
         }
-        return new IntInterval(0, 0);
+
+        IntInterval meetInt = ix.meet(iy);
+        if (meetInt.isBot()) {
+            return new IntInterval(0, 0);
+        }
+
+        return new IntInterval(0, 1);
     }
 
     private AbstractMemory evalLeftShiftNode(LeftShiftNode node, AbstractMemory mem) {
@@ -817,7 +823,6 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
 
         return mem;
     }
-
 
     private AbstractMemory evalPiNode(PiNode piNode, AbstractMemory mem) {
         IntInterval base = getNodeResultInterval(piNode.object(), mem);
@@ -923,7 +928,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
     }
 
     private static boolean isPoint(IntInterval v) {
-        return v != null && !v.isTop() && !v.isBot() && !v.isLowerInfinite() && !v.isUpperInfinite() && v.getLower() == v.getUpper();
+        return v != null && v.isSingleton();
     }
 
     private static Function<AccessPath, AccessPath> indexTransform(Node indexNode, AbstractMemory mem) {
@@ -951,7 +956,7 @@ public class DataFlowIntervalAbstractInterpreter implements AbstractInterpreter<
         if (!visited.add(n)) {
             return null;
         }
-        // TODO: we will have to handle PiNode here
+        // TODO: we will have to handle PiNode more in-depth here
         if (n instanceof NewArrayNode na) return na;
         if (n instanceof ValueProxy vp) return resolveNewArray(vp.getOriginalNode(), visited, depth + 1);
         if (n instanceof PhiNode phi) {

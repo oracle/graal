@@ -8,6 +8,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 public final class SkipJavaLangAnalysisMethodFilter implements AnalysisMethodFilter {
 
     @Override
+    public String getDescription() {
+        return "Skip jdk/java methods";
+    }
+
+    @Override
     public boolean shouldSkipMethod(AnalysisMethod method) {
         return method.getQualifiedName().startsWith("java") ||
                 method.getQualifiedName().startsWith("jdk") ||

@@ -10,7 +10,8 @@ import com.oracle.svm.hosted.analysis.ai.summary.Summary;
  * @param summary  the summary produced by the analysis, represented as an instance of {@link Summary}
  * @param <Domain> the type of the derived {@link AbstractDomain} used in the analysis
  */
-public record InvokeAnalysisOutcome<Domain extends AbstractDomain<Domain>>(AnalysisResult result, Summary<Domain> summary) {
+public record InvokeAnalysisOutcome<Domain extends AbstractDomain<Domain>>(AnalysisResult result,
+                                                                           Summary<Domain> summary) {
 
     public static <Domain extends AbstractDomain<Domain>> InvokeAnalysisOutcome<Domain> ok(Summary<Domain> summary) {
         return new InvokeAnalysisOutcome<>(AnalysisResult.OK, summary);
@@ -22,5 +23,13 @@ public record InvokeAnalysisOutcome<Domain extends AbstractDomain<Domain>>(Analy
 
     public boolean isOk() {
         return result == AnalysisResult.OK;
+    }
+
+    @Override
+    public String toString() {
+        if (!isOk()) {
+            return result.toString();
+        }
+        return ""; // We can in theory print the summary here, but the logs are scuffed and we can extract the after the analysis is finished
     }
 }
