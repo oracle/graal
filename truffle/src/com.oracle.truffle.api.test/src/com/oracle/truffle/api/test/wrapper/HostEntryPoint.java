@@ -90,7 +90,7 @@ final class HostEntryPoint {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, (AbstractHostAccess) guestPolyglot.createHostAccess());
         Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, OutputStream.nullOutputStream(), OutputStream.nullOutputStream(), null, new HashMap<>(), false, false, null, null,
-                        hostLanguage, false, false, null);
+                        hostLanguage, false, false, null, null);
         return guestToHost(engine);
     }
 
@@ -128,8 +128,8 @@ final class HostEntryPoint {
         Context remoteContext = dispatch.createContext(receiver, engine, sandboxPolicy, null, null, null, false, null, PolyglotAccess.NONE, false,
                         false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], IOAccess.NONE, null,
-                        false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, tmpDir, null, true, false, false);
+                        false, null, null,
+                        EnvironmentAccess.NONE, null, null, null, null, tmpDir, null, true, false, false);
         return guestToHost(remoteContext);
     }
 

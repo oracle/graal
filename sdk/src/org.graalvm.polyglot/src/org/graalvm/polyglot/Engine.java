@@ -595,6 +595,7 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
+        private Consumer<PolyglotException> exceptionHandler;
         private Object customLogHandler;
         private String[] permittedLanguages;
         private SandboxPolicy sandboxPolicy;
@@ -759,6 +760,72 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Sets an exception handler that is invoked whenever a {@link PolyglotException} is about
+         * to be thrown from a engine bound value back to the host. The configured custom exception
+         * handler gets inherited by all contexts created with this engine.
+         * <p>
+         * The handler is called on the host thread that performs the polyglot operation, for
+         * example when invoking {@link Value} methods, executing guest code, or initializing a
+         * language. It receives the {@link PolyglotException} that would normally be thrown to the
+         * caller.
+         * <p>
+         * The handler can inspect the exception, perform additional logging or metrics, or
+         * translate the {@link PolyglotException} into a different exception type. If the handler
+         * throws an exception, that exception is propagated to the caller instead of the original
+         * {@link PolyglotException}. If the handler returns normally, the original
+         * {@link PolyglotException} is thrown as usual.
+         * <p>
+         * A common use case is to unwrap and rethrow host runtime exceptions so that calling code
+         * can handle them directly:
+         *
+         * <pre>
+         * static void rethrowHostRuntimeException(PolyglotException e) {
+         *     if (e.isHostException()) {
+         *         Throwable t = e.asHostException();
+         *         if (t instanceof RuntimeException rt) {
+         *             // rethrow the original host runtime exception
+         *             throw rt;
+         *         }
+         *     }
+         *     // fall through, the PolyglotException will be thrown
+         * }
+         *
+         * try (Context c = Context.newBuilder()
+         *                 .exceptionHandler(MyHost::rethrowHostRuntimeException)
+         *                 .build()) {
+         *     try {
+         *         // Without an exception handler, this would throw a PolyglotException
+         *         // wrapping the IllegalStateException as a host exception.
+         *         c.asValue(new IllegalStateException("test")).throwException();
+         *     } catch (IllegalStateException e) {
+         *         // The handler rethrew the original host exception.
+         *         assert "test".equals(e.getMessage());
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, {@link Value#throwException()} would normally throw a
+         * {@link PolyglotException}. Because the handler rethrows the underlying host
+         * {@link RuntimeException}, the caller observes {@code IllegalStateException} directly
+         * instead of {@link PolyglotException}.
+         * <p>
+         * Handlers should be written carefully, because any host call into the context can then
+         * appear to throw additional exception types. In particular, translating guest exceptions
+         * into unrelated runtime exceptions can make APIs harder to reason about and should only be
+         * done with care.
+         *
+         * @param handler the handler to invoke before a {@link PolyglotException} is thrown to the
+         *            host, or {@code null} to disable custom handling
+         *
+         * @see Context.Builder#exceptionHandler(Consumer)
+         * @since 25.1
+         */
+        public Builder exceptionHandler(Consumer<PolyglotException> handler) {
+            this.exceptionHandler = handler;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Engine's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
@@ -840,7 +907,7 @@ public final class Engine implements AutoCloseable {
             Map<String, String> useOptions = useSystemProperties ? readOptionsFromSystemProperties(options) : options;
             boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
             Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, useOptions, useAllowExperimentalOptions,
-                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
+                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
             return engine;
         }
 
@@ -1142,7 +1209,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public RuntimeException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
+        public PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver, Object anchor) {
             return new PolyglotException(message, dispatch, receiver, anchor);
         }
 
@@ -1827,7 +1894,7 @@ public final class Engine implements AutoCloseable {
         @Override
         public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
+                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
             throw noPolyglotImplementationFound();
         }
 

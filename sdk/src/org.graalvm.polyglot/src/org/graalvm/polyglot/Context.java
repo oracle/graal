@@ -1116,6 +1116,7 @@ public final class Context implements AutoCloseable {
         private ClassLoader hostClassLoader;
         private boolean useSystemExit;
         private SandboxPolicy sandboxPolicy;
+        private Consumer<PolyglotException> exceptionHandler;
 
         Builder(String... permittedLanguages) {
             Objects.requireNonNull(permittedLanguages);
@@ -1891,6 +1892,79 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets an exception handler that is invoked whenever a {@link PolyglotException} is about
+         * to be thrown from a context bound value back to the host.
+         * <p>
+         * The handler is called on the host thread that performs the polyglot operation, for
+         * example when invoking {@link Value} methods, executing guest code, or initializing a
+         * language. It receives the {@link PolyglotException} that would normally be thrown to the
+         * caller.
+         * <p>
+         * The handler can inspect the exception, perform additional logging or metrics, or
+         * translate the {@link PolyglotException} into a different exception type. If the handler
+         * throws an exception, that exception is propagated to the caller instead of the original
+         * {@link PolyglotException}. If the handler returns normally, the original
+         * {@link PolyglotException} is thrown as usual.
+         * <p>
+         * A common use case is to unwrap and rethrow host runtime exceptions so that calling code
+         * can handle them directly:
+         *
+         * <pre>
+         * static void rethrowHostRuntimeException(PolyglotException e) {
+         *     if (e.isHostException()) {
+         *         Throwable t = e.asHostException();
+         *         if (t instanceof RuntimeException rt) {
+         *             // rethrow the original host runtime exception
+         *             throw rt;
+         *         }
+         *     }
+         *     // fall through, the PolyglotException will be thrown
+         * }
+         *
+         * try (Context c = Context.newBuilder()
+         *                 .exceptionHandler(MyHost::rethrowHostRuntimeException)
+         *                 .build()) {
+         *     try {
+         *         // Without an exception handler, this would throw a PolyglotException
+         *         // wrapping the IllegalStateException as a host exception.
+         *         c.asValue(new IllegalStateException("test")).throwException();
+         *     } catch (IllegalStateException e) {
+         *         // The handler rethrew the original host exception.
+         *         assert "test".equals(e.getMessage());
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, {@link Value#throwException()} would normally throw a
+         * {@link PolyglotException}. Because the handler rethrows the underlying host
+         * {@link RuntimeException}, the caller observes {@code IllegalStateException} directly
+         * instead of {@link PolyglotException}.
+         *
+         * <p>
+         * Handlers should be written carefully, because any host call into the context can then
+         * appear to throw additional exception types. In particular, translating guest exceptions
+         * into unrelated runtime exceptions can make APIs harder to reason about and should only be
+         * done with care.
+         * <p>
+         * When this builder is used together with an explicit {@link Engine}, and that engine has
+         * an exception handler configured, the context must either use the same handler instance or
+         * {@code null}. Using a different handler instance and an explicit engine at the same time
+         * causes {@link #build()} to fail with an {@link IllegalArgumentException}. Passing
+         * {@code null} lets the context inherit the handler configured on the engine.
+         *
+         * @param handler the handler to invoke before a {@link PolyglotException} is thrown to the
+         *            host, or {@code null} to disable custom handling and, when an explicit engine
+         *            is used, inherit the handler from that engine
+         *
+         * @see Engine.Builder#exceptionHandler(Consumer)
+         * @since 25.1
+         */
+        public Builder exceptionHandler(Consumer<PolyglotException> handler) {
+            this.exceptionHandler = handler;
+            return this;
+        }
+
+        /**
          * Sets a code sandbox policy to a context. By default, the context's sandbox policy is
          * {@link SandboxPolicy#TRUSTED}, there are no restrictions to the context configuration.
          *
@@ -2009,7 +2083,6 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          */
         public Context build() {
-
             boolean nativeAccess = orAllAccess(allowNativeAccess);
             boolean createThread = orAllAccess(allowCreateThread);
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
@@ -2131,6 +2204,7 @@ public final class Context implements AutoCloseable {
                     engineBuilder.logHandler((OutputStream) customLogHandler);
                 }
                 engineBuilder.sandbox(useSandboxPolicy);
+                engineBuilder.exceptionHandler(exceptionHandler);
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
@@ -2148,8 +2222,8 @@ public final class Context implements AutoCloseable {
             ctx = engine.dispatch.createContext(engine.receiver, engine, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
-                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, true);
+                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, exceptionHandler, useEnvironmentAccess, environment, zone,
+                            limits, localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, true);
             return ctx;
         }
 
