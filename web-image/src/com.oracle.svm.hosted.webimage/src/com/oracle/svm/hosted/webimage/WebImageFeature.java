@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -178,9 +177,6 @@ public class WebImageFeature implements InternalFeature {
                 a.registerAsRoot(m, true, "Long64 support, registered in " + WebImageFeature.class);
             }
         }
-
-        // SystemJimfsFileSystemProvider uses reflection to look up and call this method
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass("org.graalvm.shadowed.com.google.common.jimfs.JimfsFileSystem"), "toPath", URI.class));
 
         /*
          * The constructors of these classes are package-private to prevent user code from creating
