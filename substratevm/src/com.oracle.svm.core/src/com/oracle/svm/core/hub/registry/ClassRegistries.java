@@ -197,6 +197,9 @@ public final class ClassRegistries implements ParsingContext {
             arrayDimensions++;
         }
         if (arrayDimensions == name.length()) {
+            if (loader == null) {
+                return null;
+            }
             throw new ClassNotFoundException(name);
         }
         Class<?> elementalResult;
@@ -271,10 +274,12 @@ public final class ClassRegistries implements ParsingContext {
                 if (RuntimeClassLoading.isSupported()) {
                     RuntimeClassLoading.getOrCreateArrayHub(hub);
                 } else {
-                    if (throwMissingRegistrationErrors()) {
-                        MissingReflectionRegistrationUtils.reportClassAccess(name);
+                    if (arrayDimensions <= 255) {
+                        /* throw only for valid arrays */
+                        throw MissingReflectionRegistrationUtils.reportClassAccess(name);
+                    } else {
+                        return null;
                     }
-                    return null;
                 }
             }
             remainingDims--;

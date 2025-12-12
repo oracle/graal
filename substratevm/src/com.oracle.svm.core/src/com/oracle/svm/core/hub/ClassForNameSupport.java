@@ -482,6 +482,9 @@ public final class ClassForNameSupport {
     }
 
     public static boolean isRegisteredClass(String className) {
+        if (!ClassNameSupport.isValidReflectionName(className)) {
+            return true;
+        }
         if (respectClassLoader()) {
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadataForName(className);
             if (dynamicAccessMetadata == null) {
