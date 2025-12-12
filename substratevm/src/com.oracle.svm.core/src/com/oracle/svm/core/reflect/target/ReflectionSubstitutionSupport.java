@@ -33,6 +33,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 
+/**
+ * Should be migrated to JVMCI (GR-71897).
+ */
 public interface ReflectionSubstitutionSupport {
 
     static ReflectionSubstitutionSupport singleton() {
