@@ -122,9 +122,16 @@ class MemoryUtil {
         if (isDedicatedMemoryUsage) {
             reasonableMaxMemorySize = dedicatedMemorySize;
         } else {
+<<<<<<< HEAD
             reasonableMaxMemorySize = getAvailableMemorySize();
             if (reasonableMaxMemorySize >= MIN_AVAILABLE_MEMORY_THRESHOLD_GB * GiB_TO_BYTES) {
                 memoryUsageReason = "using available memory";
+=======
+            long availableMemorySize = Math.min(getAvailableMemorySize.get(), totalMemorySize);
+            if (availableMemorySize >= MIN_AVAILABLE_MEMORY_THRESHOLD_GB * GiB_TO_BYTES) {
+                reason = percentageOfSystemMemoryText(availableMemorySize, totalMemorySize) + ", using all available memory";
+                maxMemory = availableMemorySize;
+>>>>>>> baf76292b72 (Available memory should never exceed total memory.)
             } else { // fall back to dedicated mode
                 memoryUsageReason = "less than " + MIN_AVAILABLE_MEMORY_THRESHOLD_GB + "GB of memory available";
                 reasonableMaxMemorySize = dedicatedMemorySize;
