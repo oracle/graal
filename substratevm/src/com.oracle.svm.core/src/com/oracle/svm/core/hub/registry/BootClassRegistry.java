@@ -38,6 +38,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 
 /**
  * This class registry corresponds to the {@code null} class loader when runtime class loading is
@@ -77,7 +78,8 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
             if (moduleName == null) {
                 return null;
             }
-            Path classPath = getFileSystem().getPath("/modules/" + moduleName + "/" + type + ".class");
+            var jrtTypePath = TypeSymbols.typeToName(type);
+            Path classPath = getFileSystem().getPath("/modules/" + moduleName + "/" + jrtTypePath + ".class");
             if (!Files.exists(classPath)) {
                 return null;
             }
@@ -93,7 +95,7 @@ public final class BootClassRegistry extends AbstractRuntimeClassRegistry {
         if (lastSlash == -1) {
             return null;
         }
-        return type.subSequence(0, lastSlash).toString();
+        return type.subSequence(1, lastSlash).toString().replace('/', '.');
     }
 
     @Override

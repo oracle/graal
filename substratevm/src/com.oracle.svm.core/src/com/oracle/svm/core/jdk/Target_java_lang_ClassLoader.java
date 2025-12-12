@@ -103,17 +103,22 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AssertionLockComputer.class, isFinal = true) // GR-62338
     private Object assertionLock;
 
-    @Alias //
-    private static ClassLoader scl;
+    @Delete private static ClassLoader scl;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ClassRegistries.ClassRegistryComputer.class)//
     @TargetElement(onlyWith = ClassForNameSupport.RespectsClassLoader.class)//
     public volatile AbstractClassRegistry classRegistry;
 
+    @Alias
+    static native ClassLoader getBuiltinAppClassLoader();
+
     @Substitute
     public static ClassLoader getSystemClassLoader() {
-        VMError.guarantee(scl != null);
-        return scl;
+        /*
+         * Setting custom SystemClassLoader via java.system.class.loader system property currently
+         * not supported for native-images.
+         */
+        return getBuiltinAppClassLoader();
     }
 
     @Delete

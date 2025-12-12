@@ -125,4 +125,9 @@ public class StandaloneHost extends HostVM {
     public boolean isClosedTypeWorld() {
         return isClosedTypeWorld;
     }
+
+    @Override
+    public String loaderName(AnalysisType type) {
+        return loaderName(typeToClass.get(type).getClassLoader());
+    }
 }

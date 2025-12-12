@@ -476,6 +476,20 @@ public abstract class HostVM {
         return EconomicSet.create();
     }
 
+    public abstract String loaderName(AnalysisType type);
+
+    public static String loaderName(ClassLoader loader) {
+        if (loader == null) {
+            return "null";
+        }
+        var loaderName = loader.getName();
+        if (loaderName == null || loaderName.isBlank()) {
+            return loader.getClass().getName();
+        } else {
+            return loaderName;
+        }
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */

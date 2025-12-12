@@ -28,6 +28,7 @@ import static com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Beha
 
 import java.lang.reflect.Proxy;
 
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -73,6 +74,7 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(Proxy.getProxyClass(ClassLoaders.appClassLoader(), Uninterruptible.class)).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(BootstrapMethodInfo.ExceptionWrapper.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(UnmanagedMemory.class).registerAsReachable("Core type");
     }
 
     @Override

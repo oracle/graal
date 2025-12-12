@@ -219,6 +219,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         return cachedOsVersion;
     }
 
+    @Override
+    protected String jvmLibName() {
+        return "jvm.dll";
+    }
+
     private void computeOsNameAndVersion() {
         /*
          * Reimplementation of code from java_props_md.c

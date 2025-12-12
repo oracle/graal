@@ -91,31 +91,17 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         this.nativeImageClassLoader = nativeImageClassLoader;
     }
 
-    /**
-     * Checks class loaders match. {@code start} is searched up to the system class loader.
-     */
-    private boolean matchesClassLoaderOrParent(ClassLoader start, ClassLoader candidate) {
-        ClassLoader current = start;
-        do {
-            if (current == candidate) {
-                return true;
-            }
-            current = current.getParent();
-        } while (current != defaultSystemClassLoader);
-        return false;
-    }
-
     public boolean isNativeImageClassLoader(ClassLoader c) {
-        ClassLoader loader = nativeImageClassLoader;
-        if (loader == null) {
+        ClassLoader currentNativeImageClassLoader = nativeImageClassLoader;
+        if (currentNativeImageClassLoader == null) {
             return false;
         }
-        return matchesClassLoaderOrParent(nativeImageClassLoader, c);
+        return currentNativeImageClassLoader == c;
     }
 
     public boolean isDisallowedClassLoader(ClassLoader c) {
         for (ClassLoader disallowedClassLoader : disallowedClassLoaders) {
-            if (matchesClassLoaderOrParent(disallowedClassLoader, c)) {
+            if (disallowedClassLoader == c) {
                 return true;
             }
         }

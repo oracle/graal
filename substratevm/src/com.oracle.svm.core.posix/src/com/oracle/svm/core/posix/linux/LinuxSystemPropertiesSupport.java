@@ -94,6 +94,11 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
         }
         return "Unknown";
     }
+
+    @Override
+    protected String jvmLibSuffix() {
+        return ".so";
+    }
 }
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = Independent.class)

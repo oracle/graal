@@ -75,6 +75,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
@@ -703,6 +704,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * image singleton.
                      */
                     TypeEntry foreignTypeEntry = SubstrateDebugTypeEntrySupport.singleton().getTypeEntry(typeSignature);
+                    if (foreignTypeEntry == null) {
+                        throw VMError.shouldNotReachHere("Missing TypeEntry for '" + typeName + "' from loader '" + loaderName + "' in SubstrateDebugTypeEntrySupport");
+                    }
 
                     // update class offset if the class object is in the heap
                     foreignTypeEntry.setClassOffset(classOffset);
@@ -755,7 +759,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         int size = elementSize(elementInfo);
         // We need the loader name here to match the type signature generated later for looking up
         // type entries.
-        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getJavaClass().getClassLoader());
+        var runtimeLoader = ((SVMHost) type.getUniverse().hostVM()).dynamicHub(type).getClassLoader();
+        String loaderName = UniqueShortNameProvider.singleton().uniqueShortLoaderName(runtimeLoader);
         long typeSignature = getTypeSignature(typeName + loaderName);
 
         // Reuse already created type entries.

@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.module.ServicesCatalog;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 @SuppressWarnings("unused")
 @TargetClass(value = ServicesCatalog.class)
@@ -37,6 +41,12 @@ final class Target_jdk_internal_module_ServicesCatalog {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServicesCatalogCLVTransformer.class, isFinal = true) //
     static ClassLoaderValue<ServicesCatalog> CLV;
+
+    @Substitute
+    static void putServicesCatalog(ClassLoader loader, ServicesCatalog catalog) {
+        ServicesCatalog previous = CLV.get(loader);
+        VMError.guarantee(previous.equals(catalog), "ServicesCatalog.CLV is fully prepared at image build-time");
+    }
 }
 
 final class ServicesCatalogCLVTransformer implements FieldValueTransformer {

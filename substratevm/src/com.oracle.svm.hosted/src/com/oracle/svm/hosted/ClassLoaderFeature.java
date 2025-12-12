@@ -55,22 +55,19 @@ public class ClassLoaderFeature implements InternalFeature {
 
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
-    private static final ClassLoader bootClassLoader;
-    private static final ClassLoader platformClassLoader;
+    /**
+     * Field {@link NativeImageSystemClassLoader#defaultSystemClassLoader} contains the original
+     * {@code jdk.internal.loader.ClassLoaders.AppClassLoader} of the VM that runs the builder. This
+     * is what we want in the image.
+     */
+    private static final ClassLoader appClassLoader = nativeImageSystemClassLoader.defaultSystemClassLoader;
 
-    static {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            platformClassLoader = ClassLoaders.platformClassLoader();
-            bootClassLoader = BootLoaderSupport.getBootLoader();
-        } else {
-            platformClassLoader = null;
-            bootClassLoader = null;
-        }
-    }
+    private static final ClassLoader platformClassLoader = ClassLoaders.platformClassLoader();
+    private static final ClassLoader bootClassLoader = BootLoaderSupport.getBootLoader();
 
     public static ClassLoader getRuntimeClassLoader(ClassLoader original) {
         if (replaceWithAppClassLoader(original)) {
-            return nativeImageSystemClassLoader.defaultSystemClassLoader;
+            return appClassLoader;
         }
 
         return original;
@@ -95,7 +92,7 @@ public class ClassLoaderFeature implements InternalFeature {
 
     JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object instanceof ClassLoader loader) {
-            if (replaceWithAppClassLoader(loader) || loader == nativeImageSystemClassLoader.defaultSystemClassLoader) {
+            if (replaceWithAppClassLoader(loader) || loader == appClassLoader) {
                 return registry.getConstant(APP_KEY_NAME);
             } else if (loader == platformClassLoader) {
                 return registry.getConstant(PLATFORM_KEY_NAME);
@@ -116,7 +113,7 @@ public class ClassLoaderFeature implements InternalFeature {
         var packageManager = HostedClassLoaderPackageManagement.singleton();
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            packageManager.initialize(nativeImageSystemClassLoader.defaultSystemClassLoader, registry);
+            packageManager.initialize(appClassLoader, registry);
         }
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
@@ -158,7 +155,7 @@ public class ClassLoaderFeature implements InternalFeature {
              * fieldValueInterceptors will be computed for the scanned objects.
              */
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            registry.registerHeapConstant(APP_KEY_NAME, nativeImageSystemClassLoader.defaultSystemClassLoader);
+            registry.registerHeapConstant(APP_KEY_NAME, appClassLoader);
             registry.registerHeapConstant(PLATFORM_KEY_NAME, platformClassLoader);
             registry.registerHeapConstant(BOOT_KEY_NAME, bootClassLoader);
             registry.registerFutureHeapConstant(APP_PACKAGE_KEY_NAME, config.getMetaAccess().lookupJavaType(ConcurrentHashMap.class));
@@ -214,7 +211,7 @@ public class ClassLoaderFeature implements InternalFeature {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            if (receiver == nativeImageSystemClassLoader.defaultSystemClassLoader) {
+            if (receiver == appClassLoader) {
                 /*
                  * This map will be assigned within the application layer. Within this layer we
                  * register a relocatable constant.

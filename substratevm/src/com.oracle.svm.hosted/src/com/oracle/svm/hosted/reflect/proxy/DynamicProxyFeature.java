@@ -59,7 +59,7 @@ public final class DynamicProxyFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport();
+        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader::getDynamicHubClassLoader);
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
         ImageSingletons.add(RuntimeProxyCreationSupport.class, dynamicProxySupport);
         proxyRegistry = new ProxyRegistry(dynamicProxySupport, imageClassLoader);

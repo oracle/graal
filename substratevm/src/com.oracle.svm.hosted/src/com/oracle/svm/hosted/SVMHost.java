@@ -37,6 +37,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,6 +108,7 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.Counter;
@@ -596,12 +598,7 @@ public class SVMHost extends HostVM {
         }
         int modifiers = javaClass.getModifiers();
 
-        /*
-         * If the class is an application class then it was loaded by NativeImageClassLoader. The
-         * ClassLoaderFeature object replacer will unwrap the original AppClassLoader from the
-         * NativeImageClassLoader.
-         */
-        ClassLoader hubClassLoader = javaClass.getClassLoader();
+        ClassLoader hubClassLoader = DynamicProxySupport.singleton().getProxyClassClassloader(javaClass, loader::getDynamicHubClassLoader);
 
         /* Class names must be interned strings according to the Java specification. */
         String name = encoder.encodeClass(type.toClassName());
@@ -1562,5 +1559,15 @@ public class SVMHost extends HostVM {
     @Override
     public EconomicSet<Module> getSharedLayerForbiddenModules() {
         return sharedLayerForbiddenModules;
+    }
+
+    @Override
+    public String loaderName(AnalysisType type) {
+        var originalLoader = type.getJavaClass().getClassLoader();
+        var runtimeLoader = typeToHub.get(type).getClassLoader();
+        if (Objects.equals(originalLoader, runtimeLoader)) {
+            return loaderName(originalLoader);
+        }
+        return loaderName(originalLoader) + "->" + loaderName(runtimeLoader);
     }
 }

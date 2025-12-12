@@ -76,6 +76,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.CapnProtoAdapters;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
@@ -325,6 +326,15 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         List<String> linkerCommand;
         Path image = accessImpl.getImagePath();
         Path shimLibrary = image.resolveSibling(System.mapLibraryName(shimName));
+        if (accessImpl.getImageKind() == NativeImageKind.SHARED_LIBRARY && shimLibrary.equals(image)) {
+            /*
+             * A shared library image gets built with the same name this shim-library would have.
+             * This is an advanced use-case, and we assume the user knows what they are doing. Thus,
+             * we will suppress producing a shim library in this case.
+             */
+            return;
+        }
+
         if (isWindows()) {
             /* Dependencies are the native image (so we can re-export from it) and C Runtime. */
             linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
