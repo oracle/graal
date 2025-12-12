@@ -381,6 +381,10 @@ public final class MethodProfile {
                     /* Try to "claim" this slot for the current type. */
                     long offset = TYPE_ARRAY_BASE + ((long) i) * TYPE_ARRAY_SHIFT;
                     slotType = (ResolvedJavaType) UNSAFE.compareAndExchangeReference(types, offset, null, type);
+                    if (slotType == null) {
+                        /* CAS succeeded. */
+                        slotType = type;
+                    }
                 }
 
                 if (slotType.equals(type)) {
