@@ -20,13 +20,15 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     private final InterAnalyzerMode analyzerMode;
     private final AnalysisContext analysisContext;
     private final SummaryManager<Domain> summaryManager;
-    private final CallStack callStack;
+    private final int maxRecursionDepth;
+    private final int maxCallStackDepth;
 
     private InterProceduralAnalyzer(Builder<Domain> builder) {
         super(builder);
         this.analyzerMode = builder.analyzerMode;
         this.summaryManager = new SummaryManager<>(builder.summaryFactory);
-        this.callStack = new CallStack(builder.maxCallStackDepth);
+        this.maxRecursionDepth = builder.maxRecursionDepth;
+        this.maxCallStackDepth = builder.maxCallStackDepth;
         this.analysisContext = new AnalysisContext(builder.iteratorPolicy, builder.checkerManager, builder.methodFilterManager, builder.summaryFactory);
     }
 
@@ -47,12 +49,14 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         if (method == null) {
             return;
         }
-        InterAbsintInvokeHandler<Domain> callHandler = new InterAbsintInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext, callStack, summaryManager);
+        InterAbsintInvokeHandler<Domain> callHandler = new InterAbsintInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext, new CallStack(maxRecursionDepth, maxCallStackDepth), summaryManager);
         callHandler.handleRootInvoke(method);
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
-        private static final int DEFAULT_MAX_CALLSTACK_DEPTH = 64;
+        private static final int DEFAULT_MAX_RECURSION_DEPTH = 16;
+        private static final int DEFAULT_MAX_CALLSTACK_DEPTH = 128;
+        private int maxRecursionDepth = DEFAULT_MAX_RECURSION_DEPTH;
         private int maxCallStackDepth = DEFAULT_MAX_CALLSTACK_DEPTH;
         private final SummaryFactory<Domain> summaryFactory;
         private final InterAnalyzerMode analyzerMode;
@@ -64,6 +68,11 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
             super(initialDomain, abstractInterpreter);
             this.summaryFactory = summaryFactory;
             this.analyzerMode = analyzerMode;
+        }
+
+        public Builder<Domain> maxRecursionDepth(int maxRecursionDepth) {
+            this.maxRecursionDepth = maxRecursionDepth;
+            return self();
         }
 
         public Builder<Domain> maxCallStackDepth(int maxCallStackDepth) {

@@ -13,9 +13,11 @@ import java.util.List;
 public final class CallStack {
 
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
+    private final int maxRecursionDepth;
     private final int maxCallStackDepth;
 
-    public CallStack(int maxCallStackDepth) {
+    public CallStack(int maxRecursionDepth, int maxCallStackDepth) {
+        this.maxRecursionDepth = maxRecursionDepth;
         this.maxCallStackDepth = maxCallStackDepth;
     }
 
@@ -31,23 +33,22 @@ public final class CallStack {
         return callStack.peek();
     }
 
+    public int getMaxRecursionDepth() {
+        return maxRecursionDepth;
+    }
+
     public int getMaxCallStackDepth() {
         return maxCallStackDepth;
     }
 
-    /**
-     * Returns a snapshot list of the methods currently on the call stack.
-     */
+    public int getCurrentDepth() {
+        return callStack.size();
+    }
+
     public List<AnalysisMethod> getMethods() {
         return new ArrayList<>(callStack);
     }
 
-    /**
-     * Returns the current depth of the call stack.
-     */
-    public int getDepth() {
-        return callStack.size();
-    }
 
     /**
      * Counts the number of times an analysis method has been consecutively called in the current call stack.
@@ -61,6 +62,8 @@ public final class CallStack {
         for (AnalysisMethod callStackMethod : callStack) {
             if (callStackMethod.getQualifiedName().equals(qualifiedName)) {
                 count++;
+            } else {
+                break;
             }
         }
         return count;

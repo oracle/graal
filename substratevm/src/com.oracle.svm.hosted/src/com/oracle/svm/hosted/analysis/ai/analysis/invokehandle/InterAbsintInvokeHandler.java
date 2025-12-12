@@ -79,8 +79,12 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return InvokeAnalysisOutcome.ok(cached);
         }
 
-        if (callStack.getDepth() >= callStack.getMaxCallStackDepth()) {
-            logger.log("Recursion limit of: " + callStack.getMaxCallStackDepth() + " exceeded", LoggerVerbosity.INFO);
+        if (callStack.getMaxCallStackDepth() <= callStack.getCurrentDepth()) {
+            logger.log("Exceeded call stack depth limit of: " + callStack.getMaxCallStackDepth(), LoggerVerbosity.INFO);
+        }
+
+        if (callStack.getMaxRecursionDepth() <= callStack.countConsecutiveCalls(targetAnalysisMethod)) {
+            logger.log("Exceeded recursion limit of: " + callStack.getMaxRecursionDepth(), LoggerVerbosity.INFO);
             return InvokeAnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
         }
 
@@ -103,7 +107,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             preSummary.finalizeSummary(calleeAbstractState);
 
             ContextKey ctxKey = invokeInput.contextKey()
-                    .orElse(new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getDepth()));
+                    .orElse(new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getMaxRecursionDepth()));
 
             /* Merge the different contexts for the callee method */
             summaryManager.putSummary(targetAnalysisMethod, ctxKey, preSummary);

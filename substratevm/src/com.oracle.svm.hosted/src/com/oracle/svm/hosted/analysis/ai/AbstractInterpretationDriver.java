@@ -71,7 +71,7 @@ public class AbstractInterpretationDriver {
     private void prepareAnalyses() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance("GraalAF", LoggerVerbosity.INFO)
                 .setConsoleEnabled(false)
-                .setFileEnabled(false)
+                .setFileEnabled(true)
                 .setFileThreshold(LoggerVerbosity.INFO)
                 .setConsoleThreshold(LoggerVerbosity.INFO)
                 .setGraphIgvDumpEnabled(false);
@@ -83,7 +83,7 @@ public class AbstractInterpretationDriver {
         DataFlowIntervalAbstractInterpreter interpreter =
                 new DataFlowIntervalAbstractInterpreter();
 
-//        /* 3. Example of building an intraprocedural analyzer */
+        /* 3. Example of building an intraprocedural analyzer */
 //        var intraDataFlowAnalyzer = new IntraProceduralAnalyzer.Builder<>(initialDomain, interpreter, IntraAnalyzerMode.ANALYZE_ALL_INVOKED_METHODS)
 //                .iteratorPolicy(IteratorPolicy.DEFAULT_FORWARD_WTO)
 //                .registerChecker(new ConstantValueChecker())
@@ -96,7 +96,7 @@ public class AbstractInterpretationDriver {
         var interDataFlowAnalyzer = new InterProceduralAnalyzer.Builder<>(initialDomain, interpreter, summaryFactory, InterAnalyzerMode.ANALYZE_FROM_ALL_ROOTS)
                 .registerChecker(new ConstantValueChecker())
                 .registerChecker(new IfConditionChecker())
-                .maxCallStackDepth(512)
+                .maxRecursionDepth(5)
                 .addMethodFilter(new SkipJavaLangAnalysisMethodFilter())
                 .build();
 

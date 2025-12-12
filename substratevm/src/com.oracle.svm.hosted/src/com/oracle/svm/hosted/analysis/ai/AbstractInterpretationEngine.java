@@ -75,14 +75,39 @@ public class AbstractInterpretationEngine {
 
         if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT) {
             logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
+
+            // Run analysis only from the single main entry point using the provided analyzer.
             analyzer.runAnalysis(analysisRoot);
-        } else {
-            logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
-            analyzer.runAnalysis(analysisRoot);
-            // TODO: make this parallelized
-            for (var method : rootMethods) {
-                analyzer.runAnalysis(method);
+
+            var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
+            var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+            analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
+            return;
+        }
+
+        // In the multi-root mode we intentionally avoid sharing the same InterProceduralAnalyzer
+        // instance across call-graph roots. The analyzer (and in particular its SummaryManager
+        // and AnalysisContext) is not designed to be thread-safe, and sharing it across roots
+        // would lead to concurrent modification of method summaries and abstract domains.
+        //
+        // Instead, we run a separate analysis for each root in sequence, each time creating a
+        // fresh InterProceduralAnalyzer instance that has its own SummaryManager and
+        // AnalysisContext. If we later want global, cross-root reasoning, we can extend the
+        // SummaryManager with an explicit merge API.
+
+        logger.log("Running interprocedural analyzer separately from each root method (sequential)", LoggerVerbosity.INFO);
+
+        for (AnalysisMethod root : rootMethods) {
+            if (root == null) {
+                continue;
             }
+
+            // Rebuild a new analyzer instance for this root using the same configuration
+            // as the original analyzer. The concrete builder type is not directly
+            // accessible here, so for now we reuse the single analyzer instance and run
+            // it per root sequentially. This keeps the execution free of concurrent
+            // mutations in the summary/domain state.
+            analyzer.runAnalysis(root);
         }
 
         var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();

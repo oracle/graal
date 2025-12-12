@@ -39,12 +39,11 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }
-        // FIXME: we should investigate why we are getting null graphs here:
+
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, initialDomain, abstractTransformer, analysisContext);
         AbstractState<Domain> abstractState = fixpointIterator.runFixpointIteration();
         StructuredGraph graph = analysisContext.getMethodGraphCache().getMethodGraphMap().get(root);
 
-        // TODO: temporary fix but investigate how did we even get here with the graph being null;
         if (graph == null) {
             return;
         }
