@@ -157,6 +157,34 @@ final class Target_java_lang_Enum {
     public native int ordinal();
 }
 
+@TargetClass(java.lang.Byte.class)
+final class Target_java_lang_Byte {
+    @AnnotateOriginal
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    native long longValue();
+}
+
+@TargetClass(java.lang.Short.class)
+final class Target_java_lang_Short {
+    @AnnotateOriginal
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    native long longValue();
+}
+
+@TargetClass(java.lang.Character.class)
+final class Target_java_lang_Character {
+    @AnnotateOriginal
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    native char charValue();
+}
+
+@TargetClass(java.lang.Integer.class)
+final class Target_java_lang_Integer {
+    @AnnotateOriginal
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    native long longValue();
+}
+
 @TargetClass(java.lang.String.class)
 final class Target_java_lang_String {
 

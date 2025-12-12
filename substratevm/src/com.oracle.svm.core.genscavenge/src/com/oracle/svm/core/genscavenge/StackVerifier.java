@@ -34,13 +34,10 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMThreads;
@@ -96,14 +93,7 @@ final class StackVerifier {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitRegularFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo) {
             verifyFrameReferencesVisitor.initialize(thread, currentSP, currentIP);
-            if (JavaFrames.isInterpreterLeaveStub(currentIP)) {
-                // This should probably be handled in JavaStackWalker GR-71827
-                long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(currentSP.readLong(0));
-                Pointer actualSP = currentSP.add(Word.unsigned(varStackSize));
-                InterpreterSupport.walkInterpreterLeaveStubFrame(verifyFrameReferencesVisitor, actualSP, currentSP);
-            } else {
-                CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, verifyFrameReferencesVisitor);
-            }
+            CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, verifyFrameReferencesVisitor);
             result &= verifyFrameReferencesVisitor.result;
             return true;
         }

@@ -139,6 +139,8 @@ public class CremaFeature implements InternalFeature {
         for (HostedType hType : hUniverse.getTypes()) {
             iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField, reason));
         }
+
+        InterpreterFeature.prepareSignatures();
     }
 
     @Override
