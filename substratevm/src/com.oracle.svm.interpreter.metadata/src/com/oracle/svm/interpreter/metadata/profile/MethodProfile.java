@@ -59,7 +59,6 @@ import jdk.vm.ci.meta.TriState;
  * </p>
  */
 public final class MethodProfile {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /** Artificial byte code index for the method entry profile. */
     private static final int JVMCI_METHOD_ENTRY_BCI = -1;
@@ -75,8 +74,8 @@ public final class MethodProfile {
      * set in {@link #getAtBCI(int, Class)}. This field may be written concurrently by multiple
      * threads, yet we do not synchronize access to it for performance reasons. Its value is always
      * compared to the length of {@code profiles[]} array and thus can never cause out of bounds
-     * reads. Also tearing cannot happen because its a 32 bit field an on all platforms SVM supports
-     * 32 writes are always atomic.
+     * reads. Also tearing cannot happen because it is a 32 bit field and such writes are atomic on
+     * all supported platforms.
      */
     private int lastIndex;
 
@@ -300,6 +299,8 @@ public final class MethodProfile {
      */
     public static class TypeProfile extends CountingProfile {
 
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
         private static final long TYPE_ARRAY_BASE = UNSAFE.arrayBaseOffset(ResolvedJavaType[].class);
 
         private static final long TYPE_ARRAY_SHIFT = UNSAFE.arrayIndexScale(ResolvedJavaType[].class);
@@ -369,52 +370,27 @@ public final class MethodProfile {
          * notRecordedProbability to be increased).
          * <p>
          * If {@code type} cannot be found in the profile tries to add it to the profile array. If
-         * that fails, because another thread concurrently added a type (sequentialzied via
+         * that fails, because another thread concurrently added a type (sequentialized via
          * {@link Unsafe#compareAndSetReference(Object, long, Object, Object)}) tries the next slot
          * until the profile is saturated by other threads or the current thread added the type.
          */
         public void incrementTypeProfile(ResolvedJavaType type) {
             for (int i = 0; i < types.length; i++) {
                 ResolvedJavaType slotType = types[i];
-                if (slotType != null) {
-                    if (slotType.equals(type)) {
-                        // racily update counts and counter
-                        counts[i]++;
-                        counter++;
-                        return;
-                    }
-                    // type not found, continue iterating with the next slot
-                } else {
-                    /*
-                     * Free slot found, and we have not found the type in the ifs above. Try to
-                     * "claim" this slot for the current type. If the CAS succeeds increment it,
-                     * else give up and try the next free slot.
-                     */
-                    final int freeSlot = i;
-                    final long offset = TYPE_ARRAY_BASE + (long) freeSlot * TYPE_ARRAY_SHIFT;
-                    if (UNSAFE.compareAndSetReference(types, offset, null, type)) {
-                        // success, we recorded this type
-                        counts[freeSlot]++;
-                        counter++;
-                        return;
-                    } else {
-                        /*
-                         * Some other thread wrote this slot in the meantime. We cannot just re-do
-                         * the iteration and try freeSlot + 1 because the concurrently written type
-                         * can be quals to type and we do not want to record the same type with 2
-                         * slots in a profile. We also cannot check freeSlot + 1 because multiple
-                         * slots might have been claimed in the meantime. We just call
-                         * incrementTypeProfile again, either we find our type because it was
-                         * already added or we try to claim one again. Note that this recursion is
-                         * bound by the type profile width.
-                         */
-                        incrementTypeProfile(type);
-                        return;
-                    }
+                if (slotType == null) {
+                    /* Try to "claim" this slot for the current type. */
+                    long offset = TYPE_ARRAY_BASE + ((long) i) * TYPE_ARRAY_SHIFT;
+                    slotType = (ResolvedJavaType) UNSAFE.compareAndExchangeReference(types, offset, null, type);
+                }
+
+                if (slotType.equals(type)) {
+                    /* Either the CAS succeeded or another thread wrote the same type already. */
+                    counts[i]++;
+                    break;
                 }
             }
-            // we tried to record this type but lost, update the counter only to increment a
-            // notRecordedProbability
+
+            /* Always update the total count, even if recording the type failed. */
             counter++;
         }
 
