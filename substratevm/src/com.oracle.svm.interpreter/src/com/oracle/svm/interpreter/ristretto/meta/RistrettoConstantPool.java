@@ -138,12 +138,14 @@ public final class RistrettoConstantPool implements ConstantPool {
 
     @Override
     public JavaConstant lookupAppendix(int rawIndex, int opcode) {
-        if (opcode == Bytecodes.INVOKEVIRTUAL) {
-            // The parser has support for special runtimes that rewrite invokes of methods handles
-            // to static adapters. Crema does not do that.
-            return null;
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            return interpreterConstantPool.lookupAppendix(rawIndex, opcode);
         }
-        return interpreterConstantPool.lookupAppendix(rawIndex, opcode);
+        /*
+         * TODO GR-71270 - The parser has support for special runtimes that rewrite invokes of
+         * methods handles to static adapters. Crema does not do that.
+         */
+        return null;
     }
 
     @Override
