@@ -131,7 +131,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             models = parseGenerateBytecodeTestVariants(typeElement, generateBytecodeTestVariantsMirror);
         } else {
             AnnotationMirror generateBytecodeMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateBytecode);
-            assert generateBytecodeMirror != null;
+            if (generateBytecodeMirror == null) {
+                throw new AssertionError("No @%s mirror found.".formatted(getSimpleName(types.GenerateBytecode)));
+            }
             topLevelAnnotationMirror = generateBytecodeMirror;
 
             models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", types.BytecodeBuilder));
@@ -366,11 +368,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // Prioritize a constructor that takes a FrameDescriptor.Builder.
         if (constructorsByFDType.containsKey(TruffleTypes.FrameDescriptor_Builder_Name)) {
             List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Builder_Name);
-            assert ctors.size() == 1;
+            if (ctors.size() != 1) {
+                throw new AssertionError();
+            }
             model.fdBuilderConstructor = ctors.get(0);
         } else {
             List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Name);
-            assert ctors.size() == 1;
+            if (ctors.size() != 1) {
+                throw new AssertionError();
+            }
             model.fdConstructor = ctors.get(0);
         }
 
@@ -766,7 +772,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             List<ResolvedQuickenDecision> decisions = entry.getValue();
 
             for (ResolvedQuickenDecision quickening : decisions) {
-                assert !includedSpecializations.isEmpty();
+                if (includedSpecializations.isEmpty()) {
+                    throw new AssertionError();
+                }
                 NodeData node = quickening.operation().instruction.nodeData;
 
                 String name;

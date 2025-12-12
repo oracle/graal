@@ -249,8 +249,11 @@ public class SpecializationSignatureParser {
      * inspected individually.
      */
     public static Signature createPolymorphicSignature(List<SpecializationSignature> signatures, List<ExecutableElement> specializations, MessageContainer customOperation) {
-        assert !signatures.isEmpty();
-        assert signatures.size() == specializations.size();
+        if (signatures.isEmpty()) {
+            throw new IllegalArgumentException("Cannot create a polymorphic signature for an empty list of signatures.");
+        } else if (signatures.size() != specializations.size()) {
+            throw new IllegalArgumentException("Number of signatures (%d) should match number of specializations (%d).".formatted(signatures.size(), specializations.size()));
+        }
         Signature polymorphicSignature = signatures.get(0).signature();
         for (int i = 1; i < signatures.size(); i++) {
             polymorphicSignature = mergeSignatures(signatures.get(i).signature(), polymorphicSignature, specializations.get(i), customOperation);
@@ -275,8 +278,11 @@ public class SpecializationSignatureParser {
             }
             return null;
         }
-        assert a.constantOperandsBeforeCount == b.constantOperandsBeforeCount;
-        assert a.constantOperandsAfterCount == b.constantOperandsAfterCount;
+        if (a.constantOperandsBeforeCount != b.constantOperandsBeforeCount) {
+            throw new AssertionError("Constant operand before count differs between merged signatures (%d and %d).".formatted(a.constantOperandsBeforeCount, b.constantOperandsBeforeCount));
+        } else if (a.constantOperandsAfterCount != b.constantOperandsAfterCount) {
+            throw new AssertionError("Constant operand counts should match between merged signatures (%d and %d).".formatted(a.constantOperandsAfterCount, b.constantOperandsAfterCount));
+        }
         if (a.dynamicOperandCount != b.dynamicOperandCount) {
             if (errorTarget != null) {
                 errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of operands.");
