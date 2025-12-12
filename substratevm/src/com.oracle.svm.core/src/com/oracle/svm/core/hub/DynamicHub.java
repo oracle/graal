@@ -903,6 +903,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.metaType;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public ResolvedJavaType getInterpreterType() {
         return companion.interpreterType;
     }

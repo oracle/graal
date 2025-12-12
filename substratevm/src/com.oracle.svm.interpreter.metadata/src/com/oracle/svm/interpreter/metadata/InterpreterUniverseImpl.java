@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
 
 import java.io.BufferedInputStream;
@@ -48,14 +49,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32C;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -87,7 +89,7 @@ public final class InterpreterUniverseImpl implements InterpreterUniverse {
                                     // type -> [method...]
                                     .collect(Collectors.groupingBy(InterpreterResolvedJavaMethod::getDeclaringClass)));
 
-    private final Lazy<InterpreterResolvedJavaMethod[]> methodESTOffsetTable = Lazy.of(() -> createMethodTable(getMethods()));
+    private final InterpreterResolvedJavaMethod[] methodESTOffsetTable;
 
     private final Lazy<Map<InterpreterResolvedJavaMethod, Integer>> methodInverseTable = Lazy.of(() -> createInverseTable(getMethods()));
     private final Lazy<Map<InterpreterResolvedJavaType, Integer>> typeInverseTable = Lazy.of(() -> createInverseTable(getTypes()));
@@ -103,6 +105,8 @@ public final class InterpreterUniverseImpl implements InterpreterUniverse {
         this.types = List.copyOf(types);
         this.fields = List.copyOf(fields);
         this.methods = List.copyOf(methods);
+
+        this.methodESTOffsetTable = createMethodTable(this.methods);
     }
 
     private static void consumeMagic(DataInput in) throws IOException {
@@ -360,8 +364,9 @@ public final class InterpreterUniverseImpl implements InterpreterUniverse {
     }
 
     @Override
-    public InterpreterResolvedJavaMethod getMethodForESTOffset(int methodIndex) {
-        InterpreterResolvedJavaMethod method = this.methodESTOffsetTable.get()[methodIndex];
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public ResolvedJavaMethod getMethodForESTOffset(int methodIndex) {
+        InterpreterResolvedJavaMethod method = this.methodESTOffsetTable[methodIndex];
         VMError.guarantee(method != null);
         return method;
     }

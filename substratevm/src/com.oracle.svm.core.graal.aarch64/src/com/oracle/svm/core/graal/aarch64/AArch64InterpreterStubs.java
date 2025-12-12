@@ -24,33 +24,11 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import com.oracle.svm.core.c.struct.OffsetOf;
-import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
-import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.asm.Label;
-import jdk.graal.compiler.asm.aarch64.AArch64Address;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.AllocatableValue;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.r2;
@@ -68,6 +46,30 @@ import static jdk.vm.ci.aarch64.AArch64.v4;
 import static jdk.vm.ci.aarch64.AArch64.v5;
 import static jdk.vm.ci.aarch64.AArch64.v6;
 import static jdk.vm.ci.aarch64.AArch64.v7;
+
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.struct.OffsetOf;
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
+import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
+import com.oracle.svm.core.graal.code.PreparedArgumentType;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Register;
 
 public class AArch64InterpreterStubs {
 
@@ -150,16 +152,12 @@ public class AArch64InterpreterStubs {
             super.enter(crb);
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
 
-            /* sp points to four reserved stack slots for this stub */
+            /* sp points to two reserved stack slots for this stub */
 
             /* Pointer to InterpreterData struct */
             masm.str(64, r1, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
             /* Variable stack size */
             masm.str(64, r2, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 8));
-            /* gcReferenceMap next */
-            masm.str(64, r3, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 16));
-
-            /* 4th slot is for stack alignment to 0x10 */
 
             masm.sub(64, sp, sp, r2 /* variable stack size */);
         }
@@ -260,11 +258,8 @@ public class AArch64InterpreterStubs {
 
     public static int additionalFrameSizeLeaveStub() {
         int wordSize = 8;
-        /*
-         * reserve four slots for: base address of outgoing stack args, variable stack size,
-         * gcReferenceMap, padding
-         */
-        return 4 * wordSize;
+        // reserve two slots for: base address of outgoing stack args and variable stack size.
+        return 2 * wordSize;
     }
 
     @RawStructure
@@ -509,7 +504,8 @@ public class AArch64InterpreterStubs {
         }
 
         @Override
-        public long getGpArgumentAt(AllocatableValue ccArg, Pointer data, int pos) {
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+        public long getGpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
             return switch (pos) {
                 case 0 -> p.getAbiGpArg0();
@@ -521,18 +517,19 @@ public class AArch64InterpreterStubs {
                 case 6 -> p.getAbiGpArg6();
                 case 7 -> p.getAbiGpArg7();
                 default -> {
-                    StackSlot stackSlot = (StackSlot) ccArg;
+                    VMError.guarantee(cArgType.isStackSlot());
                     Pointer spVal = Word.pointer(p.getAbiSpReg());
-                    yield spVal.readLong(stackSlot.getOffset(0));
+                    yield spVal.readLong(cArgType.getStackOffset());
                 }
             };
         }
 
         @Override
-        public long setGpArgumentAt(AllocatableValue ccArg, Pointer data, int pos, long val) {
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+        public void setGpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos, long val, boolean incoming) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
             if (pos >= 0 && pos <= 7) {
-                VMError.guarantee(ccArg instanceof RegisterValue);
+                VMError.guarantee(cArgType.isRegister());
                 switch (pos) {
                     case 0 -> p.setAbiGpArg0(val);
                     case 1 -> p.setAbiGpArg1(val);
@@ -543,24 +540,21 @@ public class AArch64InterpreterStubs {
                     case 6 -> p.setAbiGpArg6(val);
                     case 7 -> p.setAbiGpArg7(val);
                 }
-                /* no GC mask required */
-                return 0;
+                return;
             }
-            StackSlot stackSlot = (StackSlot) ccArg;
+            VMError.guarantee(cArgType.isStackSlot());
 
             Pointer spVal = Word.pointer(p.getAbiSpReg());
-            int offset = stackSlot.getOffset(0);
+            int offset = cArgType.getStackOffset();
             VMError.guarantee(spVal.isNonNull());
-            VMError.guarantee(offset < p.getStackSize());
+            VMError.guarantee(incoming || offset < p.getStackSize());
 
             spVal.writeLong(offset, val);
-
-            VMError.guarantee((pos - 8) < Long.SIZE, "more than 64 stack args are not supported");
-            return 1L << (pos - 8);
         }
 
         @Override
-        public long getFpArgumentAt(AllocatableValue ccArg, Pointer data, int pos) {
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public long getFpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
             return switch (pos) {
                 case 0 -> p.getAbiFpArg0();
@@ -572,15 +566,16 @@ public class AArch64InterpreterStubs {
                 case 6 -> p.getAbiFpArg6();
                 case 7 -> p.getAbiFpArg7();
                 default -> {
-                    StackSlot stackSlot = (StackSlot) ccArg;
+                    VMError.guarantee(cArgType.isStackSlot());
                     Pointer spVal = Word.pointer(p.getAbiSpReg());
-                    yield spVal.readLong(stackSlot.getOffset(0));
+                    yield spVal.readLong(cArgType.getStackOffset());
                 }
             };
         }
 
         @Override
-        public void setFpArgumentAt(AllocatableValue ccArg, Pointer data, int pos, long val) {
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void setFpArgumentAt(PreparedArgumentType cArgType, Pointer data, int pos, long val) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
             switch (pos) {
                 case 0 -> p.setAbiFpArg0(val);
@@ -592,10 +587,10 @@ public class AArch64InterpreterStubs {
                 case 6 -> p.setAbiFpArg6(val);
                 case 7 -> p.setAbiFpArg7(val);
                 default -> {
-                    StackSlot stackSlot = (StackSlot) ccArg;
+                    VMError.guarantee(cArgType.isStackSlot());
 
                     Pointer spVal = Word.pointer(p.getAbiSpReg());
-                    int offset = stackSlot.getOffset(0);
+                    int offset = cArgType.getStackOffset();
 
                     VMError.guarantee(spVal.isNonNull());
                     VMError.guarantee(offset < p.getStackSize());
@@ -606,21 +601,25 @@ public class AArch64InterpreterStubs {
         }
 
         @Override
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
         public long getGpReturn(Pointer data) {
             return ((InterpreterDataAArch64) data).getAbiGpRet();
         }
 
         @Override
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
         public void setGpReturn(Pointer data, long gpReturn) {
             ((InterpreterDataAArch64) data).setAbiGpRet(gpReturn);
         }
 
         @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public long getFpReturn(Pointer data) {
             return ((InterpreterDataAArch64) data).getAbiFpRet();
         }
 
         @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public void setFpReturn(Pointer data, long fpReturn) {
             ((InterpreterDataAArch64) data).setAbiFpRet(fpReturn);
         }

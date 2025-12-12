@@ -28,6 +28,7 @@ import java.lang.invoke.VarHandle;
 
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.core.util.VMError;
@@ -54,7 +55,9 @@ public final class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMe
     }
 
     public static InterpreterResolvedJavaMethod create(InterpreterResolvedObjectType declaringClass, ParserMethod m, int vtableIndex) {
-        return new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
+        InterpreterResolvedJavaMethod interpreterMethod = new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
+        interpreterMethod.setPreparedSignature(InterpreterSupport.singleton().prepareSignature(interpreterMethod));
+        return interpreterMethod;
     }
 
     @Override

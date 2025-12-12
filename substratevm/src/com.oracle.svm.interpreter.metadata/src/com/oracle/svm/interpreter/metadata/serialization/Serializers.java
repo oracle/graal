@@ -37,6 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.graal.code.PreparedArgumentType;
+import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -635,6 +637,32 @@ public final class Serializers {
                         context.writerFor(InterpreterResolvedJavaMethod[].class).write(context, out, value.vtable);
                     });
 
+    static final ValueSerializer<PreparedArgumentType> PREPARED_ARGUMENT_TYPE = createSerializer(
+                    (context, in) -> {
+                        JavaKind kind = context.readReference(in);
+                        int value = LEB128.readUnsignedInt(in);
+                        boolean isRegister = in.readBoolean();
+                        return new PreparedArgumentType(kind, value, isRegister);
+                    },
+                    (context, out, value) -> {
+                        context.writeReference(out, value.getKind());
+                        LEB128.writeUnsignedInt(out, value.getOffsetForSerialization());
+                        out.writeBoolean(value.isRegister());
+                    });
+
+    static final ValueSerializer<PreparedSignature> PREPARED_SIGNATURE = createSerializer(
+                    (context, in) -> {
+                        JavaKind returnKind = context.readReference(in);
+                        PreparedArgumentType[] preparedArgumentTypes = context.readerFor(PreparedArgumentType[].class).read(context, in);
+                        int stackSize = in.readInt();
+                        return new PreparedSignature(returnKind, preparedArgumentTypes, stackSize);
+                    },
+                    (context, out, value) -> {
+                        context.writeReference(out, value.getReturnKind());
+                        context.writerFor(PreparedArgumentType[].class).write(context, out, value.getPreparedArgumentTypes());
+                        out.writeInt(value.getStackSize());
+                    });
+
     static final ValueSerializer<InterpreterResolvedJavaMethod> RESOLVED_METHOD = createSerializer(
                     (context, in) -> {
                         String name = context.readReference(in);
@@ -643,6 +671,7 @@ public final class Serializers {
                         int flags = LEB128.readUnsignedInt(in);
                         InterpreterResolvedObjectType declaringClass = context.readReference(in);
                         InterpreterUnresolvedSignature signature = context.readReference(in);
+                        PreparedSignature preparedSignature = context.readReference(in);
                         byte[] code = context.readReference(in);
                         ExceptionHandler[] exceptionHandlers = context.readReference(in);
                         LineNumberTable lineNumberTable = context.readReference(in);
@@ -654,8 +683,8 @@ public final class Serializers {
                         int enterStubOffset = LEB128.readUnsignedInt(in);
                         int methodId = LEB128.readUnsignedInt(in);
 
-                        return InterpreterResolvedJavaMethod.createForDeserialization(name, maxLocals, maxStackSize, flags, declaringClass, signature, code, exceptionHandlers, lineNumberTable,
-                                        localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
+                        return InterpreterResolvedJavaMethod.createForDeserialization(name, maxLocals, maxStackSize, flags, declaringClass, signature, preparedSignature, code, exceptionHandlers,
+                                        lineNumberTable, localVariableTable, nativeEntryPoint, vtableIndex, gotOffset, enterStubOffset, methodId);
                     },
                     (context, out, value) -> {
                         String name = value.getName();
@@ -664,6 +693,8 @@ public final class Serializers {
                         int flags = value.getFlags();
                         InterpreterResolvedObjectType declaringClass = value.getDeclaringClass();
                         InterpreterUnresolvedSignature signature = value.getSignature();
+                        PreparedSignature preparedSignature = value.getPreparedSignature();
+                        assert preparedSignature != null : "no prepared signature for " + value;
                         byte[] code = value.getInterpretedCode();
                         ExceptionHandler[] exceptionHandlers = value.getExceptionHandlers();
                         LineNumberTable lineNumberTable = value.getLineNumberTable();
@@ -685,6 +716,7 @@ public final class Serializers {
                         LEB128.writeUnsignedInt(out, flags);
                         context.writeReference(out, declaringClass);
                         context.writeReference(out, signature);
+                        context.writeReference(out, preparedSignature);
                         context.writeReference(out, code);
                         context.writeReference(out, exceptionHandlers);
                         context.writeReference(out, lineNumberTable);
@@ -744,6 +776,9 @@ public final class Serializers {
                     InterpreterResolvedPrimitiveType.class,
                     InterpreterResolvedObjectType.class,
                     InterpreterResolvedObjectType.VTableHolder.class,
+                    PreparedSignature.class,
+                    PreparedArgumentType.class,
+                    PreparedArgumentType[].class,
                     InterpreterResolvedJavaField.class,
                     FunctionPointerHolder.class,
                     InterpreterResolvedJavaMethod.class,
@@ -779,6 +814,9 @@ public final class Serializers {
                         .registerSerializer(InterpreterResolvedPrimitiveType.class, PRIMITIVE_TYPE)
                         .registerSerializer(InterpreterResolvedObjectType.class, OBJECT_TYPE)
                         .registerSerializer(InterpreterResolvedObjectType.VTableHolder.class, VTABLE_HOLDER)
+                        .registerSerializer(PreparedSignature.class, PREPARED_SIGNATURE)
+                        .registerSerializer(PreparedArgumentType[].class, ofReferenceArray(PreparedArgumentType[]::new))
+                        .registerSerializer(PreparedArgumentType.class, PREPARED_ARGUMENT_TYPE)
                         .registerSerializer(InterpreterResolvedJavaField.class, RESOLVED_FIELD)
                         .registerSerializer(FunctionPointerHolder.class, asReferenceConstant())
                         .registerSerializer(InterpreterResolvedJavaMethod.class, RESOLVED_METHOD)

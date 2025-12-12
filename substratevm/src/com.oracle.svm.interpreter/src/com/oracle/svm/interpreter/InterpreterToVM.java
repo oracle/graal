@@ -915,7 +915,7 @@ public final class InterpreterToVM {
             }
 
             // wrapping of exceptions is done in leaveInterpreter
-            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, targetMethod.getDeclaringClass(), calleeArgs);
+            retObj = InterpreterStubSection.leaveInterpreter(calleeFtnPtr, targetMethod, calleeArgs);
         } else {
             try {
                 retObj = Interpreter.execute(targetMethod, calleeArgs, forceStayInInterpreter);
