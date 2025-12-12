@@ -67,16 +67,8 @@ public final class JSBigInt extends JSValue {
         return "bigint";
     }
 
-    @JS("return conversion.toProxy(toJavaString(this.toString()));")
-    private native String javaString();
-
-    @Override
-    protected String stringValue() {
-        return javaString();
-    }
-
     private BigInteger bigInteger() {
-        return new BigInteger(javaString());
+        return new BigInteger(stringValue());
     }
 
     @Override
@@ -116,14 +108,14 @@ public final class JSBigInt extends JSValue {
 
     @Override
     public boolean equals(Object that) {
-        if (that instanceof JSBigInt) {
-            return this.javaString().equals(((JSBigInt) that).javaString());
+        if (that instanceof JSBigInt otherBigInt) {
+            return this.stringValue().equals(otherBigInt.stringValue());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return javaString().hashCode();
+        return stringValue().hashCode();
     }
 }

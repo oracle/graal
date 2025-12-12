@@ -64,9 +64,4 @@ public final class JSUndefined extends JSValue {
     public String typeof() {
         return "undefined";
     }
-
-    @Override
-    protected String stringValue() {
-        return "undefined";
-    }
 }

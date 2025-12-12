@@ -80,15 +80,6 @@ class WasmGCConversion extends Conversion {
         return charArrayToString(proxyCharArray(getExport("string.tochars")(jlstring)));
     }
 
-    extractJavaScriptArray(jarray) {
-        const length = getExport("array.length")(jarray);
-        const jsarray = new Array(length);
-        for (let i = 0; i < length; i++) {
-            jsarray[i] = this.javaToJavaScript(getExport("array.object.read")(jarray, i));
-        }
-        return jsarray;
-    }
-
     createJavaBoolean(x) {
         return getExport("box.boolean")(x);
     }
@@ -209,15 +200,27 @@ class WasmGCConversion extends Conversion {
         return getExport("object.isinstance")(obj, hub);
     }
 
-    getOrCreateProxyHandler(clazz) {
-        if (!this.proxyHandlers.has(clazz)) {
-            this.proxyHandlers.set(clazz, new WasmGCProxyHandler(clazz));
-        }
-        return this.proxyHandlers.get(clazz);
+    getHub(obj) {
+        return getExport("object.getclass")(obj);
     }
 
-    _getProxyHandlerArg(obj) {
-        return getExport("object.getclass")(obj);
+    getSupertype(hub) {
+        return getExport("class.superclass")(hub);
+    }
+
+    getComponentHub(hub) {
+        return getExport("class.componenttype")(hub);
+    }
+
+    getTypeNameAsJavaString(hub) {
+        return getExport("class.getname")(hub);
+    }
+
+    getOrCreateProxyHandler(hub) {
+        if (!this.proxyHandlers.has(hub)) {
+            this.proxyHandlers.set(hub, new WasmGCProxyHandler(hub));
+        }
+        return this.proxyHandlers.get(hub);
     }
 
     javaToJavaScript(x) {
@@ -246,35 +249,99 @@ class WasmGCConversion extends Conversion {
         switch (tpe) {
             case "boolean":
                 // Due to Java booleans being numbers, the double-negation is necessary.
-                return !!this.#unwrapExtern(getExport("convert.coerce.boolean")(o));
+                return !!getExport("convert.coerce.boolean")(o);
             case "number":
-                return this.#unwrapExtern(getExport("convert.coerce.number")(o));
+                return getExport("convert.coerce.number")(o);
             case "bigint":
                 const bs = this.#unwrapExtern(getExport("convert.coerce.bigint")(o));
                 return BigInt(bs);
             case "string":
                 return this.#unwrapExtern(getExport("convert.coerce.string")(o));
-            case "object":
-                return this.#unwrapExtern(getExport("convert.coerce.object")(o));
             case "function":
                 const sam = proxyHandler._getSingleAbstractMethod(proxy);
                 if (sam !== undefined) {
                     return (...args) => proxyHandler._applyWithObject(proxy, args);
                 }
                 this.throwClassCastException(o, tpe);
-            case Uint8Array:
-            case Int8Array:
-            case Uint16Array:
-            case Int16Array:
-            case Int32Array:
-            case Float32Array:
-            case BigInt64Array:
-            case Float64Array:
-                // TODO GR-60603 Support array coercion
-                throw new Error("Coercion to arrays is not supported yet");
             default:
                 this.throwClassCastException(o, tpe);
         }
+    }
+
+    getArrayLength(javaArray) {
+        return getExport("array.length")(javaArray);
+    }
+
+    loadBooleanArrayElement(javaArray, idx) {
+        return !!getExport("array.boolean.read")(javaArray, idx);
+    }
+
+    loadByteArrayElement(javaArray, idx) {
+        return getExport("array.byte.read")(javaArray, idx);
+    }
+
+    loadShortArrayElement(javaArray, idx) {
+        return getExport("array.short.read")(javaArray, idx);
+    }
+
+    loadCharArrayElement(javaArray, idx) {
+        return getExport("array.char.read")(javaArray, idx);
+    }
+
+    loadIntArrayElement(javaArray, idx) {
+        return getExport("array.int.read")(javaArray, idx);
+    }
+
+    loadFloatArrayElement(javaArray, idx) {
+        return getExport("array.float.read")(javaArray, idx);
+    }
+
+    loadLongArrayElement(javaArray, idx) {
+        return getExport("array.long.read")(javaArray, idx);
+    }
+
+    loadDoubleArrayElement(javaArray, idx) {
+        return getExport("array.double.read")(javaArray, idx);
+    }
+
+    loadObjectArrayElement(javaArray, idx) {
+        return getExport("array.object.read")(javaArray, idx);
+    }
+
+    storeBooleanArrayElement(javaArray, idx, jsBoolean) {
+        getExport("array.boolean.write")(javaArray, idx, jsBoolean ? 1 : 0);
+    }
+
+    storeByteArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.byte.write")(javaArray, idx, jsNumber);
+    }
+
+    storeShortArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.short.write")(javaArray, idx, jsNumber);
+    }
+
+    storeCharArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.char.write")(javaArray, idx, jsNumber);
+    }
+
+    storeIntArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.int.write")(javaArray, idx, jsNumber);
+    }
+
+    storeFloatArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.float.write")(javaArray, idx, jsNumber);
+    }
+
+    storeLongArrayElement(javaArray, idx, jsBigInt) {
+        getExport("array.long.write")(javaArray, idx, jsBigInt);
+    }
+
+    storeDoubleArrayElement(javaArray, idx, jsNumber) {
+        getExport("array.double.write")(javaArray, idx, jsNumber);
+    }
+
+    storeObjectArrayElement(javaArray, idx, javaObjectValue) {
+        getExport("array.object.write")(javaArray, idx, javaObjectValue);
     }
 }
 
@@ -284,11 +351,6 @@ const METADATA_SEPARATOR = " ";
 
 class WasmGCProxyHandler extends ProxyHandler {
     #classMetadata = null;
-
-    constructor(clazz) {
-        super();
-        this.clazz = clazz;
-    }
 
     #lookupClass(name) {
         const clazz = getExport("conversion.classfromencoding")(toJavaString(name));
@@ -314,7 +376,7 @@ class WasmGCProxyHandler extends ProxyHandler {
             }
             const classId = parts[0];
 
-            if (this.#lookupClass(classId) == this.clazz) {
+            if (this.#lookupClass(classId) == this.javaHub) {
                 const methodName = parts[1];
                 const returnTypeId = parts[2];
                 const argTypeIds = parts.slice(3);
@@ -368,19 +430,6 @@ class WasmGCProxyHandler extends ProxyHandler {
         }
 
         return methodTable;
-    }
-
-    _getClassName() {
-        return conversion.extractJavaScriptString(getExport("class.getname")(this.clazz));
-    }
-
-    _linkMethodPrototype() {
-        // Link the prototype chain of the superclass' proxy handler, to include super methods.
-        if (!getExport("class.isjavalangobject")(this.clazz)) {
-            const parentClass = getExport("class.superclass")(this.clazz);
-            const parentProxyHandler = conversion.getOrCreateProxyHandler(parentClass);
-            Object.setPrototypeOf(this._getMethods(), parentProxyHandler._getMethods());
-        }
     }
 
     _createInstance(hub) {

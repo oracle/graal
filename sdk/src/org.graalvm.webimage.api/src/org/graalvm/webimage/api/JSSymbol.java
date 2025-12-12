@@ -63,14 +63,6 @@ public final class JSSymbol extends JSValue {
         return "symbol";
     }
 
-    @JS("return conversion.toProxy(toJavaString(this.toString()));")
-    private native String javaString();
-
-    @Override
-    protected String stringValue() {
-        return javaString();
-    }
-
     @Override
     public boolean equals(Object that) {
         if (that instanceof JSSymbol) {
@@ -81,7 +73,7 @@ public final class JSSymbol extends JSValue {
 
     @Override
     public int hashCode() {
-        return javaString().hashCode();
+        return stringValue().hashCode();
     }
 
     @JS(value = "return Symbol.for(key);")

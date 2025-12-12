@@ -67,11 +67,6 @@ public final class JSBoolean extends JSValue {
     private native Boolean javaBoolean();
 
     @Override
-    protected String stringValue() {
-        return String.valueOf(javaBoolean());
-    }
-
-    @Override
     public Boolean asBoolean() {
         return javaBoolean();
     }

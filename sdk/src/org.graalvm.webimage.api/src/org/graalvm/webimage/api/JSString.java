@@ -57,30 +57,26 @@ public final class JSString extends JSValue {
         return "string";
     }
 
+    /**
+     * Cannot use {@link #stringValue()} because the implementation of that method calls this
+     * method. The manual extraction of the Java string here ensures that no infinite recursion
+     * occurs.
+     */
+    @Override
     @JS("return conversion.toProxy(toJavaString(this));")
-    private native String javaString();
-
-    @Override
-    protected String stringValue() {
-        return javaString();
-    }
-
-    @Override
-    public String asString() {
-        return javaString();
-    }
+    public native String asString();
 
     @Override
     public boolean equals(Object that) {
-        if (that instanceof JSString) {
-            return this.javaString().equals(((JSString) that).javaString());
+        if (that instanceof JSString otherString) {
+            return this.stringValue().equals(otherString.stringValue());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return javaString().hashCode();
+        return stringValue().hashCode();
     }
 
     @JS.Coerce

@@ -27,23 +27,24 @@ package com.oracle.svm.hosted.webimage.test.spec;
 
 import java.nio.file.Path;
 
-import com.oracle.svm.webimage.jtt.api.JSNumberTest;
-import com.oracle.svm.webimage.jtt.api.JSObjectTest;
-import com.oracle.svm.webimage.jtt.api.JSStringTest;
-import com.oracle.svm.webimage.jtt.api.JSSymbolTest;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.svm.hosted.webimage.test.util.JTTTestSuite;
 import com.oracle.svm.hosted.webimage.test.util.WebImageTestOptions;
+import com.oracle.svm.webimage.jtt.api.ArrayProxyTest;
 import com.oracle.svm.webimage.jtt.api.CoercionConversionTest;
 import com.oracle.svm.webimage.jtt.api.HtmlApiExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JSErrorsTest;
+import com.oracle.svm.webimage.jtt.api.JSNumberTest;
 import com.oracle.svm.webimage.jtt.api.JSObjectConversionTest;
 import com.oracle.svm.webimage.jtt.api.JSObjectSubclassTest;
+import com.oracle.svm.webimage.jtt.api.JSObjectTest;
 import com.oracle.svm.webimage.jtt.api.JSPrimitiveConversionTest;
 import com.oracle.svm.webimage.jtt.api.JSRawCallTest;
+import com.oracle.svm.webimage.jtt.api.JSStringTest;
+import com.oracle.svm.webimage.jtt.api.JSSymbolTest;
 import com.oracle.svm.webimage.jtt.api.JavaDocExamplesTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyConversionTest;
 import com.oracle.svm.webimage.jtt.api.JavaProxyTest;
@@ -80,28 +81,26 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void coercionConversion() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
-        Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(CoercionConversionTest.OUTPUT, CoercionConversionTest.class.getName());
     }
 
     @Test
     public void javaDocExamples() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-62854 Enable once JSObject subtyping is supported in WasmGC
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JavaDocExamplesTest.OUTPUT, JavaDocExamplesTest.class.getName());
     }
 
     @Test
     public void jsObjectConversion() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-62854 Enable once JSObject subtyping is supported in WasmGC
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSObjectConversionTest.OUTPUT, JSObjectConversionTest.class.getName());
     }
 
     @Test
     public void jsObjectSubclass() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-62854 Enable once JSObject subtyping is supported in WasmGC
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSObjectSubclassTest.OUTPUT, JSObjectSubclassTest.class.getName());
     }
@@ -113,7 +112,7 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void javaProxyConversion() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-71902 Enable once WasmGC supports vm.as
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JavaProxyConversionTest.OUTPUT, JavaProxyConversionTest.class.getName());
     }
@@ -130,7 +129,7 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void htmlApiExamplesTest() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-62854 Enable once JSObject subtyping is supported in WasmGC
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(HtmlApiExamplesTest.OUTPUT, HtmlApiExamplesTest.class.getName());
     }
@@ -142,7 +141,7 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void jsStringTest() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
+        // TODO GR-71902 Enable once WasmGC supports vm.as
         Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSStringTest.class.getName());
     }
@@ -154,8 +153,11 @@ public class JS_JTT_JSAnnotation extends JTTTestSuite {
 
     @Test
     public void jsObjectTest() {
-        // TODO GR-60603 Enable once JS annotation is supported in WasmGC
-        Assume.assumeFalse(WebImageTestOptions.isWasmGCBackend());
         testFileAgainstNoBuild(JSObjectTest.class.getName());
+    }
+
+    @Test
+    public void arrayProxyTest() {
+        testFileAgainstNoBuild(ArrayProxyTest.class.getName());
     }
 }
