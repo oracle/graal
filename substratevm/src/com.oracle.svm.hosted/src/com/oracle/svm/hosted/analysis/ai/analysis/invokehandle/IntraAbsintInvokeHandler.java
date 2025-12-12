@@ -24,7 +24,7 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
 
     public IntraAbsintInvokeHandler(Domain initialDomain,
                                     AbstractInterpreter<Domain> abstractInterpreter,
-                                    AnalysisContext analysisContext) {
+                                    AnalysisContext<Domain> analysisContext) {
         super(initialDomain, abstractInterpreter, analysisContext);
     }
 
@@ -35,7 +35,6 @@ public final class IntraAbsintInvokeHandler<Domain extends AbstractDomain<Domain
 
     @Override
     public void handleRootInvoke(AnalysisMethod root) {
-        var logger = AbstractInterpretationLogger.getInstance();
         if (methodFilterManager.shouldSkipMethod(root)) {
             return;
         }

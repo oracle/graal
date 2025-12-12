@@ -42,7 +42,7 @@ public final class MethodSummary<Domain extends AbstractDomain<Domain>> {
 
     public void joinWithContextState(AbstractState<Domain> other) {
         if (stateAcrossAllContexts == null) {
-            stateAcrossAllContexts = other;
+            stateAcrossAllContexts = other.copyOf();
             return;
         }
         stateAcrossAllContexts.joinWith(other);
@@ -53,5 +53,9 @@ public final class MethodSummary<Domain extends AbstractDomain<Domain>> {
         StringBuilder sb = new StringBuilder("MethodSummary{" + method + "}\n");
         contexts.forEach((k, v) -> sb.append(k).append(" -> ").append(v).append('\n'));
         return sb.toString();
+    }
+
+    public Map<ContextKey, ContextSummary<Domain>> getContexts() {
+        return contexts;
     }
 }

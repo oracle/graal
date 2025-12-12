@@ -74,7 +74,7 @@ public class AbstractInterpretationDriver {
                 .setFileEnabled(true)
                 .setFileThreshold(LoggerVerbosity.INFO)
                 .setConsoleThreshold(LoggerVerbosity.INFO)
-                .setGraphIgvDumpEnabled(false);
+                .setGraphIgvDumpEnabled(true);
 
         /* 1. Define the abstract domain */
         AbstractMemory initialDomain = new AbstractMemory();

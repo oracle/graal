@@ -18,7 +18,7 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
     private final InterAnalyzerMode analyzerMode;
-    private final AnalysisContext analysisContext;
+    private final AnalysisContext<Domain> analysisContext;
     private final SummaryManager<Domain> summaryManager;
     private final int maxRecursionDepth;
     private final int maxCallStackDepth;
@@ -29,14 +29,14 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         this.summaryManager = new SummaryManager<>(builder.summaryFactory);
         this.maxRecursionDepth = builder.maxRecursionDepth;
         this.maxCallStackDepth = builder.maxCallStackDepth;
-        this.analysisContext = new AnalysisContext(builder.iteratorPolicy, builder.checkerManager, builder.methodFilterManager, builder.summaryFactory);
+        this.analysisContext = new AnalysisContext<>(builder.iteratorPolicy, builder.checkerManager, builder.methodFilterManager, builder.summaryFactory);
     }
 
     public InterAnalyzerMode getAnalyzerMode() {
         return analyzerMode;
     }
 
-    public AnalysisContext getAnalysisContext() {
+    public AnalysisContext<Domain> getAnalysisContext() {
         return analysisContext;
     }
 
@@ -51,6 +51,14 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
         }
         InterAbsintInvokeHandler<Domain> callHandler = new InterAbsintInvokeHandler<>(initialDomain, abstractInterpreter, analysisContext, new CallStack(maxRecursionDepth, maxCallStackDepth), summaryManager);
         callHandler.handleRootInvoke(method);
+    }
+
+    public int getMaxRecursionDepth() {
+        return maxRecursionDepth;
+    }
+
+    public int getMaxCallStackDepth() {
+        return maxCallStackDepth;
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {

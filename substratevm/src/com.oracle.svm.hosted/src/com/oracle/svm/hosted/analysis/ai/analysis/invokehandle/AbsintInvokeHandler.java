@@ -18,12 +18,12 @@ public abstract class AbsintInvokeHandler<Domain extends AbstractDomain<Domain>>
     protected final AbstractTransformer<Domain> abstractTransformer;
     protected final CheckerManager checkerManager;
     protected final AnalysisMethodFilterManager methodFilterManager;
-    protected final AnalysisContext analysisContext;
+    protected final AnalysisContext<Domain> analysisContext;
 
     @SuppressWarnings("this-escape")
     public AbsintInvokeHandler(Domain initialDomain,
                                AbstractInterpreter<Domain> abstractInterpreter,
-                               AnalysisContext analysisContext) {
+                               AnalysisContext<Domain> analysisContext) {
         this.initialDomain = initialDomain;
         this.abstractTransformer = new AbstractTransformer<>(abstractInterpreter, this::handleInvoke);
         this.analysisContext = analysisContext;

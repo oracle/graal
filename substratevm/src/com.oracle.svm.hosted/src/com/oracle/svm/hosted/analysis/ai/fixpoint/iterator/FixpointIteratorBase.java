@@ -23,7 +23,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
 
     protected final Domain initialDomain;
     protected final AbstractTransformer<Domain> abstractTransformer;
-    protected final AnalysisContext analysisContext;
+    protected final AnalysisContext<Domain> analysisContext;
     protected final StructuredGraph graph;
     protected final AbstractState<Domain> abstractState;
     protected final AbstractInterpretationLogger logger;
@@ -34,7 +34,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     protected FixpointIteratorBase(AnalysisMethod method,
                                    Domain initialDomain,
                                    AbstractTransformer<Domain> abstractTransformer,
-                                   AnalysisContext analysisContext) {
+                                   AnalysisContext<Domain> analysisContext) {
 
         this.logger = AbstractInterpretationLogger.getInstance();
         this.analysisMethod = method;

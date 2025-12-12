@@ -31,7 +31,7 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
     public InterAbsintInvokeHandler(
             Domain initialDomain,
             AbstractInterpreter<Domain> abstractInterpreter,
-            AnalysisContext analysisContext,
+            AnalysisContext<Domain> analysisContext,
             CallStack callStack,
             SummaryManager<Domain> summaryManager) {
         super(initialDomain, abstractInterpreter, analysisContext);
@@ -60,42 +60,37 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
             return outcome;
         }
 
+        /* Handle errors */
         if (methodFilterManager.shouldSkipMethod(targetAnalysisMethod)) {
-            AbstractState<Domain> callerState = invokeInput.callerState();
-            Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
-            Summary<Domain> skipped = summaryManager.createSummary(invoke, callerPreAtInvoke, invokeInput.actualArgDomains());
-            return new InvokeAnalysisOutcome<>(AnalysisResult.IN_SKIP_LIST, skipped);
+            return InvokeAnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
         }
+
+        if (callStack.getMaxCallStackDepth() <= callStack.getCurrentDepth()) {
+            return InvokeAnalysisOutcome.error(AnalysisResult.CALL_STACK_DEPTH_OVERFLOW);
+        }
+
+        if (callStack.getMaxRecursionDepth() <= callStack.countConsecutiveCalls(targetAnalysisMethod)) {
+            return InvokeAnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
+        }
+
+        if (callStack.hasMethodCallCycle(targetAnalysisMethod)) {
+            return InvokeAnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
+        }
+
 
         AbstractState<Domain> callerState = invokeInput.callerState();
         Domain callerPreAtInvoke = callerState.getPreCondition(invoke.asNode());
         /* Build a pre-condition summary for this call. */
-        Summary<Domain> preSummary = summaryManager.createSummary(invoke, callerPreAtInvoke, invokeInput.actualArgDomains());
+        Summary<Domain> calleeSummary = summaryManager.createSummary(invoke, callerPreAtInvoke, invokeInput.actualArgDomains());
 
         /* Try to reuse an existing summary that subsumes this one. */
-        Summary<Domain> cached = summaryManager.getSummary(targetAnalysisMethod, preSummary);
+        Summary<Domain> cached = summaryManager.getSummary(targetAnalysisMethod, calleeSummary);
         if (cached != null) {
             logger.log("Summary cache contains targetMethod: " + targetAnalysisMethod, LoggerVerbosity.SUMMARY);
             return InvokeAnalysisOutcome.ok(cached);
         }
 
-        if (callStack.getMaxCallStackDepth() <= callStack.getCurrentDepth()) {
-            logger.log("Exceeded call stack depth limit of: " + callStack.getMaxCallStackDepth(), LoggerVerbosity.INFO);
-        }
-
-        if (callStack.getMaxRecursionDepth() <= callStack.countConsecutiveCalls(targetAnalysisMethod)) {
-            logger.log("Exceeded recursion limit of: " + callStack.getMaxRecursionDepth(), LoggerVerbosity.INFO);
-            return InvokeAnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
-        }
-
-        if (callStack.hasMethodCallCycle(targetAnalysisMethod)) {
-            logger.log("Analysis has encountered a mutual recursion cycle on: " + targetAnalysisMethod.getQualifiedName() + ", skipping analysis", LoggerVerbosity.INFO);
-            InvokeAnalysisOutcome<Domain> outcome = InvokeAnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
-            logger.log(callStack.formatCycleWithMethod(targetAnalysisMethod), LoggerVerbosity.INFO);
-            return outcome;
-        }
-
-        /* Analyze callee under this context. */
+        /* Analyze callee under given context. */
         callStack.push(targetAnalysisMethod);
         try {
             FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(targetAnalysisMethod, initialDomain, abstractTransformer, analysisContext);
@@ -103,20 +98,21 @@ public final class InterAbsintInvokeHandler<Domain extends AbstractDomain<Domain
                     () -> CallContextHolder.buildKCFASignature(callStack.getCallStack(), 2));
             fixpointIterator.getIteratorContext().setCallContextSignature(ctxSig);
 
-            AbstractState<Domain> calleeAbstractState = fixpointIterator.runFixpointIteration(preSummary.getPreCondition());
-            preSummary.finalizeSummary(calleeAbstractState);
+            AbstractState<Domain> calleeAbstractState = fixpointIterator.runFixpointIteration(calleeSummary.getPreCondition());
+            calleeSummary.finalizeSummary(calleeAbstractState);
 
             ContextKey ctxKey = invokeInput.contextKey()
-                    .orElse(new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getMaxRecursionDepth()));
+                    .orElse(new ContextKey(targetAnalysisMethod, ctxSig.hashCode(), callStack.getCurrentDepth()));
 
-            /* Merge the different contexts for the callee method */
-            summaryManager.putSummary(targetAnalysisMethod, ctxKey, preSummary);
+            /* Put the new context summary for the callee method */
+            summaryManager.putSummary(targetAnalysisMethod, ctxKey, calleeSummary);
+            /* Update the context-insensitive summary */
             summaryManager.getSummaryRepository().get(targetAnalysisMethod).joinWithContextState(calleeAbstractState);
         } finally {
             callStack.pop();
         }
 
-        return InvokeAnalysisOutcome.ok(preSummary);
+        return InvokeAnalysisOutcome.ok(calleeSummary);
     }
 
     @Override

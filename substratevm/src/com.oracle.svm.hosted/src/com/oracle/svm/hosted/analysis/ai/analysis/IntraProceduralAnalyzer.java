@@ -15,12 +15,12 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.AbstractInterpreter;
 public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
     private final IntraAnalyzerMode analyzerMode;
-    private final AnalysisContext analysisContext;
+    private final AnalysisContext<Domain> analysisContext;
 
     private IntraProceduralAnalyzer(Builder<Domain> builder) {
         super(builder);
         this.analyzerMode = builder.analyzerMode;
-        this.analysisContext = new AnalysisContext(builder.iteratorPolicy, builder.checkerManager, builder.methodFilterManager);
+        this.analysisContext = new AnalysisContext<>(builder.iteratorPolicy, builder.checkerManager, builder.methodFilterManager);
     }
 
     public IntraAnalyzerMode getAnalyzerMode() {

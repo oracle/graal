@@ -28,8 +28,7 @@ public final class CheckerManager {
     @SuppressWarnings("unchecked")
     public <Domain extends AbstractDomain<Domain>> void runCheckersOnSingleMethod(AnalysisMethod method, AbstractState<Domain> abstractState, StructuredGraph graph) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-//        logger.log("The compute abstract state: \n" + abstractState, LoggerVerbosity.DEBUG );
-
+        logger.log("Running checkers on method: " + method.getQualifiedName(), LoggerVerbosity.INFO);
         var stats = AbstractInterpretationServices.getInstance().getStats();
         List<Fact> allFacts = new ArrayList<>();
 
@@ -74,9 +73,7 @@ public final class CheckerManager {
             MethodSummary<Domain> methodSummary = entry.getValue();
             AbstractState<Domain> abstractState = methodSummary.getStateAcrossAllContexts();
             var logger = AbstractInterpretationLogger.getInstance();
-            logger.log( " Running checkers on method: " + method.getQualifiedName(), LoggerVerbosity.CHECKER);
             runCheckersOnSingleMethod(method, abstractState, methodGraphMap.get(method));
-            logger.log("\n",  LoggerVerbosity.INFO);
         }
     }
 }

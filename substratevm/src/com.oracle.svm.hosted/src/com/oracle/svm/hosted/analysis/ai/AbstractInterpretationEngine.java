@@ -7,12 +7,14 @@ import com.oracle.svm.hosted.analysis.ai.analysis.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.analysis.AnalyzerManager;
 import com.oracle.svm.hosted.analysis.ai.analysis.InterProceduralAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analysis.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analysis.context.MethodGraphCache;
 import com.oracle.svm.hosted.analysis.ai.analysis.mode.InterAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.analysis.mode.IntraAnalyzerMode;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.log.LoggerVerbosity;
 import com.oracle.svm.hosted.analysis.ai.analysis.AbstractInterpretationServices;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryManager;
 
 import java.util.List;
 
@@ -75,43 +77,84 @@ public class AbstractInterpretationEngine {
 
         if (mode == InterAnalyzerMode.ANALYZE_FROM_MAIN_ENTRYPOINT) {
             logger.log("Running interprocedural analyzer from the main entry point only", LoggerVerbosity.INFO);
-
-            // Run analysis only from the single main entry point using the provided analyzer.
             analyzer.runAnalysis(analysisRoot);
-
             var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
             var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
             analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
             return;
         }
 
-        // In the multi-root mode we intentionally avoid sharing the same InterProceduralAnalyzer
-        // instance across call-graph roots. The analyzer (and in particular its SummaryManager
-        // and AnalysisContext) is not designed to be thread-safe, and sharing it across roots
-        // would lead to concurrent modification of method summaries and abstract domains.
-        //
-        // Instead, we run a separate analysis for each root in sequence, each time creating a
-        // fresh InterProceduralAnalyzer instance that has its own SummaryManager and
-        // AnalysisContext. If we later want global, cross-root reasoning, we can extend the
-        // SummaryManager with an explicit merge API.
-
-        logger.log("Running interprocedural analyzer separately from each root method (sequential)", LoggerVerbosity.INFO);
-
-        for (AnalysisMethod root : rootMethods) {
-            if (root == null) {
-                continue;
-            }
-
-            // Rebuild a new analyzer instance for this root using the same configuration
-            // as the original analyzer. The concrete builder type is not directly
-            // accessible here, so for now we reuse the single analyzer instance and run
-            // it per root sequentially. This keeps the execution free of concurrent
-            // mutations in the summary/domain state.
+        // Compute per-root analyses in parallel, then merge results sequentially to avoid races.
+        logger.log("Running interprocedural analyzer from all root methods", LoggerVerbosity.INFO);
+        for (var root : rootMethods) {
+            logger.log("Running analysis of root:" + root.getQualifiedName(), LoggerVerbosity.INFO);
             analyzer.runAnalysis(root);
         }
 
         var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
         var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+
+        // debugging purposes only additionally run the root manually if it wasn't found bt the interproc analysis
+        if (!methodGraphCache.containsKey(analysisRoot)) {
+            analyzer.runAnalysis(analysisRoot);
+        }
         analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
+
+        // wip: PARALLEL VERSION, for now it is slow af
+        // Build local analyzers and run analyses in parallel
+        //        java.util.List<InterProceduralAnalyzer<Domain>> locals = rootMethods
+        //            .parallelStream()
+        //            .map(root -> {
+        //                if (root == null) {
+        //                    return null;
+        //                }
+        //                InterProceduralAnalyzer<Domain> local =
+        //                    new InterProceduralAnalyzer.Builder<>(
+        //                            analyzer.getInitialDomain().copyOf(),
+        //                            analyzer.getAbstractInterpreter(),
+        //                            analyzer.getAnalysisContext().getSummaryFactory(),
+        //                            analyzer.getAnalyzerMode())
+        //                        .iteratorPolicy(analyzer.getAnalysisContext().getIteratorPolicy())
+        //                        .checkerManager(analyzer.getAnalysisContext().getCheckerManager())
+        //                        .methodFilterManager(analyzer.getAnalysisContext().getMethodFilterManager())
+        //                        .maxRecursionDepth(analyzer.getMaxRecursionDepth())
+        //                        .maxCallStackDepth(analyzer.getMaxCallStackDepth())
+        //                        .build();
+        //                local.runAnalysis(root);
+        //                return local;
+        //            })
+        //            .filter(java.util.Objects::nonNull)
+        //            .toList();
+        //
+        //        for (InterProceduralAnalyzer<Domain> local : locals) {
+        //            analyzer.getSummaryManager().mergeAggregateOnly(local.getSummaryManager());
+        //            analyzer.getAnalysisContext().getMethodGraphCache().joinWith(local.getAnalysisContext().getMethodGraphCache());
+        //        }
+        //  var methodGraphCache = analyzer.getAnalysisContext().getMethodGraphCache().getMethodGraphMap();
+        //        var methodSummaryMap = analyzer.getSummaryManager().getSummaryRepository().getMethodSummaryMap();
+        //        analyzer.getAnalysisContext().getCheckerManager().runCheckersOnMethodSummaries(methodSummaryMap, methodGraphCache);
+    }
+
+    private static final class InterResult<Domain extends AbstractDomain<Domain>> {
+        private final SummaryManager<Domain> summaries;
+        private final MethodGraphCache graphs;
+
+        InterResult(SummaryManager<Domain> s, MethodGraphCache g) {
+            this.summaries = s;
+            this.graphs = g;
+        }
+
+        void merge(InterResult<Domain> other) {
+            this.summaries.mergeFrom(other.summaries);
+            this.graphs.joinWith(other.graphs);
+        }
+
+        public MethodGraphCache getMethodGraphCache() {
+            return graphs;
+        }
+
+        public SummaryManager<Domain> getSummaryManager() {
+            return summaries;
+        }
     }
 }

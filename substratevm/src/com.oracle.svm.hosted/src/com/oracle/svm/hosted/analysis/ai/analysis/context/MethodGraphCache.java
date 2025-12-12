@@ -63,5 +63,17 @@ public final class MethodGraphCache {
     public void addToMethodWpoMap(AnalysisMethod method, WeakPartialOrdering wpo) {
         methodWpoMap.put(method, wpo);
     }
+
+    public void joinWith(MethodGraphCache other) {
+        for (var method : other.methodGraphMap.keySet()) {
+            methodGraphMap.put(method, other.methodGraphMap.get(method));
+            if (other.methodWtoMap.containsKey(method)) {
+                methodWtoMap.put(method, other.methodWtoMap.get(method));
+            }
+            if (other.methodWpoMap.containsKey(method)) {
+                methodWpoMap.put(method, other.methodWpoMap.get(method));
+            }
+        }
+    }
 }
 

@@ -8,8 +8,26 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  * <p>
  * A context is identified by a {@link ContextKey} and typically represents one
  * abstract invocation context (e.g., a call string, receiver type, etc.).
- * @param contextKey  The identity of the context this summary belongs to.
  */
-public record ContextSummary<Domain extends AbstractDomain<Domain>>(ContextKey contextKey, Summary<Domain> summary) {
+public final class ContextSummary<Domain extends AbstractDomain<Domain>> {
 
+    private final ContextKey contextKey;
+    private Summary<Domain> summary;
+
+    public ContextSummary(ContextKey contextKey, Summary<Domain> summary) {
+        this.contextKey = contextKey;
+        this.summary = summary;
+    }
+
+    public ContextKey contextKey() {
+        return contextKey;
+    }
+
+    public Summary<Domain> summary() {
+        return summary;
+    }
+
+    public void setSummary(Summary<Domain> otherSummary) {
+        this.summary = otherSummary;
+    }
 }

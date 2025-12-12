@@ -5,6 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.nodes.Invoke;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Manages summaries for methods.
@@ -31,10 +32,6 @@ public final class SummaryManager<Domain extends AbstractDomain<Domain>> {
     public SummaryManager(SummaryFactory<Domain> summaryFactory, SummaryRepository<Domain> summaryRepository) {
         this.summaryFactory = summaryFactory;
         this.summaryRepository = summaryRepository;
-    }
-
-    public SummaryFactory<Domain> getSummaryFactory() {
-        return summaryFactory;
     }
 
     public SummaryRepository<Domain> getSummaryRepository() {
@@ -80,11 +77,114 @@ public final class SummaryManager<Domain extends AbstractDomain<Domain>> {
         methodSummary.getOrCreate(contextKey, summary);
     }
 
-    /**
-     * Convenience overload when the analysis uses a synthetic/default context key.
-     */
-    public void putSummary(AnalysisMethod calleeMethod, Summary<Domain> summary) {
-        ContextKey key = new ContextKey(calleeMethod, 0, 0);
-        putSummary(calleeMethod, key, summary);
+    public void mergeFrom(SummaryManager<Domain> other) {
+        if (other == null || other == this) {
+            return;
+        }
+
+        SummaryRepository<Domain> otherRepo = other.getSummaryRepository();
+        if (otherRepo == null) {
+            return;
+        }
+
+        for (var entry : otherRepo.getMethodSummaryMap().entrySet()) {
+            AnalysisMethod method = entry.getKey();
+            MethodSummary<Domain> otherMethodSummary = entry.getValue();
+            if (otherMethodSummary == null) {
+                continue;
+            }
+
+            MethodSummary<Domain> thisMethodSummary = summaryRepository.getOrCreate(method);
+
+            // Merge aggregate state across contexts
+            if (otherMethodSummary.getStateAcrossAllContexts() != null) {
+                thisMethodSummary.joinWithContextState(otherMethodSummary.getStateAcrossAllContexts());
+            }
+
+            // Merge individual contexts with subsumption-aware reconciliation
+            for (var ctxEntry : otherMethodSummary.getAllContexts().entrySet()) {
+                ContextKey ctxKey = ctxEntry.getKey();
+                ContextSummary<Domain> otherCtx = ctxEntry.getValue();
+                if (otherCtx == null) {
+                    continue;
+                }
+
+                Summary<Domain> otherSummary = otherCtx.summary();
+                ContextSummary<Domain> thisCtx = thisMethodSummary.getContexts().get(ctxKey);
+
+                if (thisCtx == null) {
+                    // No existing entry under this key: insert as-is
+                    thisMethodSummary.getOrCreate(ctxKey, otherSummary);
+                    continue;
+                }
+
+                Summary<Domain> thisSummary = thisCtx.summary();
+                if (thisSummary == null && otherSummary != null) {
+                    // Prefer non-null
+                    thisCtx.setSummary(otherSummary);
+                    continue;
+                }
+                if (otherSummary == null) {
+                    // Nothing to merge
+                    continue;
+                }
+
+                // If identical by reference or equals, skip duplicate
+                if (thisSummary == otherSummary || Objects.equals(thisSummary, otherSummary)) {
+                    continue;
+                }
+
+                // Subsumption checks: keep the more general one under the same key
+                if (thisSummary.subsumesSummary(otherSummary)) {
+                    // Existing is as general or more general: keep it
+                    continue;
+                }
+                if (otherSummary.subsumesSummary(thisSummary)) {
+                    // Replace with more general summary
+                    thisCtx.setSummary(otherSummary);
+                    continue;
+                }
+
+                // Incomparable: keep both by inserting other under an alternate deterministic key
+                ContextKey altKey = deriveAlternateKey(method, ctxKey, otherSummary);
+                if (!thisMethodSummary.getContexts().containsKey(altKey)) {
+                    thisMethodSummary.getOrCreate(altKey, otherSummary);
+                }
+            }
+        }
+    }
+
+    public void mergeAggregateOnly(SummaryManager<Domain> other) {
+        if (other == null || other == this) {
+            return;
+        }
+        SummaryRepository<Domain> otherRepo = other.getSummaryRepository();
+        if (otherRepo == null) {
+            return;
+        }
+
+        for (var entry : otherRepo.getMethodSummaryMap().entrySet()) {
+            AnalysisMethod method = entry.getKey();
+            MethodSummary<Domain> otherMethodSummary = entry.getValue();
+            if (otherMethodSummary == null) {
+                continue;
+            }
+            MethodSummary<Domain> thisMethodSummary = summaryRepository.getOrCreate(method);
+            if (otherMethodSummary.getStateAcrossAllContexts() != null) {
+                thisMethodSummary.joinWithContextState(otherMethodSummary.getStateAcrossAllContexts());
+            }
+            // Intentionally skip merging per-context entries.
+        }
+    }
+
+    private ContextKey deriveAlternateKey(AnalysisMethod method, ContextKey baseKey, Summary<Domain> otherSummary) {
+        // Use base depth and a stable composite hash of baseKey and other pre-condition
+        int depth = baseKey.depth();
+        int preHash = 0;
+        if (otherSummary != null && otherSummary.getPreCondition() != null) {
+            preHash = Objects.hash(otherSummary.getPreCondition());
+        }
+        int composite = Objects.hash(baseKey, preHash);
+        return new ContextKey(method, composite, depth);
     }
 }

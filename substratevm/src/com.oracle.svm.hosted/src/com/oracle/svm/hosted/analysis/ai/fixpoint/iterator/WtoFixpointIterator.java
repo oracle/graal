@@ -28,7 +28,7 @@ public final class WtoFixpointIterator<Domain extends AbstractDomain<Domain>> ex
     public WtoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
                                AbstractTransformer<Domain> abstractTransformer,
-                               AnalysisContext analysisContext) {
+                               AnalysisContext<Domain> analysisContext) {
 
         super(method, initialDomain, abstractTransformer, analysisContext);
         var cache = analysisContext.getMethodGraphCache();

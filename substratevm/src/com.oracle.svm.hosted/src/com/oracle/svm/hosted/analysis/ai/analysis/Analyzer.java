@@ -45,6 +45,26 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
      */
     public abstract void runAnalysis(AnalysisMethod method);
 
+    public Domain getInitialDomain() {
+        return initialDomain;
+    }
+
+    public AbstractInterpreter<Domain> getAbstractInterpreter() {
+        return abstractInterpreter;
+    }
+
+    public IteratorPolicy getIteratorPolicy() {
+        return iteratorPolicy;
+    }
+
+    public CheckerManager getCheckerManager() {
+        return checkerManager;
+    }
+
+    public AnalysisMethodFilterManager getMethodFilterManager() {
+        return methodFilterManager;
+    }
+
     public static abstract class Builder<T extends Builder<T, Domain>, Domain extends AbstractDomain<Domain>> {
         protected final Domain initialDomain;
         protected final AbstractInterpreter<Domain> abstractInterpreter;
@@ -64,6 +84,16 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
 
         public T registerChecker(Checker<?> checker) {
             checkerManager.registerChecker(checker);
+            return self();
+        }
+
+        public T checkerManager(CheckerManager checkerManager) {
+            this.checkerManager = checkerManager;
+            return self();
+        }
+
+        public T methodFilterManager(AnalysisMethodFilterManager methodFilterManager) {
+            this.methodFilterManager = methodFilterManager;
             return self();
         }
 

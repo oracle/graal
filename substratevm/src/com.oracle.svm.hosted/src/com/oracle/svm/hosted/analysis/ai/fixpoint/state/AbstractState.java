@@ -25,10 +25,15 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     private final StructuredGraph graph;
 
     public AbstractState(Domain initialDomain, StructuredGraph graph) {
+        this(initialDomain, graph, new HashMap<>());
+    }
+
+    public AbstractState(Domain initialDomain, StructuredGraph graph, Map<Node, NodeState<Domain>> stateMap) {
         this.initialDomain = initialDomain;
         this.graph = graph;
-        this.stateMap = new HashMap<>();
+        this.stateMap = stateMap;
     }
+
 
     public Domain getInitialDomain() {
         return initialDomain;
@@ -95,7 +100,7 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Set the {@link NodeState} of the {@link jdk.graal.compiler.nodes.StartNode} of a cfg to a give domain.
+     * Set the {@link NodeState} of the {@link jdk.graal.compiler.nodes.StartNode} of a graph to a give domain.
      * We will always have a single start node in a {@link ControlFlowGraph}.
      * This is done to allow more flexibility when handling inter-procedural calls.
      * Instead of setting the {@code initialDomain} of the {@link AbstractState} to a summary pre-condition,
@@ -111,9 +116,9 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     /**
      * Merge abstract contexts from different {@link ReturnNode}s into a single abstract context.
      * This context represents the over-approximation of all different return contexts,
-     * which is used to compute the final return value of the method.
+     * which is used to compute the final post-condition at the of the method.
      *
-     * @return the abstract context of the {@link ReturnNode}
+     * @return the joined abstract context over every {@link ReturnNode} in the method
      */
     // FIXME: some weird shit is probably happening here, investigate
     public Domain getReturnDomain() {
@@ -150,5 +155,14 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
             }
         }
         return null;
+    }
+
+    public AbstractState<Domain> copyOf() {
+        var initDomain = initialDomain.copyOf();
+        var stateMap = new HashMap<Node, NodeState<Domain>>();
+        for (Node node : this.stateMap.keySet()) {
+            stateMap.put(node, new NodeState<>(this.stateMap.get(node).getPreCondition(), this.stateMap.get(node).getPostCondition()));
+        }
+        return new AbstractState<>(initDomain, graph, stateMap);
     }
 }

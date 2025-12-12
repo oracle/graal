@@ -31,9 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
-public final class WpoFixpointIterator<
-        Domain extends AbstractDomain<Domain>>
-        extends FixpointIteratorBase<Domain> {
+public final class WpoFixpointIterator<Domain extends AbstractDomain<Domain>> extends FixpointIteratorBase<Domain> {
 
     private final WeakPartialOrdering weakPartialOrdering;
     private final HIRBlock entry;
@@ -42,7 +40,7 @@ public final class WpoFixpointIterator<
     public WpoFixpointIterator(AnalysisMethod method,
                                Domain initialDomain,
                                AbstractTransformer<Domain> abstractTransformer,
-                               AnalysisContext analysisContext) {
+                               AnalysisContext<Domain> analysisContext) {
         super(method, initialDomain, abstractTransformer, analysisContext);
         var cache = analysisContext.getMethodGraphCache();
         if (cache.containsMethodWpo(method)) {
@@ -134,11 +132,21 @@ public final class WpoFixpointIterator<
             this.refCount = new AtomicInteger(weakPartialOrdering.getNumPredecessors(index));
         }
 
-        void addSuccessor(WorkNode workNode) { successors.add(workNode); }
-        void addPredecessor(WorkNode workNode) { predecessors.add(workNode); }
-        void setHead(WorkNode head) { this.head = head; }
+        void addSuccessor(WorkNode workNode) {
+            successors.add(workNode);
+        }
 
-        int decrementRefCount() { return refCount.decrementAndGet(); }
+        void addPredecessor(WorkNode workNode) {
+            predecessors.add(workNode);
+        }
+
+        void setHead(WorkNode head) {
+            this.head = head;
+        }
+
+        int decrementRefCount() {
+            return refCount.decrementAndGet();
+        }
 
         List<WorkNode> update() {
             return switch (kind) {

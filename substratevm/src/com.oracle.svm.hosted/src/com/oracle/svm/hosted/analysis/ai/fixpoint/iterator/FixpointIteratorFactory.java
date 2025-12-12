@@ -14,7 +14,7 @@ public final class FixpointIteratorFactory {
     public static <Domain extends AbstractDomain<Domain>> FixpointIterator<Domain> createIterator(AnalysisMethod method,
                                                                                                   Domain initialDomain,
                                                                                                   AbstractTransformer<Domain> abstractTransformer,
-                                                                                                  AnalysisContext analysisContext) {
+                                                                                                  AnalysisContext<Domain> analysisContext) {
         assert method.getAnalyzedGraph() != null;
         return switch (analysisContext.getIteratorPolicy().strategy()) {
             case IteratorStrategy.WTO -> new WtoFixpointIterator<>(method, initialDomain, abstractTransformer, analysisContext);

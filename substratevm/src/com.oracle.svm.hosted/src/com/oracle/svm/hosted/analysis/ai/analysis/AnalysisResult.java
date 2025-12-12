@@ -10,7 +10,8 @@ public enum AnalysisResult {
     IN_SKIP_LIST("The method should be skipped according to the provided method filters"),
     MUTUAL_RECURSION_CYCLE("There is a sequence of calls that cannot be resolved due to mutual recursion"),
     UNKNOWN_METHOD("The method of an Invoke was not found in the current DebugContext"),
-    RECURSION_LIMIT_OVERFLOW("The recursion limit was reached");
+    RECURSION_LIMIT_OVERFLOW("The recursion limit was reached"),
+    CALL_STACK_DEPTH_OVERFLOW("The call stack depth limit was reached");
 
     private final String description;
 
