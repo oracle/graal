@@ -141,6 +141,11 @@ public class RistrettoUtils {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
     }
 
+    public static InstalledCode compileAndInstallInCrema(RistrettoMethod method) {
+        InstalledCode ic = compileAndInstall(method, () -> new SubstrateInstalledCodeImpl(method));
+        return method.installedCode = ic;
+    }
+
     public static StructuredGraph parseOnly(SubstrateMethod method) {
         if (method instanceof RistrettoMethod rMethod) {
             final RuntimeConfiguration runtimeConfig = RuntimeCompilationSupport.getRuntimeConfig();
