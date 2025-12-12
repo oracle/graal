@@ -55,6 +55,7 @@ public class DynamicCompilationThresholdsTest {
     private static final Pattern TARGET_NAME_PATTERN = Pattern.compile("DynamicCompilationThresholdsTest(\\d+)");
     static AtomicInteger ID = new AtomicInteger();
 
+    @SuppressWarnings("unused")
     static class SourceCompilation {
         private final int id;
         private final Source source;
@@ -160,7 +161,7 @@ public class DynamicCompilationThresholdsTest {
         SubprocessTestUtils.newBuilder(DynamicCompilationThresholdsTest.class, test).run();
     }
 
-    private void allowCompilationToProceed(int id) throws InterruptedException {
+    private void allowCompilationToProceed(int id) {
         compilationMap.get(id).compilationGoLatch.countDown();
     }
 
