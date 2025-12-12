@@ -52,8 +52,6 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
 
 final class CVSymbolSubsectionBuilder {
 
-    private static final int S_LOCAL_FLAGS_IS_PARAM = 1;
-
     private final CVDebugInfo cvDebugInfo;
     private final CVSymbolSubsection cvSymbolSubsection;
     private final CVLineRecordBuilder lineRecordBuilder;
@@ -74,7 +72,7 @@ final class CVSymbolSubsectionBuilder {
         this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
         /* For isolates, Graal currently uses r14 as the heap base; this code will handle r8-r15. */
         assert AMD64.r8.number <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
-        this.heapRegister = (short) (CV_AMD64_R8 + cvDebugInfo.getHeapbaseRegister() - AMD64.r8.number);
+        this.heapRegister = CVRegisterUtil.getCVRegister(cvDebugInfo.getHeapbaseRegister(), CVDebugInfo.POINTER_LENGTH);
     }
 
     /**
@@ -156,10 +154,7 @@ final class CVSymbolSubsectionBuilder {
         final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.frameSize(), frameFlags));
 
-        /* it's costly to compute this, so only compute it once */
-        Map<LocalEntry, List<Range>> varRangeMap = primaryRange.getVarRangeMap();
-
-        addParameters(compiledEntry, varRangeMap);
+        addParameters(compiledEntry, primaryRange.getVarRangeMap());
         /* In the future: addLocals(compiledEntry, varRangeMap); */
 
         /* S_PROC_ID_END add end record. */
@@ -173,7 +168,7 @@ final class CVSymbolSubsectionBuilder {
         final Range primaryRange = primaryEntry.primary();
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
-        final MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getCallees().getFirst().getMethodEntry();
+        final MethodEntry method = primaryRange.getMethodEntry();
 
         /* define function parameters */
         assert Modifier.isStatic(method.getModifiers()) || !method.getParams().isEmpty();
@@ -196,7 +191,7 @@ final class CVSymbolSubsectionBuilder {
 
     void emitLocal(LocalEntry info, Map<LocalEntry, List<Range>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
                     String procName, Range range) {
-        int flags = isParam ? S_LOCAL_FLAGS_IS_PARAM : 0;
+        short flags = isParam ? CVSymbolSubrecord.CVSymbolLocalRecord.S_LOCAL_FLAGS_IS_PARAM : 0;
         List<Range> ranges = varRangeMap.get(info);
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
         long currentHigh = Integer.MIN_VALUE;

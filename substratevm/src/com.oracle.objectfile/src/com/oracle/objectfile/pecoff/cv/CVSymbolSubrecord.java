@@ -335,11 +335,13 @@ abstract class CVSymbolSubrecord {
 
     public static class CVSymbolLocalRecord extends CVSymbolSubrecord {
 
+        public static final short S_LOCAL_FLAGS_IS_PARAM = 1;
+
         private final String name;
         private final int typeIndex;
-        private final int flags;
+        private final short flags;
 
-        CVSymbolLocalRecord(CVDebugInfo debugInfo, String name, int typeIndex, int flags) {
+        CVSymbolLocalRecord(CVDebugInfo debugInfo, String name, int typeIndex, short flags) {
             super(debugInfo, CVDebugConstants.S_LOCAL);
             this.name = name;
             this.typeIndex = typeIndex;
@@ -349,7 +351,7 @@ abstract class CVSymbolSubrecord {
         @Override
         protected int computeContents(byte[] buffer, int initialPos) {
             int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
-            pos = CVUtil.putShort((short) flags, buffer, pos);
+            pos = CVUtil.putShort(flags, buffer, pos);
             pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
             return pos;
         }
@@ -457,8 +459,8 @@ abstract class CVSymbolSubrecord {
         private final short register;
         private final short attr;
 
-        CVSymbolDefRangeRegisterRecord(CVDebugInfo debugInfo, String procName, int procOffset, int length, short register) {
-            super(debugInfo, CVDebugConstants.S_DEFRANGE_REGISTER, procName, procOffset, (short) length);
+        CVSymbolDefRangeRegisterRecord(CVDebugInfo debugInfo, String procName, int procOffset, short length, short register) {
+            super(debugInfo, CVDebugConstants.S_DEFRANGE_REGISTER, procName, procOffset, length);
             this.register = register;
             this.attr = 0;
         }
@@ -540,7 +542,6 @@ abstract class CVSymbolSubrecord {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class CVSymbolDefRangeFramepointerRel extends CVSymbolDefRangeBase {
 
         private final int fpOffset;

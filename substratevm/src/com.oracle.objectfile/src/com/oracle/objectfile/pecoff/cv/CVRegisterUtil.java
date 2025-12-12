@@ -252,7 +252,7 @@ public class CVRegisterUtil {
      * for that in the test suite.
      */
     /* the CodeView code depends upon the register type and size */
-    static short getCVRegister(int javaReg, TypeEntry typeEntry) {
+    static short getCVRegister(int javaReg, int size) {
         assert 0 <= javaReg && javaReg <= MAX_JAVA_REGISTER_NUMBER;
         if (javaReg > MAX_JAVA_REGISTER_NUMBER) {
             /* Register is unimplemented. */
@@ -267,22 +267,24 @@ public class CVRegisterUtil {
         /* Sanity check */
         assert cvReg.register.number == javaReg;
 
-        final short cvCode;
-        if (Objects.requireNonNull(typeEntry) instanceof PrimitiveTypeEntry) {
-            /* Find correct sub-register given the primitive type length. */
-            cvCode = switch (typeEntry.getSize()) {
-                case 1 -> cvReg.cv1;
-                case 2 -> cvReg.cv2;
-                case 4 -> cvReg.cv4;
-                case 8 -> cvReg.cv8;
-                default -> -1;
-            };
-        } else {
-            /* Objects are represented by 8 byte pointers. */
-            cvCode = cvReg.cv8;
-        }
+        final short cvCode = switch (size) {
+            case 1 -> cvReg.cv1;
+            case 2 -> cvReg.cv2;
+            case 4 -> cvReg.cv4;
+            case 8 -> cvReg.cv8;
+            default -> -1;
+        };
+ 
         /* Check for unimplemented size. */
         assert cvCode != -1;
         return cvCode;
+    }
+
+    /*
+     * Convert a Java register number to a CodeView register code using the size of a given type.
+     */
+    static short getCVRegister(int javaReg, TypeEntry typeEntry) {
+        final int size = (Objects.requireNonNull(typeEntry) instanceof PrimitiveTypeEntry) ? typeEntry.getSize() : 8;
+        return getCVRegister(javaReg, size);
     }
 }

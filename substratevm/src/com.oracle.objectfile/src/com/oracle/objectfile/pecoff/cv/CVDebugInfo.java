@@ -28,6 +28,9 @@ package com.oracle.objectfile.pecoff.cv;
 
 import java.nio.ByteOrder;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.amd64.AMD64;
+
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 import com.oracle.objectfile.pecoff.PECoffMachine;
 
@@ -45,21 +48,16 @@ public final class CVDebugInfo extends DebugInfoBase {
     private DebugContext debugContext;
 
     /* Register constants for Windows x86_64 */
-    /* See AMD64ReservedRegisters.java. */
-    public static final byte RHEAPBASE_X86 = (byte) 14;
-    public static final byte RTHREAD_X86 = (byte) 15;
-
-    private final byte heapbaseRegister;
-    private final byte threadRegister;
+    /* See AMD64ReservedRegisters.java (which we can't import here). */
+    public static final Register HEAP_BASE_REGISTER = AMD64.r14;
+    public static final Register THREAD_REGISTER = AMD64.r15;
+    public static final int POINTER_LENGTH = 8;
 
     public CVDebugInfo(PECoffMachine machine, ByteOrder byteOrder) {
         super(byteOrder);
         cvSymbolSection = new CVSymbolSectionImpl(this);
         cvTypeSection = new CVTypeSectionImpl(this);
-        if (machine == PECoffMachine.X86_64) {
-            this.heapbaseRegister = RHEAPBASE_X86;
-            this.threadRegister = RTHREAD_X86;
-        } else {
+        if (machine != PECoffMachine.X86_64) {
             /* room for future aach64 port */
             throw GraalError.shouldNotReachHere("Unsupported architecture on Windows"); // ExcludeFromJacocoGeneratedReport
         }
@@ -74,12 +72,12 @@ public final class CVDebugInfo extends DebugInfoBase {
     }
 
     public byte getHeapbaseRegister() {
-        return heapbaseRegister;
+        return (byte) HEAP_BASE_REGISTER.number;
     }
 
     @SuppressWarnings("unused")
     public byte getThreadRegister() {
-        return threadRegister;
+        return (byte) THREAD_REGISTER.number;
     }
 
     public DebugContext getDebugContext() {
