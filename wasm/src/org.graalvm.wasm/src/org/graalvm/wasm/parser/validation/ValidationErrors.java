@@ -70,6 +70,12 @@ public class ValidationErrors {
     }
 
     @TruffleBoundary
+    public static WasmException createExpectedReferenceTypeMismatch(int actualType) {
+        String actualTypeString = WasmType.toString(actualType);
+        return create("Expected type [%s], but got [%s].", "<reftype>", actualTypeString);
+    }
+
+    @TruffleBoundary
     public static WasmException createResultTypesMismatch(int[] expectedTypes, int[] actualTypes) {
         String expectedTypesString = getValueTypesString(expectedTypes);
         String actualTypesString = getValueTypesString(actualTypes);
@@ -129,5 +135,10 @@ public class ValidationErrors {
     public static WasmException createExpectedTypeOnEmptyStack(int expectedType) {
         String expectedTypeString = WasmType.toString(expectedType);
         return create("Expected type [%s], but got [].", expectedTypeString, "");
+    }
+
+    @TruffleBoundary
+    public static WasmException createExpectedReferenceTypeOnEmptyStack() {
+        return create("Expected type [%s], but got [].", "<reftype>", "");
     }
 }

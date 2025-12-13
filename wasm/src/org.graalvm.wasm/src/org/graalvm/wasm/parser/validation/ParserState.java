@@ -84,7 +84,7 @@ public class ParserState {
      * Pops a value from the stack if possible. Throws an error on stack underflow.
      *
      * @param expectedValueType The expectedValueType used for error generation.
-     * @return The top of the stack or -1.
+     * @return The top of the stack or {@link WasmType#BOT}.
      */
     private int popInternal(int expectedValueType) {
         if (availableStackSize() == 0) {
@@ -96,6 +96,23 @@ public class ParserState {
                 } else {
                     throw ValidationErrors.createExpectedTypeOnEmptyStack(expectedValueType);
                 }
+            }
+        }
+        return valueStack.popBack();
+    }
+
+    /**
+     * Pops a value from the stack if possible. Throws an error on stack underflow. Expects the
+     * value type to be any reference type.
+     *
+     * @return The top of the stack or {@link WasmType#BOT}.
+     */
+    private int popInternalExpectReference() {
+        if (availableStackSize() == 0) {
+            if (isCurrentStackUnreachable()) {
+                return WasmType.BOT;
+            } else {
+                throw ValidationErrors.createExpectedReferenceTypeOnEmptyStack();
             }
         }
         return valueStack.popBack();
@@ -212,17 +229,11 @@ public class ParserState {
      * @return The reference type on top of the stack.
      */
     public int popReferenceTypeChecked() {
-        if (availableStackSize() != 0) {
-            final int value = valueStack.popBack();
-            if (WasmType.isReferenceType(value)) {
-                return value;
-            }
-            // Push value back onto the stack and perform a checked pop to get the correct error
-            // message
-            // TODO: This might need a different error message?
-            valueStack.push(value);
+        final int actualValueType = popInternalExpectReference();
+        if (!WasmType.isReferenceType(actualValueType)) {
+            throw ValidationErrors.createExpectedReferenceTypeMismatch(actualValueType);
         }
-        return popChecked(WasmType.FUNCREF_TYPE);
+        return actualValueType;
     }
 
     /**
