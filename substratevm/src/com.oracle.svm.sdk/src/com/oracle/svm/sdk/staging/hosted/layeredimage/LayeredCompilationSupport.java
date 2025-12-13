@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.common.hosted.layeredimage;
+package com.oracle.svm.sdk.staging.hosted.layeredimage;
 
 import java.lang.reflect.Executable;
 
@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 
 /**
  * Used to programmatically associate {@link LayeredCompilationBehavior} to a method.

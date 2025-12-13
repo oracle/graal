@@ -63,10 +63,10 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.hosted.layeredimage.LayeredCompilationSupport;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.common.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.AnnotationUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
