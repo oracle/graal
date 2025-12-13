@@ -31,9 +31,14 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 @AutomaticallyRegisteredImageSingleton(BuildDirectoryProvider.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class BuildDirectoryProviderImpl implements BuildDirectoryProvider {
 
     @Override

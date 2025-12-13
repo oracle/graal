@@ -40,10 +40,22 @@ import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This singleton is made layer aware automatically by the matching of
+ * {@link CEntryPointCallStubMethod} across layers with their analysis id. However, the
+ * {@link CEntryPointCallStubSupport#cFunctionPointerCache} is currently duplicated across layers as
+ * we cannot reload the {@link BoxedRelocatedPointer} across layers.
+ */
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class, other = PartiallyLayerAware.class)
 public final class CEntryPointCallStubSupport {
     public static CEntryPointCallStubSupport singleton() {
         return ImageSingletons.lookup(CEntryPointCallStubSupport.class);
@@ -118,6 +130,7 @@ public final class CEntryPointCallStubSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 class CEntryPointCallStubFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {

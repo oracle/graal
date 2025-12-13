@@ -658,7 +658,7 @@ public class IsolateArgumentParser {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
-    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredOptionInfo.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
     static class LayeredOptionInfo {
         private static final int UNSET = -1;
         final int numOptions;
@@ -688,30 +688,30 @@ public class IsolateArgumentParser {
             Objects.requireNonNull(optionNames);
             return optionNames;
         }
-    }
 
-    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
 
-        @Override
-        public SingletonTrait getLayeredCallbacksTrait() {
-            return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredOptionInfo>() {
-                @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredOptionInfo singleton) {
-                    if (ImageLayerBuildingSupport.firstImageBuild()) {
-                        writer.writeInt("numOptions", IsolateArgumentParser.getOptionCount());
-                        writer.writeStringList("optionNames", IsolateArgumentParser.getOptions().stream().map(OptionKey::getName).toList());
-                    } else {
-                        writer.writeInt("numOptions", singleton.getNumOptions());
-                        writer.writeStringList("optionNames", singleton.optionNames);
+            @Override
+            public SingletonTrait getLayeredCallbacksTrait() {
+                return new SingletonTrait(SingletonTraitKind.LAYERED_CALLBACKS, new SingletonLayeredCallbacks<LayeredOptionInfo>() {
+                    @Override
+                    public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredOptionInfo singleton) {
+                        if (ImageLayerBuildingSupport.firstImageBuild()) {
+                            writer.writeInt("numOptions", IsolateArgumentParser.getOptionCount());
+                            writer.writeStringList("optionNames", IsolateArgumentParser.getOptions().stream().map(OptionKey::getName).toList());
+                        } else {
+                            writer.writeInt("numOptions", singleton.getNumOptions());
+                            writer.writeStringList("optionNames", singleton.optionNames);
+                        }
+                        return LayeredPersistFlags.CREATE;
                     }
-                    return LayeredPersistFlags.CREATE;
-                }
 
-                @Override
-                public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
-                    return SingletonInstantiator.class;
-                }
-            });
+                    @Override
+                    public Class<? extends SingletonLayeredCallbacks.LayeredSingletonInstantiator<?>> getSingletonInstantiator() {
+                        return SingletonInstantiator.class;
+                    }
+                });
+            }
         }
     }
 

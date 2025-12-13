@@ -37,7 +37,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.config.ObjectLayout.LayeredCallbacks;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredPersistFlags;
@@ -83,7 +82,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * See this classes instantiation sites (such as {@code HostedConfiguration#createObjectLayout}) for
  * more details on the exact object layout for a given configuration.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = LayeredCallbacks.class, layeredInstallationKind = Independent.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = ObjectLayout.LayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public final class ObjectLayout {
 
     private final SubstrateTargetDescription target;

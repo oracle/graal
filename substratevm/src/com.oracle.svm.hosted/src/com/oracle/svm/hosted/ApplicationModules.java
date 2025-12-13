@@ -26,9 +26,10 @@ package com.oracle.svm.hosted;
 
 import java.util.Set;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Returns the names of the application modules.
@@ -37,7 +38,7 @@ public interface ApplicationModules {
     /**
      * Returns the application module names as defined by {@link Module#getName}.
      */
-    Set<String> getNames();
+    Set<String> names();
 
     /**
      * The singleton instance is made available during {@link Feature#afterAnalysis} by the

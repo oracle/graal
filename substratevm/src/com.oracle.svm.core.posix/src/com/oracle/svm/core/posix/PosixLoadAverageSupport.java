@@ -24,12 +24,17 @@
  */
 package com.oracle.svm.core.posix;
 
-import com.oracle.svm.core.jdk.LoadAverageSupport;
-import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
+import com.oracle.svm.core.jdk.LoadAverageSupport;
+import com.oracle.svm.core.posix.headers.Stdlib;
+import com.oracle.svm.core.traits.BuiltinTraits.RuntimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
+import com.oracle.svm.core.traits.SingletonTraits;
 
 @AutomaticallyRegisteredImageSingleton(LoadAverageSupport.class)
+@SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class PosixLoadAverageSupport implements LoadAverageSupport {
     @Override
     public int getLoadAverage(double[] loadavg, int nelems) {

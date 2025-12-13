@@ -1152,7 +1152,6 @@ public class HeapDumpWriter {
         }
     }
 
-    @Fold
     static BufferedFileOperationSupport file() {
         return BufferedFileOperationSupport.bigEndian();
     }

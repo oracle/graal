@@ -39,6 +39,10 @@ import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.core.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.core.traits.SingletonLayeredInstallationKind.Independent;
+import com.oracle.svm.core.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -63,6 +67,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * the accesses are converted to loads from {@link #finalizedImageHeapRelocatableConstantsArray}.
  */
 @AutomaticallyRegisteredFeature
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Independent.class)
 public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableConstantSupport implements InternalFeature {
 
     final Map<ImageHeapRelocatableConstant, Integer> constantToInfoMap = new ConcurrentHashMap<>();
