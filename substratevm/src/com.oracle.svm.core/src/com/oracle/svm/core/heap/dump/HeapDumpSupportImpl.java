@@ -139,7 +139,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
-        if (!RawFileOperationSupport.isPresent()) {
+        if (!RawFileOperationSupport.isPresent() || !HeapDumpMetadata.isMetadataAvailable()) {
             throw new UnsupportedOperationException(VMInspectionOptions.getHeapDumpNotSupportedMessage());
         }
 
