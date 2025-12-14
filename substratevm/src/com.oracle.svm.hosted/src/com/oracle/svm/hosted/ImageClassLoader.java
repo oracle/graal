@@ -204,6 +204,29 @@ public final class ImageClassLoader {
         }
     }
 
+    public ClassLoader getDynamicHubClassLoader(Class<?> clazz) {
+        if (isCoreType(clazz)) {
+            /*
+             * Use null-loader for VM implementation classes. Our own VM implementation code (e.g.
+             * com.oracle.svm.core classes) are unrelated to the application code of the image and
+             * should not share the same classloader at image run-time. Using null as the
+             * classloader for such classes is in line with other use of the null-loader in Java.
+             */
+            return null;
+        } else {
+            /*
+             * If the class is an application class then it was loaded by NativeImageClassLoader.
+             * The ClassLoaderFeature object replacer will unwrap the original AppClassLoader from
+             * the NativeImageClassLoader.
+             */
+            return clazz.getClassLoader();
+        }
+    }
+
+    public boolean isCoreType(Class<?> clazz) {
+        return getBuilderModules().contains(clazz.getModule());
+    }
+
     /**
      * Type of result returned by {@link ImageClassLoader#isPlatformSupported}.
      */

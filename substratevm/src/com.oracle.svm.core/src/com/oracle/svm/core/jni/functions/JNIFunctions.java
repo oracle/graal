@@ -110,6 +110,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
+import com.oracle.svm.core.libjvm.LibJVMMainMethodWrappers;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -1641,14 +1642,14 @@ public final class JNIFunctions {
      * JNI functions.
      */
     public static class Support {
-        static class JNIEnvEnterPrologue implements CEntryPointOptions.Prologue {
+        public static class JNIEnvEnterPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             public static int enter(JNIEnvironment env) {
                 return CEntryPointActions.enter((IsolateThread) env);
             }
         }
 
-        static class ReturnNullHandle implements CEntryPointOptions.PrologueBailout {
+        public static class ReturnNullHandle implements CEntryPointOptions.PrologueBailout {
             @Uninterruptible(reason = "prologue")
             public static JNIObjectHandle bailout(int prologueResult) {
                 return JNIObjectHandles.nullHandle();
@@ -1840,7 +1841,11 @@ public final class JNIFunctions {
             return getMethodID(clazz, name, signature, isStatic);
         }
 
-        private static JNIMethodId getMethodID(Class<?> clazz, CharSequence name, CharSequence signature, boolean isStatic) {
+        private static JNIMethodId getMethodID(Class<?> origClazz, CharSequence name, CharSequence signature, boolean isStatic) {
+
+            // Workaround for GR-71358
+            Class<?> clazz = LibJVMMainMethodWrappers.patchMethodHolderClass(origClazz);
+
             JNIMethodId methodID = JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;
