@@ -63,4 +63,7 @@ public class InterpreterOptions {
     public static boolean interpreterEnabled() {
         return DebuggerWithInterpreter.getValue() || RuntimeClassLoading.isSupported();
     }
+
+    @Option(help = "Enables backdoors in interpreter for testing", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> InterpreterBackdoor = new HostedOptionKey<>(false);
 }

@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.core.code.FrameSourceInfo.LINENUMBER_NATIVE;
 
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,6 +36,9 @@ import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
+import com.oracle.svm.core.graal.code.PreparedArgumentType;
+import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
@@ -45,10 +49,17 @@ import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InterpreterSupportImpl extends InterpreterSupport {
     private static final int MAX_SYMBOL_LOG_LENGTH = 255;
@@ -65,6 +76,41 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         this.interpretedFrameSlot = interpretedFrameSlot;
         this.intrinsicMethodSlot = intrinsicMethodSlot;
         this.intrinsicFrameSlot = intrinsicFrameSlot;
+    }
+
+    @Override
+    public PreparedSignature prepareSignature(ResolvedJavaMethod method) {
+        InterpreterResolvedJavaMethod interpreterMethod = (InterpreterResolvedJavaMethod) method;
+
+        InterpreterUnresolvedSignature signature = interpreterMethod.getSignature();
+        boolean hasReceiver = interpreterMethod.hasReceiver();
+        InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
+        int count = signature.getParameterCount(false);
+        PreparedArgumentType[] argumentTypes = new PreparedArgumentType[count + (hasReceiver ? 1 : 0)];
+
+        // The calling convention is always used with a caller perspective, i.e. sp is unmodified.
+        SubstrateCallingConventionType callingConventionType = SubstrateCallingConventionKind.Java.toType(true);
+        ResolvedJavaType accessingClass = interpreterMethod.getDeclaringClass();
+        JavaType thisType = interpreterMethod.hasReceiver() ? accessingClass : null;
+        JavaType returnType = signature.getReturnType(accessingClass);
+        CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(callingConventionType, returnType, signature.toParameterTypes(thisType), stubSection.valueKindFactory);
+
+        if (hasReceiver) {
+            argumentTypes[0] = new PreparedArgumentType(JavaKind.Object, 0, true);
+        }
+        for (int i = 0; i < count; i++) {
+            int index = i + (hasReceiver ? 1 : 0);
+            AllocatableValue allocatableValue = callingConvention.getArgument(index);
+            JavaKind argKind = signature.getParameterKind(i);
+            int value = 0;
+            if (allocatableValue instanceof StackSlot stackSlot) {
+                // Both, in the enter- and leavestub we want the "outgoing semantics".
+                value = stackSlot.getOffset(0);
+            }
+            boolean isRegister = !(allocatableValue instanceof StackSlot);
+            argumentTypes[index] = new PreparedArgumentType(argKind, value, isRegister);
+        }
+        return new PreparedSignature(signature.getReturnKind(), argumentTypes, callingConvention.getStackSize());
     }
 
     @Override

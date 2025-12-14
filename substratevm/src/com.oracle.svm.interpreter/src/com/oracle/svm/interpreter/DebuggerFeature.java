@@ -508,6 +508,8 @@ public class DebuggerFeature implements InternalFeature {
         AnalysisMethod arraycopy = (AnalysisMethod) JVMCIReflectionUtil.getUniqueDeclaredMethod(aMetaAccess,
                         systemClass.getWrapped(), "arraycopy", Object.class, int.class, Object.class, int.class, int.class);
         SubstrateCompilationDirectives.singleton().registerForcedCompilation(arraycopy);
+
+        InterpreterFeature.prepareSignatures();
     }
 
     @Override
