@@ -22,13 +22,23 @@
  */
 package com.oracle.truffle.espresso.vmaccess;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -36,6 +46,8 @@ import jdk.graal.compiler.vmaccess.ModuleSupport;
 import jdk.graal.compiler.vmaccess.VMAccess;
 
 public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
+    private static Engine tempEngine;
+
     private List<String> classpath;
     private List<String> modulepath;
     private List<String> addModules;
@@ -118,10 +130,12 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
         }
         builder.option("java.EnableAssertions", Boolean.toString(enableAssertions));
         builder.option("java.EnableSystemAssertions", Boolean.toString(enableSystemAssertions));
-        if (vmOptions != null && !vmOptions.isEmpty()) {
-            throw new RuntimeException("unimplemented: " + vmOptions);
-        }
         builder.allowExperimentalOptions(true);
+        if (vmOptions != null) {
+            for (String vmOption : vmOptions) {
+                processVmOption(vmOption, builder);
+            }
+        }
 
         Context context = builder.build();
         context.enter();
@@ -141,6 +155,95 @@ public final class EspressoExternalVMAccessBuilder implements VMAccess.Builder {
             throw e;
         }
         return new EspressoExternalVMAccess(context);
+    }
+
+    private static void processVmOption(String vmOption, Context.Builder builder) {
+        int eqIdx = vmOption.indexOf('=');
+        String key;
+        String value;
+        if (eqIdx < 0) {
+            key = vmOption;
+            value = null;
+        } else {
+            key = vmOption.substring(0, eqIdx);
+            value = vmOption.substring(eqIdx + 1);
+        }
+
+        if (value == null) {
+            value = "true";
+        }
+        int index = key.indexOf('.');
+        String group = key;
+        if (index >= 0) {
+            group = group.substring(0, index);
+        }
+        if ("log".equals(group)) {
+            if (key.endsWith(".level")) {
+                try {
+                    Level.parse(value);
+                    builder.option(key, value);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(String.format("Invalid log level %s specified. %s'", vmOption, e.getMessage()));
+                }
+                return;
+            } else if ("log.file".equals(key)) {
+                OutputStream out;
+                try {
+                    out = new BufferedOutputStream(Files.newOutputStream(Paths.get(value), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Cannot use the specified log.file", e);
+                }
+                builder.logHandler(out);
+                return;
+            }
+        }
+        OptionDescriptor descriptor = findOptionDescriptor(group, key);
+        if (descriptor == null) {
+            key = "java." + key;
+            descriptor = findOptionDescriptor("java", key);
+            if (descriptor == null) {
+                throw new IllegalArgumentException("Unrecognized VM option: '" + vmOption);
+            }
+        }
+        try {
+            descriptor.getKey().getType().convert(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(String.format("Invalid VM option %s specified. %s", vmOption, e.getMessage()));
+        }
+        builder.option(key, value);
+    }
+
+    private static OptionDescriptor findOptionDescriptor(String group, String key) {
+        OptionDescriptors descriptors = null;
+        switch (group) {
+            case "engine":
+            case "compiler":
+                descriptors = getTempEngine().getOptions();
+                break;
+            default:
+                Engine engine = getTempEngine();
+                if (engine.getLanguages().containsKey(group)) {
+                    descriptors = engine.getLanguages().get(group).getOptions();
+                } else if (engine.getInstruments().containsKey(group)) {
+                    descriptors = engine.getInstruments().get(group).getOptions();
+                }
+                break;
+        }
+        if (descriptors == null) {
+            return null;
+        }
+        return descriptors.get(key);
+    }
+
+    private static Engine getTempEngine() {
+        if (tempEngine == null) {
+            tempEngine = Engine.newBuilder().useSystemProperties(false).//
+                            out(OutputStream.nullOutputStream()).//
+                            err(OutputStream.nullOutputStream()).//
+                            option("engine.WarnInterpreterOnly", "false").//
+                            build();
+        }
+        return tempEngine;
     }
 
     private static final class ModuleAccess {

@@ -99,6 +99,7 @@ suite = {
             ],
             "requires": [
                 "jdk.internal.vm.ci",
+                "java.logging",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
