@@ -276,7 +276,7 @@ public class RistrettoUtils {
         if (!RistrettoHostedOptions.getJITUseDeoptimization()) {
             gpc = gpc.withBytecodeExceptionMode(GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll);
         }
-        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.NONE);
+        HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
         RistrettoGraphBuilderPhase graphBuilderPhase = new RistrettoGraphBuilderPhase(gpc);
         graphBuilderPhase.apply(graph, hc);
         assert graph.getNodeCount() > 1 : "Must have nodes after parsing";
