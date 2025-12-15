@@ -409,7 +409,7 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == handleCount);
         VMError.guarantee(handleFrameId == handles.popFrame());
 
-	return potentialCallJITMethod(interpreterMethod, args);
+        return potentialCallJITMethod(interpreterMethod, args, false);
     }
 
     @Uninterruptible(reason = "Raw object pointer.")
@@ -564,7 +564,7 @@ public abstract class InterpreterStubSection {
         }
     }
 
-    public static Object potentialCallJITMethod(InterpreterResolvedJavaMethod interpreterMethod, Object[] args) {
+    public static Object potentialCallJITMethod(InterpreterResolvedJavaMethod interpreterMethod, Object[] args, boolean wrapInterpreterExceptions) {
         RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
         if (rMethod != null && rMethod.installedCode != null && rMethod.installedCode.isValid()) {
             /*
@@ -575,7 +575,16 @@ public abstract class InterpreterStubSection {
             CFunctionPointer entryPoint = Word.pointer(rMethod.installedCode.getEntryPoint());
             return leaveInterpreter(entryPoint, interpreterMethod, args);
         } else {
-            return Interpreter.execute(interpreterMethod, args);
+            try {
+                return Interpreter.execute(interpreterMethod, args);
+            } catch (Throwable t) {
+                if (wrapInterpreterExceptions) {
+                    // Exceptions coming from calls are valid, semantic Java exceptions.
+                    throw SemanticJavaException.raise(t);
+                } else {
+                    throw t;
+                }
+            }
         }
     }
 }
