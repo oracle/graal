@@ -56,6 +56,7 @@ import jdk.graal.compiler.vmaccess.VMAccess;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -95,10 +96,10 @@ final class EspressoExternalVMAccess implements VMAccess {
         constantReflection = new EspressoExternalConstantReflectionProvider(this);
         metaAccessExtensionProvider = new EspressoMetaAccessExtensionProvider(constantReflection);
         primitives = createPrimitiveTypes();
-        javaLangObject = new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.lang.Object"));
+        javaLangObject = new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Object"));
         arrayInterfaces = new EspressoExternalResolvedInstanceType[]{
-                        new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.io.Serializable")),
-                        new EspressoExternalResolvedInstanceType(this, lookupMetaObject(context, "java.lang.Cloneable")),
+                        new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.io.Serializable")),
+                        new EspressoExternalResolvedInstanceType(this, requireMetaObject(context, "java.lang.Cloneable")),
         };
         providers = createProviders();
 
@@ -297,16 +298,23 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     private Value getPrimitiveClass(String boxName) {
         String identifier = "java.lang." + boxName;
-        Value result = lookupMetaObject(context, identifier).getMember("TYPE");
+        Value result = requireMetaObject(context, identifier).getMember("TYPE");
         assert result != null && !result.isNull() : "Couldn't find TYPE for " + identifier;
         assert result.getMember("static").isMetaObject() : result;
         return result;
     }
 
+    private static Value requireMetaObject(Context context, String name) {
+        Value result = lookupMetaObject(context, name);
+        if (result == null || result.isNull()) {
+            throw JVMCIError.shouldNotReachHere("Couldn't find " + name);
+        }
+        return result;
+    }
+
     private static Value lookupMetaObject(Context context, String name) {
         Value result = context.getBindings("java").getMember(name);
-        assert result != null && !result.isNull() : " Couldn't find " + name;
-        assert result.isMetaObject() : result;
+        assert result == null || result.isMetaObject() : result;
         return result;
     }
 

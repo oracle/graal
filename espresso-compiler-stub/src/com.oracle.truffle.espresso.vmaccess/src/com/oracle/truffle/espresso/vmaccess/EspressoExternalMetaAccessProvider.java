@@ -73,7 +73,7 @@ final class EspressoExternalMetaAccessProvider implements MetaAccessProvider {
             return access.forPrimitiveKind(JavaKind.fromJavaClass(clazz));
         }
         Value value = access.lookupMetaObject(clazz.getName());
-        if (value.isNull()) {
+        if (value == null || value.isNull()) {
             throw new NoClassDefFoundError(clazz.getName());
         }
         return new EspressoExternalResolvedInstanceType(access, value);
