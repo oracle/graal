@@ -245,7 +245,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
-        if (ImageLayerBuildingSupport.buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
             return;
         }
         addType(declaringType);
@@ -1257,7 +1257,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return ImageSingletons.lookup(LayeredRuntimeMetadataSingleton.class);
         }
 
-        public boolean shouldRegisterMethod(Object method, AnalysisMetaAccess metaAccess, AccessibleObjectMetadata metadata) {
+        public boolean shouldRegisterMethod(Object method, AnalysisMetaAccess metaAccess, ExecutableMetadata metadata) {
             int methodId = switch (method) {
                 case AnalysisMethod analysisMethod -> analysisMethod.getId();
                 case HostedMethod hostedMethod -> hostedMethod.getWrapped().getId();
@@ -1270,8 +1270,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             }
 
             Boolean methodData = previousLayerRegisteredMethods.get(methodId);
-            if (methodData == null || (!methodData && metadata.complete)) {
-                registeredMethods.put(methodId, metadata.complete);
+            boolean isComplete = metadata.complete && metadata.accessor != null;
+            if (methodData == null || (!methodData && isComplete)) {
+                registeredMethods.put(methodId, isComplete);
                 return true;
             } else {
                 return false;
