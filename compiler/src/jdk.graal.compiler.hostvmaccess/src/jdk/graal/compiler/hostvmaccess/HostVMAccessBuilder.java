@@ -28,6 +28,7 @@ import java.io.File;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,7 +42,7 @@ import jdk.graal.compiler.vmaccess.VMAccess;
 public final class HostVMAccessBuilder implements VMAccess.Builder {
     private List<String> classpath = List.of();
     private List<String> modulepath = List.of();
-    private List<String> addModules = List.of();
+    private List<String> addModules = new ArrayList<>();
     private boolean enableAssertions;
     private final Map<String, String> systemProperties = new LinkedHashMap<>();
 
@@ -64,7 +65,13 @@ public final class HostVMAccessBuilder implements VMAccess.Builder {
 
     @Override
     public VMAccess.Builder addModules(List<String> modules) {
-        this.addModules = modules;
+        this.addModules.addAll(modules);
+        return this;
+    }
+
+    @Override
+    public VMAccess.Builder addModule(String module) {
+        this.addModules.add(module);
         return this;
     }
 
