@@ -150,6 +150,7 @@ final class HostStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object readMember(String member) throws UnknownIdentifierException {
         if (DefaultStackTraceElementObject.HOST.equals(member)) {
             return true;
