@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
+import com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -2290,6 +2291,10 @@ public final class Meta extends ContextAccessImpl
             EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.PARAMETER_ANNOTATIONS);
             EspressoResolvedInstanceType_TYPE_ANNOTATIONS = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.TYPE_ANNOTATIONS);
             EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE = getIntConstant(EspressoResolvedInstanceType.getSuperKlass(), Names.ANNOTATION_DEFAULT_VALUE);
+            assert EspressoResolvedInstanceType_DECLARED_ANNOTATIONS == JVMCIUtils.DECLARED_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS == JVMCIUtils.PARAMETER_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_TYPE_ANNOTATIONS == JVMCIUtils.TYPE_ANNOTATIONS;
+            assert EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE == JVMCIUtils.ANNOTATION_DEFAULT_VALUE;
 
             EspressoResolvedJavaField = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
             EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Names._init_, Signatures._void_EspressoResolvedInstanceType);

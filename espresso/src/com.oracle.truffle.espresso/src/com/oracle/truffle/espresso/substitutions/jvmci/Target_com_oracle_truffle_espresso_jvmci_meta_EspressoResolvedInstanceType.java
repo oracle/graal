@@ -31,7 +31,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -572,22 +571,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
      *         for {@code attributed}
      */
     static StaticObject getRawAnnotationBytes(AttributedElement attributed, int category, Meta meta) {
-        Attribute annotations;
-        if (category == meta.jvmci.EspressoResolvedInstanceType_TYPE_ANNOTATIONS) {
-            annotations = attributed.getAttribute(Names.RuntimeVisibleTypeAnnotations);
-        } else if (category == meta.jvmci.EspressoResolvedInstanceType_DECLARED_ANNOTATIONS) {
-            annotations = attributed.getAttribute(Names.RuntimeVisibleAnnotations);
-        } else if (category == meta.jvmci.EspressoResolvedInstanceType_PARAMETER_ANNOTATIONS) {
-            annotations = attributed.getAttribute(Names.RuntimeVisibleParameterAnnotations);
-        } else if (category == meta.jvmci.EspressoResolvedInstanceType_ANNOTATION_DEFAULT_VALUE) {
-            annotations = attributed.getAttribute(Names.AnnotationDefault);
-        } else {
-            throw meta.throwIllegalArgumentExceptionBoundary();
-        }
-        if (annotations == null) {
+        byte[] bytes = JVMCIUtils.getRawAnnotationBytes(attributed, category, meta);
+        if (bytes == null) {
             return StaticObject.NULL;
         }
         // Defensively clone the byte array into case the caller mutates it
-        return StaticObject.wrap(annotations.getData().clone(), meta);
+        return StaticObject.wrap(bytes.clone(), meta);
     }
 }

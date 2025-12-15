@@ -46,6 +46,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.AttributedElement;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -100,6 +101,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
                         InvokeMember.MAKE_IDENTITY_HASH_CODE,
                         InvokeMember.NEW_OBJECT_ARRAY,
                         InvokeMember.NEW_PRIMITIVE_ARRAY,
+                        InvokeMember.GET_RAW_ANNOTATION_BYTES,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
@@ -145,6 +147,7 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
         static final String MAKE_IDENTITY_HASH_CODE = "makeIdentityHashCode";
         static final String NEW_OBJECT_ARRAY = "newObjectArray";
         static final String NEW_PRIMITIVE_ARRAY = "newPrimitiveArray";
+        static final String GET_RAW_ANNOTATION_BYTES = "getRawAnnotationBytes";
 
         @Specialization(guards = "GET_FLAGS.equals(member)")
         static int getFlags(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
@@ -650,6 +653,35 @@ public final class JVMCIInteropHelper implements ContextAccess, TruffleObject {
             } else {
                 return elementType.allocatePrimitiveArray(length);
             }
+        }
+
+        @Specialization(guards = "GET_RAW_ANNOTATION_BYTES.equals(member)")
+        static Object getRawAnnotationBytes(JVMCIInteropHelper receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Bind Node node,
+                        @CachedLibrary(limit = "1") @Shared InteropLibrary intInterop,
+                        @Cached @Shared InlinedBranchProfile typeError,
+                        @Cached @Shared InlinedBranchProfile arityError) throws ArityException, UnsupportedTypeException {
+            assert receiver != null;
+            assert EspressoLanguage.get(node).isExternalJVMCIEnabled();
+            if (arguments.length != 2) {
+                arityError.enter(node);
+                throw ArityException.create(2, 2, arguments.length);
+            }
+            if (!(arguments[0] instanceof AttributedElement element)) {
+                typeError.enter(node);
+                throw UnsupportedTypeException.create(arguments, "Expected an espresso klass, method, or field as first argument");
+            }
+            int category;
+            try {
+                category = intInterop.asInt(arguments[1]);
+            } catch (UnsupportedMessageException e) {
+                throw UnsupportedTypeException.create(arguments, "Expected an int as second argument");
+            }
+            byte[] bytes = JVMCIUtils.getRawAnnotationBytes(element, category, EspressoContext.get(node).getMeta());
+            if (bytes == null) {
+                return StaticObject.NULL;
+            }
+            return new TruffleReadOnlyBytes(bytes);
         }
 
         @Fallback

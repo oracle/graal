@@ -340,7 +340,7 @@ final class EspressoExternalResolvedInstanceType extends AbstractEspressoResolve
 
     @Override
     protected byte[] getRawAnnotationBytes(int category) {
-        throw JVMCIError.unimplemented();
+        return access.getRawAnnotationBytes(getMetaObject(), category);
     }
 
     @Override

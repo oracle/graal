@@ -72,7 +72,7 @@ final class EspressoExternalResolvedJavaField extends AbstractEspressoResolvedJa
 
     @Override
     protected byte[] getRawAnnotationBytes(int category) {
-        throw JVMCIError.unimplemented();
+        return getAccess().getRawAnnotationBytes(fieldMirror, category);
     }
 
     @Override

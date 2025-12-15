@@ -223,7 +223,7 @@ final class EspressoExternalResolvedJavaMethod extends AbstractEspressoResolvedJ
 
     @Override
     protected byte[] getRawAnnotationBytes(int category) {
-        throw JVMCIError.unimplemented();
+        return getAccess().getRawAnnotationBytes(methodMirror, category);
     }
 
     @Override

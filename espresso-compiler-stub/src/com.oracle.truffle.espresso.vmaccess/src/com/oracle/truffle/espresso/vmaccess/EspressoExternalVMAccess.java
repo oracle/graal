@@ -425,4 +425,16 @@ final class EspressoExternalVMAccess implements VMAccess {
     public EspressoExternalObjectConstant unsafeAllocateInstance(EspressoExternalResolvedInstanceType type) {
         return (EspressoExternalObjectConstant) invoke(unsafeAllocateInstance, unsafe, getProviders().getConstantReflection().asJavaClass(type));
     }
+
+    byte[] getRawAnnotationBytes(Value metaObject, int category) {
+        Value bytes = invokeJVMCIHelper("getRawAnnotationBytes", metaObject, category);
+        if (bytes.isNull()) {
+            return null;
+        }
+        assert bytes.hasBufferElements();
+        long size = bytes.getBufferSize();
+        byte[] result = new byte[Math.toIntExact(size)];
+        bytes.readBuffer(0, result, 0, result.length);
+        return result;
+    }
 }
